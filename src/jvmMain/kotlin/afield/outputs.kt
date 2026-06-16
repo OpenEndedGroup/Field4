@@ -473,7 +473,7 @@ private fun buildSliderHtml(
     val decimalPlaces = calculateDecimalPlaces(step)
     val formattedValue = "%.${decimalPlaces}f".format(value)
     val viewWidth = 320
-    val viewHeight = 32
+    val viewHeight = 44
     val centerY = viewHeight / 2
     val padding = 14
     val clampedValue = value.coerceIn(min, max)
@@ -492,6 +492,7 @@ private fun buildSliderHtml(
              data-padding="$padding">
             <span class="field-label">$label</span>
             <svg class="field-slider-visual" viewBox="0 0 $viewWidth $viewHeight" preserveAspectRatio="xMidYMid meet">
+                <rect x="0" y="0" width="$viewWidth" height="$viewHeight" class="slider-hitbox"></rect>
                 <line x1="$padding" y1="$centerY" x2="${viewWidth - padding}" y2="$centerY" class="slider-track"></line>
                 <line x1="$padding" y1="$centerY" x2="$cx" y2="$centerY" class="slider-fill"></line>
                 <circle cx="$cx" cy="$centerY" r="5" class="slider-thumb"></circle>
@@ -757,7 +758,7 @@ private fun buildColorPickerHtml(
     val hexColor = String.format("#%02X%02X%02X", r, g, b)
     val alpha = initialValue.w.coerceIn(0f, 1f)
     val viewWidth = 320
-    val viewHeight = 32
+    val viewHeight = 44
     val centerY = viewHeight / 2
     val padding = 14
     val trackLen = viewWidth - (padding * 2)
@@ -778,6 +779,7 @@ private fun buildColorPickerHtml(
                         <span class="field-label alpha-label">&alpha;</span>
                         <svg class="alpha-visual" viewBox="0 0 $viewWidth $viewHeight" preserveAspectRatio="xMidYMid meet"
                              data-view-width="$viewWidth" data-view-height="$viewHeight" data-padding="$padding">
+                            <rect x="0" y="0" width="$viewWidth" height="$viewHeight" class="alpha-hitbox"></rect>
                             <line x1="$padding" y1="$centerY" x2="${viewWidth - padding}" y2="$centerY" class="alpha-track"></line>
                             <line x1="$padding" y1="$centerY" x2="$cx" y2="$centerY" class="alpha-fill"></line>
                             <circle cx="$cx" cy="$centerY" r="5" class="alpha-thumb"></circle>
@@ -809,8 +811,90 @@ fun Box.colorPicker(
 // ------------------------------------------------------------------------
 // DSL-style grouping of controls
 
+private const val controlGroupCacheProperty = "_controlGroupCache"
+
+private val controllerControlGroups = java.util.concurrent.ConcurrentHashMap<String, List<ControllerControl>>()
+private val controllerControlGroupBoxes = java.util.concurrent.ConcurrentHashMap<String, Box>()
+
+private fun controllerControlGroupKey(boxId: String, channel: String): String = "$boxId\u0000$channel"
+
+private fun controlGroupControlKey(channel: String, type: String, label: String, ordinal: Int): String =
+    listOf(channel, type, label, ordinal.toString()).joinToString("\u0000")
+
+private fun stableControlId(prefix: String, boxId: String, cacheKey: String): String {
+    val uuid = UUID.nameUUIDFromBytes("$boxId\u0000$cacheKey".toByteArray(StandardCharsets.UTF_8))
+    return "$prefix-$uuid"
+}
+
+@Suppress("UNCHECKED_CAST")
+private fun Box.controlGroupCache(): java.util.concurrent.ConcurrentHashMap<String, ControllerControl> {
+    val existing = properties[controlGroupCacheProperty]
+    if (existing is java.util.concurrent.ConcurrentHashMap<*, *>) {
+        return existing as java.util.concurrent.ConcurrentHashMap<String, ControllerControl>
+    }
+    val cache = java.util.concurrent.ConcurrentHashMap<String, ControllerControl>()
+    properties[controlGroupCacheProperty] = cache
+    return cache
+}
+
+@Suppress("UNCHECKED_CAST")
+private fun Box.existingControlGroupCache(): java.util.concurrent.ConcurrentHashMap<String, ControllerControl>? {
+    val existing = properties[controlGroupCacheProperty]
+    return existing as? java.util.concurrent.ConcurrentHashMap<String, ControllerControl>
+}
+
+private fun Box.updateCachedControlGroupValue(control: ControllerControl) {
+    val cache = existingControlGroupCache() ?: return
+    val cacheKey = cache.entries.firstOrNull { it.value.id == control.id }?.key ?: return
+    cache[cacheKey] = control
+}
+
+internal fun registerControllerControlGroup(box: Box, channel: String, controls: List<ControllerControl>) {
+    val key = controllerControlGroupKey(box.id, channel)
+    controllerControlGroups[key] = controls
+    controllerControlGroupBoxes[key] = box
+}
+
+internal fun controllerControlsForBox(boxId: String): List<ControllerControl> {
+    val prefix = "$boxId\u0000"
+    return controllerControlGroups.entries
+        .filter { it.key.startsWith(prefix) }
+        .sortedBy { it.key.substringAfter('\u0000') }
+        .flatMap { it.value }
+}
+
+internal fun updateControllerControlValue(controlId: String, update: (ControllerControl) -> ControllerControl): List<ControllerControl> {
+    val updated = mutableListOf<ControllerControl>()
+    controllerControlGroups.replaceAll { groupKey, controls ->
+        controls.map { control ->
+            if (control.id == controlId) {
+                update(control).also {
+                    updated += it
+                    controllerControlGroupBoxes[groupKey]?.updateCachedControlGroupValue(it)
+                }
+            } else {
+                control
+            }
+        }
+    }
+    return updated
+}
+
 class ControlGroupBuilder(private val box: Box, private val channel: String) {
     private val htmlParts = mutableListOf<String>()
+    private val controls = mutableListOf<ControllerControl>()
+    private val ordinals = mutableMapOf<String, Int>()
+    private val cache = box.controlGroupCache()
+
+    private data class CachedControl(val cacheKey: String, val id: String, val previous: ControllerControl?)
+
+    private fun cachedControl(type: String, prefix: String, label: String): CachedControl {
+        val ordinalKey = "$type\u0000$label"
+        val ordinal = ordinals.getOrDefault(ordinalKey, 0)
+        ordinals[ordinalKey] = ordinal + 1
+        val cacheKey = controlGroupControlKey(channel, type, label, ordinal)
+        return CachedControl(cacheKey, stableControlId(prefix, box.id, cacheKey), cache[cacheKey])
+    }
 
     fun slider(
         label: String,
@@ -820,9 +904,27 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         initialValue: Double = (min + max) / 2,
         onUpdate: (Double) -> Unit
     ) {
-        val sliderId = "slider-${UUID.randomUUID()}"
+        val cached = cachedControl("slider", "slider", label)
+        val sliderId = cached.id
+        val value = cached.previous?.value?.coerceIn(min, max) ?: initialValue
         registerSliderCallback(sliderId, onUpdate)
-        htmlParts += buildSliderHtml(sliderId, label, min, max, step, initialValue)
+        if (cached.previous?.value != null) {
+            onUpdate(value)
+        }
+        htmlParts += buildSliderHtml(sliderId, label, min, max, step, value)
+        val control = ControllerControl(
+            id = sliderId,
+            type = "slider",
+            label = label,
+            channel = channel,
+            min = min,
+            max = max,
+            step = step,
+            value = value,
+            decimalPlaces = calculateDecimalPlaces(step)
+        )
+        controls += control
+        cache[cached.cacheKey] = control
     }
 
     fun colorPicker(
@@ -830,9 +932,33 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         initialValue: Vector4f = Vector4f(1.0f, 1.0f, 1.0f, 1.0f),
         onUpdate: (Vector4f) -> Unit
     ) {
-        val controlId = "color-${UUID.randomUUID()}"
+        val cached = cachedControl("color", "color", label)
+        val controlId = cached.id
+        val value = Vector4f(
+            (cached.previous?.r ?: initialValue.x.toDouble()).toFloat(),
+            (cached.previous?.g ?: initialValue.y.toDouble()).toFloat(),
+            (cached.previous?.b ?: initialValue.z.toDouble()).toFloat(),
+            (cached.previous?.a ?: initialValue.w.toDouble()).toFloat()
+        )
         registerColorCallback(controlId, onUpdate)
-        htmlParts += buildColorPickerHtml(controlId, label, initialValue)
+        if (cached.previous?.r != null || cached.previous?.g != null || cached.previous?.b != null || cached.previous?.a != null) {
+            onUpdate(Vector4f(value))
+        }
+        htmlParts += buildColorPickerHtml(controlId, label, value)
+        val control = ControllerControl(
+            id = controlId,
+            type = "color",
+            label = label,
+            channel = channel,
+            r = value.x.toDouble(),
+            g = value.y.toDouble(),
+            b = value.z.toDouble(),
+            a = value.w.toDouble(),
+            value = value.w.toDouble(),
+            decimalPlaces = 2
+        )
+        controls += control
+        cache[cached.cacheKey] = control
     }
 
     fun vec2Control(
@@ -843,10 +969,34 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         step: Double = 0.01,
         onUpdate: (Vector2f) -> Unit
     ) {
-        val controlId = "vec2-${UUID.randomUUID()}"
+        val cached = cachedControl("vec2", "vec2", label)
+        val controlId = cached.id
+        val value = Vector2f(
+            (cached.previous?.x ?: initialValue.x.toDouble()).toFloat(),
+            (cached.previous?.y ?: initialValue.y.toDouble()).toFloat()
+        )
         registerVec2Callback(controlId, onUpdate)
+        if (cached.previous?.x != null || cached.previous?.y != null) {
+            onUpdate(Vector2f(value))
+        }
         val decimalPlaces = calculateDecimalPlaces(step)
-        htmlParts += buildVec2Html(controlId, label, xRange, yRange, step, decimalPlaces, initialValue)
+        htmlParts += buildVec2Html(controlId, label, xRange, yRange, step, decimalPlaces, value)
+        val control = ControllerControl(
+            id = controlId,
+            type = "vec2",
+            label = label,
+            channel = channel,
+            step = step,
+            xMin = xRange.first,
+            xMax = xRange.second,
+            yMin = yRange.first,
+            yMax = yRange.second,
+            x = value.x.toDouble(),
+            y = value.y.toDouble(),
+            decimalPlaces = decimalPlaces
+        )
+        controls += control
+        cache[cached.cacheKey] = control
     }
 
     fun checkbox(
@@ -854,9 +1004,23 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         initialValue: Boolean = false,
         onUpdate: (Boolean) -> Unit
     ) {
-        val controlId = "checkbox-${UUID.randomUUID()}"
+        val cached = cachedControl("checkbox", "checkbox", label)
+        val controlId = cached.id
+        val value = cached.previous?.checked ?: initialValue
         registerCheckboxCallback(controlId, onUpdate)
-        htmlParts += buildCheckboxHtml(controlId, label, initialValue)
+        if (cached.previous?.checked != null) {
+            onUpdate(value)
+        }
+        htmlParts += buildCheckboxHtml(controlId, label, value)
+        val control = ControllerControl(
+            id = controlId,
+            type = "checkbox",
+            label = label,
+            channel = channel,
+            checked = value
+        )
+        controls += control
+        cache[cached.cacheKey] = control
     }
 
     fun text(
@@ -864,9 +1028,23 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         initialValue: String = "",
         onUpdate: (String) -> Unit
     ) {
-        val controlId = "string-${UUID.randomUUID()}"
+        val cached = cachedControl("string", "string", label)
+        val controlId = cached.id
+        val value = cached.previous?.text ?: initialValue
         registerStringCallback(controlId, onUpdate)
-        htmlParts += buildStringInputHtml(controlId, label, initialValue)
+        if (cached.previous?.text != null) {
+            onUpdate(value)
+        }
+        htmlParts += buildStringInputHtml(controlId, label, value)
+        val control = ControllerControl(
+            id = controlId,
+            type = "string",
+            label = label,
+            channel = channel,
+            text = value
+        )
+        controls += control
+        cache[cached.cacheKey] = control
     }
 
     fun stringInput(
@@ -876,12 +1054,14 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
     ) = text(label, initialValue, onUpdate)
 
     internal fun buildHtml(): String = htmlParts.joinToString("\n")
+    internal fun buildControls(): List<ControllerControl> = controls.toList()
 }
 
 fun Box.controlGroup(channel: String = "controls", block: ControlGroupBuilder.() -> Unit) {
     val builder = ControlGroupBuilder(this, channel)
     builder.apply(block)
     val grouped = builder.buildHtml()
+    registerControllerControlGroup(this, channel, builder.buildControls())
     if (grouped.isNotBlank()) {
         display(channel, """<div class="control-group">$grouped</div>""")
     }
@@ -1019,4 +1199,3 @@ fun <T> Box.tqdm(items: Iterable<T>, name: String = "progress"): Iterable<T> {
         else -> tqdm(items.toList(), name)
     }
 }
-

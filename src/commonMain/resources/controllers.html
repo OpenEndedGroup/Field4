@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Field Controllers</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="/controllers.css">
+    <script defer src="/controllers.js"></script>
+  </head>
+  <body>
+    <main class="controller-shell" aria-label="Field touch controller">
+      <header class="controller-top">
+        <div class="status-line">
+          <span id="connection">offline</span>
+          <span id="clients">0 clients</span>
+          <span id="readout">x 0.500 y 0.500</span>
+        </div>
+        <div class="page-tabs segmented" role="group" aria-label="Controller page">
+          <button type="button" class="segment active" data-page="pad">PAD</button>
+          <button type="button" class="segment" data-page="controls">GROUP</button>
+        </div>
+        <div id="pad-controls" class="controls" aria-label="Controller options">
+          <div class="segmented" role="group" aria-label="Value axis">
+            <button type="button" class="segment active" data-axis="y">Y</button>
+            <button type="button" class="segment" data-axis="x">X</button>
+            <button type="button" class="segment" data-axis="xy">XY</button>
+          </div>
+          <div class="segmented" role="group" aria-label="Send mode">
+            <button type="button" class="segment active" data-mode="absolute">ABS</button>
+            <button type="button" class="segment" data-mode="delta">DELTA</button>
+            <button type="button" class="segment" data-mode="both">BOTH</button>
+          </div>
+          <div class="command-cluster" role="group" aria-label="Editor commands">
+            <button type="button" class="icon-button" id="save-value" aria-label="Save current number" title="Save current number">↓</button>
+            <button type="button" class="icon-button" id="restore-value" aria-label="Restore saved number" title="Restore saved number">↩</button>
+            <button type="button" class="icon-button" id="lock-binding" aria-label="Lock current number binding" title="Lock current number binding">⌖</button>
+            <button type="button" class="icon-button" id="unlock-binding" aria-label="Unlock number binding" title="Unlock number binding">⌫</button>
+            <button type="button" class="icon-button" id="launch" aria-label="Launch selected box" title="Launch">▶</button>
+            <button type="button" class="icon-button" id="stop" aria-label="Stop selected box" title="Stop">■</button>
+          </div>
+        </div>
+      </header>
+      <section id="touch-area" class="touch-area controller-page active" data-controller-page="pad" aria-label="Touch surface">
+        <div class="crosshair crosshair-x"></div>
+        <div class="crosshair crosshair-y"></div>
+        <div id="thumb" class="thumb" role="slider" aria-label="Touch position" aria-valuemin="0" aria-valuemax="1000" aria-valuenow="500" tabindex="0"></div>
+      </section>
+      <section id="group-page" class="control-page controller-page" data-controller-page="controls" aria-label="Selected box controls">
+        <div id="group-state" class="group-state">No selected control group</div>
+        <div id="group-controls" class="group-controls"></div>
+      </section>
+    </main>
+  </body>
+</html>

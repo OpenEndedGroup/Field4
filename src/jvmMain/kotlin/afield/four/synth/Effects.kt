@@ -1,6 +1,7 @@
 package afield.four.synth
 
 import kotlin.math.*
+import kotlin.random.Random
 
 // ═══════════════════════════════════════════════════════════════════
 //  Delay – fractional delay line with interpolation
@@ -147,6 +148,229 @@ class FreeVerb(
 
             val m = mBuf[i].coerceIn(0f, 1f)
             output[i] = inBuf[i] * (1f - m) + wet * m
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  SpringReverb – bright, dispersive spring-like reverb
+// ═══════════════════════════════════════════════════════════════════
+
+
+class SpringReverb(
+    /** Overall spring tension / metallic dispersion (0…1). */
+    val tension: Param = Param(0.55f),
+    /** Feedback tail length (0…1). */
+    val decay: Param = Param(0.72f),
+    /** Brightness of the spring return (0 = dark, 1 = bright). */
+    val tone: Param = Param(0.65f),
+    /** Dry/wet mix (0 = dry, 1 = wet). */
+    val mix: Param = Param(0.28f)
+) : SignalProcessor() {
+
+    companion object {
+        private val LINE_LENGTHS = intArrayOf(211, 281, 337, 421, 631, 947)
+        private val DISPERSION_LENGTHS = intArrayOf(53, 71, 97, 131)
+    }
+
+    private inner class SpringLine(length: Int) {
+        val buffer = FloatArray(length)
+        var pos = 0
+        var lowpass = 0f
+
+        fun process(input: Float, feedback: Float, damping: Float): Float {
+            val delayed = buffer[pos]
+            lowpass = delayed * (1f - damping) + lowpass * damping
+            buffer[pos] = input + lowpass * feedback
+            pos = (pos + 1) % buffer.size
+            return delayed
+        }
+    }
+
+    private inner class AllpassState(length: Int) {
+        val buffer = FloatArray(length)
+        var pos = 0
+
+        fun process(input: Float, coefficient: Float): Float {
+            val delayed = buffer[pos]
+            val out = -input + delayed
+            buffer[pos] = input + delayed * coefficient
+            pos = (pos + 1) % buffer.size
+            return out
+        }
+    }
+
+    private var lines: Array<SpringLine>? = null
+    private var dispersers: Array<AllpassState>? = null
+    private var initializedSampleRate = 0f
+    private var outputFilter = 0f
+
+    private var inBuf = FloatArray(0)
+    private var tensionBuf = FloatArray(0)
+    private var decayBuf = FloatArray(0)
+    private var toneBuf = FloatArray(0)
+    private var mixBuf = FloatArray(0)
+
+    private fun init(sampleRate: Float) {
+        val scale = sampleRate / 44100f
+        lines = Array(LINE_LENGTHS.size) {
+            SpringLine((LINE_LENGTHS[it] * scale).toInt().coerceAtLeast(4))
+        }
+        dispersers = Array(DISPERSION_LENGTHS.size) {
+            AllpassState((DISPERSION_LENGTHS[it] * scale).toInt().coerceAtLeast(4))
+        }
+        initializedSampleRate = sampleRate
+        outputFilter = 0f
+    }
+
+    override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
+        if (lines == null || initializedSampleRate != ctx.sampleRate) init(ctx.sampleRate)
+        if (inBuf.size < numFrames) {
+            inBuf = FloatArray(numFrames)
+            tensionBuf = FloatArray(numFrames)
+            decayBuf = FloatArray(numFrames)
+            toneBuf = FloatArray(numFrames)
+            mixBuf = FloatArray(numFrames)
+        }
+
+        input.render(inBuf, numFrames, ctx)
+        tension.render(tensionBuf, numFrames, ctx)
+        decay.render(decayBuf, numFrames, ctx)
+        tone.render(toneBuf, numFrames, ctx)
+        mix.render(mixBuf, numFrames, ctx)
+
+        val springLines = lines!!
+        val allpasses = dispersers!!
+
+        for (i in 0 until numFrames) {
+            val tens = tensionBuf[i].coerceIn(0f, 1f)
+            val tail = decayBuf[i].coerceIn(0f, 1f)
+            val bright = toneBuf[i].coerceIn(0f, 1f)
+            val feedback = 0.54f + tail * 0.42f
+            val damping = (1f - bright).coerceIn(0f, 1f) * 0.72f
+            val drive = inBuf[i] * (0.018f + tens * 0.016f)
+
+            var wet = 0f
+            for (lineIndex in springLines.indices) {
+                val polarity = if ((lineIndex and 1) == 0) 1f else -1f
+                val lineFeedback = feedback * (0.94f + lineIndex * 0.012f).coerceAtMost(0.995f)
+                wet += springLines[lineIndex].process(drive * polarity, lineFeedback, damping) * polarity
+            }
+            wet /= springLines.size
+
+            var dispersed = wet
+            val coefficient = 0.38f + tens * 0.52f
+            for (a in allpasses) {
+                dispersed = a.process(dispersed, coefficient)
+            }
+
+            val toneCoeff = 0.08f + bright * 0.82f
+            outputFilter += (dispersed - outputFilter) * toneCoeff
+            val m = mixBuf[i].coerceIn(0f, 1f)
+            output[i] = inBuf[i] * (1f - m) + outputFilter * m
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  ConvolutionReverb – short direct convolution reverb
+// ═══════════════════════════════════════════════════════════════════
+
+
+class ConvolutionReverb(
+    val impulse: AudioSample,
+    /** Dry/wet mix (0 = dry, 1 = convolved). */
+    val mix: Param = Param(0.35f),
+    /** Wet signal trim after convolution. */
+    val gain: Param = Param(1f),
+    val normalize: Boolean = true,
+    val maxIrSamples: Int = 8192
+) : SignalProcessor() {
+    private var ir = FloatArray(0)
+    private var buffer = FloatArray(0)
+    private var writePos = 0
+    private var initializedSampleRate = 0f
+
+    private var inBuf = FloatArray(0)
+    private var mixBuf = FloatArray(0)
+    private var gainBuf = FloatArray(0)
+
+    companion object {
+        fun syntheticImpulse(
+            lengthSeconds: Float = 0.45f,
+            decay: Float = 0.65f,
+            diffusion: Float = 0.8f,
+            sampleRate: Float = 44100f,
+            seed: Int = 0
+        ): AudioSample {
+            val safeLength = lengthSeconds.coerceAtLeast(0.01f)
+            val n = (safeLength * sampleRate).toInt().coerceAtLeast(8)
+            val rng = Random(seed)
+            val data = FloatArray(n)
+            data[0] = 1f
+            for (i in 1 until n) {
+                val t = i.toFloat() / n.toFloat()
+                val env = exp(-t * (2.0 + decay.coerceIn(0f, 1f) * 8.0)).toFloat()
+                val sparse = if (rng.nextFloat() < diffusion.coerceIn(0.05f, 1f)) 1f else 0f
+                data[i] = (rng.nextFloat() * 2f - 1f) * env * sparse
+            }
+            return AudioSample(data, sampleRate)
+        }
+    }
+
+    private fun init(sampleRate: Float) {
+        val capped = maxIrSamples.coerceAtLeast(1)
+        val targetLength = min(capped, (impulse.lengthSeconds * sampleRate).toInt().coerceAtLeast(1))
+        val prepared = FloatArray(targetLength)
+        val step = impulse.sampleRate / sampleRate
+        var sourcePos = 0.0
+        var energy = 0.0
+        for (i in prepared.indices) {
+            val v = impulse.readInterp(sourcePos)
+            prepared[i] = v
+            energy += (v * v).toDouble()
+            sourcePos += step
+        }
+        if (normalize && energy > 1e-12) {
+            val scale = (1.0 / sqrt(energy)).toFloat()
+            for (i in prepared.indices) prepared[i] *= scale
+        }
+
+        ir = prepared
+        buffer = FloatArray(prepared.size)
+        writePos = 0
+        initializedSampleRate = sampleRate
+    }
+
+    override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
+        if (initializedSampleRate != ctx.sampleRate || ir.isEmpty()) init(ctx.sampleRate)
+        if (inBuf.size < numFrames) {
+            inBuf = FloatArray(numFrames)
+            mixBuf = FloatArray(numFrames)
+            gainBuf = FloatArray(numFrames)
+        }
+
+        input.render(inBuf, numFrames, ctx)
+        mix.render(mixBuf, numFrames, ctx)
+        gain.render(gainBuf, numFrames, ctx)
+
+        val impulseResponse = ir
+        val ring = buffer
+
+        for (i in 0 until numFrames) {
+            ring[writePos] = inBuf[i]
+            var wet = 0f
+            var readPos = writePos
+            for (tap in impulseResponse.indices) {
+                wet += impulseResponse[tap] * ring[readPos]
+                readPos--
+                if (readPos < 0) readPos = ring.size - 1
+            }
+            writePos++
+            if (writePos >= ring.size) writePos = 0
+
+            val m = mixBuf[i].coerceIn(0f, 1f)
+            output[i] = inBuf[i] * (1f - m) + wet * gainBuf[i] * m
         }
     }
 }

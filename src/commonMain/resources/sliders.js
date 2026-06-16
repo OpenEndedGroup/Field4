@@ -40,6 +40,13 @@ window.sendSliderUpdate = function(sliderId, value) {
     });
 };
 
+function cssEscape(value) {
+    if (window.CSS && typeof window.CSS.escape === 'function') {
+        return window.CSS.escape(String(value));
+    }
+    return String(value).replace(/["\\]/g, '\\$&');
+}
+
 // FLine interactive SVG helpers -----------------------------------------------
 
 /**
@@ -1804,6 +1811,88 @@ function updateAlphaVisual(alphaSlider, alpha) {
         dot.setAttribute('cy', centerY);
     }
 }
+
+function normalizedRgbToHex(r, g, b) {
+    const toByte = (value) => {
+        const n = Number(value);
+        return Math.round(clamp(Number.isFinite(n) ? n : 0, 0, 1) * 255)
+            .toString(16)
+            .padStart(2, '0');
+    };
+    return `#${toByte(r)}${toByte(g)}${toByte(b)}`;
+}
+
+function updateColorDisplays(controlId, r, g, b, a) {
+    const valueDisplay = document.getElementById(`${controlId}-value`);
+    if (valueDisplay) {
+        valueDisplay.textContent = `rgba(${r.toFixed(2)}, ${g.toFixed(2)}, ${b.toFixed(2)}, ${a.toFixed(2)})`;
+    }
+    const alphaDisplay = document.getElementById(`${controlId}-alpha-value`);
+    if (alphaDisplay) {
+        alphaDisplay.textContent = a.toFixed(2);
+    }
+}
+
+window.applyFieldControlUpdate = function(control) {
+    if (!control || !control.id) return;
+
+    const id = String(control.id);
+    const type = String(control.type || 'slider');
+
+    if (type === 'slider') {
+        if (sliderState.active?.dataset?.sliderId === id) return;
+        const container = document.querySelector(`.field-slider[data-slider-id="${cssEscape(id)}"]`);
+        const value = Number(control.value);
+        if (container && Number.isFinite(value)) {
+            updateSlider(container, value, { send: false });
+        }
+        return;
+    }
+
+    if (type === 'vec2') {
+        if (vec2State.active?.dataset?.controlId === id) return;
+        const container = document.querySelector(`.field-vec2[data-control-id="${cssEscape(id)}"]`);
+        const x = Number(control.x);
+        const y = Number(control.y);
+        if (container && Number.isFinite(x) && Number.isFinite(y)) {
+            updateVec2(container, x, y, { send: false });
+        }
+        return;
+    }
+
+    if (type === 'checkbox') {
+        const input = document.getElementById(id);
+        if (input && input.matches?.('.checkbox-toggle')) {
+            input.checked = Boolean(control.checked);
+        }
+        return;
+    }
+
+    if (type === 'string') {
+        const input = document.getElementById(id);
+        if (input && input.matches?.('.field-text-input') && document.activeElement !== input) {
+            input.value = control.text == null ? '' : String(control.text);
+        }
+        return;
+    }
+
+    if (type === 'color') {
+        const colorInput = document.getElementById(id);
+        const alphaSlider = document.getElementById(`${id}-alpha`);
+        const r = clamp(Number(control.r ?? 0), 0, 1);
+        const g = clamp(Number(control.g ?? 0), 0, 1);
+        const b = clamp(Number(control.b ?? 0), 0, 1);
+        const a = clamp(Number(control.a ?? control.value ?? 1), 0, 1);
+        if (colorInput && colorInput.matches?.('input[type="color"]')) {
+            colorInput.value = normalizedRgbToHex(r, g, b);
+        }
+        if (alphaSlider) {
+            alphaSlider.value = String(a);
+            updateAlphaVisual(alphaSlider, a);
+        }
+        updateColorDisplays(id, r, g, b, a);
+    }
+};
 
 // Alpha slider (SVG) -------------------------------------------------------
 function alphaValueFromPointer(svg, event) {

@@ -86,8 +86,11 @@ expect:
 private val SYNTH_COOKBOOK_EFFECTS_ENVELOPES_AND_INPUT = """
 val delayed = saw / Delay()
 val reverbed = saw / FreeVerb()
+val springy = saw / SpringReverb()
+val convolutionIr = reverbImpulse(lengthSeconds = 0.18, decay = 0.5, diffusion = 0.7, seed = 4)
+val convolved = saw / convolutionReverb(convolutionIr, mix = 0.25, maxIrSamples = 2048)
 val bandPassed = white / SVF(mode = SVFMode.BP, cutoff = 1200.p, resonance = 0.6.p)
-val chain = saw / MoogLadder(cutoff = 800.p) / Chorus() / FreeVerb()
+val chain = saw / MoogLadder(cutoff = 800.p) / Chorus() / springReverb()
 val tunedDelay = saw / FractionalDelay(delayTime = 0.0125.p, feedback = 0.7.p, mix = 0.6.p)
 val signalDivision = saw / SineOsc(2.p)
 
@@ -149,12 +152,28 @@ val kickPlayback = Sampler(kick) * 0.5f
 val voice = AudioSample.generate(1.0f) { t ->
     kotlin.math.sin((t * 220f * 2f * kotlin.math.PI.toFloat()).toDouble()).toFloat()
 }
-val cloud = GrainCloud(voice, density = 18.p, position = 0.35.p, grainSize = 0.08.p)
+val cloud = GrainCloud(
+    voice,
+    density = 18.p,
+    position = 0.35.p,
+    grainSize = 0.08.p,
+    pitchJitterCents = 35.p,
+    envelope = GrainEnvelope.GAUSSIAN
+)
 
 val fieldRecording = AudioSample.generate(1.5f) { t ->
     kotlin.math.sin((t * 110f * 2f * kotlin.math.PI.toFloat()).toDouble()).toFloat()
 }
-val stereoCloud = StereoGrainCloud(fieldRecording, density = 12.p, spread = 0.7.p)
+val stereoCloud = StereoGrainCloud(
+    fieldRecording,
+    density = 12.p,
+    spread = 0.7.p,
+    pitchJitterCents = 20.p,
+    stereoWidth = 0.006.p,
+    stereoWidthRandom = 0.003.p,
+    stereoScatter = 0.002.p,
+    envelope = GrainEnvelope.TUKEY
+)
 
 val fmOp = FMOperator(freq = 220.p, feedbackAmount = 0.2f)
 val dexedish = FMPatch.twoOp(carrierFreq = 110f, index = 3.p) * 0.08f
