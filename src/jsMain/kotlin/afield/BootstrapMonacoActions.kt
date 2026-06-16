@@ -61,6 +61,7 @@ private const val shaderNoMatchScore = -1000000
 private const val shaderNavigationSelectionDelayMs = 90
 private const val shaderNavigationRetryDelayMs = 180
 private val oscEditorNumberPattern = Regex("""[-+]?(?:(?:\d+\.\d*)|(?:\d+)|(?:\.\d+))(?:[eE][-+]?\d+)?[fF]?""")
+private val oscEditorVectorSeparatorPattern = Regex("""\s*,\s*""")
 private var oscEditorDebounceTimer: Int? = null
 private var oscEditorMaxTimer: Int? = null
 private var oscEditorPendingEditor: dynamic = null
@@ -73,6 +74,11 @@ private data class OscEditorNumberMatch(
     val start: Int,
     val endExclusive: Int,
     val text: String
+)
+
+private data class OscEditorVector2Match(
+    val first: OscEditorNumberMatch,
+    val second: OscEditorNumberMatch
 )
 
 private data class OscEditorSavedNumber(
@@ -1220,17 +1226,67 @@ private fun oscEditorLineContent(text: String, lineNumber: Int): String? {
     return text.substring(start, end).removeSuffix("\r")
 }
 
-private fun oscEditorNumberAt(line: String, lineNumber: Int, column: Int): OscEditorNumberMatch? {
-    val cursorIndex = (column - 1).coerceIn(0, line.length)
+private fun oscEditorNumbersOnLine(line: String, lineNumber: Int): List<OscEditorNumberMatch> {
+    val numbers = mutableListOf<OscEditorNumberMatch>()
     for (match in oscEditorNumberPattern.findAll(line)) {
         val start = match.range.first
         val endExclusive = match.range.last + 1
-        if (cursorIndex < start || cursorIndex > endExclusive) continue
         if (start > 0 && oscEditorIdentifierChar(line[start - 1])) continue
         if (endExclusive < line.length && oscEditorIdentifierChar(line[endExclusive])) continue
-        return OscEditorNumberMatch(lineNumber, start, endExclusive, match.value)
+        numbers.add(OscEditorNumberMatch(lineNumber, start, endExclusive, match.value))
+    }
+    return numbers
+}
+
+private fun oscEditorNumberAt(line: String, lineNumber: Int, column: Int): OscEditorNumberMatch? {
+    val cursorIndex = (column - 1).coerceIn(0, line.length)
+    return oscEditorNumbersOnLine(line, lineNumber).firstOrNull { hit ->
+        cursorIndex >= hit.start && cursorIndex <= hit.endExclusive
+    }
+}
+
+private fun oscEditorNonWhitespaceLeft(line: String, index: Int): Char? {
+    var cursor = index - 1
+    while (cursor >= 0) {
+        val ch = line[cursor]
+        if (!ch.isWhitespace()) return ch
+        cursor--
     }
     return null
+}
+
+private fun oscEditorNonWhitespaceRight(line: String, index: Int): Char? {
+    var cursor = index
+    while (cursor < line.length) {
+        val ch = line[cursor]
+        if (!ch.isWhitespace()) return ch
+        cursor++
+    }
+    return null
+}
+
+private fun oscEditorLooksLikeVector2Pair(line: String, first: OscEditorNumberMatch, second: OscEditorNumberMatch): Boolean {
+    val left = oscEditorNonWhitespaceLeft(line, first.start)
+    val right = oscEditorNonWhitespaceRight(line, second.endExclusive)
+    return (left == '(' && right == ')') || (left == '[' && right == ']')
+}
+
+private fun oscEditorVector2Near(line: String, hit: OscEditorNumberMatch): OscEditorVector2Match? {
+    val numbers = oscEditorNumbersOnLine(line, hit.lineNumber)
+    val index = numbers.indexOfFirst { it.start == hit.start && it.endExclusive == hit.endExclusive }
+    if (index < 0) return null
+
+    fun candidate(firstIndex: Int, secondIndex: Int): OscEditorVector2Match? {
+        if (firstIndex < 0 || secondIndex >= numbers.size) return null
+        val first = numbers[firstIndex]
+        val second = numbers[secondIndex]
+        if (first.lineNumber != second.lineNumber || first.endExclusive > second.start) return null
+        if (!oscEditorVectorSeparatorPattern.matches(line.substring(first.endExclusive, second.start))) return null
+        if (!oscEditorLooksLikeVector2Pair(line, first, second)) return null
+        return OscEditorVector2Match(first, second)
+    }
+
+    return candidate(index, index + 1) ?: candidate(index - 1, index)
 }
 
 private fun monacoNumberUnderCursor(editor: dynamic): OscEditorNumberMatch? {
@@ -1243,6 +1299,13 @@ private fun monacoNumberUnderCursor(editor: dynamic): OscEditorNumberMatch? {
     val column = (position.column as Number).toInt()
     val line = model.getLineContent(lineNumber) as String
     return oscEditorNumberAt(line, lineNumber, column)
+}
+
+private fun monacoVector2UnderCursor(editor: dynamic, hit: OscEditorNumberMatch): OscEditorVector2Match? {
+    val model = editor.getModel()
+    if (model == null || model == undefined) return null
+    val line = model.getLineContent(hit.lineNumber) as String
+    return oscEditorVector2Near(line, hit)
 }
 
 private fun monacoApplyNumberReplacement(editor: dynamic, hit: OscEditorNumberMatch, replacement: String): Boolean {
@@ -1277,6 +1340,55 @@ private fun monacoApplyNumberReplacement(editor: dynamic, hit: OscEditorNumberMa
     return true
 }
 
+private fun monacoApplyVectorReplacement(
+    editor: dynamic,
+    vector: OscEditorVector2Match,
+    firstReplacement: String,
+    secondReplacement: String
+): Boolean {
+    val model = editor.getModel()
+    if (model == null || model == undefined) return false
+
+    val firstRange = js("{}")
+    firstRange.startLineNumber = vector.first.lineNumber
+    firstRange.startColumn = vector.first.start + 1
+    firstRange.endLineNumber = vector.first.lineNumber
+    firstRange.endColumn = vector.first.endExclusive + 1
+
+    val firstEdit = js("{}")
+    firstEdit.range = firstRange
+    firstEdit.text = firstReplacement
+    firstEdit.forceMoveMarkers = true
+
+    val secondRange = js("{}")
+    secondRange.startLineNumber = vector.second.lineNumber
+    secondRange.startColumn = vector.second.start + 1
+    secondRange.endLineNumber = vector.second.lineNumber
+    secondRange.endColumn = vector.second.endExclusive + 1
+
+    val secondEdit = js("{}")
+    secondEdit.range = secondRange
+    secondEdit.text = secondReplacement
+    secondEdit.forceMoveMarkers = true
+
+    editor.executeEdits("osc-editor-vector2", arrayOf(firstEdit, secondEdit))
+
+    val adjustedSecondStart = vector.second.start + firstReplacement.length - vector.first.text.length
+    val nextPosition = js("{}")
+    nextPosition.lineNumber = vector.second.lineNumber
+    nextPosition.column = adjustedSecondStart + secondReplacement.length + 1
+    editor.setPosition(nextPosition)
+
+    val w = js("window")
+    val current = w.currentSelectedCode
+    val currentLen = (current?.length as? Number)?.toInt() ?: 0
+    if (currentLen == 1) {
+        val property = w.currentSelectedProperty as? String ?: "code"
+        current[0][property] = model.getValue()
+    }
+    return true
+}
+
 private fun oscEditorApplyLockedNumberReplacement(
     target: OscEditorLockedNumberTarget,
     hit: OscEditorNumberMatch,
@@ -1291,6 +1403,29 @@ private fun oscEditorApplyLockedNumberReplacement(
     val updated = text.substring(0, startOffset) + replacement + text.substring(endOffset)
     oscEditorSetTargetText(target.uid, target.property, updated)
     oscEditorLockedTarget = target.copy(column = hit.start + replacement.length + 1)
+    return true
+}
+
+private fun oscEditorApplyLockedVectorReplacement(
+    target: OscEditorLockedNumberTarget,
+    vector: OscEditorVector2Match,
+    firstReplacement: String,
+    secondReplacement: String
+): Boolean {
+    val text = oscEditorTargetText(target.uid, target.property) ?: return false
+    val lineStart = oscEditorLineStartOffset(text, vector.first.lineNumber) ?: return false
+    val firstStart = lineStart + vector.first.start
+    val firstEnd = lineStart + vector.first.endExclusive
+    val secondStart = lineStart + vector.second.start
+    val secondEnd = lineStart + vector.second.endExclusive
+    if (firstStart < 0 || firstEnd < firstStart || secondStart < firstEnd || secondEnd > text.length) return false
+
+    val withSecond = text.substring(0, secondStart) + secondReplacement + text.substring(secondEnd)
+    val updated = withSecond.substring(0, firstStart) + firstReplacement + withSecond.substring(firstEnd)
+    oscEditorSetTargetText(target.uid, target.property, updated)
+
+    val adjustedSecondStart = vector.second.start + firstReplacement.length - vector.first.text.length
+    oscEditorLockedTarget = target.copy(column = adjustedSecondStart + secondReplacement.length + 1)
     return true
 }
 
@@ -1311,18 +1446,27 @@ private fun oscEditorApplyNumberReplacementForTarget(
     return replaced
 }
 
-private fun oscEditorReplacementFor(original: String, command: OscEditorCommand): String? {
-    val suffix = original.lastOrNull()?.takeIf { it == 'f' || it == 'F' }?.toString() ?: ""
-    val replacementBase = if (command.delta) {
-        val delta = command.value ?: return null
-        val originalNumber = if (suffix.isNotBlank()) original.dropLast(1) else original
-        val originalValue = originalNumber.toDoubleOrNull() ?: return null
-        formatOscEditorNumber(originalValue + delta)
+private fun oscEditorApplyVectorReplacementForTarget(
+    editor: dynamic,
+    target: OscEditorLockedNumberTarget,
+    vector: OscEditorVector2Match,
+    firstReplacement: String,
+    secondReplacement: String
+): Boolean {
+    val replaced = if (oscEditorTargetIsCurrent(target.uid, target.property)) {
+        monacoApplyVectorReplacement(editor, vector, firstReplacement, secondReplacement)
     } else {
-        command.text.takeIf { it.isNotBlank() }
-            ?: command.value?.let(::formatOscEditorNumber)
-            ?: return null
+        oscEditorApplyLockedVectorReplacement(target, vector, firstReplacement, secondReplacement)
     }
+    if (replaced) {
+        val adjustedSecondStart = vector.second.start + firstReplacement.length - vector.first.text.length
+        oscEditorLockedTarget = target.copy(column = adjustedSecondStart + secondReplacement.length + 1)
+    }
+    return replaced
+}
+
+private fun oscEditorPreserveSuffix(original: String, replacementBase: String): String {
+    val suffix = original.lastOrNull()?.takeIf { it == 'f' || it == 'F' }?.toString() ?: ""
     return if (suffix.isNotBlank() && !replacementBase.endsWith("f", ignoreCase = true)) {
         replacementBase + suffix
     } else {
@@ -1330,10 +1474,48 @@ private fun oscEditorReplacementFor(original: String, command: OscEditorCommand)
     }
 }
 
+private fun oscEditorReplacementForValue(original: String, value: Double?, delta: Boolean): String? {
+    val suffix = original.lastOrNull()?.takeIf { it == 'f' || it == 'F' }?.toString() ?: ""
+    val replacementBase = if (delta) {
+        val deltaValue = value ?: return null
+        val originalNumber = if (suffix.isNotBlank()) original.dropLast(1) else original
+        val originalValue = originalNumber.toDoubleOrNull() ?: return null
+        formatOscEditorNumber(originalValue + deltaValue)
+    } else {
+        value?.let(::formatOscEditorNumber) ?: return null
+    }
+    return oscEditorPreserveSuffix(original, replacementBase)
+}
+
+private fun oscEditorReplacementFor(original: String, command: OscEditorCommand): String? {
+    if (command.delta) return oscEditorReplacementForValue(original, command.value, true)
+
+    val replacementBase =
+        command.text.takeIf { it.isNotBlank() }
+            ?: command.value?.let(::formatOscEditorNumber)
+            ?: return null
+    return oscEditorPreserveSuffix(original, replacementBase)
+}
+
+private fun oscEditorVector2ReplacementsFor(vector: OscEditorVector2Match, command: OscEditorCommand): Pair<String, String>? {
+    if (!command.vector2) return null
+    val firstValue = if (command.delta) command.dx else command.x
+    val secondValue = if (command.delta) command.dy else command.y
+    val firstReplacement = oscEditorReplacementForValue(vector.first.text, firstValue, command.delta) ?: return null
+    val secondReplacement = oscEditorReplacementForValue(vector.second.text, secondValue, command.delta) ?: return null
+    return Pair(firstReplacement, secondReplacement)
+}
+
 private fun oscEditorLockedNumberHit(target: OscEditorLockedNumberTarget): OscEditorNumberMatch? {
     val text = oscEditorTargetText(target.uid, target.property) ?: return null
     val line = oscEditorLineContent(text, target.lineNumber) ?: return null
     return oscEditorNumberAt(line, target.lineNumber, target.column)
+}
+
+private fun oscEditorLockedVector2Hit(target: OscEditorLockedNumberTarget, hit: OscEditorNumberMatch): OscEditorVector2Match? {
+    val text = oscEditorTargetText(target.uid, target.property) ?: return null
+    val line = oscEditorLineContent(text, target.lineNumber) ?: return null
+    return oscEditorVector2Near(line, hit)
 }
 
 private fun monacoReplaceNumberUnderCursor(editor: dynamic, command: OscEditorCommand): Boolean {
@@ -1343,11 +1525,25 @@ private fun monacoReplaceNumberUnderCursor(editor: dynamic, command: OscEditorCo
             notify("Locked number is gone", "osc-editor")
             return false
         }
+        if (command.vector2) {
+            val vector = oscEditorLockedVector2Hit(locked, hit)
+            val replacements = vector?.let { oscEditorVector2ReplacementsFor(it, command) }
+            if (vector != null && replacements != null) {
+                return oscEditorApplyVectorReplacementForTarget(editor, locked, vector, replacements.first, replacements.second)
+            }
+        }
         val replacement = oscEditorReplacementFor(hit.text, command) ?: return false
         return oscEditorApplyNumberReplacementForTarget(editor, locked, hit, replacement)
     }
 
     val hit = monacoNumberUnderCursor(editor) ?: return false
+    if (command.vector2) {
+        val vector = monacoVector2UnderCursor(editor, hit)
+        val replacements = vector?.let { oscEditorVector2ReplacementsFor(it, command) }
+        if (vector != null && replacements != null) {
+            return monacoApplyVectorReplacement(editor, vector, replacements.first, replacements.second)
+        }
+    }
     val replacement = oscEditorReplacementFor(hit.text, command) ?: return false
     return monacoApplyNumberReplacement(editor, hit, replacement)
 }

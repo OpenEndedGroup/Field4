@@ -496,7 +496,12 @@ data class OscEditorCommand(
     val text: String = "",
     val debounceMs: Int = 200,
     val maxExecutionMs: Int = 750,
-    val delta: Boolean = false
+    val delta: Boolean = false,
+    val vector2: Boolean = false,
+    val x: Double? = null,
+    val y: Double? = null,
+    val dx: Double? = null,
+    val dy: Double? = null
 )
 
 @Serializable

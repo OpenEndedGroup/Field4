@@ -131,6 +131,7 @@ private fun sendControllerFloat(
     input: ControllerInput,
     targetDocument: String
 ) {
+    val vector2 = controllerAxis(input.valueAxis) == "xy"
     sendControllerMessage(
         OscEditorCommand(
             command = "float",
@@ -139,14 +140,26 @@ private fun sendControllerFloat(
             text = formatControllerFloat(value),
             debounceMs = controllerDebounce(input, preferences),
             maxExecutionMs = controllerMaxExecution(input, preferences),
-            delta = delta
+            delta = delta,
+            vector2 = vector2,
+            x = if (vector2) input.x else null,
+            y = if (vector2) input.y else null,
+            dx = if (vector2) input.dx else null,
+            dy = if (vector2) input.dy else null
         ),
         targetDocument
     )
 }
 
+private fun controllerAxis(axis: String): String =
+    when (axis.trim().lowercase(Locale.US)) {
+        "x" -> "x"
+        "xy" -> "xy"
+        else -> "y"
+    }
+
 private fun controllerAxisValue(axis: String, x: Double, y: Double): Double =
-    if (axis.trim().equals("x", ignoreCase = true)) x else y
+    if (controllerAxis(axis) == "x") x else y
 
 private fun controllerDebounce(input: ControllerInput, preferences: FieldPreferences): Int =
     (input.debounceMs ?: preferences.oscEditorDebounceMs).coerceIn(0, 5_000)
