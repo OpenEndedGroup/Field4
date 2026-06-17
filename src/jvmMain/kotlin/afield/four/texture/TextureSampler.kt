@@ -15,7 +15,10 @@ class TextureSampler(
     mipLevels: Int,
     anisotropyEnable: Boolean,
     filter: Int = VK10.VK_FILTER_LINEAR,
-    mipmapMode: Int = if (filter == VK10.VK_FILTER_LINEAR) VK10.VK_SAMPLER_MIPMAP_MODE_LINEAR else VK10.VK_SAMPLER_MIPMAP_MODE_NEAREST
+    mipmapMode: Int = if (filter == VK10.VK_FILTER_LINEAR) VK10.VK_SAMPLER_MIPMAP_MODE_LINEAR else VK10.VK_SAMPLER_MIPMAP_MODE_NEAREST,
+    addressModeU: Int = VK10.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+    addressModeV: Int = VK10.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+    addressModeW: Int = VK10.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE
 ) {
     var vkSampler: Long = 0
     private val autoDisposeToken = AutoDisposer.register(this, "TextureSampler(mips=$mipLevels)") { /* set after init */ }
@@ -27,9 +30,9 @@ class TextureSampler(
                 .sType(VK10.VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO)
                 .magFilter(filter)
                 .minFilter(filter)
-                .addressModeU(VK10.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE)
-                .addressModeV(VK10.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE)
-                .addressModeW(VK10.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE)
+                .addressModeU(addressModeU)
+                .addressModeV(addressModeV)
+                .addressModeW(addressModeW)
                 .borderColor(VK10.VK_BORDER_COLOR_INT_OPAQUE_BLACK)
                 .unnormalizedCoordinates(false)
                 .compareEnable(false)

@@ -27,7 +27,7 @@ open class LoadedTexture protected constructor(
     val renderer: Renderer = fromContext(),
     imageFormat: Int = VK_FORMAT_R8G8B8A8_SRGB,
     decoded: DecodedImage
-) : HasImageView {
+) : HasImageView, HasDefaultTextureSampler {
     protected data class DecodedImage(val data: ByteBuffer, val width: Int, val height: Int)
 
     val fileName: String
@@ -38,6 +38,42 @@ open class LoadedTexture protected constructor(
     var width = 0
     var recordedTransition: Boolean
     var stgBuffer: VulkanBuffer? = null
+    override var defaultSampler: TextureSampler? = null
+
+    fun setDefaultSampler(
+        anisotropyEnable: Boolean = true,
+        filter: Int = VK10.VK_FILTER_LINEAR,
+        mipmapMode: Int = if (filter == VK10.VK_FILTER_LINEAR) VK10.VK_SAMPLER_MIPMAP_MODE_LINEAR else VK10.VK_SAMPLER_MIPMAP_MODE_NEAREST,
+        addressModeU: Int = VK10.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        addressModeV: Int = VK10.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        addressModeW: Int = VK10.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE
+    ): TextureSampler {
+        val sampler = TextureSampler(
+            renderer = renderer,
+            mipLevels = mipLevels,
+            anisotropyEnable = anisotropyEnable,
+            filter = filter,
+            mipmapMode = mipmapMode,
+            addressModeU = addressModeU,
+            addressModeV = addressModeV,
+            addressModeW = addressModeW
+        )
+        defaultSampler = sampler
+        return sampler
+    }
+
+    fun repeatU(
+        anisotropyEnable: Boolean = true,
+        filter: Int = VK10.VK_FILTER_LINEAR,
+        mipmapMode: Int = if (filter == VK10.VK_FILTER_LINEAR) VK10.VK_SAMPLER_MIPMAP_MODE_LINEAR else VK10.VK_SAMPLER_MIPMAP_MODE_NEAREST
+    ): TextureSampler = setDefaultSampler(
+        anisotropyEnable = anisotropyEnable,
+        filter = filter,
+        mipmapMode = mipmapMode,
+        addressModeU = VK10.VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        addressModeV = VK10.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        addressModeW = VK10.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE
+    )
 
     init {
         recordedTransition = false

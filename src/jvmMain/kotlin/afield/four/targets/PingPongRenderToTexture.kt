@@ -6,12 +6,14 @@ import afield.four.device.CommandBuffer
 import afield.four.device.Fence
 import afield.four.modules.ModulePointer
 import afield.four.modules.fromContext
+import afield.four.texture.HasDefaultTextureSampler
 import afield.four.texture.HasImageView
 import afield.four.texture.HasImageViewArray
 import afield.four.texture.Image
 import afield.four.texture.Image.ImageData
 import afield.four.texture.ImageView
 import afield.four.texture.ImageView.ImageViewData
+import afield.four.texture.TextureSampler
 import afield.four.texture.image_layout_transition
 import afield.stdlib.f
 import org.lwjgl.system.MemoryStack
@@ -87,33 +89,53 @@ open class PingPongRenderToTexture(
 
     open fun otherImageViewFor(attachment: Int): HasImageView {
         checkedAttachment(attachment)
-        return object : HasImageView {
+        return object : HasImageView, HasDefaultTextureSampler {
             override val imageView: ImageView
                 get() = pingImageView(otherIndex, attachment)
+            override var defaultSampler: TextureSampler?
+                get() = this@PingPongRenderToTexture.defaultSampler
+                set(value) {
+                    this@PingPongRenderToTexture.defaultSampler = value
+                }
         }
     }
 
     open fun thisImageViewFor(attachment: Int): HasImageView {
         checkedAttachment(attachment)
-        return object : HasImageView {
+        return object : HasImageView, HasDefaultTextureSampler {
             override val imageView: ImageView
                 get() = pingImageView(writeIndex, attachment)
+            override var defaultSampler: TextureSampler?
+                get() = this@PingPongRenderToTexture.defaultSampler
+                set(value) {
+                    this@PingPongRenderToTexture.defaultSampler = value
+                }
         }
     }
 
     fun latestImageViewFor(attachment: Int): HasImageView {
         checkedAttachment(attachment)
-        return object : HasImageView {
+        return object : HasImageView, HasDefaultTextureSampler {
             override val imageView: ImageView
                 get() = pingImageView(latestIndex, attachment)
+            override var defaultSampler: TextureSampler?
+                get() = this@PingPongRenderToTexture.defaultSampler
+                set(value) {
+                    this@PingPongRenderToTexture.defaultSampler = value
+                }
         }
     }
 
     fun previousImageViewFor(attachment: Int): HasImageView {
         checkedAttachment(attachment)
-        return object : HasImageView {
+        return object : HasImageView, HasDefaultTextureSampler {
             override val imageView: ImageView
                 get() = pingImageView(previousIndex, attachment)
+            override var defaultSampler: TextureSampler?
+                get() = this@PingPongRenderToTexture.defaultSampler
+                set(value) {
+                    this@PingPongRenderToTexture.defaultSampler = value
+                }
         }
     }
 
@@ -123,17 +145,27 @@ open class PingPongRenderToTexture(
      *
      * Bind this to `sampler2D history[N]` where `N == frameCount - 1`.
      */
-    val previousFrameImageViews: HasImageViewArray = object : HasImageViewArray {
+    val previousFrameImageViews: HasImageViewArray = object : HasImageViewArray, HasDefaultTextureSampler {
         override val imageViewArray: List<HasImageView>
             get() = (1 until this@PingPongRenderToTexture.frameCount).map { previousFrameImageView(it) }
+        override var defaultSampler: TextureSampler?
+            get() = this@PingPongRenderToTexture.defaultSampler
+            set(value) {
+                this@PingPongRenderToTexture.defaultSampler = value
+            }
     }
 
     fun previousFrameImageViewsFor(attachment: Int): HasImageViewArray {
         checkedAttachment(attachment)
-        return object : HasImageViewArray {
+        return object : HasImageViewArray, HasDefaultTextureSampler {
             override val imageViewArray: List<HasImageView>
                 get() = (1 until this@PingPongRenderToTexture.frameCount).map {
                     previousFrameImageView(it, attachment)
+                }
+            override var defaultSampler: TextureSampler?
+                get() = this@PingPongRenderToTexture.defaultSampler
+                set(value) {
+                    this@PingPongRenderToTexture.defaultSampler = value
                 }
         }
     }
@@ -147,17 +179,27 @@ open class PingPongRenderToTexture(
      * history and the direct `otherImageView -> thisImageView` cadence blend is
      * the final adjacent pair in the array.
      */
-    val frameImageViews: HasImageViewArray = object : HasImageViewArray {
+    val frameImageViews: HasImageViewArray = object : HasImageViewArray, HasDefaultTextureSampler {
         override val imageViewArray: List<HasImageView>
             get() = (0 until this@PingPongRenderToTexture.frameCount).map { frameImageView(it) }
+        override var defaultSampler: TextureSampler?
+            get() = this@PingPongRenderToTexture.defaultSampler
+            set(value) {
+                this@PingPongRenderToTexture.defaultSampler = value
+            }
     }
 
     fun frameImageViewsFor(attachment: Int): HasImageViewArray {
         checkedAttachment(attachment)
-        return object : HasImageViewArray {
+        return object : HasImageViewArray, HasDefaultTextureSampler {
             override val imageViewArray: List<HasImageView>
                 get() = (0 until this@PingPongRenderToTexture.frameCount).map {
                     frameImageView(it, attachment)
+                }
+            override var defaultSampler: TextureSampler?
+                get() = this@PingPongRenderToTexture.defaultSampler
+                set(value) {
+                    this@PingPongRenderToTexture.defaultSampler = value
                 }
         }
     }
@@ -166,17 +208,27 @@ open class PingPongRenderToTexture(
      * Explicit alias for [frameImageViews], named for code that wants to state
      * that it depends on the write-order rotation.
      */
-    val writeFrameImageViews: HasImageViewArray = object : HasImageViewArray {
+    val writeFrameImageViews: HasImageViewArray = object : HasImageViewArray, HasDefaultTextureSampler {
         override val imageViewArray: List<HasImageView>
             get() = (0 until this@PingPongRenderToTexture.frameCount).map { writeFrameImageView(it) }
+        override var defaultSampler: TextureSampler?
+            get() = this@PingPongRenderToTexture.defaultSampler
+            set(value) {
+                this@PingPongRenderToTexture.defaultSampler = value
+            }
     }
 
     fun writeFrameImageViewsFor(attachment: Int): HasImageViewArray {
         checkedAttachment(attachment)
-        return object : HasImageViewArray {
+        return object : HasImageViewArray, HasDefaultTextureSampler {
             override val imageViewArray: List<HasImageView>
                 get() = (0 until this@PingPongRenderToTexture.frameCount).map {
                     writeFrameImageView(it, attachment)
+                }
+            override var defaultSampler: TextureSampler?
+                get() = this@PingPongRenderToTexture.defaultSampler
+                set(value) {
+                    this@PingPongRenderToTexture.defaultSampler = value
                 }
         }
     }
@@ -207,7 +259,7 @@ open class PingPongRenderToTexture(
             "frame offset $offset out of range; expected 0..${frameCount - 1}"
         }
         checkedAttachment(attachment)
-        return object : HasImageView {
+        return object : HasImageView, HasDefaultTextureSampler {
             override val imageView: ImageView
                 get() {
                     val physicalIndex = wrapFrameIndex(frameImageViewWriteStartIndex + offset)
@@ -216,6 +268,11 @@ open class PingPongRenderToTexture(
                     } else {
                         pingImageView(physicalIndex, attachment)
                     }
+                }
+            override var defaultSampler: TextureSampler?
+                get() = this@PingPongRenderToTexture.defaultSampler
+                set(value) {
+                    this@PingPongRenderToTexture.defaultSampler = value
                 }
         }
     }
@@ -231,9 +288,14 @@ open class PingPongRenderToTexture(
             "previous frame age $age out of range; expected 1..${frameCount - 1}"
         }
         checkedAttachment(attachment)
-        return object : HasImageView {
+        return object : HasImageView, HasDefaultTextureSampler {
             override val imageView: ImageView
                 get() = pingImageView(previousFrameIndex(age), attachment)
+            override var defaultSampler: TextureSampler?
+                get() = this@PingPongRenderToTexture.defaultSampler
+                set(value) {
+                    this@PingPongRenderToTexture.defaultSampler = value
+                }
         }
     }
 
@@ -558,17 +620,27 @@ class FrameCadencedPingPongRenderToTexture(
 
     override fun thisImageViewFor(attachment: Int): HasImageView {
         checkedAttachment(attachment)
-        return object : HasImageView {
+        return object : HasImageView, HasDefaultTextureSampler {
             override val imageView: ImageView
                 get() = pingImageView(if (insidePingPongRender) writeIndex else latestIndex, attachment)
+            override var defaultSampler: TextureSampler?
+                get() = this@FrameCadencedPingPongRenderToTexture.defaultSampler
+                set(value) {
+                    this@FrameCadencedPingPongRenderToTexture.defaultSampler = value
+                }
         }
     }
 
     override fun otherImageViewFor(attachment: Int): HasImageView {
         checkedAttachment(attachment)
-        return object : HasImageView {
+        return object : HasImageView, HasDefaultTextureSampler {
             override val imageView: ImageView
                 get() = pingImageView(if (insidePingPongRender) otherIndex else previousIndex, attachment)
+            override var defaultSampler: TextureSampler?
+                get() = this@FrameCadencedPingPongRenderToTexture.defaultSampler
+                set(value) {
+                    this@FrameCadencedPingPongRenderToTexture.defaultSampler = value
+                }
         }
     }
 

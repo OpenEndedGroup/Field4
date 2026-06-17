@@ -16,6 +16,10 @@ interface HasImageViewArray {
     val imageViewArray: List<HasImageView>
 }
 
+interface HasDefaultTextureSampler {
+    var defaultSampler: TextureSampler?
+}
+
 class ImageView(private val device: Device, val image: Long, val imageViewData: ImageViewData) : HasImageView {
     val aspectMask: Int
     val mipLevels: Int

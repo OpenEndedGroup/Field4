@@ -449,10 +449,11 @@ class MeshModule(val parameters: Parameters) : Renderable {
                     .pName(stack.UTF8("main"))
                     .module(fsm)
 
+                val dynamicViewportCount = parameters.viewportCount.coerceAtLeast(1)
                 val vp = VkPipelineViewportStateCreateInfo.calloc(stack)
                     .sType(VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO)
-                    .viewportCount(1)
-                    .scissorCount(1)
+                    .viewportCount(dynamicViewportCount)
+                    .scissorCount(dynamicViewportCount)
 
                 val rs = VkPipelineRasterizationStateCreateInfo.calloc(stack)
                     .sType(VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO)
@@ -577,6 +578,7 @@ class MeshModule(val parameters: Parameters) : Renderable {
                     .pColorAttachmentFormats(colorAttachmentFormats)
                     .depthAttachmentFormat(if (parameters.depth > 0) Options.defaultDepthFormat else VK_FORMAT_UNDEFINED)
                     .stencilAttachmentFormat(0)
+                    .viewMask(parameters.viewMask)
 
                 val gp = VkGraphicsPipelineCreateInfo.calloc(1, stack)
                     .sType(VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO)

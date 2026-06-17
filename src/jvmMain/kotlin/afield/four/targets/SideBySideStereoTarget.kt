@@ -1,5 +1,6 @@
 package afield.four.targets
 
+import afield.Rect
 import afield.four.Renderer
 import afield.four.device.CommandBuffer
 import afield.four.modules.ModulePointer
@@ -12,6 +13,7 @@ import afield.four.util.Camera
 import afield.four.util.DownResult
 import afield.four.util.MouseEvent
 import afield.four.util.MouseEvents
+import afield.four.util.Options
 import afield.stdlib.times
 import afield.stdlib.vec
 import org.joml.*
@@ -430,8 +432,397 @@ class SideBySideStereoTarget(
 }
 
 /**
- * Minimal stereo camera: offsets along right vector by ±IPD/2, converges on a focus point,
- * and supports asymmetric frustum offsets via the base projection.
+ * Multiview variant of [SideBySideStereoTarget].
+ *
+ * Registered modules are rendered once into a two-layer RTT with `viewMask = 0b11`.
+ * Shaders are expected to use `gl_ViewIndex` to select per-eye data. After the
+ * multiview pass, layer 0 and layer 1 are copied into [packed] as left/right halves
+ * so existing OpenXR side-by-side copy paths can still consume the result.
+ *
+ * This intentionally remains a separate class because MoltenVK/macOS multiview is
+ * not reliable for Field's current path.
+ */
+class MultiviewSideBySideStereoTarget(
+    val renderer: Renderer = fromContext(),
+    val eyeWidth: Int = renderer.swapChain.swapChainExtent.width() / 2,
+    val eyeHeight: Int = renderer.swapChain.swapChainExtent.height(),
+    var openXR: OpenXRHmdTarget? = null
+) : afield.four.Target, HasImageView {
+
+    val stereoCamera = StereoCamera(Camera(renderer))
+
+    val layered = RenderToTexture(renderer) {
+        width = eyeWidth
+        height = eyeHeight
+        colorAttachments = 1
+        colorLayerCount = 2
+        multiviewViewMask = 0b11
+        viewports = listOf(
+            Rect(0.0, 0.0, eyeWidth.toDouble(), eyeHeight.toDouble()),
+            Rect(0.0, 0.0, eyeWidth.toDouble(), eyeHeight.toDouble())
+        )
+        colorSampled = true
+        colorTransferSrc = true
+        useDepth = true
+        clearColor = vec(0f, 0f, 0f, 1f)
+    }
+
+    val packed = RenderToTexture(renderer) {
+        width = eyeWidth * 2
+        height = eyeHeight
+        colorAttachments = 1
+        colorSampled = true
+        colorTransferSrc = true
+        colorTransferDst = true
+        useDepth = false
+        clearColor = vec(0f, 0f, 0f, 1f)
+    }
+
+    override val imageView = packed.imageView
+
+    val layeredImageView: HasImageView
+        get() = layered
+
+    var currentEyeIndex: Int = -1
+        private set
+
+    private val mockController = ControllerState(active = true, poseValid = true, position = vec(0.0, 0.0, 0.0))
+    private var mouseControllerPos: Vector2f? = null
+    private var mouseControllerDistance: Float = 1f
+
+    init {
+        require(!Options.isMac) {
+            "MultiviewSideBySideStereoTarget is disabled on macOS; use SideBySideStereoTarget instead"
+        }
+        require(renderer.device.supportsMultiview) {
+            "MultiviewSideBySideStereoTarget requires VK_KHR_multiview support"
+        }
+
+        renderer.renderList.preTargets["sbs-multiview-pack"] = this
+        openXR?.copySideBySideToEyes(packed)
+    }
+
+    fun registerModule(name: String, factory: () -> ModulePointer) {
+        layered += name to factory()
+    }
+
+    fun registerModule(name: String, module: ModulePointer) {
+        layered += name to module
+    }
+
+    @JvmName("plusAssign_moduleFactory_multiview")
+    operator fun plusAssign(entry: Pair<String, () -> ModulePointer>) {
+        registerModule(entry.first, entry.second)
+    }
+
+    @JvmName("plusAssign_modulePointer_multiview")
+    operator fun plusAssign(entry: Pair<String, ModulePointer>) {
+        registerModule(entry.first, entry.second)
+    }
+
+    fun attachToOpenXR(target: OpenXRHmdTarget) {
+        openXR = target
+        target.copySideBySideToEyes(packed)
+    }
+
+    fun eyeViewMatrix(eye: Int, out: Matrix4f = Matrix4f()): Matrix4f {
+        val safeEye = eye.coerceIn(0, 1)
+        val xr = openXR
+        return if (xr != null) {
+            xr.eyeViewMatrix(safeEye, out)
+        } else {
+            val views = stereoCamera.eyeViewMatrices()
+            out.set(views[safeEye])
+        }
+    }
+
+    fun eyeProjectionMatrix(eye: Int, out: Matrix4f = Matrix4f()): Matrix4f {
+        val safeEye = eye.coerceIn(0, 1)
+        val xr = openXR
+        return if (xr != null) {
+            xr.eyeProjectionMatrix(safeEye, out)
+        } else {
+            val projs = stereoCamera.projectionMatrices()
+            out.set(projs[safeEye])
+        }
+    }
+
+    fun eyeViewMatrices(): List<Matrix4f> =
+        listOf(eyeViewMatrix(0), eyeViewMatrix(1))
+
+    fun eyeProjectionMatrices(): List<Matrix4f> =
+        listOf(eyeProjectionMatrix(0), eyeProjectionMatrix(1))
+
+    fun currentEyeViewMatrix(out: Matrix4f = Matrix4f()): Matrix4f =
+        eyeViewMatrix(currentEyeIndex.coerceAtLeast(0), out)
+
+    fun currentEyeProjectionMatrix(out: Matrix4f = Matrix4f()): Matrix4f =
+        eyeProjectionMatrix(currentEyeIndex.coerceAtLeast(0), out)
+
+    fun controllerState(hand: Hand = Hand.RIGHT, out: ControllerState = ControllerState()): ControllerState {
+        val xr = openXR
+        if (xr != null) return xr.controllerState(hand, out)
+
+        val src = mockController
+        out.active = src.active
+        out.poseValid = src.poseValid
+        out.position = src.position
+        out.rotation = src.rotation
+        out.selectPressed = src.selectPressed
+        out.triggerValue = src.triggerValue; out.triggerPressed = src.triggerPressed
+        out.squeezeValue = src.squeezeValue; out.squeezePressed = src.squeezePressed
+        out.trackpadX = src.trackpadX; out.trackpadY = src.trackpadY
+        out.trackpadTouched = src.trackpadTouched; out.trackpadPressed = src.trackpadPressed
+        out.thumbstickX = src.thumbstickX; out.thumbstickY = src.thumbstickY
+        out.thumbstickTouched = src.thumbstickTouched; out.thumbstickPressed = src.thumbstickPressed
+        out.aPressed = src.aPressed; out.bPressed = src.bPressed; out.menuPressed = src.menuPressed
+        return out
+    }
+
+    fun updateMockControllerFromCamera(distanceMeters: Float = 1f) {
+        val cam = stereoCamera.base
+        val origin = cam.at
+        val forward = cam.forward
+        val dir = Vector3f(forward).normalize()
+        mockController.position = origin + dir * distanceMeters
+        mockController.rotation = lookAlongZ(dir, cam.up)
+        mockController.poseValid = true
+    }
+
+    fun updateMockControllerFromRay(origin: Vector3f, direction: Vector3f, distanceMeters: Float = 1f) {
+        val nx = direction.normalize(Vector3f())
+        mockController.position = origin + nx * distanceMeters
+        mockController.rotation = lookAlongZ(nx, Vector3f(0f, 1f, 0f))
+        mockController.poseValid = true
+    }
+
+    fun enableMouseController(mouse: MouseEvents = renderer.window.mouseEvents ?: MouseEvents(renderer), name: String = "sbs-multiview-mouse-controller", distanceMeters: Float = 1f) {
+        mouseControllerDistance = distanceMeters
+
+        val updateFromScreen: (MouseEvent) -> Unit = { ev ->
+            updateMockControllerFromScreen(ev.pos.x, ev.pos.y, distanceMeters)
+            mouseControllerPos = Vector2f(ev.pos.x, ev.pos.y)
+        }
+
+        mouse.onMove(name, callback = { ev -> updateFromScreen(ev); true })
+        mouse.onDrag(name, callback = { ev -> updateFromScreen(ev); true })
+
+        mouse.onDown("left", name) { ev ->
+            updateFromScreen(ev)
+            mockController.selectPressed = true
+            mockController.triggerPressed = true
+            mockController.triggerValue = 1f
+            DownResult.Keep
+        }
+        mouse.onUp("left", name) { _ ->
+            mockController.selectPressed = false
+            mockController.triggerPressed = false
+            mockController.triggerValue = 0f
+            true
+        }
+    }
+
+    private fun updateMockControllerFromScreen(x: Float, y: Float, distanceMeters: Float) {
+        val w = renderer.window.width.toFloat().coerceAtLeast(1f)
+        val h = renderer.window.height.toFloat().coerceAtLeast(1f)
+        val ndcX = (x / w) * 2f - 1f
+        val ndcY = 1f - (y / h) * 2f
+
+        val cam = stereoCamera.base
+        val origin = cam.at
+
+        val halfFovRad = ((cam.p.fov * kotlin.math.PI / 180.0) * 0.5).toFloat()
+        val tanHalfFov = kotlin.math.tan(halfFovRad)
+        val aspect = cam.p.aspect.takeIf { it > 0f } ?: (w / h)
+
+        val scale = 2f
+        val dir = Vector3f(cam.forward)
+            .fma(-ndcX * aspect * tanHalfFov * scale, cam.right)
+            .fma(ndcY * tanHalfFov * scale, cam.up)
+            .normalize()
+
+        mockController.position = origin + dir * distanceMeters
+        mockController.rotation = lookAlongZ(dir, cam.up)
+        mockController.poseValid = true
+    }
+
+    private fun lookAlongZ(direction: Vector3f, up: Vector3f): Quaternionf {
+        val dir = Vector3f(direction).normalize()
+        val upNorm = Vector3f(up).normalize()
+        return Quaternionf().lookAlong(dir, upNorm)
+    }
+
+    override fun render(command: CommandBuffer, index: Int) {
+        mouseControllerPos?.let { updateMockControllerFromScreen(it.x, it.y, mouseControllerDistance) }
+
+        stereoCamera.base.p.resize(eyeWidth, eyeHeight)
+
+        currentEyeIndex = -1
+        layered.render(command, index)
+        copyLayersIntoPacked(command)
+    }
+
+    private fun copyLayersIntoPacked(command: CommandBuffer) {
+        MemoryStack.stackPush().use { stack ->
+            val dstRange = VkImageSubresourceRange.calloc(stack)
+                .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .baseMipLevel(0)
+                .levelCount(1)
+                .baseArrayLayer(0)
+                .layerCount(1)
+
+            val dstView = packed.imageView
+            val dstImage = dstView.image
+            val dstUnderlying = dstView.underlyingImage
+
+            if (dstUnderlying != null) {
+                image_layout_transition(
+                    command.vkCommandBuffer,
+                    dstUnderlying,
+                    VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                    VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                    VK_ACCESS_2_SHADER_READ_BIT,
+                    VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    dstRange
+                )
+            } else {
+                image_layout_transition(
+                    command.vkCommandBuffer,
+                    dstImage,
+                    VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                    VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                    VK_ACCESS_2_SHADER_READ_BIT,
+                    VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    dstRange
+                )
+            }
+
+            fun copyLayer(eyeIndex: Int) {
+                val srcView = layered.imageViewArray[0].imageView
+                val srcImage = srcView.image
+                val srcUnderlying = srcView.underlyingImage
+
+                val srcRange = VkImageSubresourceRange.calloc(stack)
+                    .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                    .baseMipLevel(0)
+                    .levelCount(1)
+                    .baseArrayLayer(eyeIndex)
+                    .layerCount(1)
+
+                if (srcUnderlying != null)
+                    image_layout_transition(
+                        command.vkCommandBuffer,
+                        srcUnderlying,
+                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                        VK_ACCESS_2_SHADER_READ_BIT,
+                        VK_ACCESS_2_TRANSFER_READ_BIT,
+                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                        srcRange
+                    )
+                else
+                    image_layout_transition(
+                        command.vkCommandBuffer,
+                        srcImage,
+                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                        VK_ACCESS_2_SHADER_READ_BIT,
+                        VK_ACCESS_2_TRANSFER_READ_BIT,
+                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                        srcRange
+                    )
+
+                val region = VkImageCopy.calloc(1, stack)
+                region[0].srcSubresource()
+                    .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                    .mipLevel(0)
+                    .baseArrayLayer(eyeIndex)
+                    .layerCount(1)
+                region[0].dstSubresource()
+                    .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                    .mipLevel(0)
+                    .baseArrayLayer(0)
+                    .layerCount(1)
+                region[0].srcOffset().set(0, 0, 0)
+                region[0].dstOffset().set(eyeIndex * eyeWidth, 0, 0)
+                region[0].extent().set(eyeWidth, eyeHeight, 1)
+
+                org.lwjgl.vulkan.VK10.vkCmdCopyImage(
+                    command.vkCommandBuffer,
+                    srcImage,
+                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                    dstImage,
+                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    region
+                )
+
+                if (srcUnderlying != null)
+                    image_layout_transition(
+                        command.vkCommandBuffer,
+                        srcUnderlying,
+                        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                        VK_ACCESS_2_TRANSFER_READ_BIT,
+                        VK_ACCESS_2_SHADER_READ_BIT,
+                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                        srcRange
+                    )
+                else
+                    image_layout_transition(
+                        command.vkCommandBuffer,
+                        srcImage,
+                        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                        VK_ACCESS_2_TRANSFER_READ_BIT,
+                        VK_ACCESS_2_SHADER_READ_BIT,
+                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                        srcRange
+                    )
+            }
+
+            copyLayer(0)
+            copyLayer(1)
+
+            if (dstUnderlying != null) {
+                image_layout_transition(
+                    command.vkCommandBuffer,
+                    dstUnderlying,
+                    VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                    VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                    VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                    VK_ACCESS_2_SHADER_READ_BIT,
+                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                    dstRange
+                )
+            } else {
+                image_layout_transition(
+                    command.vkCommandBuffer,
+                    dstImage,
+                    VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                    VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                    VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                    VK_ACCESS_2_SHADER_READ_BIT,
+                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                    dstRange
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Minimal stereo camera: offsets along the right vector by +/-IPD/2, converges on a focus point,
+ * and supports asymmetric frustum offsets through the base projection.
  */
 class StereoCamera(val base: Camera = Camera()) {
     var ipd: Float = 0.064f

@@ -8,9 +8,12 @@ import afield.four.modules.Module
 import afield.four.modules.ModulePointer
 import afield.four.modules.fromContext
 import afield.four.modules.pointer
+import afield.four.texture.HasDefaultTextureSampler
 import afield.four.texture.HasImageView
 import afield.four.texture.HasImageViewArray
 import afield.four.texture.ImageView
+import afield.four.texture.TextureSampler
+import org.lwjgl.vulkan.VK10
 import kotlin.math.max
 
 /**
@@ -35,7 +38,7 @@ import kotlin.math.max
 class MultiPingPongRenderToTexture(
     val renderer: Renderer = fromContext(),
     configure: RTTParameters.() -> Unit = {}
-) : Target, HasImageView, HasImageViewArray {
+) : Target, HasImageView, HasImageViewArray, HasDefaultTextureSampler {
 
     enum class PassKind {
         INIT,
@@ -45,13 +48,46 @@ class MultiPingPongRenderToTexture(
     }
 
     var parameters = RTTParameters().apply(configure)
+    override var defaultSampler: TextureSampler? = null
+
+    fun setDefaultSampler(
+        anisotropyEnable: Boolean = true,
+        filter: Int = VK10.VK_FILTER_LINEAR,
+        mipmapMode: Int = if (filter == VK10.VK_FILTER_LINEAR) VK10.VK_SAMPLER_MIPMAP_MODE_LINEAR else VK10.VK_SAMPLER_MIPMAP_MODE_NEAREST,
+        addressModeU: Int = VK10.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        addressModeV: Int = VK10.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        addressModeW: Int = VK10.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE
+    ): TextureSampler {
+        val sampler = TextureSampler(
+            renderer = renderer,
+            mipLevels = parameters.mipLevels,
+            anisotropyEnable = anisotropyEnable,
+            filter = filter,
+            mipmapMode = mipmapMode,
+            addressModeU = addressModeU,
+            addressModeV = addressModeV,
+            addressModeW = addressModeW
+        )
+        defaultSampler = sampler
+        return sampler
+    }
+
+    fun repeatU(
+        anisotropyEnable: Boolean = true,
+        filter: Int = VK10.VK_FILTER_LINEAR,
+        mipmapMode: Int = if (filter == VK10.VK_FILTER_LINEAR) VK10.VK_SAMPLER_MIPMAP_MODE_LINEAR else VK10.VK_SAMPLER_MIPMAP_MODE_NEAREST
+    ): TextureSampler = setDefaultSampler(
+        anisotropyEnable = anisotropyEnable,
+        filter = filter,
+        mipmapMode = mipmapMode,
+        addressModeU = VK10.VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        addressModeV = VK10.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        addressModeW = VK10.VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE
+    )
 
     init {
         require(parameters.colorAttachments == 1) {
             "MultiPingPongRenderToTexture currently supports colorAttachments == 1"
-        }
-        require(parameters.colorLayerCount == 1) {
-            "MultiPingPongRenderToTexture currently supports colorLayerCount == 1"
         }
         require(parameters.externalColorViews.isEmpty()) {
             "MultiPingPongRenderToTexture does not support externalColorViews"
@@ -65,8 +101,9 @@ class MultiPingPongRenderToTexture(
         this.format = this@MultiPingPongRenderToTexture.parameters.format
         this.colorAttachments = 1
         this.colorFormats = if (this@MultiPingPongRenderToTexture.parameters.colorFormats.isNotEmpty()) listOf(this@MultiPingPongRenderToTexture.parameters.colorFormats.first()) else emptyList()
-        this.colorLayerCount = 1
+        this.colorLayerCount = this@MultiPingPongRenderToTexture.parameters.colorLayerCount
         this.viewports = this@MultiPingPongRenderToTexture.parameters.viewports
+        this.multiviewViewMask = this@MultiPingPongRenderToTexture.parameters.multiviewViewMask
         this.clearColor = this@MultiPingPongRenderToTexture.parameters.clearColor
         this.clearFirst = this@MultiPingPongRenderToTexture.parameters.clearFirst
         this.colorStoreOp = this@MultiPingPongRenderToTexture.parameters.colorStoreOp
@@ -85,8 +122,9 @@ class MultiPingPongRenderToTexture(
         this.format = this@MultiPingPongRenderToTexture.parameters.format
         this.colorAttachments = 1
         this.colorFormats = if (this@MultiPingPongRenderToTexture.parameters.colorFormats.isNotEmpty()) listOf(this@MultiPingPongRenderToTexture.parameters.colorFormats.first()) else emptyList()
-        this.colorLayerCount = 1
+        this.colorLayerCount = this@MultiPingPongRenderToTexture.parameters.colorLayerCount
         this.viewports = this@MultiPingPongRenderToTexture.parameters.viewports
+        this.multiviewViewMask = this@MultiPingPongRenderToTexture.parameters.multiviewViewMask
         this.clearColor = this@MultiPingPongRenderToTexture.parameters.clearColor
         this.clearFirst = this@MultiPingPongRenderToTexture.parameters.clearFirst
         this.colorStoreOp = this@MultiPingPongRenderToTexture.parameters.colorStoreOp
@@ -119,20 +157,35 @@ class MultiPingPongRenderToTexture(
     val otherPassModules = mutableMapOf<String, ModulePointer>()
     val finalModules = mutableMapOf<String, ModulePointer>()
 
-    val inputImageView: HasImageView = object : HasImageView {
+    val inputImageView: HasImageView = object : HasImageView, HasDefaultTextureSampler {
         override val imageView: ImageView
             get() = targets[readIndex].imageView
+        override var defaultSampler: TextureSampler?
+            get() = this@MultiPingPongRenderToTexture.defaultSampler
+            set(value) {
+                this@MultiPingPongRenderToTexture.defaultSampler = value
+            }
     }
 
-    val inputImageViewArray: HasImageViewArray = object : HasImageViewArray {
+    val inputImageViewArray: HasImageViewArray = object : HasImageViewArray, HasDefaultTextureSampler {
         override val imageViewArray: List<HasImageView>
             get() = listOf(inputImageView)
+        override var defaultSampler: TextureSampler?
+            get() = this@MultiPingPongRenderToTexture.defaultSampler
+            set(value) {
+                this@MultiPingPongRenderToTexture.defaultSampler = value
+            }
 
     }
 
-    val writeImageView: HasImageView = object : HasImageView {
+    val writeImageView: HasImageView = object : HasImageView, HasDefaultTextureSampler {
         override val imageView: ImageView
             get() = targets[writeIndex].imageView
+        override var defaultSampler: TextureSampler?
+            get() = this@MultiPingPongRenderToTexture.defaultSampler
+            set(value) {
+                this@MultiPingPongRenderToTexture.defaultSampler = value
+            }
     }
 
     override val imageView: ImageView

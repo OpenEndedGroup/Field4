@@ -3169,12 +3169,24 @@ fun fromViews(
     val provider = object : HasImageViewArray {
         override val imageViewArray = views
     }
-    val sampler0 = sampler ?: TextureSampler(
+    val defaultSampler = views.asSequence()
+        .mapNotNull { (it as? HasDefaultTextureSampler)?.defaultSampler }
+        .firstOrNull()
+    val sampler0 = sampler ?: defaultSampler ?: TextureSampler(
         renderer = fromContext(),
         views.first().imageView.imageViewData.mipLevels,
         true
     )
     return provider to sampler0
+}
+
+fun fromViews(
+    provider: HasImageViewArray,
+    name: String = "",
+    sampler: TextureSampler? = null
+): Pair<HasImageViewArray, TextureSampler> {
+    val providerSampler = (provider as? HasDefaultTextureSampler)?.defaultSampler
+    return fromViews(provider.imageViewArray, name, sampler ?: providerSampler)
 }
 
 private fun Box.textureResolverFor(previousResolver: (Introspected.Texture) -> Pair<HasImageViewArray, TextureSampler>?): (Introspected.Texture) -> Pair<HasImageViewArray, TextureSampler> =
@@ -3193,28 +3205,12 @@ private fun Box.textureResolverFor(previousResolver: (Introspected.Texture) -> P
             if (c != null) {
                 val r = c(this, name)
                 if (r != null) {
-                    val views = r.imageViewArray
-                    require(views.isNotEmpty()) { "HasImageViewArray $name has no image views" }
-                    val sampler = TextureSampler(
-                        renderer = fromContext(),
-                        views.first().imageView.imageViewData.mipLevels,
-                        true
-                    )
-                     found = r to sampler
+                    found = fromViews(r, name)
                 }
             }
 
             val r = found ?:
-                findWithNameOrNull<HasImageViewArray>(this, name)?.let { provider ->
-                    val views = provider.imageViewArray
-                    require(views.isNotEmpty()) { "HasImageViewArray $name has no image views" }
-                    val sampler = TextureSampler(
-                        renderer = fromContext(),
-                        views.first().imageView.imageViewData.mipLevels,
-                        true
-                    )
-                    provider to sampler
-                }
+                findWithNameOrNull<HasImageViewArray>(this, name)?.let { provider -> fromViews(provider, name) }
                     ?: findWithNameOrNull<HasImageView>(this, name)?.let { hv -> fromViews(listOf(hv), name) }
                     ?: findWithNameOrNull<ImageView>(this, name)?.let { view -> fromViews(listOf(view), name) }
                     ?: findWithNameOrNull<Array<HasImageView>>(this, name)?.let { arr -> fromViews(arr.toList(), name) }

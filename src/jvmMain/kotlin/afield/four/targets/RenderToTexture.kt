@@ -37,6 +37,7 @@ data class RTTParameters(
     var colorFormats: List<Int> = emptyList(),
     var colorLayerCount: Int = 1,                   // single layer count for all color attachments; 0 -> infer from external views
     var viewports: List<afield.Rect> = emptyList(), // optional viewport array override
+    var multiviewViewMask: Int = 0,                 // non-zero enables VK_KHR_multiview / dynamic-rendering multiview
     var externalColorViews: Map<Int, HasImageView> = emptyMap(), // optional externally-owned attachments by slot
     var clearColor: Vec4 = vec(0, 0, 0, 1),
 
@@ -71,9 +72,45 @@ data class RTTParameters(
 open class RenderToTexture(
     val renderer: Renderer = fromContext(),
     parameters: RTTParameters.() -> Unit = {}
-) : Target, HasImageView, HasImageViewArray {
+) : Target, HasImageView, HasImageViewArray, HasDefaultTextureSampler {
 
     var parameters = RTTParameters().apply(parameters)
+    override var defaultSampler: TextureSampler? = null
+
+    fun setDefaultSampler(
+        anisotropyEnable: Boolean = true,
+        filter: Int = VK_FILTER_LINEAR,
+        mipmapMode: Int = if (filter == VK_FILTER_LINEAR) VK_SAMPLER_MIPMAP_MODE_LINEAR else VK_SAMPLER_MIPMAP_MODE_NEAREST,
+        addressModeU: Int = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        addressModeV: Int = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        addressModeW: Int = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE
+    ): TextureSampler {
+        val sampler = TextureSampler(
+            renderer = renderer,
+            mipLevels = mipLevels,
+            anisotropyEnable = anisotropyEnable,
+            filter = filter,
+            mipmapMode = mipmapMode,
+            addressModeU = addressModeU,
+            addressModeV = addressModeV,
+            addressModeW = addressModeW
+        )
+        defaultSampler = sampler
+        return sampler
+    }
+
+    fun repeatU(
+        anisotropyEnable: Boolean = true,
+        filter: Int = VK_FILTER_LINEAR,
+        mipmapMode: Int = if (filter == VK_FILTER_LINEAR) VK_SAMPLER_MIPMAP_MODE_LINEAR else VK_SAMPLER_MIPMAP_MODE_NEAREST
+    ): TextureSampler = setDefaultSampler(
+        anisotropyEnable = anisotropyEnable,
+        filter = filter,
+        mipmapMode = mipmapMode,
+        addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE
+    )
 
     override val imageView: ImageView
         get() = imageViewArray.first().imageView
@@ -383,6 +420,18 @@ open class RenderToTexture(
                 counts.first()
             } else 1
         colorLayerCount = inferredLayerCount
+        val multiviewLayerCount = Integer.bitCount(this.parameters.multiviewViewMask)
+        if (this.parameters.multiviewViewMask != 0) {
+            require(renderer.device.supportsMultiview) {
+                "RenderToTexture requested multiviewViewMask=0x${this.parameters.multiviewViewMask.toString(16)}, but VK_KHR_multiview is not available"
+            }
+            require(colorLayerCount >= multiviewLayerCount) {
+                "RenderToTexture multiviewViewMask=0x${this.parameters.multiviewViewMask.toString(16)} needs at least $multiviewLayerCount layers, but colorLayerCount=$colorLayerCount"
+            }
+            require(this.parameters.multiviewViewMask > 0) {
+                "RenderToTexture multiviewViewMask must be positive when multiview is enabled"
+            }
+        }
 
         // --- Query blit/filter support for each color format and pick a safe filter ---
         MemoryStack.stackPush().use { stack ->
@@ -497,6 +546,7 @@ open class RenderToTexture(
             val depthImageData = ImageData()
                 .width(width)
                 .height(height)
+                .arrayLayers(colorLayerCount.coerceAtLeast(1))
                 .usage(depthUsage)
                 .format(this.parameters.depthFormat)
                 .mipLevels(1)
@@ -508,18 +558,23 @@ open class RenderToTexture(
             val depthViewData = ImageViewData()
                 .format(this.parameters.depthFormat)
                 .aspectMask(depthAspect)
+                .layerCount(depthImageData.arrayLayers)
                 .mipLevels(1)
+            if (depthViewData.layerCount > 1) depthViewData.viewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY)
 
             depthImageView = ImageView(renderer.device, depthImage!!, depthViewData)
             depthSampledImageView =
                 if (this.parameters.depthSampled && depthAspect != VK_IMAGE_ASPECT_DEPTH_BIT) {
+                    val depthOnlyViewData = ImageViewData()
+                        .format(this.parameters.depthFormat)
+                        .aspectMask(VK_IMAGE_ASPECT_DEPTH_BIT)
+                        .layerCount(depthImageData.arrayLayers)
+                        .mipLevels(1)
+                    if (depthOnlyViewData.layerCount > 1) depthOnlyViewData.viewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY)
                     ImageView(
                         renderer.device,
                         depthImage!!,
-                        ImageViewData()
-                            .format(this.parameters.depthFormat)
-                            .aspectMask(VK_IMAGE_ASPECT_DEPTH_BIT)
-                            .mipLevels(1)
+                        depthOnlyViewData
                     )
                 } else {
                     depthImageView
@@ -807,8 +862,8 @@ open class RenderToTexture(
             }
 
             // Rendering info (KHR)
-            val renderLayers = colorLayerCount.coerceAtLeast(1)
-
+            val renderViewMask = parameters.multiviewViewMask
+            val renderLayers = if (renderViewMask != 0) 1 else colorLayerCount.coerceAtLeast(1)
             val renderInfo = VkRenderingInfoKHR.calloc(stack)
                 .sType(VK_STRUCTURE_TYPE_RENDERING_INFO_KHR)
                 .renderArea(
@@ -818,6 +873,7 @@ open class RenderToTexture(
                 )
                 .flags(if (!Options.isMac) VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT else 0)
                 .layerCount(renderLayers)
+                .viewMask(renderViewMask)
                 .pColorAttachments(colorAttachmentInfo)
                 .pDepthAttachment(depthAttachmentInfo.get(0))
 
@@ -991,6 +1047,13 @@ open class RenderToTexture(
         }
         require(moduleFormats == colorFormats) {
             "RenderToTexture color format mismatch for module '${module.parameters.name}': module=$moduleFormats target=$colorFormats. Call target.apply() inside module parameters."
+        }
+        require(module.parameters.viewMask == parameters.multiviewViewMask) {
+            "RenderToTexture viewMask mismatch for module '${module.parameters.name}': module=0x${module.parameters.viewMask.toString(16)} target=0x${parameters.multiviewViewMask.toString(16)}. Call target.apply() inside module parameters."
+        }
+        val expectedViewportCount = parameters.viewports.size.coerceAtLeast(1)
+        require(module.parameters.viewportCount >= expectedViewportCount) {
+            "RenderToTexture viewport count mismatch for module '${module.parameters.name}': module=${module.parameters.viewportCount} target=$expectedViewportCount. Call target.apply() inside module parameters."
         }
     }
 

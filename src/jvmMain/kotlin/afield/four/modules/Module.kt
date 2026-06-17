@@ -10,6 +10,7 @@ import afield.four.device.DescriptorSetLayout.SimpleDescriptorSetLayout
 import afield.four.modules.Introspected.Bindable
 import afield.four.targets.MultiPingPongRenderToTexture
 import afield.four.targets.RenderToTexture
+import afield.four.texture.HasDefaultTextureSampler
 import afield.four.texture.HasImageView
 import afield.four.texture.HasImageViewArray
 import afield.four.texture.ImageView
@@ -122,6 +123,8 @@ data class Parameters(
     var alphaBlendOp: Int = VK_BLEND_OP_ADD,
     var depthTest: Boolean = true,
     var viewport: Rect? = null,
+    var viewportCount: Int = 1,
+    var viewMask: Int = 0,
     var fillMode: Int = VK_POLYGON_MODE_FILL,
     var imageFormat: Int = renderer.swapChain.surfaceFormat.imageFormat,
     val labelColor: Vec4 = Vec4(0.15f, 0.45f, 0.85f, 1f),
@@ -142,6 +145,8 @@ data class Parameters(
         this@Parameters.colorFormats = colorFormats
         this@Parameters.depth = if (parameters.useDepth) 1 else 0
         this@Parameters.depthFormat = parameters.depthFormat
+        this@Parameters.viewportCount = parameters.viewports.size.coerceAtLeast(1)
+        this@Parameters.viewMask = parameters.multiviewViewMask
     }
 
     fun MultiPingPongRenderToTexture.apply() {
@@ -150,6 +155,8 @@ data class Parameters(
         this@Parameters.colorFormats = listOf(resolvedColorFormat)
         this@Parameters.depth = if (parameters.useDepth) 1 else 0
         this@Parameters.depthFormat = parameters.depthFormat
+        this@Parameters.viewportCount = parameters.viewports.size.coerceAtLeast(1)
+        this@Parameters.viewMask = parameters.multiviewViewMask
     }
 
     fun textures(vararg t: Pair<String, HasImageView>) {
@@ -160,9 +167,10 @@ data class Parameters(
                 val provider = object : HasImageViewArray {
                     override val imageViewArray = listOf(found)
                 }
-                provider to TextureSampler(
+                val sampler = (found as? HasDefaultTextureSampler)?.defaultSampler ?: TextureSampler(
                     renderer = fromContext(), found.imageView.imageViewData.mipLevels, true
                 )
+                provider to sampler
             } else null
         }
     }
@@ -734,8 +742,11 @@ class Module(val parameters: Parameters) : Renderable {
                     )
                 }
 
+                val dynamicViewportCount = parameters.viewportCount.coerceAtLeast(1)
                 val vp = VkPipelineViewportStateCreateInfo.calloc(stack)
-                    .sType(VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO).viewportCount(1).scissorCount(1)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO)
+                    .viewportCount(dynamicViewportCount)
+                    .scissorCount(dynamicViewportCount)
 
                 val rs = VkPipelineRasterizationStateCreateInfo.calloc(stack)
                     .sType(VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO).polygonMode(parameters.fillMode)
@@ -833,6 +844,7 @@ class Module(val parameters: Parameters) : Renderable {
                 renderInfo.colorAttachmentCount(colorCount).pColorAttachmentFormats(colorAttachmentFormats)
                     .depthAttachmentFormat(if (parameters.depth > 0) parameters.depthFormat else VK_FORMAT_UNDEFINED)
                     .stencilAttachmentFormat(0)
+                    .viewMask(parameters.viewMask)
 
                 val gp =
                     VkGraphicsPipelineCreateInfo.calloc(1, stack).sType(VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO)
@@ -915,8 +927,11 @@ class Module(val parameters: Parameters) : Renderable {
                     VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY -> ia.primitiveRestartEnable(true)
                 }
 
+                val dynamicViewportCount = parameters.viewportCount.coerceAtLeast(1)
                 val vp = VkPipelineViewportStateCreateInfo.calloc(stack)
-                    .sType(VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO).viewportCount(1).scissorCount(1)
+                    .sType(VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO)
+                    .viewportCount(dynamicViewportCount)
+                    .scissorCount(dynamicViewportCount)
 
                 val rs = VkPipelineRasterizationStateCreateInfo.calloc(stack)
                     .sType(VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO).polygonMode(parameters.fillMode)
@@ -982,6 +997,7 @@ class Module(val parameters: Parameters) : Renderable {
                 renderInfo.colorAttachmentCount(colorCount).pColorAttachmentFormats(colorAttachmentFormats)
                     .depthAttachmentFormat(if (parameters.depth > 0) parameters.depthFormat else VK_FORMAT_UNDEFINED)
                     .stencilAttachmentFormat(0)
+                    .viewMask(parameters.viewMask)
 
                 val gp =
                     VkGraphicsPipelineCreateInfo.calloc(1, stack).sType(VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO)
