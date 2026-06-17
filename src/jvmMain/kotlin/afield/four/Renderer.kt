@@ -27,13 +27,11 @@ import afield.logger.SaveReloadLog
 import afield.logger.lprintln
 import kotlinx.coroutines.*
 import org.joml.primitives.Rectanglef
-import org.lwjgl.stb.STBImageWrite.stbi_write_jpg
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK13.*
 import java.lang.Runnable
 import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
@@ -266,9 +264,42 @@ class Renderer(
     fun renderTargetFor(windowIndex: Int = 0): RenderTarget = windowContext(windowIndex).renderTarget
     private val windowCaptureLock = Any()
     private val pendingWindowCaptures = mutableMapOf<Int, ArrayDeque<WindowCaptureRequest>>()
+    private val graphicsCompletionLock = Any()
+    private val graphicsRecordingContext = ThreadLocal<Pair<Int, Int>?>()
+    private val graphicsCompletionCallbacks = mutableMapOf<Pair<Int, Int>, MutableList<() -> Unit>>()
 
     var cleanup = mutableListOf<Runnable>()
     var cleanupStack = mutableListOf<Pair<Long, MutableList<Runnable>>>()
+
+    internal fun afterCurrentGraphicsFrameComplete(callback: () -> Unit) {
+        val key = graphicsRecordingContext.get()
+            ?: throw IllegalStateException("afterCurrentGraphicsFrameComplete must be called while recording a graphics frame")
+        synchronized(graphicsCompletionLock) {
+            graphicsCompletionCallbacks.getOrPut(key) { mutableListOf() }.add(callback)
+        }
+    }
+
+    private fun drainCompletedGraphicsCallbacks(
+        ctx: WindowContext,
+        ctxIndex: Int,
+        imageIndex: Int,
+        requireSignaled: Boolean = false
+    ) {
+        if (requireSignaled) {
+            ctx.fences[imageIndex].fenceWait()
+        } else if (!ctx.fences[imageIndex].isSignaled()) {
+            return
+        }
+        val key = ctxIndex to imageIndex
+        val callbacks = synchronized(graphicsCompletionLock) {
+            graphicsCompletionCallbacks.remove(key)?.toList() ?: emptyList()
+        }
+        callbacks.forEach { callback ->
+            runCatching { callback() }.onFailure {
+                lprintln("warning,graphics", "graphics completion callback failed: ${it.message ?: it::class.simpleName}")
+            }
+        }
+    }
 
     // Vulkan queues require external synchronization. Use this lock to serialize all queue operations
     // (submit/present) across any threads that might enter the renderer.
@@ -453,6 +484,7 @@ class Renderer(
         // image slot is no longer in-flight on the GPU before any CPU-side writes touch its
         // per-image buffers.
         ctx.fences[imageIndex].fenceWait()
+        drainCompletedGraphicsCallbacks(ctx, windowIndex, imageIndex, requireSignaled = true)
 
         ctx.currentImage = imageIndex
         if (windowIndex == 0) currentImage = imageIndex
@@ -815,7 +847,7 @@ class Renderer(
         }
 
         val format = ctx.swapChain.surfaceFormat.imageFormat
-        val bytesPerPixel = swapchainCaptureBytesPerPixel(format)
+        val bytesPerPixel = GpuImageCapture.bytesPerPixel(format)
         val byteCount = width.toLong() * height.toLong() * bytesPerPixel.toLong()
         val captures = requests.map { request ->
             RecordedWindowCapture(
@@ -898,48 +930,6 @@ class Renderer(
         return captures
     }
 
-    private fun swapchainCaptureBytesPerPixel(format: Int): Int = when (format) {
-        VK10.VK_FORMAT_R8G8B8A8_UNORM,
-        VK10.VK_FORMAT_R8G8B8A8_SRGB,
-        VK10.VK_FORMAT_B8G8R8A8_UNORM,
-        VK10.VK_FORMAT_B8G8R8A8_SRGB -> 4
-        VK10.VK_FORMAT_R16G16B16A16_SFLOAT -> 8
-        VK10.VK_FORMAT_R32G32B32A32_SFLOAT -> 16
-        else -> 4
-    }
-
-    private fun halfFloatToFloat(raw: Short): Float {
-        val h = raw.toInt() and 0xffff
-        val sign = (h and 0x8000) shl 16
-        val exponent = (h ushr 10) and 0x1f
-        val mantissa = h and 0x03ff
-        val bits = when (exponent) {
-            0 -> {
-                if (mantissa == 0) {
-                    sign
-                } else {
-                    var m = mantissa
-                    var e = -14
-                    while ((m and 0x0400) == 0) {
-                        m = m shl 1
-                        e--
-                    }
-                    m = m and 0x03ff
-                    sign or ((e + 127) shl 23) or (m shl 13)
-                }
-            }
-            0x1f -> sign or 0x7f800000 or (mantissa shl 13)
-            else -> sign or ((exponent - 15 + 127) shl 23) or (mantissa shl 13)
-        }
-        return Float.fromBits(bits)
-    }
-
-    private fun floatChannelToByte(value: Float): Byte {
-        if (!value.isFinite() || value <= 0f) return 0
-        if (value >= 1f) return 255.toByte()
-        return (value * 255f + 0.5f).toInt().toByte()
-    }
-
     private fun completeWindowCapture(capture: RecordedWindowCapture) {
         val readStartedAt = System.nanoTime()
         val pixels = readWindowCapturePixels(capture)
@@ -968,69 +958,11 @@ class Renderer(
 
     private fun readWindowCapturePixels(capture: RecordedWindowCapture): WindowCapturePixels? {
         try {
-            val rgba = ByteArray(capture.width * capture.height * 4)
-            var dst = 0
-            fun put(r: Byte, g: Byte, b: Byte, a: Byte) {
-                rgba[dst++] = r
-                rgba[dst++] = g
-                rgba[dst++] = b
-                rgba[dst++] = a
-            }
-
+            var rgba: ByteArray? = null
             capture.stagingBuffer.mapAndRead_bytes {
-                rewind()
-                order(ByteOrder.LITTLE_ENDIAN)
-                when (capture.format) {
-                    VK10.VK_FORMAT_B8G8R8A8_UNORM,
-                    VK10.VK_FORMAT_B8G8R8A8_SRGB -> {
-                        while (remaining() >= 4) {
-                            val b = get()
-                            val g = get()
-                            val r = get()
-                            val a = get()
-                            put(r, g, b, a)
-                        }
-                    }
-
-                    VK10.VK_FORMAT_R8G8B8A8_UNORM,
-                    VK10.VK_FORMAT_R8G8B8A8_SRGB -> {
-                        while (remaining() >= 4) {
-                            val r = get()
-                            val g = get()
-                            val b = get()
-                            val a = get()
-                            put(r, g, b, a)
-                        }
-                    }
-
-                    VK10.VK_FORMAT_R16G16B16A16_SFLOAT -> {
-                        while (remaining() >= 8) {
-                            put(
-                                floatChannelToByte(halfFloatToFloat(getShort())),
-                                floatChannelToByte(halfFloatToFloat(getShort())),
-                                floatChannelToByte(halfFloatToFloat(getShort())),
-                                floatChannelToByte(halfFloatToFloat(getShort()))
-                            )
-                        }
-                    }
-
-                    VK10.VK_FORMAT_R32G32B32A32_SFLOAT -> {
-                        while (remaining() >= 16) {
-                            put(
-                                floatChannelToByte(getFloat()),
-                                floatChannelToByte(getFloat()),
-                                floatChannelToByte(getFloat()),
-                                floatChannelToByte(getFloat())
-                            )
-                        }
-                    }
-
-                    else -> {
-                        throw IllegalStateException("Unsupported window capture format ${capture.format}")
-                    }
-                }
+                rgba = GpuImageCapture.readRgba(this, capture.format, capture.width, capture.height, "window")
             }
-            return WindowCapturePixels(capture.request, rgba, capture.width, capture.height)
+            return WindowCapturePixels(capture.request, requireNotNull(rgba), capture.width, capture.height)
         } catch (t: Throwable) {
             capture.request.completion.completeExceptionally(t)
             lprintln("warning,graphics", "direct window capture readback failed: ${t.message}")
@@ -1096,26 +1028,15 @@ class Renderer(
 
     private fun writeWindowCaptureJpeg(capture: WindowCapturePixels) {
         val startedAt = System.nanoTime()
-        val rgb = ByteBuffer.allocateDirect(capture.width * capture.height * 3)
-        for (y in capture.height - 1 downTo 0) {
-            var src = y * capture.width * 4
-            repeat(capture.width) {
-                rgb.put(capture.rgba[src])
-                rgb.put(capture.rgba[src + 1])
-                rgb.put(capture.rgba[src + 2])
-                src += 4
-            }
-        }
-        rgb.flip()
+        val rgb = GpuImageCapture.packRgbaToRgbBottomUp(capture.rgba, capture.width, capture.height)
         val packMs = SaveReloadLog.elapsedMillis(startedAt)
         val writeStartedAt = System.nanoTime()
         val quality = windowCaptureJpegQuality()
-        val ok = stbi_write_jpg(
+        GpuImageCapture.writeJpegRgb(
             capture.request.outputPath,
+            rgb,
             capture.width,
             capture.height,
-            3,
-            rgb,
             quality
         )
         val writeMs = SaveReloadLog.elapsedMillis(writeStartedAt)
@@ -1123,9 +1044,6 @@ class Renderer(
             "window-capture-jpeg",
             "ms=${SaveReloadLog.elapsedMillis(startedAt)} path=${capture.request.outputPath} size=${capture.width}x${capture.height} quality=$quality packMs=$packMs writeMs=$writeMs"
         )
-        if (!ok) {
-            throw IllegalStateException("stbi_write_jpg failed")
-        }
     }
 
     private fun windowCaptureJpegQuality(): Int {
@@ -1162,6 +1080,11 @@ class Renderer(
                     resolveProfilingForImage(ctx, head.imageIndex)
                     ps.pending.removeFirst()
                 } else break
+            }
+        }
+        windowContexts.forEachIndexed { ctxIndex, ctx ->
+            for (imageIndex in 0 until ctx.numImages) {
+                drainCompletedGraphicsCallbacks(ctx, ctxIndex, imageIndex)
             }
         }
 
@@ -1462,6 +1385,7 @@ class Renderer(
             }
 
             currentCommandBuffer = cmd
+            graphicsRecordingContext.set(ctxIndex to imageIndex)
             try {
                 renderStart.update()
 
@@ -1511,6 +1435,7 @@ class Renderer(
 
                 cmd.endRecording()
             } finally {
+                graphicsRecordingContext.remove()
                 currentCommandBuffer = null
             }
         }

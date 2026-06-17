@@ -159,12 +159,25 @@ class RunnerState:
         except (OSError, urllib.error.URLError, urllib.error.HTTPError):
             return False
 
+    def _request_shared_field_shutdown(self) -> None:
+        url = f"https://localhost:{self.backdoor_port}/api/shutdown-instance"
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        request = urllib.request.Request(url, method="POST")
+        try:
+            with urllib.request.urlopen(request, timeout=3.0, context=ctx) as response:
+                response.read()
+        except (OSError, urllib.error.URLError, urllib.error.HTTPError) as exc:
+            LOG.debug("Field docs runner shutdown request failed: %s", exc)
+
     def _ensure_shared_field_server(self) -> None:
         if self._http_health_ok(self.backdoor_port):
             LOG.info("Field docs runner using existing Field server on port %s", self.backdoor_port)
             return
 
-        cmd = ["./gradlew", "runJvm"]
+        gradle_wrapper = "gradlew.bat" if os.name == "nt" else "./gradlew"
+        cmd = [str(self.repo_root / gradle_wrapper), "runJvm"]
         workspace = os.environ.get(RUNNER_WORKSPACE_ENV)
         if workspace:
             cmd.append(f"--args=--workspace {workspace}")
@@ -215,10 +228,20 @@ class RunnerState:
         process = self._shared_field_process
         if process is None:
             return
+        LOG.info("Field docs runner stopping shared Field server")
+        self._request_shared_field_shutdown()
+        deadline = time.monotonic() + 8.0
+        while time.monotonic() < deadline:
+            if process.poll() is not None and not self._http_health_ok(self.backdoor_port, timeout=0.5):
+                self._shared_field_process = None
+                return
+            if not self._http_health_ok(self.backdoor_port, timeout=0.5):
+                self._shared_field_process = None
+                return
+            time.sleep(0.25)
         if process.poll() is not None:
             self._shared_field_process = None
             return
-        LOG.info("Field docs runner stopping shared Field server")
         try:
             if os.name == "nt":
                 process.terminate()
@@ -368,6 +391,8 @@ class RunnerState:
                     cwd=self.repo_root,
                     input=code,
                     text=True,
+                    encoding="utf-8",
+                    errors="replace",
                     capture_output=True,
                     check=False,
                     timeout=runner_subprocess_timeout(options=video_options, is_video=True),
@@ -509,6 +534,8 @@ class RunnerState:
                     cwd=self.repo_root,
                     input=code,
                     text=True,
+                    encoding="utf-8",
+                    errors="replace",
                     capture_output=True,
                     check=False,
                     timeout=runner_subprocess_timeout(options=options, is_video=False),

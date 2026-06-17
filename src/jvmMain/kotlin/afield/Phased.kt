@@ -1,6 +1,7 @@
 package afield
 
 import afield.Generator.Companion.isMain
+import afield.logger.lprintln
 import kotlinx.coroutines.*
 import java.util.concurrent.LinkedTransferQueue
 import kotlin.concurrent.atomics.AtomicBoolean
@@ -155,6 +156,90 @@ fun eachFrame(block: suspend Frames.() -> Unit): Frames {
         }
     }
 }
+
+/**
+ * Run [frames] on Field's Runloop with this box as the active context.
+ *
+ * The launched coroutine is added to [Box.jobs], so `Box.stop(...)` cancels it.
+ * Reusing [strand] advances the box generation for that strand, causing older
+ * Frames launched through this helper to stop the next time they reach [Frames.frame].
+ */
+fun Box.launchFrames(
+    frames: Frames,
+    strand: String = "frames",
+    mode: String = "frames",
+    reportRunning: Boolean = true
+): Job {
+    val box = this
+    val generation = (box.runGeneration[strand] ?: -1) + 1
+    box.runGeneration[strand] = generation
+
+    val previousShouldEnd = frames.shouldend
+    frames.shouldend = {
+        previousShouldEnd() || box.runGeneration[strand] != generation
+    }
+
+    val previousAtEndStart = frames.onAtEndStart
+    val previousAtEndFinish = frames.onAtEndFinish
+    val previousShouldCancelAtEnd = frames.shouldCancelAtEnd
+
+    frames.onAtEndStart = { endJob ->
+        previousAtEndStart(endJob)
+        val endingGeneration = box.runGeneration[strand] ?: generation
+        frames.shouldCancelAtEnd = {
+            previousShouldCancelAtEnd() || box.runGeneration[strand] != endingGeneration
+        }
+        box.jobs += endJob
+        box.currentRunningStates[strand] = RunningState(generation, "ending")
+        if (reportRunning) {
+            send(Message("is-running").payload(IsRunning(box.id, true, generation, strand, "ending")))
+        }
+    }
+    frames.onAtEndFinish = { endJob ->
+        previousAtEndFinish(endJob)
+        frames.shouldCancelAtEnd = previousShouldCancelAtEnd
+        box.jobs.remove(endJob)
+    }
+
+    val launchJob = inMain {
+        Box.withBoxContext(box) {
+            box.currentRunningStates[strand] = RunningState(generation, mode)
+            if (reportRunning) {
+                send(Message("is-running").payload(IsRunning(box.id, true, generation, strand, mode)))
+            }
+
+            val job = coroutineContext[Job]
+            frames.job = job
+
+            try {
+                frames.body()
+            } catch (e: CancellationException) {
+            } catch (t: Throwable) {
+                lprintln("error,execution", t.stackTraceToString())
+                box.error(t.message ?: t.javaClass.name)
+            } finally {
+                if (box.currentRunningStates[strand]?.watermark == generation) {
+                    box.currentRunningStates.remove(strand)
+                }
+                if (reportRunning) {
+                    send(Message("is-running").payload(IsRunning(box.id, false, generation, strand, mode)))
+                }
+            }
+        }
+    }
+    box.jobs += launchJob
+    launchJob.invokeOnCompletion {
+        box.jobs.remove(launchJob)
+    }
+    return launchJob
+}
+
+fun Box.launchFrames(
+    strand: String = "frames",
+    mode: String = "frames",
+    reportRunning: Boolean = true,
+    block: suspend Frames.() -> Unit
+): Job = launchFrames(frames(block), strand = strand, mode = mode, reportRunning = reportRunning)
 
 /**
  * Run two Frame programs in parallel. Each child advances as the parent advances,

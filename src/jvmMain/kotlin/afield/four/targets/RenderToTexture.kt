@@ -1,8 +1,11 @@
 package afield.four.targets
 
 import afield.Rect
+import afield.Runloop
+import afield.four.GpuImageCapture
 import afield.four.Renderer
 import afield.four.Target
+import afield.four.buffers.VulkanBuffer
 import afield.four.device.CommandBuffer
 import afield.four.buffers.MissingRefException
 import afield.four.modules.Module
@@ -23,6 +26,7 @@ import org.lwjgl.vulkan.KHRDynamicRendering.VK_STRUCTURE_TYPE_RENDERING_ATTACHME
 import org.lwjgl.vulkan.KHRDynamicRendering.VK_STRUCTURE_TYPE_RENDERING_INFO_KHR
 import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VK13.*
+import java.util.concurrent.CompletableFuture
 
 data class RTTParameters(
     var width: Int = 1024,
@@ -43,7 +47,7 @@ data class RTTParameters(
 
     // Allow the produced color image to be used as a transfer source/destination.
     // Useful for mirroring / copying into OpenXR swapchains.
-    var colorTransferSrc: Boolean = false,
+    var colorTransferSrc: Boolean = true,
     var colorTransferDst: Boolean = false,
 
     // Automatic mip generation for color (when mipLevels > 1)
@@ -109,6 +113,248 @@ open class RenderToTexture(
     val mipLevels: Int get() = parameters.mipLevels
 
     var modules = mutableMapOf<String, ModulePointer>()
+
+    private data class FileSaveRequest(
+        val outputPath: String,
+        val attachment: Int,
+        val quality: Int,
+        val completion: CompletableFuture<String>
+    )
+
+    private data class RecordedFileSave(
+        val request: FileSaveRequest,
+        val stagingBuffer: VulkanBuffer,
+        val width: Int,
+        val height: Int,
+        val format: Int
+    )
+
+    private val fileSaveLock = Any()
+    private val pendingFileSaves = ArrayDeque<FileSaveRequest>()
+
+    /**
+     * Queue a non-blocking save of a color attachment to JPEG.
+     *
+     * The GPU copy is recorded the next time this target renders. The returned future completes
+     * after readback, JPEG encoding, and file write finish on a background thread.
+     */
+    @JvmOverloads
+    fun saveJpgAsync(outputPath: String, attachment: Int = 0, quality: Int = 90): CompletableFuture<String> {
+        val completion = CompletableFuture<String>()
+        if (attachment !in colorImageHandles.indices) {
+            completion.completeExceptionally(
+                IllegalArgumentException("attachment $attachment is out of range for $this")
+            )
+            return completion
+        }
+        synchronized(fileSaveLock) {
+            pendingFileSaves.addLast(
+                FileSaveRequest(
+                    outputPath = outputPath,
+                    attachment = attachment,
+                    quality = quality.coerceIn(1, 100),
+                    completion = completion
+                )
+            )
+        }
+        return completion
+    }
+
+    @JvmOverloads
+    fun saveJpegAsync(outputPath: String, attachment: Int = 0, quality: Int = 90): CompletableFuture<String> =
+        saveJpgAsync(outputPath, attachment, quality)
+
+    @JvmOverloads
+    fun launchJpgSave(outputPath: String, attachment: Int = 0, quality: Int = 90): CompletableFuture<String> =
+        saveJpgAsync(outputPath, attachment, quality)
+
+    private fun dequeueFileSaves(): List<FileSaveRequest> =
+        synchronized(fileSaveLock) {
+            if (pendingFileSaves.isEmpty()) emptyList()
+            else buildList(pendingFileSaves.size) {
+                while (pendingFileSaves.isNotEmpty()) add(pendingFileSaves.removeFirst())
+            }
+        }
+
+    private fun recordPendingFileSaves(command: CommandBuffer) {
+        val requests = dequeueFileSaves()
+        if (requests.isEmpty()) return
+
+        val recorded = mutableListOf<RecordedFileSave>()
+        MemoryStack.stackPush().use { stack ->
+            requests.forEach { request ->
+                try {
+                    require(request.attachment in colorImageHandles.indices) {
+                        "attachment ${request.attachment} is out of range for $this"
+                    }
+                    val canTransfer =
+                        parameters.colorTransferSrc ||
+                                (parameters.generateColorMipmaps &&
+                                        parameters.mipLevels > 1 &&
+                                        colorFormatCanBlit.getOrElse(request.attachment) { false })
+                    require(canTransfer) {
+                        "RenderToTexture attachment ${request.attachment} was not created with transfer-source usage; set colorTransferSrc = true"
+                    }
+
+                    val format = colorFormats[request.attachment]
+                    val bytesPerPixel = GpuImageCapture.bytesPerPixel(format)
+                    val staging = VulkanBuffer(
+                        renderer = renderer,
+                        requestedSize = width.toLong() * height.toLong() * bytesPerPixel.toLong(),
+                        usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                        reqMask = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_CACHED_BIT
+                    )
+
+                    val range = VkImageSubresourceRange.calloc(stack)
+                        .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                        .baseMipLevel(0)
+                        .levelCount(1)
+                        .baseArrayLayer(0)
+                        .layerCount(colorLayerCount.coerceAtLeast(1))
+
+                    val oldLayout = colorLayout[request.attachment]
+                    val (srcStage, srcAccess) = captureSourceStageAndAccess(oldLayout)
+                    transitionColorAttachment(
+                        command = command,
+                        attachment = request.attachment,
+                        srcStage = srcStage,
+                        dstStage = VK_PIPELINE_STAGE_2_COPY_BIT,
+                        srcAccess = srcAccess,
+                        dstAccess = VK_ACCESS_2_TRANSFER_READ_BIT,
+                        oldLayout = oldLayout,
+                        newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                        range = range
+                    )
+
+                    val copyRegion = VkBufferImageCopy.calloc(1, stack)
+                    copyRegion[0]
+                        .bufferOffset(0L)
+                        .bufferRowLength(0)
+                        .bufferImageHeight(0)
+                        .imageSubresource(
+                            VkImageSubresourceLayers.calloc(stack)
+                                .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                                .mipLevel(0)
+                                .baseArrayLayer(0)
+                                .layerCount(1)
+                        )
+                        .imageOffset(VkOffset3D.calloc(stack).x(0).y(0).z(0))
+                        .imageExtent(VkExtent3D.calloc(stack).width(width).height(height).depth(1))
+
+                    vkCmdCopyImageToBuffer(
+                        command.vkCommandBuffer,
+                        colorImageHandles[request.attachment],
+                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                        staging.buffer,
+                        copyRegion
+                    )
+
+                    transitionColorAttachment(
+                        command = command,
+                        attachment = request.attachment,
+                        srcStage = VK_PIPELINE_STAGE_2_COPY_BIT,
+                        dstStage = srcStage,
+                        srcAccess = VK_ACCESS_2_TRANSFER_READ_BIT,
+                        dstAccess = srcAccess,
+                        oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                        newLayout = oldLayout,
+                        range = range
+                    )
+                    colorLayout[request.attachment] = oldLayout
+
+                    recorded += RecordedFileSave(request, staging, width, height, format)
+                } catch (t: Throwable) {
+                    request.completion.completeExceptionally(t)
+                }
+            }
+        }
+
+        if (recorded.isNotEmpty()) {
+            renderer.afterCurrentGraphicsFrameComplete {
+                recorded.forEach { capture ->
+                    Runloop.miscPool.execute { completeFileSave(capture) }
+                }
+            }
+        }
+    }
+
+    private fun captureSourceStageAndAccess(layout: Int): Pair<Long, Long> =
+        when (layout) {
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL ->
+                sampledReadStageMask to VK_ACCESS_2_SHADER_SAMPLED_READ_BIT
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL ->
+                VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT to VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL ->
+                VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT to VK_ACCESS_2_TRANSFER_READ_BIT
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL ->
+                VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT to VK_ACCESS_2_TRANSFER_WRITE_BIT
+            else -> VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT to 0L
+        }
+
+    private fun transitionColorAttachment(
+        command: CommandBuffer,
+        attachment: Int,
+        srcStage: Long,
+        dstStage: Long,
+        srcAccess: Long,
+        dstAccess: Long,
+        oldLayout: Int,
+        newLayout: Int,
+        range: VkImageSubresourceRange
+    ) {
+        val imageRef = colorImageRefs.getOrElse(attachment) { null }
+        if (imageRef != null) {
+            image_layout_transition(
+                command.vkCommandBuffer,
+                imageRef,
+                srcStage,
+                dstStage,
+                srcAccess,
+                dstAccess,
+                oldLayout,
+                newLayout,
+                range
+            )
+        } else {
+            image_layout_transition(
+                command.vkCommandBuffer,
+                colorImageHandles[attachment],
+                srcStage,
+                dstStage,
+                srcAccess,
+                dstAccess,
+                oldLayout,
+                newLayout,
+                range
+            )
+        }
+    }
+
+    private fun completeFileSave(capture: RecordedFileSave) {
+        try {
+            val rgba = readCaptureRgba(capture)
+            GpuImageCapture.writeJpeg(
+                capture.request.outputPath,
+                rgba,
+                capture.width,
+                capture.height,
+                capture.request.quality
+            )
+            capture.request.completion.complete(capture.request.outputPath)
+        } catch (t: Throwable) {
+            capture.request.completion.completeExceptionally(t)
+        } finally {
+            capture.stagingBuffer.cleanup()
+        }
+    }
+
+    private fun readCaptureRgba(capture: RecordedFileSave): ByteArray {
+        var rgba: ByteArray? = null
+        capture.stagingBuffer.mapAndRead_bytes {
+            rgba = GpuImageCapture.readRgba(this, capture.format, capture.width, capture.height, "RenderToTexture")
+        }
+        return requireNotNull(rgba)
+    }
 
     var commandBuffers: Array<CommandBuffer>
     var fences: Array<afield.four.device.Fence>
@@ -718,6 +964,8 @@ open class RenderToTexture(
             } else if (parameters.useDepth) {
                 depthLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
             }
+
+            recordPendingFileSaves(command)
         } // MemoryStack.use
         afterRender(index)
     }
