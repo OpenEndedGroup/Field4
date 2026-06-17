@@ -142,6 +142,33 @@ private sealed interface ProcessStreamEvent {
     data class Exit(val code: Int) : ProcessStreamEvent
 }
 
+enum class StreamProcessErrorKind {
+    NO_COMMAND,
+    START_FAILED,
+    STDERR,
+    NON_ZERO_EXIT
+}
+
+data class StreamProcessError(
+    val kind: StreamProcessErrorKind,
+    val name: String,
+    val label: String,
+    val command: List<String>,
+    val channel: String,
+    val message: String,
+    val exitCode: Int? = null,
+    val throwable: Throwable? = null
+)
+
+data class StreamProcessEnd(
+    val name: String,
+    val label: String,
+    val command: List<String>,
+    val channel: String,
+    val exitCode: Int,
+    val terminated: Boolean = false
+)
+
 /**
  * Launches an external process and streams stdout/stderr into an output area.
  * The returned Frames ends when the process exits; ending the Frames will kill the process.
@@ -151,15 +178,54 @@ fun Box.streamProcess(
     command: List<String>,
     channel: String = name,
     workingDirectory: File? = null,
-    env: Map<String, String> = emptyMap()
+    env: Map<String, String> = emptyMap(),
+    atError: suspend Box.(StreamProcessError) -> Unit = {},
+    atEnd: suspend Box.(StreamProcessEnd) -> Unit = {}
 ): Frames {
     val box = this
     val label = name.ifBlank { command.joinToString(" ") }
     val outputChannel = channel.ifBlank { label.ifBlank { "process" } }
     var process: Process? = null
+    var reportedEnd = false
+
+    suspend fun reportEnd(exitCode: Int, terminated: Boolean = false) {
+        if (reportedEnd) return
+        reportedEnd = true
+        box.atEnd(
+            StreamProcessEnd(
+                name = name,
+                label = label,
+                command = command,
+                channel = outputChannel,
+                exitCode = exitCode,
+                terminated = terminated
+            )
+        )
+    }
+
+    suspend fun reportError(
+        kind: StreamProcessErrorKind,
+        message: String,
+        exitCode: Int? = null,
+        throwable: Throwable? = null
+    ) {
+        box.atError(
+            StreamProcessError(
+                kind = kind,
+                name = name,
+                label = label,
+                command = command,
+                channel = outputChannel,
+                message = message,
+                exitCode = exitCode,
+                throwable = throwable
+            )
+        )
+    }
 
     val runner = frames {
         if (command.isEmpty()) {
+            reportError(StreamProcessErrorKind.NO_COMMAND, "no command provided")
             box.display(
                 outputChannel,
                 """<pre class="process-line error" style="margin:0;font-family:monospace;">[$label] no command provided</pre>"""
@@ -174,6 +240,7 @@ fun Box.streamProcess(
         process = try {
             pb.start()
         } catch (t: Throwable) {
+            reportError(StreamProcessErrorKind.START_FAILED, t.message ?: t.toString(), throwable = t)
             box.display(
                 outputChannel,
                 """<pre class="process-line error" style="margin:0;font-family:monospace;">[$label] failed to start: ${escapeHtml(t.message ?: t.toString())}</pre>"""
@@ -220,6 +287,9 @@ fun Box.streamProcess(
                     is ProcessStreamEvent.Line -> {
                         val kind = if (event.isError) "stderr" else "stdout"
                         val text = escapeHtml(event.text)
+                        if (event.isError) {
+                            reportError(StreamProcessErrorKind.STDERR, event.text)
+                        }
                         box.display(
                             outputChannel,
                             """<pre class="process-line $kind" style="margin:0;font-family:monospace;">[$label $kind] $text</pre>"""
@@ -232,6 +302,17 @@ fun Box.streamProcess(
                             outputChannel,
                             """<pre class="process-line $kind" style="margin:0;font-family:monospace;">[$label] exited with code ${event.code}</pre>"""
                         )
+                        try {
+                            if (event.code != 0) {
+                                reportError(
+                                    StreamProcessErrorKind.NON_ZERO_EXIT,
+                                    "exited with code ${event.code}",
+                                    exitCode = event.code
+                                )
+                            }
+                        } finally {
+                            reportEnd(event.code)
+                        }
                         break
                     }
                 }
@@ -244,7 +325,9 @@ fun Box.streamProcess(
 
     runner.atEnd = suspend {
         process?.let { proc ->
+            var terminated = false
             if (proc.isAlive) {
+                terminated = true
                 proc.destroy()
                 if (!proc.waitFor(250, TimeUnit.MILLISECONDS)) {
                     proc.destroyForcibly()
@@ -255,10 +338,70 @@ fun Box.streamProcess(
                     """<pre class="process-line stop" style="margin:0;font-family:monospace;">[$label] terminated</pre>"""
                 )
             }
+            val exitCode = runCatching { proc.exitValue() }.getOrDefault(-1)
+            reportEnd(exitCode, terminated = terminated)
         }
     }
 
     return runner
+}
+
+private fun streamProcessStrand(name: String, channel: String): String {
+    val basis = name.ifBlank { channel }.ifBlank { "process" }
+    val sanitized = basis
+        .lowercase(Locale.ROOT)
+        .replace(Regex("[^a-z0-9_.-]+"), "-")
+        .trim('-')
+        .ifBlank { "process" }
+    return "stream-process:$sanitized"
+}
+
+/**
+ * Starts [streamProcess] immediately, without requiring the returned [Frames] to be
+ * the launched value of a box. Reusing the same strand cancels the previous process.
+ */
+fun Box.streamProcessFireAndForget(
+    name: String,
+    command: List<String>,
+    channel: String = name,
+    workingDirectory: File? = null,
+    env: Map<String, String> = emptyMap(),
+    strand: String = streamProcessStrand(name, channel),
+    atError: suspend Box.(StreamProcessError) -> Unit = {},
+    atEnd: suspend Box.(StreamProcessEnd) -> Unit = {}
+) {
+    val frames = streamProcess(
+        name = name,
+        command = command,
+        channel = channel,
+        workingDirectory = workingDirectory,
+        env = env,
+        atError = atError,
+        atEnd = atEnd
+    )
+    launchFrames(frames, strand = strand, mode = "process")
+}
+
+fun Box.streamProcessFireAndForget(
+    name: String,
+    vararg command: String,
+    channel: String = name,
+    workingDirectory: File? = null,
+    env: Map<String, String> = emptyMap(),
+    strand: String = streamProcessStrand(name, channel),
+    atError: suspend Box.(StreamProcessError) -> Unit = {},
+    atEnd: suspend Box.(StreamProcessEnd) -> Unit = {}
+) {
+    streamProcessFireAndForget(
+        name = name,
+        command = command.toList(),
+        channel = channel,
+        workingDirectory = workingDirectory,
+        env = env,
+        strand = strand,
+        atError = atError,
+        atEnd = atEnd
+    )
 }
 
 
@@ -1019,4 +1162,3 @@ fun <T> Box.tqdm(items: Iterable<T>, name: String = "progress"): Iterable<T> {
         else -> tqdm(items.toList(), name)
     }
 }
-
