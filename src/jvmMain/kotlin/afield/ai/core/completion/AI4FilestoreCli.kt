@@ -485,7 +485,7 @@ fun main(args: Array<String>) {
     lprintln("info,filestore-cli", "CLI chat ready. Type /help for commands, /exit to quit.")
     while (true) {
         print("you> ")
-        val line = readLine() ?: break
+        val line = readlnOrNull() ?: break
         val input = line.trim()
         if (input.isEmpty()) continue
 

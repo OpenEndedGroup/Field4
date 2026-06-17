@@ -36,11 +36,11 @@ internal object KotlinCompletionSupport {
                 append(name)
             }
             val typed = if (type.isBlank()) prefix else "$prefix: ${shortenType(type)}"
-            return if (includeDefault && !defaultValue.isNullOrBlank()) "$typed = ${defaultValue!!.trim()}" else typed
+            return if (includeDefault && !defaultValue.isNullOrBlank()) "$typed = ${defaultValue.trim()}" else typed
         }
 
         fun namedArgumentPreview(): String =
-            if (defaultValue.isNullOrBlank()) "$name = " else "$name = ${defaultValue!!.trim()}"
+            if (defaultValue.isNullOrBlank()) "$name = " else "$name = ${defaultValue.trim()}"
 
         fun parameterSummary(): String =
             buildString {

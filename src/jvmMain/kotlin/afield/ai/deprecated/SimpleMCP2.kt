@@ -704,7 +704,7 @@ fun main() {
                                 mapOf(
                                     "jsonrpc" to JsonPrimitive("2.0"),
                                     "method" to JsonPrimitive("notifications/progress"),
-                                    "params" to JsonObject(mapOf("forRequestId" to req.id!!, "stage" to JsonPrimitive("started")))
+                                    "params" to JsonObject(mapOf("forRequestId" to req.id, "stage" to JsonPrimitive("started")))
                                 )
                             )
                             write(json.encodeToString(progressStart).sseEvent()); flush()

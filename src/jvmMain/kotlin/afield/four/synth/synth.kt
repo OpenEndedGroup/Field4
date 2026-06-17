@@ -889,6 +889,47 @@ fun bpf(cutoff: Number = 1000, resonance: Number = 0.5): SVF =
 fun reverb(roomSize: Number = 0.8, damping: Number = 0.5, mix: Number = 0.33): FreeVerb =
     FreeVerb(roomSize = Param(roomSize.toFloat()), damping = Param(damping.toFloat()), mix = Param(mix.toFloat()))
 
+fun springReverb(tension: Number = 0.55, decay: Number = 0.72, tone: Number = 0.65, mix: Number = 0.28): SpringReverb =
+    SpringReverb(
+        tension = Param(tension.toFloat()),
+        decay = Param(decay.toFloat()),
+        tone = Param(tone.toFloat()),
+        mix = Param(mix.toFloat())
+    )
+
+fun spring(tension: Number = 0.55, decay: Number = 0.72, tone: Number = 0.65, mix: Number = 0.28): SpringReverb =
+    springReverb(tension, decay, tone, mix)
+
+fun convolutionReverb(
+    impulse: AudioSample,
+    mix: Number = 0.35,
+    gain: Number = 1.0,
+    normalize: Boolean = true,
+    maxIrSamples: Int = 8192
+): ConvolutionReverb =
+    ConvolutionReverb(
+        impulse = impulse,
+        mix = Param(mix.toFloat()),
+        gain = Param(gain.toFloat()),
+        normalize = normalize,
+        maxIrSamples = maxIrSamples
+    )
+
+fun reverbImpulse(
+    lengthSeconds: Number = 0.45,
+    decay: Number = 0.65,
+    diffusion: Number = 0.8,
+    sampleRate: Number = 44100,
+    seed: Int = 0
+): AudioSample =
+    ConvolutionReverb.syntheticImpulse(
+        lengthSeconds = lengthSeconds.toFloat(),
+        decay = decay.toFloat(),
+        diffusion = diffusion.toFloat(),
+        sampleRate = sampleRate.toFloat(),
+        seed = seed
+    )
+
 fun delay(time: Number = 0.3, feedback: Number = 0.5, mix: Number = 0.5): Delay =
     Delay(delayTime = Param(time.toFloat()), feedback = Param(feedback.toFloat()), mix = Param(mix.toFloat()))
 

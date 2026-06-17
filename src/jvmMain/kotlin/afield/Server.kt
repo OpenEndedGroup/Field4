@@ -16,6 +16,8 @@ import afield.logger.lprint
 import afield.logger.lprintln
 import afield.server.refreshFileProxyBoxes
 import afield.server.installControllerRoutes
+import afield.server.broadcastControllerControlUpdates
+import afield.server.recordControllerSelection
 import afield.server.writeFileProxyContents
 import afield.stdlib.FLineIntersection
 import afield.stdlib.begin
@@ -517,8 +519,13 @@ val preferSystemBrowser: Boolean = (System.getenv("AFIELD_SYSTEM_BROWSER")
     ?: System.getProperty("afield.systemBrowser") ?: "true").lowercase() != "false"
 val visibleBackdoorPlaywright: Boolean = (System.getenv("AFIELD_PLAYWRIGHT_VISIBLE")
     ?: System.getProperty("afield.playwright.visible") ?: "false").lowercase() == "true"
-private val outputBackPressureLogEnabled: Boolean = (System.getenv("AFIELD_OUTPUT_BACKPRESSURE_LOG")
-    ?: System.getProperty("afield.outputBackpressureLog") ?: "true").lowercase() != "false"
+private val outputBackPressureLogMode: String = (System.getenv("AFIELD_OUTPUT_BACKPRESSURE_LOG")
+    ?: System.getProperty("afield.outputBackpressureLog") ?: "summary").trim().lowercase(Locale.US)
+private val outputBackPressureLogEnabled: Boolean = outputBackPressureLogMode !in setOf("false", "0", "off", "none")
+private val outputBackPressureTraceLogEnabled: Boolean =
+    outputBackPressureLogMode in setOf("true", "1", "yes", "on", "trace", "debug", "verbose")
+private val outputBackPressureLogIntervalMillis: Long =
+    if (outputBackPressureTraceLogEnabled) 500L else 5_000L
 private val outputBackPressureLogTimes = ConcurrentHashMap<String, Long>()
 
 private fun isBackPressuredOutputMessage(message: Message): Boolean {
@@ -544,9 +551,10 @@ private fun outputBackPressureLog(
     val now = System.currentTimeMillis()
     val sessionId = Integer.toHexString(System.identityHashCode(session))
     val key = "$sessionId:$event"
-    if (!force) {
+    val forceNow = force && (outputBackPressureTraceLogEnabled || event.endsWith("failed-release"))
+    if (!forceNow) {
         val previous = outputBackPressureLogTimes[key] ?: 0L
-        if (now - previous < 500L) return
+        if (now - previous < outputBackPressureLogIntervalMillis) return
         outputBackPressureLogTimes[key] = now
     } else {
         outputBackPressureLogTimes[key] = now
@@ -1605,9 +1613,17 @@ class Server {
                 Handled.yes
             })
 
+            handlers["controller-selection"] = mutableSetOf({ message, reply ->
+                val selection = Json.decodeFromJsonElement<ControllerSelectionState>(message.payload!!)
+                recordControllerSelection(thisSessionInfo.get(), selection)
+                Handled.yes
+            })
+
             handlers["slider-update"] = mutableSetOf({ message, reply ->
                 val update = Json.decodeFromJsonElement<SliderUpdate>(message.payload!!)
                 lprintln("debug,slider", "Received slider update: ${update.sliderId} = ${update.value}")
+                val updatedControls = updateControllerControlValue(update.sliderId) { it.copy(value = update.value) }
+                broadcastControllerControlUpdates(updatedControls, thisSessionInfo.get().filename)
 
                 // Get the callback for this slider and invoke it
                 val callback = getSliderCallback(update.sliderId)
@@ -1630,6 +1646,8 @@ class Server {
             handlers["vec2-update"] = mutableSetOf({ message, reply ->
                 val update = Json.decodeFromJsonElement<Vec2Update>(message.payload!!)
                 lprintln("debug,controls", "Received vec2 update: ${update.controlId} = (${update.x}, ${update.y})")
+                val updatedControls = updateControllerControlValue(update.controlId) { it.copy(x = update.x, y = update.y) }
+                broadcastControllerControlUpdates(updatedControls, thisSessionInfo.get().filename)
 
                 val callback = getVec2Callback(update.controlId)
                 if (callback != null) {
@@ -1651,6 +1669,8 @@ class Server {
             handlers["checkbox-update"] = mutableSetOf({ message, reply ->
                 val update = Json.decodeFromJsonElement<CheckboxUpdate>(message.payload!!)
                 lprintln("debug,controls", "Received checkbox update: ${update.controlId} = ${update.value}")
+                val updatedControls = updateControllerControlValue(update.controlId) { it.copy(checked = update.value) }
+                broadcastControllerControlUpdates(updatedControls, thisSessionInfo.get().filename)
 
                 val callback = getCheckboxCallback(update.controlId)
                 if (callback != null) {
@@ -1842,6 +1862,8 @@ class Server {
             handlers["string-update"] = mutableSetOf({ message, reply ->
                 val update = Json.decodeFromJsonElement<StringUpdate>(message.payload!!)
                 lprintln("debug,controls", "Received string update: ${update.controlId} = ${update.value}")
+                val updatedControls = updateControllerControlValue(update.controlId) { it.copy(text = update.value) }
+                broadcastControllerControlUpdates(updatedControls, thisSessionInfo.get().filename)
 
                 val callback = getStringCallback(update.controlId)
                 if (callback != null) {
@@ -1886,6 +1908,16 @@ class Server {
             handlers["color-update"] = mutableSetOf({ message, reply ->
                 val update = Json.decodeFromJsonElement<ColorUpdate>(message.payload!!)
                 lprintln("debug,controls", "Received color update: ${update.controlId} = rgba(${update.r}, ${update.g}, ${update.b}, ${update.a})")
+                val updatedControls = updateControllerControlValue(update.controlId) {
+                    it.copy(
+                        r = update.r,
+                        g = update.g,
+                        b = update.b,
+                        a = update.a,
+                        value = update.a
+                    )
+                }
+                broadcastControllerControlUpdates(updatedControls, thisSessionInfo.get().filename)
 
                 val callback = getColorCallback(update.controlId)
                 if (callback != null) {

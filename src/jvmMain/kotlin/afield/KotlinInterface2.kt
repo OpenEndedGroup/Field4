@@ -359,7 +359,7 @@ class KotlinInterface2(
 
                 r = evaluator.eval(e, evalConfig)
                 if (r is ResultWithDiagnostics.Success) {
-                    val scriptInstance = (r as ResultWithDiagnostics.Success).value.get().result.scriptInstance
+                    val scriptInstance = r.value.get().result.scriptInstance
                     context.debugScripts.attachLatestRuntimeClass(scriptInstance?.javaClass?.name)
                 }
                 if (updateContext) contextUpdater.update()
@@ -385,7 +385,7 @@ class KotlinInterface2(
 
                 r = evaluator.eval(e, evalConfig)
                 if (r is ResultWithDiagnostics.Success) {
-                    val scriptInstance = (r as ResultWithDiagnostics.Success).value.get().result.scriptInstance
+                    val scriptInstance = r.value.get().result.scriptInstance
                     context.debugScripts.attachLatestRuntimeClass(scriptInstance?.javaClass?.name)
                 }
                 if (updateContext) contextUpdater.update()
@@ -635,7 +635,7 @@ class KotlinInterface2(
      */
     private fun completionComparator(prefix: String) = compareBy<SourceCodeCompletionVariant>(
         { if (prefix.isNotEmpty() && it.text.startsWith(prefix)) 0 else 1 },
-        { (it.extraInfo?.get("sortGroup") as? Int) ?: 0 },
+        { (it.extraInfo.get("sortGroup") as? Int) ?: 0 },
         { it.text.length },
         { it.text.lowercase() }
     )
@@ -1788,7 +1788,7 @@ class KotlinInterface2(
                                 icon = "method",
                             )
                             // Embed KDoc for later use in documentation building
-                            val qualifiedName = receiverClass?.simpleName?.let { "$it.$name" } ?: name
+                            val qualifiedName = receiverClass.simpleName?.let { "$it.$name" } ?: name
                             val kdoc = try {
                                 KotlinSourceIndex.getKDocForSymbol(qualifiedName) ?: KotlinSourceIndex.getKDocForSymbol(
                                     name
@@ -2280,10 +2280,8 @@ class KotlinInterface2(
                                         val containingFunction =
                                             PsiTreeUtil.getParentOfType(expression, KtNamedFunction::class.java)
                                         val containingFunctionName = containingFunction?.name
-                                        val valueParameterList =
-                                            (containingFunction?.valueParameterList as? KtParameterList)?.text
-                                        val returnParameterText =
-                                            (containingFunction?.typeReference as? KtTypeReference)?.text
+                                        val valueParameterList = containingFunction?.valueParameterList?.text
+                                        val returnParameterText = containingFunction?.typeReference?.text
 
                                         val containingFunctionInfo =
                                             if (containingFunctionName != null && valueParameterList != null && returnParameterText != null)
@@ -2368,9 +2366,9 @@ class KotlinInterface2(
         implicits: List<Any>,
     ): ResultValue? {
 
-        when (val r = compile(s)) {
+        return when (val r = compile(s)) {
             is ResultWithDiagnostics.Success -> {
-                return when (val r2 = evaluate(r.value, implicits = implicits)) {
+                when (val r2 = evaluate(r.value, implicits = implicits)) {
                     is ResultWithDiagnostics.Success -> {
                         when (val e = r2.value.get().result) {
                             is ResultValue.Error -> {
@@ -2406,8 +2404,6 @@ class KotlinInterface2(
                 null
             }
         }
-
-        return null
     }
 
     override fun execAndWait(

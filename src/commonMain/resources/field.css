@@ -1163,13 +1163,17 @@ body {
 
 .field-slider-visual {
     width: 100%;
-    aspect-ratio: 12 / 1;
-    height: auto;
+    height: 32px;
     display: block;
     touch-action: none;
     pointer-events: all;
     user-select: none;
     cursor: crosshair;
+}
+
+.slider-hitbox {
+    fill: transparent;
+    pointer-events: all;
 }
 
 .slider-track {
@@ -1539,11 +1543,15 @@ body {
 
 .alpha-visual {
     width: 100%;
-    aspect-ratio: 12 / 1;
-    height: auto;
+    height: 32px;
     display: block;
     touch-action: none;
     cursor: crosshair;
+}
+
+.alpha-hitbox {
+    fill: transparent;
+    pointer-events: all;
 }
 
 .alpha-track {

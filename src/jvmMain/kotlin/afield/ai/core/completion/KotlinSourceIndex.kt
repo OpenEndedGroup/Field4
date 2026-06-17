@@ -404,7 +404,7 @@ object KotlinSourceIndex {
 
             if (canParse) {
                 val def = parseDefinitionFromLine(rawLine)
-                if (pendingClass != null && pendingClass?.lineNumber != lineNumber && def != null) {
+                if (pendingClass != null && pendingClass.lineNumber != lineNumber && def != null) {
                     // A new declaration appeared before the pending class body opened.
                     pendingClass = null
                 }

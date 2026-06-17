@@ -496,7 +496,12 @@ data class OscEditorCommand(
     val text: String = "",
     val debounceMs: Int = 200,
     val maxExecutionMs: Int = 750,
-    val delta: Boolean = false
+    val delta: Boolean = false,
+    val vector2: Boolean = false,
+    val x: Double? = null,
+    val y: Double? = null,
+    val dx: Double? = null,
+    val dy: Double? = null
 )
 
 @Serializable
@@ -859,6 +864,46 @@ data class FileUploadUpdate(val controlId: String, val files: List<FileUploadEnt
 
 @Serializable
 data class FileUploadEntry(val name: String, val size: Long, val type: String, val dataBase64: String)
+
+@Serializable
+data class ControllerSelectionState(
+    val selectedUids: List<String> = emptyList(),
+    val property: String = "code"
+)
+
+@Serializable
+data class ControllerControl(
+    val id: String,
+    val type: String,
+    val label: String,
+    val channel: String = "controls",
+    val min: Double = 0.0,
+    val max: Double = 1.0,
+    val step: Double = 0.01,
+    val value: Double? = null,
+    val xMin: Double = -1.0,
+    val xMax: Double = 1.0,
+    val yMin: Double = -1.0,
+    val yMax: Double = 1.0,
+    val x: Double? = null,
+    val y: Double? = null,
+    val checked: Boolean? = null,
+    val text: String? = null,
+    val r: Double? = null,
+    val g: Double? = null,
+    val b: Double? = null,
+    val a: Double? = null,
+    val decimalPlaces: Int = 2
+)
+
+@Serializable
+data class ControllerControlsResponse(
+    val document: String = "",
+    val selectedUid: String? = null,
+    val selectedName: String = "",
+    val selectedProperty: String = "code",
+    val controls: List<ControllerControl> = emptyList()
+)
 
 // Layers system messages
 @Serializable

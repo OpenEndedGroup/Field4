@@ -1,0 +1,436 @@
+@font-face {
+  font-family: "Iosevka Field Controller";
+  src: local("Iosevka"), local("Iosevka Term"), local("Iosevka Fixed");
+  font-display: swap;
+}
+
+:root {
+  color-scheme: dark;
+  --field-cyan-rgb: 72, 201, 255;
+  --bg: #050505;
+  --panel: rgba(0, 0, 0, 0.72);
+  --track: rgba(72, 201, 255, 0.08);
+  --fg: color-mix(in srgb, rgb(var(--field-cyan-rgb)) 70%, white);
+  --muted: color-mix(in srgb, rgb(var(--field-cyan-rgb)) 42%, #8a8a8a);
+  --line: rgba(var(--field-cyan-rgb), 0.18);
+  --line-strong: rgba(var(--field-cyan-rgb), 0.72);
+  --pressed: rgba(var(--field-cyan-rgb), 0.85);
+  --pressed-text: #020202;
+  --control-radius: 10px;
+  --inner-radius: 8px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: "Iosevka Field Controller", Iosevka, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+body {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+button {
+  font: inherit;
+  letter-spacing: 0;
+}
+
+.controller-shell {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: 280px;
+  min-height: 280px;
+  background: var(--bg);
+}
+
+.controller-top {
+  display: grid;
+  gap: 0.75rem;
+  padding: max(0.75rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) 0.75rem max(1rem, env(safe-area-inset-left));
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.status-line {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 1rem;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+#readout {
+  justify-self: end;
+  color: var(--fg);
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: minmax(8rem, 0.85fr) minmax(10rem, 1.15fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.page-tabs {
+  width: min(100%, 17rem);
+}
+
+.command-cluster {
+  display: grid;
+  grid-template-columns: repeat(6, 2.75rem);
+  gap: 0.5rem;
+}
+
+.segmented {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(3.5rem, 1fr);
+  height: 2.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--control-radius);
+  background: var(--track);
+  overflow: hidden;
+}
+
+.segment,
+.icon-button {
+  min-width: 0;
+  height: 2.75rem;
+  border: 0;
+  border-right: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--fg);
+}
+
+.segment:last-child {
+  border-right: 0;
+}
+
+.icon-button {
+  border: 1px solid var(--line);
+  border-radius: var(--inner-radius);
+  background: var(--track);
+  font-size: 1rem;
+}
+
+.segment.active,
+.icon-button:active {
+  background: var(--pressed);
+  color: var(--pressed-text);
+}
+
+.icon-button.command-feedback {
+  background: var(--pressed);
+  color: var(--pressed-text);
+  box-shadow: inset 0 0 0 2px var(--line-strong), 0 0 0 3px var(--bg);
+}
+
+.segment:focus-visible,
+.icon-button:focus-visible,
+.thumb:focus-visible {
+  outline: 2px solid var(--line-strong);
+  outline-offset: 3px;
+}
+
+.touch-area {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  background-color: var(--track);
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.controller-page {
+  display: none;
+}
+
+.controller-page.active {
+  display: block;
+}
+
+.control-page.active {
+  display: grid;
+}
+
+.crosshair {
+  position: absolute;
+  pointer-events: none;
+  background: var(--line-strong);
+  opacity: 0.45;
+}
+
+.crosshair-x {
+  left: 0;
+  top: 50%;
+  width: 100%;
+  height: 1px;
+}
+
+.crosshair-y {
+  left: 50%;
+  top: 0;
+  width: 1px;
+  height: 100%;
+}
+
+.thumb {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: clamp(4.5rem, 14vmin, 8.5rem);
+  height: clamp(4.5rem, 14vmin, 8.5rem);
+  border: 2px solid var(--bg);
+  border-radius: var(--control-radius);
+  background: var(--fg);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 1px var(--line-strong);
+  will-change: left, top;
+}
+
+.control-page {
+  min-height: 0;
+  overflow: auto;
+  padding: 0.75rem max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+  background: var(--bg);
+  touch-action: pan-y;
+}
+
+.group-state {
+  align-self: start;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  min-height: 1.2rem;
+  padding: 0.25rem 0 0.75rem;
+}
+
+.group-controls {
+  display: grid;
+  gap: 0.5rem;
+  align-content: start;
+}
+
+.phone-control {
+  display: grid;
+  gap: 0.55rem;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--control-radius);
+  background: var(--track);
+  padding: 0.85rem;
+}
+
+.phone-control-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.phone-control-label,
+.phone-control-value {
+  font-size: 1rem;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.phone-control-label {
+  color: var(--fg);
+  overflow-wrap: anywhere;
+}
+
+.phone-control-value {
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.phone-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  min-height: 4.25rem;
+  margin: 0;
+  padding: 1.2rem 0;
+  background: transparent;
+  touch-action: pan-y;
+}
+
+.phone-range::-webkit-slider-runnable-track {
+  height: 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: var(--inner-radius);
+  background: var(--bg);
+}
+
+.phone-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-top: -1.15rem;
+  border: 2px solid var(--bg);
+  border-radius: var(--inner-radius);
+  background: var(--fg);
+  box-shadow: 0 0 0 1px var(--line-strong);
+}
+
+.phone-range::-moz-range-track {
+  height: 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: var(--inner-radius);
+  background: var(--bg);
+}
+
+.phone-range::-moz-range-thumb {
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 2px solid var(--bg);
+  border-radius: var(--inner-radius);
+  background: var(--fg);
+  box-shadow: 0 0 0 1px var(--line-strong);
+}
+
+.phone-text-input {
+  width: 100%;
+  min-height: 3rem;
+  border: 1px solid var(--line);
+  border-radius: var(--inner-radius);
+  background: var(--bg);
+  color: var(--fg);
+  padding: 0.65rem 0.75rem;
+  font: inherit;
+  font-size: 1rem;
+}
+
+.phone-toggle {
+  width: 100%;
+  min-height: 3.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--inner-radius);
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  text-transform: uppercase;
+}
+
+.phone-toggle.active {
+  background: var(--pressed);
+  color: var(--pressed-text);
+}
+
+.phone-vec2-pad {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  min-height: 12rem;
+  max-height: 56vh;
+  border: 1px solid var(--line);
+  border-radius: var(--control-radius);
+  background: var(--bg);
+  touch-action: none;
+  overflow: hidden;
+}
+
+.phone-vec2-pad::before,
+.phone-vec2-pad::after {
+  content: "";
+  position: absolute;
+  background: var(--line-strong);
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.phone-vec2-pad::before {
+  left: 50%;
+  top: 0;
+  width: 1px;
+  height: 100%;
+}
+
+.phone-vec2-pad::after {
+  left: 0;
+  top: 50%;
+  width: 100%;
+  height: 1px;
+}
+
+.phone-vec2-handle {
+  position: absolute;
+  width: 3.5rem;
+  height: 3.5rem;
+  left: 50%;
+  top: 50%;
+  border: 2px solid var(--bg);
+  border-radius: var(--inner-radius);
+  background: var(--fg);
+  box-shadow: 0 0 0 1px var(--line-strong);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.phone-color-row {
+  display: grid;
+  grid-template-columns: 4rem minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.phone-color-input {
+  width: 4rem;
+  height: 3rem;
+  border: 1px solid var(--line);
+  border-radius: var(--inner-radius);
+  background: var(--bg);
+  padding: 0.2rem;
+}
+
+@media (max-width: 560px) {
+  .status-line {
+    grid-template-columns: auto 1fr;
+  }
+
+  #clients {
+    display: none;
+  }
+
+  #readout {
+    justify-self: end;
+  }
+
+  .controls {
+    grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr);
+  }
+
+  .controller-top {
+    gap: 0.55rem;
+  }
+
+  .segmented {
+    grid-auto-columns: minmax(2.75rem, 1fr);
+  }
+
+  .command-cluster {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}

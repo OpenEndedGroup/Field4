@@ -36,6 +36,7 @@ import web.cssom.important
 import web.timers.clearTimeout
 import web.timers.setTimeout
 import kotlin.js.json
+import kotlin.js.jsTypeOf
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -458,6 +459,7 @@ private var spatialNavAnchor: HTMLElement? = null
 private var spatialNavTargets = mutableMapOf<CardinalDirection, HTMLElement>()
 private var metaPressed = false
 private var ctrlPressed = false
+private var lastControllerSelectionSignature = ""
 
 // Prevent duplicate Alt-click launches (e.g., nested boxes receiving duplicate events)
 var lastAltDownUid: String? = null
@@ -490,6 +492,7 @@ fun layerDebugLog(event: String, payload: dynamic = null) {
 
 fun selectionContextChanged() {
     js("window.dispatchEvent(new CustomEvent('field-selection-changed'))")
+    syncControllerSelection()
     if (currentAnnotations.isNotEmpty()) {
         redrawSlideAnnotations()
         scheduleSlideAnnotationRedraw(10)
@@ -499,9 +502,18 @@ fun selectionContextChanged() {
     }
 }
 
+private fun syncControllerSelection() {
+    val selectedIds = selected.mapNotNull { it.asDynamic().uid as? String }
+    val signature = selectedIds.joinToString("\u0000") + "\u0001" + selectedProperty
+    if (signature == lastControllerSelectionSignature) return
+    lastControllerSelectionSignature = signature
+    send(Message("controller-selection").payload(ControllerSelectionState(selectedIds, selectedProperty)))
+}
+
 internal fun setSelectedEditorProperty(property: String) {
     selectedProperty = property
     window.unsafeCast<dynamic>().selectedProperty = property
+    syncControllerSelection()
 }
 
 private fun editorPropertyStickinessMode(): String {
@@ -2156,7 +2168,6 @@ private fun attachPanToNestedArea(container: HTMLElement) {
         panActive = false
         event?.preventDefault()
         event?.stopPropagation()
-        null
     }
 
     container.onmouseup = endPan
@@ -3705,11 +3716,9 @@ suspend fun main() {
 
     doubleTap["Escape"] = {
         removeNewestOutput()
-        null
     }
     tripleTap["Escape"] = {
         clearFocusedEditorOutputs()
-        null
     }
 
     doubleTap["Shift"] = {
@@ -3720,7 +3729,6 @@ suspend fun main() {
         } else {
             console.info("[palette] openAnywherePalette not available")
         }
-        null
     }
 
 
@@ -4231,6 +4239,17 @@ suspend fun main() {
         val found = defaultCreate(u)
         handleOutputAreaControl(found, control)
         Handled.yes
+    }
+
+    handlers.put("control-value-update") { message, _ ->
+        val payload = message.payload ?: return@put Handled.no
+        val fn = window.asDynamic().applyFieldControlUpdate
+        if (jsTypeOf(fn) == "function") {
+            fn(JSON.parse<dynamic>(payload.toString()))
+            Handled.yes
+        } else {
+            Handled.no
+        }
     }
 
     handlers.put("set-provisional") { message, _ ->

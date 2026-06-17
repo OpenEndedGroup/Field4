@@ -119,7 +119,7 @@ object WavFloatArrayLoader {
         require(fmtFound) { "Invalid WAV (missing fmt chunk): $path" }
         require(dataFound) { "Invalid WAV (missing data chunk): $path" }
         require(audioFormat == 1 || audioFormat == 3) { "Unsupported WAV format (only PCM and IEEE Float supported): $path" }
-        require(bitsPerSample == 8 || bitsPerSample == 16 || bitsPerSample == 32 || bitsPerSample == 64) { "Unsupported WAV bit depth: $bitsPerSample" }
+        require(bitsPerSample == 8 || bitsPerSample == 16 || bitsPerSample == 24 || bitsPerSample == 32 || bitsPerSample == 64) { "Unsupported WAV bit depth: $bitsPerSample" }
         require(channels == 1 || channels == 2) { "Unsupported WAV channels: $channels" }
 
         require(dataOffset >= 0 && dataSize >= 0 && dataOffset + dataSize <= bytes.size) {
@@ -133,6 +133,14 @@ object WavFloatArrayLoader {
         
         val floatSamples = FloatArray(frameCount)
         val rawBuf = ByteBuffer.wrap(raw).order(ByteOrder.LITTLE_ENDIAN)
+
+        fun readPcm24(): Int {
+            val b0 = rawBuf.get().toInt() and 0xFF
+            val b1 = rawBuf.get().toInt() and 0xFF
+            val b2 = rawBuf.get().toInt() and 0xFF
+            val value = b0 or (b1 shl 8) or (b2 shl 16)
+            return if ((value and 0x800000) != 0) value or -0x1000000 else value
+        }
         
         if (audioFormat == 3 && bitsPerSample == 32) {
             for (i in 0 until frameCount) {
@@ -157,6 +165,14 @@ object WavFloatArrayLoader {
                     rawBuf.short // skip right channel
                 }
                 floatSamples[i] = left / 32768.0f
+            }
+        } else if (audioFormat == 1 && bitsPerSample == 24) {
+            for (i in 0 until frameCount) {
+                val left = readPcm24()
+                if (channels == 2) {
+                    readPcm24() // skip right channel
+                }
+                floatSamples[i] = left / 8388608.0f
             }
         } else if (audioFormat == 1 && bitsPerSample == 8) {
             for (i in 0 until frameCount) {

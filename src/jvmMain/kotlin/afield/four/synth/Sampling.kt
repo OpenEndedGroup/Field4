@@ -1,8 +1,12 @@
 package afield.four.synth
 
 import java.util.concurrent.ThreadLocalRandom
+import kotlin.math.abs
 import kotlin.math.PI
 import kotlin.math.cos
+import kotlin.math.exp
+import kotlin.math.pow
+import kotlin.math.sin
 
 // ═══════════════════════════════════════════════════════════════════
 //  AudioSample – in-memory audio data
@@ -134,6 +138,70 @@ class Sampler(
 //  GrainCloud – granular synthesis
 // ═══════════════════════════════════════════════════════════════════
 
+enum class GrainEnvelope {
+    HANN,
+    SINE,
+    TRIANGLE,
+    TUKEY,
+    GAUSSIAN,
+    PERCUSSIVE,
+    REVERSE_PERCUSSIVE,
+    BLACKMAN
+}
+
+private fun grainEnvelopeValue(envelope: GrainEnvelope, phase: Double): Float {
+    val p = phase.coerceIn(0.0, 1.0)
+    val v = when (envelope) {
+        GrainEnvelope.HANN ->
+            0.5 - 0.5 * cos(2.0 * PI * p)
+        GrainEnvelope.SINE ->
+            sin(PI * p)
+        GrainEnvelope.TRIANGLE ->
+            1.0 - abs(2.0 * p - 1.0)
+        GrainEnvelope.TUKEY -> {
+            val edge = 0.22
+            when {
+                p < edge -> 0.5 * (1.0 - cos(PI * p / edge))
+                p > 1.0 - edge -> 0.5 * (1.0 - cos(PI * (1.0 - p) / edge))
+                else -> 1.0
+            }
+        }
+        GrainEnvelope.GAUSSIAN -> {
+            val sigma = 0.18
+            val floor = exp(-0.5 * (0.5 / sigma).pow(2.0))
+            val raw = exp(-0.5 * ((p - 0.5) / sigma).pow(2.0))
+            ((raw - floor) / (1.0 - floor)).coerceIn(0.0, 1.0)
+        }
+        GrainEnvelope.PERCUSSIVE -> {
+            val attack = 0.08
+            val tail = if (p < attack) p / attack else exp(-(p - attack) * 5.5)
+            tail * releaseTaper(p)
+        }
+        GrainEnvelope.REVERSE_PERCUSSIVE -> {
+            val rp = 1.0 - p
+            val attack = 0.08
+            val tail = if (rp < attack) rp / attack else exp(-(rp - attack) * 5.5)
+            tail * releaseTaper(rp)
+        }
+        GrainEnvelope.BLACKMAN ->
+            0.42 - 0.5 * cos(2.0 * PI * p) + 0.08 * cos(4.0 * PI * p)
+    }
+    return v.toFloat().coerceIn(0f, 1f)
+}
+
+private fun releaseTaper(phase: Double): Double =
+    when {
+        phase < 0.9 -> 1.0
+        phase >= 1.0 -> 0.0
+        else -> (1.0 - phase) / 0.1
+    }
+
+private fun randomBipolar(rng: ThreadLocalRandom): Double =
+    rng.nextDouble() * 2.0 - 1.0
+
+private fun chooseRandomEnvelope(rng: ThreadLocalRandom): GrainEnvelope =
+    GrainEnvelope.entries[rng.nextInt(GrainEnvelope.entries.size)]
+
 
 class GrainCloud(
     val source: AudioSample,
@@ -145,8 +213,14 @@ class GrainCloud(
     val density: Param = Param(20f),
     /** Playback rate per grain. */
     val pitch: Param = Param(1f),
+    /** Per-grain random pitch range in cents (± this amount). */
+    val pitchJitterCents: Param = Param(0f),
     /** Random position scatter in seconds. */
     val spray: Param = Param(0f),
+    /** Envelope shape used by each grain. */
+    val envelope: GrainEnvelope = GrainEnvelope.HANN,
+    /** If true, choose a random [GrainEnvelope] for each spawned grain. */
+    val randomEnvelope: Boolean = false,
     /** Maximum simultaneous grains. */
     val maxGrains: Int = 128
 ) : Signal() {
@@ -158,6 +232,7 @@ class GrainCloud(
         var age = 0            // samples elapsed
         var duration = 0       // grain duration in samples
         var envPhase = 0.0     // envelope phase (0…1)
+        var envelope = GrainEnvelope.HANN
     }
 
     private val grains = Array(maxGrains) { Grain() }
@@ -167,18 +242,20 @@ class GrainCloud(
     private var sizeBuf  = FloatArray(0)
     private var densBuf  = FloatArray(0)
     private var pitchBuf = FloatArray(0)
+    private var pitchJitterBuf = FloatArray(0)
     private var sprayBuf = FloatArray(0)
 
     override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
         if (posBuf.size < numFrames) {
             posBuf = FloatArray(numFrames); sizeBuf = FloatArray(numFrames)
             densBuf = FloatArray(numFrames); pitchBuf = FloatArray(numFrames)
-            sprayBuf = FloatArray(numFrames)
+            pitchJitterBuf = FloatArray(numFrames); sprayBuf = FloatArray(numFrames)
         }
         position.render(posBuf, numFrames, ctx)
         grainSize.render(sizeBuf, numFrames, ctx)
         density.render(densBuf, numFrames, ctx)
         pitch.render(pitchBuf, numFrames, ctx)
+        pitchJitterCents.render(pitchJitterBuf, numFrames, ctx)
         spray.render(sprayBuf, numFrames, ctx)
         Buf.clear(output, 0, numFrames)
 
@@ -202,20 +279,26 @@ class GrainCloud(
 
                 grain.active = true
                 grain.sourcePos = posNorm * srcLen + scatter
-                grain.rate = pitchBuf[i].toDouble()
+                val jitterCents = pitchJitterBuf[i].toDouble().coerceAtLeast(0.0)
+                val pitchRatio = if (jitterCents > 0.0) {
+                    2.0.pow(randomBipolar(rng) * jitterCents / 1200.0)
+                } else {
+                    1.0
+                }
+                grain.rate = pitchBuf[i].toDouble() * pitchRatio
                 grain.duration = (sizeBuf[i] * ctx.sampleRate).toInt().coerceAtLeast(4)
                 grain.age = 0
                 grain.envPhase = 0.0
+                grain.envelope = if (randomEnvelope) chooseRandomEnvelope(rng) else envelope
             }
 
             // Process all active grains
             var sum = 0f
             for (grain in grains) {
                 if (!grain.active) continue
-                // Hann window envelope
-                val env = 0.5 - 0.5 * cos(2.0 * PI * grain.envPhase)
+                val env = grainEnvelopeValue(grain.envelope, grain.envPhase)
                 val sample = source.readInterp(grain.sourcePos)
-                sum += (sample * env).toFloat()
+                sum += sample * env
 
                 grain.sourcePos += grain.rate
                 grain.age++
@@ -234,7 +317,10 @@ class GrainCloud(
         "grainSize" to grainSize,
         "density" to density,
         "pitch" to pitch,
+        "pitchJitterCents" to pitchJitterCents,
         "spray" to spray,
+        "envelope" to envelope,
+        "randomEnvelope" to randomEnvelope,
         "maxGrains" to maxGrains
     )
 }
@@ -246,9 +332,20 @@ class StereoGrainCloud(
     val grainSize: Param = Param(0.05f),
     val density: Param = Param(20f),
     val pitch: Param = Param(1f),
+    val pitchJitterCents: Param = Param(0f),
     val spray: Param = Param(0f),
     /** Stereo spread: 0 = mono center, 1 = full stereo. */
     val spread: Param = Param(0.5f),
+    /** Center pan for new grains (-1 = left, 0 = center, 1 = right). */
+    val pan: Param = Param(0f),
+    /** Per-grain left/right read-head separation in seconds. */
+    val stereoWidth: Param = Param(0f),
+    /** Per-grain random variation added to [stereoWidth], in seconds. */
+    val stereoWidthRandom: Param = Param(0f),
+    /** Independent per-channel source-position scatter in seconds. */
+    val stereoScatter: Param = Param(0f),
+    val envelope: GrainEnvelope = GrainEnvelope.HANN,
+    val randomEnvelope: Boolean = false,
     val maxGrains: Int = 128
 ) : StereoNode() {
     private class Grain {
@@ -258,7 +355,11 @@ class StereoGrainCloud(
         var age = 0
         var duration = 0
         var envPhase = 0.0
-        var pan = 0.5f  // 0=left, 1=right
+        var pan = 0f  // -1=left, 0=center, 1=right
+        var widthSamples = 0.0
+        var scatterL = 0.0
+        var scatterR = 0.0
+        var envelope = GrainEnvelope.HANN
     }
 
     private val grains = Array(maxGrains) { Grain() }
@@ -266,20 +367,31 @@ class StereoGrainCloud(
 
     private var posBuf = FloatArray(0); private var sizeBuf = FloatArray(0)
     private var densBuf = FloatArray(0); private var pitchBuf = FloatArray(0)
-    private var sprayBuf = FloatArray(0); private var spreadBuf = FloatArray(0)
+    private var pitchJitterBuf = FloatArray(0); private var sprayBuf = FloatArray(0)
+    private var spreadBuf = FloatArray(0); private var panBuf = FloatArray(0)
+    private var widthBuf = FloatArray(0); private var widthRandomBuf = FloatArray(0)
+    private var stereoScatterBuf = FloatArray(0)
 
     override fun generateStereo(outL: FloatArray, outR: FloatArray, numFrames: Int, ctx: SynthContext) {
         if (posBuf.size < numFrames) {
             posBuf = FloatArray(numFrames); sizeBuf = FloatArray(numFrames)
             densBuf = FloatArray(numFrames); pitchBuf = FloatArray(numFrames)
-            sprayBuf = FloatArray(numFrames); spreadBuf = FloatArray(numFrames)
+            pitchJitterBuf = FloatArray(numFrames); sprayBuf = FloatArray(numFrames)
+            spreadBuf = FloatArray(numFrames); panBuf = FloatArray(numFrames)
+            widthBuf = FloatArray(numFrames); widthRandomBuf = FloatArray(numFrames)
+            stereoScatterBuf = FloatArray(numFrames)
         }
         position.render(posBuf, numFrames, ctx)
         grainSize.render(sizeBuf, numFrames, ctx)
         density.render(densBuf, numFrames, ctx)
         pitch.render(pitchBuf, numFrames, ctx)
+        pitchJitterCents.render(pitchJitterBuf, numFrames, ctx)
         spray.render(sprayBuf, numFrames, ctx)
         spread.render(spreadBuf, numFrames, ctx)
+        pan.render(panBuf, numFrames, ctx)
+        stereoWidth.render(widthBuf, numFrames, ctx)
+        stereoWidthRandom.render(widthRandomBuf, numFrames, ctx)
+        stereoScatter.render(stereoScatterBuf, numFrames, ctx)
         Buf.clear(outL, 0, numFrames)
         Buf.clear(outR, 0, numFrames)
 
@@ -297,24 +409,43 @@ class StereoGrainCloud(
                 val grain = grains.firstOrNull { !it.active } ?: continue
                 val posNorm = posBuf[i].toDouble().coerceIn(0.0, 1.0)
                 val sprayAmt = sprayBuf[i].toDouble() * srcRate
-                val scatter = if (sprayAmt > 0) (rng.nextDouble() * 2.0 - 1.0) * sprayAmt else 0.0
+                val scatter = if (sprayAmt > 0) randomBipolar(rng) * sprayAmt else 0.0
                 val sp = spreadBuf[i].coerceIn(0f, 1f)
+                val widthBase = widthBuf[i].toDouble()
+                val widthRnd = widthRandomBuf[i].toDouble().coerceAtLeast(0.0)
+                val widthSeconds = widthBase + randomBipolar(rng) * widthRnd
+                val channelScatter = stereoScatterBuf[i].toDouble().coerceAtLeast(0.0) * srcRate
 
                 grain.active = true
                 grain.sourcePos = posNorm * srcLen + scatter
-                grain.rate = pitchBuf[i].toDouble()
+                val jitterCents = pitchJitterBuf[i].toDouble().coerceAtLeast(0.0)
+                val pitchRatio = if (jitterCents > 0.0) {
+                    2.0.pow(randomBipolar(rng) * jitterCents / 1200.0)
+                } else {
+                    1.0
+                }
+                grain.rate = pitchBuf[i].toDouble() * pitchRatio
                 grain.duration = (sizeBuf[i] * ctx.sampleRate).toInt().coerceAtLeast(4)
                 grain.age = 0
                 grain.envPhase = 0.0
-                grain.pan = 0.5f + (rng.nextFloat() - 0.5f) * sp
+                grain.pan = (panBuf[i] + randomBipolar(rng).toFloat() * sp).coerceIn(-1f, 1f)
+                grain.widthSamples = widthSeconds * srcRate * if (rng.nextBoolean()) 1.0 else -1.0
+                grain.scatterL = if (channelScatter > 0) randomBipolar(rng) * channelScatter else 0.0
+                grain.scatterR = if (channelScatter > 0) randomBipolar(rng) * channelScatter else 0.0
+                grain.envelope = if (randomEnvelope) chooseRandomEnvelope(rng) else envelope
             }
 
             for (grain in grains) {
                 if (!grain.active) continue
-                val env = (0.5 - 0.5 * cos(2.0 * PI * grain.envPhase)).toFloat()
-                val sample = source.readInterp(grain.sourcePos) * env
-                outL[i] += sample * (1f - grain.pan)
-                outR[i] += sample * grain.pan
+                val env = grainEnvelopeValue(grain.envelope, grain.envPhase)
+                val width = grain.widthSamples * 0.5
+                val sampleL = source.readInterp(grain.sourcePos - width + grain.scatterL) * env
+                val sampleR = source.readInterp(grain.sourcePos + width + grain.scatterR) * env
+                val pan01 = 0.5f + grain.pan * 0.5f
+                val gainL = 1f - pan01
+                val gainR = pan01
+                outL[i] += sampleL * gainL
+                outR[i] += sampleR * gainR
 
                 grain.sourcePos += grain.rate
                 grain.age++
@@ -323,4 +454,23 @@ class StereoGrainCloud(
             }
         }
     }
+
+    override fun toString(): String = synthPrettyObject(
+        this,
+        "source" to source,
+        "position" to position,
+        "grainSize" to grainSize,
+        "density" to density,
+        "pitch" to pitch,
+        "pitchJitterCents" to pitchJitterCents,
+        "spray" to spray,
+        "spread" to spread,
+        "pan" to pan,
+        "stereoWidth" to stereoWidth,
+        "stereoWidthRandom" to stereoWidthRandom,
+        "stereoScatter" to stereoScatter,
+        "envelope" to envelope,
+        "randomEnvelope" to randomEnvelope,
+        "maxGrains" to maxGrains
+    )
 }

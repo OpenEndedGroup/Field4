@@ -204,7 +204,7 @@ class ClojureHost(private val defaultNs: String = "user") {
         return try {
             withNs(ns) {
                 val rdr = pushbackReaderFn.invoke(java.io.StringReader(code))
-                val eof = Object()
+                val eof = Any()
                 val opts = PersistentArrayMap.create(mapOf(Keyword.intern("eof") to eof))
                 while (true) {
                     val form = readFn.invoke(opts, rdr)

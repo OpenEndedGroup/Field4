@@ -399,7 +399,7 @@ class SlideShowInstance(
      */
     suspend fun goToStep(index: Int) {
         if (index < 0 || index >= steps.size) {
-            lprintln("SlideShow: Step $index out of bounds (0..${steps.size - 1})")
+            lprintln("warning,slideshow", "Step $index out of bounds (0..${steps.size - 1})")
             return
         }
 
