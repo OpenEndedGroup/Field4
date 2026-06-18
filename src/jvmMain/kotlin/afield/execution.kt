@@ -809,6 +809,11 @@ class KotlinExecution : BoxExecution {
             val snippets: List<PreparedSnippet>
         )
 
+        private fun resetLaunchSetupState(box: Box) {
+            box.properties.remove("_preamble")
+            box.properties.remove("_attic")
+        }
+
         fun launchBatch(requests: List<Pair<Box, Execute>>, reply: (Message) -> Unit) {
             if (requests.isEmpty()) return
 
@@ -817,8 +822,7 @@ class KotlinExecution : BoxExecution {
                 val strand = exec.strand
                 val normalizedCode = normalizedLaunchCodeFor(exec)
 
-                box.preamble = ""
-                box.properties.remove("_attic")
+                resetLaunchSetupState(box)
 
                 val watermark = box.runGeneration.incrementAndGet(strand)
                 box.currentRunningStates[strand] = RunningState(watermark, PENDING_LAUNCH_MODE)
@@ -974,7 +978,7 @@ class KotlinExecution : BoxExecution {
 
             Box.withBoxContext(box) {
                 box.resetStdlibRandom()
-                box.preamble = ""
+                resetLaunchSetupState(box)
                 configureOutputProxies(box, reply, request.originSession)
 
                 var hasError = false
@@ -1351,8 +1355,7 @@ class KotlinExecution : BoxExecution {
     override fun launchAll(box: Box, exec: Execute, code: String, strand: String, reply: ((Message) -> Unit)) {
         val originSession = thisSession.get()
 
-        box.preamble = "" // still controversial
-        box.properties.remove("_attic") //?
+        resetLaunchSetupState(box)
 
         val normalizedCode = normalizedLaunchCode(exec)
         val pendingLaunchMode = PENDING_LAUNCH_MODE
@@ -1368,7 +1371,7 @@ class KotlinExecution : BoxExecution {
         inMain {
 
             box.resetStdlibRandom()
-            box.preamble = ""
+            resetLaunchSetupState(box)
 
 
             // TODO! support pre-compilation. This executes the box (once) and grabs it's return value, then launch-all will simply do that. This means you end up with a lot in frames {}

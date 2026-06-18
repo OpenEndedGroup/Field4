@@ -423,6 +423,27 @@ function initialWindowBounds() {
   };
 }
 
+function presentWindow(win) {
+  if (!win || win.isDestroyed()) return;
+  if (win.isMinimized()) win.restore();
+
+  win.show();
+
+  if (process.platform === "darwin") {
+    app.focus({ steal: true });
+  } else if (typeof win.moveTop === "function") {
+    win.moveTop();
+  }
+
+  win.focus();
+}
+
+function presentWindowOnStartup(win) {
+  const present = () => presentWindow(win);
+  setImmediate(present);
+  setTimeout(present, 250);
+}
+
 function createMainWindow() {
   const initialUrl = normalizeUrl(
     process.env.APP_URL || "https://localhost:9092/welcome",
@@ -806,6 +827,7 @@ function createMainWindow() {
   });
 
   openTab(initialUrl, { activate: true });
+  presentWindowOnStartup(win);
 }
 
 app.whenReady().then(() => {

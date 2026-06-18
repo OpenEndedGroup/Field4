@@ -5,7 +5,9 @@ import afield.logger.lblock
 import afield.logger.lprintln
 import afield.macros.ContainingFunction
 import afield.macros.MacroRegistry
+import afield.macros.gatherPreambleUpwards
 import afield.stdlib.applyInsertToPreamble
+import afield.stdlib.normalizePreambleText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.runBlocking
@@ -437,23 +439,35 @@ class KotlinInterface2(
 
     private var k1CompletionDelegate: KotlinInterface? = null
     private var k1CompletionDelegateBootstrapped = false
+    private var k1CompletionDelegatePreambleFingerprint: Int? = null
     private val k1CompletionDelegateMutex = Mutex()
 
     private suspend fun k1CompletionDelegate(): KotlinInterface {
         return k1CompletionDelegateMutex.withLock {
             val existing = k1CompletionDelegate
-            if (existing != null) {
+            val box = resolveBoxContext()
+            val completionPreamble = box?.let { normalizePreambleText(gatherPreambleUpwards(it)) }.orEmpty()
+            val preambleFingerprint = completionPreamble.hashCode()
+            if (existing != null &&
+                k1CompletionDelegateBootstrapped &&
+                k1CompletionDelegatePreambleFingerprint == preambleFingerprint
+            ) {
                 existing.associatedBox = associatedBox
                 return@withLock existing
             }
 
-            val box = resolveBoxContext()
             val boxLabel = box?.let { "'${it.name.ifBlank { "Untitled" }}' (${it.id})" } ?: "none"
+            val resetReason = when {
+                existing == null -> "create"
+                !k1CompletionDelegateBootstrapped -> "bootstrap"
+                else -> "preamble changed"
+            }
             lprintln(
                 "info,ki,startup",
-                "request K1 completion delegate for K2 filePrefix=$filePrefix box=$boxLabel"
+                "request K1 completion delegate for K2 filePrefix=$filePrefix box=$boxLabel reason=$resetReason preambleLength=${completionPreamble.length}"
             )
 
+            existing?.dispose()
             val created = KotlinInterface(
                 propertyClasses = propertyClasses,
                 properties = properties,
@@ -463,21 +477,59 @@ class KotlinInterface2(
             )
             created.associatedBox = associatedBox
             k1CompletionDelegate = created
+            k1CompletionDelegateBootstrapped = false
 
             if (!k1CompletionDelegateBootstrapped) {
                 val implicits = if (box != null) listOf(box) else emptyList()
                 lprintln(
                     "info,ki,startup",
-                    "bootstrap K1 completion delegate filePrefix=${filePrefix}_completion box=$boxLabel introLength=${intro.length}"
+                    "bootstrap K1 completion delegate filePrefix=${filePrefix}_completion box=$boxLabel introLength=${intro.length} preambleLength=${completionPreamble.length}"
                 )
+                val completionSetupCompileError: (List<ScriptDiagnostic>) -> Unit = { diagnostics ->
+                    diagnostics.forEach {
+                        lprintln("warning,completion", "K1 completion setup compile: ${it.message} ${it.location}")
+                    }
+                }
+                val completionSetupEvalError: (List<ScriptDiagnostic>) -> Unit = { diagnostics ->
+                    diagnostics.forEach {
+                        lprintln("warning,completion", "K1 completion setup eval: ${it.message} ${it.location}")
+                    }
+                }
+                val completionSetupEvalException: (Throwable) -> Unit = { throwable ->
+                    lprintln(
+                        "warning,completion",
+                        "K1 completion setup exception: ${throwable.javaClass.simpleName}: ${throwable.message}"
+                    )
+                }
                 if (box != null) {
                     Box.withBoxContext(box) {
-                        created.exec(intro, implicits = implicits)
+                        created.exec(
+                            intro,
+                            onCompileError = completionSetupCompileError,
+                            onEvalError = completionSetupEvalError,
+                            onEvalException = completionSetupEvalException,
+                            implicits = implicits
+                        )
+                        if (completionPreamble.isNotBlank()) {
+                            created.exec(
+                                completionPreamble,
+                                onCompileError = completionSetupCompileError,
+                                onEvalError = completionSetupEvalError,
+                                onEvalException = completionSetupEvalException,
+                                implicits = implicits
+                            )
+                        }
                     }
                 } else {
-                    created.exec(intro)
+                    created.exec(
+                        intro,
+                        onCompileError = completionSetupCompileError,
+                        onEvalError = completionSetupEvalError,
+                        onEvalException = completionSetupEvalException
+                    )
                 }
                 k1CompletionDelegateBootstrapped = true
+                k1CompletionDelegatePreambleFingerprint = preambleFingerprint
             }
 
             created

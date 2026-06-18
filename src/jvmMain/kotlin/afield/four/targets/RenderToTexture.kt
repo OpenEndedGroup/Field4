@@ -36,6 +36,7 @@ data class RTTParameters(
     var colorAttachments: Int = 1,
     var colorFormats: List<Int> = emptyList(),
     var colorLayerCount: Int = 1,                   // single layer count for all color attachments; 0 -> infer from external views
+    var forceColorArrayView: Boolean = false,       // expose color attachments as sampler2DArray even for a single layer
     var viewports: List<afield.Rect> = emptyList(), // optional viewport array override
     var multiviewViewMask: Int = 0,                 // non-zero enables VK_KHR_multiview / dynamic-rendering multiview
     var externalColorViews: Map<Int, HasImageView> = emptyMap(), // optional externally-owned attachments by slot
@@ -463,6 +464,7 @@ open class RenderToTexture(
         val tmpAttachmentViews = MutableList<ImageView?>(colorFormats.size) { null }
         val tmpImageRefs = MutableList<Image?>(colorFormats.size) { null }
         val tmpImageHandles = MutableList<Long>(colorFormats.size) { 0L }
+        val forceColorArrayView = this.parameters.forceColorArrayView
 
         colorFormats.forEachIndexed { idx, fmt ->
             val external = externalViews[idx]
@@ -470,12 +472,26 @@ open class RenderToTexture(
                 require(external.imageView.imageViewData.layerCount == colorLayerCount) {
                     "External color attachment $idx has layerCount=${external.imageView.imageViewData.layerCount} but expected $colorLayerCount"
                 }
-                tmpViews[idx] = external
                 tmpImageRefs[idx] = external.imageView.underlyingImage
                 tmpImageHandles[idx] = external.imageView.image
 
+                val sampledView =
+                    if (forceColorArrayView && external.imageView.imageViewData.viewType != VK_IMAGE_VIEW_TYPE_2D_ARRAY) {
+                        val ivd = ImageViewData()
+                            .format(fmt)
+                            .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                            .baseArrayLayer(external.imageView.imageViewData.baseArrayLayer)
+                            .layerCount(colorLayerCount.coerceAtLeast(1))
+                            .mipLevels(external.imageView.imageViewData.mipLevels)
+                            .viewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY)
+                        ImageView(renderer.device, external.imageView.image, ivd)
+                    } else {
+                        external.imageView
+                    }
+                tmpViews[idx] = sampledView
+
                 val attachmentView =
-                    if (mipLevels == 1) external.imageView
+                    if (mipLevels == 1 && !forceColorArrayView) external.imageView
                     else {
                         val ivd = ImageViewData()
                             .format(fmt)
@@ -483,7 +499,7 @@ open class RenderToTexture(
                             .baseArrayLayer(external.imageView.imageViewData.baseArrayLayer)
                             .layerCount(colorLayerCount.coerceAtLeast(1))
                             .mipLevels(1)
-                        if (ivd.layerCount > 1) ivd.viewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY)
+                        if (ivd.layerCount > 1 || forceColorArrayView) ivd.viewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY)
                         ImageView(renderer.device, external.imageView.image, ivd)
                     }
                 tmpAttachmentViews[idx] = attachmentView
@@ -508,7 +524,7 @@ open class RenderToTexture(
                     .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
                     .layerCount(data.arrayLayers)
                     .mipLevels(mipLevels)
-                if (ivd.layerCount > 1) ivd.viewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY)
+                if (ivd.layerCount > 1 || forceColorArrayView) ivd.viewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY)
 
                 val view = ImageView(renderer.device, img, ivd)
                 tmpViews[idx] = view
@@ -523,7 +539,7 @@ open class RenderToTexture(
                             .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
                             .layerCount(data.arrayLayers)
                             .mipLevels(1)
-                        if (avd.layerCount > 1) avd.viewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY)
+                        if (avd.layerCount > 1 || forceColorArrayView) avd.viewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY)
                         ImageView(renderer.device, img, avd)
                     }
                 tmpAttachmentViews[idx] = attachmentView
@@ -629,10 +645,22 @@ open class RenderToTexture(
         sourceRect: Rect? = null,
         blend: Boolean = false,
         additive: Boolean = false,
+        sourceLayer: Int = 0,
         configure: ColorGrade.() -> Unit = {}
     ): ModulePointer {
         require(attachment in imageViewArray.indices) {
             "attachment $attachment is out of range for RenderToTexture with ${imageViewArray.size} color attachments"
+        }
+        val sourceView = imageViewArray[attachment].imageView
+        val sourceIsArray = sourceView.imageViewData.viewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY
+        if (sourceIsArray) {
+            require(sourceLayer in 0 until sourceView.imageViewData.layerCount) {
+                "sourceLayer $sourceLayer is out of range for RenderToTexture attachment $attachment with ${sourceView.imageViewData.layerCount} layers"
+            }
+        } else {
+            require(sourceLayer == 0) {
+                "sourceLayer can only be non-zero when the source attachment is a 2D array image view"
+            }
         }
 
         val grade = ColorGrade().apply(configure)
@@ -661,7 +689,7 @@ open class RenderToTexture(
             }
             this.viewport = viewport
             vertex = blitVertexShader
-            fragment = blitFragmentShader
+            fragment = if (sourceIsArray) blitArrayFragmentShader else blitFragmentShader
             textureResolver = { tex ->
                 if (tex.name == "sourceTex") sourceProvider to sampler else null
             }
@@ -676,6 +704,7 @@ open class RenderToTexture(
         val src = sourceRect ?: Rect(0.0, 0.0, 1.0, 1.0)
         mesh.push["srcRect"] = vec(src.x.f, src.y.f, src.w.f, src.h.f)
         mesh.push["sampleWeight"] = grade.sampleWeight
+        if (sourceIsArray) mesh.push["sourceLayer"] = sourceLayer.toFloat()
         module.current.meshes[name] = mesh
 
         target += name to module
@@ -713,6 +742,37 @@ open class RenderToTexture(
             void main() {
                 vec2 uv = push.srcRect.xy + fragUV * push.srcRect.zw;
                 vec4 sampled = push.sampleWeight == 0.0 ? vec4(0.0, 0.0, 0.0, 1.0) : texture(sourceTex, uv);
+                if (any(isnan(sampled)) || any(isinf(sampled))) {
+                    sampled = vec4(0.0, 0.0, 0.0, 1.0);
+                }
+                vec4 color = sampled * push.sampleWeight;
+                vec3 graded = color.rgb * push.exposure.rgb + push.offset.rgb;
+                color.rgb = pow(max(graded, vec3(0.0)), push.gamma.rgb);
+                outColor = color;
+            }
+        """.trimIndent()
+
+        private val blitArrayFragmentShader = """
+            #version 460
+            layout(location = 0) in vec2 fragUV;
+            layout(location = 0) out vec4 outColor;
+            
+            layout(set = 0, binding = 0) uniform sampler2DArray sourceTex;
+            
+            layout(push_constant) uniform Push {
+                vec4 exposure;
+                vec4 gamma;
+                vec4 offset;
+                vec4 srcRect; // xy = offset, zw = size in UV space
+                float sampleWeight;
+                float sourceLayer;
+            } push;
+            
+            void main() {
+                vec2 uv = push.srcRect.xy + fragUV * push.srcRect.zw;
+                int layerCount = textureSize(sourceTex, 0).z;
+                float layer = clamp(push.sourceLayer, 0.0, float(max(layerCount - 1, 0)));
+                vec4 sampled = push.sampleWeight == 0.0 ? vec4(0.0, 0.0, 0.0, 1.0) : texture(sourceTex, vec3(uv, layer));
                 if (any(isnan(sampled)) || any(isinf(sampled))) {
                     sampled = vec4(0.0, 0.0, 0.0, 1.0);
                 }

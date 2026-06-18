@@ -365,7 +365,9 @@ open class PingPongRenderToTexture(
                 .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
                 .layerCount(imageData.arrayLayers)
                 .mipLevels(mipLevels)
-            if (viewData.layerCount > 1) viewData.viewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY)
+            if (viewData.layerCount > 1 || this.parameters.forceColorArrayView) {
+                viewData.viewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY)
+            }
 
             val sampledView = ImageView(renderer.device, image, viewData)
             val attachmentView =
@@ -376,7 +378,9 @@ open class PingPongRenderToTexture(
                         .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
                         .layerCount(imageData.arrayLayers)
                         .mipLevels(1)
-                    if (avd.layerCount > 1) avd.viewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY)
+                    if (avd.layerCount > 1 || this.parameters.forceColorArrayView) {
+                        avd.viewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY)
+                    }
                     ImageView(renderer.device, image, avd)
                 }
 
@@ -523,6 +527,7 @@ open class PingPongRenderToTexture(
         sourceRect: Rect?,
         blend: Boolean,
         additive: Boolean,
+        sourceLayer: Int,
         configure: ColorGrade.() -> Unit
     ): ModulePointer {
         target.preTargets["$name-source"] = this
@@ -536,6 +541,7 @@ open class PingPongRenderToTexture(
             sourceRect = sourceRect,
             blend = blend,
             additive = additive,
+            sourceLayer = sourceLayer,
             configure = configure
         )
     }

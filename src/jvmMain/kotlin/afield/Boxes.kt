@@ -788,8 +788,8 @@ fun makeKI(box: Box, reason: String = "makeKI call"): KotlinScriptEngine {
                     ki.exec(
                         intro, implicits = listOf(box)
                     )
-                    lprintln("info,ki,startup", "clear preamble #$startupId box=${box.kotlinStartupLabel()}")
-                    box.preamble = ""
+                    lprintln("info,ki,startup", "reset preamble cache #$startupId box=${box.kotlinStartupLabel()}")
+                    box.properties.remove("_preamble")
 //                    try {
 //                        box.preamble.let { ki.exec(it, implicits = listOf(box)) }
 //                    } catch (t: Throwable) {

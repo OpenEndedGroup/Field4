@@ -102,6 +102,7 @@ class MultiPingPongRenderToTexture(
         this.colorAttachments = 1
         this.colorFormats = if (this@MultiPingPongRenderToTexture.parameters.colorFormats.isNotEmpty()) listOf(this@MultiPingPongRenderToTexture.parameters.colorFormats.first()) else emptyList()
         this.colorLayerCount = this@MultiPingPongRenderToTexture.parameters.colorLayerCount
+        this.forceColorArrayView = this@MultiPingPongRenderToTexture.parameters.forceColorArrayView
         this.viewports = this@MultiPingPongRenderToTexture.parameters.viewports
         this.multiviewViewMask = this@MultiPingPongRenderToTexture.parameters.multiviewViewMask
         this.clearColor = this@MultiPingPongRenderToTexture.parameters.clearColor
@@ -123,6 +124,7 @@ class MultiPingPongRenderToTexture(
         this.colorAttachments = 1
         this.colorFormats = if (this@MultiPingPongRenderToTexture.parameters.colorFormats.isNotEmpty()) listOf(this@MultiPingPongRenderToTexture.parameters.colorFormats.first()) else emptyList()
         this.colorLayerCount = this@MultiPingPongRenderToTexture.parameters.colorLayerCount
+        this.forceColorArrayView = this@MultiPingPongRenderToTexture.parameters.forceColorArrayView
         this.viewports = this@MultiPingPongRenderToTexture.parameters.viewports
         this.multiviewViewMask = this@MultiPingPongRenderToTexture.parameters.multiviewViewMask
         this.clearColor = this@MultiPingPongRenderToTexture.parameters.clearColor
@@ -207,6 +209,7 @@ class MultiPingPongRenderToTexture(
         sourceRect: Rect? = null,
         blend: Boolean = false,
         additive: Boolean = false,
+        sourceLayer: Int = 0,
         configure: RenderToTexture.ColorGrade.() -> Unit = {}
     ): ModulePointer {
         require(attachment == 0) { "MultiPingPongRenderToTexture only supports attachment 0" }
@@ -220,6 +223,7 @@ class MultiPingPongRenderToTexture(
             sourceRect = sourceRect,
             blend = blend,
             additive = additive,
+            sourceLayer = sourceLayer,
             configure = configure
         )
     }
