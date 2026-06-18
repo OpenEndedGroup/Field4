@@ -1830,7 +1830,7 @@ private fun navigationSafeViewportRect(padding: Double = 16.0, occluderGap: Doub
     return if (carved.w >= minSafeWidth) carved else base
 }
 
-private fun ensureBoxVisibleForNavigation(target: HTMLElement) {
+internal fun ensureBoxVisibleForNavigation(target: HTMLElement) {
     val rect = target.getBoundingClientRect()
     if (rect.width <= 0.0 || rect.height <= 0.0) return
 

@@ -2074,6 +2074,34 @@ body::-webkit-scrollbar {
     white-space: nowrap;
 }
 
+.box .document-search-badge {
+    position: absolute !important;
+    top: -10px;
+    right: -10px;
+    z-index: 3;
+    background: rgba(var(--field-search-rgb), 0.92);
+    color: var(--field-fg-inverse);
+    font-size: 10px;
+    line-height: 1.1;
+    padding: 2px 6px;
+    border-radius: 6px;
+    pointer-events: none;
+    box-shadow: var(--field-shadow-sm);
+    white-space: nowrap;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.box .document-search-badge.offset {
+    top: 12px;
+}
+
+.box .document-search-badge.active {
+    background: var(--field-search-active);
+    outline: 1px solid rgba(var(--field-white-rgb), 0.75);
+}
+
 .selection-order-badge {
     position: absolute;
     top: -10px;
@@ -2989,6 +3017,12 @@ kbd {
 
 .box.search-hit-active::after {
     border-color: var(--field-search-active);
+}
+
+.monaco-editor .document-search-editor-match {
+    background: rgba(var(--field-search-rgb), 0.34);
+    outline: 1px solid var(--field-search-active);
+    color: var(--field-fg-strong);
 }
 
 

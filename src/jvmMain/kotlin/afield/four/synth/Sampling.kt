@@ -2,6 +2,7 @@ package afield.four.synth
 
 import java.util.concurrent.ThreadLocalRandom
 import kotlin.math.abs
+import kotlin.math.floor
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.exp
@@ -23,15 +24,7 @@ class AudioSample(
 
     /** Read with Hermite interpolation at fractional position. */
     fun readInterp(position: Double): Float {
-        val n = data.size
-        if (n == 0) return 0f
-        val idx = position.toInt()
-        val frac = (position - idx).toFloat()
-        val s0 = data[((idx - 1) % n + n) % n]
-        val s1 = data[(idx % n + n) % n]
-        val s2 = data[((idx + 1) % n + n) % n]
-        val s3 = data[((idx + 2) % n + n) % n]
-        return hermite4(frac, s0, s1, s2, s3)
+        return readHermiteWrapped(data, position)
     }
 
     companion object {
@@ -57,6 +50,21 @@ private fun hermite4(frac: Float, s0: Float, s1: Float, s2: Float, s3: Float): F
     val c2 = s0 - 2.5f * s1 + 2f * s2 - 0.5f * s3
     val c3 = 0.5f * (s3 - s0) + 1.5f * (s1 - s2)
     return ((c3 * frac + c2) * frac + c1) * frac + c0
+}
+
+private fun wrapIndex(index: Int, size: Int): Int =
+    ((index % size) + size) % size
+
+private fun readHermiteWrapped(data: FloatArray, position: Double): Float {
+    val n = data.size
+    if (n == 0) return 0f
+    val idx = floor(position).toInt()
+    val frac = (position - idx).toFloat()
+    val s0 = data[wrapIndex(idx - 1, n)]
+    val s1 = data[wrapIndex(idx, n)]
+    val s2 = data[wrapIndex(idx + 1, n)]
+    val s3 = data[wrapIndex(idx + 2, n)]
+    return hermite4(frac, s0, s1, s2, s3)
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -149,6 +157,12 @@ enum class GrainEnvelope {
     BLACKMAN
 }
 
+enum class GrainDirection {
+    FORWARD,
+    REVERSE,
+    BIDIRECTIONAL
+}
+
 private fun grainEnvelopeValue(envelope: GrainEnvelope, phase: Double): Float {
     val p = phase.coerceIn(0.0, 1.0)
     val v = when (envelope) {
@@ -202,6 +216,37 @@ private fun randomBipolar(rng: ThreadLocalRandom): Double =
 private fun chooseRandomEnvelope(rng: ThreadLocalRandom): GrainEnvelope =
     GrainEnvelope.entries[rng.nextInt(GrainEnvelope.entries.size)]
 
+private fun nextSpawnThreshold(densityJitter: Double, rng: ThreadLocalRandom): Double {
+    val jitter = densityJitter.coerceAtLeast(0.0)
+    return (1.0 + randomBipolar(rng) * jitter).coerceIn(0.05, 4.0)
+}
+
+private fun jitteredDurationSamples(
+    grainSizeSeconds: Float,
+    grainSizeJitterSeconds: Float,
+    sampleRate: Float,
+    rng: ThreadLocalRandom
+): Int {
+    val jitter = grainSizeJitterSeconds.toDouble().coerceAtLeast(0.0)
+    val seconds = (grainSizeSeconds.toDouble() + randomBipolar(rng) * jitter)
+        .coerceAtLeast(4.0 / sampleRate)
+    return (seconds * sampleRate).toInt().coerceAtLeast(4)
+}
+
+private fun directedRate(baseRate: Double, direction: GrainDirection, rng: ThreadLocalRandom): Double {
+    val magnitude = abs(baseRate)
+    return when (direction) {
+        GrainDirection.FORWARD -> baseRate
+        GrainDirection.REVERSE -> -magnitude
+        GrainDirection.BIDIRECTIONAL -> magnitude * if (rng.nextBoolean()) 1.0 else -1.0
+    }
+}
+
+private fun jitteredGain(gain: Float, gainJitter: Float, rng: ThreadLocalRandom): Float {
+    val factor = 1.0 + randomBipolar(rng) * gainJitter.toDouble().coerceAtLeast(0.0)
+    return (gain.toDouble() * factor).coerceAtLeast(0.0).toFloat()
+}
+
 
 class GrainCloud(
     val source: AudioSample,
@@ -222,7 +267,17 @@ class GrainCloud(
     /** If true, choose a random [GrainEnvelope] for each spawned grain. */
     val randomEnvelope: Boolean = false,
     /** Maximum simultaneous grains. */
-    val maxGrains: Int = 128
+    val maxGrains: Int = 128,
+    /** Per-grain random grain-duration range in seconds (± this amount). */
+    val grainSizeJitter: Param = Param(0f),
+    /** Per-grain random inter-onset variation. 0 = steady, 1 = up to ±100%. */
+    val densityJitter: Param = Param(0f),
+    /** Base gain applied when a grain is spawned. */
+    val gain: Param = Param(1f),
+    /** Per-grain random gain variation as a fraction of [gain]. */
+    val gainJitter: Param = Param(0f),
+    /** Direction mode used when each grain is spawned. */
+    val direction: GrainDirection = GrainDirection.FORWARD
 ) : Signal() {
 
     private class Grain {
@@ -232,11 +287,13 @@ class GrainCloud(
         var age = 0            // samples elapsed
         var duration = 0       // grain duration in samples
         var envPhase = 0.0     // envelope phase (0…1)
+        var gain = 1f
         var envelope = GrainEnvelope.HANN
     }
 
     private val grains = Array(maxGrains) { Grain() }
     private var spawnAccum = 0.0  // accumulator for grain spawning
+    private var spawnThreshold = 1.0
 
     private var posBuf   = FloatArray(0)
     private var sizeBuf  = FloatArray(0)
@@ -244,12 +301,18 @@ class GrainCloud(
     private var pitchBuf = FloatArray(0)
     private var pitchJitterBuf = FloatArray(0)
     private var sprayBuf = FloatArray(0)
+    private var sizeJitterBuf = FloatArray(0)
+    private var densityJitterBuf = FloatArray(0)
+    private var gainBuf = FloatArray(0)
+    private var gainJitterBuf = FloatArray(0)
 
     override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
         if (posBuf.size < numFrames) {
             posBuf = FloatArray(numFrames); sizeBuf = FloatArray(numFrames)
             densBuf = FloatArray(numFrames); pitchBuf = FloatArray(numFrames)
             pitchJitterBuf = FloatArray(numFrames); sprayBuf = FloatArray(numFrames)
+            sizeJitterBuf = FloatArray(numFrames); densityJitterBuf = FloatArray(numFrames)
+            gainBuf = FloatArray(numFrames); gainJitterBuf = FloatArray(numFrames)
         }
         position.render(posBuf, numFrames, ctx)
         grainSize.render(sizeBuf, numFrames, ctx)
@@ -257,6 +320,10 @@ class GrainCloud(
         pitch.render(pitchBuf, numFrames, ctx)
         pitchJitterCents.render(pitchJitterBuf, numFrames, ctx)
         spray.render(sprayBuf, numFrames, ctx)
+        grainSizeJitter.render(sizeJitterBuf, numFrames, ctx)
+        densityJitter.render(densityJitterBuf, numFrames, ctx)
+        gain.render(gainBuf, numFrames, ctx)
+        gainJitter.render(gainJitterBuf, numFrames, ctx)
         Buf.clear(output, 0, numFrames)
 
         val rng = ThreadLocalRandom.current()
@@ -265,12 +332,13 @@ class GrainCloud(
         val invSr = ctx.inverseSampleRate.toDouble()
 
         for (i in 0 until numFrames) {
-            val dens = densBuf[i].toDouble().coerceAtLeast(0.1)
-            spawnAccum += dens * invSr
+            val dens = densBuf[i].toDouble().coerceAtLeast(0.0)
+            if (dens > 0.0) spawnAccum += dens * invSr
 
             // Spawn new grains
-            while (spawnAccum >= 1.0) {
-                spawnAccum -= 1.0
+            while (spawnAccum >= spawnThreshold) {
+                spawnAccum -= spawnThreshold
+                spawnThreshold = nextSpawnThreshold(densityJitterBuf[i].toDouble(), rng)
                 val grain = grains.firstOrNull { !it.active } ?: continue
 
                 val posNorm = posBuf[i].toDouble().coerceIn(0.0, 1.0)
@@ -285,10 +353,11 @@ class GrainCloud(
                 } else {
                     1.0
                 }
-                grain.rate = pitchBuf[i].toDouble() * pitchRatio
-                grain.duration = (sizeBuf[i] * ctx.sampleRate).toInt().coerceAtLeast(4)
+                grain.rate = directedRate(pitchBuf[i].toDouble() * pitchRatio, direction, rng)
+                grain.duration = jitteredDurationSamples(sizeBuf[i], sizeJitterBuf[i], ctx.sampleRate, rng)
                 grain.age = 0
                 grain.envPhase = 0.0
+                grain.gain = jitteredGain(gainBuf[i], gainJitterBuf[i], rng)
                 grain.envelope = if (randomEnvelope) chooseRandomEnvelope(rng) else envelope
             }
 
@@ -298,7 +367,7 @@ class GrainCloud(
                 if (!grain.active) continue
                 val env = grainEnvelopeValue(grain.envelope, grain.envPhase)
                 val sample = source.readInterp(grain.sourcePos)
-                sum += sample * env
+                sum += sample * env * grain.gain
 
                 grain.sourcePos += grain.rate
                 grain.age++
@@ -321,7 +390,12 @@ class GrainCloud(
         "spray" to spray,
         "envelope" to envelope,
         "randomEnvelope" to randomEnvelope,
-        "maxGrains" to maxGrains
+        "maxGrains" to maxGrains,
+        "grainSizeJitter" to grainSizeJitter,
+        "densityJitter" to densityJitter,
+        "gain" to gain,
+        "gainJitter" to gainJitter,
+        "direction" to direction
     )
 }
 
@@ -346,7 +420,12 @@ class StereoGrainCloud(
     val stereoScatter: Param = Param(0f),
     val envelope: GrainEnvelope = GrainEnvelope.HANN,
     val randomEnvelope: Boolean = false,
-    val maxGrains: Int = 128
+    val maxGrains: Int = 128,
+    val grainSizeJitter: Param = Param(0f),
+    val densityJitter: Param = Param(0f),
+    val gain: Param = Param(1f),
+    val gainJitter: Param = Param(0f),
+    val direction: GrainDirection = GrainDirection.FORWARD
 ) : StereoNode() {
     private class Grain {
         var active = false
@@ -359,11 +438,13 @@ class StereoGrainCloud(
         var widthSamples = 0.0
         var scatterL = 0.0
         var scatterR = 0.0
+        var gain = 1f
         var envelope = GrainEnvelope.HANN
     }
 
     private val grains = Array(maxGrains) { Grain() }
     private var spawnAccum = 0.0
+    private var spawnThreshold = 1.0
 
     private var posBuf = FloatArray(0); private var sizeBuf = FloatArray(0)
     private var densBuf = FloatArray(0); private var pitchBuf = FloatArray(0)
@@ -371,6 +452,8 @@ class StereoGrainCloud(
     private var spreadBuf = FloatArray(0); private var panBuf = FloatArray(0)
     private var widthBuf = FloatArray(0); private var widthRandomBuf = FloatArray(0)
     private var stereoScatterBuf = FloatArray(0)
+    private var sizeJitterBuf = FloatArray(0); private var densityJitterBuf = FloatArray(0)
+    private var gainBuf = FloatArray(0); private var gainJitterBuf = FloatArray(0)
 
     override fun generateStereo(outL: FloatArray, outR: FloatArray, numFrames: Int, ctx: SynthContext) {
         if (posBuf.size < numFrames) {
@@ -380,6 +463,8 @@ class StereoGrainCloud(
             spreadBuf = FloatArray(numFrames); panBuf = FloatArray(numFrames)
             widthBuf = FloatArray(numFrames); widthRandomBuf = FloatArray(numFrames)
             stereoScatterBuf = FloatArray(numFrames)
+            sizeJitterBuf = FloatArray(numFrames); densityJitterBuf = FloatArray(numFrames)
+            gainBuf = FloatArray(numFrames); gainJitterBuf = FloatArray(numFrames)
         }
         position.render(posBuf, numFrames, ctx)
         grainSize.render(sizeBuf, numFrames, ctx)
@@ -392,6 +477,10 @@ class StereoGrainCloud(
         stereoWidth.render(widthBuf, numFrames, ctx)
         stereoWidthRandom.render(widthRandomBuf, numFrames, ctx)
         stereoScatter.render(stereoScatterBuf, numFrames, ctx)
+        grainSizeJitter.render(sizeJitterBuf, numFrames, ctx)
+        densityJitter.render(densityJitterBuf, numFrames, ctx)
+        gain.render(gainBuf, numFrames, ctx)
+        gainJitter.render(gainJitterBuf, numFrames, ctx)
         Buf.clear(outL, 0, numFrames)
         Buf.clear(outR, 0, numFrames)
 
@@ -401,11 +490,12 @@ class StereoGrainCloud(
         val invSr = ctx.inverseSampleRate.toDouble()
 
         for (i in 0 until numFrames) {
-            val dens = densBuf[i].toDouble().coerceAtLeast(0.1)
-            spawnAccum += dens * invSr
+            val dens = densBuf[i].toDouble().coerceAtLeast(0.0)
+            if (dens > 0.0) spawnAccum += dens * invSr
 
-            while (spawnAccum >= 1.0) {
-                spawnAccum -= 1.0
+            while (spawnAccum >= spawnThreshold) {
+                spawnAccum -= spawnThreshold
+                spawnThreshold = nextSpawnThreshold(densityJitterBuf[i].toDouble(), rng)
                 val grain = grains.firstOrNull { !it.active } ?: continue
                 val posNorm = posBuf[i].toDouble().coerceIn(0.0, 1.0)
                 val sprayAmt = sprayBuf[i].toDouble() * srcRate
@@ -424,14 +514,15 @@ class StereoGrainCloud(
                 } else {
                     1.0
                 }
-                grain.rate = pitchBuf[i].toDouble() * pitchRatio
-                grain.duration = (sizeBuf[i] * ctx.sampleRate).toInt().coerceAtLeast(4)
+                grain.rate = directedRate(pitchBuf[i].toDouble() * pitchRatio, direction, rng)
+                grain.duration = jitteredDurationSamples(sizeBuf[i], sizeJitterBuf[i], ctx.sampleRate, rng)
                 grain.age = 0
                 grain.envPhase = 0.0
                 grain.pan = (panBuf[i] + randomBipolar(rng).toFloat() * sp).coerceIn(-1f, 1f)
                 grain.widthSamples = widthSeconds * srcRate * if (rng.nextBoolean()) 1.0 else -1.0
                 grain.scatterL = if (channelScatter > 0) randomBipolar(rng) * channelScatter else 0.0
                 grain.scatterR = if (channelScatter > 0) randomBipolar(rng) * channelScatter else 0.0
+                grain.gain = jitteredGain(gainBuf[i], gainJitterBuf[i], rng)
                 grain.envelope = if (randomEnvelope) chooseRandomEnvelope(rng) else envelope
             }
 
@@ -439,8 +530,9 @@ class StereoGrainCloud(
                 if (!grain.active) continue
                 val env = grainEnvelopeValue(grain.envelope, grain.envPhase)
                 val width = grain.widthSamples * 0.5
-                val sampleL = source.readInterp(grain.sourcePos - width + grain.scatterL) * env
-                val sampleR = source.readInterp(grain.sourcePos + width + grain.scatterR) * env
+                val envGain = env * grain.gain
+                val sampleL = source.readInterp(grain.sourcePos - width + grain.scatterL) * envGain
+                val sampleR = source.readInterp(grain.sourcePos + width + grain.scatterR) * envGain
                 val pan01 = 0.5f + grain.pan * 0.5f
                 val gainL = 1f - pan01
                 val gainR = pan01
@@ -471,6 +563,202 @@ class StereoGrainCloud(
         "stereoScatter" to stereoScatter,
         "envelope" to envelope,
         "randomEnvelope" to randomEnvelope,
-        "maxGrains" to maxGrains
+        "maxGrains" to maxGrains,
+        "grainSizeJitter" to grainSizeJitter,
+        "densityJitter" to densityJitter,
+        "gain" to gain,
+        "gainJitter" to gainJitter,
+        "direction" to direction
+    )
+}
+
+
+class LiveGrainCloud(
+    val input: Signal,
+    /** Normalized delay through the live buffer: 0 = recent, 1 = oldest. */
+    val position: Param = Param(0.5f),
+    val grainSize: Param = Param(0.05f),
+    val density: Param = Param(20f),
+    val pitch: Param = Param(1f),
+    val pitchJitterCents: Param = Param(0f),
+    /** Random source-position scatter in seconds. */
+    val spray: Param = Param(0f),
+    /** Recording gate/gain for writing into the circular buffer. */
+    val record: Param = Param(1f),
+    val envelope: GrainEnvelope = GrainEnvelope.HANN,
+    val randomEnvelope: Boolean = false,
+    val maxGrains: Int = 128,
+    val bufferSeconds: Float = 5f,
+    val grainSizeJitter: Param = Param(0f),
+    val densityJitter: Param = Param(0f),
+    val gain: Param = Param(1f),
+    val gainJitter: Param = Param(0f),
+    val direction: GrainDirection = GrainDirection.FORWARD
+) : Signal() {
+    private class Grain {
+        var active = false
+        var sourcePos = 0.0
+        var rate = 1.0
+        var age = 0
+        var duration = 0
+        var envPhase = 0.0
+        var gain = 1f
+        var envelope = GrainEnvelope.HANN
+    }
+
+    private val grains = Array(maxGrains) { Grain() }
+    private var ring = FloatArray(0)
+    private var writePos = 0
+    private var recordLevel = 0.0
+    private var spawnAccum = 0.0
+    private var spawnThreshold = 1.0
+
+    private var inputBuf = FloatArray(0)
+    private var posBuf = FloatArray(0)
+    private var sizeBuf = FloatArray(0)
+    private var densBuf = FloatArray(0)
+    private var pitchBuf = FloatArray(0)
+    private var pitchJitterBuf = FloatArray(0)
+    private var sprayBuf = FloatArray(0)
+    private var recordBuf = FloatArray(0)
+    private var sizeJitterBuf = FloatArray(0)
+    private var densityJitterBuf = FloatArray(0)
+    private var gainBuf = FloatArray(0)
+    private var gainJitterBuf = FloatArray(0)
+
+    override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
+        ensureRing(ctx)
+        ensureBuffers(numFrames)
+
+        input.render(inputBuf, numFrames, ctx)
+        position.render(posBuf, numFrames, ctx)
+        grainSize.render(sizeBuf, numFrames, ctx)
+        density.render(densBuf, numFrames, ctx)
+        pitch.render(pitchBuf, numFrames, ctx)
+        pitchJitterCents.render(pitchJitterBuf, numFrames, ctx)
+        spray.render(sprayBuf, numFrames, ctx)
+        record.render(recordBuf, numFrames, ctx)
+        grainSizeJitter.render(sizeJitterBuf, numFrames, ctx)
+        densityJitter.render(densityJitterBuf, numFrames, ctx)
+        gain.render(gainBuf, numFrames, ctx)
+        gainJitter.render(gainJitterBuf, numFrames, ctx)
+        Buf.clear(output, 0, numFrames)
+
+        val rng = ThreadLocalRandom.current()
+        val invSr = ctx.inverseSampleRate.toDouble()
+        val recordSlew = (1.0 / (ctx.sampleRate * 0.01)).coerceIn(0.0001, 1.0)
+
+        for (i in 0 until numFrames) {
+            writeInputSample(inputBuf[i], recordBuf[i], recordSlew)
+
+            val dens = densBuf[i].toDouble().coerceAtLeast(0.0)
+            if (dens > 0.0) spawnAccum += dens * invSr
+
+            while (spawnAccum >= spawnThreshold) {
+                spawnAccum -= spawnThreshold
+                spawnThreshold = nextSpawnThreshold(densityJitterBuf[i].toDouble(), rng)
+                spawnLiveGrain(i, ctx, rng)
+            }
+
+            var sum = 0f
+            for (grain in grains) {
+                if (!grain.active) continue
+                val env = grainEnvelopeValue(grain.envelope, grain.envPhase)
+                val sample = readHermiteWrapped(ring, grain.sourcePos)
+                sum += sample * env * grain.gain
+
+                grain.sourcePos += grain.rate
+                grain.age++
+                grain.envPhase = grain.age.toDouble() / grain.duration.toDouble()
+                if (grain.age >= grain.duration) grain.active = false
+            }
+            output[i] = sum
+        }
+    }
+
+    private fun ensureRing(ctx: SynthContext) {
+        val needed = (bufferSeconds.coerceAtLeast(0.05f) * ctx.sampleRate).toInt()
+            .coerceAtLeast(ctx.bufferSize + 8)
+        if (ring.size == needed) return
+        ring = FloatArray(needed)
+        writePos = 0
+        recordLevel = 0.0
+        spawnAccum = 0.0
+        spawnThreshold = 1.0
+        grains.forEach { it.active = false }
+    }
+
+    private fun ensureBuffers(numFrames: Int) {
+        if (inputBuf.size >= numFrames) return
+        inputBuf = FloatArray(numFrames)
+        posBuf = FloatArray(numFrames)
+        sizeBuf = FloatArray(numFrames)
+        densBuf = FloatArray(numFrames)
+        pitchBuf = FloatArray(numFrames)
+        pitchJitterBuf = FloatArray(numFrames)
+        sprayBuf = FloatArray(numFrames)
+        recordBuf = FloatArray(numFrames)
+        sizeJitterBuf = FloatArray(numFrames)
+        densityJitterBuf = FloatArray(numFrames)
+        gainBuf = FloatArray(numFrames)
+        gainJitterBuf = FloatArray(numFrames)
+    }
+
+    private fun writeInputSample(sample: Float, recordTarget: Float, slew: Double) {
+        val target = recordTarget.toDouble().coerceIn(0.0, 1.0)
+        recordLevel += (target - recordLevel) * slew
+        if (recordLevel <= 0.00001 && target <= 0.00001) return
+
+        ring[writePos] = sample * recordLevel.toFloat()
+        writePos = (writePos + 1) % ring.size
+    }
+
+    private fun spawnLiveGrain(i: Int, ctx: SynthContext, rng: ThreadLocalRandom) {
+        val grain = grains.firstOrNull { !it.active } ?: return
+        val duration = jitteredDurationSamples(sizeBuf[i], sizeJitterBuf[i], ctx.sampleRate, rng)
+        val jitterCents = pitchJitterBuf[i].toDouble().coerceAtLeast(0.0)
+        val pitchRatio = if (jitterCents > 0.0) {
+            2.0.pow(randomBipolar(rng) * jitterCents / 1200.0)
+        } else {
+            1.0
+        }
+        val rate = directedRate(pitchBuf[i].toDouble() * pitchRatio, direction, rng)
+        val maxDelay = (ring.size - 4).toDouble().coerceAtLeast(4.0)
+        val posNorm = posBuf[i].toDouble().coerceIn(0.0, 1.0)
+        val spraySamples = sprayBuf[i].toDouble().coerceAtLeast(0.0) * ctx.sampleRate
+        val scatter = if (spraySamples > 0) randomBipolar(rng) * spraySamples else 0.0
+        val travelSafety = if (rate > 0.0) abs(rate) * duration + 4.0 else 4.0
+        val minDelay = travelSafety.coerceAtMost(maxDelay)
+        val delaySamples = (posNorm * maxDelay + scatter).coerceIn(minDelay, maxDelay)
+
+        grain.active = true
+        grain.sourcePos = writePos.toDouble() - delaySamples
+        grain.rate = rate
+        grain.duration = duration
+        grain.age = 0
+        grain.envPhase = 0.0
+        grain.gain = jitteredGain(gainBuf[i], gainJitterBuf[i], rng)
+        grain.envelope = if (randomEnvelope) chooseRandomEnvelope(rng) else envelope
+    }
+
+    override fun toString(): String = synthPrettyObject(
+        this,
+        "input" to input,
+        "position" to position,
+        "grainSize" to grainSize,
+        "density" to density,
+        "pitch" to pitch,
+        "pitchJitterCents" to pitchJitterCents,
+        "spray" to spray,
+        "record" to record,
+        "envelope" to envelope,
+        "randomEnvelope" to randomEnvelope,
+        "maxGrains" to maxGrains,
+        "bufferSeconds" to bufferSeconds,
+        "grainSizeJitter" to grainSizeJitter,
+        "densityJitter" to densityJitter,
+        "gain" to gain,
+        "gainJitter" to gainJitter,
+        "direction" to direction
     )
 }

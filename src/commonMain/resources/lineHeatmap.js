@@ -89,6 +89,8 @@ const LineHeatmap = (() => {
         rules.push(`
 .monaco-editor .line-numbers.afield-line-heat {
     position: relative;
+    width: 25px !important;
+    padding-right: 10px;
     overflow: hidden;
     border-radius: 0;
 }

@@ -63,9 +63,13 @@ private var searchPrev: HTMLButtonElement? = null
 private var searchNext: HTMLButtonElement? = null
 private var searchClose: HTMLButtonElement? = null
 private var activeHighlightedBox: HTMLElement? = null
+private var activeEditorDecorationOwner: dynamic = null
+private var activeEditorDecorationCollection: dynamic = null
 
 private const val searchWidgetId = "document-search"
 private const val searchRefocusDelayMs = 180
+private const val searchHighlightRetryDelayMs = 80
+private const val searchHighlightMaxAttempts = 8
 
 fun initializeDocumentSearch() {
     ensureSearchWidget()
@@ -230,6 +234,7 @@ private fun performSearch(query: String) {
 
     searchMatches = matches
     activeMatchIndex = -1
+    clearEditorMatchHighlight()
     applyHighlights()
     updateCounter()
 }
@@ -238,16 +243,48 @@ private fun applyHighlights() {
     clearHighlightClasses()
     if (searchMatches.isEmpty()) return
 
-    val counts = mutableMapOf<HTMLElement, Int>()
+    val counts = mutableMapOf<HTMLElement, MutableMap<String, Int>>()
     searchMatches.forEach { match ->
-        counts[match.box] = (counts[match.box] ?: 0) + 1
+        val perProperty = counts.getOrPut(match.box) { linkedMapOf() }
+        perProperty[match.property] = (perProperty[match.property] ?: 0) + 1
     }
 
-    counts.keys.forEach { box -> box.classList.add("search-hit") }
+    counts.forEach { (box, perProperty) ->
+        box.classList.add("search-hit")
+        updateSearchBadge(box, perProperty)
+    }
 
     val active = searchMatches.getOrNull(activeMatchIndex)
-    active?.box?.classList?.add("search-hit-active")
+    active?.box?.let { box ->
+        box.classList.add("search-hit-active")
+        (box.querySelector(".document-search-badge") as? HTMLElement)?.classList?.add("active")
+    }
     activeHighlightedBox = active?.box
+}
+
+private fun updateSearchBadge(box: HTMLElement, perProperty: Map<String, Int>) {
+    var badge = box.querySelector(".document-search-badge") as? HTMLElement
+    if (badge == null) {
+        badge = document.createElement("div") as HTMLElement
+        badge.classList.add("document-search-badge")
+        box.appendChild(badge)
+    }
+
+    val entries = perProperty.entries.toList()
+    val shown = entries.take(3).map { (property, count) ->
+        if (count > 1) "$property x$count" else property
+    }
+    val tail = if (entries.size > 3) " +${entries.size - 3}" else ""
+    val total = perProperty.values.sum()
+    badge.textContent = "${shown.joinToString(", ")}$tail"
+    badge.title = entries.joinToString(", ") { (property, count) ->
+        if (count > 1) "$property: $count matches" else "$property: 1 match"
+    }
+    badge.dataset.asDynamic().count = total.toString()
+
+    val hasProvisionalBadge = box.querySelector(".provisional-badge") != null
+    badge.classList.toggle("offset", hasProvisionalBadge)
+    badge.classList.remove("active")
 }
 
 private fun clearHighlightClasses() {
@@ -258,6 +295,10 @@ private fun clearHighlightClasses() {
             element.classList.remove("search-hit-active")
         }
     }
+    val badges = document.querySelectorAll(".document-search-badge")
+    for (i in 0 until badges.length) {
+        (badges.item(i) as? HTMLElement)?.remove()
+    }
     activeHighlightedBox = null
 }
 
@@ -266,6 +307,7 @@ private fun clearSearchResults() {
     activeMatchIndex = -1
     updateCounter()
     clearHighlightClasses()
+    clearEditorMatchHighlight()
 }
 
 private fun focusMatch(index: Int) {
@@ -303,50 +345,135 @@ private fun updateCounter(match: SearchMatch? = null) {
 
 private fun openMatch(match: SearchMatch, allowEditorFocus: Boolean) {
     openNestedParents(match.box)
-    match.box.scrollIntoView(js("{ behavior: 'smooth', block: 'center', inline: 'center' }"))
-
-    selected.toList().forEach { deselectBox(it) }
-    selectBox(match.box)
-
-    selectedProperty = match.property
-    window.asDynamic().selectedProperty = match.property
-    window.asDynamic().selectionContextChanged?.let { fn ->
-        try {
-            fn()
-        } catch (_: dynamic) {}
-    }
+    ensureBoxVisibleForNavigation(match.box)
 
     val uid = match.box.asDynamic().uid as? String
     val w = window.asDynamic()
+    w.suppressNextEditorStateRestore = true
     val switchToProperty = w.switchToProperty
     if (uid != null && switchToProperty != null && switchToProperty != undefined) {
         try {
             switchToProperty(uid, match.property)
         } catch (e: dynamic) {
             console.info("[search] switchToProperty failed", e)
+            fallbackSelectMatch(match)
         }
     } else {
+        fallbackSelectMatch(match)
         showMonaco()
     }
 
-    window.setTimeout({
+    scheduleEditorMatchHighlight(match, allowEditorFocus)
+}
+
+private fun fallbackSelectMatch(match: SearchMatch) {
+    selected.toList().forEach { deselectBox(it) }
+    setSelectedEditorProperty(match.property)
+    selectBox(match.box)
+    selectionContextChanged()
+}
+
+private fun clearEditorMatchHighlight() {
+    val collection = activeEditorDecorationCollection
+    if (collection != null && collection != undefined) {
         try {
-            val editor = w.globalEditor
-            val monaco = w.globalMonaco
+            collection.clear()
+        } catch (_: dynamic) {
+        }
+    }
+    activeEditorDecorationOwner = null
+    activeEditorDecorationCollection = null
+}
+
+private fun scheduleEditorMatchHighlight(match: SearchMatch, allowEditorFocus: Boolean, attempt: Int = 0) {
+    val delay = if (attempt == 0) 140 else searchHighlightRetryDelayMs
+    window.setTimeout({
+        highlightEditorMatch(match, allowEditorFocus, attempt)
+    }, delay)
+}
+
+private fun highlightEditorMatch(match: SearchMatch, allowEditorFocus: Boolean, attempt: Int) {
+    if (searchMatches.getOrNull(activeMatchIndex) != match) return
+    try {
+        val w = window.asDynamic()
+        val editor: dynamic = w.globalEditor
+        val monaco: dynamic = w.globalMonaco
+        if (editor == null || editor == undefined || monaco == null || monaco == undefined) {
+            retryEditorMatchHighlight(match, allowEditorFocus, attempt)
+            return
+        }
+
+        val model = editor.getModel()
+        val currentProperty = w.currentSelectedProperty as? String
+        val selectedProperty = w.selectedProperty as? String
+        val expectedText = match.box.asDynamic()[match.property] as? String
+        val modelText = model?.getValue() as? String
+        val propertyReady = currentProperty == match.property || selectedProperty == match.property
+        val textReady = expectedText == null || modelText == expectedText.replace("\r\n", "\n")
+
+        if ((!propertyReady || !textReady) && attempt < searchHighlightMaxAttempts) {
+            retryEditorMatchHighlight(match, allowEditorFocus, attempt)
+            return
+        }
+
+        val startLine = match.startLine
+        val startColumn = match.startColumn
+        val endLine = match.endLine
+        val endColumn = match.endColumn
+        val range = js("new monaco.Range(startLine, startColumn, endLine, endColumn)")
+        val position = js("{}")
+        position.lineNumber = startLine
+        position.column = startColumn
+        editor.setSelection(range)
+        editor.setPosition(position)
+        editor.revealRangeInCenter(range)
+
+        if (activeEditorDecorationOwner != editor || activeEditorDecorationCollection == null || activeEditorDecorationCollection == undefined) {
+            clearEditorMatchHighlight()
+            activeEditorDecorationOwner = editor
+            activeEditorDecorationCollection = js("editor.createDecorationsCollection([])")
+        }
+
+        val options = js("{}")
+        options.inlineClassName = "document-search-editor-match"
+        options.stickiness = 1
+        val decoration = js("{}")
+        decoration.range = range
+        decoration.options = options
+        activeEditorDecorationCollection.set(arrayOf(decoration))
+
+        if (allowEditorFocus) js("editor.focus()")
+    } catch (e: dynamic) {
+        console.info("[search] failed to highlight match", e)
+    }
+}
+
+private fun retryEditorMatchHighlight(match: SearchMatch, allowEditorFocus: Boolean, attempt: Int) {
+    if (attempt >= searchHighlightMaxAttempts) {
+        try {
+            val w = window.asDynamic()
+            val editor: dynamic = w.globalEditor
+            val monaco: dynamic = w.globalMonaco
             if (editor != null && editor != undefined && monaco != null && monaco != undefined) {
                 val startLine = match.startLine
                 val startColumn = match.startColumn
                 val endLine = match.endLine
                 val endColumn = match.endColumn
                 val range = js("new monaco.Range(startLine, startColumn, endLine, endColumn)")
+                val position = js("{}")
+                position.lineNumber = startLine
+                position.column = startColumn
                 editor.setSelection(range)
+                editor.setPosition(position)
                 editor.revealRangeInCenter(range)
                 if (allowEditorFocus) editor.focus()
             }
         } catch (e: dynamic) {
             console.info("[search] failed to highlight match", e)
         }
-    }, 120)
+        return
+    }
+    scheduleEditorMatchHighlight(match, allowEditorFocus, attempt + 1)
 }
 
 private fun openNestedParents(box: HTMLElement) {
