@@ -262,7 +262,16 @@
      val sample = AudioSample.generate(1f) { t ->
          kotlin.math.sin((t * 220f * 2f * kotlin.math.PI.toFloat()).toDouble()).toFloat()
      }
-     GrainCloud(sample, density = 18.p, position = 0.35.p, grainSize = 0.08.p)
+     GrainCloud(
+         sample,
+         density = 18.p,
+         position = 0.35.p,
+         grainSize = 0.08.p,
+         grainSizeJitter = 0.025.p,
+         densityJitter = 0.5.p,
+         gainJitter = 0.35.p,
+         direction = GrainDirection.BIDIRECTIONAL
+     )
 
  Stereo cloud:
 
@@ -270,6 +279,23 @@
          kotlin.math.sin((t * 110f * 2f * kotlin.math.PI.toFloat()).toDouble()).toFloat()
      }
      StereoGrainCloud(sample, density = 12.p, spread = 0.7.p)
+
+ Live input cloud:
+
+     audio {
+         LiveGrainCloud(
+             audioIn,
+             bufferSeconds = 6f,
+             position = 0.35.p,
+             density = 24.p,
+             grainSize = 0.07.p,
+             grainSizeJitter = 0.03.p,
+             densityJitter = 0.6.p,
+             pitchJitterCents = 300.p,
+             gainJitter = 0.4.p,
+             direction = GrainDirection.BIDIRECTIONAL
+         ) * 0.6f
+     }
 
  Dirt sample library and polyphonic player:
 

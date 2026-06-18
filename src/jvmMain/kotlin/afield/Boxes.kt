@@ -261,6 +261,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "autorun",
             "layers",
             "layerFrames",
+            "_controlGroupValues",
             "ai4_auto_name",
             "ai4_auto_name_signature"
         )

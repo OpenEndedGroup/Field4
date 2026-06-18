@@ -128,20 +128,6 @@ private fun computePropertyActionLabel(w: dynamic, baseLabel: String, propName: 
     return baseLabel
 }
 
-private fun installDynamicPropertyActionLabel(action: dynamic, baseLabel: String, propName: String) {
-    val getter = {
-        computePropertyActionLabel(js("window"), baseLabel, propName)
-    }
-    js(
-        """(function(action, getter) {
-            Object.defineProperty(action, 'label', {
-                get: getter,
-                enumerable: true
-            });
-        })"""
-    )(action, getter)
-}
-
 private fun disposePropertySwitchActions(previous: dynamic) {
     val len = (previous?.length as? Number)?.toInt() ?: 0
     if (len <= 0) return
@@ -155,10 +141,17 @@ private fun disposePropertySwitchActions(previous: dynamic) {
 }
 
 internal fun monacoInstallPropertySwitchActions(monaco: dynamic, ed: dynamic) {
-    if ((ed.afieldPropertySwitchActionsInstalled as? Boolean) == true) return
-    ed.afieldPropertySwitchActionsInstalled = true
-
     val w = js("window")
+    val labels = monacoPropertyNames.mapIndexed { i, propName ->
+        computePropertyActionLabel(w, "Edit: " + monacoPropertyDescriptions[i], propName)
+    }
+    val signature = labels.joinToString("\u0000")
+    if ((ed.afieldPropertySwitchActionsInstalled as? Boolean) == true &&
+        ed.afieldPropertySwitchActionSignature == signature
+    ) return
+
+    ed.afieldPropertySwitchActionsInstalled = true
+    ed.afieldPropertySwitchActionSignature = signature
     disposePropertySwitchActions(w.propertyActionDisposables)
 
     val keyCodes = arrayOf(
@@ -174,12 +167,10 @@ internal fun monacoInstallPropertySwitchActions(monaco: dynamic, ed: dynamic) {
 
     for (i in monacoPropertyNames.indices) {
         val actionId = "switch-property-" + monacoPropertyNames[i]
-        val baseLabel = "Edit: " + monacoPropertyDescriptions[i]
-        val propName = monacoPropertyNames[i]
 
         val action = js("{}")
         action.id = actionId
-        installDynamicPropertyActionLabel(action, baseLabel, propName)
+        action.label = labels[i]
         action.contextMenuGroupId = "navigation"
         action.contextMenuOrder = 2.0
 

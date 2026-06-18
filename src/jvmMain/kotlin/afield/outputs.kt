@@ -955,6 +955,7 @@ fun Box.colorPicker(
 // DSL-style grouping of controls
 
 private const val controlGroupCacheProperty = "_controlGroupCache"
+private const val controlGroupValuesProperty = "_controlGroupValues"
 
 private val controllerControlGroups = java.util.concurrent.ConcurrentHashMap<String, List<ControllerControl>>()
 private val controllerControlGroupBoxes = java.util.concurrent.ConcurrentHashMap<String, Box>()
@@ -986,10 +987,113 @@ private fun Box.existingControlGroupCache(): java.util.concurrent.ConcurrentHash
     return existing as? java.util.concurrent.ConcurrentHashMap<String, ControllerControl>
 }
 
+private fun controlGroupNumber(value: Any?): Double? = when (value) {
+    is Number -> value.toDouble()
+    is String -> value.toDoubleOrNull()
+    else -> null
+}
+
+private fun controlGroupBoolean(value: Any?): Boolean? = when (value) {
+    is Boolean -> value
+    is String -> value.toBooleanStrictOrNull()
+    else -> null
+}
+
+private fun controlGroupStoredValue(control: ControllerControl): LinkedHashMap<String, Any?> =
+    LinkedHashMap<String, Any?>().apply {
+        this["id"] = control.id
+        this["type"] = control.type
+        this["label"] = control.label
+        this["channel"] = control.channel
+        this["min"] = control.min
+        this["max"] = control.max
+        this["step"] = control.step
+        this["value"] = control.value
+        this["xMin"] = control.xMin
+        this["xMax"] = control.xMax
+        this["yMin"] = control.yMin
+        this["yMax"] = control.yMax
+        this["x"] = control.x
+        this["y"] = control.y
+        this["checked"] = control.checked
+        this["text"] = control.text
+        this["r"] = control.r
+        this["g"] = control.g
+        this["b"] = control.b
+        this["a"] = control.a
+        this["decimalPlaces"] = control.decimalPlaces
+        entries.removeIf { it.value == null }
+    }
+
+private fun Box.controlGroupValues(): LinkedHashMap<String, MutableMap<String, Any?>> {
+    val existing = properties[controlGroupValuesProperty]
+    if (existing is Map<*, *>) {
+        val normalized = LinkedHashMap<String, MutableMap<String, Any?>>()
+        existing.forEach { (key, value) ->
+            val keyString = key?.toString() ?: return@forEach
+            val valueMap = value as? Map<*, *> ?: return@forEach
+            val clean = LinkedHashMap<String, Any?>()
+            valueMap.forEach { (valueKey, storedValue) ->
+                clean[valueKey?.toString() ?: return@forEach] = storedValue
+            }
+            normalized[keyString] = clean
+        }
+        return normalized
+    }
+    return LinkedHashMap()
+}
+
+private fun controlGroupControlFromStored(cacheKey: String, id: String, stored: Map<String, Any?>): ControllerControl {
+    val parts = cacheKey.split('\u0000')
+    val channel = stored["channel"]?.toString() ?: parts.getOrNull(0) ?: "controls"
+    val type = stored["type"]?.toString() ?: parts.getOrNull(1) ?: "slider"
+    val label = stored["label"]?.toString() ?: parts.getOrNull(2) ?: ""
+    return ControllerControl(
+        id = id,
+        type = type,
+        label = label,
+        channel = channel,
+        min = controlGroupNumber(stored["min"]) ?: 0.0,
+        max = controlGroupNumber(stored["max"]) ?: 1.0,
+        step = controlGroupNumber(stored["step"]) ?: 0.01,
+        value = controlGroupNumber(stored["value"]),
+        xMin = controlGroupNumber(stored["xMin"]) ?: -1.0,
+        xMax = controlGroupNumber(stored["xMax"]) ?: 1.0,
+        yMin = controlGroupNumber(stored["yMin"]) ?: -1.0,
+        yMax = controlGroupNumber(stored["yMax"]) ?: 1.0,
+        x = controlGroupNumber(stored["x"]),
+        y = controlGroupNumber(stored["y"]),
+        checked = controlGroupBoolean(stored["checked"]),
+        text = stored["text"]?.toString(),
+        r = controlGroupNumber(stored["r"]),
+        g = controlGroupNumber(stored["g"]),
+        b = controlGroupNumber(stored["b"]),
+        a = controlGroupNumber(stored["a"]),
+        decimalPlaces = controlGroupNumber(stored["decimalPlaces"])?.toInt() ?: 2
+    )
+}
+
+private fun Box.cachedControlGroupValue(cacheKey: String, id: String): ControllerControl? {
+    controlGroupCache()[cacheKey]?.let { return it }
+    val stored = controlGroupValues()[cacheKey] ?: return null
+    val control = controlGroupControlFromStored(cacheKey, id, stored)
+    controlGroupCache()[cacheKey] = control
+    return control
+}
+
+private fun Box.storeControlGroupValue(cacheKey: String, control: ControllerControl) {
+    controlGroupCache()[cacheKey] = control
+    val values = controlGroupValues()
+    values[cacheKey] = controlGroupStoredValue(control)
+    if (properties[controlGroupValuesProperty] != values) {
+        setPropertyRaw(controlGroupValuesProperty, values, doResync = false)
+    }
+}
+
 private fun Box.updateCachedControlGroupValue(control: ControllerControl) {
     val cache = existingControlGroupCache() ?: return
     val cacheKey = cache.entries.firstOrNull { it.value.id == control.id }?.key ?: return
-    cache[cacheKey] = control
+    storeControlGroupValue(cacheKey, control)
 }
 
 internal fun registerControllerControlGroup(box: Box, channel: String, controls: List<ControllerControl>) {
@@ -1027,7 +1131,6 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
     private val htmlParts = mutableListOf<String>()
     private val controls = mutableListOf<ControllerControl>()
     private val ordinals = mutableMapOf<String, Int>()
-    private val cache = box.controlGroupCache()
 
     private data class CachedControl(val cacheKey: String, val id: String, val previous: ControllerControl?)
 
@@ -1036,7 +1139,8 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         val ordinal = ordinals.getOrDefault(ordinalKey, 0)
         ordinals[ordinalKey] = ordinal + 1
         val cacheKey = controlGroupControlKey(channel, type, label, ordinal)
-        return CachedControl(cacheKey, stableControlId(prefix, box.id, cacheKey), cache[cacheKey])
+        val id = stableControlId(prefix, box.id, cacheKey)
+        return CachedControl(cacheKey, id, box.cachedControlGroupValue(cacheKey, id))
     }
 
     fun slider(
@@ -1067,7 +1171,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
             decimalPlaces = calculateDecimalPlaces(step)
         )
         controls += control
-        cache[cached.cacheKey] = control
+        box.storeControlGroupValue(cached.cacheKey, control)
     }
 
     fun colorPicker(
@@ -1101,7 +1205,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
             decimalPlaces = 2
         )
         controls += control
-        cache[cached.cacheKey] = control
+        box.storeControlGroupValue(cached.cacheKey, control)
     }
 
     fun vec2Control(
@@ -1139,7 +1243,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
             decimalPlaces = decimalPlaces
         )
         controls += control
-        cache[cached.cacheKey] = control
+        box.storeControlGroupValue(cached.cacheKey, control)
     }
 
     fun checkbox(
@@ -1163,7 +1267,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
             checked = value
         )
         controls += control
-        cache[cached.cacheKey] = control
+        box.storeControlGroupValue(cached.cacheKey, control)
     }
 
     fun text(
@@ -1187,7 +1291,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
             text = value
         )
         controls += control
-        cache[cached.cacheKey] = control
+        box.storeControlGroupValue(cached.cacheKey, control)
     }
 
     fun stringInput(

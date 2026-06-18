@@ -158,7 +158,23 @@ val cloud = GrainCloud(
     position = 0.35.p,
     grainSize = 0.08.p,
     pitchJitterCents = 35.p,
+    grainSizeJitter = 0.025.p,
+    densityJitter = 0.45.p,
+    gainJitter = 0.25.p,
+    direction = GrainDirection.BIDIRECTIONAL,
     envelope = GrainEnvelope.GAUSSIAN
+)
+
+val liveCloud = LiveGrainCloud(
+    input = Sampler(voice, loop = true),
+    bufferSeconds = 2f,
+    density = 20.p,
+    position = 0.4.p,
+    grainSize = 0.06.p,
+    grainSizeJitter = 0.02.p,
+    densityJitter = 0.5.p,
+    gainJitter = 0.3.p,
+    direction = GrainDirection.BIDIRECTIONAL
 )
 
 val fieldRecording = AudioSample.generate(1.5f) { t ->
@@ -172,6 +188,10 @@ val stereoCloud = StereoGrainCloud(
     stereoWidth = 0.006.p,
     stereoWidthRandom = 0.003.p,
     stereoScatter = 0.002.p,
+    grainSizeJitter = 0.02.p,
+    densityJitter = 0.35.p,
+    gainJitter = 0.2.p,
+    direction = GrainDirection.REVERSE,
     envelope = GrainEnvelope.TUKEY
 )
 
