@@ -4,6 +4,7 @@ import afield.four.Renderer
 import afield.four.device.Queue.PresentQueue
 import afield.four.texture.ImageView
 import afield.four.texture.ImageView.ImageViewData
+import afield.four.util.FramePresentationLog
 import afield.four.util.Options
 import afield.four.util.Window
 import afield.four.util.vkCheck
@@ -123,27 +124,17 @@ class SwapChain(
 
     var nextPresentId: Long = 1 // must be > 0
 
+    data class PresentResult(val resize: Boolean, val presentId: Long?, val result: Int)
+
 
     fun acquireNextImage() = logTime("ani") {
         var imageIndex: Int
         MemoryStack.stackPush().use { stack ->
 
 
-            if (device.usePresentIndexing) {
+            if (device.usePresentIndexing && !FramePresentationLog.waitAfterPresent) {
                 val idToWait = nextPresentId - 1
-                if (idToWait <= 0) {}
-                else {
-
-                    // timeout: e.g., 50 ms in nanoseconds (tune as you like)
-                    val timeoutNs = 50_000_000L
-
-                    val result = KHRPresentWait.vkWaitForPresentKHR(
-                        device.vkDevice, vkSwapChain, idToWait, timeoutNs
-                    )
-                    if (result == VK_TIMEOUT) {
-                        println(" -- warning, waitForPresent timed out")
-                    }
-                }
+                if (idToWait > 0) waitForPresent(idToWait, "before-acquire")
             }
             val ip = stack.mallocInt(1)
             val err = KHRSwapchain.vkAcquireNextImageKHR(
@@ -162,6 +153,22 @@ class SwapChain(
             imageIndex = ip[0]
         }
         return@logTime imageIndex
+    }
+
+    private fun waitForPresent(presentId: Long, reason: String): Int {
+        val beginNs = System.nanoTime()
+        val result = KHRPresentWait.vkWaitForPresentKHR(
+            device.vkDevice,
+            vkSwapChain,
+            presentId,
+            Options.framePresentationLogPresentWaitTimeoutNs
+        )
+        val endNs = System.nanoTime()
+        FramePresentationLog.presentObserved(vkSwapChain, presentId, reason, result, beginNs, endNs)
+        if (result == VK_TIMEOUT) {
+            println(" -- warning, waitForPresent timed out")
+        }
+        return result
     }
 
 
@@ -301,8 +308,10 @@ class SwapChain(
     val numImages: Int
         get() = imageViews.size
 
-    fun presentImage(queue: Queue, imageIndex: Int): Boolean {
+    fun presentImage(queue: Queue, imageIndex: Int, frameId: Long = -1L, windowIndex: Int = 0): PresentResult {
         var resize = false
+        var presentIdValue: Long? = null
+        var result = VK10.VK_SUCCESS
         MemoryStack.stackPush().use { stack ->
 
 
@@ -320,16 +329,30 @@ class SwapChain(
 
             if (device.usePresentIndexing)
             {
+                presentIdValue = nextPresentId
                 val presentId = VkPresentIdKHR.calloc(stack)
                     .sType(KHRPresentId.VK_STRUCTURE_TYPE_PRESENT_ID_KHR)
                     .swapchainCount(1)
-                    .pPresentIds(stack.longs(nextPresentId))
+                    .pPresentIds(stack.longs(presentIdValue))
 
                 present.pNext(presentId.address())
                 nextPresentId++
             }
 
+            val callNs = System.nanoTime()
             val err = KHRSwapchain.vkQueuePresentKHR(queue.vkQueue, present)
+            val returnNs = System.nanoTime()
+            result = err
+            FramePresentationLog.presentReturned(
+                vkSwapChain,
+                frameId,
+                windowIndex,
+                imageIndex,
+                presentIdValue,
+                callNs,
+                returnNs,
+                err
+            )
             if (err == KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR) {
                 resize = true
             } else if (err == KHRSwapchain.VK_SUBOPTIMAL_KHR) {
@@ -338,9 +361,13 @@ class SwapChain(
             } else if (err != VK10.VK_SUCCESS) {
                 throw RuntimeException("Failed to present KHR: $err")
             }
+
+            if (FramePresentationLog.waitAfterPresent && device.usePresentIndexing && presentIdValue != null) {
+                waitForPresent(presentIdValue, "after-present")
+            }
         }
         currentFrame = (currentFrame + 1) % imageViews.size
-        return resize
+        return PresentResult(resize, presentIdValue, result)
     }
 
     @JvmRecord

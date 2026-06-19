@@ -58,6 +58,7 @@ data class WelcomeDocsResponse(
 @Serializable
 data class FieldPreferences(
     val profiling: Boolean = false,
+    val framePresentationLog: Boolean = false,
     val logShadercSource: Boolean = true,
     val enableVR: Boolean = true,
     val enableHDR: Boolean = false,

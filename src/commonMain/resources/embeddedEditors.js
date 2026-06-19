@@ -300,6 +300,22 @@ function shaderReloadAction(property) {
 	}
 }
 
+function shaderUpdateAction(property) {
+	switch (property) {
+		case "vertex":
+		case "fragment":
+		case "vertex_fragment":
+		case "vertex_s":
+		case "fragment_s":
+			return "moduleHere_update";
+		case "compute":
+		case "compute_s":
+			return "computeModuleHere_update";
+		default:
+			return null;
+	}
+}
+
 function extractSelectionOrScope(ed) {
 	const selection = ed.getSelection();
 	const model = ed.getModel();
@@ -385,6 +401,22 @@ function registerEmbeddedActions(editor, uid, property) {
 			if (!code || !code.trim()) return;
 			const payload = { uid, type: "fragment", line: belowLine, code, singleLine };
 			sendWithReply("execute-fragment", payload, "exec_" + uid, makeOutputCallback(uid));
+		},
+	});
+
+	// Alt+Shift+Enter: update shader when the reflected ABI is unchanged
+	editor.addAction({
+		id: "update-shader",
+		label: "Update Shader",
+		keybindings: [keybinding(monacoApi.KeyMod.Alt, monacoApi.KeyMod.Shift, monacoApi.KeyCode.Enter)],
+		contextMenuGroupId: "execution",
+		contextMenuOrder: 1.55,
+		run: (ed) => {
+			const updateAction = shaderUpdateAction(property);
+			if (!updateAction) return;
+			const value = ed.getModel().getValue();
+			send("set-string", { uid, property, value });
+			send("perform-action", { uid_currentSelection: [uid], uid_action: updateAction });
 		},
 	});
 

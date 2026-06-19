@@ -528,6 +528,9 @@ open class PingPongRenderToTexture(
         blend: Boolean,
         additive: Boolean,
         sourceLayer: Int,
+        warper: String?,
+        numSegmentsW: Int,
+        numSegmentsH: Int,
         configure: ColorGrade.() -> Unit
     ): ModulePointer {
         target.preTargets["$name-source"] = this
@@ -542,6 +545,9 @@ open class PingPongRenderToTexture(
             blend = blend,
             additive = additive,
             sourceLayer = sourceLayer,
+            warper = warper,
+            numSegmentsW = numSegmentsW,
+            numSegmentsH = numSegmentsH,
             configure = configure
         )
     }

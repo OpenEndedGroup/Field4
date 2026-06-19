@@ -848,7 +848,9 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
         val detail = it.value.detail.ifBlank { "" }
         val detailEscaped = escapeJsString(detail)
 
-        val kbExpr = parseKeybindingSpec(kbSpec.trim())
+        val usesContextualShaderUpdateShortcut =
+            it.key == "moduleHere_update" || it.key == "computeModuleHere_update"
+        val kbExpr = if (usesContextualShaderUpdateShortcut) null else parseKeybindingSpec(kbSpec.trim())
         val kbLine = if (kbExpr != null) "keybindings: [$kbExpr]," else "keybindings: [],"
 
         val e = """

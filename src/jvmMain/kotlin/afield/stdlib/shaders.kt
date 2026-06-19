@@ -98,7 +98,7 @@ val Box.stackAutoShaderSources by Delegation<MutableMap<String, String>>(
     defaultValue = { ConcurrentHashMap<String, String>() })
 
 private val stackAutoShaderNameRegex = Regex("[A-Za-z_][A-Za-z0-9_]*")
-private val stackAutoModuleOwners = Collections.synchronizedMap(WeakHashMap<ModulePointer, Box>())
+private val stackAutoModuleOwners = Collections.synchronizedMap(WeakHashMap<Any, Box>())
 
 private fun validateStackAutoShaderName(name: String) {
     require(stackAutoShaderNameRegex.matches(name)) {
@@ -163,24 +163,39 @@ private fun stackAutoTemplateResolverFor(box: Box, emitted: MutableSet<String>):
         }
     }
 
-private fun stackAutoShaderOwner(module: ModulePointer): Box? =
+private fun stackAutoShaderOwner(module: Any): Box? =
     synchronized(stackAutoModuleOwners) { stackAutoModuleOwners[module] }
 
-private fun registerStackAutoShaderOwner(box: Box, module: ModulePointer) {
+private fun registerStackAutoShaderOwner(box: Box, module: Any) {
     synchronized(stackAutoModuleOwners) {
         stackAutoModuleOwners[module] = box
     }
 }
 
+private fun stackAutoShaderBoxFor(module: Any): Box? =
+    stackAutoShaderOwner(module) ?: Box.context.get()
+
 fun stackAutoShaderSource(module: ModulePointer, name: String): String {
     validateStackAutoShaderName(name)
-    val box = stackAutoShaderOwner(module) ?: Box.context.get()
+    val box = stackAutoShaderBoxFor(module)
     return box?.stackAutoShaderSources?.get(name) ?: ""
 }
 
-fun stackAutoShaderSource(module: ModulePointer, name: String, source: String) {
+fun stackAutoShaderSource(module: ComputeModulePointer, name: String): String {
     validateStackAutoShaderName(name)
-    val box = stackAutoShaderOwner(module) ?: Box.context.get()
+    val box = stackAutoShaderBoxFor(module)
+    return box?.stackAutoShaderSources?.get(name) ?: ""
+}
+
+fun stackAutoShaderSource(module: MeshModulePointer, name: String): String {
+    validateStackAutoShaderName(name)
+    val box = stackAutoShaderBoxFor(module)
+    return box?.stackAutoShaderSources?.get(name) ?: ""
+}
+
+private fun setStackAutoShaderSource(module: Any, name: String, source: String, reloadType: ShaderReloadType) {
+    validateStackAutoShaderName(name)
+    val box = stackAutoShaderBoxFor(module)
         ?: throw IllegalStateException("Cannot set stack.auto.$name without a module owner or active Box context.")
 
     val compiled = try {
@@ -197,8 +212,20 @@ fun stackAutoShaderSource(module: ModulePointer, name: String, source: String) {
     }
 
     box.stackAutoShaderSources[name] = source
-    requestStackAutoShaderUpdate(box)
+    requestStackAutoShaderUpdate(box, reloadType)
     lprintln("graphics", "compiled stack.auto.$name (${compiled.length} chars GLSL); queued shader update.")
+}
+
+fun stackAutoShaderSource(module: ModulePointer, name: String, source: String) {
+    setStackAutoShaderSource(module, name, source, ShaderReloadType.GRAPHICS)
+}
+
+fun stackAutoShaderSource(module: ComputeModulePointer, name: String, source: String) {
+    setStackAutoShaderSource(module, name, source, ShaderReloadType.COMPUTE)
+}
+
+fun stackAutoShaderSource(module: MeshModulePointer, name: String, source: String) {
+    setStackAutoShaderSource(module, name, source, ShaderReloadType.MESH)
 }
 
 data class ShaderIncludeRootRequest(
@@ -1234,16 +1261,43 @@ private data class StackAutoShaderUpdateState(
     val pending: AtomicBoolean = AtomicBoolean(false)
 )
 
-private val stackAutoShaderUpdateStates = ConcurrentHashMap<Int, StackAutoShaderUpdateState>()
+private val stackAutoShaderUpdateStates = ConcurrentHashMap<ShaderReloadKey, StackAutoShaderUpdateState>()
 
-private fun requestStackAutoShaderUpdate(box: Box) {
-    val state = stackAutoShaderUpdateStates.computeIfAbsent(System.identityHashCode(box)) {
+private suspend fun runStackAutoShaderUpdate(box: Box, type: ShaderReloadType, key: ShaderReloadKey, generation: Long): Boolean =
+    when (type) {
+        ShaderReloadType.GRAPHICS -> updateShader(box, key, generation)
+        ShaderReloadType.COMPUTE -> updateComputeShader(box, key, generation)
+        ShaderReloadType.MESH -> withContext(Runloop.runLoop.main) {
+            if (!isCurrentShaderGeneration(key, generation)) return@withContext false
+            withShaderReloadErrorGate(key, generation) {
+                reloadMeshShader(box)
+            }
+        }
+        ShaderReloadType.RAY_TRACING -> withContext(Runloop.runLoop.main) {
+            if (!isCurrentShaderGeneration(key, generation)) return@withContext false
+            withShaderReloadErrorGate(key, generation) {
+                reloadRayTracingShader(box)
+            }
+        }
+    }
+
+private fun stackAutoShaderTypeLabel(type: ShaderReloadType): String =
+    when (type) {
+        ShaderReloadType.GRAPHICS -> "shader"
+        ShaderReloadType.COMPUTE -> "compute shader"
+        ShaderReloadType.MESH -> "mesh shader"
+        ShaderReloadType.RAY_TRACING -> "ray tracing shader"
+    }
+
+private fun requestStackAutoShaderUpdate(box: Box, type: ShaderReloadType) {
+    val updateKey = ShaderReloadKey(System.identityHashCode(box), type)
+    val state = stackAutoShaderUpdateStates.computeIfAbsent(updateKey) {
         StackAutoShaderUpdateState()
     }
     state.pending.set(true)
 
     if (!state.inFlight.compareAndSet(false, true)) {
-        nextShaderGeneration(box, ShaderReloadType.GRAPHICS)
+        nextShaderGeneration(box, type)
         return
     }
 
@@ -1251,17 +1305,18 @@ private fun requestStackAutoShaderUpdate(box: Box) {
         try {
             do {
                 state.pending.set(false)
-                val (key, generation) = nextShaderGeneration(box, ShaderReloadType.GRAPHICS)
+                val (key, generation) = nextShaderGeneration(box, type)
+                val label = stackAutoShaderTypeLabel(type)
                 val success = try {
-                    updateShader(box, key, generation)
+                    runStackAutoShaderUpdate(box, type, key, generation)
                 } catch (t: Throwable) {
                     lprintln(
                         "error,graphics",
-                        "unexpected error updating stack.auto shader in '${box.name}' (${box.id}): ${t.message}"
+                        "unexpected error updating stack.auto $label in '${box.name}' (${box.id}): ${t.message}"
                     )
                     if (isCurrentShaderGeneration(key, generation)) {
                         withContext(Runloop.runLoop.main) {
-                            box.error(t.message ?: "stack.auto shader update failed", "code", -1)
+                            box.error(t.message ?: "stack.auto $label update failed", "code", -1)
                         }
                     }
                     false
@@ -1270,8 +1325,8 @@ private fun requestStackAutoShaderUpdate(box: Box) {
                 if (isCurrentShaderGeneration(key, generation)) {
                     withContext(Runloop.runLoop.main) {
                         notify(
-                            if (success) "Updated stack.auto shader in '${box.name}'"
-                            else "Stack.auto shader update failed in '${box.name}'",
+                            if (success) "Updated stack.auto $label in '${box.name}'"
+                            else "Stack.auto $label update failed in '${box.name}'",
                             "shader"
                         )
                     }
@@ -1279,7 +1334,7 @@ private fun requestStackAutoShaderUpdate(box: Box) {
             } while (state.pending.get())
         } finally {
             state.inFlight.set(false)
-            if (state.pending.get()) requestStackAutoShaderUpdate(box)
+            if (state.pending.get()) requestStackAutoShaderUpdate(box, type)
         }
     }
 }
@@ -1584,6 +1639,8 @@ private fun isImportSegment(segment: PreambleSegment): Boolean {
 private fun generatedPreambleGroup(key: String): String? {
     val prefix = key.substringBefore(":", key)
     return when {
+        prefix.startsWith("graphics-stack-auto") -> "stack-auto"
+        prefix.startsWith("stack-auto") -> "stack-auto"
         prefix.startsWith("graphics-") -> "graphics"
         prefix.startsWith("compute-") -> "compute"
         prefix.startsWith("mesh-") -> "mesh"
@@ -2158,7 +2215,9 @@ private suspend fun updateShader(box: Box, key: ShaderReloadKey, generation: Lon
         current.parameters.vertexIncludeResolver = shaderIncludeResolverFor(box, vertexStage.sourceProperty)
         current.parameters.fragmentIncludeResolver = shaderIncludeResolverFor(box, fragmentStage.sourceProperty)
 
+        FramePresentationLog.mark("graphics shader update install begin box=${box.name} module=${current.parameters.name}")
         current.installPipelineUpdate(pipelineUpdate)
+        FramePresentationLog.mark("graphics shader update install end box=${box.name} module=${current.parameters.name}")
         clearShaderErrorsForBaseProperties(box, "vertex", "fragment")
         true
     }
@@ -2230,9 +2289,12 @@ private fun kotlinBindingTypeName(member: Introspected.Member): String =
     if (member.physicalPointer) "afield.four.buffers.HasBuffer"
     else member.type.fold({ it.kotlinTypeName }, { "Any" })
 
-private fun buildComputeInsert(ci: Introspection): Insert {
+private fun buildComputeInsert(ci: Introspection, box: Box? = null): Insert {
     var postImport = ""
     postImport += buildShaderStructurePreamble("compute", listOf(ci))
+    buildStackAutoShaderPreamble(box).takeIf { it.isNotBlank() }?.let {
+        postImport += it + "\n"
+    }
 
     // Push constants
     ci.pushConstants.flatMap { it.members }.distinctBy { it.name }.forEach { member ->
@@ -2302,7 +2364,7 @@ fun reloadComputeShader(box: Box): Boolean {
     }
 
     // Rebuild/import bindings like graphics path
-    val insert = buildComputeInsert(ci!!)
+    val insert = buildComputeInsert(ci!!, box)
     applyInsertToPreamble(box, insert)
 
     val p = box._computeShader!!.current.parameters.copy().apply {
@@ -2373,7 +2435,9 @@ private suspend fun updateComputeShader(box: Box, key: ShaderReloadKey, generati
         current.parameters.computeSourceName = computeStage.sourceName
         current.parameters.computeIncludeResolver = shaderIncludeResolverFor(box, computeStage.sourceProperty)
 
+        FramePresentationLog.mark("compute shader update install begin box=${box.name} module=${current.parameters.name}")
         current.installPipelineUpdate(pipelineUpdate)
+        FramePresentationLog.mark("compute shader update install end box=${box.name} module=${current.parameters.name}")
         clearShaderErrorsForBaseProperties(box, "compute")
         true
     }
@@ -2390,6 +2454,7 @@ fun Box.attachShader(module: ComputeModulePointer, overwriteProperties: Boolean 
 
     _compute = parameters.compute
     _computeShader = module
+    registerStackAutoShaderOwner(this, module)
 
     reloadComputeShader(this)
     return module
@@ -2398,9 +2463,12 @@ fun Box.attachShader(module: ComputeModulePointer, overwriteProperties: Boolean 
 // ------------------------------
 // Mesh helpers (DRY the previously duplicated postImport construction)
 // ------------------------------
-private fun buildMeshInsert(ti: Introspection, mi: Introspection, fi: Introspection): Insert {
+private fun buildMeshInsert(ti: Introspection, mi: Introspection, fi: Introspection, box: Box? = null): Insert {
     var postImport = ""
     postImport += buildShaderStructurePreamble("mesh", listOf(ti, mi, fi))
+    buildStackAutoShaderPreamble(box).takeIf { it.isNotBlank() }?.let {
+        postImport += it + "\n"
+    }
 
     // Push constants across task+mesh+fragment
     (ti.pushConstants + mi.pushConstants + fi.pushConstants).flatMap { it.members }.distinctBy { it.name }.forEach { member ->
@@ -2490,7 +2558,7 @@ fun reloadMeshShader(box: Box): Boolean {
     }
 
     // Rebuild/import bindings like graphics path
-    val insert = buildMeshInsert(ti!!, mi!!, fi!!)
+    val insert = buildMeshInsert(ti!!, mi!!, fi!!, box)
     applyInsertToPreamble(box, insert)
 
     val p = box._meshShader!!.current.parameters.copy().apply {
@@ -2524,6 +2592,7 @@ fun Box.attachShader(module: MeshModulePointer, overwriteProperties: Boolean = f
     _mesh = parameters.mesh
     _fragment = parameters.fragment
     _meshShader = module
+    registerStackAutoShaderOwner(this, module)
 
     reloadMeshShader(this)
     return module
@@ -2971,22 +3040,29 @@ private fun buildStackAutoShaderPreamble(box: Box?): String {
      *      fallback `vec4 foo(vec4 foo_in) { return vec4(0.0); }`. The argument
      *      name deliberately avoids `input`, which is reserved in GLSL 450.
      *   3. During shader macro/reload preamble generation, every discovered
-     *      `stack.auto.*` name becomes a Kotlin extension property on ModulePointer:
+     *      `stack.auto.*` name becomes a Kotlin extension property on shader module pointers:
      *
      *          module.foo = "p length ]2s2.0"
      *
      *      The setter first compiles the StackSL string. Failed compiles leave the
      *      previous binding and current shader pipeline untouched.
-     *   4. Successful setter calls queue a graphics shader "update" rather than a
-     *      full reload. Updates reuse the ABI-preserving background path, and the
-     *      stack.auto queue allows only one update in flight per box; rapid writes
-     *      are coalesced into one pending follow-up update.
+     *   4. Successful setter calls queue a shader-family-specific update. Graphics
+     *      and compute use the ABI-preserving background path; mesh currently uses
+     *      the mesh reload path. Rapid writes are coalesced into one pending follow-up.
      */
     return names.joinToString(separator = "\n") { name ->
         prefixedBlock(
-            "graphics-stack-auto:$name",
+            "stack-auto:$name",
             """
                 var ModulePointer.${kotlinMemberName(name)}: String
+                    get() = afield.stdlib.stackAutoShaderSource(this, "$name")
+                    set(value) { afield.stdlib.stackAutoShaderSource(this, "$name", value) }
+
+                var ComputeModulePointer.${kotlinMemberName(name)}: String
+                    get() = afield.stdlib.stackAutoShaderSource(this, "$name")
+                    set(value) { afield.stdlib.stackAutoShaderSource(this, "$name", value) }
+
+                var MeshModulePointer.${kotlinMemberName(name)}: String
                     get() = afield.stdlib.stackAutoShaderSource(this, "$name")
                     set(value) { afield.stdlib.stackAutoShaderSource(this, "$name", value) }
             """.trimIndent()
@@ -3268,7 +3344,7 @@ void main() {
         return Insert(here = "_computeModuleHere${args[0]}")
     } else {
         clearShaderErrorsForBaseProperties(this, "compute")
-        val insert = buildComputeInsert(ci)
+        val insert = buildComputeInsert(ci, this)
         return insert.copy(here = run {
             var here = "_computeModuleHere${args[0]}"
             if (args.size == 2) here += args[1]
@@ -3299,6 +3375,7 @@ fun Box._computeModuleHere(p: Parameters): ComputeModulePointer {
     attachFieldProbe(this, p)
     val pp = ComputeModule(p).pointer()
     this._computeShader = pp
+    registerStackAutoShaderOwner(this, pp)
     return pp
 }
 
@@ -3414,7 +3491,7 @@ void main()
         return Insert(here = "_meshModuleHere${args[0]}")
     } else {
         clearShaderErrorsForBaseProperties(this, "task", "mesh", "fragment")
-        val insert = buildMeshInsert(ti, mi, fi)
+        val insert = buildMeshInsert(ti, mi, fi, this)
         return insert.copy(here = run {
             var here = "_meshModuleHere${args[0]}"
             if (args.size == 2) here += args[1]
@@ -3452,6 +3529,7 @@ fun Box._meshModuleHere(p: Parameters = parameters {}): MeshModulePointer {
     attachFieldProbe(this, p)
     val pp = MeshModule(p).pointer()
     this._meshShader = pp
+    registerStackAutoShaderOwner(this, pp)
     return pp
 }
 

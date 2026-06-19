@@ -1159,7 +1159,7 @@ class Renderer(
 
                 CPUSpan.time("present[$ctxIndex]") {
                     runOnQueueThread {
-                        if (ctx.swapChain.presentImage(presentQueue, imageIndex)) w.isResized = true
+                        if (ctx.swapChain.presentImage(presentQueue, imageIndex, frameId, ctxIndex).resize) w.isResized = true
                     }
                 }
 

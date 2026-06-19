@@ -39,6 +39,7 @@ object StackSLSmokeTest {
             compilesStackBlastOperators()
             compilesFMChirpOperator()
             compilesBitGlitchOperators()
+            compilesExternalHostGlslEscapeHatches()
             println("StackSL compiler smoke tests passed")
             true
         } catch (t: Throwable) {
@@ -396,5 +397,22 @@ object StackSLSmokeTest {
         require("bits_grayDecode(" in result.glsl) { result.glsl }
         require("bits_lfsr(" in result.glsl) { result.glsl }
         require("bits_bitcrush(" in result.glsl) { result.glsl }
+    }
+
+    private fun compilesExternalHostGlslEscapeHatches() {
+        val result = StackSLCompiler.compile(
+            """
+            ?pc.foo
+            0.5 *
+            dup ->?pc.foo
+            ?pc.bar +
+            """.trimIndent(),
+            StackSLCompileOptions(prefix = "host")
+        )
+
+        require(result.ok) { result.diagnostics.joinToString("\n") }
+        require("vec4 _host_v1 = (pc.foo * vec4(0.5));" in result.glsl) { result.glsl }
+        require("pc.foo = _host_v1;" in result.glsl) { result.glsl }
+        require("vec4 _host_v2 = (_host_v1 + pc.bar);" in result.glsl) { result.glsl }
     }
 }

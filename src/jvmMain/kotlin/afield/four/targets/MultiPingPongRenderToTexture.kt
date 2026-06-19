@@ -210,6 +210,9 @@ class MultiPingPongRenderToTexture(
         blend: Boolean = false,
         additive: Boolean = false,
         sourceLayer: Int = 0,
+        warper: String? = null,
+        numSegmentsW: Int = 1,
+        numSegmentsH: Int = 1,
         configure: RenderToTexture.ColorGrade.() -> Unit = {}
     ): ModulePointer {
         require(attachment == 0) { "MultiPingPongRenderToTexture only supports attachment 0" }
@@ -224,6 +227,9 @@ class MultiPingPongRenderToTexture(
             blend = blend,
             additive = additive,
             sourceLayer = sourceLayer,
+            warper = warper,
+            numSegmentsW = numSegmentsW,
+            numSegmentsH = numSegmentsH,
             configure = configure
         )
     }

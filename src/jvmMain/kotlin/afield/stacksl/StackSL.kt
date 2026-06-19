@@ -393,6 +393,7 @@ private class FunctionCompiler(
     private val requiredSamplerIndices = linkedSetOf<Int>()
     private val calls = linkedSetOf<String>()
     private val channelWrites = linkedMapOf<Int, Int>()
+    private val externalWrites = mutableListOf<Pair<String, Int>>()
     private val inputStack = mutableListOf<Int>()
     private val inlineCallStack = mutableListOf<String>()
     private var maxStackDepth = 0
@@ -416,6 +417,7 @@ private class FunctionCompiler(
         val reachable = linkedSetOf<Int>()
         markReachable(result, reachable)
         channelWrites.values.forEach { markReachable(it, reachable) }
+        externalWrites.forEach { markReachable(it.second, reachable) }
         val ordered = values.filter { it.id in reachable && !it.leaf }
         val producedValues = values.count { !it.leaf }
         val prunedValues = values.count { !it.leaf && it.id !in reachable }
@@ -432,8 +434,14 @@ private class FunctionCompiler(
                 channelWrites.toSortedMap().forEach { (channel, value) ->
                     appendLine("    $outputName.${channels[channel]} = ${ref(value)}.x;")
                 }
+                externalWrites.forEach { (name, value) ->
+                    appendLine("    $name = ${ref(value)};")
+                }
                 appendLine("    return $outputName;")
             } else {
+                externalWrites.forEach { (name, value) ->
+                    appendLine("    $name = ${ref(value)};")
+                }
                 appendLine("    return ${ref(result)};")
             }
             appendLine("}")
@@ -466,6 +474,16 @@ private class FunctionCompiler(
         val word = arityVariant?.base ?: rawWord
         val requestedArity = arityVariant?.arity
         val requestedAll = arityVariant?.all == true
+
+        parseExternalRead(raw)?.let {
+            push(leaf(it, token, "external GLSL read"))
+            return
+        }
+
+        parseExternalWrite(raw)?.let {
+            externalWrites += it to pop(token, "external GLSL write $it", "vec4(0.0)")
+            return
+        }
 
         parseTopModifier(raw)?.let {
             applyTopModifier(it, token)
@@ -1684,6 +1702,18 @@ private fun parseSwizzle(word: String): String? {
     }.joinToString("")
 }
 
+private fun parseExternalRead(word: String): String? {
+    if (!word.startsWith("?")) return null
+    val name = word.drop(1)
+    return name.takeIf { hostGlslVec4Regex.matches(it) }
+}
+
+private fun parseExternalWrite(word: String): String? {
+    if (!word.startsWith("->?")) return null
+    val name = word.drop(3)
+    return name.takeIf { hostGlslVec4Regex.matches(it) }
+}
+
 private fun swizzleExpression(value: String, swizzle: String): String = when (swizzle.length) {
     1 -> "vec4($value.${swizzle[0]})"
     2 -> "vec4($value.$swizzle, 0.0, 1.0)"
@@ -1708,6 +1738,8 @@ private val swizzleWords: Set<String> = buildSet {
     }
     build("", 0)
 }
+
+private val hostGlslVec4Regex = Regex("""[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*""")
 
 private val namedColors = mapOf(
     "black" to "vec4(0.0, 0.0, 0.0, 1.0)",

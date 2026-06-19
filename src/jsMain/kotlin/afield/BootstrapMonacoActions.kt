@@ -961,6 +961,21 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
 
     run {
         val action = js("{}")
+        action.id = "update-shader"
+        action.label = "Update Shader"
+        action.keybindings = arrayOf(keybinding(monaco.KeyMod.Alt, monaco.KeyMod.Shift, monaco.KeyCode.Enter))
+        action.precondition = undefined
+        action.keybindingContext = undefined
+        action.contextMenuGroupId = "execution"
+        action.contextMenuOrder = 1.55
+        action.run = { ed: dynamic ->
+            monacoRunShaderUpdate(ed)
+        }
+        addAction(action)
+    }
+
+    run {
+        val action = js("{}")
         action.id = "execute-all"
         action.label = "Run Box"
         action.keybindings = arrayOf(keybinding(monaco.KeyMod.Alt, monaco.KeyCode.Digit0))
@@ -1083,6 +1098,12 @@ private fun shaderReloadActionForProperty(property: String): String? = when (pro
     else -> null
 }
 
+private fun shaderUpdateActionForProperty(property: String): String? = when (property.lowercase()) {
+    "vertex", "fragment", "vertex_fragment", "vertex_s", "fragment_s" -> "moduleHere_update"
+    "compute", "compute_s" -> "computeModuleHere_update"
+    else -> null
+}
+
 private fun monacoRunExecuteFragmentOrShaderReload(editor: dynamic) {
     val w = js("window")
     val property = (w.currentSelectedProperty as? String)?.trim()?.lowercase()
@@ -1092,6 +1113,38 @@ private fun monacoRunExecuteFragmentOrShaderReload(editor: dynamic) {
         monacoRunExecuteFragment(editor)
         return
     }
+
+    val current = w.currentSelectedCode
+    val currentLen = (current?.length as? Number)?.toInt() ?: 0
+    if (currentLen != 1) return
+    val selected = current[0] ?: return
+    val uid = selected.uid as? String ?: return
+
+    val model = editor.getModel()
+    if (model != null && model != undefined) {
+        val value = model.getValue() as? String ?: ""
+        selected[property] = value
+        val payload = js("{}")
+        payload.uid = uid
+        payload.property = property
+        payload.value = value
+        send("set-string", payload)
+    }
+
+    send(
+        Message("perform-action").payload(
+            Perform_action(
+                uid_currentSelection = listOf(uid),
+                uid_action = actionId
+            )
+        )
+    )
+}
+
+private fun monacoRunShaderUpdate(editor: dynamic) {
+    val w = js("window")
+    val property = (w.currentSelectedProperty as? String)?.trim()?.lowercase() ?: return
+    val actionId = shaderUpdateActionForProperty(property) ?: return
 
     val current = w.currentSelectedCode
     val currentLen = (current?.length as? Number)?.toInt() ?: 0

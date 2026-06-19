@@ -121,6 +121,11 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
     var topModifierTokenRegex = new RegExp("([\\|\\]])(" + modifierSource + ")(" + numberSource + ")?(?:(p)(" + numberSource + "))?(?:(d)(" + numberSource + "))?(?=$|[\\s()#;])", "i");
     var numberModifierTokenRegex = new RegExp("(" + numberSource + ")(" + modifierSource + ")(" + numberSource + ")?(?:(p)(" + numberSource + "))?(?:(d)(" + numberSource + "))?(?=$|[\\s()#;])", "i");
     var simpleNumberSuffixTokenRegex = new RegExp("(" + numberSource + ")([trgba])\\b", "i");
+    var hostGlslVec4Source = "[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*";
+    var externalReadRegex = new RegExp("^\\?" + hostGlslVec4Source + "$");
+    var externalWriteRegex = new RegExp("^->\\?" + hostGlslVec4Source + "$");
+    var externalReadTokenRegex = new RegExp("(\\?)(" + hostGlslVec4Source + ")");
+    var externalWriteTokenRegex = new RegExp("(->\\?)(" + hostGlslVec4Source + ")");
 
     function wordSet(words) {
         var out = Object.create(null);
@@ -149,6 +154,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
 
     function isPushToken(word) {
         return !!pushWordSet[word] ||
+            externalReadRegex.test(word) ||
             numberRegex.test(word) ||
             numberSuffixRegex.test(word) ||
             numberRangeRegex.test(word) ||
@@ -193,6 +199,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         if (swizzleRegex.test(word)) return effect(1, 1);
 
         if (word === "noop") return effect(0, 0);
+        if (externalWriteRegex.test(word)) return effect(1, 0);
         if (word === "dup") return effect(1, 2);
         if (word === "drop") return effect(1, 0);
         if (word === "swap") return effect(2, 2);
@@ -444,6 +451,9 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
     const STACKSL_NUMBER_MODIFIER_RE = new RegExp(`^${STACKSL_NUMBER_SOURCE}(?:${STACKSL_MODIFIER_SOURCE})(?:${STACKSL_NUMBER_SOURCE})?(?:p${STACKSL_NUMBER_SOURCE})?(?:d${STACKSL_NUMBER_SOURCE})?$`, "i")
     const STACKSL_TOP_MODIFIER_RE = new RegExp(`^[\\|\\]](?:${STACKSL_MODIFIER_SOURCE})(?:${STACKSL_NUMBER_SOURCE})?(?:p${STACKSL_NUMBER_SOURCE})?(?:d${STACKSL_NUMBER_SOURCE})?$`, "i")
     const STACKSL_SWIZZLE_RE = /^\.?[xyzwrgba]{1,4}$/i
+    const STACKSL_HOST_GLSL_VEC4_SOURCE = "[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*"
+    const STACKSL_EXTERNAL_READ_RE = new RegExp(`^\\?${STACKSL_HOST_GLSL_VEC4_SOURCE}$`)
+    const STACKSL_EXTERNAL_WRITE_RE = new RegExp(`^->\\?${STACKSL_HOST_GLSL_VEC4_SOURCE}$`)
     const STACKSL_COLOR_WORDS = new Set([
             "black", "white", "gray", "grey", "red", "green", "blue", "cyan", "magenta", "yellow", "orange",
     ])
@@ -654,6 +664,12 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             }
             if (STACKSL_SWIZZLE_RE.test(raw)) {
                     return stackslDoc("vec -- vec", "Swizzle channels and return a vec4-shaped value.")
+            }
+            if (STACKSL_EXTERNAL_READ_RE.test(rawWord || "")) {
+                    return stackslDoc("-- vec", "Read a host GLSL vec4 expression.")
+            }
+            if (STACKSL_EXTERNAL_WRITE_RE.test(rawWord || "")) {
+                    return stackslDoc("value --", "Write the top stack value to a host GLSL vec4 expression.")
             }
 
             if (word === "min" || word === "max") {
@@ -909,6 +925,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
 
     const isStackSLPushToken = (word) => {
             return STACKSL_PUSH_WORDS.has(word) ||
+                    STACKSL_EXTERNAL_READ_RE.test(word) ||
                     STACKSL_NUMBER_RE.test(word) ||
                     STACKSL_NUMBER_SUFFIX_RE.test(word) ||
                     STACKSL_NUMBER_RANGE_RE.test(word) ||
@@ -932,6 +949,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             if (STACKSL_TOP_MODIFIER_RE.test(raw)) return stackslEffect(1, 1, raw.startsWith("]") ? "driven modifier" : "top modifier")
             if (isStackSLPushToken(raw)) return stackslEffect(0, 1, "push")
             if (STACKSL_SWIZZLE_RE.test(raw)) return stackslEffect(1, 1, "swizzle")
+            if (STACKSL_EXTERNAL_WRITE_RE.test(rawWord || "")) return stackslEffect(1, 0, "host write")
 
             if (word === "noop") return stackslEffect(0, 0)
             if (word === "dup") return stackslEffect(1, 2)
@@ -1363,6 +1381,8 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
                 [/:/, "keyword.control", "@definition"],
                 [/;/, "keyword.control"],
 
+                [externalWriteTokenRegex, ["keyword", "variable.predefined"]],
+                [externalReadTokenRegex, ["keyword", "variable.predefined"]],
                 [/(?:0->|1->|2->|3->|->0|->1|->2|->3)/, "keyword"],
                 [numberRangeTokenRegex, ["number", "operator.stacksl.range", "number"]],
                 [topModifierTokenRegex, ["operator.stacksl.prefix", "number.stacksl.modifier", "number", "number.stacksl.option", "number", "number.stacksl.option", "number"]],

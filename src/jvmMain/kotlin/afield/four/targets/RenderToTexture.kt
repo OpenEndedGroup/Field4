@@ -635,6 +635,11 @@ open class RenderToTexture(
     /**
      * Simple on-screen blit of a color attachment from this RTT. Generates a fullscreen triangle
      * mesh internally (no vertex inputs) and wires a small grading push-constant block.
+     *
+     * If [warper] is supplied, it should be the GLSL body of `vec2 warp(vec2 x, float t)`. `x` is
+     * the unwarped NDC vertex position, `t` is `time.x`, and the return value is added as an NDC
+     * offset. Warped blits use a viewport-local grid sized by [numSegmentsW] and [numSegmentsH],
+     * so normal viewport/scissor clipping crops displaced vertices.
      */
     open fun blitToScreen(
         renderer: Renderer = this.renderer,
@@ -646,11 +651,16 @@ open class RenderToTexture(
         blend: Boolean = false,
         additive: Boolean = false,
         sourceLayer: Int = 0,
+        warper: String? = null,
+        numSegmentsW: Int = 1,
+        numSegmentsH: Int = 1,
         configure: ColorGrade.() -> Unit = {}
     ): ModulePointer {
         require(attachment in imageViewArray.indices) {
             "attachment $attachment is out of range for RenderToTexture with ${imageViewArray.size} color attachments"
         }
+        require(numSegmentsW >= 1) { "numSegmentsW must be at least 1" }
+        require(numSegmentsH >= 1) { "numSegmentsH must be at least 1" }
         val sourceView = imageViewArray[attachment].imageView
         val sourceIsArray = sourceView.imageViewData.viewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY
         if (sourceIsArray) {
@@ -688,16 +698,24 @@ open class RenderToTexture(
                 alphaBlendOp = VK_BLEND_OP_ADD
             }
             this.viewport = viewport
-            vertex = blitVertexShader
+            vertex = if (usesSegmentedBlit(warper, numSegmentsW, numSegmentsH)) {
+                segmentedBlitVertexShader(warper)
+            } else {
+                blitVertexShader
+            }
             fragment = if (sourceIsArray) blitArrayFragmentShader else blitFragmentShader
             textureResolver = { tex ->
                 if (tex.name == "sourceTex") sourceProvider to sampler else null
             }
         }).pointer()
 
-        // Fullscreen triangle mesh (no attributes)
         val mesh = afield.four.modules.Mesh(renderer, module)
-        mesh.resize(3, 0, module)
+        if (usesSegmentedBlit(warper, numSegmentsW, numSegmentsH)) {
+            buildSegmentedBlitMesh(mesh, module, numSegmentsW, numSegmentsH)
+        } else {
+            // Fullscreen triangle mesh (no attributes).
+            mesh.resize(3, 0, module)
+        }
         mesh.push["exposure"] = grade.exposure
         mesh.push["gamma"] = grade.gamma
         mesh.push["offset"] = grade.offset
@@ -705,6 +723,10 @@ open class RenderToTexture(
         mesh.push["srcRect"] = vec(src.x.f, src.y.f, src.w.f, src.h.f)
         mesh.push["sampleWeight"] = grade.sampleWeight
         if (sourceIsArray) mesh.push["sourceLayer"] = sourceLayer.toFloat()
+        var tick = 0L
+        mesh.push.bind("time") {
+            vec((tick++ / 120.0).toFloat(), 0f, 0f, 0f)
+        }
         module.current.meshes[name] = mesh
 
         target += name to module
@@ -712,6 +734,70 @@ open class RenderToTexture(
     }
 
     companion object {
+        private fun usesSegmentedBlit(warper: String?, numSegmentsW: Int, numSegmentsH: Int): Boolean =
+            !warper.isNullOrBlank() || numSegmentsW > 1 || numSegmentsH > 1
+
+        private fun buildSegmentedBlitMesh(
+            mesh: afield.four.modules.Mesh,
+            module: ModulePointer,
+            numSegmentsW: Int,
+            numSegmentsH: Int
+        ) {
+            val verticesW = numSegmentsW + 1
+            val verticesH = numSegmentsH + 1
+            mesh.resize(verticesW * verticesH, numSegmentsW * numSegmentsH * 2, module)
+            mesh.write("inPosition") {
+                for (y in 0 until verticesH) {
+                    val v = y.toFloat() / numSegmentsH.toFloat()
+                    for (x in 0 until verticesW) {
+                        val u = x.toFloat() / numSegmentsW.toFloat()
+                        put(u).put(v)
+                    }
+                }
+            }
+            mesh.t?.mapAndWrite_ints {
+                for (y in 0 until numSegmentsH) {
+                    for (x in 0 until numSegmentsW) {
+                        val a = y * verticesW + x
+                        val b = a + 1
+                        val c = a + verticesW
+                        val d = c + 1
+                        put(a).put(b).put(c)
+                        put(b).put(d).put(c)
+                    }
+                }
+            }
+        }
+
+        private fun segmentedBlitVertexShader(warper: String?): String {
+            val warpBody = warper?.takeIf { it.isNotBlank() } ?: "return vec2(0.0);"
+            return """
+                #version 460
+                layout(location = 0) in vec2 inPosition;
+                layout(location = 0) out vec2 fragUV;
+                
+                layout(push_constant) uniform Push {
+                    vec4 exposure;
+                    vec4 gamma;
+                    vec4 offset;
+                    vec4 srcRect;
+                    float sampleWeight;
+                    float sourceLayer;
+                    vec4 time;
+                } push;
+                
+                vec2 warp(vec2 x, float t) {
+                    $warpBody
+                }
+                
+                void main() {
+                    vec2 ndc = inPosition * 2.0 - 1.0;
+                    gl_Position = vec4(ndc + warp(ndc, push.time.x), 0.0, 1.0);
+                    fragUV = inPosition;
+                }
+            """.trimIndent()
+        }
+
         private val blitVertexShader = """
             #version 460
             layout(location = 0) out vec2 fragUV;
@@ -737,9 +823,11 @@ open class RenderToTexture(
                 vec4 offset;
                 vec4 srcRect; // xy = offset, zw = size in UV space
                 float sampleWeight;
+                vec4 time;
             } push;
             
             void main() {
+                if (push.time.x < -1e30) discard;
                 vec2 uv = push.srcRect.xy + fragUV * push.srcRect.zw;
                 vec4 sampled = push.sampleWeight == 0.0 ? vec4(0.0, 0.0, 0.0, 1.0) : texture(sourceTex, uv);
                 if (any(isnan(sampled)) || any(isinf(sampled))) {
@@ -766,9 +854,11 @@ open class RenderToTexture(
                 vec4 srcRect; // xy = offset, zw = size in UV space
                 float sampleWeight;
                 float sourceLayer;
+                vec4 time;
             } push;
             
             void main() {
+                if (push.time.x < -1e30) discard;
                 vec2 uv = push.srcRect.xy + fragUV * push.srcRect.zw;
                 int layerCount = textureSize(sourceTex, 0).z;
                 float layer = clamp(push.sourceLayer, 0.0, float(max(layerCount - 1, 0)));

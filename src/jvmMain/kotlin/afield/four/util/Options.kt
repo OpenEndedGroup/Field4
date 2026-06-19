@@ -25,6 +25,26 @@ object Options {
         "afield.four.profiling",
         System.getenv("AFIELD_FOUR_PROFILING") ?: "false"
     ).toBoolean()
+    var framePresentationLog = System.getProperty(
+        "afield.four.framePresentationLog",
+        System.getenv("AFIELD_FOUR_FRAME_PRESENTATION_LOG") ?: "false"
+    ).toBoolean()
+    var framePresentationLogPath: String? = System.getProperty(
+        "afield.four.framePresentationLogPath",
+        System.getenv("AFIELD_FOUR_FRAME_PRESENTATION_LOG_PATH")
+    )
+    var framePresentationLogWaitAfterPresent = System.getProperty(
+        "afield.four.framePresentationLogWaitAfterPresent",
+        System.getenv("AFIELD_FOUR_FRAME_PRESENTATION_LOG_WAIT_AFTER_PRESENT") ?: "false"
+    ).toBoolean()
+    var framePresentationLogFlushEvery = System.getProperty(
+        "afield.four.framePresentationLogFlushEvery",
+        System.getenv("AFIELD_FOUR_FRAME_PRESENTATION_LOG_FLUSH_EVERY") ?: "120"
+    ).toIntOrNull()?.coerceAtLeast(1) ?: 120
+    var framePresentationLogPresentWaitTimeoutNs = System.getProperty(
+        "afield.four.framePresentationLogPresentWaitTimeoutNs",
+        System.getenv("AFIELD_FOUR_FRAME_PRESENTATION_LOG_PRESENT_WAIT_TIMEOUT_NS") ?: "50000000"
+    ).toLongOrNull()?.coerceAtLeast(1L) ?: 50_000_000L
     var logShadercSource = System.getProperty(
         "afield.four.logShadercSource",
         System.getenv("AFIELD_FOUR_LOG_SHADERC_SOURCE") ?: "true"

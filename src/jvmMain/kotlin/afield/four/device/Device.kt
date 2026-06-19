@@ -53,7 +53,9 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
             val usePortability =
                 hasExt(KHRPortabilitySubset.VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME) && OS == OSType.MACOS
             val useExternalMemory = OS == OSType.WINDOWS
-            usePresentIndexing = OS == OSType.WINDOWS
+            usePresentIndexing = OS == OSType.WINDOWS &&
+                hasExt(KHRPresentId.VK_KHR_PRESENT_ID_EXTENSION_NAME) &&
+                hasExt(KHRPresentWait.VK_KHR_PRESENT_WAIT_EXTENSION_NAME)
             enableMeshShading =
                 OS == OSType.WINDOWS && hasExt(EXTMeshShader.VK_EXT_MESH_SHADER_EXTENSION_NAME)
 
@@ -245,11 +247,14 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 memPutAddress(tail + VkBaseOutStructure.PNEXT, mv.address()); tail = mv.address()
             }
 
-            if (enableMeshShading && usePresentIndexing) {
+            if (enableMeshShading) {
                 val mesh = VkPhysicalDeviceMeshShaderFeaturesEXT.calloc(stack)
                     .sType(EXTMeshShader.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT)
                     .meshShader(true).taskShader(true).multiviewMeshShader(supportsMultiview)
+                memPutAddress(tail + VkBaseOutStructure.PNEXT, mesh.address()); tail = mesh.address()
+            }
 
+            if (usePresentIndexing) {
                 val presentId = VkPhysicalDevicePresentIdFeaturesKHR.calloc(stack)
                     .sType(KHRPresentId.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR)
                     .presentId(true)
@@ -258,7 +263,6 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                     .sType(KHRPresentWait.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR)
                     .presentWait(true)
 
-                memPutAddress(tail + VkBaseOutStructure.PNEXT, mesh.address()); tail = mesh.address()
                 memPutAddress(tail + VkBaseOutStructure.PNEXT, presentId.address()); tail = presentId.address()
                 memPutAddress(tail + VkBaseOutStructure.PNEXT, presentWait.address()); tail = presentWait.address()
             }

@@ -2,6 +2,8 @@ package afield.stdlib
 
 import afield.*
 import afield.Server.Companion.stop
+import afield.four.util.FramePresentationLog
+import afield.four.util.Options
 import afield.four.util.floatToHalfBits
 import kotlinx.coroutines.DelicateCoroutinesApi
 import org.joml.*
@@ -201,6 +203,24 @@ fun Box.begin(strand: String = "default") {
 
 fun Box.end() {
     stop(this, entrypoint = "stdlib.end")
+}
+
+fun frameLogStart(
+    path: String? = null,
+    waitAfterPresent: Boolean = Options.framePresentationLogWaitAfterPresent,
+    append: Boolean = false
+): String = FramePresentationLog.start(path, waitAfterPresent, append)
+
+fun frameLogStop() {
+    FramePresentationLog.stop()
+}
+
+fun frameLogMark(message: String) {
+    FramePresentationLog.mark(message)
+}
+
+fun frameLogLine(message: String) {
+    FramePresentationLog.addLine(message)
 }
 
 

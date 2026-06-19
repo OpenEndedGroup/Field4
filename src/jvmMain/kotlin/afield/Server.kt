@@ -9,6 +9,7 @@ import afield.ai.core.openAiCredentialStatus
 import afield.ai.core.saveOpenAiPlatformKey
 import afield.ai.core.completion.Ai4KotlinAutocomplete
 import afield.debug.RuntimeDebugProbeService
+import afield.four.util.FramePresentationLog
 import afield.four.util.Options
 import afield.graphics.getFLineEditSession
 import afield.logger.lblock
@@ -354,6 +355,7 @@ private val preferencesJson = Json { ignoreUnknownKeys = true }
 private fun defaultFieldPreferences(): FieldPreferences =
     FieldPreferences(
         profiling = Options.profiling,
+        framePresentationLog = Options.framePresentationLog,
         logShadercSource = Options.logShadercSource,
         enableVR = Options.enableVR,
         enableHDR = Options.enableHDR,
@@ -387,12 +389,23 @@ private fun normalizeFieldPreferences(preferences: FieldPreferences): FieldPrefe
 }
 
 private fun applyFieldPreferences(preferences: FieldPreferences) {
+    val framePresentationLogWasEnabled = Options.framePresentationLog
     Options.profiling = preferences.profiling
+    Options.framePresentationLog = preferences.framePresentationLog
     Options.logShadercSource = preferences.logShadercSource
     Options.enableVR = preferences.enableVR
     Options.enableHDR = preferences.enableHDR
     Options.openXRDebugInput = preferences.openXRDebugInput
     Options.validate = preferences.validate
+    if (preferences.framePresentationLog && !framePresentationLogWasEnabled) {
+        FramePresentationLog.start(
+            outputPath = Options.framePresentationLogPath,
+            waitAfterPresent = Options.framePresentationLogWaitAfterPresent,
+            append = false
+        )
+    } else if (!preferences.framePresentationLog && FramePresentationLog.enabled) {
+        FramePresentationLog.stop()
+    }
     OscEditorBackdoor.configure(preferences)
 }
 

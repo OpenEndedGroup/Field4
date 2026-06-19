@@ -1236,6 +1236,7 @@
                     <div class="preferences-body">
                         <div class="preference-grid">
                             <label class="preference-toggle"><input id="pref-profiling" type="checkbox"> profiling</label>
+                            <label class="preference-toggle"><input id="pref-frame-presentation-log" type="checkbox"> frame presentation log</label>
                             <label class="preference-toggle"><input id="pref-log-shaderc-source" type="checkbox"> log shader source</label>
                             <label class="preference-toggle"><input id="pref-enable-vr" type="checkbox"> enableVR</label>
                             <label class="preference-toggle"><input id="pref-enable-hdr" type="checkbox"> enableHDR</label>
@@ -1345,6 +1346,7 @@
         savingAiSettings: false,
         preferences: {
             profiling: false,
+            framePresentationLog: false,
             logShadercSource: true,
             enableVR: true,
             enableHDR: false,
@@ -1499,6 +1501,7 @@
         const stickiness = prefs.editorPropertyStickiness || "none";
         const enabledCount = [
             prefs.profiling,
+            prefs.framePresentationLog,
             prefs.logShadercSource,
             prefs.enableVR,
             prefs.enableHDR,
@@ -1509,6 +1512,7 @@
 
         const fields = {
             "pref-profiling": "profiling",
+            "pref-frame-presentation-log": "framePresentationLog",
             "pref-log-shaderc-source": "logShadercSource",
             "pref-enable-vr": "enableVR",
             "pref-enable-hdr": "enableHDR",
@@ -1589,6 +1593,7 @@
         const parsedMaxExecution = Number.parseInt(document.getElementById("osc-editor-max-execution-ms")?.value || "750", 10);
         return {
             profiling: !!document.getElementById("pref-profiling")?.checked,
+            framePresentationLog: !!document.getElementById("pref-frame-presentation-log")?.checked,
             logShadercSource: !!document.getElementById("pref-log-shaderc-source")?.checked,
             enableVR: !!document.getElementById("pref-enable-vr")?.checked,
             enableHDR: !!document.getElementById("pref-enable-hdr")?.checked,
