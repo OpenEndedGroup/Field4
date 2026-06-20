@@ -35,13 +35,14 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
     ];
 
     var mathWords = [
-        "+", "add", "-", "sub", "*", "mul", "/", "div", "mod", "pow",
-        "min", "max", "neg", "negate", "abs", "floor", "ceil", "fract",
+        "+", "add", "-", "sub", "*", "mul", "/", "div", "mod", "pow", "pow.safe",
+        "min", "max", "neg", "negate", "1-", "abs", "floor", "ceil", "fract",
         "sqrt", "inversesqrt", "exp", "log", "sin", "cos", "tan",
         "asin", "acos", "atan", "atan2", "normalize",
         "len", "length", "len2", "length2", "len3", "length3", "len4", "length4",
         "average", "avg", "mean", "median", "med", "sort", "intermediate", "vmin", "minimum", "vmax", "maximum",
-        "dot", "cross", "mix", "lerp", "step", "smoothstep",
+        "dot", "distance2", "distance3", "distance", "cross", "standoff", "standoff2", "standoff3", "rotate", "rotates", ">x", ">y", ">z", ">w",
+        "mix", "lerp", "mix.c", "lerp.c", "mix.sc", "lerp.sc", "select", "if", "step", "smoothstep",
         "lt", "lte", "gt", "gte", "eq", "neq", "and", "or", "not",
         "xor", "bitxor", "gray-code", "graycode", "gray-encode", "gray-decode", "ungray", "lfsr",
         "<", "<=", ">", ">=", "=", "!=", "<>"
@@ -52,12 +53,17 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         "palette", "cos-palette", "cosine-palette",
         "luma", "sat", "saturate", "clamp", "mirror", "tonemap",
         "ryb", "ryb2rgb", "from-ryb", "rgb2ryb", "to-ryb",
+        "ryb.c", "ryb2rgb.c", "from-ryb.c", "rgb2ryb.c", "to-ryb.c",
         "oklab", "oklab2rgb", "from-oklab", "rgb2oklab", "to-oklab",
         "saturation", "sat-color", "contrast", "grade",
-        "ema", "ema-diff", "diff-ema", "dema",
+        "alpha", "alpha.c", "alpha.sc",
+        "ema", "ema.c", "ema.sc", "ema-diff", "ema-diff.c", "ema-diff.sc", "diff-ema", "diff-ema.c", "diff-ema.sc", "dema", "dema.c", "dema.sc",
         "sample", "sample0", "sample1", "sample2", "sample3",
+        "sample.w", "sample0.w", "sample1.w", "sample2.w", "sample3.w",
         "sample-abs", "sample0-abs", "sample1-abs", "sample2-abs", "sample3-abs",
+        "sample-abs.w", "sample0-abs.w", "sample1-abs.w", "sample2-abs.w", "sample3-abs.w",
         "prev", "state", "gather", "gather0", "gather1", "gather2", "gather3",
+        "gather.w", "gather0.w", "gather1.w", "gather2.w", "gather3.w",
         "bitcrush", "bit-crush"
     ];
 
@@ -94,9 +100,17 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         .concat(registerArityVariants("contrast", 1, 2, false))
         .concat(registerArityVariants("grade", 1, 4, false))
         .concat(registerArityVariants("ema", 1, 3, false))
+        .concat(registerArityVariants("ema.c", 1, 3, false))
+        .concat(registerArityVariants("ema.sc", 1, 3, false))
         .concat(registerArityVariants("ema-diff", 1, 3, false))
+        .concat(registerArityVariants("ema-diff.c", 1, 3, false))
+        .concat(registerArityVariants("ema-diff.sc", 1, 3, false))
         .concat(registerArityVariants("diff-ema", 1, 3, false))
+        .concat(registerArityVariants("diff-ema.c", 1, 3, false))
+        .concat(registerArityVariants("diff-ema.sc", 1, 3, false))
         .concat(registerArityVariants("dema", 1, 3, false))
+        .concat(registerArityVariants("dema.c", 1, 3, false))
+        .concat(registerArityVariants("dema.sc", 1, 3, false))
         .concat(registerArityVariants("bitcrush", 1, 2, false))
         .concat(registerArityVariants("bit-crush", 1, 2, false));
 
@@ -114,14 +128,18 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
     var numberRegex = new RegExp("^" + numberSource + "$", "i");
     var numberSuffixRegex = new RegExp("^" + numberSource + "[trgba]$", "i");
     var numberRangeRegex = new RegExp("^" + numberSource + "_" + numberSource + "$", "i");
+    var vecLiteralRegex = new RegExp("^\\[\\s*" + numberSource + "(?:\\s*,\\s*" + numberSource + "){0,3}\\s*\\]$", "i");
     var numberModifierRegex = new RegExp("^" + numberSource + "(?:" + modifierSource + ")(?:" + numberSource + ")?(?:p" + numberSource + ")?(?:d" + numberSource + ")?$", "i");
     var topModifierRegex = new RegExp("^[\\|\\]](?:" + modifierSource + ")(?:" + numberSource + ")?(?:p" + numberSource + ")?(?:d" + numberSource + ")?$", "i");
     var swizzleRegex = /^\.?[xyzwrgba]{1,4}$/i;
     var numberRangeTokenRegex = new RegExp("(" + numberSource + ")(_)" + "(" + numberSource + ")");
+    var vecLiteralTokenRegex = new RegExp("\\[\\s*" + numberSource + "(?:\\s*,\\s*" + numberSource + "){0,3}\\s*\\]", "i");
     var topModifierTokenRegex = new RegExp("([\\|\\]])(" + modifierSource + ")(" + numberSource + ")?(?:(p)(" + numberSource + "))?(?:(d)(" + numberSource + "))?(?=$|[\\s()#;])", "i");
     var numberModifierTokenRegex = new RegExp("(" + numberSource + ")(" + modifierSource + ")(" + numberSource + ")?(?:(p)(" + numberSource + "))?(?:(d)(" + numberSource + "))?(?=$|[\\s()#;])", "i");
     var simpleNumberSuffixTokenRegex = new RegExp("(" + numberSource + ")([trgba])\\b", "i");
-    var hostGlslVec4Source = "[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*";
+    var hostGlslIdentifierSource = "[A-Za-z_][A-Za-z0-9_]*";
+    var hostGlslIndexSource = "\\[[^\\]\\s]+\\]";
+    var hostGlslVec4Source = hostGlslIdentifierSource + "(?:" + hostGlslIndexSource + ")*(?:\\." + hostGlslIdentifierSource + "(?:" + hostGlslIndexSource + ")*)*";
     var externalReadRegex = new RegExp("^\\?" + hostGlslVec4Source + "$");
     var externalWriteRegex = new RegExp("^->\\?" + hostGlslVec4Source + "$");
     var externalReadTokenRegex = new RegExp("(\\?)(" + hostGlslVec4Source + ")");
@@ -135,7 +153,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
 
     var pushWordSet = wordSet(stackWords.concat(constants, ["prev", "state"]));
     var unaryWordSet = wordSet([
-        "neg", "negate", "abs", "floor", "ceil", "fract", "sqrt", "inversesqrt", "exp", "log",
+        "neg", "negate", "1-", "abs", "floor", "ceil", "fract", "sqrt", "inversesqrt", "exp", "log",
         "sin", "cos", "tan", "asin", "acos", "atan", "normalize",
         "len", "length", "len2", "length2", "len3", "length3", "len4", "length4",
         "luma", "average", "avg", "mean", "median", "med", "vmin", "minimum", "vmax", "maximum",
@@ -146,8 +164,8 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         "gray-code", "graycode", "gray-encode", "gray-decode", "ungray", "lfsr"
     ]);
     var binaryWordSet = wordSet([
-        "+", "add", "-", "sub", "*", "mul", "/", "div", "mod", "pow",
-        "atan2", "dot", "cross",
+        "+", "add", "-", "sub", "*", "mul", "/", "div", "mod", "pow", "pow.safe",
+        "atan2", "dot", "distance2", "distance3", "distance", "cross", "rotate", ">x", ">y", ">z", ">w",
         "lt", "<", "lte", "<=", "gt", ">", "gte", ">=", "eq", "=", "neq", "!=", "<>",
         "and", "or", "xor", "bitxor"
     ]);
@@ -155,6 +173,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
     function isPushToken(word) {
         return !!pushWordSet[word] ||
             externalReadRegex.test(word) ||
+            vecLiteralRegex.test(word) ||
             numberRegex.test(word) ||
             numberSuffixRegex.test(word) ||
             numberRangeRegex.test(word) ||
@@ -211,6 +230,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         if (word === "vec3" || word === "v3") return effect(3, 1);
         if (word === "vec4" || word === "v4") return effect(4, 1);
         if (word === "->0" || word === "->1" || word === "->2" || word === "->3") return effect(1, 0);
+        if (word === "rotates" || word === "standoff" || word === "standoff2" || word === "standoff3") return effect(3, 1);
         if (word === "average" || word === "avg" || word === "mean" || word === "median" || word === "med") {
             if (variant) return effect(blastCount(depth, requestedArity, requestedAll), 1);
         }
@@ -228,18 +248,27 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             if (requestedAll || (requestedArity || 0) >= 3) return effect(blastCount(depth, requestedArity, requestedAll), 1);
             return effect(requestedArity || (depth <= 2 ? 1 : 2), 1);
         }
-        if (word === "mix" || word === "lerp") return effect(3, 1);
+        if (word === "mix" || word === "lerp" || word === "mix.c" || word === "lerp.c" ||
+            word === "mix.sc" || word === "lerp.sc" || word === "select" || word === "if") return effect(3, 1);
+        if (word === "alpha" || word === "alpha.c" || word === "alpha.sc") return effect(3, 1);
         if (word === "step") return effect(2, 1);
         if (word === "smoothstep") return effect(3, 1);
-        if (word === "pulse" || word === "fm" || word === "ema" || word === "ema-diff" || word === "diff-ema" || word === "dema") return requestedArity ? effect(requestedArity, 1) : dynamicEffect(depth, 3);
+        if (word === "pulse" || word === "fm" ||
+            word === "ema" || word === "ema.c" || word === "ema.sc" ||
+            word === "ema-diff" || word === "ema-diff.c" || word === "ema-diff.sc" ||
+            word === "diff-ema" || word === "diff-ema.c" || word === "diff-ema.sc" ||
+            word === "dema" || word === "dema.c" || word === "dema.sc") return requestedArity ? effect(requestedArity, 1) : dynamicEffect(depth, 3);
         if (word === "fmchirp") return requestedArity ? effect(requestedArity, 1) : dynamicEffect(depth, 9);
         if (word === "palette" || word === "cos-palette" || word === "cosine-palette") return requestedArity ? effect(requestedArity, 1) : dynamicEffect(depth, 5);
         if (word === "saturation" || word === "sat-color" || word === "contrast") return requestedArity ? effect(requestedArity, 1) : dynamicEffect(depth, 2);
         if (word === "bitcrush" || word === "bit-crush") return requestedArity ? effect(requestedArity, 1) : dynamicEffect(depth, 2);
         if (word === "grade") return requestedArity ? effect(requestedArity, 1) : dynamicEffect(depth, 4);
         if (word === "sample" || word === "sample0" || word === "sample1" || word === "sample2" || word === "sample3" ||
+            word === "sample.w" || word === "sample0.w" || word === "sample1.w" || word === "sample2.w" || word === "sample3.w" ||
             word === "sample-abs" || word === "sample0-abs" || word === "sample1-abs" || word === "sample2-abs" || word === "sample3-abs" ||
-            word === "gather" || word === "gather0" || word === "gather1" || word === "gather2" || word === "gather3") return effect(1, 1);
+            word === "sample-abs.w" || word === "sample0-abs.w" || word === "sample1-abs.w" || word === "sample2-abs.w" || word === "sample3-abs.w" ||
+            word === "gather" || word === "gather0" || word === "gather1" || word === "gather2" || word === "gather3" ||
+            word === "gather.w" || word === "gather0.w" || word === "gather1.w" || word === "gather2.w" || word === "gather3.w") return effect(1, 1);
         if (definitionWords && definitionWords[word]) return effect(1, 1);
         return effect(0, 0);
     }
@@ -448,10 +477,13 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
     const STACKSL_NUMBER_RE = new RegExp(`^${STACKSL_NUMBER_SOURCE}$`)
     const STACKSL_NUMBER_SUFFIX_RE = new RegExp(`^${STACKSL_NUMBER_SOURCE}[trgba]$`, "i")
     const STACKSL_NUMBER_RANGE_RE = new RegExp(`^${STACKSL_NUMBER_SOURCE}_${STACKSL_NUMBER_SOURCE}$`, "i")
+    const STACKSL_VEC_LITERAL_RE = new RegExp(`^\\[\\s*${STACKSL_NUMBER_SOURCE}(?:\\s*,\\s*${STACKSL_NUMBER_SOURCE}){0,3}\\s*\\]$`, "i")
     const STACKSL_NUMBER_MODIFIER_RE = new RegExp(`^${STACKSL_NUMBER_SOURCE}(?:${STACKSL_MODIFIER_SOURCE})(?:${STACKSL_NUMBER_SOURCE})?(?:p${STACKSL_NUMBER_SOURCE})?(?:d${STACKSL_NUMBER_SOURCE})?$`, "i")
     const STACKSL_TOP_MODIFIER_RE = new RegExp(`^[\\|\\]](?:${STACKSL_MODIFIER_SOURCE})(?:${STACKSL_NUMBER_SOURCE})?(?:p${STACKSL_NUMBER_SOURCE})?(?:d${STACKSL_NUMBER_SOURCE})?$`, "i")
     const STACKSL_SWIZZLE_RE = /^\.?[xyzwrgba]{1,4}$/i
-    const STACKSL_HOST_GLSL_VEC4_SOURCE = "[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*"
+    const STACKSL_HOST_GLSL_IDENTIFIER_SOURCE = "[A-Za-z_][A-Za-z0-9_]*"
+    const STACKSL_HOST_GLSL_INDEX_SOURCE = "\\[[^\\]\\s]+\\]"
+    const STACKSL_HOST_GLSL_VEC4_SOURCE = `${STACKSL_HOST_GLSL_IDENTIFIER_SOURCE}(?:${STACKSL_HOST_GLSL_INDEX_SOURCE})*(?:\\.${STACKSL_HOST_GLSL_IDENTIFIER_SOURCE}(?:${STACKSL_HOST_GLSL_INDEX_SOURCE})*)*`
     const STACKSL_EXTERNAL_READ_RE = new RegExp(`^\\?${STACKSL_HOST_GLSL_VEC4_SOURCE}$`)
     const STACKSL_EXTERNAL_WRITE_RE = new RegExp(`^->\\?${STACKSL_HOST_GLSL_VEC4_SOURCE}$`)
     const STACKSL_COLOR_WORDS = new Set([
@@ -467,20 +499,21 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
     ])
 
     const STACKSL_UNARY_WORDS = new Set([
-            "neg", "negate", "abs", "floor", "ceil", "fract", "sqrt", "inversesqrt", "exp", "log",
+            "neg", "negate", "1-", "abs", "floor", "ceil", "fract", "sqrt", "inversesqrt", "exp", "log",
             "sin", "cos", "tan", "asin", "acos", "atan", "normalize",
             "len", "length", "len2", "length2", "len3", "length3", "len4", "length4",
             "luma", "average", "avg", "mean", "median", "med", "vmin", "minimum", "vmax", "maximum",
             "sat", "saturate", "clamp", "mirror", "tonemap",
             "ryb", "ryb2rgb", "from-ryb", "rgb2ryb", "to-ryb",
+            "ryb.c", "ryb2rgb.c", "from-ryb.c", "rgb2ryb.c", "to-ryb.c",
             "oklab", "oklab2rgb", "from-oklab", "rgb2oklab", "to-oklab",
             "noise", "perlin", "fbm", "not",
             "gray-code", "graycode", "gray-encode", "gray-decode", "ungray", "lfsr",
     ])
 
     const STACKSL_BINARY_WORDS = new Set([
-            "+", "add", "-", "sub", "*", "mul", "/", "div", "mod", "pow",
-            "atan2", "dot", "cross",
+            "+", "add", "-", "sub", "*", "mul", "/", "div", "mod", "pow", "pow.safe",
+            "atan2", "dot", "distance2", "distance3", "distance", "cross", "rotate", ">x", ">y", ">z", ">w",
             "lt", "<", "lte", "<=", "gt", ">", "gte", ">=", "eq", "=", "neq", "!=", "<>",
             "and", "or", "xor", "bitxor",
     ])
@@ -515,11 +548,26 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             ["cos-palette", "palette"],
             ["cosine-palette", "palette"],
             ["sat-color", "saturation"],
+            ["alpha.c", "alpha"],
+            ["alpha.sc", "alpha"],
             ["diff-ema", "ema-diff"],
             ["dema", "ema-diff"],
+            ["ema.c", "ema"],
+            ["ema.sc", "ema"],
+            ["ema-diff.c", "ema-diff"],
+            ["ema-diff.sc", "ema-diff"],
+            ["diff-ema.c", "ema-diff"],
+            ["diff-ema.sc", "ema-diff"],
+            ["dema.c", "ema-diff"],
+            ["dema.sc", "ema-diff"],
             ["from-ryb", "ryb"],
             ["ryb2rgb", "ryb"],
+            ["ryb.c", "ryb.c"],
+            ["from-ryb.c", "ryb.c"],
+            ["ryb2rgb.c", "ryb.c"],
             ["to-ryb", "rgb2ryb"],
+            ["rgb2ryb.c", "rgb2ryb.c"],
+            ["to-ryb.c", "rgb2ryb.c"],
             ["from-oklab", "oklab"],
             ["oklab2rgb", "oklab"],
             ["to-oklab", "rgb2oklab"],
@@ -528,6 +576,9 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             ["mul", "*"],
             ["div", "/"],
             ["lerp", "mix"],
+            ["lerp.c", "mix.c"],
+            ["lerp.sc", "mix.sc"],
+            ["if", "select"],
             ["bitxor", "xor"],
             ["graycode", "gray-code"],
             ["gray-encode", "gray-code"],
@@ -537,11 +588,11 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
 
     const STACKSL_WORD_DOCS = new Map([
             ["noop", stackslDoc("--", "No operation.")],
-            ["input", stackslDoc("-- input", "Push the full vec4(uv.x, uv.y, time, hash).")],
+            ["input", stackslDoc("-- input", "Push the full vec4(x, y, z-or-hash, time).")],
             ["uv", stackslDoc("-- uv", "Push normalized uv as vec4(uv.xy, 0, 1).")],
             ["p", stackslDoc("-- p", "Push centered uv as vec4(uv.xy - 0.5, 0, 1).")],
-            ["time", stackslDoc("-- time", "Push time from input.z, splatted to vec4.")],
-            ["hash", stackslDoc("-- hash", "Push per-pixel hash from input.w, splatted to vec4.")],
+            ["time", stackslDoc("-- time", "Push time from input.w, splatted to vec4.")],
+            ["hash", stackslDoc("-- hash", "Push z/hash from input.z, splatted to vec4.")],
             ["pi", stackslDoc("-- value", "Push pi, splatted to vec4.")],
             ["tau", stackslDoc("-- value", "Push tau, splatted to vec4.")],
             ["e", stackslDoc("-- value", "Push e, splatted to vec4.")],
@@ -556,6 +607,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             ["vec3", stackslDoc("x y z -- vec", "Build vec4(x.x, y.x, z.x, 1).")],
             ["vec4", stackslDoc("x y z w -- vec", "Build vec4 from the .x channel of four stack values.")],
             ["neg", stackslDoc("a -- out", "Negate component-wise.")],
+            ["1-", stackslDoc("a -- out", "Subtract component-wise from vec4(1).")],
             ["abs", stackslDoc("a -- out", "Absolute value component-wise.")],
             ["floor", stackslDoc("a -- out", "Floor component-wise.")],
             ["ceil", stackslDoc("a -- out", "Ceil component-wise.")],
@@ -575,6 +627,9 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             ["length", stackslDoc("vec -- scalar", "Length of vec.xy, splatted to vec4.")],
             ["length3", stackslDoc("vec -- scalar", "Length of vec.xyz, splatted to vec4.")],
             ["length4", stackslDoc("vec -- scalar", "Length of full vec4, splatted.")],
+            ["distance2", stackslDoc("a b -- scalar", "Distance between a.xy and b.xy, splatted.")],
+            ["distance3", stackslDoc("a b -- scalar", "Distance between a.xyz and b.xyz, splatted.")],
+            ["distance", stackslDoc("a b -- scalar", "Distance between full vec4 values, splatted.")],
             ["luma", stackslDoc("color -- scalar", "Rec.709 luminance, splatted.")],
             ["avg", stackslDoc("vec -- scalar", "Average of RGBA channels, splatted.")],
             ["median", stackslDoc("vec -- scalar", "Median-ish RGBA channel value, splatted.")],
@@ -585,8 +640,10 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             ["sat", stackslDoc("color -- color", "Clamp all channels to 0..1.")],
             ["mirror", stackslDoc("a -- out", "Triangle-wrap values into 0..1.")],
             ["tonemap", stackslDoc("color -- color", "Compress bright colors for feedback.")],
-            ["ryb", stackslDoc("ryb -- rgb", "Convert paint-like RYB color to RGB.")],
-            ["rgb2ryb", stackslDoc("rgb -- ryb", "Convert RGB to paint-like RYB.")],
+            ["ryb", stackslDoc("ryb -- rgb", "Convert paint-like RYB color to RGB without clamping.")],
+            ["ryb.c", stackslDoc("ryb -- rgb", "Convert paint-like RYB color to RGB with 0..1 input/output clamping.")],
+            ["rgb2ryb", stackslDoc("rgb -- ryb", "Convert RGB to paint-like RYB without clamping.")],
+            ["rgb2ryb.c", stackslDoc("rgb -- ryb", "Convert RGB to paint-like RYB with 0..1 input/output clamping.")],
             ["oklab", stackslDoc("oklab -- rgb", "Convert OKLab-like values to RGB.")],
             ["rgb2oklab", stackslDoc("rgb -- oklab", "Convert RGB to perceptual-ish OKLab.")],
             ["+", stackslDoc("a b -- out", "Add component-wise.")],
@@ -594,9 +651,19 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             ["*", stackslDoc("a b -- out", "Multiply component-wise.")],
             ["/", stackslDoc("a b -- out", "Safe divide component-wise.")],
             ["mod", stackslDoc("a b -- out", "Safe modulo component-wise.")],
-            ["pow", stackslDoc("base exp -- out", "Power with a safe absolute base.")],
+            ["pow", stackslDoc("base exp -- out", "Raw GLSL pow(base, exp).")],
+            ["pow.safe", stackslDoc("base exp -- out", "Power with a safe absolute base.")],
             ["dot", stackslDoc("a b -- scalar", "Dot product, splatted.")],
             ["cross", stackslDoc("a b -- vec", "Cross product of xyz, alpha set to 1.")],
+            ["standoff", stackslDoc("a b c -- out", "Move from b toward a by c using safe full-vec4 normalization: safeNormalize(a - b) * c + b.")],
+            ["standoff2", stackslDoc("a b c -- out", "Move from b toward a by c using safe xy normalization while carrying all vec4 lanes.")],
+            ["standoff3", stackslDoc("a b c -- out", "Move from b toward a by c using safe xyz normalization while carrying all vec4 lanes.")],
+            ["rotate", stackslDoc("a b -- out", "Rotate a.xy by b.x and a.zw by b.y.")],
+            ["rotates", stackslDoc("a b c -- out", "Rotate and scale a.xy around b.xy using c.xy, and a.zw around b.zw using c.zw.")],
+            [">x", stackslDoc("a b -- out", "Copy a, replacing x with b.x.")],
+            [">y", stackslDoc("a b -- out", "Copy a, replacing y with b.y.")],
+            [">z", stackslDoc("a b -- out", "Copy a, replacing z with b.z.")],
+            [">w", stackslDoc("a b -- out", "Copy a, replacing w with b.w.")],
             ["lt", stackslDoc("a b -- mask", "lessThan mask in 0..1.")],
             ["lte", stackslDoc("a b -- mask", "lessThanEqual mask in 0..1.")],
             ["gt", stackslDoc("a b -- mask", "greaterThan mask in 0..1.")],
@@ -611,14 +678,23 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             ["gray-decode", stackslDoc("value -- out", "Decode Gray-coded 16-bit lanes back to binary.")],
             ["lfsr", stackslDoc("state -- next", "Step coupled 16-bit LFSR lanes packed in vec4 state.")],
             ["bitcrush", stackslDoc("value bits -- out", "Quantize normalized lanes to the requested bit depth; short form defaults to 4 bits.")],
-            ["mix", stackslDoc("a b amount -- out", "Clamped component-wise mix.")],
+            ["mix", stackslDoc("a b amount -- out", "Raw component-wise GLSL mix; amount is not clamped.")],
+            ["mix.c", stackslDoc("a b amount -- out", "Component-wise mix with amount clamped to 0..1.")],
+            ["mix.sc", stackslDoc("a b amount -- out", "Component-wise mix with a soft-clamped 0..1 amount.")],
+            ["select", stackslDoc("false true condition -- out", "Boolean-mask selection using condition threshold 0.5.")],
+            ["alpha", stackslDoc("baseAlpha modulation range -- alpha", "Modulate an EMA alpha by multiplying its decay rate by pow(range, modulation). Raw version preserves negative base-alpha sign.")],
+            ["alpha.c", stackslDoc("baseAlpha modulation range -- alpha", "Clamped alpha modulation: baseAlpha is clamped to 1e-6..0.999999 and modulation to -1..1.")],
+            ["alpha.sc", stackslDoc("baseAlpha modulation range -- alpha", "Soft-clamped alpha modulation for smoother bounded control.")],
             ["step", stackslDoc("edge x -- mask", "GLSL step, with defaults if needed.")],
             ["smoothstep", stackslDoc("low high x -- mask", "GLSL smoothstep, with defaults if needed.")],
             ["noise", stackslDoc("coord -- scalar", "Value noise from coord.xy + coord.zw * 0.07.")],
             ["fbm", stackslDoc("coord -- scalar", "Five-octave fractal noise.")],
-            ["sample", stackslDoc("offset -- color", "Sample previous frame at fract(uv + offset.xy).")],
-            ["sample-abs", stackslDoc("coord -- color", "Sample previous frame at fract(coord.xy).")],
-            ["gather", stackslDoc("offset -- vec", "textureGather red channel around uv + offset.xy.")],
+            ["sample", stackslDoc("offset -- color", "Sample previous frame at uv + offset.xy without wrapping.")],
+            ["sample.w", stackslDoc("offset -- color", "Sample previous frame at fract(uv + offset.xy).")],
+            ["sample-abs", stackslDoc("coord -- color", "Sample previous frame at coord.xy without wrapping.")],
+            ["sample-abs.w", stackslDoc("coord -- color", "Sample previous frame at fract(coord.xy).")],
+            ["gather", stackslDoc("offset -- vec", "textureGather red channel around uv + offset.xy without wrapping.")],
+            ["gather.w", stackslDoc("offset -- vec", "textureGather red channel around fract(uv + offset.xy).")],
             ["prev", stackslDoc("-- color", "Sample previous frame at the current uv.")],
             ["state", stackslDoc("-- color", "Alias for prev.")],
             ["0->", stackslDoc("-- value", "Read stored red channel at this pixel.")],
@@ -641,6 +717,9 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
 
             if (STACKSL_NUMBER_RANGE_RE.test(raw)) {
                     return stackslDoc("-- vec", "Push a vec4 range spread across four scalar values.")
+            }
+            if (STACKSL_VEC_LITERAL_RE.test(raw)) {
+                    return stackslDoc("-- vec", "Push a numeric vec4 literal; one to four slots use vec word fill rules.")
             }
             if (STACKSL_NUMBER_SUFFIX_RE.test(raw)) {
                     return stackslDoc("-- value", "Push a time-scaled or channel-weighted number.")
@@ -753,13 +832,22 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
                     }
                     return stackslDoc(signatures[effect.consume] || signatures[4], effect.consume < 4 ? "Color grade with trailing defaults." : "Color grade with lift, gain, and gamma.")
             }
+            if (canonical === "alpha") {
+                    const clampDetail = word.endsWith(".c")
+                            ? " Base alpha is hard-clamped to 1e-6..0.999999 and modulation to -1..1."
+                            : word.endsWith(".sc")
+                                    ? " Base alpha and modulation use soft bounded controls."
+                                    : " Raw version preserves negative base-alpha sign."
+                    return stackslDoc("baseAlpha modulation range -- alpha", "Modulate EMA decay rate by pow(range, modulation)." + clampDetail)
+            }
             if (canonical === "ema") {
                     const signatures = {
                             1: "current -- smooth",
                             2: "current previous -- smooth",
                             3: "current previous alpha -- smooth",
                     }
-                    return stackslDoc(signatures[effect.consume] || signatures[3], effect.consume < 3 ? "EMA with trailing defaults." : "Exponential moving average.")
+                    const clampDetail = word.endsWith(".c") ? " Alpha is clamped to 0..1." : word.endsWith(".sc") ? " Alpha is soft-clamped to 0..1." : " Alpha is raw/unclamped."
+                    return stackslDoc(signatures[effect.consume] || signatures[3], (effect.consume < 3 ? "EMA with trailing defaults." : "Exponential moving average.") + clampDetail)
             }
             if (canonical === "ema-diff") {
                     const signatures = {
@@ -767,7 +855,8 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
                             2: "current previous -- diff",
                             3: "current previous alpha -- diff",
                     }
-                    return stackslDoc(signatures[effect.consume] || signatures[3], effect.consume < 3 ? "Current minus EMA with trailing defaults." : "Current minus exponential moving average.")
+                    const clampDetail = word.endsWith(".c") ? " Alpha is clamped to 0..1." : word.endsWith(".sc") ? " Alpha is soft-clamped to 0..1." : " Alpha is raw/unclamped."
+                    return stackslDoc(signatures[effect.consume] || signatures[3], (effect.consume < 3 ? "Current minus EMA with trailing defaults." : "Current minus exponential moving average.") + clampDetail)
             }
             if (canonical === "bitcrush") {
                     return effect.consume === 1
@@ -776,8 +865,11 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             }
 
             if (/^sample[0-3]$/.test(word)) return STACKSL_WORD_DOCS.get("sample")
+            if (/^sample[0-3]\.w$/.test(word)) return STACKSL_WORD_DOCS.get("sample.w")
             if (/^sample[0-3]-abs$/.test(word)) return STACKSL_WORD_DOCS.get("sample-abs")
+            if (/^sample[0-3]-abs\.w$/.test(word)) return STACKSL_WORD_DOCS.get("sample-abs.w")
             if (/^gather[0-3]$/.test(word)) return STACKSL_WORD_DOCS.get("gather")
+            if (/^gather[0-3]\.w$/.test(word)) return STACKSL_WORD_DOCS.get("gather.w")
             if (word === "<") return STACKSL_WORD_DOCS.get("lt")
             if (word === "<=") return STACKSL_WORD_DOCS.get("lte")
             if (word === ">") return STACKSL_WORD_DOCS.get("gt")
@@ -926,6 +1018,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
     const isStackSLPushToken = (word) => {
             return STACKSL_PUSH_WORDS.has(word) ||
                     STACKSL_EXTERNAL_READ_RE.test(word) ||
+                    STACKSL_VEC_LITERAL_RE.test(word) ||
                     STACKSL_NUMBER_RE.test(word) ||
                     STACKSL_NUMBER_SUFFIX_RE.test(word) ||
                     STACKSL_NUMBER_RANGE_RE.test(word) ||
@@ -964,6 +1057,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             if (word === "vec3" || word === "v3") return stackslEffect(3, 1)
             if (word === "vec4" || word === "v4") return stackslEffect(4, 1)
             if (word === "->0" || word === "->1" || word === "->2" || word === "->3") return stackslEffect(1, 0, "store write")
+            if (word === "rotates" || word === "standoff" || word === "standoff2" || word === "standoff3") return stackslEffect(3, 1)
 
             if (word === "average" || word === "avg" || word === "mean" || word === "median" || word === "med") {
                     if (variant) return stackslEffect(blastCount(depth, requestedArity, requestedAll), 1, "stack blast")
@@ -985,10 +1079,16 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
                             ? stackslEffect(requestedArity, 1, requestedArity === 1 ? "reduce top" : "")
                             : depth <= 2 ? stackslEffect(1, 1, "reduce top") : stackslEffect(2, 1)
             }
-            if (word === "mix" || word === "lerp") return stackslEffect(3, 1)
+            if (word === "mix" || word === "lerp" || word === "mix.c" || word === "lerp.c" ||
+            word === "mix.sc" || word === "lerp.sc" || word === "select" || word === "if") return stackslEffect(3, 1)
+            if (word === "alpha" || word === "alpha.c" || word === "alpha.sc") return stackslEffect(3, 1)
             if (word === "step") return stackslEffect(2, 1)
             if (word === "smoothstep") return stackslEffect(3, 1)
-            if (word === "pulse" || word === "fm" || word === "ema" || word === "ema-diff" || word === "diff-ema" || word === "dema") {
+            if (word === "pulse" || word === "fm" ||
+                    word === "ema" || word === "ema.c" || word === "ema.sc" ||
+                    word === "ema-diff" || word === "ema-diff.c" || word === "ema-diff.sc" ||
+                    word === "diff-ema" || word === "diff-ema.c" || word === "diff-ema.sc" ||
+                    word === "dema" || word === "dema.c" || word === "dema.sc") {
                     return requestedArity ? stackslEffect(requestedArity, 1, requestedArity < 3 ? "trailing defaults" : "") : dynamicStackSLEffect(depth, 3, "short form")
             }
             if (word === "fmchirp") return requestedArity
@@ -1008,8 +1108,11 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             }
 
             if (word === "sample" || word === "sample0" || word === "sample1" || word === "sample2" || word === "sample3" ||
+                    word === "sample.w" || word === "sample0.w" || word === "sample1.w" || word === "sample2.w" || word === "sample3.w" ||
                     word === "sample-abs" || word === "sample0-abs" || word === "sample1-abs" || word === "sample2-abs" || word === "sample3-abs" ||
-                    word === "gather" || word === "gather0" || word === "gather1" || word === "gather2" || word === "gather3") {
+                    word === "sample-abs.w" || word === "sample0-abs.w" || word === "sample1-abs.w" || word === "sample2-abs.w" || word === "sample3-abs.w" ||
+                    word === "gather" || word === "gather0" || word === "gather1" || word === "gather2" || word === "gather3" ||
+                    word === "gather.w" || word === "gather0.w" || word === "gather1.w" || word === "gather2.w" || word === "gather3.w") {
                     return stackslEffect(1, 1, word.includes("abs") ? "absolute sample" : "sample")
             }
 
@@ -1384,6 +1487,8 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
                 [externalWriteTokenRegex, ["keyword", "variable.predefined"]],
                 [externalReadTokenRegex, ["keyword", "variable.predefined"]],
                 [/(?:0->|1->|2->|3->|->0|->1|->2|->3)/, "keyword"],
+                [/1-/, "operator"],
+                [vecLiteralTokenRegex, "number"],
                 [numberRangeTokenRegex, ["number", "operator.stacksl.range", "number"]],
                 [topModifierTokenRegex, ["operator.stacksl.prefix", "number.stacksl.modifier", "number", "number.stacksl.option", "number", "number.stacksl.option", "number"]],
                 [numberModifierTokenRegex, ["number", "number.stacksl.modifier", "number", "number.stacksl.option", "number", "number.stacksl.option", "number"]],

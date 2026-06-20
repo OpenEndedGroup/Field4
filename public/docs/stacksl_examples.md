@@ -25,16 +25,16 @@ The input vector is usually read as:
 | --- | --- |
 | `input.x` | x / u coordinate |
 | `input.y` | y / v coordinate |
-| `input.z` | time, frame, or phase |
-| `input.w` | hash, seed, or auxiliary state |
+| `input.z` | z coordinate, hash, seed, or auxiliary state |
+| `input.w` | time, frame, or phase |
 
 The stack starts with `input` already on it. You can also push explicit views:
 
 ```diffstatic {data-lang=stacksl}
 uv      # vec4(input.xy, 0, 1)
 p       # vec4(input.xy - 0.5, 0, 1), also: pos, center, centered
-time    # vec4(input.z)
-hash    # vec4(input.w)
+time    # vec4(input.w)
+hash    # vec4(input.z)
 input   # vec4 input exactly
 ```
 
@@ -421,7 +421,7 @@ layout(location = 0) in vec2 uv;
 layout(set = 0, binding = 0) uniform sampler2D otherView;
 
 void main() {
-    vec4 stackInput = vec4(uv, time, hash12(uv));
+    vec4 stackInput = vec4(uv, hash12(uv), time);
     outColor = ping(stackInput);
 }
 ```
@@ -443,7 +443,7 @@ Math:
 + - * / mod pow min max neg abs floor ceil fract
 sqrt inversesqrt exp log sin cos tan asin acos atan atan2
 normalize length len length2 len2 length3 len3 length4 len4
-dot cross mix lerp step smoothstep
+dot cross standoff standoff2 standoff3 mix lerp step smoothstep
 lt lte gt gte eq neq and or not
 ```
 

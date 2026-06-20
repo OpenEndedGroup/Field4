@@ -29,6 +29,7 @@ object StackSLSmokeTest {
             reportsStrictAndTolerantUnknownWords()
             keepsShortMutatedProgramsValid()
             emitsSamplerEnvironment()
+            usesXyzHashTimeInputConvention()
             lengthUsesSpatialChannelsByDefault()
             emitsColorSpaceHelpers()
             compilesCenteredModifierProgram()
@@ -39,7 +40,10 @@ object StackSLSmokeTest {
             compilesStackBlastOperators()
             compilesFMChirpOperator()
             compilesBitGlitchOperators()
+            compilesOneMinusOperator()
+            compilesGeometryOperatorsAndVecLiterals()
             compilesExternalHostGlslEscapeHatches()
+            compilesCreativeFreedomVariants()
             println("StackSL compiler smoke tests passed")
             true
         } catch (t: Throwable) {
@@ -126,6 +130,30 @@ object StackSLSmokeTest {
         require("uniform sampler2D ping_state;" !in result.glsl)
         require("ping_sample(state, ping_in" in result.glsl)
         require(result.analysis.requiredSamplers == setOf("state")) { result.analysis.requiredSamplers.toString() }
+    }
+
+    private fun usesXyzHashTimeInputConvention() {
+        val result = StackSLCompiler.compile(
+            """
+            time
+            hash +
+            0.5t +
+            0.25c +
+            0.35hash +
+            0.2grain80 +
+            """.trimIndent(),
+            StackSLCompileOptions(prefix = "input_convention")
+        )
+
+        require(result.ok) { result.diagnostics.joinToString("\n") }
+        require("vec4(input_convention_in.w)" in result.glsl) { result.glsl }
+        require("vec4(input_convention_in.z)" in result.glsl) { result.glsl }
+        require("vec4(0.5) * vec4(input_convention_in.w)" in result.glsl) { result.glsl }
+        require("input_convention_in.w * 1.0" in result.glsl) { result.glsl }
+        require("input_convention_in.z) * 1.0" in result.glsl) { result.glsl }
+        require("input_convention_hash21((input_convention_in.xy" in result.glsl && "+ vec2(input_convention_in.w)" in result.glsl) {
+            result.glsl
+        }
     }
 
     private fun lengthUsesSpatialChannelsByDefault() {
@@ -399,20 +427,152 @@ object StackSLSmokeTest {
         require("bits_bitcrush(" in result.glsl) { result.glsl }
     }
 
+    private fun compilesOneMinusOperator() {
+        val result = StackSLCompiler.compile(
+            "uv 1-",
+            StackSLCompileOptions(prefix = "one_minus")
+        )
+
+        require(result.ok) { result.diagnostics.joinToString("\n") }
+        require("(vec4(1.0) - " in result.glsl) { result.glsl }
+    }
+
+    private fun compilesGeometryOperatorsAndVecLiterals() {
+        val result = StackSLCompiler.compile(
+            """
+            [1,2,3,4]
+            [0.25,0.5]
+            rotate
+            [0.5,0.5,0.25,0.25]
+            [0,0,1,1]
+            rotates
+            [9,8,7,6] >z
+            [1,2,3,4] [2,4,6,8] distance2
+            [1,2,3,4] [2,4,6,8] distance3
+            +
+            [1,2,3,4] [2,4,6,8] distance
+            +
+            [3,4,5,6] [1,1,1,1] 2 standoff
+            +
+            [3,4,5,6] [1,1,1,1] 2 standoff2
+            +
+            [3,4,5,6] [1,1,1,1] 2 standoff3
+            +
+            +
+            """.trimIndent(),
+            StackSLCompileOptions(prefix = "geom")
+        )
+
+        require(result.ok) { result.diagnostics.joinToString("\n") }
+        require("vec4(1.0, 2.0, 3.0, 4.0)" in result.glsl) { result.glsl }
+        require("vec4(0.25, 0.5, 0.0, 1.0)" in result.glsl) { result.glsl }
+        require("cos(" in result.glsl && "sin(" in result.glsl) { result.glsl }
+        require(".z" in result.glsl) { result.glsl }
+        require("distance(" in result.glsl && ".xy" in result.glsl && ".xyz" in result.glsl) { result.glsl }
+        require("vec4 geom_safeNormalize(vec4 value)" in result.glsl) { result.glsl }
+        require("vec4 geom_safeNormalize2(vec4 value)" in result.glsl) { result.glsl }
+        require("vec4 geom_safeNormalize3(vec4 value)" in result.glsl) { result.glsl }
+        require("geom_safeNormalize(" in result.glsl && "geom_safeNormalize2(" in result.glsl && "geom_safeNormalize3(" in result.glsl) {
+            result.glsl
+        }
+    }
+
     private fun compilesExternalHostGlslEscapeHatches() {
         val result = StackSLCompiler.compile(
             """
             ?pc.foo
             0.5 *
             dup ->?pc.foo
+            ?pc.inData.p[idx].posvel.Z +
+            dup ->?pc.inData.p[idx].posvel.Z
             ?pc.bar +
             """.trimIndent(),
             StackSLCompileOptions(prefix = "host")
         )
 
         require(result.ok) { result.diagnostics.joinToString("\n") }
-        require("vec4 _host_v1 = (pc.foo * vec4(0.5));" in result.glsl) { result.glsl }
-        require("pc.foo = _host_v1;" in result.glsl) { result.glsl }
-        require("vec4 _host_v2 = (_host_v1 + pc.bar);" in result.glsl) { result.glsl }
+        require("pc.foo * vec4(0.5)" in result.glsl) { result.glsl }
+        require("+ pc.inData.p[idx].posvel.Z" in result.glsl) { result.glsl }
+        require("+ pc.bar" in result.glsl) { result.glsl }
+        require(Regex("""pc\.foo = _host_v\d+;""").containsMatchIn(result.glsl)) { result.glsl }
+        require(Regex("""pc\.inData\.p\[idx]\.posvel\.Z = _host_v\d+;""").containsMatchIn(result.glsl)) { result.glsl }
+    }
+
+    private fun compilesCreativeFreedomVariants() {
+        val rawMix = StackSLCompiler.compile("red blue 1.5 mix", StackSLCompileOptions(prefix = "raw_mix"))
+        require(rawMix.ok) { rawMix.diagnostics.joinToString("\n") }
+        require("mix(vec4(1.0, 0.0, 0.0, 1.0), vec4(0.0, 0.0, 1.0, 1.0), vec4(1.5))" in rawMix.glsl) {
+            rawMix.glsl
+        }
+        require("clamp(vec4(1.5)" !in rawMix.glsl) { rawMix.glsl }
+
+        val clampedMix = StackSLCompiler.compile("red blue 1.5 mix.c", StackSLCompileOptions(prefix = "clamped_mix"))
+        require(clampedMix.ok) { clampedMix.diagnostics.joinToString("\n") }
+        require("clamp(vec4(1.5), vec4(0.0), vec4(1.0))" in clampedMix.glsl) { clampedMix.glsl }
+
+        val softMix = StackSLCompiler.compile("red blue 1.5 mix.sc", StackSLCompileOptions(prefix = "soft_mix"))
+        require(softMix.ok) { softMix.diagnostics.joinToString("\n") }
+        require("soft_mix_softClamp01" in softMix.glsl) { softMix.glsl }
+
+        val select = StackSLCompiler.compile("red blue 1 select", StackSLCompileOptions(prefix = "select_test"))
+        require(select.ok) { select.diagnostics.joinToString("\n") }
+        require("step(vec4(0.5), abs(vec4(1.0)))" in select.glsl) { select.glsl }
+
+        val rawPow = StackSLCompiler.compile("-2 0.5 pow", StackSLCompileOptions(prefix = "raw_pow"))
+        require(rawPow.ok) { rawPow.diagnostics.joinToString("\n") }
+        require("pow(vec4(-2.0), vec4(0.5))" in rawPow.glsl) { rawPow.glsl }
+
+        val safePow = StackSLCompiler.compile("-2 0.5 pow.safe", StackSLCompileOptions(prefix = "safe_pow"))
+        require(safePow.ok) { safePow.diagnostics.joinToString("\n") }
+        require("pow(max(abs(vec4(-2.0)), vec4(0.00001)), vec4(0.5))" in safePow.glsl) { safePow.glsl }
+
+        val rawSample = StackSLCompiler.compile("0.1 sample", StackSLCompileOptions(prefix = "raw_sample", sampleTextures = listOf("state")))
+        require(rawSample.ok) { rawSample.diagnostics.joinToString("\n") }
+        require("texture(sourceTexture, base.xy + offset.xy)" in rawSample.glsl) { rawSample.glsl }
+        require("fract(base.xy + offset.xy)" !in rawSample.glsl) { rawSample.glsl }
+
+        val wrappedSample = StackSLCompiler.compile("0.1 sample.w", StackSLCompileOptions(prefix = "wrap_sample", sampleTextures = listOf("state")))
+        require(wrappedSample.ok) { wrappedSample.diagnostics.joinToString("\n") }
+        require("wrap_sample_sample_w" in wrappedSample.glsl) { wrappedSample.glsl }
+        require("fract(base.xy + offset.xy)" in wrappedSample.glsl) { wrappedSample.glsl }
+
+        val rawEma = StackSLCompiler.compile("input prev 1.25 ema.3", StackSLCompileOptions(prefix = "raw_ema", sampleTextures = listOf("state")))
+        require(rawEma.ok) { rawEma.diagnostics.joinToString("\n") }
+        require("return mix(previous, current, alpha);" in rawEma.glsl) { rawEma.glsl }
+
+        val clampedEma = StackSLCompiler.compile("input prev 1.25 ema.c.3", StackSLCompileOptions(prefix = "clamped_ema", sampleTextures = listOf("state")))
+        require(clampedEma.ok) { clampedEma.diagnostics.joinToString("\n") }
+        require("clamp(vec4(1.25), vec4(0.0), vec4(1.0))" in clampedEma.glsl) { clampedEma.glsl }
+
+        val softEma = StackSLCompiler.compile("input prev 1.25 ema.sc.3", StackSLCompileOptions(prefix = "soft_ema", sampleTextures = listOf("state")))
+        require(softEma.ok) { softEma.diagnostics.joinToString("\n") }
+        require("soft_ema_softClamp01" in softEma.glsl) { softEma.glsl }
+
+        val rawAlpha = StackSLCompiler.compile("-0.08 0.5 8 alpha", StackSLCompileOptions(prefix = "raw_alpha"))
+        require(rawAlpha.ok) { rawAlpha.diagnostics.joinToString("\n") }
+        require("raw_alpha_alpha" in rawAlpha.glsl) { rawAlpha.glsl }
+        require("lessThan(baseAlpha, vec4(0.0))" in rawAlpha.glsl) { rawAlpha.glsl }
+        require("max(abs(baseAlpha), vec4(0.000001))" in rawAlpha.glsl) { rawAlpha.glsl }
+
+        val clampedAlpha = StackSLCompiler.compile("-0.08 2 8 alpha.c", StackSLCompileOptions(prefix = "clamped_alpha"))
+        require(clampedAlpha.ok) { clampedAlpha.diagnostics.joinToString("\n") }
+        require("clamped_alpha_alpha_c" in clampedAlpha.glsl) { clampedAlpha.glsl }
+        require("clamp(baseAlpha, vec4(0.000001), vec4(0.999999))" in clampedAlpha.glsl) { clampedAlpha.glsl }
+        require("clamp(modulation, vec4(-1.0), vec4(1.0))" in clampedAlpha.glsl) { clampedAlpha.glsl }
+
+        val softAlpha = StackSLCompiler.compile("0.08 2 8 alpha.sc", StackSLCompileOptions(prefix = "soft_alpha"))
+        require(softAlpha.ok) { softAlpha.diagnostics.joinToString("\n") }
+        require("soft_alpha_alpha_sc" in softAlpha.glsl) { softAlpha.glsl }
+        require("soft_alpha_softClamp01" in softAlpha.glsl) { softAlpha.glsl }
+
+        val rawRyb = StackSLCompiler.compile("[1.2,-0.1,0.5,1] ryb", StackSLCompileOptions(prefix = "raw_ryb"))
+        require(rawRyb.ok) { rawRyb.diagnostics.joinToString("\n") }
+        require("vec3 c = color.rgb;" in rawRyb.glsl) { rawRyb.glsl }
+        require("vec3 c = clamp(color.rgb" !in rawRyb.glsl) { rawRyb.glsl }
+
+        val clampedRyb = StackSLCompiler.compile("[1.2,-0.1,0.5,1] ryb.c", StackSLCompileOptions(prefix = "clamped_ryb"))
+        require(clampedRyb.ok) { clampedRyb.diagnostics.joinToString("\n") }
+        require("clamped_ryb_ryb2rgb_c" in clampedRyb.glsl) { clampedRyb.glsl }
+        require("clamp(color.rgb, vec3(0.0), vec3(1.0))" in clampedRyb.glsl) { clampedRyb.glsl }
     }
 }

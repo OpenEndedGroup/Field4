@@ -24,6 +24,7 @@ nav:
         - VR Drawing Sketch: vr_sketch2.md
       - Small Languages:
         - Forth Examples: forth_examples.md
+        - StackSL Cheatsheet: stacksl_cheatsheet.md
         - StackSL Examples: stacksl_examples.md
         - Nano Examples: nano_examples.md
       - Drawing From Data:

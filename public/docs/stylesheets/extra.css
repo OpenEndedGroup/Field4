@@ -218,6 +218,26 @@ code {
 .md-typeset :is(p, li, td, blockquote) > code:first-child {
     margin-left: -0.18em;
 }
+
+/* StackSL reference page */
+.md-typeset .stacksl-reference {
+    --stacksl-table-border: rgba(255, 255, 255, 0.16);
+}
+
+.md-typeset .stacksl-reference table {
+    font-size: 0.66rem;
+}
+
+.md-typeset .stacksl-reference th,
+.md-typeset .stacksl-reference td {
+    vertical-align: top;
+}
+
+@media screen and (min-width: 76.234375em) {
+    .md-grid:has(.stacksl-reference) {
+        max-width: 72rem;
+    }
+}
 .md-typeset pre > code {
     background: var(--mono-panel) !important;
     /* border-right: 0.5px solid white !important; */

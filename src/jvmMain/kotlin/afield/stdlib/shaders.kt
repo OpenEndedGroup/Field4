@@ -98,7 +98,15 @@ val Box.stackAutoShaderSources by Delegation<MutableMap<String, String>>(
     defaultValue = { ConcurrentHashMap<String, String>() })
 
 private val stackAutoShaderNameRegex = Regex("[A-Za-z_][A-Za-z0-9_]*")
+private val stackAutoEntrypointNameRegex = Regex("[A-Za-z_][A-Za-z0-9_-]*")
 private val stackAutoModuleOwners = Collections.synchronizedMap(WeakHashMap<Any, Box>())
+
+private data class StackAutoShaderTarget(
+    val name: String,
+    val entrypoint: String? = null
+) {
+    val key: String get() = entrypoint?.let { "$name:$it" } ?: name
+}
 
 private fun validateStackAutoShaderName(name: String) {
     require(stackAutoShaderNameRegex.matches(name)) {
@@ -106,18 +114,36 @@ private fun validateStackAutoShaderName(name: String) {
     }
 }
 
+private fun validateStackAutoEntrypointName(name: String) {
+    require(stackAutoEntrypointNameRegex.matches(name)) {
+        "stack.auto entrypoint '$name' must be a StackSL definition name."
+    }
+}
+
+private fun parseStackAutoShaderTarget(raw: String): StackAutoShaderTarget {
+    val trimmed = raw.trim()
+    val name = trimmed.substringBefore(':').trim()
+    val entrypoint = trimmed.substringAfter(':', missingDelimiterValue = "").trim().takeIf { it.isNotEmpty() }
+    validateStackAutoShaderName(name)
+    entrypoint?.let(::validateStackAutoEntrypointName)
+    return StackAutoShaderTarget(name, entrypoint)
+}
+
 private fun defaultStackAutoShaderFunction(name: String): String =
     "vec4 $name(vec4 ${name}_in) { return vec4(0.0); }"
 
-private fun compileStackAutoShaderFunction(name: String, source: String): String {
+private fun compileStackAutoShaderFunction(target: StackAutoShaderTarget, source: String): String {
+    val name = target.name
     validateStackAutoShaderName(name)
+    target.entrypoint?.let(::validateStackAutoEntrypointName)
     if (source.isBlank()) return defaultStackAutoShaderFunction(name)
 
     val result = StackSLCompiler.compile(
         source,
         StackSLCompileOptions(
             prefix = name,
-            entrypoint = "main",
+            entrypoint = target.entrypoint ?: "main",
+            useEntrypointAsRoot = target.entrypoint != null,
             tolerant = false,
             includeHeader = false,
             declareSamplers = false,
@@ -131,34 +157,34 @@ private fun compileStackAutoShaderFunction(name: String, source: String): String
         .filter { it.severity == StackSLSeverity.ERROR }
         .ifEmpty { result.diagnostics }
         .joinToString("\n") { it.toString() }
-    throw IllegalArgumentException("Unable to compile stack.auto.$name:\n$diagnostics")
+    throw IllegalArgumentException("Unable to compile stack.auto.${target.key}:\n$diagnostics")
 }
 
-private fun stackAutoShaderFunctionFor(box: Box, name: String): String {
-    validateStackAutoShaderName(name)
-    box.stackAutoShaderSources.putIfAbsent(name, "")
-    return compileStackAutoShaderFunction(name, box.stackAutoShaderSources[name] ?: "")
+private fun stackAutoShaderFunctionFor(box: Box, target: StackAutoShaderTarget): String {
+    validateStackAutoShaderName(target.name)
+    box.stackAutoShaderSources.putIfAbsent(target.name, "")
+    return compileStackAutoShaderFunction(target, box.stackAutoShaderSources[target.name] ?: "")
 }
 
 private fun stackAutoTemplateResolverFor(box: Box, emitted: MutableSet<String>): Resolver =
     Resolver { key ->
-        fun resolveName(name: String): String {
-            validateStackAutoShaderName(name)
-            if (!emitted.add(name)) return ""
-            return stackAutoShaderFunctionFor(box, name)
+        fun resolveTarget(raw: String): String {
+            val target = parseStackAutoShaderTarget(raw)
+            if (!emitted.add(target.key)) return ""
+            return stackAutoShaderFunctionFor(box, target)
         }
 
         when {
             key == "stack" -> Resolver { stackKey ->
                 when {
-                    stackKey == "auto" -> Resolver { name -> resolveName(name) }
-                    stackKey.startsWith("auto.") -> resolveName(stackKey.removePrefix("auto."))
+                    stackKey == "auto" -> Resolver { name -> resolveTarget(name) }
+                    stackKey.startsWith("auto.") -> resolveTarget(stackKey.removePrefix("auto."))
                     else -> null
                 }
             }
 
-            key == "stack.auto" -> Resolver { name -> resolveName(name) }
-            key.startsWith("stack.auto.") -> resolveName(key.removePrefix("stack.auto."))
+            key == "stack.auto" -> Resolver { name -> resolveTarget(name) }
+            key.startsWith("stack.auto.") -> resolveTarget(key.removePrefix("stack.auto."))
             else -> null
         }
     }
@@ -199,7 +225,7 @@ private fun setStackAutoShaderSource(module: Any, name: String, source: String, 
         ?: throw IllegalStateException("Cannot set stack.auto.$name without a module owner or active Box context.")
 
     val compiled = try {
-        compileStackAutoShaderFunction(name, source)
+        compileStackAutoShaderFunction(StackAutoShaderTarget(name), source)
     } catch (t: Throwable) {
         reportShaderStageError(
             box,
@@ -1030,7 +1056,7 @@ private fun preprocess(
         }
     }
 
-    return runTemplate(
+    return runShaderTemplate(
         sourceWithCopiedPushConstants,
         listOf(stackAutoTemplateResolverFor(inside, stackAutoEmitted)) + getShaderTemplateResolverForBox(inside),
         includeResolver
@@ -3033,9 +3059,11 @@ private fun buildStackAutoShaderPreamble(box: Box?): String {
     /*
      * How to drive stack.auto templates:
      *
-     *   1. Put a StackSL auto slot in GLSL with `{{ stack.auto.foo }}`.
-     *      Template expansion emits a GLSL function named `foo` exactly once per
-     *      expanded shader stage, so later GLSL can call `foo(vec4(...))`.
+     *   1. Put a StackSL auto slot in GLSL with `{{ stack.auto.foo }}` or
+     *      `{{ stack.auto.foo:word }}`. Template expansion emits a GLSL function
+     *      named `foo` exactly once per expanded shader stage, so later GLSL can
+     *      call `foo(vec4(...))`. The optional `:word` forces a StackSL definition
+     *      in `module.foo` to be used as the generated function body.
      *   2. If no Kotlin code has bound `foo`, the emitted function is the stable
      *      fallback `vec4 foo(vec4 foo_in) { return vec4(0.0); }`. The argument
      *      name deliberately avoids `input`, which is reserved in GLSL 450.

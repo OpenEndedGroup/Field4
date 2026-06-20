@@ -78,17 +78,23 @@ fun runTemplate(template: String, resolver: ResolverFn, includeResolver: Include
 fun runTemplate(template: String, resolver: Any?, includeResolver: IncludeResolver? = null): String =
     TemplateEngine().run(template, TemplateEngine.asResolverList(resolver), includeResolver)
 
+fun runShaderTemplate(template: String, resolver: Any?, includeResolver: IncludeResolver? = null): String =
+    TemplateEngine(insertLineDirectiveAfterMultilineExpr = true)
+        .run(template, TemplateEngine.asResolverList(resolver), includeResolver)
+
 //////////////////////////////
 // Engine
 //////////////////////////////
 
-private class TemplateEngine {
+private class TemplateEngine(
+    private val insertLineDirectiveAfterMultilineExpr: Boolean = false
+) {
 
     fun run(template: String, rootResolvers: List<Resolver>, includeResolver: IncludeResolver? = null): String {
         val lineIndex = LineIndex(template)
         val parser = Parser(template, lineIndex)
         val nodes = parser.parseTopLevel()
-        val evaluator = Evaluator(template, lineIndex, rootResolvers, includeResolver)
+        val evaluator = Evaluator(template, lineIndex, rootResolvers, includeResolver, insertLineDirectiveAfterMultilineExpr)
         return evaluator.render(nodes, rootResolvers)
     }
 
@@ -126,7 +132,7 @@ private class TemplateEngine {
 
 private sealed interface Node
 private data class TextNode(val text: String) : Node
-private data class ExprNode(val expr: String, val loc: Location) : Node
+private data class ExprNode(val expr: String, val loc: Location, val resumeLine: Int) : Node
 private data class IncludeNode(val includeExpr: String, val loc: Location) : Node
 private data class IfNode(
     val condition: String,
@@ -185,7 +191,7 @@ private class Parser(
                 }
                 val expr = template.substring(start + 2, end).trim()
                 val loc = index.location(start)
-                nodes += ExprNode(expr, loc)
+                nodes += ExprNode(expr, loc, index.location(end + 2).line)
                 pos = end + 2
                 continue
             }
@@ -275,7 +281,8 @@ private class Evaluator(
     private val template: String,
     private val index: LineIndex,
     private val rootResolvers: List<Resolver>,
-    private val includeResolver: IncludeResolver?
+    private val includeResolver: IncludeResolver?,
+    private val insertLineDirectiveAfterMultilineExpr: Boolean
 ) {
 
     fun render(nodes: List<Node>, currentResolvers: List<Resolver>): String {
@@ -283,7 +290,7 @@ private class Evaluator(
         for (n in nodes) {
             when (n) {
                 is TextNode -> sb.append(n.text)
-                is ExprNode -> sb.append(evalExprToString(n.expr, n.loc, currentResolvers))
+                is ExprNode -> sb.append(evalExprToString(n.expr, n.loc, n.resumeLine, currentResolvers))
                 is IncludeNode -> sb.append(evalIncludeToString(n.includeExpr, n.loc, currentResolvers))
                 is IfNode -> {
                     val truthy = evalCondition(n.condition, n.loc, currentResolvers)
@@ -295,7 +302,7 @@ private class Evaluator(
         return sb.toString()
     }
 
-    private fun evalExprToString(expr: String, loc: Location, resolvers: List<Resolver>): String {
+    private fun evalExprToString(expr: String, loc: Location, resumeLine: Int, resolvers: List<Resolver>): String {
         val trace = mutableListOf<String>()
         val value = resolveExpression(expr, resolvers, trace, depth = 0)
         if (value == null) {
@@ -307,7 +314,12 @@ private class Evaluator(
             else -> value.toString()
         }
 
-        return applyLineMagic(raw, loc.line)
+        val withLineMagic = applyLineMagic(raw, loc.line)
+        return if (insertLineDirectiveAfterMultilineExpr && withLineMagic.contains('\n')) {
+            appendLineDirectiveReset(withLineMagic, resumeLine)
+        } else {
+            withLineMagic
+        }
     }
 
     private fun evalIncludeToString(expr: String, loc: Location, resolvers: List<Resolver>): String {
@@ -373,6 +385,16 @@ private class Evaluator(
         return s
             .replace("//#<line>\r\n", "$rep\r\n")
             .replace("//#<line>\n", "$rep\n")
+    }
+
+    private fun appendLineDirectiveReset(s: String, line: Int): String {
+        val newline = if (s.contains("\r\n")) "\r\n" else "\n"
+        return buildString {
+            append(s)
+            if (!s.endsWith('\n')) append(newline)
+            append("#line $line")
+            append(newline)
+        }
     }
 
     private fun resolveExpression(
