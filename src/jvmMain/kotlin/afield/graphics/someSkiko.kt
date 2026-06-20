@@ -9,6 +9,7 @@ import org.jetbrains.skia.svg.SVGCanvas
 import java.io.ByteArrayOutputStream
 import java.util.Locale
 import java.util.UUID
+import kotlin.math.max
 import kotlin.math.min
 
 /**
@@ -41,10 +42,10 @@ fun Box.lines(
         return widget.viewState
     } else if (hasInteractive) {
         val pairs = lines.map { it to it.applyFit(fit) }
-        display(channel, wrapLinesOutput(buildInteractiveSVG(pairs, w, h, fit)))
+        display(channel, wrapLinesOutput(buildInteractiveSVG(pairs, w, h, fit), pairs.map { it.second }.combinedRenderableBoundsOrNull()))
     } else {
         val scaled = lines.map { it.applyFit(fit) }
-        display(channel, wrapLinesOutput(drawToSVG(scaled, w, h)))
+        display(channel, wrapLinesOutput(drawToSVG(scaled, w, h), renderedSvgBoundsFor(scaled, w, h)))
     }
     return null
 }
@@ -79,10 +80,10 @@ fun Box.lines(
         return widget.viewState
     } else if (hasInteractive) {
         val pairs = lines.map { it to it.applyFit(fit) }
-        display(channel, wrapLinesOutput(buildInteractiveSVG(pairs, w, h, fit)))
+        display(channel, wrapLinesOutput(buildInteractiveSVG(pairs, w, h, fit), pairs.map { it.second }.combinedRenderableBoundsOrNull()))
     } else {
         val scaled = lines.map { it.applyFit(fit) }
-        display(channel, wrapLinesOutput(drawToSVG(scaled, w, h)))
+        display(channel, wrapLinesOutput(drawToSVG(scaled, w, h), renderedSvgBoundsFor(scaled, w, h)))
     }
     return null
 }
@@ -123,10 +124,10 @@ fun Box.lines(
                 states[channelName] = widget.viewState
             } else if (hasInteractive) {
                 val pairs = lines.map { it to it.applyFit(fit) }
-                display(channelName, wrapLinesOutput(buildInteractiveSVG(pairs, w, h, fit)))
+                display(channelName, wrapLinesOutput(buildInteractiveSVG(pairs, w, h, fit), pairs.map { it.second }.combinedRenderableBoundsOrNull()))
             } else {
                 val scaled = lines.map { it.applyFit(fit) }
-                display(channelName, wrapLinesOutput(drawToSVG(scaled, w, h)))
+                display(channelName, wrapLinesOutput(drawToSVG(scaled, w, h), renderedSvgBoundsFor(scaled, w, h)))
             }
         }
     } else {
@@ -138,10 +139,10 @@ fun Box.lines(
             states[channel] = widget.viewState
         } else if (hasInteractive) {
             val pairs = allLines.map { it to it.applyFit(fit) }
-            display(channel, wrapLinesOutput(buildInteractiveSVG(pairs, w, h, fit)))
+            display(channel, wrapLinesOutput(buildInteractiveSVG(pairs, w, h, fit), pairs.map { it.second }.combinedRenderableBoundsOrNull()))
         } else {
             val scaled = allLines.map { it.applyFit(fit) }
-            display(channel, wrapLinesOutput(drawToSVG(scaled, w, h)))
+            display(channel, wrapLinesOutput(drawToSVG(scaled, w, h), renderedSvgBoundsFor(scaled, w, h)))
         }
     }
     return states
@@ -177,8 +178,21 @@ private fun emptySvg(w: Double, h: Double): String {
     return """<svg xmlns="http://www.w3.org/2000/svg" width="$width" height="$height" style="overflow:visible"/>"""
 }
 
-private fun wrapLinesOutput(svg: String): String {
-    return """<div class="afield-lines-output" data-afield-lines-output="true">$svg</div>"""
+private fun wrapLinesOutput(svg: String, bounds: afield.Rect? = null): String {
+    val boundsAttrs = bounds?.let {
+        """ data-afield-bounds-x="${jsonN(it.x)}" data-afield-bounds-y="${jsonN(it.y)}" data-afield-bounds-w="${jsonN(it.w)}" data-afield-bounds-h="${jsonN(it.h)}""""
+    } ?: ""
+    return """<div class="afield-lines-output" data-afield-lines-output="true"$boundsAttrs>$svg</div>"""
+}
+
+private fun renderedSvgBoundsFor(lines: Collection<FLine>, w: Double, h: Double): afield.Rect? {
+    val bounds = lines.combinedRenderableBoundsOrNull() ?: return null
+    return afield.Rect(
+        if (w <= 0.0) 0.0 else bounds.x,
+        if (h <= 0.0) 0.0 else bounds.y,
+        bounds.w,
+        bounds.h
+    )
 }
 
 /**
@@ -226,19 +240,29 @@ fun drawToSVG(n: List<FLine>, w: Double = -1.0, h: Double = -1.0): String {
     val ba = ByteArrayOutputStream()
     val o = OutputWStream(ba)
 
-    var we = w;
-    var he = h;
-    if (we == -1.0) {
-        val r = lines.combinedRenderableBoundsOrNull() ?: return emptySvg(w, h)
-        we = r.w + r.x
-        he = r.h + r.y
+    val bounds = lines.combinedRenderableBoundsOrNull() ?: return emptySvg(w, h)
+    val autoWidth = w <= 0.0
+    val autoHeight = h <= 0.0
+    var we = w
+    var he = h
+    if (autoWidth) we = max(1.0, bounds.w)
+    if (autoHeight) he = max(1.0, bounds.h)
+
+    val renderedLines = if (autoWidth || autoHeight) {
+        val tx = if (autoWidth) -bounds.x else 0.0
+        val ty = if (autoHeight) -bounds.y else 0.0
+        lines.map { line ->
+            line.transform { p -> vec(p.x + tx, p.y + ty, p.z) }
+        }
+    } else {
+        lines
     }
 
     var s: Canvas? = null
     try {
         s = SVGCanvas.make(Rect.makeWH(we.toFloat(), he.toFloat()), o, true, true)
 
-        lines.forEach {
+        renderedLines.forEach {
             outputTo(it, s)
         }
     } finally {
@@ -397,8 +421,8 @@ internal fun buildInteractiveSVG(pairs: List<Pair<FLine, FLine>>, w: Double, h: 
     if (w <= 0.0 || h <= 0.0) {
         val scaledLines = renderablePairs.map { it.second }
         val bounds = scaledLines.combinedRenderableBoundsOrNull() ?: return emptySvg(w, h)
-        we = (bounds.w + bounds.x).toDouble()
-        he = (bounds.h + bounds.y).toDouble()
+        we = if (w > 0.0) w else max(1.0, max(bounds.w, bounds.x + bounds.w))
+        he = if (h > 0.0) h else max(1.0, max(bounds.h, bounds.y + bounds.h))
     } else {
         we = w
         he = h

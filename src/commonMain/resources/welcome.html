@@ -253,6 +253,7 @@
         }
 
         .workspace-header,
+        .project-management-header,
         .ai-settings-header,
         .preferences-header,
         .osc-settings-header {
@@ -264,6 +265,7 @@
         }
 
         .workspace-label,
+        .project-management-label,
         .ai-settings-label,
         .preferences-label,
         .osc-settings-label {
@@ -271,6 +273,7 @@
         }
 
         #current-workspace,
+        #project-management-state,
         #ai-settings-state,
         #preferences-state,
         #osc-settings-state {
@@ -282,6 +285,7 @@
         }
 
         .workspace-controls,
+        .project-management-controls,
         .ai-settings-controls,
         .osc-settings-controls {
             display: grid;
@@ -301,6 +305,7 @@
         }
 
         #workspace-path,
+        #new-project-name,
         #openai-platform-key,
         #osc-editor-port,
         #osc-editor-float-address,
@@ -319,6 +324,7 @@
         }
 
         #workspace-path::placeholder,
+        #new-project-name::placeholder,
         #openai-platform-key::placeholder,
         #osc-editor-port::placeholder,
         #osc-editor-float-address::placeholder,
@@ -331,6 +337,7 @@
         }
 
         #workspace-path:focus,
+        #new-project-name:focus,
         #openai-platform-key:focus,
         #osc-editor-port:focus,
         #osc-editor-float-address:focus,
@@ -342,6 +349,7 @@
         }
 
         #workspace-status,
+        #project-management-status,
         #ai-settings-status,
         #preferences-status,
         #osc-settings-status {
@@ -351,6 +359,7 @@
         }
 
         #workspace-status.error,
+        #project-management-status.error,
         #ai-settings-status.error,
         #preferences-status.error,
         #osc-settings-status.error {
@@ -412,12 +421,54 @@
         }
 
         .workspace-details-body,
+        .project-management-body,
         .ai-settings-body,
         .preferences-body,
         .osc-settings-body {
             padding: 0 12px 12px;
             display: grid;
             gap: 8px;
+        }
+
+        .project-management-controls {
+            grid-template-columns: 1fr auto;
+        }
+
+        #project-management-list {
+            display: grid;
+            gap: 5px;
+            max-height: 180px;
+            overflow: auto;
+        }
+
+        .project-management-entry {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto auto auto;
+            gap: 6px;
+            align-items: center;
+            padding: 5px 0;
+            border-top: 1px solid rgba(0, 0, 0, 0.62);
+        }
+
+        .project-management-name {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: var(--field-cyan);
+            font-size: 12px;
+        }
+
+        .project-management-meta {
+            color: var(--field-text-soft);
+            font-size: 10px;
+            white-space: nowrap;
+        }
+
+        .project-management-action {
+            padding: 5px 6px;
+            border-radius: 5px;
+            font-size: 10px;
         }
 
         .osc-settings-panel {
@@ -684,6 +735,12 @@
             color: rgba(255, 231, 155, 0.98);
         }
 
+        .status-badge.project {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.18);
+            color: var(--field-text);
+        }
+
         .list-header {
             display: none;
             justify-content: space-between;
@@ -732,6 +789,10 @@
             /*box-shadow: 0 0 0 1px rgba(72, 201, 255, 0.35) inset;*/
         }
 
+        .doc-entry.project-entry .doc-name {
+            color: var(--field-cyan);
+        }
+
         .doc-name {
             font-size: 14px;
             color: var(--field-text);
@@ -752,6 +813,13 @@
             color: var(--field-text-soft);
             text-align: right;
             white-space: nowrap;
+        }
+
+        .project-documents {
+            color: var(--field-text-soft);
+            font-size: 11px;
+            line-height: 1.35;
+            word-break: break-word;
         }
 
         .doc-body {
@@ -1036,6 +1104,10 @@
                 grid-template-columns: 1fr;
             }
 
+            .new-doc-controls {
+                grid-template-columns: 1fr auto;
+            }
+
             .changelog-panel {
                 grid-template-columns: 1fr;
             }
@@ -1045,7 +1117,9 @@
             }
 
             .workspace-header,
+            .project-management-header,
             .workspace-controls,
+            .project-management-controls,
             .ai-settings-header,
             .ai-settings-controls,
             .osc-settings-header,
@@ -1056,6 +1130,7 @@
             }
 
             #current-workspace,
+            #project-management-state,
             #ai-settings-state,
             #preferences-state,
             #osc-settings-state {
@@ -1192,6 +1267,20 @@
                     </summary>
                     <ol id="changelog-list"></ol>
                 </details>
+                <details id="project-management-details">
+                    <summary>
+                        <span>Projects</span>
+                        <span id="project-management-summary" class="changelog-count">loading</span>
+                    </summary>
+                    <div class="project-management-body">
+                        <div class="project-management-controls">
+                            <input id="new-project-name" type="text" autocomplete="off" placeholder="project name">
+                            <button id="create-project" type="button">Create</button>
+                        </div>
+                        <div id="project-management-status" aria-live="polite"></div>
+                        <div id="project-management-list"></div>
+                    </div>
+                </details>
                 <details id="workspace-details">
                     <summary>
                         <span>Workspace</span>
@@ -1320,6 +1409,7 @@
 <script>
     const state = {
         documents: [],
+        projects: [],
         runningDocuments: [],
         searchQuery: "",
         searchResults: [],
@@ -1331,6 +1421,8 @@
         savingTags: null,
         contextMenu: null,
         duplicatePrompt: null,
+        projectAddPrompt: null,
+        projectCreatePrompt: null,
         contextError: "",
         changelog: [],
         currentWorkspace: "",
@@ -1470,6 +1562,61 @@
         if (!node) return;
         node.textContent = text || "";
         node.classList.toggle("error", !!isError);
+    }
+
+    function setProjectManagementStatus(text, isError = false) {
+        const node = document.getElementById("project-management-status");
+        if (!node) return;
+        node.textContent = text || "";
+        node.classList.toggle("error", !!isError);
+    }
+
+    function renderProjectManagement() {
+        const summary = document.getElementById("project-management-summary");
+        const stateNode = document.getElementById("project-management-state");
+        const listNode = document.getElementById("project-management-list");
+        const projects = state.projects || [];
+
+        if (summary) summary.textContent = projects.length === 1 ? "1 project" : `${projects.length} projects`;
+        if (stateNode) stateNode.textContent = projects.length === 1 ? "1 project" : `${projects.length} projects`;
+        if (!listNode) return;
+
+        if (!projects.length) {
+            listNode.innerHTML = `
+                <div class="empty-state">
+                    No projects yet.
+                </div>
+            `;
+            return;
+        }
+
+        listNode.innerHTML = projects.map((project) => {
+            const documents = projectDocuments(project);
+            const meta = `${documents.length === 1 ? "1 document" : `${documents.length} documents`}`;
+            return `
+                <div class="project-management-entry" data-project-management="${escapeHtml(project.name)}">
+                    <span class="project-management-name">${escapeHtml(project.name)}</span>
+                    <span class="project-management-meta">${escapeHtml(meta)}</span>
+                    <button type="button" class="project-management-action" data-project-open="${escapeHtml(project.name)}">Open</button>
+                    <button type="button" class="project-management-action button-danger" data-project-delete="${escapeHtml(project.name)}">Delete</button>
+                </div>
+            `;
+        }).join("");
+
+        listNode.querySelectorAll("[data-project-open]").forEach((button) => {
+            button.addEventListener("click", (event) => {
+                event.preventDefault();
+                const project = projectByName(button.getAttribute("data-project-open") || "");
+                openProject(project);
+            });
+        });
+
+        listNode.querySelectorAll("[data-project-delete]").forEach((button) => {
+            button.addEventListener("click", (event) => {
+                event.preventDefault();
+                deleteProject(button.getAttribute("data-project-delete") || "", { statusTarget: "project-management" });
+            });
+        });
     }
 
     function renderAiSettings() {
@@ -1627,6 +1774,55 @@
         window.location.href = `/index.html?${params.toString()}`;
     }
 
+    function documentUrl(name) {
+        return `/index.html?${new URLSearchParams({ file: name }).toString()}`;
+    }
+
+    function isDocumentAlreadyOpen(name) {
+        const target = String(name || "");
+        if (!target) return false;
+        const workspaceDoc = state.documents.find((doc) => doc.filename === target);
+        if (workspaceDoc && Number(workspaceDoc.runningSessionCount) > 0) return true;
+        return state.runningDocuments.some((doc) => doc.documentName === target);
+    }
+
+    function openProject(project) {
+        const documents = Array.from(new Set(
+            Array.isArray(project?.documents) ? project.documents.filter(Boolean) : []
+        ));
+        if (!documents.length) {
+            setCreateStatus(`Project ${project?.name || ""} has no documents.`, true);
+            return;
+        }
+
+        const unopenedDocuments = documents.filter((name) => !isDocumentAlreadyOpen(name));
+        const skippedCount = documents.length - unopenedDocuments.length;
+        if (!unopenedDocuments.length) {
+            setCreateStatus(`All documents in ${project?.name || "this project"} are already open.`);
+            return;
+        }
+
+        searchRequestSerial += 1;
+        if (searchController) {
+            searchController.abort();
+            searchController = null;
+        }
+        if (searchDebounceTimer) {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = null;
+        }
+
+        if (skippedCount > 0) {
+            const label = skippedCount === 1 ? "1 already-open document" : `${skippedCount} already-open documents`;
+            setCreateStatus(`Opening ${unopenedDocuments.length}; skipped ${label}.`);
+        }
+
+        unopenedDocuments.slice(1).forEach((name) => {
+            window.open(documentUrl(name), "_blank", "noopener");
+        });
+        window.location.href = documentUrl(unopenedDocuments[0]);
+    }
+
     function welcomeEventsUrl() {
         const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
         return `${protocol}//${window.location.host}/welcome-events`;
@@ -1652,6 +1848,28 @@
 
     function tagsForDoc(doc) {
         return Array.isArray(doc.tags) ? doc.tags : [];
+    }
+
+    function projectDocuments(project) {
+        return Array.isArray(project?.documents) ? project.documents.filter(Boolean) : [];
+    }
+
+    function combinedWorkspaceItems() {
+        return [
+            ...state.projects.map((project) => ({ ...project, kind: "project", filename: project.name })),
+            ...state.documents.map((doc) => ({ ...doc, kind: doc.kind || "document" }))
+        ].sort((a, b) => {
+            const aRecent = a.kind === "document" && a.filename === state.lastOpened ? -1 : 0;
+            const bRecent = b.kind === "document" && b.filename === state.lastOpened ? -1 : 0;
+            if (aRecent !== bRecent) return aRecent - bRecent;
+            return (Number(b.lastModifiedEpochMs) || 0) - (Number(a.lastModifiedEpochMs) || 0);
+        });
+    }
+
+    function projectByName(name) {
+        return state.projects.find((project) => project.name === name) ||
+            state.searchResults.find((item) => item.kind === "project" && item.filename === name) ||
+            null;
     }
 
     function renderTags(doc, query = "") {
@@ -1713,10 +1931,33 @@
         return candidate;
     }
 
+    function nextProjectName(baseName = "project") {
+        const existing = new Set(state.projects.map((project) => project.name.toLowerCase()));
+        let candidate = baseName;
+        let index = 2;
+        while (existing.has(candidate.toLowerCase())) {
+            candidate = `${baseName}-${index}`;
+            index += 1;
+        }
+        return candidate;
+    }
+
     function openDocumentContextMenu(event, filename) {
         event.preventDefault();
         state.contextMenu = { type: "document", filename, x: event.clientX, y: event.clientY };
         state.duplicatePrompt = null;
+        state.projectAddPrompt = null;
+        state.projectCreatePrompt = null;
+        state.contextError = "";
+        renderContextMenu();
+    }
+
+    function openProjectContextMenu(event, projectName) {
+        event.preventDefault();
+        state.contextMenu = { type: "project", projectName, x: event.clientX, y: event.clientY };
+        state.duplicatePrompt = null;
+        state.projectAddPrompt = null;
+        state.projectCreatePrompt = null;
         state.contextError = "";
         renderContextMenu();
     }
@@ -1726,6 +1967,8 @@
         event.stopPropagation();
         state.contextMenu = { type: "tag", tag, x: event.clientX, y: event.clientY };
         state.duplicatePrompt = null;
+        state.projectAddPrompt = null;
+        state.projectCreatePrompt = null;
         state.contextError = "";
         renderContextMenu();
     }
@@ -1733,6 +1976,8 @@
     function closeContextMenu() {
         state.contextMenu = null;
         state.duplicatePrompt = null;
+        state.projectAddPrompt = null;
+        state.projectCreatePrompt = null;
         state.contextError = "";
         const menu = contextMenuNode();
         if (menu) {
@@ -1777,11 +2022,63 @@
             return;
         }
 
+        if (state.projectAddPrompt) {
+            const filename = state.projectAddPrompt.filename;
+            const projects = state.projects;
+            const suggested = state.projectCreatePrompt?.value || nextProjectName(filename);
+            menu.innerHTML = `
+                <div class="context-menu-title">Add ${escapeHtml(filename)} to project</div>
+                ${projects.length ? projects.map((project) => `
+                    <button type="button" class="context-menu-action" data-project-add="${escapeHtml(project.name)}">
+                        ${escapeHtml(project.name)}
+                    </button>
+                `).join("") : '<div class="context-menu-title">No projects yet.</div>'}
+                <input class="context-input" value="${escapeHtml(suggested)}" autocomplete="off" placeholder="new project, ⏎">
+                <div class="context-error">${escapeHtml(state.contextError)}</div>
+            `;
+            menu.querySelectorAll("[data-project-add]").forEach((button) => {
+                button.addEventListener("click", (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    addDocumentToProject(button.getAttribute("data-project-add") || "", filename);
+                });
+            });
+            requestAnimationFrame(() => {
+                const input = menu.querySelector(".context-input");
+                input?.addEventListener("keydown", (event) => {
+                    event.stopPropagation();
+                    if (event.key === "Escape") {
+                        event.preventDefault();
+                        closeContextMenu();
+                    } else if (event.key === "Enter") {
+                        event.preventDefault();
+                        createProject(input.value, { addFilename: filename });
+                    }
+                });
+                input?.addEventListener("input", () => {
+                    state.projectCreatePrompt = { filename, value: input.value };
+                });
+                input?.addEventListener("click", (event) => event.stopPropagation());
+            });
+            return;
+        }
+
         if (state.contextMenu.type === "document") {
             const filename = state.contextMenu.filename;
             menu.innerHTML = `
                 <div class="context-menu-title">${escapeHtml(filename)}</div>
                 <button type="button" class="context-menu-action" data-menu-action="duplicate-document">Duplicate</button>
+                <button type="button" class="context-menu-action" data-menu-action="add-to-project">Add to project</button>
+                <div class="context-error">${escapeHtml(state.contextError)}</div>
+            `;
+        } else if (state.contextMenu.type === "project") {
+            const projectName = state.contextMenu.projectName;
+            const project = projectByName(projectName);
+            const docs = projectDocuments(project);
+            menu.innerHTML = `
+                <div class="context-menu-title">${escapeHtml(projectName)} · ${docs.length} documents</div>
+                <button type="button" class="context-menu-action" data-menu-action="open-project">Open project</button>
+                <button type="button" class="context-menu-action" data-menu-action="delete-project">Delete project</button>
                 <div class="context-error">${escapeHtml(state.contextError)}</div>
             `;
         } else {
@@ -1801,6 +2098,33 @@
             state.duplicatePrompt = { sourceFilename: source, value: nextDuplicateName(source) };
             state.contextError = "";
             renderContextMenu();
+        });
+
+        menu.querySelector("[data-menu-action='add-to-project']")?.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const filename = state.contextMenu?.filename;
+            if (!filename) return;
+            state.projectAddPrompt = { filename };
+            state.projectCreatePrompt = null;
+            state.contextError = "";
+            renderContextMenu();
+        });
+
+        menu.querySelector("[data-menu-action='open-project']")?.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const project = projectByName(state.contextMenu?.projectName || "");
+            closeContextMenu();
+            openProject(project);
+        });
+
+        menu.querySelector("[data-menu-action='delete-project']")?.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const projectName = state.contextMenu?.projectName;
+            if (!projectName) return;
+            deleteProject(projectName);
         });
 
         menu.querySelector("[data-menu-action='export-tagged-documents']")?.addEventListener("click", (event) => {
@@ -1831,6 +2155,133 @@
         if (duplicate) return `Document '${name}' already exists.`;
 
         return null;
+    }
+
+    function validateProjectName(name) {
+        if (!name) return "Enter a project name.";
+        if (/[\/\\]/.test(name)) return "Project names cannot contain path separators.";
+        if (/\0/.test(name)) return "Project name contains invalid characters.";
+        if (/\.\./.test(name)) return "Project name cannot contain '..'.";
+        if (/^\./.test(name)) return "Project name cannot start with '.'.";
+        if (/\s$/.test(name)) return "Project name cannot end with whitespace.";
+        if (name === "_projects") return "That project name is reserved.";
+
+        const reservedNames = new Set([
+            "con", "prn", "aux", "nul",
+            "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8", "com9",
+            "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9"
+        ]);
+        if (reservedNames.has(name.toLowerCase())) return "That name is reserved by the OS.";
+
+        const duplicate = state.projects.find(project => project.name.toLowerCase() === name.toLowerCase());
+        if (duplicate) return `Project '${name}' already exists.`;
+
+        return null;
+    }
+
+    async function createProject(rawName, options = {}) {
+        const name = String(rawName || "").trim();
+        const error = validateProjectName(name);
+        if (error) {
+            if (state.projectAddPrompt) {
+                state.contextError = error;
+                state.projectCreatePrompt = { filename: options.addFilename || state.projectAddPrompt.filename, value: name };
+                renderContextMenu();
+            } else if (options.statusTarget === "project-management") {
+                setProjectManagementStatus(error, true);
+            } else {
+                setCreateStatus(error, true);
+            }
+            return;
+        }
+
+        const documents = options.addFilename ? [options.addFilename] : [];
+        try {
+            const response = await fetch("/api/projects", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                body: JSON.stringify({ name, documents })
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+            closeContextMenu();
+            if (!options.addFilename) {
+                const input = document.getElementById("new-project-name");
+                if (input) input.value = "";
+            }
+            const message = options.addFilename
+                ? `Created ${payload.project?.name || name} with ${options.addFilename}.`
+                : `Created project ${payload.project?.name || name}.`;
+            if (options.statusTarget === "project-management") {
+                setProjectManagementStatus(message);
+            } else {
+                setCreateStatus(message);
+            }
+            await loadWelcomeDocs();
+        } catch (error) {
+            console.error("Failed to create project", error);
+            if (state.projectAddPrompt) {
+                state.contextError = error?.message || "Could not create project.";
+                state.projectCreatePrompt = { filename: options.addFilename || state.projectAddPrompt.filename, value: name };
+                renderContextMenu();
+            } else if (options.statusTarget === "project-management") {
+                setProjectManagementStatus(error?.message || "Could not create project.", true);
+            } else {
+                setCreateStatus(error?.message || "Could not create project.", true);
+            }
+        }
+    }
+
+    async function addDocumentToProject(projectName, filename) {
+        if (!projectName || !filename) return;
+        try {
+            const response = await fetch("/api/projects/add-document", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                body: JSON.stringify({ projectName, filename })
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+            closeContextMenu();
+            setCreateStatus(payload.message || `Added ${filename} to ${projectName}.`);
+            await loadWelcomeDocs();
+        } catch (error) {
+            console.error("Failed to add document to project", error);
+            state.contextError = error?.message || "Could not add this document.";
+            renderContextMenu();
+        }
+    }
+
+    async function deleteProject(projectName, options = {}) {
+        if (!projectName) return;
+        try {
+            const response = await fetch("/api/projects/delete", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                body: JSON.stringify({ name: projectName })
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+            closeContextMenu();
+            const message = payload.message || `Deleted project ${projectName}.`;
+            if (options.statusTarget === "project-management") {
+                setProjectManagementStatus(message);
+            } else {
+                setCreateStatus(message);
+            }
+            await loadWelcomeDocs();
+        } catch (error) {
+            console.error("Failed to delete project", error);
+            if (options.statusTarget === "project-management") {
+                setProjectManagementStatus(error?.message || "Could not delete this project.", true);
+            } else {
+                state.contextError = error?.message || "Could not delete this project.";
+                renderContextMenu();
+            }
+        }
     }
 
     async function duplicateDocument(sourceFilename, rawName) {
@@ -1877,7 +2328,8 @@
 
     function getFirstVisibleDocument() {
         if (state.searchQuery.trim()) {
-            return state.searchResults[0] || null;
+            const first = state.searchResults[0] || null;
+            return first?.kind === "project" ? projectDocuments(first)[0] ? { filename: projectDocuments(first)[0] } : null : first;
         }
         return state.documents[0] || null;
     }
@@ -1929,10 +2381,12 @@
     function renderRecentDocuments() {
         const listNode = document.getElementById("recent-list");
         const countNode = document.getElementById("doc-count");
-        const docs = state.documents;
-        countNode.textContent = docs.length === 1 ? "1 document" : `${docs.length} documents`;
+        const items = combinedWorkspaceItems();
+        const documentCount = state.documents.length;
+        const projectCount = state.projects.length;
+        countNode.textContent = `${documentCount} documents · ${projectCount} projects`;
 
-        if (!docs.length) {
+        if (!items.length) {
             listNode.innerHTML = `
                 <div class="empty-state">
                     No documents found in this workspace yet.<br><br>
@@ -1942,7 +2396,27 @@
             return;
         }
 
-        listNode.innerHTML = docs.map((doc) => {
+        listNode.innerHTML = items.map((doc) => {
+            if (doc.kind === "project") {
+                const documents = projectDocuments(doc);
+                const when = formatDuration(doc.lastModifiedAgoMs);
+                const meta = `${documents.length === 1 ? "1 document" : `${documents.length} documents`} · ${formatBytes(doc.sizeBytes)} · ${when}`;
+                const preview = documents.length ? documents.join(", ") : "empty project";
+                return `
+                    <div role="button" tabindex="0" class="doc-entry project-entry" data-project="${escapeHtml(doc.name || doc.filename)}">
+                        <div class="doc-body">
+                            <div class="doc-title">
+                                <span class="doc-name">${escapeHtml(doc.name || doc.filename)}</span>
+                                <span class="status-badge project">project</span>
+                            </div>
+                            <div class="project-documents">${escapeHtml(preview)}</div>
+                        </div>
+                        <div class="doc-side">
+                            <span class="doc-meta">${escapeHtml(meta)}</span>
+                        </div>
+                    </div>
+                `;
+            }
             const activeClass = doc.filename === state.lastOpened ? "active" : "";
             const when = formatDuration(doc.lastModifiedAgoMs);
             const boxes = doc.numBoxes === 1 ? "1 box" : `${doc.numBoxes} boxes`;
@@ -1973,7 +2447,7 @@
         const query = state.searchQuery.trim();
         const statusNode = document.getElementById("recent-search-status");
 
-        countNode.textContent = docs.length === 1 ? "1 matching document" : `${docs.length} matching documents`;
+        countNode.textContent = docs.length === 1 ? "1 match" : `${docs.length} matches`;
 
         if (!docs.length) {
             listNode.innerHTML = `
@@ -1987,6 +2461,37 @@
         }
 
         listNode.innerHTML = docs.map((doc) => {
+            if (doc.kind === "project") {
+                const documents = projectDocuments(doc);
+                const when = formatDuration(doc.lastModifiedAgoMs);
+                const meta = `${documents.length === 1 ? "1 document" : `${documents.length} documents`} · ${when}`;
+                const preview = documents.length ? documents.join(", ") : "empty project";
+                const matches = Array.isArray(doc.matches) ? doc.matches : [];
+                const matchHtml = matches.map((match) => {
+                    const linePart = match.line > 0 ? ` line ${match.line}` : "";
+                    return `
+                        <div class="search-match">
+                            <div class="search-match-meta">${escapeHtml(match.boxName || doc.filename)} · ${escapeHtml(match.property || "project")}${escapeHtml(linePart)}</div>
+                            <div class="search-match-snippet">${highlightQuery(match.snippet || "", query)}</div>
+                        </div>
+                    `;
+                }).join("");
+                return `
+                    <div role="button" tabindex="0" class="doc-entry project-entry" data-project="${escapeHtml(doc.filename)}">
+                        <div class="doc-body">
+                            <div class="doc-title">
+                                <span class="doc-name">${highlightQuery(doc.filename, query)}</span>
+                                <span class="status-badge project">project</span>
+                            </div>
+                            <div class="project-documents">${highlightQuery(preview, query)}</div>
+                            <div class="search-match-list">${matchHtml}</div>
+                        </div>
+                        <div class="doc-side">
+                            <span class="doc-meta">${escapeHtml(meta)}</span>
+                        </div>
+                    </div>
+                `;
+            }
             const activeClass = doc.filename === state.lastOpened ? "active" : "";
             const when = formatDuration(doc.lastModifiedAgoMs);
             const boxes = doc.numBoxes === 1 ? "1 box" : `${doc.numBoxes} boxes`;
@@ -2035,8 +2540,9 @@
             renderSearchResults();
         } else {
             const statusNode = document.getElementById("recent-search-status");
-            statusNode.textContent = state.documents.length
-                ? `${state.documents.length} recent documents`
+            const itemCount = state.documents.length + state.projects.length;
+            statusNode.textContent = itemCount
+                ? `${state.documents.length} documents · ${state.projects.length} projects`
                 : "";
             statusNode.classList.remove("error");
             renderRecentDocuments();
@@ -2076,6 +2582,7 @@
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const payload = await response.json();
             state.documents = Array.isArray(payload.documents) ? payload.documents : [];
+            state.projects = Array.isArray(payload.projects) ? payload.projects : [];
             state.runningDocuments = Array.isArray(payload.runningDocuments) ? payload.runningDocuments : [];
             state.lastOpened = payload.lastOpened || "welcome";
             state.defaultDocument = payload.defaultDocument || state.lastOpened || "welcome";
@@ -2090,6 +2597,7 @@
             }
             rememberWorkspace(state.currentWorkspace);
             renderWorkspaceControls();
+            renderProjectManagement();
             renderAiSettings();
             renderPreferences();
             renderOscSettings();
@@ -2097,8 +2605,10 @@
         } catch (error) {
             console.error("Failed to load welcome docs", error);
             state.documents = [];
+            state.projects = [];
             state.runningDocuments = [];
             renderWorkspaceControls();
+            renderProjectManagement();
             renderAiSettings();
             renderPreferences();
             renderOscSettings();
@@ -2607,7 +3117,28 @@
     }
 
     function installDocumentListHandlers(listNode) {
+        listNode.querySelectorAll(".project-entry").forEach((entry) => {
+            entry.addEventListener("click", (event) => {
+                closeContextMenu();
+                const name = entry.getAttribute("data-project");
+                const project = projectByName(name);
+                if (project) openProject(project);
+            });
+            entry.addEventListener("keydown", (event) => {
+                if (event.key !== "Enter") return;
+                event.preventDefault();
+                const name = entry.getAttribute("data-project");
+                const project = projectByName(name);
+                if (project) openProject(project);
+            });
+            entry.addEventListener("contextmenu", (event) => {
+                const name = entry.getAttribute("data-project");
+                if (name) openProjectContextMenu(event, name);
+            });
+        });
+
         listNode.querySelectorAll(".doc-entry").forEach((entry) => {
+            if (entry.classList.contains("project-entry")) return;
             entry.addEventListener("click", (event) => {
                 if (event.target.closest(".tag-control")) return;
                 closeContextMenu();
@@ -2679,6 +3210,8 @@
     function installHandlers() {
         const createButton = document.getElementById("create-doc");
         const nameInput = document.getElementById("new-doc-name");
+        const createProjectButton = document.getElementById("create-project");
+        const projectNameInput = document.getElementById("new-project-name");
         const searchInput = document.getElementById("recent-search");
         const shutdownButton = document.getElementById("shutdown-instance");
         const workspaceInput = document.getElementById("workspace-path");
@@ -2713,12 +3246,28 @@
             openDocument(name);
         };
 
+        const runCreateProject = () => {
+            createProject(projectNameInput?.value || "", { statusTarget: "project-management" });
+        };
+
         createButton.addEventListener("click", runCreate);
         nameInput.addEventListener("keydown", (event) => {
             if (event.key === "Enter") {
                 event.preventDefault();
                 runCreate();
             }
+        });
+
+        createProjectButton?.addEventListener("click", runCreateProject);
+        projectNameInput?.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                runCreateProject();
+            }
+        });
+
+        projectNameInput?.addEventListener("input", () => {
+            setProjectManagementStatus("");
         });
 
         searchInput.addEventListener("input", () => {
