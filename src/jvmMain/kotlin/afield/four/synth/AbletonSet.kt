@@ -1,14 +1,29 @@
 package afield.four.synth
 
+import afield.four.audio.WavFloatArrayLoader
 import org.w3c.dom.Document
 import org.w3c.dom.Element
 import org.xml.sax.InputSource
+import java.io.BufferedInputStream
+import java.io.BufferedOutputStream
+import java.io.DataInputStream
+import java.io.DataOutputStream
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.util.concurrent.ConcurrentHashMap
+import javax.sound.midi.MetaMessage
+import javax.sound.midi.MidiEvent
+import javax.sound.midi.MidiSystem
+import javax.sound.midi.ShortMessage
 import javax.xml.XMLConstants
 import javax.xml.parsers.DocumentBuilderFactory
+import kotlin.math.PI
+import kotlin.math.cos
 import java.util.zip.GZIPInputStream
 import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.sqrt
 
 data class AbletonSet(
     val source: File,
@@ -56,6 +71,77 @@ data class AbletonSet(
         sampleMapper: AbletonSampleFileMapper
     ): List<AbletonClipPlayback> =
         clipsPlayingAtBeat(tempoMap.secondsToBeat(arrangementSeconds), sampleMapper)
+
+    fun trackVolumesAtBeat(
+        arrangementBeat: Double,
+        sampleMapper: AbletonSampleFileMapper,
+        analysisCache: AbletonSampleVolumeAnalysisCache = AbletonSampleVolumeAnalysisCache.shared
+    ): List<AbletonTrackVolume> {
+        val byTrack = clipsPlayingAtBeat(arrangementBeat, sampleMapper)
+            .mapNotNull { playback -> playback.volumeContribution(analysisCache) }
+            .groupBy { it.track }
+
+        return byTrack.map { (track, contributions) ->
+            AbletonTrackVolume(
+                track = track,
+                arrangementBeat = arrangementBeat,
+                arrangementSeconds = tempoMap.beatToSeconds(arrangementBeat),
+                bands = contributions.rootSumSquareBands(),
+                clips = contributions
+            )
+        }.sortedBy { it.track.index }
+    }
+
+    fun trackVolumesAtSeconds(
+        arrangementSeconds: Double,
+        sampleMapper: AbletonSampleFileMapper,
+        analysisCache: AbletonSampleVolumeAnalysisCache = AbletonSampleVolumeAnalysisCache.shared
+    ): List<AbletonTrackVolume> =
+        trackVolumesAtBeat(tempoMap.secondsToBeat(arrangementSeconds), sampleMapper, analysisCache)
+
+    fun dominantPitchesAtBeat(
+        arrangementBeat: Double,
+        sampleMapper: AbletonSampleFileMapper,
+        pitchCache: AbletonSamplePitchAnalysisCache = AbletonSamplePitchAnalysisCache.shared
+    ): List<AbletonClipPitch> =
+        clipsPlayingAtBeat(arrangementBeat, sampleMapper)
+            .mapNotNull { playback -> playback.pitchContribution(pitchCache) }
+            .sortedWith(compareBy<AbletonClipPitch> { it.track.index }.thenBy { it.clip.currentStartBeat })
+
+    fun dominantPitchesAtSeconds(
+        arrangementSeconds: Double,
+        sampleMapper: AbletonSampleFileMapper,
+        pitchCache: AbletonSamplePitchAnalysisCache = AbletonSamplePitchAnalysisCache.shared
+    ): List<AbletonClipPitch> =
+        dominantPitchesAtBeat(tempoMap.secondsToBeat(arrangementSeconds), sampleMapper, pitchCache)
+
+    fun dominantPitchesByTrackAtBeat(
+        arrangementBeat: Double,
+        sampleMapper: AbletonSampleFileMapper,
+        pitchCache: AbletonSamplePitchAnalysisCache = AbletonSamplePitchAnalysisCache.shared
+    ): List<AbletonTrackPitch> {
+        val clipPitches = dominantPitchesAtBeat(arrangementBeat, sampleMapper, pitchCache)
+        return clipPitches
+            .groupBy { it.track }
+            .mapNotNull { (track, contributions) ->
+                val dominant = contributions.dominantClipPitchOrNull() ?: return@mapNotNull null
+                AbletonTrackPitch(
+                    track = track,
+                    arrangementBeat = arrangementBeat,
+                    arrangementSeconds = tempoMap.beatToSeconds(arrangementBeat),
+                    pitch = dominant.pitch,
+                    clips = contributions
+                )
+            }
+            .sortedBy { it.track.index }
+    }
+
+    fun dominantPitchesByTrackAtSeconds(
+        arrangementSeconds: Double,
+        sampleMapper: AbletonSampleFileMapper,
+        pitchCache: AbletonSamplePitchAnalysisCache = AbletonSamplePitchAnalysisCache.shared
+    ): List<AbletonTrackPitch> =
+        dominantPitchesByTrackAtBeat(tempoMap.secondsToBeat(arrangementSeconds), sampleMapper, pitchCache)
 
     fun track(name: String): AbletonTrack? = tracks.firstOrNull { it.name == name }
 
@@ -393,6 +479,652 @@ data class AbletonClipPlayback(
     val originalSourcePath: String? get() = clip.sample?.relativePath ?: clip.sample?.absolutePath
 }
 
+data class AbletonTrackVolume(
+    val track: AbletonTrack,
+    val arrangementBeat: Double,
+    val arrangementSeconds: Double,
+    val bands: AbletonVolumeBands,
+    val clips: List<AbletonClipVolume>
+) {
+    val rms: Float get() = bands.rms
+}
+
+data class AbletonClipVolume(
+    val track: AbletonTrack,
+    val clip: AbletonClip,
+    val sourceFile: File,
+    val sourceSeconds: Double,
+    val bands: AbletonVolumeBands
+) {
+    val rms: Float get() = bands.rms
+}
+
+data class AbletonVolumeBands(
+    val low: Float,
+    val mid: Float,
+    val high: Float
+) {
+    val rms: Float get() = sqrt((low * low + mid * mid + high * high) / 3.0f)
+
+    companion object {
+        val Zero = AbletonVolumeBands(0f, 0f, 0f)
+    }
+}
+
+data class AbletonSampleVolumeAnalysisConfig(
+    val windowSeconds: Double = 0.050,
+    val hopSeconds: Double = 0.010,
+    val lowCutoffHz: Double = 250.0,
+    val highCutoffHz: Double = 2_000.0,
+    val fftSize: Int = 2048
+) {
+    init {
+        require(windowSeconds > 0.0) { "windowSeconds must be > 0" }
+        require(hopSeconds > 0.0) { "hopSeconds must be > 0" }
+        require(lowCutoffHz > 0.0) { "lowCutoffHz must be > 0" }
+        require(highCutoffHz > lowCutoffHz) { "highCutoffHz must be > lowCutoffHz" }
+        require(fftSize > 0 && fftSize and (fftSize - 1) == 0) { "fftSize must be a power of two" }
+    }
+}
+
+data class AbletonSampleVolumeAnalysis(
+    val sourceFile: File,
+    val sampleRate: Int,
+    val sampleCount: Int,
+    val config: AbletonSampleVolumeAnalysisConfig,
+    val frames: List<AbletonVolumeBands>
+) {
+    val durationSeconds: Double get() = sampleCount.toDouble() / sampleRate.toDouble()
+
+    fun volumeAtSeconds(sourceSeconds: Double): AbletonVolumeBands {
+        if (frames.isEmpty() || sourceSeconds < 0.0 || sourceSeconds > durationSeconds) return AbletonVolumeBands.Zero
+        val frame = sourceSeconds / config.hopSeconds
+        val leftIndex = frame.toInt().coerceIn(0, frames.lastIndex)
+        val rightIndex = min(leftIndex + 1, frames.lastIndex)
+        val t = (frame - leftIndex).coerceIn(0.0, 1.0).toFloat()
+        return frames[leftIndex].lerp(frames[rightIndex], t)
+    }
+
+    companion object {
+        fun analyze(
+            sourceFile: File,
+            config: AbletonSampleVolumeAnalysisConfig = AbletonSampleVolumeAnalysisConfig()
+        ): AbletonSampleVolumeAnalysis {
+            val wav = WavFloatArrayLoader.loadWavToFloatArray(sourceFile.absolutePath)
+            val frames = analyzeFrames(wav.samples, wav.sampleRate, config)
+            return AbletonSampleVolumeAnalysis(
+                sourceFile = sourceFile.absoluteFile.normalize(),
+                sampleRate = wav.sampleRate,
+                sampleCount = wav.samples.size,
+                config = config,
+                frames = frames
+            )
+        }
+
+        private fun analyzeFrames(
+            samples: FloatArray,
+            sampleRate: Int,
+            config: AbletonSampleVolumeAnalysisConfig
+        ): List<AbletonVolumeBands> {
+            if (samples.isEmpty()) return emptyList()
+            val fftSize = max(config.fftSize, nextPowerOfTwo((config.windowSeconds * sampleRate).toInt().coerceAtLeast(2)))
+            val fft = FFT(fftSize)
+            val complex = FloatArray(fftSize * 2)
+            val hopSamples = max(1, (config.hopSeconds * sampleRate).toInt())
+            val windowSamples = min(samples.size, (config.windowSeconds * sampleRate).toInt().coerceAtLeast(1))
+            val frameCount = max(1, ((samples.size - 1) / hopSamples) + 1)
+
+            return List(frameCount) { frameIndex ->
+                val center = frameIndex * hopSamples
+                val start = center - windowSamples / 2
+                java.util.Arrays.fill(complex, 0f)
+                for (i in 0 until windowSamples) {
+                    val sampleIndex = start + i
+                    if (sampleIndex !in samples.indices) continue
+                    val window = hann(i, windowSamples)
+                    complex[i * 2] = samples[sampleIndex] * window
+                }
+                fft.forward(complex)
+                spectralBands(complex, fftSize, sampleRate, config)
+            }
+        }
+
+        private fun spectralBands(
+            complex: FloatArray,
+            fftSize: Int,
+            sampleRate: Int,
+            config: AbletonSampleVolumeAnalysisConfig
+        ): AbletonVolumeBands {
+            var low = 0.0
+            var mid = 0.0
+            var high = 0.0
+            var lowCount = 0
+            var midCount = 0
+            var highCount = 0
+
+            for (bin in 1..fftSize / 2) {
+                val frequency = bin.toDouble() * sampleRate.toDouble() / fftSize.toDouble()
+                val re = complex[bin * 2].toDouble()
+                val im = complex[bin * 2 + 1].toDouble()
+                val power = re * re + im * im
+                when {
+                    frequency < config.lowCutoffHz -> {
+                        low += power
+                        lowCount++
+                    }
+                    frequency < config.highCutoffHz -> {
+                        mid += power
+                        midCount++
+                    }
+                    else -> {
+                        high += power
+                        highCount++
+                    }
+                }
+            }
+
+            val scale = 2.0 / fftSize.toDouble()
+            return AbletonVolumeBands(
+                low = bandRms(low, lowCount, scale),
+                mid = bandRms(mid, midCount, scale),
+                high = bandRms(high, highCount, scale)
+            )
+        }
+
+        private fun bandRms(power: Double, count: Int, scale: Double): Float =
+            if (count <= 0) 0f else sqrt(power / count.toDouble()).times(scale).toFloat()
+
+        private fun hann(index: Int, size: Int): Float =
+            if (size <= 1) 1f else (0.5 - 0.5 * cos((2.0 * PI * index) / (size - 1))).toFloat()
+
+        private fun nextPowerOfTwo(value: Int): Int {
+            var out = 1
+            while (out < value) out = out shl 1
+            return out
+        }
+    }
+}
+
+class AbletonSampleVolumeAnalysisCache(
+    private val config: AbletonSampleVolumeAnalysisConfig = AbletonSampleVolumeAnalysisConfig()
+) {
+    private val cache = ConcurrentHashMap<AbletonSampleAnalysisKey, AbletonSampleVolumeAnalysis>()
+
+    fun analysisFor(sourceFile: File): AbletonSampleVolumeAnalysis {
+        val file = sourceFile.absoluteFile.normalize()
+        val key = AbletonSampleAnalysisKey(
+            path = file.absolutePath,
+            lastModified = file.lastModified(),
+            length = file.length(),
+            config = config
+        )
+        cache[key]?.let { return it }
+
+        return cache.computeIfAbsent(key) { loadFromDiskOrAnalyze(file, key) }
+    }
+
+    fun clear() {
+        cache.clear()
+    }
+
+    companion object {
+        val shared = AbletonSampleVolumeAnalysisCache()
+    }
+
+    private fun loadFromDiskOrAnalyze(file: File, key: AbletonSampleAnalysisKey): AbletonSampleVolumeAnalysis {
+        val cacheFile = diskCacheFileFor(file, config)
+        readDiskCache(cacheFile, file, key)?.let { analysis ->
+            println(
+                "Ableton volume analysis: loaded cache ${cacheFile.name} " +
+                    "for ${file.name} frames=${analysis.frames.size}"
+            )
+            return analysis
+        }
+
+        val startNs = System.nanoTime()
+        println(
+            "Ableton volume analysis: computing ${file.absolutePath} " +
+                "(${formatByteCount(file.length())}, window=${config.windowSeconds}s, hop=${config.hopSeconds}s, fft=${config.fftSize})"
+        )
+        return AbletonSampleVolumeAnalysis.analyze(file, config).also { analysis ->
+            writeDiskCache(cacheFile, file, key, analysis)
+            val elapsedMs = (System.nanoTime() - startNs) / 1_000_000.0
+            println(
+                "Ableton volume analysis: cached ${file.name} " +
+                    "frames=${analysis.frames.size}, duration=${"%.3f".format(analysis.durationSeconds)}s, " +
+                    "elapsed=${"%.1f".format(elapsedMs)}ms, disk=${cacheFile.name}"
+            )
+        }
+    }
+}
+
+private const val ABLETON_VOLUME_CACHE_MAGIC = "F4 Ableton Volume Analysis"
+private const val ABLETON_VOLUME_CACHE_VERSION = 1
+
+private fun diskCacheFileFor(file: File, config: AbletonSampleVolumeAnalysisConfig): File {
+    val suffix = listOf(
+        "w${config.windowSeconds.cacheToken()}",
+        "h${config.hopSeconds.cacheToken()}",
+        "l${config.lowCutoffHz.cacheToken()}",
+        "u${config.highCutoffHz.cacheToken()}",
+        "f${config.fftSize}"
+    ).joinToString("-")
+    return File(file.parentFile ?: File("."), "${file.name}.field4-volume-$suffix.bin")
+}
+
+private fun readDiskCache(
+    cacheFile: File,
+    sourceFile: File,
+    key: AbletonSampleAnalysisKey
+): AbletonSampleVolumeAnalysis? {
+    if (!cacheFile.isFile || cacheFile.lastModified() < sourceFile.lastModified()) return null
+
+    return runCatching {
+        DataInputStream(BufferedInputStream(cacheFile.inputStream())).use { input ->
+            if (input.readUTF() != ABLETON_VOLUME_CACHE_MAGIC) return null
+            if (input.readInt() != ABLETON_VOLUME_CACHE_VERSION) return null
+            if (input.readUTF() != key.path) return null
+            if (input.readLong() != key.lastModified) return null
+            if (input.readLong() != key.length) return null
+
+            val storedConfig = AbletonSampleVolumeAnalysisConfig(
+                windowSeconds = input.readDouble(),
+                hopSeconds = input.readDouble(),
+                lowCutoffHz = input.readDouble(),
+                highCutoffHz = input.readDouble(),
+                fftSize = input.readInt()
+            )
+            if (storedConfig != key.config) return null
+
+            val sampleRate = input.readInt()
+            val sampleCount = input.readInt()
+            val frameCount = input.readInt()
+            if (sampleRate <= 0 || sampleCount < 0 || frameCount < 0) return null
+
+            val frames = List(frameCount) {
+                AbletonVolumeBands(
+                    low = input.readFloat(),
+                    mid = input.readFloat(),
+                    high = input.readFloat()
+                )
+            }
+            AbletonSampleVolumeAnalysis(
+                sourceFile = sourceFile.absoluteFile.normalize(),
+                sampleRate = sampleRate,
+                sampleCount = sampleCount,
+                config = key.config,
+                frames = frames
+            )
+        }
+    }.getOrNull()
+}
+
+private fun writeDiskCache(
+    cacheFile: File,
+    sourceFile: File,
+    key: AbletonSampleAnalysisKey,
+    analysis: AbletonSampleVolumeAnalysis
+) {
+    runCatching {
+        cacheFile.parentFile?.mkdirs()
+        val tmp = File(cacheFile.parentFile ?: File("."), "${cacheFile.name}.tmp-${System.nanoTime()}")
+        DataOutputStream(BufferedOutputStream(tmp.outputStream())).use { output ->
+            output.writeUTF(ABLETON_VOLUME_CACHE_MAGIC)
+            output.writeInt(ABLETON_VOLUME_CACHE_VERSION)
+            output.writeUTF(key.path)
+            output.writeLong(key.lastModified)
+            output.writeLong(key.length)
+            output.writeDouble(key.config.windowSeconds)
+            output.writeDouble(key.config.hopSeconds)
+            output.writeDouble(key.config.lowCutoffHz)
+            output.writeDouble(key.config.highCutoffHz)
+            output.writeInt(key.config.fftSize)
+            output.writeInt(analysis.sampleRate)
+            output.writeInt(analysis.sampleCount)
+            output.writeInt(analysis.frames.size)
+            for (frame in analysis.frames) {
+                output.writeFloat(frame.low)
+                output.writeFloat(frame.mid)
+                output.writeFloat(frame.high)
+            }
+        }
+        Files.move(tmp.toPath(), cacheFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
+        cacheFile.setLastModified(sourceFile.lastModified().coerceAtLeast(System.currentTimeMillis()))
+    }.onFailure { error ->
+        println("Ableton volume analysis: could not write disk cache ${cacheFile.absolutePath}: ${error.message}")
+    }
+}
+
+private fun Double.cacheToken(): String =
+    toString().replace('-', 'm').replace('.', 'p')
+
+private fun formatByteCount(bytes: Long): String {
+    val units = arrayOf("B", "KB", "MB", "GB")
+    var value = bytes.toDouble()
+    var unit = 0
+    while (value >= 1024.0 && unit < units.lastIndex) {
+        value /= 1024.0
+        unit++
+    }
+    return if (unit == 0) {
+        "$bytes ${units[unit]}"
+    } else {
+        "%.1f %s".format(value, units[unit])
+    }
+}
+
+private data class AbletonSampleAnalysisKey(
+    val path: String,
+    val lastModified: Long,
+    val length: Long,
+    val config: AbletonSampleVolumeAnalysisConfig
+)
+
+data class AbletonPitchEstimate(
+    val midiPitch: Int,
+    val velocity: Int,
+    val startSeconds: Double,
+    val endSeconds: Double,
+    val channel: Int
+) {
+    val frequencyHz: Double get() = midiToFrequency(midiPitch.toDouble())
+}
+
+data class AbletonClipPitch(
+    val track: AbletonTrack,
+    val clip: AbletonClip,
+    val sourceFile: File,
+    val sourceSeconds: Double,
+    val pitch: AbletonPitchEstimate
+)
+
+data class AbletonTrackPitch(
+    val track: AbletonTrack,
+    val arrangementBeat: Double,
+    val arrangementSeconds: Double,
+    val pitch: AbletonPitchEstimate,
+    val clips: List<AbletonClipPitch>
+)
+
+data class AbletonSamplePitchAnalysis(
+    val sourceFile: File,
+    val midiFile: File?,
+    val sourceLastModified: Long,
+    val sourceLength: Long,
+    val notes: List<AbletonPitchEstimate>
+) {
+    fun dominantPitchAtSeconds(sourceSeconds: Double): AbletonPitchEstimate? =
+        notes.asSequence()
+            .filter { sourceSeconds >= it.startSeconds && sourceSeconds < it.endSeconds }
+            .maxWithOrNull(compareBy<AbletonPitchEstimate> { it.velocity }.thenBy { it.startSeconds })
+
+    companion object {
+        fun readMidi(
+            sourceFile: File,
+            midiFile: File
+        ): AbletonSamplePitchAnalysis =
+            AbletonSamplePitchAnalysis(
+                sourceFile = sourceFile.absoluteFile.normalize(),
+                midiFile = midiFile.absoluteFile.normalize(),
+                sourceLastModified = sourceFile.lastModified(),
+                sourceLength = sourceFile.length(),
+                notes = readPitchNotes(midiFile)
+            )
+
+        private fun readPitchNotes(midiFile: File): List<AbletonPitchEstimate> {
+            val sequence = MidiSystem.getSequence(midiFile)
+            val tempos = sequence.tempoEvents()
+            val active = mutableMapOf<Pair<Int, Int>, ArrayDeque<ActiveMidiNote>>()
+            val out = mutableListOf<AbletonPitchEstimate>()
+
+            sequence.tracks.forEach { track ->
+                for (i in 0 until track.size()) {
+                    val event = track.get(i)
+                    val message = event.message as? ShortMessage ?: continue
+                    when (message.command) {
+                        ShortMessage.NOTE_ON -> {
+                            val pitch = message.data1
+                            val velocity = message.data2
+                            val key = message.channel to pitch
+                            if (velocity > 0) {
+                                active.getOrPut(key) { ArrayDeque() }.addLast(
+                                    ActiveMidiNote(
+                                        pitch = pitch,
+                                        velocity = velocity,
+                                        channel = message.channel,
+                                        startTick = event.tick
+                                    )
+                                )
+                            } else {
+                                closeActiveNote(active, key, event.tick, tempos, sequence.resolution, out)
+                            }
+                        }
+                        ShortMessage.NOTE_OFF -> {
+                            val key = message.channel to message.data1
+                            closeActiveNote(active, key, event.tick, tempos, sequence.resolution, out)
+                        }
+                    }
+                }
+            }
+
+            val endTick = sequence.tickLength
+            for ((key, queue) in active) {
+                while (queue.isNotEmpty()) {
+                    closeActiveNote(active, key, endTick, tempos, sequence.resolution, out)
+                }
+            }
+            return out.sortedWith(compareBy<AbletonPitchEstimate> { it.startSeconds }.thenByDescending { it.velocity })
+        }
+    }
+}
+
+class AbletonSamplePitchAnalysisCache(
+    private val basicPitchExecutable: File? = configuredBasicPitchExecutable(),
+    private val onsetThreshold: Double = configuredBasicPitchOnsetThreshold()
+) {
+    private val cache = ConcurrentHashMap<AbletonSamplePitchAnalysisKey, AbletonSamplePitchAnalysis>()
+
+    fun analysisFor(sourceFile: File): AbletonSamplePitchAnalysis {
+        val file = sourceFile.absoluteFile.normalize()
+        val key = AbletonSamplePitchAnalysisKey(
+            path = file.absolutePath,
+            lastModified = file.lastModified(),
+            length = file.length()
+        )
+        cache[key]?.let { return it }
+        return cache.computeIfAbsent(key) { loadFromDiskOrRunBasicPitch(file, key) }
+    }
+
+    fun dominantPitchAtSeconds(sourceFile: File, sourceSeconds: Double): AbletonPitchEstimate? =
+        analysisFor(sourceFile).dominantPitchAtSeconds(sourceSeconds)
+
+    fun clear() {
+        cache.clear()
+    }
+
+    private fun loadFromDiskOrRunBasicPitch(file: File, key: AbletonSamplePitchAnalysisKey): AbletonSamplePitchAnalysis {
+        findValidBasicPitchMidi(file, onsetThreshold)?.let { midi ->
+            println("Ableton pitch analysis: loaded MIDI cache ${midi.name} for ${file.name}")
+            return AbletonSamplePitchAnalysis.readMidi(file, midi)
+        }
+
+        val executable = basicPitchExecutable
+        if (executable == null || !executable.isFile) {
+            println(
+                "Ableton pitch analysis: no valid MIDI cache for ${file.name}; " +
+                    "configure AFIELD_BASIC_PITCH_EXE or -Dafield.basicPitch.exe to run basic-pitch"
+            )
+            return AbletonSamplePitchAnalysis(
+                sourceFile = file,
+                midiFile = null,
+                sourceLastModified = key.lastModified,
+                sourceLength = key.length,
+                notes = emptyList()
+            )
+        }
+
+        val startNs = System.nanoTime()
+        println("Ableton pitch analysis: running ${executable.absolutePath} for ${file.absolutePath}")
+        val midi = runBasicPitch(executable, file, onsetThreshold)
+        val analysis = AbletonSamplePitchAnalysis.readMidi(file, midi)
+        val elapsedMs = (System.nanoTime() - startNs) / 1_000_000.0
+        println(
+            "Ableton pitch analysis: cached ${file.name} notes=${analysis.notes.size}, " +
+                "elapsed=${"%.1f".format(elapsedMs)}ms, disk=${midi.name}"
+        )
+        return analysis
+    }
+
+    companion object {
+        val shared = AbletonSamplePitchAnalysisCache()
+    }
+}
+
+private data class AbletonSamplePitchAnalysisKey(
+    val path: String,
+    val lastModified: Long,
+    val length: Long
+)
+
+private data class ActiveMidiNote(
+    val pitch: Int,
+    val velocity: Int,
+    val channel: Int,
+    val startTick: Long
+)
+
+private data class MidiTempoEvent(
+    val tick: Long,
+    val microsPerQuarter: Int
+)
+
+private fun configuredBasicPitchExecutable(): File? =
+    (System.getProperty("afield.basicPitch.exe") ?: System.getenv("AFIELD_BASIC_PITCH_EXE"))
+        ?.takeIf { it.isNotBlank() }
+        ?.let { File(it).absoluteFile.normalize() }
+
+private fun configuredBasicPitchOnsetThreshold(): Double =
+    (System.getProperty("afield.basicPitch.onsetThreshold") ?: System.getenv("AFIELD_BASIC_PITCH_ONSET_THRESHOLD"))
+        ?.toDoubleOrNull()
+        ?: 0.9
+
+private fun findValidBasicPitchMidi(sourceFile: File, onsetThreshold: Double = configuredBasicPitchOnsetThreshold()): File? {
+    val deterministic = basicPitchMidiFileFor(sourceFile, onsetThreshold)
+    if (deterministic.isValidPitchMidiFor(sourceFile)) return deterministic
+
+    val parent = sourceFile.parentFile ?: return null
+    val stem = sourceFile.nameWithoutExtension
+    return parent.listFiles { file ->
+        file.isFile &&
+            file.extension.equals("mid", ignoreCase = true) &&
+            !file.name.contains(".field4-basic-pitch-onset", ignoreCase = true) &&
+            file.nameWithoutExtension.contains(stem, ignoreCase = true) &&
+            file.isValidPitchMidiFor(sourceFile)
+    }.orEmpty()
+        .maxByOrNull { it.lastModified() }
+}
+
+private fun basicPitchMidiFileFor(sourceFile: File, onsetThreshold: Double): File =
+    File(sourceFile.parentFile ?: File("."), "${sourceFile.name}.field4-basic-pitch-onset${onsetThreshold.cacheToken()}.mid")
+
+private fun File.isValidPitchMidiFor(sourceFile: File): Boolean =
+    isFile && lastModified() >= sourceFile.lastModified()
+
+private fun runBasicPitch(executable: File, sourceFile: File, onsetThreshold: Double): File {
+    val outputDirectory = sourceFile.parentFile ?: File(".")
+    val beforeMs = System.currentTimeMillis() - 2_000L
+    val process = ProcessBuilder(
+        executable.absolutePath,
+        outputDirectory.absolutePath,
+        sourceFile.absolutePath,
+        "--onset-threshold",
+        onsetThreshold.toString()
+    )
+        .directory(outputDirectory)
+        .redirectErrorStream(true)
+        .start()
+
+    val output = process.inputStream.bufferedReader().use { it.readText() }
+    val exit = process.waitFor()
+    if (exit != 0) {
+        error("basic-pitch failed for ${sourceFile.absolutePath} with exit code $exit\n$output")
+    }
+
+    val generated = outputDirectory.listFiles { file ->
+            file.isFile &&
+            file.extension.equals("mid", ignoreCase = true) &&
+            file.nameWithoutExtension.contains(sourceFile.nameWithoutExtension, ignoreCase = true) &&
+            file.lastModified() >= beforeMs
+    }.orEmpty()
+        .maxByOrNull { it.lastModified() }
+        ?: error("basic-pitch did not produce a MIDI file for ${sourceFile.absolutePath}\n$output")
+
+    val deterministic = basicPitchMidiFileFor(sourceFile, onsetThreshold)
+    if (generated.absoluteFile.normalize() != deterministic.absoluteFile.normalize()) {
+        Files.move(generated.toPath(), deterministic.toPath(), StandardCopyOption.REPLACE_EXISTING)
+    }
+    deterministic.setLastModified(sourceFile.lastModified().coerceAtLeast(System.currentTimeMillis()))
+    return deterministic
+}
+
+private fun javax.sound.midi.Sequence.tempoEvents(): List<MidiTempoEvent> {
+    val tempos = mutableListOf(MidiTempoEvent(0L, 500_000))
+    tracks.forEach { track ->
+        for (i in 0 until track.size()) {
+            val event = track.get(i)
+            val meta = event.message as? MetaMessage ?: continue
+            if (meta.type == 0x51 && meta.data.size >= 3) {
+                val data = meta.data
+                val micros = ((data[0].toInt() and 0xff) shl 16) or
+                    ((data[1].toInt() and 0xff) shl 8) or
+                    (data[2].toInt() and 0xff)
+                tempos += MidiTempoEvent(event.tick, micros)
+            }
+        }
+    }
+    return tempos.sortedBy { it.tick }
+}
+
+private fun closeActiveNote(
+    active: MutableMap<Pair<Int, Int>, ArrayDeque<ActiveMidiNote>>,
+    key: Pair<Int, Int>,
+    endTick: Long,
+    tempos: List<MidiTempoEvent>,
+    resolution: Int,
+    out: MutableList<AbletonPitchEstimate>
+) {
+    val note = active[key]?.removeFirstOrNull() ?: return
+    val startSeconds = tickToSeconds(note.startTick, tempos, resolution)
+    val endSeconds = tickToSeconds(endTick, tempos, resolution)
+    if (endSeconds <= startSeconds) return
+    out += AbletonPitchEstimate(
+        midiPitch = note.pitch,
+        velocity = note.velocity,
+        startSeconds = startSeconds,
+        endSeconds = endSeconds,
+        channel = note.channel
+    )
+}
+
+private fun tickToSeconds(tick: Long, tempos: List<MidiTempoEvent>, resolution: Int): Double {
+    if (resolution <= 0) return 0.0
+    var seconds = 0.0
+    var cursorTick = 0L
+    var microsPerQuarter = 500_000
+
+    for (event in tempos.sortedBy { it.tick }) {
+        if (event.tick > tick) break
+        seconds += ticksToSeconds(event.tick - cursorTick, microsPerQuarter, resolution)
+        cursorTick = event.tick
+        microsPerQuarter = event.microsPerQuarter
+    }
+    seconds += ticksToSeconds(tick - cursorTick, microsPerQuarter, resolution)
+    return seconds
+}
+
+private fun ticksToSeconds(ticks: Long, microsPerQuarter: Int, resolution: Int): Double =
+    ticks.toDouble() * microsPerQuarter.toDouble() / 1_000_000.0 / resolution.toDouble()
+
 data class AbletonAutomationEnvelope(
     val id: String,
     val target: AbletonAutomationTarget,
@@ -662,6 +1394,67 @@ private fun List<AbletonWarpMarker>.clipBeatAtSourceSecondsOrNull(sourceSeconds:
 
 private infix fun Double.positiveMod(modulus: Double): Double =
     ((this % modulus) + modulus) % modulus
+
+private fun AbletonClipPlayback.volumeContribution(
+    analysisCache: AbletonSampleVolumeAnalysisCache
+): AbletonClipVolume? {
+    val file = sourceFile ?: return null
+    val analysis = analysisCache.analysisFor(file)
+    return AbletonClipVolume(
+        track = track,
+        clip = clip,
+        sourceFile = file.absoluteFile.normalize(),
+        sourceSeconds = sourceSeconds,
+        bands = analysis.volumeAtSeconds(sourceSeconds)
+    )
+}
+
+private fun AbletonClipPlayback.pitchContribution(
+    pitchCache: AbletonSamplePitchAnalysisCache
+): AbletonClipPitch? {
+    val file = sourceFile ?: return null
+    val pitch = pitchCache.dominantPitchAtSeconds(file, sourceSeconds) ?: return null
+    return AbletonClipPitch(
+        track = track,
+        clip = clip,
+        sourceFile = file.absoluteFile.normalize(),
+        sourceSeconds = sourceSeconds,
+        pitch = pitch
+    )
+}
+
+private fun List<AbletonClipPitch>.dominantClipPitchOrNull(): AbletonClipPitch? =
+    maxWithOrNull(
+        compareBy<AbletonClipPitch> { it.pitch.velocity }
+            .thenBy { it.pitch.startSeconds }
+            .thenBy { it.pitch.midiPitch }
+    )
+
+private fun List<AbletonClipVolume>.rootSumSquareBands(): AbletonVolumeBands {
+    if (isEmpty()) return AbletonVolumeBands.Zero
+    var low = 0.0
+    var mid = 0.0
+    var high = 0.0
+    for (clip in this) {
+        low += clip.bands.low * clip.bands.low
+        mid += clip.bands.mid * clip.bands.mid
+        high += clip.bands.high * clip.bands.high
+    }
+    return AbletonVolumeBands(
+        low = sqrt(low).toFloat(),
+        mid = sqrt(mid).toFloat(),
+        high = sqrt(high).toFloat()
+    )
+}
+
+private fun AbletonVolumeBands.lerp(other: AbletonVolumeBands, t: Float): AbletonVolumeBands {
+    val u = 1.0f - t
+    return AbletonVolumeBands(
+        low = low * u + other.low * t,
+        mid = mid * u + other.mid * t,
+        high = high * u + other.high * t
+    )
+}
 
 internal fun Element.attr(name: String): String? =
     if (hasAttribute(name)) getAttribute(name) else null

@@ -132,6 +132,10 @@ class LinkAudioInterface private constructor(
         }
     }
 
+    fun enableStartStopSync(enabled: Boolean = true): LinkAudioInterface = apply {
+        if (!closed) link.enableStartStopSync(enabled)
+    }
+
     fun requestBeat(beat: Double, quantum: Double = this.quantum): LinkAudioInterface = apply {
         if (closed) return@apply
         val now = link.clockMicros()

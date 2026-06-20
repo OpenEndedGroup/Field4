@@ -1157,7 +1157,8 @@ window.showActionMenu = showActionMenu
 
 
 /**
- * Returns the largest group of lines that encloses line x in curly brackets.
+ * Returns the largest group of lines that encloses line x in curly brackets
+ * or triple-quoted strings.
  * If no such group exists, it returns the starting line (i.e. the line at index x).
  *
  * @param {number} x - The line number to check.

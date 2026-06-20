@@ -53,11 +53,80 @@ fun monacoGetEnclosingScope(x: Int, getLine: dynamic): dynamic {
         var endIndex: Int = -1
     )
 
+    fun String.startsWithAt(delimiter: String, index: Int): Boolean {
+        if (index < 0 || index + delimiter.length > length) return false
+        return substring(index, index + delimiter.length) == delimiter
+    }
+
+    fun scanTripleQuotedStringScopes(): List<Scope> {
+        val result = mutableListOf<Scope>()
+        val delimiters = arrayOf("\"\"\"", "'''")
+        var activeDelimiter: String? = null
+        var activeStartLine = -1
+        var activeStartIndex = -1
+
+        for (lineIndex in lines.indices) {
+            val line = lines[lineIndex]
+            var charIndex = 0
+            while (charIndex <= line.length - 3) {
+                val delimiter = activeDelimiter
+                if (delimiter == null) {
+                    val opened = delimiters.firstOrNull { line.startsWithAt(it, charIndex) }
+                    if (opened != null) {
+                        activeDelimiter = opened
+                        activeStartLine = lineIndex
+                        activeStartIndex = charIndex
+                        charIndex += opened.length
+                    } else {
+                        charIndex++
+                    }
+                } else if (line.startsWithAt(delimiter, charIndex)) {
+                    result.add(
+                        Scope(
+                            activeStartLine,
+                            activeStartIndex,
+                            lineIndex,
+                            charIndex + delimiter.length - 1
+                        )
+                    )
+                    activeDelimiter = null
+                    activeStartLine = -1
+                    activeStartIndex = -1
+                    charIndex += delimiter.length
+                } else {
+                    charIndex++
+                }
+            }
+        }
+
+        if (activeDelimiter != null && activeStartLine >= 0) {
+            val endLine = (lines.size - 1).coerceAtLeast(activeStartLine)
+            result.add(Scope(activeStartLine, activeStartIndex, endLine, (lines[endLine].length - 1).coerceAtLeast(0)))
+        }
+
+        return result
+    }
+
+    val tripleQuotedStringScopes = scanTripleQuotedStringScopes()
+
+    fun isInsideTripleQuotedString(lineIndex: Int, charIndex: Int): Boolean {
+        return tripleQuotedStringScopes.any { scope ->
+            when {
+                lineIndex < scope.startLine || lineIndex > scope.endLine -> false
+                scope.startLine == scope.endLine -> charIndex >= scope.startIndex && charIndex <= scope.endIndex
+                lineIndex == scope.startLine -> charIndex >= scope.startIndex
+                lineIndex == scope.endLine -> charIndex <= scope.endIndex
+                else -> true
+            }
+        }
+    }
+
     val scopes = mutableListOf<Scope>()
     val stack = ArrayDeque<Scope>()
     for (lineIndex in lines.indices) {
         val line = lines[lineIndex]
         for (charIndex in line.indices) {
+            if (isInsideTripleQuotedString(lineIndex, charIndex)) continue
             when (line[charIndex]) {
                 '{' -> stack.addLast(Scope(lineIndex, charIndex))
                 '}' -> if (stack.isNotEmpty()) {
@@ -69,6 +138,7 @@ fun monacoGetEnclosingScope(x: Int, getLine: dynamic): dynamic {
             }
         }
     }
+    scopes.addAll(tripleQuotedStringScopes)
 
     var candidate: Scope? = null
     for (scope in scopes) {

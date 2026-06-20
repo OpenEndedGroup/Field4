@@ -1,8 +1,17 @@
 package afield.four.synth
 
 import java.nio.file.Files
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.util.zip.GZIPOutputStream
+import javax.sound.midi.MetaMessage
+import javax.sound.midi.MidiEvent
+import javax.sound.midi.MidiSystem
+import javax.sound.midi.Sequence
+import javax.sound.midi.ShortMessage
 import kotlin.math.abs
+import kotlin.math.PI
+import kotlin.math.sin
 
 /*
 FIELD_TEST
@@ -33,6 +42,8 @@ object AbletonSetSmokeTest {
             testAutomationEnvelopeLookupAndEvaluation()
             testGzippedAbletonFile()
             testSampleFileMapper()
+            testTrackVolumeAnalysis()
+            testPitchAnalysisFromMidiSidecar()
             testDebugFLines()
             println("AbletonSet smoke tests passed")
             true
@@ -136,6 +147,150 @@ object AbletonSetSmokeTest {
         require(set.resolveSamples(searchRoot).values.toSet() == setOf(sample.absoluteFile.normalize())) {
             "Expected set-level sample resolution to use cached mapper"
         }
+    }
+
+    private fun testTrackVolumeAnalysis() {
+        AbletonSampleFileMapper.clearCache()
+        val xml = Files.createTempFile("ableton-set-volume", ".xml")
+        Files.writeString(xml, fixtureXml())
+        val set = AbletonSet.read(xml.toFile())
+
+        val searchRoot = Files.createTempDirectory("ableton-volume-samples").toFile()
+        val sample = searchRoot.resolve("Samples/Imported/Woven.wav")
+        sample.parentFile.mkdirs()
+        writeMonoSineWav(sample, sampleRate = 8000, seconds = 2.0, frequency = 110.0)
+
+        val mapper = AbletonSampleFileMapper.forDirectory(searchRoot)
+        val cacheConfig = AbletonSampleVolumeAnalysisConfig(
+            windowSeconds = 0.050,
+            hopSeconds = 0.010,
+            lowCutoffHz = 250.0,
+            highCutoffHz = 2_000.0,
+            fftSize = 1024
+        )
+        val cache = AbletonSampleVolumeAnalysisCache(cacheConfig)
+
+        val volumes = set.trackVolumesAtBeat(1.0, mapper, cache)
+        require(volumes.size == 1) { "Expected one sounding track, got ${volumes.size}" }
+        val volume = volumes.single()
+        require(volume.track.name == "Woven") { "Expected Woven volume, got ${volume.track.name}" }
+        require(volume.clips.size == 1) { "Expected one clip contribution, got ${volume.clips.size}" }
+        require(close(volume.clips.single().sourceSeconds, 0.5)) {
+            "Expected beat 1.0 to map to source 0.5s, got ${volume.clips.single().sourceSeconds}"
+        }
+        require(volume.bands.low > 0.01f) { "Expected low-band energy from 110Hz sine, got ${volume.bands}" }
+        require(volume.bands.low > volume.bands.high) { "Expected low band above high band, got ${volume.bands}" }
+
+        val bySeconds = set.trackVolumesAtSeconds(0.5, mapper, cache).single()
+        require(close(bySeconds.arrangementBeat, 1.0)) {
+            "Expected 0.5 arrangement seconds to map to beat 1.0, got ${bySeconds.arrangementBeat}"
+        }
+
+        val sidecars = sample.parentFile.listFiles { file ->
+            file.name.startsWith("${sample.name}.field4-volume-") && file.name.endsWith(".bin")
+        }.orEmpty()
+        require(sidecars.size == 1) { "Expected one persisted volume sidecar, got ${sidecars.toList()}" }
+        require(sidecars.single().lastModified() >= sample.lastModified()) {
+            "Expected sidecar mtime to be at least sample mtime"
+        }
+
+        val diskBackedCache = AbletonSampleVolumeAnalysisCache(cacheConfig)
+        val diskBackedVolume = set.trackVolumesAtBeat(1.0, mapper, diskBackedCache).single()
+        require(close(diskBackedVolume.bands.low.toDouble(), volume.bands.low.toDouble())) {
+            "Expected disk-backed low band ${volume.bands.low}, got ${diskBackedVolume.bands.low}"
+        }
+    }
+
+    private fun testPitchAnalysisFromMidiSidecar() {
+        AbletonSampleFileMapper.clearCache()
+        val xml = Files.createTempFile("ableton-set-pitch", ".xml")
+        Files.writeString(xml, fixtureXml())
+        val set = AbletonSet.read(xml.toFile())
+
+        val searchRoot = Files.createTempDirectory("ableton-pitch-samples").toFile()
+        val sample = searchRoot.resolve("Samples/Imported/Woven.wav")
+        sample.parentFile.mkdirs()
+        writeMonoSineWav(sample, sampleRate = 8000, seconds = 2.0, frequency = 440.0)
+
+        val midi = sample.parentFile.resolve("${sample.name}.field4-basic-pitch-onset0p9.mid")
+        writePitchMidi(midi)
+        midi.setLastModified(sample.lastModified().coerceAtLeast(System.currentTimeMillis()))
+
+        val mapper = AbletonSampleFileMapper.forDirectory(searchRoot)
+        val pitchCache = AbletonSamplePitchAnalysisCache(basicPitchExecutable = null)
+
+        val samplePitch = pitchCache.dominantPitchAtSeconds(sample, 0.5)
+        require(samplePitch?.midiPitch == 67) { "Expected sample pitch 67 at 0.5s, got $samplePitch" }
+        require(samplePitch.velocity == 110) { "Expected dominant velocity 110, got ${samplePitch.velocity}" }
+
+        val clipPitch = set.dominantPitchesAtSeconds(0.5, mapper, pitchCache).single()
+        require(clipPitch.track.name == "Woven") { "Expected Woven pitch, got ${clipPitch.track.name}" }
+        require(close(clipPitch.sourceSeconds, 0.5)) {
+            "Expected arrangement 0.5s to map to source 0.5s, got ${clipPitch.sourceSeconds}"
+        }
+        require(clipPitch.pitch.midiPitch == 67) { "Expected clip pitch 67, got ${clipPitch.pitch}" }
+
+        val trackPitch = set.dominantPitchesByTrackAtSeconds(0.5, mapper, pitchCache).single()
+        require(trackPitch.track.name == "Woven") { "Expected Woven track pitch, got ${trackPitch.track.name}" }
+        require(trackPitch.pitch.midiPitch == 67) { "Expected track pitch 67, got ${trackPitch.pitch}" }
+        require(trackPitch.clips.single().clip.name == "Scene 1") {
+            "Expected Scene 1 contribution, got ${trackPitch.clips}"
+        }
+    }
+
+    private fun writePitchMidi(file: java.io.File) {
+        val sequence = Sequence(Sequence.PPQ, 480)
+        val track = sequence.createTrack()
+
+        val tempo = MetaMessage()
+        tempo.setMessage(0x51, byteArrayOf(0x07, 0xA1.toByte(), 0x20), 3)
+        track.add(MidiEvent(tempo, 0))
+
+        addNote(track, pitch = 60, velocity = 80, startTick = 0, endTick = 720)
+        addNote(track, pitch = 67, velocity = 110, startTick = 240, endTick = 960)
+        MidiSystem.write(sequence, 1, file)
+    }
+
+    private fun addNote(
+        track: javax.sound.midi.Track,
+        pitch: Int,
+        velocity: Int,
+        startTick: Long,
+        endTick: Long
+    ) {
+        val on = ShortMessage()
+        on.setMessage(ShortMessage.NOTE_ON, 0, pitch, velocity)
+        track.add(MidiEvent(on, startTick))
+
+        val off = ShortMessage()
+        off.setMessage(ShortMessage.NOTE_OFF, 0, pitch, 0)
+        track.add(MidiEvent(off, endTick))
+    }
+
+    private fun writeMonoSineWav(file: java.io.File, sampleRate: Int, seconds: Double, frequency: Double) {
+        val frames = (sampleRate * seconds).toInt()
+        val dataBytes = frames * 2
+        val bytes = ByteBuffer.allocate(44 + dataBytes).order(ByteOrder.LITTLE_ENDIAN)
+        bytes.put("RIFF".toByteArray(Charsets.US_ASCII))
+        bytes.putInt(36 + dataBytes)
+        bytes.put("WAVE".toByteArray(Charsets.US_ASCII))
+        bytes.put("fmt ".toByteArray(Charsets.US_ASCII))
+        bytes.putInt(16)
+        bytes.putShort(1)
+        bytes.putShort(1)
+        bytes.putInt(sampleRate)
+        bytes.putInt(sampleRate * 2)
+        bytes.putShort(2)
+        bytes.putShort(16)
+        bytes.put("data".toByteArray(Charsets.US_ASCII))
+        bytes.putInt(dataBytes)
+        for (i in 0 until frames) {
+            val sample = (sin(2.0 * PI * frequency * i.toDouble() / sampleRate.toDouble()) * 0.6 * Short.MAX_VALUE)
+                .toInt()
+                .toShort()
+            bytes.putShort(sample)
+        }
+        Files.write(file.toPath(), bytes.array())
     }
 
     private fun testDebugFLines() {
