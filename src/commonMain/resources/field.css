@@ -1314,6 +1314,50 @@ body {
         inset 0 2px 0 rgba(255, 145, 45, 0.9);
 }
 
+.monaco-editor .afield-stacksl-token-directive {
+    color: #ffcf66 !important;
+    font-weight: 700;
+}
+
+.monaco-editor .afield-stacksl-token-comment {
+    color: #6f7d8f !important;
+    font-style: italic;
+}
+
+.monaco-editor .afield-stacksl-token-control,
+.monaco-editor .afield-stacksl-token-keyword {
+    color: #d7d7d7 !important;
+    font-weight: 650;
+}
+
+.monaco-editor .afield-stacksl-token-definition {
+    color: #87d7ff !important;
+    font-weight: 650;
+}
+
+.monaco-editor .afield-stacksl-token-operator,
+.monaco-editor .afield-stacksl-token-modifier {
+    color: #ffcf66 !important;
+    font-weight: 650;
+}
+
+.monaco-editor .afield-stacksl-token-number,
+.monaco-editor .afield-stacksl-token-constant {
+    color: #f5d278 !important;
+}
+
+.monaco-editor .afield-stacksl-token-variable {
+    color: #a6e3a1 !important;
+}
+
+.monaco-editor .afield-stacksl-token-creative {
+    color: #cba6f7 !important;
+}
+
+.monaco-editor .afield-stacksl-token-identifier {
+    color: #bac2de !important;
+}
+
 .vec2-shell .vec2-tl,
 .vec2-shell .vec2-tr,
 .vec2-shell .vec2-angle,

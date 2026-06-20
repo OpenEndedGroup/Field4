@@ -221,6 +221,12 @@ const installStackSLFlowLens = (editor, monacoApi) => {
         }
 }
 
+const installStackSLEmbeddedHighlight = (editor, monacoApi) => {
+        if (typeof window.installStackSLEmbeddedHighlight === "function") {
+                window.installStackSLEmbeddedHighlight(editor, monacoApi)
+        }
+}
+
 const newDebugProbeRequestId = () => {
         if (window.crypto && typeof window.crypto.randomUUID === "function") {
                 return window.crypto.randomUUID()
@@ -836,6 +842,7 @@ const initMonaco = () => {
                 }
         })
         installStackSLFlowLens(ed, monaco)
+        installStackSLEmbeddedHighlight(ed, monaco)
         installDebugProbeDoubleClick(ed, () => {
                 const selected = window.currentSelectedCode || []
                 if (!selected[0] || !selected[0].uid) return null

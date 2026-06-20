@@ -249,6 +249,12 @@ private fun monitorSelection() {
                 lang = monacoFindLanguageForPropertyName(currentSelectedProperty)
             }
             w.globalMonaco.editor.setModelLanguage(globalEditor.getModel(), lang.lowercase())
+            try {
+                w.updateStackSLEmbeddedHighlight?.invoke(globalEditor)
+            } catch (_: dynamic) {}
+            try {
+                w.updateStackSLFlowLens?.invoke(globalEditor)
+            } catch (_: dynamic) {}
             globalEditor._domElement
                 .querySelectorAll(".hoverlay")[0]
                 .innerHTML = "$currentSelectedProperty <i>($lang)</i>"
@@ -278,6 +284,12 @@ fun notifyPotentialEditedPropertyHasHadLanguageChanged(uid: String, property: St
     if (selected[0].uid != uid) return
     if (w.currentSelectedProperty != property) return
     w.globalMonaco.editor.setModelLanguage(w.globalEditor.getModel(), language)
+    try {
+        w.updateStackSLEmbeddedHighlight?.invoke(w.globalEditor)
+    } catch (_: dynamic) {}
+    try {
+        w.updateStackSLFlowLens?.invoke(w.globalEditor)
+    } catch (_: dynamic) {}
 }
 
 fun notifyPotentialEditedPropertyHasEditorStateRemoteUpdated(uid: String, property: String, value: String) {
