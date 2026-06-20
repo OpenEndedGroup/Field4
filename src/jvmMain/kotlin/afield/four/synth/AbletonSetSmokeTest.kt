@@ -143,14 +143,12 @@ object AbletonSetSmokeTest {
         Files.writeString(xml, fixtureXml())
         val set = AbletonSet.read(xml.toFile())
 
-        val lines = set.toDebugFLines(
-            AbletonSetFLineDebugOptions(
-                pixelsPerBeat = 1.0,
-                automationSamples = 12,
-                includeGuides = true,
-                markAutomationEvents = true
-            )
-        )
+        val lines = set.toDebugFLines {
+            pixelsPerBeat = 1.0
+            automationSamples = 12
+            includeGuides = true
+            markAutomationEvents = true
+        }
         require(lines.isNotEmpty()) { "Expected debug FLine output" }
         require(lines.any { it.properties["ableton.kind"] == "clip" && it.properties["ableton.clip.name"] == "Scene 1" }) {
             "Expected debug FLine output to include Scene 1 clip"
