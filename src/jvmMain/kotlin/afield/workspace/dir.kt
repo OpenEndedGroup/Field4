@@ -31,7 +31,18 @@ data class WelcomeEntry(
     val lastModifiedAgoMs: Long,
     val tags: List<String> = emptyList(),
     val runningSessionCount: Int = 0,
-    val runningExecutionCount: Int = 0
+    val runningExecutionCount: Int = 0,
+    val kind: String = "document"
+)
+
+@Serializable
+data class ProjectEntry(
+    val name: String,
+    val documents: List<String>,
+    val sizeBytes: Long,
+    val lastModifiedEpochMs: Long,
+    val lastModifiedAgoMs: Long,
+    val kind: String = "project"
 )
 
 @Serializable
@@ -52,7 +63,8 @@ data class WelcomeDocsResponse(
     val currentWorkspace: String = "",
     val defaultWorkspace: String = "",
     val aiSettings: AiSettingsStatus = AiSettingsStatus(),
-    val preferences: FieldPreferences = FieldPreferences()
+    val preferences: FieldPreferences = FieldPreferences(),
+    val projects: List<ProjectEntry> = emptyList()
 )
 
 @Serializable
@@ -172,6 +184,30 @@ data class DuplicateDocumentResponse(
     val tags: List<String> = emptyList()
 )
 
+@Serializable
+data class ProjectCreateRequest(
+    val name: String,
+    val documents: List<String> = emptyList()
+)
+
+@Serializable
+data class ProjectAddDocumentRequest(
+    val projectName: String,
+    val filename: String
+)
+
+@Serializable
+data class ProjectDeleteRequest(
+    val name: String
+)
+
+@Serializable
+data class ProjectMutationResponse(
+    val project: ProjectEntry,
+    val changed: Boolean,
+    val message: String = ""
+)
+
 data class TaggedDocumentsZip(
     val filename: String,
     val bytes: ByteArray,
@@ -193,7 +229,9 @@ data class WorkspaceSearchResult(
     val lastModifiedEpochMs: Long,
     val lastModifiedAgoMs: Long,
     val tags: List<String> = emptyList(),
-    val matches: List<WorkspaceSearchMatch>
+    val matches: List<WorkspaceSearchMatch>,
+    val kind: String = "document",
+    val documents: List<String> = emptyList()
 )
 
 @Serializable
@@ -319,6 +357,9 @@ fun parseRecentDocuments(raw: String?): List<String> {
         .filter { it.isNotBlank() }
 }
 
+private const val PROJECTS_DIR = "_projects"
+private const val PROJECT_CONTENTS = "contents.edn"
+
 fun updateRecentDocuments(raw: String?, documentName: String, maxEntries: Int = 200): String {
     val clean = documentName.trim()
     if (clean.isBlank()) return raw ?: ""
@@ -341,7 +382,7 @@ fun welcomeDir(base: String, recents: List<String>): List<WelcomeEntry> {
     val now = System.currentTimeMillis()
     val s = SavingContext()
 
-    baseDir.listFiles()?.filter { it.isDirectory }?.forEach { dir ->
+    baseDir.listFiles()?.filter { it.isDirectory && it.name != PROJECTS_DIR }?.forEach { dir ->
         val metadataEdnFile = File(dir, SavingContext.METADATA_EDN)
         val metadataJsonFile = File(dir, SavingContext.METADATA_JSON)
         val metadataFile = when {
@@ -370,6 +411,149 @@ fun welcomeDir(base: String, recents: List<String>): List<WelcomeEntry> {
     return entries.sortedWith(
         compareBy<WelcomeEntry> { recencyOrder[it.filename] ?: Int.MAX_VALUE }
             .thenByDescending { it.lastModifiedEpochMs }
+    )
+}
+
+fun projectsDir(base: String): File {
+    val baseDir = File(base).canonicalFile
+    val dir = File(baseDir, PROJECTS_DIR).canonicalFile
+    require(dir.toPath().startsWith(baseDir.toPath())) { "projects directory is outside workspace" }
+    return dir
+}
+
+private fun validateWorkspaceProjectName(name: String): String {
+    val clean = name.trim()
+    require(clean.isNotBlank()) { "missing project name" }
+    require(!clean.contains('/') && !clean.contains('\\') && !clean.contains('\u0000')) {
+        "invalid project name"
+    }
+    require(!clean.contains("..") && !clean.startsWith(".") && !clean.endsWith(" ")) {
+        "invalid project name"
+    }
+    require(clean != PROJECTS_DIR) { "reserved project name" }
+
+    val reservedNames = setOf(
+        "con", "prn", "aux", "nul",
+        "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8", "com9",
+        "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9"
+    )
+    require(clean.lowercase() !in reservedNames) { "reserved project name" }
+    return clean
+}
+
+private fun workspaceProjectDir(base: String, name: String): File {
+    val cleanName = validateWorkspaceProjectName(name)
+    val root = projectsDir(base)
+    val projectDir = File(root, cleanName).canonicalFile
+    require(projectDir.toPath().startsWith(root.toPath())) { "project is outside workspace" }
+    return projectDir
+}
+
+private fun normalizeProjectDocuments(base: String, documents: List<String>, requireExisting: Boolean = true): List<String> {
+    val seen = linkedSetOf<String>()
+    documents.forEach { raw ->
+        val name = validateWorkspaceDocumentName(raw)
+        if (requireExisting) {
+            val dir = workspaceDocumentDir(base, name)
+            require(dir.isDirectory) { "document '$name' not found" }
+            require(File(dir, SavingContext.METADATA_EDN).isFile || File(dir, SavingContext.METADATA_JSON).isFile) {
+                "document '$name' has no metadata"
+            }
+        }
+        seen += name
+    }
+    return seen.toList().sortedWith(String.CASE_INSENSITIVE_ORDER)
+}
+
+private fun readProjectDocuments(contents: File): List<String> {
+    if (!contents.isFile) return emptyList()
+    val root = Edn.read(contents.readText())
+    @Suppress("UNCHECKED_CAST")
+    val map = root as? Map<Any?, Any?> ?: return emptyList()
+    val rawDocuments = map[":documents"] ?: map["documents"] ?: return emptyList()
+    @Suppress("UNCHECKED_CAST")
+    return (rawDocuments as? List<Any?>)
+        ?.mapNotNull { it?.toString()?.trim()?.takeIf(String::isNotBlank) }
+        .orEmpty()
+}
+
+private fun writeProjectDocuments(contents: File, documents: List<String>) {
+    contents.parentFile?.mkdirs()
+    contents.writeText("{:documents ${Edn.writeList(documents)}}\n")
+}
+
+private fun projectEntry(base: String, projectDir: File, now: Long = System.currentTimeMillis()): ProjectEntry {
+    val contents = File(projectDir, PROJECT_CONTENTS)
+    val rawDocuments = readProjectDocuments(contents)
+    val documents = normalizeProjectDocuments(base, rawDocuments, requireExisting = false)
+    if (documents != rawDocuments) {
+        writeProjectDocuments(contents, documents)
+    }
+    val modifiedAt = contents.takeIf { it.isFile }?.lastModified() ?: projectDir.lastModified()
+    return ProjectEntry(
+        name = projectDir.name,
+        documents = documents,
+        sizeBytes = contents.takeIf { it.isFile }?.length() ?: 0L,
+        lastModifiedEpochMs = modifiedAt,
+        lastModifiedAgoMs = now - modifiedAt
+    )
+}
+
+fun listWorkspaceProjects(base: String): List<ProjectEntry> {
+    val root = projectsDir(base)
+    if (!root.exists()) return emptyList()
+    if (!root.isDirectory) return emptyList()
+    val now = System.currentTimeMillis()
+    return root.listFiles()
+        ?.filter { it.isDirectory && File(it, PROJECT_CONTENTS).isFile }
+        ?.mapNotNull { dir ->
+            runCatching { projectEntry(base, dir, now) }
+                .onFailure { lprintln("warning,welcome", "Skipping project ${dir.name}: ${it.message}") }
+                .getOrNull()
+        }
+        ?.sortedWith(compareByDescending<ProjectEntry> { it.lastModifiedEpochMs }.thenBy { it.name.lowercase() })
+        .orEmpty()
+}
+
+fun createWorkspaceProject(base: String, name: String, documents: List<String> = emptyList()): ProjectMutationResponse {
+    val cleanName = validateWorkspaceProjectName(name)
+    val dir = workspaceProjectDir(base, cleanName)
+    require(!dir.exists()) { "project already exists" }
+    require(dir.mkdirs()) { "could not create project" }
+    val normalizedDocuments = normalizeProjectDocuments(base, documents)
+    val contents = File(dir, PROJECT_CONTENTS)
+    writeProjectDocuments(contents, normalizedDocuments)
+    return ProjectMutationResponse(
+        project = projectEntry(base, dir),
+        changed = true,
+        message = "Project created."
+    )
+}
+
+fun addDocumentToWorkspaceProject(base: String, projectName: String, filename: String): ProjectMutationResponse {
+    val dir = workspaceProjectDir(base, projectName)
+    require(dir.isDirectory) { "project not found" }
+    val contents = File(dir, PROJECT_CONTENTS)
+    val existing = readProjectDocuments(contents)
+    val normalized = normalizeProjectDocuments(base, existing + filename)
+    val changed = normalized != normalizeProjectDocuments(base, existing)
+    if (changed) writeProjectDocuments(contents, normalized)
+    return ProjectMutationResponse(
+        project = projectEntry(base, dir),
+        changed = changed,
+        message = if (changed) "Document added to project." else "Document already in project."
+    )
+}
+
+fun deleteWorkspaceProject(base: String, name: String): ProjectMutationResponse {
+    val dir = workspaceProjectDir(base, name)
+    require(dir.isDirectory) { "project not found" }
+    val before = projectEntry(base, dir)
+    require(dir.deleteRecursively()) { "could not delete project" }
+    return ProjectMutationResponse(
+        project = before,
+        changed = true,
+        message = "Project deleted."
     )
 }
 
@@ -523,7 +707,7 @@ fun searchWorkspace(
         }
     }
 
-    val directories = baseDir.listFiles()?.filter { it.isDirectory }?.sortedByDescending {
+    val directories = baseDir.listFiles()?.filter { it.isDirectory && it.name != PROJECTS_DIR }?.sortedByDescending {
         max(
             File(it, SavingContext.METADATA_EDN).lastModified(),
             File(it, SavingContext.METADATA_JSON).lastModified()
@@ -596,6 +780,45 @@ fun searchWorkspace(
         } catch (e: Exception) {
             lprintln("warning,workspace-search", "Skipping ${dir.name}: ${e.message}")
         }
+    }
+
+    for (project in listWorkspaceProjects(base)) {
+        checkSearchActive()
+        if (results.size >= options.maxDocuments) {
+            truncated = true
+            break
+        }
+
+        val filenameMatches = buildMatchesForText(
+            boxName = project.name,
+            property = "project",
+            text = project.name,
+            query = searchTerm,
+            maxMatches = options.maxMatchesPerDocument,
+            checkSearchActive = ::checkSearchActive
+        )
+        val documentMatches = buildMatchesForText(
+            boxName = project.name,
+            property = "documents",
+            text = project.documents.joinToString(" "),
+            query = searchTerm,
+            maxMatches = options.maxMatchesPerDocument,
+            checkSearchActive = ::checkSearchActive
+        )
+        val combined = (filenameMatches + documentMatches).take(options.maxMatchesPerDocument)
+        if (combined.isEmpty()) continue
+
+        totalMatches += combined.size
+        results += WorkspaceSearchResult(
+            filename = project.name,
+            numBoxes = project.documents.size,
+            lastModifiedEpochMs = project.lastModifiedEpochMs,
+            lastModifiedAgoMs = project.lastModifiedAgoMs,
+            tags = emptyList(),
+            matches = combined,
+            kind = "project",
+            documents = project.documents
+        )
     }
 
     return WorkspaceSearchResponse(

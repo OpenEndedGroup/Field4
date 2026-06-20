@@ -2157,6 +2157,9 @@ class Server {
                         val workspaceDocs = withContext(workspaceSearchDispatcher) {
                             welcomeDir(home, recentDocuments)
                         }
+                        val projects = withContext(workspaceSearchDispatcher) {
+                            listWorkspaceProjects(home)
+                        }
                         val docs = workspaceDocs.map {
                             it.copy(
                                 runningSessionCount = liveWorkspaceCounts[it.filename] ?: 0,
@@ -2203,7 +2206,8 @@ class Server {
                                 currentWorkspace,
                                 defaultWorkspace,
                                 currentAiSettingsStatus(),
-                                preferences
+                                preferences,
+                                projects
                             )
                         )
                     }
@@ -2365,9 +2369,49 @@ class Server {
                                 duplicateWorkspaceDocument(home, request.sourceFilename, request.newFilename)
                             }
                             recordRecentDocument(response.filename)
+                            broadcastWelcomeEvent("document-duplicated")
                             call.respond(response)
                         } catch (e: IllegalArgumentException) {
                             call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "invalid duplicate request")))
+                        }
+                    }
+
+                    post("/api/projects") {
+                        try {
+                            val request = call.receive<ProjectCreateRequest>()
+                            val response = withContext(workspaceSearchDispatcher) {
+                                createWorkspaceProject(home, request.name, request.documents)
+                            }
+                            broadcastWelcomeEvent("project-created")
+                            call.respond(response)
+                        } catch (e: IllegalArgumentException) {
+                            call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "invalid project request")))
+                        }
+                    }
+
+                    post("/api/projects/add-document") {
+                        try {
+                            val request = call.receive<ProjectAddDocumentRequest>()
+                            val response = withContext(workspaceSearchDispatcher) {
+                                addDocumentToWorkspaceProject(home, request.projectName, request.filename)
+                            }
+                            broadcastWelcomeEvent("project-updated")
+                            call.respond(response)
+                        } catch (e: IllegalArgumentException) {
+                            call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "invalid project update")))
+                        }
+                    }
+
+                    post("/api/projects/delete") {
+                        try {
+                            val request = call.receive<ProjectDeleteRequest>()
+                            val response = withContext(workspaceSearchDispatcher) {
+                                deleteWorkspaceProject(home, request.name)
+                            }
+                            broadcastWelcomeEvent("project-deleted")
+                            call.respond(response)
+                        } catch (e: IllegalArgumentException) {
+                            call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "invalid project delete")))
                         }
                     }
 

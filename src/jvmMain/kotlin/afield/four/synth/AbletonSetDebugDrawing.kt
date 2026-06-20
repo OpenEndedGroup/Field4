@@ -25,6 +25,36 @@ data class AbletonSetFLineDebugOptions(
     val markAutomationEvents: Boolean = true
 )
 
+class AbletonSetFLineDebugOptionsBuilder {
+    var pixelsPerBeat: Double = 0.5
+    var clipLaneHeight: Double = 18.0
+    var automationLaneHeight: Double = 14.0
+    var trackGap: Double = 8.0
+    var clipVerticalPadding: Double = 2.0
+    var automationSamples: Int = 96
+    var includeMainTrack: Boolean = true
+    var includeGuides: Boolean = true
+    var markAutomationEvents: Boolean = true
+
+    fun build(): AbletonSetFLineDebugOptions =
+        AbletonSetFLineDebugOptions(
+            pixelsPerBeat = pixelsPerBeat,
+            clipLaneHeight = clipLaneHeight,
+            automationLaneHeight = automationLaneHeight,
+            trackGap = trackGap,
+            clipVerticalPadding = clipVerticalPadding,
+            automationSamples = automationSamples,
+            includeMainTrack = includeMainTrack,
+            includeGuides = includeGuides,
+            markAutomationEvents = markAutomationEvents
+        )
+}
+
+fun abletonSetFLineDebugOptions(
+    block: AbletonSetFLineDebugOptionsBuilder.() -> Unit
+): AbletonSetFLineDebugOptions =
+    AbletonSetFLineDebugOptionsBuilder().apply(block).build()
+
 fun AbletonSet.toDebugFLines(
     options: AbletonSetFLineDebugOptions = AbletonSetFLineDebugOptions()
 ): List<FLine> {
@@ -100,10 +130,20 @@ fun AbletonSet.toDebugFLines(
     return lines
 }
 
+fun AbletonSet.toDebugFLines(
+    block: AbletonSetFLineDebugOptionsBuilder.() -> Unit
+): List<FLine> =
+    toDebugFLines(abletonSetFLineDebugOptions(block))
+
 fun AbletonSet.debugFLineMap(
     options: AbletonSetFLineDebugOptions = AbletonSetFLineDebugOptions()
 ): Map<String, List<FLine>> =
     mapOf("ableton-debug" to toDebugFLines(options))
+
+fun AbletonSet.debugFLineMap(
+    block: AbletonSetFLineDebugOptionsBuilder.() -> Unit
+): Map<String, List<FLine>> =
+    debugFLineMap(abletonSetFLineDebugOptions(block))
 
 private fun visibleEndBeat(tracks: List<AbletonTrack>): Double {
     val clipEnd = tracks.flatMap { it.clips }.maxOfOrNull { it.currentEndBeat } ?: 0.0

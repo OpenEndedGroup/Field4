@@ -58,6 +58,11 @@ private fun parsePositiveDouble(raw: String?): Double? {
     return candidate.toDoubleOrNull()?.takeIf { it.isFinite() && it > 0.0 }
 }
 
+private fun parseFiniteDouble(raw: String?): Double? {
+    val candidate = raw?.trim()?.removeSuffix("px")?.takeIf { it.isNotEmpty() } ?: return null
+    return candidate.toDoubleOrNull()?.takeIf { it.isFinite() }
+}
+
 private fun parseSvgViewBox(raw: String?): LinesBounds? {
     val parts = raw
         ?.trim()
@@ -69,6 +74,31 @@ private fun parseSvgViewBox(raw: String?): LinesBounds? {
     val height = parts[3]
     if (!width.isFinite() || !height.isFinite() || width <= 0.0 || height <= 0.0) return null
     return LinesBounds(parts[0], parts[1], width, height)
+}
+
+private fun parseLinesWrapperBounds(wrapper: HTMLElement): LinesBounds? {
+    val x = parseFiniteDouble(wrapper.getAttribute("data-afield-bounds-x")) ?: return null
+    val y = parseFiniteDouble(wrapper.getAttribute("data-afield-bounds-y")) ?: return null
+    val width = parseFiniteDouble(wrapper.getAttribute("data-afield-bounds-w")) ?: return null
+    val height = parseFiniteDouble(wrapper.getAttribute("data-afield-bounds-h")) ?: return null
+    if (width < 0.0 || height < 0.0) return null
+    return LinesBounds(x, y, width, height)
+}
+
+private fun usableLinesBounds(bounds: LinesBounds?): LinesBounds? {
+    bounds ?: return null
+    if (!bounds.x.isFinite() || !bounds.y.isFinite() || !bounds.width.isFinite() || !bounds.height.isFinite()) return null
+    if (bounds.width < 0.0 || bounds.height < 0.0) return null
+    if (bounds.width <= 0.0 && bounds.height <= 0.0) {
+        return LinesBounds(bounds.x - 0.5, bounds.y - 0.5, 1.0, 1.0)
+    }
+    if (bounds.width <= 0.0) {
+        return LinesBounds(bounds.x - 0.5, bounds.y, 1.0, bounds.height)
+    }
+    if (bounds.height <= 0.0) {
+        return LinesBounds(bounds.x, bounds.y - 0.5, bounds.width, 1.0)
+    }
+    return bounds
 }
 
 private fun parseLinesWrapper(htmlString: String): HTMLElement? {
@@ -231,9 +261,11 @@ private fun ensureLinesOutputView(contentRoot: HTMLElement): dynamic {
         val viewportWidth = max(1.0, view.viewportWidth as Double)
         val viewportHeight = max(1.0, view.viewportHeight as Double)
         val pad = max(12.0, min(viewportWidth, viewportHeight) * 0.06)
+        val availableWidth = max(1.0, viewportWidth - pad * 2.0)
+        val availableHeight = max(1.0, viewportHeight - pad * 2.0)
         val scale = min(
-            (viewportWidth - pad * 2.0) / max(bounds.width, 1e-6),
-            (viewportHeight - pad * 2.0) / max(bounds.height, 1e-6)
+            availableWidth / max(bounds.width, 1e-6),
+            availableHeight / max(bounds.height, 1e-6)
         ).coerceAtLeast(1e-6)
         view.scale = scale
         view.tx = (viewportWidth - bounds.width * scale) * 0.5 - bounds.x * scale
@@ -412,7 +444,9 @@ private fun updatePersistentLinesOutput(contentRoot: HTMLElement, htmlString: St
         stageGroup.appendChild(cloned)
     }
 
-    val sourceViewBox = parseSvgViewBox(sourceSvg.getAttribute("viewBox"))
+    val wrapperBounds = usableLinesBounds(parseLinesWrapperBounds(wrapper))
+    val sourceViewBox = usableLinesBounds(parseSvgViewBox(sourceSvg.getAttribute("viewBox")))
+    stageGroup.removeAttribute("transform")
     val groupBox = runCatching {
         val box = stageGroup.asDynamic().getBBox()
         if (box != null) LinesBounds(
@@ -421,11 +455,12 @@ private fun updatePersistentLinesOutput(contentRoot: HTMLElement, htmlString: St
             width = (box.width as Number).toDouble(),
             height = (box.height as Number).toDouble()
         ) else null
-    }.getOrNull()
+    }.getOrNull().let { usableLinesBounds(it) }
     val fallbackWidth = parsePositiveDouble(sourceSvg.getAttribute("width")) ?: sourceViewBox?.width ?: groupBox?.width ?: 1.0
     val fallbackHeight = parsePositiveDouble(sourceSvg.getAttribute("height")) ?: sourceViewBox?.height ?: groupBox?.height ?: 1.0
-    val contentBounds = sourceViewBox
-        ?: groupBox?.takeIf { it.width > 0.0 && it.height > 0.0 }
+    val contentBounds = wrapperBounds
+        ?: groupBox
+        ?: sourceViewBox
         ?: LinesBounds(0.0, 0.0, fallbackWidth, fallbackHeight)
 
     val sourceWidth = max(1.0, parsePositiveDouble(sourceSvg.getAttribute("width")) ?: contentBounds.width)
