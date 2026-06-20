@@ -4,6 +4,7 @@ import org.w3c.dom.Document
 import org.w3c.dom.Element
 import org.xml.sax.InputSource
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 import javax.xml.XMLConstants
 import javax.xml.parsers.DocumentBuilderFactory
 import java.util.zip.GZIPInputStream
@@ -20,6 +21,18 @@ data class AbletonSet(
     val automationEnvelopes: List<AbletonAutomationEnvelope> = allTracks.flatMap { it.automation }
 
     fun clipsPlayingAtBeat(arrangementBeat: Double): List<AbletonClipPlayback> =
+        clipsPlayingAtBeatInternal(arrangementBeat, sampleMapper = null)
+
+    fun clipsPlayingAtBeat(
+        arrangementBeat: Double,
+        sampleMapper: AbletonSampleFileMapper
+    ): List<AbletonClipPlayback> =
+        clipsPlayingAtBeatInternal(arrangementBeat, sampleMapper)
+
+    private fun clipsPlayingAtBeatInternal(
+        arrangementBeat: Double,
+        sampleMapper: AbletonSampleFileMapper?
+    ): List<AbletonClipPlayback> =
         tracks.flatMap { track ->
             track.clips
                 .filter { it.containsBeat(arrangementBeat) }
@@ -29,7 +42,8 @@ data class AbletonSet(
                         clip = clip,
                         arrangementBeat = arrangementBeat,
                         arrangementSeconds = tempoMap.beatToSeconds(arrangementBeat),
-                        sourceSeconds = clip.sourceSecondsAtBeat(arrangementBeat, tempoMap)
+                        sourceSeconds = clip.sourceSecondsAtBeat(arrangementBeat, tempoMap),
+                        sourceFile = sampleMapper?.resolve(clip)
                     )
                 }
         }
@@ -37,7 +51,18 @@ data class AbletonSet(
     fun clipsPlayingAtSeconds(arrangementSeconds: Double): List<AbletonClipPlayback> =
         clipsPlayingAtBeat(tempoMap.secondsToBeat(arrangementSeconds))
 
+    fun clipsPlayingAtSeconds(
+        arrangementSeconds: Double,
+        sampleMapper: AbletonSampleFileMapper
+    ): List<AbletonClipPlayback> =
+        clipsPlayingAtBeat(tempoMap.secondsToBeat(arrangementSeconds), sampleMapper)
+
     fun track(name: String): AbletonTrack? = tracks.firstOrNull { it.name == name }
+
+    fun resolveSamples(searchDirectory: File): Map<AbletonClip, File> {
+        val mapper = AbletonSampleFileMapper.forDirectory(searchDirectory)
+        return clips.mapNotNull { clip -> mapper.resolve(clip)?.let { clip to it } }.toMap()
+    }
 
     companion object {
         fun read(path: String): AbletonSet = read(File(path))
@@ -259,6 +284,85 @@ data class AbletonSampleRef(
     }
 }
 
+class AbletonSampleFileMapper private constructor(
+    val searchDirectory: File,
+    private val filesByName: Map<String, List<File>>,
+    private val filesBySuffix: Map<String, List<File>>
+) {
+    fun resolve(clip: AbletonClip): File? = resolve(clip.sample)
+
+    fun resolve(playback: AbletonClipPlayback): File? = resolve(playback.clip)
+
+    fun resolve(sample: AbletonSampleRef?): File? {
+        sample ?: return null
+        sample.absolutePath?.let { path ->
+            File(path).takeIf { it.isFile }?.let { return it }
+        }
+        sample.relativePath?.let { path ->
+            val relativeToSearch = File(searchDirectory, path).takeIf { it.isFile }
+            if (relativeToSearch != null) return relativeToSearch
+        }
+
+        val candidates = sample.lookupKeys()
+        for (key in candidates) {
+            filesBySuffix[key]?.singleOrNull()?.let { return it }
+        }
+        for (key in candidates) {
+            filesBySuffix[key]?.firstOrNull()?.let { return it }
+        }
+
+        sample.fileNameKey()?.let { key ->
+            filesByName[key]?.singleOrNull()?.let { return it }
+            filesByName[key]?.firstOrNull()?.let { return it }
+        }
+        return null
+    }
+
+    fun candidates(sample: AbletonSampleRef?): List<File> {
+        sample ?: return emptyList()
+        val suffixMatches = sample.lookupKeys().flatMap { filesBySuffix[it].orEmpty() }
+        val nameMatches = sample.fileNameKey()?.let { filesByName[it].orEmpty() }.orEmpty()
+        return (suffixMatches + nameMatches).distinctBy { it.absolutePath }
+    }
+
+    companion object {
+        private val cache = ConcurrentHashMap<String, AbletonSampleFileMapper>()
+
+        fun forDirectory(searchDirectory: File): AbletonSampleFileMapper {
+            val root = searchDirectory.absoluteFile.normalize()
+            val key = root.path
+            return cache.getOrPut(key) { build(root) }
+        }
+
+        fun clearCache() {
+            cache.clear()
+        }
+
+        private fun build(root: File): AbletonSampleFileMapper {
+            val files = if (root.isDirectory) {
+                root.walkTopDown().filter { it.isFile }.toList()
+            } else {
+                emptyList()
+            }
+            val byName = files.groupBy { it.name.lowercase() }
+            val bySuffix = mutableMapOf<String, MutableList<File>>()
+            for (file in files) {
+                val relative = file.relativeToOrSelf(root).invariantPath()
+                val segments = relative.split('/').filter { it.isNotBlank() }
+                for (index in segments.indices) {
+                    val suffix = segments.drop(index).joinToString("/")
+                    bySuffix.getOrPut(suffix.lowercase()) { mutableListOf() }.add(file)
+                }
+            }
+            return AbletonSampleFileMapper(
+                searchDirectory = root,
+                filesByName = byName,
+                filesBySuffix = bySuffix
+            )
+        }
+    }
+}
+
 data class AbletonWarpMarker(
     val id: String,
     val sourceSeconds: Double,
@@ -282,9 +386,11 @@ data class AbletonClipPlayback(
     val clip: AbletonClip,
     val arrangementBeat: Double,
     val arrangementSeconds: Double,
-    val sourceSeconds: Double
+    val sourceSeconds: Double,
+    val sourceFile: File? = null
 ) {
-    val sourcePath: String? get() = clip.sample?.relativePath ?: clip.sample?.absolutePath
+    val sourcePath: String? get() = sourceFile?.absolutePath ?: originalSourcePath
+    val originalSourcePath: String? get() = clip.sample?.relativePath ?: clip.sample?.absolutePath
 }
 
 data class AbletonAutomationEnvelope(
@@ -576,6 +682,38 @@ internal fun Element.descendants(): Sequence<Element> =
 
 internal fun Element.firstDescendant(name: String): Element? =
     descendants().firstOrNull { it.tagName == name }
+
+private fun AbletonSampleRef.lookupKeys(): List<String> =
+    listOfNotNull(relativePath, absolutePath)
+        .flatMap { path ->
+            val normalized = path.normalizedLookupPath()
+            val withoutDotDots = normalized.split('/').filter { it != ".." && it != "." && it.isNotBlank() }
+            buildList {
+                if (normalized.isNotBlank()) add(normalized)
+                if (withoutDotDots.isNotEmpty()) {
+                    for (index in withoutDotDots.indices) {
+                        add(withoutDotDots.drop(index).joinToString("/"))
+                    }
+                }
+            }
+        }
+        .map { it.lowercase() }
+        .distinct()
+
+private fun AbletonSampleRef.fileNameKey(): String? =
+    listOfNotNull(relativePath, absolutePath)
+        .mapNotNull { it.normalizedLookupPath().substringAfterLast('/', "").takeIf(String::isNotBlank) }
+        .firstOrNull()
+        ?.lowercase()
+
+private fun String.normalizedLookupPath(): String =
+    replace('\\', '/')
+        .split('/')
+        .filter { it.isNotBlank() && it != "." }
+        .joinToString("/")
+
+private fun File.invariantPath(): String =
+    path.replace(File.separatorChar, '/')
 
 private fun Element.automationTargetsById(): Map<String, AbletonAutomationTarget> =
     descendants()

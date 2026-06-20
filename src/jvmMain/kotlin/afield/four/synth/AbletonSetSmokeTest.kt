@@ -20,7 +20,7 @@ object AbletonSetSmokeTest {
     @JvmStatic
     fun main(args: Array<String>) {
         if (args.isNotEmpty()) {
-            printSummary(args.first())
+            printSummary(args.first(), args.getOrNull(1))
             return
         }
 
@@ -32,6 +32,8 @@ object AbletonSetSmokeTest {
             testClipEnumerationAndPlaybackLookup()
             testAutomationEnvelopeLookupAndEvaluation()
             testGzippedAbletonFile()
+            testSampleFileMapper()
+            testDebugFLines()
             println("AbletonSet smoke tests passed")
             true
         } catch (t: Throwable) {
@@ -105,9 +107,72 @@ object AbletonSetSmokeTest {
         require(scene2.clip.name == "Scene 2")
     }
 
-    private fun printSummary(path: String) {
+    private fun testSampleFileMapper() {
+        AbletonSampleFileMapper.clearCache()
+        val xml = Files.createTempFile("ableton-set-samples", ".xml")
+        Files.writeString(xml, fixtureXml())
+        val set = AbletonSet.read(xml.toFile())
+
+        val searchRoot = Files.createTempDirectory("ableton-samples").toFile()
+        val sample = searchRoot.resolve("Samples/Imported/Woven.wav")
+        sample.parentFile.mkdirs()
+        sample.writeText("not actually audio")
+
+        val mapper = AbletonSampleFileMapper.forDirectory(searchRoot)
+        val resolved = mapper.resolve(set.clips.first())
+        require(resolved == sample.absoluteFile.normalize()) {
+            "Expected mapper to resolve Woven.wav to $sample, got $resolved"
+        }
+        val playback = set.clipsPlayingAtBeat(0.0, mapper).single()
+        require(playback.sourceFile == sample.absoluteFile.normalize()) {
+            "Expected playback to carry resolved sample file, got ${playback.sourceFile}"
+        }
+        require(playback.sourcePath == sample.absoluteFile.normalize().absolutePath) {
+            "Expected playback sourcePath to prefer resolved sample file, got ${playback.sourcePath}"
+        }
+        require(AbletonSampleFileMapper.forDirectory(searchRoot) === mapper) {
+            "Expected mapper to be cached per search directory"
+        }
+        require(set.resolveSamples(searchRoot).values.toSet() == setOf(sample.absoluteFile.normalize())) {
+            "Expected set-level sample resolution to use cached mapper"
+        }
+    }
+
+    private fun testDebugFLines() {
+        val xml = Files.createTempFile("ableton-set-debug-lines", ".xml")
+        Files.writeString(xml, fixtureXml())
+        val set = AbletonSet.read(xml.toFile())
+
+        val lines = set.toDebugFLines(
+            AbletonSetFLineDebugOptions(
+                pixelsPerBeat = 1.0,
+                automationSamples = 12,
+                includeGuides = true,
+                markAutomationEvents = true
+            )
+        )
+        require(lines.isNotEmpty()) { "Expected debug FLine output" }
+        require(lines.any { it.properties["ableton.kind"] == "clip" && it.properties["ableton.clip.name"] == "Scene 1" }) {
+            "Expected debug FLine output to include Scene 1 clip"
+        }
+        require(lines.any { it.properties["ableton.kind"] == "automation" && it.properties["ableton.automation.target"] == "Chorus2.Rate" }) {
+            "Expected debug FLine output to include Chorus2.Rate automation"
+        }
+        require(lines.any { it.properties["ableton.kind"] == "automation-event" }) {
+            "Expected debug FLine output to include automation event markers"
+        }
+        require(lines.all { it.nodes.isNotEmpty() }) {
+            "Expected every debug FLine to contain geometry"
+        }
+    }
+
+    private fun printSummary(path: String, sampleSearchRoot: String? = null) {
         val set = AbletonSet.read(path)
+        val sampleMapper = sampleSearchRoot?.let { AbletonSampleFileMapper.forDirectory(java.io.File(it)) }
         println("Ableton XML: ${set.source.absolutePath}")
+        sampleMapper?.let {
+            println("sample search: ${it.searchDirectory.absolutePath}")
+        }
         println(
             "tempo: ${set.tempoMap.defaultBpm} BPM, tracks: ${set.tracks.size}, " +
                 "clips: ${set.clips.size}, automation: ${set.automationEnvelopes.size}"
@@ -118,9 +183,11 @@ object AbletonSetSmokeTest {
                 val startSeconds = set.tempoMap.beatToSeconds(clip.currentStartBeat)
                 val endSeconds = set.tempoMap.beatToSeconds(clip.currentEndBeat)
                 val source = clip.sample?.relativePath ?: clip.sample?.absolutePath ?: "no sample"
+                val resolved = sampleMapper?.resolve(clip)?.absolutePath
                 println(
                     "  ${clip.name}: beats ${clip.currentStartBeat}..${clip.currentEndBeat} " +
-                        "seconds ${"%.3f".format(startSeconds)}..${"%.3f".format(endSeconds)} source=$source"
+                        "seconds ${"%.3f".format(startSeconds)}..${"%.3f".format(endSeconds)} " +
+                        "source=$source${resolved?.let { " resolved=$it" } ?: ""}"
                 )
             }
             track.automation.take(4).forEach { envelope ->
