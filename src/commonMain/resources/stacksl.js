@@ -777,11 +777,11 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             return stackslDoc(`${effect.consume}->${effect.produce}`, effect.label || "Unknown word.")
     }
 
-    const tokenizeStackSLForContext = (source) => {
+    const tokenizeStackSLForContext = (source, baseOffset = 0, basePosition = null) => {
             const tokens = []
             let i = 0
-            let line = 1
-            let column = 1
+            let line = basePosition && basePosition.lineNumber ? basePosition.lineNumber : 1
+            let column = basePosition && basePosition.column ? basePosition.column : 1
 
             const advance = () => {
                     const ch = source[i]
@@ -811,7 +811,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
                             while (i < source.length && source[i] !== ")") advance()
                             if (i < source.length) advance()
                     } else {
-                            const start = i
+                            const start = baseOffset + i
                             const startLine = line
                             const startColumn = column
                             let text = ""
@@ -827,7 +827,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
                                             text,
                                             lower: text.toLowerCase(),
                                             start,
-                                            end: i,
+                                            end: baseOffset + i,
                                             line: startLine,
                                             column: startColumn,
                                     })
@@ -835,6 +835,71 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
                     }
             }
             return tokens
+    }
+
+    const stackSLEmbeddedHeaderRegex = /^(?:[ \t]*(?:\r?\n|$))*[ \t]*#stacksl\b[^\n]*(?:\r?\n|$)/i
+
+    const findStackSLEmbeddedRegions = (model) => {
+            if (!model || model.getLanguageId() !== "kotlin") return []
+            const source = model.getValue()
+            const regions = []
+            let search = 0
+            while (search < source.length) {
+                    const open = source.indexOf('"""', search)
+                    if (open < 0) break
+                    const contentStart = open + 3
+                    const close = source.indexOf('"""', contentStart)
+                    if (close < 0) break
+
+                    const rawContent = source.slice(contentStart, close)
+                    const header = stackSLEmbeddedHeaderRegex.exec(rawContent)
+                    if (header) {
+                            const bodyStart = contentStart + header[0].length
+                            const headerStart = contentStart + header[0].search(/#stacksl\b/i)
+                            const headerEnd = headerStart + "#stacksl".length
+                            regions.push({
+                                    open,
+                                    close,
+                                    contentStart,
+                                    contentEnd: close,
+                                    bodyStart,
+                                    bodyEnd: close,
+                                    headerStart,
+                                    headerEnd,
+                                    source: source.slice(bodyStart, close),
+                                    bodyPosition: model.getPositionAt(bodyStart),
+                            })
+                    }
+                    search = close + 3
+            }
+            return regions
+    }
+
+    const findStackSLEmbeddedRegionAtOffset = (model, offset) => {
+            const regions = findStackSLEmbeddedRegions(model)
+            return regions.find((region) => region.bodyStart <= offset && offset <= region.bodyEnd) || null
+    }
+
+    const resolveStackSLScope = (model, offset) => {
+            if (!model) return null
+            if (model.getLanguageId() === "stacksl") {
+                    return {
+                            embedded: false,
+                            source: model.getValue(),
+                            baseOffset: 0,
+                            basePosition: { lineNumber: 1, column: 1 },
+                            offset,
+                    }
+            }
+            const embedded = findStackSLEmbeddedRegionAtOffset(model, offset)
+            if (!embedded) return null
+            return {
+                    embedded: true,
+                    source: embedded.source,
+                    baseOffset: embedded.bodyStart,
+                    basePosition: embedded.bodyPosition,
+                    offset,
+            }
     }
 
     const parseStackSLDefinitionsForContext = (tokens) => {
@@ -1155,7 +1220,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             if (!state || !state.enabled) return
             const monacoApi = window.globalMonaco || window.monaco || monaco
             const model = editor && editor.getModel && editor.getModel()
-            if (!monacoApi || !model || model.getLanguageId() !== "stacksl") {
+            if (!monacoApi || !model) {
                     clearStackSLFlowLens(editor)
                     return
             }
@@ -1165,11 +1230,15 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
                     return
             }
 
-            const source = model.getValue()
             const offset = model.getOffsetAt(position)
-            const tokens = tokenizeStackSLForContext(source)
+            const scope = resolveStackSLScope(model, offset)
+            if (!scope) {
+                    clearStackSLFlowLens(editor)
+                    return
+            }
+            const tokens = tokenizeStackSLForContext(scope.source, scope.baseOffset, scope.basePosition)
             const parsed = parseStackSLDefinitionsForContext(tokens)
-            const context = findStackSLDefinitionContext(parsed, offset)
+            const context = findStackSLDefinitionContext(parsed, scope.offset)
             const activeToken = findStackSLTokenAtOffset(tokens, offset)
             const activeInContext = activeToken && context.tokens.includes(activeToken) ? activeToken : null
             if (!activeInContext) {
@@ -1273,16 +1342,17 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             const allowUnfocused = !!options.allowUnfocused
             if (!editor || (!allowUnfocused && typeof editor.hasTextFocus === "function" && !editor.hasTextFocus())) return null
             const model = editor.getModel && editor.getModel()
-            if (!model || model.getLanguageId() !== "stacksl") return null
+            if (!model) return null
 
             const position = editor.getPosition && editor.getPosition()
             if (!position) return null
 
-            const source = model.getValue()
             const offset = model.getOffsetAt(position)
-            const tokens = tokenizeStackSLForContext(source)
+            const scope = resolveStackSLScope(model, offset)
+            if (!scope) return null
+            const tokens = tokenizeStackSLForContext(scope.source, scope.baseOffset, scope.basePosition)
             const parsed = parseStackSLDefinitionsForContext(tokens)
-            const context = findStackSLDefinitionContext(parsed, offset)
+            const context = findStackSLDefinitionContext(parsed, scope.offset)
             const activeToken = findStackSLTokenAtOffset(tokens, offset)
             const activeInContext = activeToken && context.tokens.includes(activeToken) ? activeToken : null
             const tokensBefore = activeInContext
@@ -1334,7 +1404,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             const warningClass = underflowCount > 0 ? " afield-stacksl-warning" : ""
             const html = `<div class="afield-stacksl-context${warningClass}"><strong>StackSL</strong> <span class="afield-stacksl-scope">${escapeStackSLHtml(scopeName)}</span> ${depthHtml}${wordHtml ? " · " + wordHtml : ""}${underflowHtml ? " · " + underflowHtml : ""}</div>`
 
-            let contextKey = "stacksl"
+            let contextKey = scope.embedded ? "kotlin-stacksl" : "stacksl"
             const resolved = resolveContext ? resolveContext(editor) : null
             if (resolved && resolved.uid && resolved.property) contextKey = `${resolved.uid}::${resolved.property}`
             return {
@@ -1346,6 +1416,173 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
     }
 
     window.buildStackSLContextPayload = buildStackSLContextPayload
+
+    const stackSLWordLookup = (words) => {
+            const out = new Set()
+            words.forEach((word) => out.add(String(word).toLowerCase()))
+            return out
+    }
+    const stackSLHighlightStackWords = stackSLWordLookup(stackWords)
+    const stackSLHighlightMathWords = stackSLWordLookup(mathWords)
+    const stackSLHighlightCreativeWords = stackSLWordLookup(creativeWords)
+    const stackSLHighlightConstants = stackSLWordLookup(constants)
+
+    const stackSLRangeFromOffsets = (monacoApi, model, start, end) => {
+            const startPos = model.getPositionAt(start)
+            const endPos = model.getPositionAt(Math.max(start, end))
+            return new monacoApi.Range(startPos.lineNumber, startPos.column, endPos.lineNumber, endPos.column)
+    }
+
+    const tokenizeStackSLForHighlight = (source, baseOffset) => {
+            const tokens = []
+            let i = 0
+
+            const push = (kind, start, end, text = null) => {
+                    if (end <= start) return
+                    tokens.push({
+                            kind,
+                            start: baseOffset + start,
+                            end: baseOffset + end,
+                            text: text == null ? source.slice(start, end) : text,
+                    })
+            }
+
+            while (i < source.length) {
+                    const ch = source[i]
+                    if (/\s/.test(ch)) {
+                            i += 1
+                            continue
+                    }
+                    if (ch === "#") {
+                            const start = i
+                            while (i < source.length && source[i] !== "\n") i += 1
+                            push("comment", start, i)
+                            continue
+                    }
+                    if (ch === "/" && source[i + 1] === "/") {
+                            const start = i
+                            while (i < source.length && source[i] !== "\n") i += 1
+                            push("comment", start, i)
+                            continue
+                    }
+                    if (ch === "(") {
+                            const start = i
+                            while (i < source.length && source[i] !== ")") i += 1
+                            if (i < source.length) i += 1
+                            push("comment", start, i)
+                            continue
+                    }
+
+                    const start = i
+                    while (i < source.length) {
+                            const c = source[i]
+                            if (/\s/.test(c) || c === "#" || c === "(") break
+                            if (c === "/" && source[i + 1] === "/") break
+                            i += 1
+                    }
+                    push("word", start, i)
+            }
+            return tokens
+    }
+
+    const stackSLHighlightClassForWord = (rawWord, expectDefinitionName) => {
+            const word = String(rawWord || "").toLowerCase()
+            if (expectDefinitionName) return "afield-stacksl-token-definition"
+            if (word === ":" || word === ";") return "afield-stacksl-token-control"
+            if (/^(?:0->|1->|2->|3->|->0|->1|->2|->3)$/.test(word)) return "afield-stacksl-token-keyword"
+            if (STACKSL_NUMBER_RANGE_RE.test(word)) return "afield-stacksl-token-number"
+            if (STACKSL_TOP_MODIFIER_RE.test(word) || STACKSL_NUMBER_MODIFIER_RE.test(word)) return "afield-stacksl-token-modifier"
+            if (STACKSL_NUMBER_SUFFIX_RE.test(word) || STACKSL_NUMBER_RE.test(word)) return "afield-stacksl-token-number"
+            if (word === "|" || word === "]") return "afield-stacksl-token-operator"
+            if (STACKSL_SWIZZLE_RE.test(word)) return "afield-stacksl-token-variable"
+            if (stackSLHighlightStackWords.has(word)) return "afield-stacksl-token-keyword"
+            if (stackSLHighlightMathWords.has(word)) return "afield-stacksl-token-operator"
+            if (stackSLHighlightCreativeWords.has(word)) return "afield-stacksl-token-creative"
+            if (stackSLHighlightConstants.has(word)) return "afield-stacksl-token-constant"
+            return "afield-stacksl-token-identifier"
+    }
+
+    const ensureStackSLEmbeddedHighlight = (editor) => {
+            if (!editor) return null
+            if (!editor._afieldStackSLEmbeddedHighlight) {
+                    editor._afieldStackSLEmbeddedHighlight = {
+                            decorations: typeof editor.createDecorationsCollection === "function"
+                                    ? editor.createDecorationsCollection([])
+                                    : null,
+                            legacyIds: [],
+                    }
+            }
+            return editor._afieldStackSLEmbeddedHighlight
+    }
+
+    const setStackSLEmbeddedHighlightDecorations = (editor, decorations) => {
+            const state = ensureStackSLEmbeddedHighlight(editor)
+            if (!state) return
+            if (state.decorations && typeof state.decorations.set === "function") {
+                    state.decorations.set(decorations)
+            } else if (typeof editor.deltaDecorations === "function") {
+                    state.legacyIds = editor.deltaDecorations(state.legacyIds || [], decorations)
+            }
+    }
+
+    const updateStackSLEmbeddedHighlight = (editor) => {
+            const monacoApi = window.globalMonaco || window.monaco || monaco
+            const model = editor && editor.getModel && editor.getModel()
+            if (!monacoApi || !model || model.getLanguageId() !== "kotlin") {
+                    setStackSLEmbeddedHighlightDecorations(editor, [])
+                    return
+            }
+
+            const decorations = []
+            for (const region of findStackSLEmbeddedRegions(model)) {
+                    decorations.push({
+                            range: stackSLRangeFromOffsets(monacoApi, model, region.headerStart, region.headerEnd),
+                            options: {
+                                    inlineClassName: "afield-stacksl-token-directive",
+                                    hoverMessage: { value: "Embedded StackSL" },
+                            },
+                    })
+
+                    let expectDefinitionName = false
+                    const tokens = tokenizeStackSLForHighlight(region.source, region.bodyStart)
+                    for (const token of tokens) {
+                            let inlineClassName = "afield-stacksl-token-comment"
+                            if (token.kind === "word") {
+                                    inlineClassName = stackSLHighlightClassForWord(token.text, expectDefinitionName)
+                                    expectDefinitionName = token.text === ":"
+                            }
+                            decorations.push({
+                                    range: stackSLRangeFromOffsets(monacoApi, model, token.start, token.end),
+                                    options: { inlineClassName },
+                            })
+                            if (token.kind === "word" && token.text !== ":" && expectDefinitionName) {
+                                    expectDefinitionName = false
+                            }
+                    }
+            }
+            setStackSLEmbeddedHighlightDecorations(editor, decorations)
+    }
+
+    const installStackSLEmbeddedHighlight = (editor) => {
+            if (!editor || editor._afieldStackSLEmbeddedHighlightInstalled) return
+            editor._afieldStackSLEmbeddedHighlightInstalled = true
+            ensureStackSLEmbeddedHighlight(editor)
+
+            const schedule = () => setTimeout(() => updateStackSLEmbeddedHighlight(editor), 0)
+            editor.onDidChangeModelContent(schedule)
+            if (typeof editor.onDidChangeModel === "function") editor.onDidChangeModel(schedule)
+            const monacoApi = window.globalMonaco || window.monaco || monaco
+            if (monacoApi && monacoApi.editor && typeof monacoApi.editor.onDidChangeModelLanguage === "function") {
+                    monacoApi.editor.onDidChangeModelLanguage((event) => {
+                            const model = editor.getModel && editor.getModel()
+                            if (model && event && event.model === model) schedule()
+                    })
+            }
+            schedule()
+    }
+
+    window.installStackSLEmbeddedHighlight = installStackSLEmbeddedHighlight
+    window.updateStackSLEmbeddedHighlight = updateStackSLEmbeddedHighlight
 
     monaco.languages.setMonarchTokensProvider(languageId, {
         tokenPostfix: ".stacksl",
