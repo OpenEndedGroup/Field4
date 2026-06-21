@@ -53,6 +53,8 @@ private data class LinesBounds(
     val height: Double
 )
 
+private const val MIN_FITTED_STROKE_OPACITY = 0.18
+
 private fun parsePositiveDouble(raw: String?): Double? {
     val candidate = raw?.trim()?.removeSuffix("px")?.takeIf { it.isNotEmpty() } ?: return null
     return candidate.toDoubleOrNull()?.takeIf { it.isFinite() && it > 0.0 }
@@ -418,7 +420,10 @@ private fun applySubpixelStrokeFade(root: Element, scale: Double) {
         val baseOpacity = strokeOpacityValue(baseOpacityRaw)
         val effectiveWidth = baseWidth * scale
         if (effectiveWidth < 1.0) {
-            element.setAttribute("stroke-opacity", (baseOpacity * effectiveWidth.coerceIn(0.0, 1.0)).toString())
+            element.setAttribute(
+                "stroke-opacity",
+                (baseOpacity * effectiveWidth.coerceIn(MIN_FITTED_STROKE_OPACITY, 1.0)).toString()
+            )
         } else if (baseOpacityRaw != null) {
             element.setAttribute("stroke-opacity", baseOpacityRaw)
         } else {

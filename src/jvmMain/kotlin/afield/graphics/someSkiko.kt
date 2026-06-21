@@ -164,7 +164,9 @@ fun Box.l(
 private fun Map<String, List<FLine>>.namespaced(prefix: String): Map<String, List<FLine>> =
     this.mapKeys { (k, _) -> "$prefix/$k" }
 
-private fun FLine.safeFast2DBoundsOrNull() = runCatching { fast2DBounds() }.getOrNull()
+private fun FLine.safeFast2DBoundsOrNull() = runCatching { fast2DBounds() }.getOrNull()?.takeIf {
+    it.x.isFinite() && it.y.isFinite() && it.w.isFinite() && it.h.isFinite() && it.w >= 0.0 && it.h >= 0.0
+}
 
 private fun Collection<FLine>.renderableLines(): List<FLine> =
     filter { it.safeFast2DBoundsOrNull() != null }
