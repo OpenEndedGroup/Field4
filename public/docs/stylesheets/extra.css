@@ -233,6 +233,11 @@ code {
     vertical-align: top;
 }
 
+.md-typeset .stacksl-reference td {
+    overflow-wrap: anywhere;
+    word-break: normal;
+}
+
 @media screen and (min-width: 76.234375em) {
     .md-grid:has(.stacksl-reference) {
         max-width: 72rem;

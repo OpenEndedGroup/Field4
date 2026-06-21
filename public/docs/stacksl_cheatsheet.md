@@ -100,7 +100,7 @@ Examples: `0.4c2`, `0.4s3q8`, `p length |pulse8d0.15q4`, `p ]fbm5q8`, `prev xy ]
 | `+`, `add` | `a b -- c` | component-wise addition. |
 | `-`, `sub` | `a b -- c` | component-wise subtraction. |
 | `/`, `div` | `a b -- c` | safe divide with small-denominator protection. |
-| `1-` | `a -- b` | one minus value, `1 - a`. |
+| `1-` | `a -- b` | `1 - a`. |
 | `<`, `lt` | `a b -- mask` | less-than comparison mask in `0..1`. |
 | `<=`, `lte` | `a b -- mask` | less-than-or-equal comparison mask in `0..1`. |
 | `=`, `eq` | `a b -- mask` | equality comparison mask in `0..1`. |
@@ -108,7 +108,7 @@ Examples: `0.4c2`, `0.4s3q8`, `p length |pulse8d0.15q4`, `p ]fbm5q8`, `prev xy ]
 | `>=`, `gte` | `a b -- mask` | greater-than-or-equal comparison mask in `0..1`. |
 | `abs` | `a -- b` | GLSL-style unary math. |
 | `acos` | `a -- b` | inverse cosine. |
-| `and` | `a b -- mask` | boolean-ish mask using threshold `0.5`. |
+| `and` | `a b -- mask` | `min(step(0.5, abs(a)), step(0.5, abs(b)))`. |
 | `asin` | `a -- b` | inverse sine. |
 | `atan` | `a -- b` | inverse tangent. |
 | `atan2` | `y x -- a` | two-argument arctangent. |
@@ -148,12 +148,12 @@ Arity variants use `word.N` for explicit consumption and `word.all` for stack bl
 | `distance2` | `a b -- s` | distance between `a.xy` and `b.xy`, splatted. |
 | `distance3` | `a b -- s` | distance between `a.xyz` and `b.xyz`, splatted. |
 | `distance` | `a b -- s` | distance between full `vec4` values, splatted. |
-| `dot` | `a b -- s` | dot product splatted to RGBA. |
+| `dot` | `a b -- s` | `vec4(dot(a, b))`. |
 | `intermediate` | `values -- values` | adjacent midpoints; use `.2` through `.8` or `.all`. |
 | `length`, `len`, `length2`, `len2` | `a -- s` | length of `a.xy`, splatted. |
 | `length3`, `len3` | `a -- s` | length of `a.xyz`. |
 | `length4`, `len4` | `a -- s` | length of full `vec4`. |
-| `luma` | `color -- s` | Rec.709 luminance splatted. |
+| `luma` | `color -- s` | `vec4(0.2126*r + 0.7152*g + 0.0722*b)`. |
 | `median`, `med` | `a -- s` | middle-ish channel value. |
 | `normalize` | `a -- b` | component vector normalize. |
 | `sum` | `a -- s` | sum of RGBA channels. |
@@ -179,9 +179,9 @@ Arity variants use `word.N` for explicit consumption and `word.all` for stack bl
 | `cart`, `cartesian` | `polar -- coord` | convert `vec4(radius, angleRadians, z, w)` back to xy. |
 | `kaleido`, `kaleidoscope` | `coord sectors -- coord` | angular mirror/repeat over `sectors.x`; short form uses six sectors. |
 | `polar` | `coord -- polar` | convert xy to `vec4(radius, angleRadians, z, w)`. |
-| `repeat` | `a -- b` | fractional repeat with `fract(a)`. |
+| `repeat` | `a -- b` | `fract(a)`. |
 | `spiral` | `coord amount -- coord` | polar twist by radius and log-radius terms; short form uses `tau`. |
-| `tile` | `coord scale -- coord` | repeat `coord.xy` by `scale.xy`, preserving z/w; short form uses scale `1`. |
+| `tile` | `coord scale -- coord` | `vec4(fract(coord.xy * scale.xy), coord.zw)`; short form uses scale `1`. |
 | `twist` | `coord amount -- coord` | rotate `coord.xy` by `radius * amount.x`; short form uses `tau`. |
 
 ## Creative operators
@@ -191,35 +191,35 @@ Arity variants use `word.N` for explicit consumption and `word.all` for stack bl
 | `alpha` | `base modulation range -- alpha` | raw EMA-alpha time-constant modulation: decay rate is multiplied by `pow(range, modulation)`; negative base alpha keeps a negative output sign. |
 | `alpha.c` | `base modulation range -- alpha` | clamped variant: base alpha is clamped to `1e-6..0.999999`, modulation to `-1..1`. |
 | `alpha.sc` | `base modulation range -- alpha` | soft-clamped variant for bounded modulation without a hard edge. |
-| `band` | `x center width -- mask` | hard centered band; short form defaults to center `0.5`, width `0.1`. |
-| `bias` | `value amount -- out` | Schlick-style bias curve; short form uses neutral `0.5`. |
+| `band` | `x center width -- mask` | `step(center - abs(width), x) - step(center + abs(width), x)`; short form defaults to center `0.5`, width `0.1`. |
+| `bias` | `value amount -- out` | `x / (((1 / b - 2) * (1 - x)) + 1)`, where `b = clamp(amount, 0.00001, 0.99999)`; short form uses neutral `0.5`. |
 | `bitcrush`, `bit-crush` | `value bits -- out` | quantize normalized lanes to a bit depth; short form defaults to `4`, explicit forms are `bitcrush.1` and `bitcrush.2`. |
-| `contrast` | `color amount -- color` | contrast around mid gray; short form amount defaults to `1.2`. |
-| `ema` | `current previous alpha -- smooth` | raw-alpha exponential moving average; use `prev 0.006_0.09 ema` for RGBA memories at different speeds. |
+| `contrast` | `color amount -- color` | `(color - 0.5) * amount + 0.5`; short form amount defaults to `1.2`. |
+| `ema` | `current previous alpha -- smooth` | `mix(previous, current, alpha)`; use `prev 0.006_0.09 ema` for RGBA memories at different speeds. |
 | `ema.c`, `ema.sc` | `current previous alpha -- smooth` | hard- or soft-clamped alpha variants. |
-| `ema-diff`, `diff-ema`, `dema` | `current previous alpha -- diff` | raw-alpha current minus EMA, useful for edges and motion energy. |
+| `ema-diff`, `diff-ema`, `dema` | `current previous alpha -- diff` | `current - mix(previous, current, alpha)`, useful for edges and motion energy. |
 | `ema-diff.c`, `ema-diff.sc`, `diff-ema.c`, `diff-ema.sc`, `dema.c`, `dema.sc` | `current previous alpha -- diff` | hard- or soft-clamped alpha variants. |
 | `fbm` | `coord -- s` | five-octave fractal noise. |
-| `fm` | `phase carrier mod -- wave` | frequency-modulated sine color field; has defaults when short. |
-| `fmchirp` | `x freq mod modPhase phase chirp modChirp inputPow outputPow -- out` | FM residual curve with signed power warping; `fmchirp.8` uses `input.x` as implicit x. |
-| `gain` | `value amount -- out` | Schlick-style gain curve; short form uses neutral `0.5`. |
-| `grade` | `color lift gain gamma -- color` | color grading; short form uses neutral lift/gain/gamma. |
+| `fm` | `phase carrier mod -- wave` | `sin(phase + mod * sin(carrier))`; has defaults when short. |
+| `fmchirp` | `x freq mod modPhase phase chirp modChirp inputPow outputPow -- out` | `x + spow(sin(phi + sin(mu)), outputPow)`, where `xw = spow(x, inputPow)`, `phi = tau * (freq*xw + phase + chirp*xw*xw)`, `mu = tau * (mod*xw + modPhase + modChirp*xw*xw)`, and `spow(x,e) = sign(x) * abs(x)^e`; `fmchirp.8` uses `input.x` as implicit x. |
+| `gain` | `value amount -- out` | `mix(0.5*bias(2*x, a), 1 - 0.5*bias(2*(1 - x), a), step(0.5, x))`; short form uses neutral `0.5`. |
+| `grade` | `color lift gain gamma -- color` | `pow(max((color + lift) * gain, 0), max(abs(gamma), 0.0001))`; short form uses neutral lift/gain/gamma. |
 | `gray-code`, `graycode`, `gray-encode` | `value -- out` | convert normalized 16-bit lanes into Gray code. |
 | `gray-decode`, `ungray` | `value -- out` | decode normalized 16-bit Gray-code lanes. |
 | `lfsr` | `state -- out` | step a coupled `vec4` 16-bit LFSR. |
-| `mirror` | `a -- b` | triangle-wrap values into `0..1`. |
+| `mirror` | `a -- b` | `1 - abs(2*fract(a/2) - 1)`. |
 | `noise`, `perlin` | `coord -- s` | value noise from `coord.xy + coord.zw * 0.07`. |
 | `palette`, `cos-palette`, `cosine-palette` | `t a b c d -- color` | cosine palette `a + b*cos(t*c + d)`; one-value short form gives a useful default palette. |
-| `posterize` | `value levels -- out` | quantize normalized lanes to a level count; short form uses `6`. |
-| `pulse` | `x center width -- mask` | soft band around `center`; with fewer than three values defaults to center `0.5`, width `0.08`. |
-| `ramp` | `x low high -- out` | remap `low..high` into a clamped `0..1` ramp. |
-| `sat`, `saturate`, `clamp` | `color -- color` | clamp all channels to `0..1`. |
-| `saturation`, `sat-color` | `color amount -- color` | adjust color saturation; short form amount defaults to `1`. |
-| `sigmoid` | `x amount -- out` | logistic S curve around `0.5`; short form uses amount `8`. |
-| `smooth` | `x -- out` | `smoothstep(0, 1, x)` as a one-word shaper. |
+| `posterize` | `value levels -- out` | `floor(clamp(x, 0, 1) * n + 0.5) / n`, where `n = max(floor(abs(levels)), 2) - 1`; short form uses `6`. |
+| `pulse` | `x center width -- mask` | `smoothstep(center - abs(width), center, x) - smoothstep(center, center + abs(width), x)`; with fewer than three values defaults to center `0.5`, width `0.08`. |
+| `ramp` | `x low high -- out` | `clamp((x - low) / max(abs(high - low), 0.00001), 0, 1)`. |
+| `sat`, `saturate`, `clamp` | `color -- color` | `clamp(color, 0, 1)`. |
+| `saturation`, `sat-color` | `color amount -- color` | `vec4(mix(vec3(luma), color.rgb, amount.x), color.a)`; short form amount defaults to `1`. |
+| `sigmoid` | `x amount -- out` | `1 / (1 + exp(-amount * (x - 0.5)))`; short form uses amount `8`. |
+| `smooth` | `x -- out` | `smoothstep(0, 1, x)`. |
 | `softplus` | `x amount -- out` | soft rectifier `log(1 + exp(k*x)) / k`; short form uses amount `4`. |
-| `threshold` | `x edge -- mask` | hard threshold mask; short form uses edge `0.5`. |
-| `tonemap` | `color -- color` | filmic-ish compression for bright feedback. |
+| `threshold` | `x edge -- mask` | `step(edge, x)`; short form uses edge `0.5`. |
+| `tonemap` | `color -- color` | `vec4(max(color.rgb, 0) / (max(color.rgb, 0) + 1), color.a)`. |
 | `xor`, `bitxor` | `a b -- out` | normalized 16-bit lane XOR. |
 
 ## Color spaces

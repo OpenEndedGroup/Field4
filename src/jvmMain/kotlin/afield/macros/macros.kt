@@ -322,6 +322,9 @@ object MacroRegistry {
         callRewrite["println"] = { box, id, args ->
             box.marco_printlnHere(args)
         }
+        callRewrite["sourceBlock"] = { box, id, args ->
+            box.macro_sourceBlock(args)
+        }
 
         runAll(macroRegistration)
     }
