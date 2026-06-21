@@ -624,6 +624,28 @@ object ValueVisualizer {
     private fun shouldShowInlineSeparator(previousHtml: String, currentHtml: String): Boolean =
         !isBlockVisualization(previousHtml) && !isBlockVisualization(currentHtml)
 
+    private fun formatBlockIndent(depth: Int): String =
+        "margin-left: ${depth * 12}px;"
+
+    private fun formatKeyValueRow(
+        keyHtml: String,
+        valueHtml: String,
+        keyColor: String? = null
+    ): String {
+        val keyStyle = if (keyColor != null) {
+            "color: $keyColor; white-space: nowrap;"
+        } else {
+            "white-space: nowrap;"
+        }
+        return """
+            <div style='display: grid; grid-template-columns: max-content 1.4em minmax(0, 1fr); column-gap: 0.45em; align-items: start; margin-left: 12px;'>
+                <div style='$keyStyle'>$keyHtml</div>
+                <div style='color: #777; text-align: center;'>-&gt;</div>
+                <div style='min-width: 0; overflow-wrap: anywhere;'>$valueHtml</div>
+            </div>
+        """.trimIndent()
+    }
+
     private fun previewCountForListLike(size: Int): Int {
         if (size <= 0) return 0
         return if (size > LIST_INLINE_ELISION_THRESHOLD) MAX_LIST_PREVIEW else size
@@ -866,26 +888,23 @@ object ValueVisualizer {
 
         val size = map.size
         return buildString {
-            append("<div style='margin-left: ${depth * 10}px;'>")
+            append("<div style='${formatBlockIndent(depth)}'>")
             append("<span style='color: #aaa;'>{</span>")
 
             val entries = map.entries.take(MAX_MAP_ENTRIES).toList()
             val hasMore = size > MAX_MAP_ENTRIES
 
             entries.forEach { (key, value) ->
-                append("<div style='margin-left: 10px; display: grid; grid-template-columns: max-content max-content 1fr; column-gap: 6px; align-items: start;'>")
-                append("<div>")
-                append(visualizeValue(key, depth + 1, visited, respectDepthLimit))
-                append("</div>")
-                append("<div style='color: #888; justify-self: center;'>→</div>")
-                append("<div style='min-width: 0; text-align: left; overflow-wrap: anywhere; padding-left: 1.5em; text-indent:-1.5em;'>")
-                append(visualizeValue(value, depth + 1, visited, respectDepthLimit))
-                append("</div>")
-                append("</div>")
+                append(
+                    formatKeyValueRow(
+                        keyHtml = visualizeValue(key, depth + 1, visited, respectDepthLimit),
+                        valueHtml = visualizeValue(value, depth + 1, visited, respectDepthLimit)
+                    )
+                )
             }
 
             if (hasMore) {
-                append("<div style='margin-left: 10px;'>")
+                append("<div style='margin-left: 12px;'>")
                 append(
                     formatMoreSuffix(
                         size - MAX_MAP_ENTRIES,
@@ -1047,7 +1066,7 @@ object ValueVisualizer {
             }
 
             return buildString {
-                append("<div style='margin-left: ${depth * 10}px;'>")
+                append("<div style='${formatBlockIndent(depth)}'>")
                 append("<span style='color: #cc8;'>$className</span> <span style='color: #aaa;'>{</span>")
 
                 val entries = properties.toList()
@@ -1060,17 +1079,17 @@ object ValueVisualizer {
                         "[error: ${e.message}]"
                     }
 
-                    append("<div style='margin-left: 10px; display: grid; grid-template-columns: max-content max-content 1fr; column-gap: 6px; align-items: start;'>")
-                    append("<div style='color: #aaf;'>${prop.name}</div>")
-                    append("<div style='color: #888; justify-self: center;'>→</div>")
-                    append("<div style='min-width: 0; text-align: left; overflow-wrap: anywhere; padding-left: 1.5em; text-indent:-1.5em;'>")
-                    append(visualizeValue(propValue, depth + 1, visited, respectDepthLimit))
-                    append("</div>")
-                    append("</div>")
+                    append(
+                        formatKeyValueRow(
+                            keyHtml = escape(prop.name),
+                            valueHtml = visualizeValue(propValue, depth + 1, visited, respectDepthLimit),
+                            keyColor = "#aaf"
+                        )
+                    )
                 }
 
                 if (hasMore) {
-                    append("<div style='margin-left: 10px;'>")
+                    append("<div style='margin-left: 12px;'>")
                     append(
                         lazyInlineExpanderHtml(
                             value = obj,
@@ -1206,18 +1225,15 @@ object ValueVisualizer {
 
         return buildString {
             entries.subList(safeStart, nextEnd).forEach { (key, entryValue) ->
-                append("<div style='margin-left: 10px; display: grid; grid-template-columns: max-content max-content 1fr; column-gap: 6px; align-items: start;'>")
-                append("<div>")
-                append(visualizeValue(key, depth + 1, visited, respectDepthLimit = false))
-                append("</div>")
-                append("<div style='color: #888; justify-self: center;'>→</div>")
-                append("<div style='min-width: 0; text-align: left; overflow-wrap: anywhere; padding-left: 1.5em; text-indent:-1.5em;'>")
-                append(visualizeValue(entryValue, depth + 1, visited, respectDepthLimit = false))
-                append("</div>")
-                append("</div>")
+                append(
+                    formatKeyValueRow(
+                        keyHtml = visualizeValue(key, depth + 1, visited, respectDepthLimit = false),
+                        valueHtml = visualizeValue(entryValue, depth + 1, visited, respectDepthLimit = false)
+                    )
+                )
             }
             if (hasMore) {
-                append("<div style='margin-left: 10px;'>")
+                append("<div style='margin-left: 12px;'>")
                 append(
                     formatMoreSuffix(
                         entries.size - nextEnd,
@@ -1260,16 +1276,16 @@ object ValueVisualizer {
                     "[error: ${e.message}]"
                 }
 
-                append("<div style='margin-left: 10px; display: grid; grid-template-columns: max-content max-content 1fr; column-gap: 6px; align-items: start;'>")
-                append("<div style='color: #aaf;'>${prop.name}</div>")
-                append("<div style='color: #888; justify-self: center;'>→</div>")
-                append("<div style='min-width: 0; text-align: left; overflow-wrap: anywhere; padding-left: 1.5em; text-indent:-1.5em;'>")
-                append(visualizeValue(propValue, depth + 1, visited, respectDepthLimit = false))
-                append("</div>")
-                append("</div>")
+                append(
+                    formatKeyValueRow(
+                        keyHtml = escape(prop.name),
+                        valueHtml = visualizeValue(propValue, depth + 1, visited, respectDepthLimit = false),
+                        keyColor = "#aaf"
+                    )
+                )
             }
             if (hasMore) {
-                append("<div style='margin-left: 10px;'>")
+                append("<div style='margin-left: 12px;'>")
                 append(
                     lazyInlineExpanderHtml(
                         value = obj,

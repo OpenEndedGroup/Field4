@@ -10,6 +10,8 @@ import java.io.PrintStream
 import java.io.ByteArrayOutputStream
 import java.awt.RenderingHints
 import java.awt.image.BufferedImage
+import java.net.InetSocketAddress
+import java.net.Socket
 import java.net.URL
 import java.nio.file.Files
 import java.nio.file.Paths
@@ -903,6 +905,30 @@ tasks.register("runDesktop") {
             logger.lifecycle("DevTools enabled for Electron this run.")
         }
         val port = System.getenv("PORT")?.trim()?.takeIf { it.isNotEmpty() } ?: "9092"
+        val portNumber = port.toIntOrNull()
+            ?: throw GradleException("PORT must be an integer for runDesktop; got '$port'.")
+
+        fun isPortListening(port: Int): Boolean {
+            return runCatching {
+                Socket().use { socket ->
+                    socket.connect(InetSocketAddress("127.0.0.1", port), 250)
+                    true
+                }
+            }.getOrDefault(false) || runCatching {
+                Socket().use { socket ->
+                    socket.connect(InetSocketAddress("::1", port), 250)
+                    true
+                }
+            }.getOrDefault(false)
+        }
+
+        if (isPortListening(portNumber)) {
+            throw GradleException(
+                "Refusing to run Field desktop: port $port is already in use. " +
+                    "Close the existing Field server or set PORT to a free port. " +
+                    "Electron will not be launched against an existing server."
+            )
+        }
 
         val backendJvmArgs = (runJvmTask.jvmArgs ?: emptyList()).toMutableList()
         requiredRunJvmArgs().forEach { arg ->
@@ -938,6 +964,7 @@ tasks.register("runDesktop") {
             .redirectInput(ProcessBuilder.Redirect.INHERIT)
             .apply {
                 environment()["PORT"] = port
+                environment()["AFIELD_PORT_FALLBACK_COUNT"] = "1"
             }
             .start()
         forwardProcessOutput(backendProcess)

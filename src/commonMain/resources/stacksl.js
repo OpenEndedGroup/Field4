@@ -64,6 +64,12 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         "sample-abs.w", "sample0-abs.w", "sample1-abs.w", "sample2-abs.w", "sample3-abs.w",
         "prev", "state", "gather", "gather0", "gather1", "gather2", "gather3",
         "gather.w", "gather0.w", "gather1.w", "gather2.w", "gather3.w",
+        "crosssample", "cross-sample",
+        "crosssample.r", "crosssample.g", "crosssample.b", "crosssample.a",
+        "cross-sample.r", "cross-sample.g", "cross-sample.b", "cross-sample.a",
+        "rcrosssample", "r-cross-sample",
+        "rcrosssample.r", "rcrosssample.g", "rcrosssample.b", "rcrosssample.a",
+        "r-cross-sample.r", "r-cross-sample.g", "r-cross-sample.b", "r-cross-sample.a",
         "bitcrush", "bit-crush"
     ];
 
@@ -269,6 +275,12 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             word === "sample-abs.w" || word === "sample0-abs.w" || word === "sample1-abs.w" || word === "sample2-abs.w" || word === "sample3-abs.w" ||
             word === "gather" || word === "gather0" || word === "gather1" || word === "gather2" || word === "gather3" ||
             word === "gather.w" || word === "gather0.w" || word === "gather1.w" || word === "gather2.w" || word === "gather3.w") return effect(1, 1);
+        if (word === "crosssample" || word === "cross-sample" ||
+            word === "crosssample.r" || word === "crosssample.g" || word === "crosssample.b" || word === "crosssample.a" ||
+            word === "cross-sample.r" || word === "cross-sample.g" || word === "cross-sample.b" || word === "cross-sample.a" ||
+            word === "rcrosssample" || word === "r-cross-sample" ||
+            word === "rcrosssample.r" || word === "rcrosssample.g" || word === "rcrosssample.b" || word === "rcrosssample.a" ||
+            word === "r-cross-sample.r" || word === "r-cross-sample.g" || word === "r-cross-sample.b" || word === "r-cross-sample.a") return effect(2, 1);
         if (definitionWords && definitionWords[word]) return effect(1, 1);
         return effect(0, 0);
     }
@@ -584,6 +596,16 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             ["gray-encode", "gray-code"],
             ["ungray", "gray-decode"],
             ["bit-crush", "bitcrush"],
+            ["cross-sample", "crosssample"],
+            ["cross-sample.r", "crosssample.r"],
+            ["cross-sample.g", "crosssample.g"],
+            ["cross-sample.b", "crosssample.b"],
+            ["cross-sample.a", "crosssample.a"],
+            ["r-cross-sample", "rcrosssample"],
+            ["r-cross-sample.r", "rcrosssample.r"],
+            ["r-cross-sample.g", "rcrosssample.g"],
+            ["r-cross-sample.b", "rcrosssample.b"],
+            ["r-cross-sample.a", "rcrosssample.a"],
     ])
 
     const STACKSL_WORD_DOCS = new Map([
@@ -695,6 +717,16 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             ["sample-abs.w", stackslDoc("coord -- color", "Sample previous frame at fract(coord.xy).")],
             ["gather", stackslDoc("offset -- vec", "textureGather red channel around uv + offset.xy without wrapping.")],
             ["gather.w", stackslDoc("offset -- vec", "textureGather red channel around fract(uv + offset.xy).")],
+            ["crosssample", stackslDoc("center radius -- color", "Average four samples at center.xy +/- radius.x/y cross offsets.")],
+            ["rcrosssample", stackslDoc("center radius -- color", "Average four samples on a deterministically random rotated cross around center.xy.")],
+            ["crosssample.r", stackslDoc("center radius -- taps", "Return four red-channel cross taps in xyzw.")],
+            ["crosssample.g", stackslDoc("center radius -- taps", "Return four green-channel cross taps in xyzw.")],
+            ["crosssample.b", stackslDoc("center radius -- taps", "Return four blue-channel cross taps in xyzw.")],
+            ["crosssample.a", stackslDoc("center radius -- taps", "Return four alpha-channel cross taps in xyzw.")],
+            ["rcrosssample.r", stackslDoc("center radius -- taps", "Return four red-channel rotated-cross taps in xyzw.")],
+            ["rcrosssample.g", stackslDoc("center radius -- taps", "Return four green-channel rotated-cross taps in xyzw.")],
+            ["rcrosssample.b", stackslDoc("center radius -- taps", "Return four blue-channel rotated-cross taps in xyzw.")],
+            ["rcrosssample.a", stackslDoc("center radius -- taps", "Return four alpha-channel rotated-cross taps in xyzw.")],
             ["prev", stackslDoc("-- color", "Sample previous frame at the current uv.")],
             ["state", stackslDoc("-- color", "Alias for prev.")],
             ["0->", stackslDoc("-- value", "Read stored red channel at this pixel.")],
@@ -1179,6 +1211,14 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
                     word === "gather" || word === "gather0" || word === "gather1" || word === "gather2" || word === "gather3" ||
                     word === "gather.w" || word === "gather0.w" || word === "gather1.w" || word === "gather2.w" || word === "gather3.w") {
                     return stackslEffect(1, 1, word.includes("abs") ? "absolute sample" : "sample")
+            }
+            if (word === "crosssample" || word === "cross-sample" ||
+                    word === "crosssample.r" || word === "crosssample.g" || word === "crosssample.b" || word === "crosssample.a" ||
+                    word === "cross-sample.r" || word === "cross-sample.g" || word === "cross-sample.b" || word === "cross-sample.a" ||
+                    word === "rcrosssample" || word === "r-cross-sample" ||
+                    word === "rcrosssample.r" || word === "rcrosssample.g" || word === "rcrosssample.b" || word === "rcrosssample.a" ||
+                    word === "r-cross-sample.r" || word === "r-cross-sample.g" || word === "r-cross-sample.b" || word === "r-cross-sample.a") {
+                    return stackslEffect(2, 1, "neighborhood sample")
             }
 
             if (definitionWords && definitionWords.has(word)) return stackslEffect(1, 1, "word call")

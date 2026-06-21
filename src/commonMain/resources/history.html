@@ -1329,6 +1329,9 @@
             let historyRefreshPending = false;
             let pendingDiffAfterStats = false;
             let historyStatsRenderRaf = null;
+            let historyLoadStartedAt = 0;
+            let historyStatsStartedAt = 0;
+            let lastHistoryStatsLogCompleted = -1;
             let screenshotPreviewEl = null;
             let diffPlaceholderText = "Diffing...";
             let lastParentSelectionSignature = "";
@@ -1346,6 +1349,24 @@
 	            const exactLineDeltaCache = new Map();
             const ELECTRON_SCREENSHOT_IDLE_DELAY_MS = 1200;
             const ELECTRON_SCREENSHOT_MIN_INTERVAL_MS = 10000;
+
+            function historyNow() {
+                return typeof performance !== "undefined" &&
+                    typeof performance.now === "function"
+                    ? performance.now()
+                    : Date.now();
+            }
+
+            function historyElapsed(startedAt) {
+                if (!startedAt) return 0;
+                return Math.round(historyNow() - startedAt);
+            }
+
+            function historyLog(message, extra = {}) {
+                try {
+                    console.info(`[history] ${message}`, extra);
+                } catch (_) {}
+            }
 
             function connect() {
                 if (disposed) return;
@@ -1637,6 +1658,11 @@
 	                    railLineStatsRequestSignature = "";
 	                    versions = message.payload?.versions || [];
                     transitions = message.payload?.transitions || [];
+                    historyLog("versions list received", {
+                        versions: versions.length,
+                        transitions: transitions.length,
+                        requestMs: historyElapsed(historyLoadStartedAt),
+                    });
                     if (preserveSelection && versions.length) {
                         if (wasAtLatest) {
                             selectedIndex = Math.max(0, versions.length - 1);
@@ -1669,7 +1695,13 @@
                         Math.max(0, versions.length - 1),
                         historyStatsLoading,
                     );
+                    const renderStartedAt = historyNow();
                     renderVersions();
+                    historyLog("initial render complete", {
+                        versions: versions.length,
+                        renderMs: historyElapsed(renderStartedAt),
+                        requestToRenderMs: historyElapsed(historyLoadStartedAt),
+                    });
                     requestAnimationFrame(() => centerSelectedRailVersion());
                     if (historySearchQuery.trim()) requestHistorySearchNow();
                     if (selectedIsCurrentVersion()) {
@@ -1682,13 +1714,42 @@
 
                 if (message.name === "history-version-stats-progress") {
                     const payload = message.payload || {};
+                    const completed = Number(payload.completed) || 0;
+                    const total = Number(payload.total) || 0;
+                    if (completed === 0 && total > 0) {
+                        historyStatsStartedAt = historyNow();
+                        lastHistoryStatsLogCompleted = -1;
+                        historyLog("stats stream started", { total });
+                    }
                     mergeVersionStats(payload);
                     setHistoryProgress(
-                        Number(payload.completed) || 0,
-                        Number(payload.total) || 0,
+                        completed,
+                        total,
                         !payload.done,
                     );
                     scheduleStatsRailRender();
+                    const progressInterval =
+                        total >= 10000 ? 1000 : total >= 1000 ? 250 : 100;
+                    if (
+                        payload.done ||
+                        completed === 1 ||
+                        (completed > 0 &&
+                            completed - lastHistoryStatsLogCompleted >=
+                                progressInterval)
+                    ) {
+                        lastHistoryStatsLogCompleted = completed;
+                        historyLog(
+                            payload.done
+                                ? "stats stream complete"
+                                : "stats stream progress",
+                            {
+                                completed,
+                                total,
+                                statsMs: historyElapsed(historyStatsStartedAt),
+                                totalLoadMs: historyElapsed(historyLoadStartedAt),
+                            },
+                        );
+                    }
                     if (payload.done) {
                         historyStatsLoading = false;
                         historyRequestInFlight = false;
@@ -1868,10 +1929,20 @@
                     historyRefreshPending = true;
                     preserveNextHistorySelection =
                         preserveNextHistorySelection || !!options.preserveSelection;
+                    historyLog("history request deferred", {
+                        preserveSelection: preserveNextHistorySelection,
+                    });
                     return;
                 }
                 historyRequestInFlight = true;
                 preserveNextHistorySelection = !!options.preserveSelection;
+                historyLoadStartedAt = historyNow();
+                historyStatsStartedAt = 0;
+                lastHistoryStatsLogCompleted = -1;
+                historyLog("history request sent", {
+                    filename,
+                    preserveSelection: preserveNextHistorySelection,
+                });
                 send({ name: "list-history-versions", payload: {} });
             }
 
@@ -3456,6 +3527,7 @@
             }
 
             function renderRail(options = {}) {
+                const renderStartedAt = historyNow();
                 const previousPositions = new Map(
                     railPositions.map((position) => [
                         position.versionIndex,
@@ -3612,6 +3684,15 @@
                 restoreSelectedRailScreenAnchor(anchor);
                 requestSelectedRailLineStatsSoon();
                 if (lineBlameActive) requestLineBlameSoon();
+                const renderMs = historyElapsed(renderStartedAt);
+                if (renderMs >= 50 || items.length >= 5000) {
+                    historyLog("rail render", {
+                        items: items.length,
+                        versions: versions.length,
+                        width,
+                        renderMs,
+                    });
+                }
             }
 
             function selectNearestRailVersion(event) {

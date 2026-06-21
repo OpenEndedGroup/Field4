@@ -103,9 +103,15 @@ private val stackAutoModuleOwners = Collections.synchronizedMap(WeakHashMap<Any,
 
 private data class StackAutoShaderTarget(
     val name: String,
-    val entrypoint: String? = null
+    val entrypoint: String? = null,
+    val sampleTexture: String = "source"
 ) {
-    val key: String get() = entrypoint?.let { "$name:$it" } ?: name
+    val key: String
+        get() = buildString {
+            append(name)
+            entrypoint?.let { append(":").append(it) }
+            if (sampleTexture != "source") append("@").append(sampleTexture)
+        }
 }
 
 private fun validateStackAutoShaderName(name: String) {
@@ -120,13 +126,23 @@ private fun validateStackAutoEntrypointName(name: String) {
     }
 }
 
+private fun validateStackAutoSamplerName(name: String) {
+    require(stackAutoShaderNameRegex.matches(name)) {
+        "stack.auto sampler '$name' must be a GLSL identifier."
+    }
+}
+
 private fun parseStackAutoShaderTarget(raw: String): StackAutoShaderTarget {
     val trimmed = raw.trim()
-    val name = trimmed.substringBefore(':').trim()
-    val entrypoint = trimmed.substringAfter(':', missingDelimiterValue = "").trim().takeIf { it.isNotEmpty() }
+    val samplerMarker = trimmed.indexOf('@')
+    val body = if (samplerMarker >= 0) trimmed.substring(0, samplerMarker).trim() else trimmed
+    val sampleTexture = if (samplerMarker >= 0) trimmed.substring(samplerMarker + 1).trim() else "source"
+    val name = body.substringBefore(':').trim()
+    val entrypoint = body.substringAfter(':', missingDelimiterValue = "").trim().takeIf { it.isNotEmpty() }
     validateStackAutoShaderName(name)
     entrypoint?.let(::validateStackAutoEntrypointName)
-    return StackAutoShaderTarget(name, entrypoint)
+    validateStackAutoSamplerName(sampleTexture)
+    return StackAutoShaderTarget(name, entrypoint, sampleTexture)
 }
 
 private fun defaultStackAutoShaderFunction(name: String): String =
@@ -147,7 +163,8 @@ private fun compileStackAutoShaderFunction(target: StackAutoShaderTarget, source
             tolerant = false,
             includeHeader = false,
             declareSamplers = false,
-            externalizeConstants = false
+            externalizeConstants = false,
+            sampleTextures = listOf(target.sampleTexture)
         )
     )
 
@@ -166,11 +183,18 @@ private fun stackAutoShaderFunctionFor(box: Box, target: StackAutoShaderTarget):
     return compileStackAutoShaderFunction(target, box.stackAutoShaderSources[target.name] ?: "")
 }
 
-private fun stackAutoTemplateResolverFor(box: Box, emitted: MutableSet<String>): Resolver =
+private fun stackAutoTemplateResolverFor(box: Box, emitted: MutableMap<String, StackAutoShaderTarget>): Resolver =
     Resolver { key ->
         fun resolveTarget(raw: String): String {
             val target = parseStackAutoShaderTarget(raw)
-            if (!emitted.add(target.key)) return ""
+            val previous = emitted[target.name]
+            if (previous != null) {
+                require(previous == target) {
+                    "stack.auto.${target.name} was already emitted as stack.auto.${previous.key}; cannot also emit stack.auto.${target.key} in the same shader stage."
+                }
+                return ""
+            }
+            emitted[target.name] = target
             return stackAutoShaderFunctionFor(box, target)
         }
 
@@ -1003,7 +1027,7 @@ private fun preprocess(
     defaultProperty: String = defaultShaderProperty(kind),
     includeStack: List<String> = emptyList(),
     priorStages: Map<ShaderKind, PreparedShaderStage> = emptyMap(),
-    stackAutoEmitted: MutableSet<String> = mutableSetOf()
+    stackAutoEmitted: MutableMap<String, StackAutoShaderTarget> = mutableMapOf()
 ): String {
     val sourceWithCopiedPushConstants = expandCopyPushConstantTags(
         source = source,
@@ -3059,11 +3083,13 @@ private fun buildStackAutoShaderPreamble(box: Box?): String {
     /*
      * How to drive stack.auto templates:
      *
-     *   1. Put a StackSL auto slot in GLSL with `{{ stack.auto.foo }}` or
-     *      `{{ stack.auto.foo:word }}`. Template expansion emits a GLSL function
+     *   1. Put a StackSL auto slot in GLSL with `{{ stack.auto.foo }}`,
+     *      `{{ stack.auto.foo:word }}`, `{{ stack.auto.foo@samplerName }}`, or
+     *      `{{ stack.auto.foo:word@samplerName }}`. Template expansion emits a GLSL function
      *      named `foo` exactly once per expanded shader stage, so later GLSL can
      *      call `foo(vec4(...))`. The optional `:word` forces a StackSL definition
-     *      in `module.foo` to be used as the generated function body.
+     *      in `module.foo` to be used as the generated function body. The optional
+     *      `@samplerName` makes sample words read that GLSL sampler instead of `source`.
      *   2. If no Kotlin code has bound `foo`, the emitted function is the stable
      *      fallback `vec4 foo(vec4 foo_in) { return vec4(0.0); }`. The argument
      *      name deliberately avoids `input`, which is reserved in GLSL 450.

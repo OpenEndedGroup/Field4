@@ -1,5 +1,9 @@
 package afield.examples.stacksl
 
+import afield.Box
+import afield.four.modules.ShaderKind
+import afield.stdlib.preprocess
+import afield.stdlib.stackAutoShaderSources
 import afield.stacksl.StackSLCompileOptions
 import afield.stacksl.StackSLCompiler
 import afield.stacksl.StackSLSeverity
@@ -29,6 +33,7 @@ object StackSLSmokeTest {
             reportsStrictAndTolerantUnknownWords()
             keepsShortMutatedProgramsValid()
             emitsSamplerEnvironment()
+            emitsNeighborhoodSamplerHelpers()
             usesXyzHashTimeInputConvention()
             lengthUsesSpatialChannelsByDefault()
             emitsColorSpaceHelpers()
@@ -43,6 +48,7 @@ object StackSLSmokeTest {
             compilesOneMinusOperator()
             compilesGeometryOperatorsAndVecLiterals()
             compilesExternalHostGlslEscapeHatches()
+            expandsStackAutoSamplerOverrides()
             compilesCreativeFreedomVariants()
             println("StackSL compiler smoke tests passed")
             true
@@ -129,6 +135,24 @@ object StackSLSmokeTest {
         require("uniform sampler2D state;" in result.glsl)
         require("uniform sampler2D ping_state;" !in result.glsl)
         require("ping_sample(state, ping_in" in result.glsl)
+        require(result.analysis.requiredSamplers == setOf("state")) { result.analysis.requiredSamplers.toString() }
+    }
+
+    private fun emitsNeighborhoodSamplerHelpers() {
+        val result = StackSLCompiler.compile(
+            """
+            uv 0.01 crossSample
+            uv 0.02 rCrossSample.r
+            +
+            """.trimIndent(),
+            StackSLCompileOptions(prefix = "cross", sampleTextures = listOf("state"))
+        )
+
+        require(result.ok) { result.diagnostics.joinToString("\n") }
+        require("uniform sampler2D state;" in result.glsl) { result.glsl }
+        require("cross_crossSample(state" in result.glsl) { result.glsl }
+        require("cross_randomCrossSampleChannel(state" in result.glsl) { result.glsl }
+        require("cross_hash21" in result.glsl) { result.glsl }
         require(result.analysis.requiredSamplers == setOf("state")) { result.analysis.requiredSamplers.toString() }
     }
 
@@ -496,6 +520,31 @@ object StackSLSmokeTest {
         require("+ pc.bar" in result.glsl) { result.glsl }
         require(Regex("""pc\.foo = _host_v\d+;""").containsMatchIn(result.glsl)) { result.glsl }
         require(Regex("""pc\.inData\.p\[idx]\.posvel\.Z = _host_v\d+;""").containsMatchIn(result.glsl)) { result.glsl }
+    }
+
+    private fun expandsStackAutoSamplerOverrides() {
+        val box = Box("stack-auto-sampler-smoke")
+        box.stackAutoShaderSources["foo"] = """
+            : bar 0.2 sample ;
+            0.1 sample
+        """.trimIndent()
+
+        val direct = preprocess(
+            box,
+            "{{ stack.auto.foo@noiseFieldView }}",
+            ShaderKind.FRAGMENT_SHADER
+        )
+        require("foo_sample(noiseFieldView" in direct) { direct }
+        require("foo_sample(source" !in direct) { direct }
+
+        val entrypoint = preprocess(
+            box,
+            "{{ stack.auto.foo:bar@noiseFieldView }}",
+            ShaderKind.FRAGMENT_SHADER
+        )
+        require("foo_sample(noiseFieldView" in entrypoint) { entrypoint }
+        require("foo_bar" in entrypoint) { entrypoint }
+        require("foo_sample(source" !in entrypoint) { entrypoint }
     }
 
     private fun compilesCreativeFreedomVariants() {

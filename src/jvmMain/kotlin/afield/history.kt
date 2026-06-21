@@ -124,6 +124,13 @@ object HistoryManager {
         val movedBoxes: Int = 0
     )
 
+    data class VersionDiffSummary(
+        val versionIndex: Int,
+        val boxIds: Set<String>,
+        val textProps: Map<String, Map<String, String>>,
+        val comparableProps: Map<String, Map<String, String>>
+    )
+
     private val topologyProperties = setOf("children", "parents", "nested", "nestedIn")
     private val hiddenScrubProperties = setOf(
         "code_decorationState",
@@ -239,16 +246,40 @@ object HistoryManager {
      * Uses cached data if available, otherwise scans from disk.
      */
     fun listVersions(documentPath: String): List<VersionInfo> {
-        synchronized(versionCacheLock) {
+        val startedAt = System.nanoTime()
+        var cacheState = "miss"
+        var versionCount = 0
+        val result = synchronized(versionCacheLock) {
             val cached = versionCache[documentPath]
             if (cached != null) {
-                return cached.toList()
+                cacheState = "hit"
+                versionCount = cached.size
+                cached.toList()
+            } else {
+                val versions = scanVersionsFromDisk(documentPath)
+                versionCache[documentPath] = versions.toMutableList()
+                versionCount = versions.size
+                versions
             }
-
-            val versions = scanVersionsFromDisk(documentPath)
-            versionCache[documentPath] = versions.toMutableList()
-            return versions
         }
+        val elapsedMs = SaveReloadLog.logTiming(
+            "history-list-versions",
+            startedAt,
+            "doc=$documentPath cache=$cacheState versions=$versionCount",
+            thresholdMs = if (cacheState == "hit") 250L else 0L
+        )
+        if (elapsedMs >= 500L) {
+            lprintln(
+                "warning,history",
+                "slow history list doc=$documentPath ms=$elapsedMs cache=$cacheState versions=$versionCount"
+            )
+        } else if (cacheState == "miss") {
+            lprintln(
+                "info,history",
+                "history list loaded doc=$documentPath ms=$elapsedMs versions=$versionCount cache=$cacheState"
+            )
+        }
+        return result
     }
 
     /**
@@ -259,6 +290,7 @@ object HistoryManager {
         val startedAt = System.nanoTime()
         val docDir = File(documentPath)
         var backupCount = 0
+        lprintln("info,history", "history scan start doc=$documentPath")
 
         if (!docDir.exists()) {
             lprintln("warning,history", "Document directory does not exist: ${docDir.absolutePath}")
@@ -282,6 +314,7 @@ object HistoryManager {
             emptyList()
         }
         backupCount = backupFiles.size
+        lprintln("info,history", "history scan found backups doc=$documentPath backupCount=$backupCount")
 
         // Add the current metadata.edn as the latest version (if it exists)
         val currentMetadata = File(docDir, "metadata.edn")
@@ -1062,6 +1095,7 @@ object HistoryManager {
     }
 
     private fun computeDetailedLineStats(oldText: String, newText: String): HistoryLineStats {
+        if (oldText == newText) return HistoryLineStats()
         val oldLines = if (oldText.isEmpty()) emptyList() else oldText.split('\n')
         val newLines = if (newText.isEmpty()) emptyList() else newText.split('\n')
         if (oldLines.isEmpty() && newLines.isEmpty()) return HistoryLineStats()
@@ -1402,6 +1436,33 @@ object HistoryManager {
 
     fun computeDiffStat(documentPath: String, previous: VersionInfo, current: VersionInfo): HistoryDiffStats {
         return computeVersionDiff(documentPath, previous, current)
+    }
+
+    fun loadVersionDiffSummary(documentPath: String, version: VersionInfo): VersionDiffSummary {
+        val savingContext = SavingContext()
+        val snapshot = loadVersionSnapshot(version, documentPath, savingContext)
+        val activeTransfers = snapshot.transfers
+            .filterNot { isTombstoned(it, snapshot.directory, savingContext) }
+        val states = snapshotStates(snapshot, savingContext)
+        return VersionDiffSummary(
+            versionIndex = version.index,
+            boxIds = states.keys.toSet(),
+            textProps = extractTextProperties(
+                activeTransfers,
+                snapshot.directory,
+                savingContext,
+                snapshot.preferInlineFiles
+            ),
+            comparableProps = states.mapValues { (_, state) -> comparablePersistentProperties(state) }
+        )
+    }
+
+    fun computeDiffStat(previous: VersionDiffSummary, current: VersionDiffSummary): HistoryDiffStats {
+        return computeVersionDiff(
+            previous.textProps,
+            current.textProps,
+            computePersistentChangeKinds(previous.comparableProps, current.comparableProps)
+        )
     }
 
     fun searchVersionTextChanges(documentPath: String, query: String): List<Int> {
@@ -1939,7 +2000,16 @@ object HistoryManager {
     ): HistoryDiffStats {
         val prevProps = loadTextualBoxProps(previous, documentPath)
         val currProps = loadTextualBoxProps(current, documentPath)
+        val changeKinds = computePersistentChangeKinds(documentPath, previous, current)
 
+        return computeVersionDiff(prevProps, currProps, changeKinds)
+    }
+
+    private fun computeVersionDiff(
+        prevProps: Map<String, Map<String, String>>,
+        currProps: Map<String, Map<String, String>>,
+        changeKinds: PersistentChangeKinds
+    ): HistoryDiffStats {
         val prevIds = prevProps.keys
         val currIds = currProps.keys
 
@@ -1947,7 +2017,6 @@ object HistoryManager {
         val deletedIds = prevIds - currIds
         val sharedIds = prevIds intersect currIds
         val changedCodeBoxes = mutableListOf<String>()
-        val changeKinds = computePersistentChangeKinds(documentPath, previous, current)
 	        val changedBoxIds = changeKinds.changedIds
 	        val boxLineStats = linkedMapOf<String, HistoryLineStats>()
 
@@ -2078,6 +2147,35 @@ object HistoryManager {
             lprintln("warning,history", "Failed to compute changed box ids ${previous.index} -> ${current.index}: ${e.message}")
             PersistentChangeKinds()
         }
+    }
+
+    private fun computePersistentChangeKinds(
+        previousStates: Map<String, Map<String, String>>,
+        currentStates: Map<String, Map<String, String>>
+    ): PersistentChangeKinds {
+        val changedIds = linkedSetOf<String>()
+        var editedBoxes = 0
+        var movedBoxes = 0
+        (previousStates.keys + currentStates.keys).forEach { id ->
+            val oldProps = previousStates[id]
+            val newProps = currentStates[id]
+            if (oldProps != null && newProps != null && oldProps == newProps) return@forEach
+
+            changedIds += id
+            val frameMoved = oldProps != null &&
+                newProps != null &&
+                oldProps["frame"] != newProps["frame"]
+            val nonFrameChanged = oldProps == null ||
+                newProps == null ||
+                oldProps.filterKeys { it != "frame" } != newProps.filterKeys { it != "frame" }
+            if (frameMoved) movedBoxes++
+            if (nonFrameChanged) editedBoxes++
+        }
+        return PersistentChangeKinds(
+            changedIds = changedIds,
+            editedBoxes = editedBoxes,
+            movedBoxes = movedBoxes
+        )
     }
 
     private fun comparablePersistentProperties(state: HistoryBoxState): Map<String, String> {
@@ -2220,6 +2318,216 @@ private fun historyVersionDtos(documentPath: String, indexes: Set<Int>? = null):
         }
 }
 
+@OptIn(DelicateCoroutinesApi::class)
+private fun launchHistoryStatsStream(
+    statsKey: String,
+    documentPath: String,
+    versionSnapshot: List<HistoryManager.VersionInfo>,
+    total: Int,
+    reply: (Message) -> Unit
+): Job = GlobalScope.launch(Dispatchers.IO) {
+    val streamStartedAt = System.nanoTime()
+    var lastProgressLogAt = streamStartedAt
+    val progressInterval = when {
+        total >= 10_000 -> 1_000
+        total >= 1_000 -> 250
+        else -> 100
+    }
+    lprintln("info,history", "history stats stream start doc=$documentPath total=$total interval=$progressInterval")
+    try {
+        var previousSummary = try {
+            HistoryManager.loadVersionDiffSummary(documentPath, versionSnapshot.first())
+        } catch (e: Exception) {
+            lprintln("warning,history", "Failed to load initial history summary for version ${versionSnapshot.firstOrNull()?.index}: ${e.message}")
+            null
+        }
+        for (i in 1 until versionSnapshot.size) {
+            if (!isActive) return@launch
+            val loadStartedAt = System.nanoTime()
+            val currentSummary = try {
+                HistoryManager.loadVersionDiffSummary(documentPath, versionSnapshot[i])
+            } catch (e: Exception) {
+                lprintln("warning,history", "Failed to load history summary for version ${versionSnapshot[i].index}: ${e.message}")
+                null
+            }
+            val loadMs = SaveReloadLog.elapsedMillis(loadStartedAt)
+            val boxIds = currentSummary?.boxIds ?: emptySet()
+            if (!isActive) return@launch
+            val diffStartedAt = System.nanoTime()
+            val stats = if (previousSummary != null && currentSummary != null) {
+                try {
+                    HistoryManager.computeDiffStat(previousSummary, currentSummary)
+                } catch (e: Exception) {
+                    lprintln("warning,history", "Failed to stream diff stat ${i - 1} -> $i: ${e.message}")
+                    null
+                }
+            } else {
+                null
+            }
+            val diffMs = SaveReloadLog.elapsedMillis(diffStartedAt)
+            if (!isActive) return@launch
+            if (stats != null && i == versionSnapshot.lastIndex) {
+                HistoryMetrics.recordEditStats(documentPath, versionSnapshot[i].index, stats)
+            }
+            if (!isActive) return@launch
+            if (loadMs >= 1_000L || diffMs >= 1_000L) {
+                lprintln(
+                    "warning,history",
+                    "slow history stats item doc=$documentPath version=${versionSnapshot[i].index} completed=$i/$total loadMs=$loadMs diffMs=$diffMs file=${versionSnapshot[i].file.name}"
+                )
+            }
+            val now = System.nanoTime()
+            if (i == 1 || i == total || i % progressInterval == 0 || SaveReloadLog.elapsedMillis(lastProgressLogAt) >= 5_000L) {
+                lastProgressLogAt = now
+                val elapsedMs = SaveReloadLog.elapsedMillis(streamStartedAt)
+                SaveReloadLog.log(
+                    "history-stats-progress",
+                    "doc=$documentPath completed=$i total=$total ms=$elapsedMs lastLoadMs=$loadMs lastDiffMs=$diffMs"
+                )
+                lprintln(
+                    "info,history",
+                    "history stats progress doc=$documentPath completed=$i/$total ms=$elapsedMs lastLoadMs=$loadMs lastDiffMs=$diffMs"
+                )
+            }
+            reply(
+                Message("history-version-stats-progress").payload(
+                    HistoryVersionStatsProgress(
+                        versionIndex = versionSnapshot[i].index,
+                        completed = i,
+                        total = total,
+                        diffStats = stats,
+                        boxCount = boxIds.size,
+                        boxIds = boxIds.toList().sorted(),
+                        done = i == total
+                    )
+                )
+            )
+            previousSummary = currentSummary
+        }
+    } catch (e: CancellationException) {
+        lprintln(
+            "info,history",
+            "history stats stream canceled doc=$documentPath completedMs=${SaveReloadLog.elapsedMillis(streamStartedAt)}"
+        )
+        throw e
+    } catch (t: Throwable) {
+        lprintln("warning,history", "History stats stream failed for $documentPath: ${t.message}")
+        reply(
+            Message("history-version-stats-progress").payload(
+                HistoryVersionStatsProgress(
+                    versionIndex = -1,
+                    completed = total,
+                    total = total,
+                    done = true
+                )
+            )
+        )
+    } finally {
+        SaveReloadLog.logTiming(
+            "history-stats-stream",
+            streamStartedAt,
+            "doc=$documentPath total=$total active=$isActive",
+            thresholdMs = 0L
+        )
+        if (isActive) {
+            lprintln(
+                "info,history",
+                "history stats stream end doc=$documentPath ms=${SaveReloadLog.elapsedMillis(streamStartedAt)} total=$total"
+            )
+        }
+        historyStatsJobs.remove(statsKey, coroutineContext[Job])
+    }
+}
+
+@OptIn(DelicateCoroutinesApi::class)
+private fun launchHistoryRailLineStatsStream(
+    statsKey: String,
+    documentPath: String,
+    sessionInfo: SessionInformation,
+    orderedIndexes: List<Int>,
+    boxFilter: Set<String>,
+    propertyFilter: Set<String>,
+    sortedFilter: List<String>,
+    sortedProperties: List<String>,
+    total: Int,
+    basis: String,
+    reply: (Message) -> Unit
+): Job = GlobalScope.launch(Dispatchers.IO) {
+    try {
+        var completed = 0
+        if (basis == "current") {
+            HistoryManager.streamRailLineStatsAgainstLive(
+                documentPath,
+                sessionInfo,
+                orderedIndexes,
+                boxFilter,
+                propertyFilter,
+                shouldContinue = { isActive }
+            ) { versionIndex, stats ->
+                completed++
+                reply(
+                    Message("history-rail-line-stats-progress").payload(
+                        HistoryRailLineStatsProgress(
+                            basis = basis,
+                            versionIndex = versionIndex,
+                            completed = completed,
+                            total = total,
+                            boxFilter = sortedFilter,
+                            properties = sortedProperties,
+                            lineStats = stats,
+                            done = completed == total
+                        )
+                    )
+                )
+            }
+        } else {
+            orderedIndexes.forEach { versionIndex ->
+                if (!isActive) return@launch
+                val stats = HistoryManager.diffVersionAgainstPrevious(
+                    documentPath,
+                    versionIndex,
+                    boxFilter,
+                    propertyFilter
+                )?.lineStats ?: HistoryLineStats()
+                completed++
+                reply(
+                    Message("history-rail-line-stats-progress").payload(
+                        HistoryRailLineStatsProgress(
+                            basis = basis,
+                            versionIndex = versionIndex,
+                            completed = completed,
+                            total = total,
+                            boxFilter = sortedFilter,
+                            properties = sortedProperties,
+                            lineStats = stats,
+                            done = completed == total
+                        )
+                    )
+                )
+            }
+        }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        lprintln("warning,history", "History rail line stats stream failed for $documentPath: ${e.message}")
+        reply(
+            Message("history-rail-line-stats-progress").payload(
+                HistoryRailLineStatsProgress(
+                    basis = basis,
+                    versionIndex = -1,
+                    completed = total,
+                    total = total,
+                    boxFilter = sortedFilter,
+                    properties = sortedProperties,
+                    done = true
+                )
+            )
+        )
+    } finally {
+        historyRailStatsJobs.remove(statsKey, coroutineContext[Job])
+    }
+}
+
 /**
  * Install RPC handlers for document history operations
  */
@@ -2227,12 +2535,23 @@ private fun historyVersionDtos(documentPath: String, indexes: Set<Int>? = null):
 @OptIn(DelicateCoroutinesApi::class)
 fun installHistoryHandlers() {
     handlers["list-history-versions"] = mutableSetOf({ message, reply ->
+        val startedAt = System.nanoTime()
         val info = thisSessionInfo.get()
         val session = thisSession.get()
-        val versions = HistoryManager.listVersions(info.filename)
-        val names = HistoryManager.getVersionNames(info.filename)
-        val activityByVersion = HistoryMetrics.activityByVersion(info.filename)
+        val documentPath = info.filename
+        lprintln("info,history", "history panel load start doc=$documentPath")
 
+        val listStartedAt = System.nanoTime()
+        val versions = HistoryManager.listVersions(info.filename)
+        val listMs = SaveReloadLog.elapsedMillis(listStartedAt)
+        val namesStartedAt = System.nanoTime()
+        val names = HistoryManager.getVersionNames(info.filename)
+        val namesMs = SaveReloadLog.elapsedMillis(namesStartedAt)
+        val activityStartedAt = System.nanoTime()
+        val activityByVersion = HistoryMetrics.activityByVersion(info.filename)
+        val activityMs = SaveReloadLog.elapsedMillis(activityStartedAt)
+
+        val dtoStartedAt = System.nanoTime()
         val historyVersions = versions.map { v ->
             HistoryVersion(
                 index = v.index,
@@ -2246,7 +2565,9 @@ fun installHistoryHandlers() {
                 activityStats = activityByVersion[v.index]
             )
         }
+        val dtoMs = SaveReloadLog.elapsedMillis(dtoStartedAt)
 
+        val transitionsStartedAt = System.nanoTime()
         val transitions = HistoryManager.getTransitions(info.filename).map {
             VersionTransition(
                 fromIndex = it.fromIndex,
@@ -2254,7 +2575,9 @@ fun installHistoryHandlers() {
                 timestamp = it.timestamp
             )
         }
+        val transitionsMs = SaveReloadLog.elapsedMillis(transitionsStartedAt)
 
+        val replyStartedAt = System.nanoTime()
         reply(
             Message("history-versions-list")
                 .payload(
@@ -2263,6 +2586,17 @@ fun installHistoryHandlers() {
                         transitions = transitions
                     )
                 )
+        )
+        val replyMs = SaveReloadLog.elapsedMillis(replyStartedAt)
+        val firstReplyMs = SaveReloadLog.logTiming(
+            "history-panel-first-reply",
+            startedAt,
+            "doc=$documentPath versions=${versions.size} transitions=${transitions.size} listMs=$listMs namesMs=$namesMs activityMs=$activityMs dtoMs=$dtoMs transitionsMs=$transitionsMs replyMs=$replyMs",
+            thresholdMs = 0L
+        )
+        lprintln(
+            "info,history",
+            "history panel first reply doc=$documentPath ms=$firstReplyMs versions=${versions.size} transitions=${transitions.size} listMs=$listMs namesMs=$namesMs activityMs=$activityMs dtoMs=$dtoMs transitionsMs=$transitionsMs replyMs=$replyMs"
         )
 
         val total = (versions.size - 1).coerceAtLeast(0)
@@ -2278,6 +2612,7 @@ fun installHistoryHandlers() {
                 )
             )
         } else {
+            lprintln("info,history", "history stats stream queued doc=$documentPath total=$total")
             reply(
                 Message("history-version-stats-progress").payload(
                     HistoryVersionStatsProgress(
@@ -2289,63 +2624,13 @@ fun installHistoryHandlers() {
                 )
             )
             val statsKey = "${System.identityHashCode(session)}:${info.filename}"
-            historyStatsJobs.remove(statsKey)?.cancel()
-            val documentPath = info.filename
-            val versionSnapshot = versions.toList()
-            val job = GlobalScope.launch(Dispatchers.IO) {
-                try {
-                    for (i in 1 until versionSnapshot.size) {
-                        if (!isActive) return@launch
-                        val boxIds = try {
-                            HistoryManager.boxIdsForVersion(documentPath, versionSnapshot[i])
-                        } catch (e: Exception) {
-                            lprintln("warning,history", "Failed to stream box ids for version $i: ${e.message}")
-                            emptySet()
-                        }
-                        if (!isActive) return@launch
-                        val stats = try {
-                            HistoryManager.computeDiffStat(documentPath, versionSnapshot[i - 1], versionSnapshot[i])
-                        } catch (e: Exception) {
-                            lprintln("warning,history", "Failed to stream diff stat ${i - 1} -> $i: ${e.message}")
-                            null
-                        }
-                        if (!isActive) return@launch
-                        if (stats != null && i == versionSnapshot.lastIndex) {
-                            HistoryMetrics.recordEditStats(documentPath, versionSnapshot[i].index, stats)
-                        }
-                        if (!isActive) return@launch
-                        reply(
-                            Message("history-version-stats-progress").payload(
-                                HistoryVersionStatsProgress(
-                                    versionIndex = versionSnapshot[i].index,
-                                    completed = i,
-                                    total = total,
-                                    diffStats = stats,
-                                    boxCount = boxIds.size,
-                                    boxIds = boxIds.toList().sorted(),
-                                    done = i == total
-                                )
-                            )
-                        )
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (t: Throwable) {
-                    lprintln("warning,history", "History stats stream failed for $documentPath: ${t.message}")
-                    reply(
-                        Message("history-version-stats-progress").payload(
-                            HistoryVersionStatsProgress(
-                                versionIndex = -1,
-                                completed = total,
-                                total = total,
-                                done = true
-                            )
-                        )
-                    )
-                } finally {
-                    historyStatsJobs.remove(statsKey, coroutineContext[Job])
-                }
+            val oldJob = historyStatsJobs.remove(statsKey)
+            if (oldJob != null) {
+                lprintln("info,history", "history stats stream cancel previous doc=$documentPath key=$statsKey")
+                oldJob.cancel()
             }
+            val versionSnapshot = versions.toList()
+            val job = launchHistoryStatsStream(statsKey, documentPath, versionSnapshot, total, reply)
             historyStatsJobs[statsKey] = job
         }
         Handled.yes
@@ -2447,81 +2732,19 @@ fun installHistoryHandlers() {
 	            )
 	        )
 
-	        val job = GlobalScope.launch(Dispatchers.IO) {
-	            try {
-	                var completed = 0
-	                if (basis == "current") {
-	                    HistoryManager.streamRailLineStatsAgainstLive(
-	                        documentPath,
-	                        info,
-	                        orderedIndexes,
-	                        boxFilter,
-	                        propertyFilter,
-	                        shouldContinue = { isActive }
-	                    ) { versionIndex, stats ->
-	                        completed++
-	                        reply(
-	                            Message("history-rail-line-stats-progress").payload(
-	                                HistoryRailLineStatsProgress(
-	                                    basis = basis,
-	                                    versionIndex = versionIndex,
-	                                    completed = completed,
-	                                    total = total,
-	                                    boxFilter = sortedFilter,
-	                                    properties = sortedProperties,
-	                                    lineStats = stats,
-	                                    done = completed == total
-	                                )
-	                            )
-	                        )
-	                    }
-	                } else {
-	                    orderedIndexes.forEach { versionIndex ->
-	                        if (!isActive) return@launch
-	                        val stats = HistoryManager.diffVersionAgainstPrevious(
-	                            documentPath,
-	                            versionIndex,
-	                            boxFilter,
-	                            propertyFilter
-	                        )?.lineStats ?: HistoryLineStats()
-	                        completed++
-	                        reply(
-	                            Message("history-rail-line-stats-progress").payload(
-	                                HistoryRailLineStatsProgress(
-	                                    basis = basis,
-	                                    versionIndex = versionIndex,
-	                                    completed = completed,
-	                                    total = total,
-	                                    boxFilter = sortedFilter,
-	                                    properties = sortedProperties,
-	                                    lineStats = stats,
-	                                    done = completed == total
-	                                )
-	                            )
-	                        )
-	                    }
-	                }
-	            } catch (e: CancellationException) {
-	                throw e
-	            } catch (e: Exception) {
-	                lprintln("warning,history", "History rail line stats stream failed for $documentPath: ${e.message}")
-	                reply(
-	                    Message("history-rail-line-stats-progress").payload(
-	                        HistoryRailLineStatsProgress(
-	                            basis = basis,
-	                            versionIndex = -1,
-	                            completed = total,
-	                            total = total,
-	                            boxFilter = sortedFilter,
-	                            properties = sortedProperties,
-	                            done = true
-	                        )
-	                    )
-	                )
-	            } finally {
-	                historyRailStatsJobs.remove(statsKey, coroutineContext[Job])
-	            }
-	        }
+	        val job = launchHistoryRailLineStatsStream(
+                statsKey,
+                documentPath,
+                info,
+                orderedIndexes,
+                boxFilter,
+                propertyFilter,
+                sortedFilter,
+                sortedProperties,
+                total,
+                basis,
+                reply
+            )
 	        historyRailStatsJobs[statsKey] = job
 
 	        Handled.yes

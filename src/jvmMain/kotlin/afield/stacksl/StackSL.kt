@@ -1012,6 +1012,12 @@ private class FunctionCompiler(
             "sample-abs.w", "sample0-abs.w", "sample1-abs.w", "sample2-abs.w", "sample3-abs.w",
             "prev", "state", "gather", "gather0", "gather1", "gather2", "gather3",
             "gather.w", "gather0.w", "gather1.w", "gather2.w", "gather3.w" -> sampleWord(word, token)
+            "crosssample", "cross-sample",
+            "crosssample.r", "crosssample.g", "crosssample.b", "crosssample.a",
+            "cross-sample.r", "cross-sample.g", "cross-sample.b", "cross-sample.a",
+            "rcrosssample", "r-cross-sample",
+            "rcrosssample.r", "rcrosssample.g", "rcrosssample.b", "rcrosssample.a",
+            "r-cross-sample.r", "r-cross-sample.g", "r-cross-sample.b", "r-cross-sample.a" -> neighborhoodSampleWord(word, token)
 
             else -> {
                 val definition = definitions[rawWord]
@@ -1267,6 +1273,42 @@ private class FunctionCompiler(
         }
         val deps = if (helper == "sampleAbs" || helper == "sampleAbsWrap") listOf(offset) else listOf(base, offset)
         push(expr(call, deps, token, helper))
+    }
+
+    private fun neighborhoodSampleWord(word: String, token: Token) {
+        val sampler = options.sampleTextures.firstOrNull()
+        if (sampler == null) {
+            errorOrWarning(token, "Neighborhood sample words need at least one sample texture.")
+            return
+        }
+        requiredSamplerIndices += 0
+
+        val channel = when {
+            word.endsWith(".r") -> 0
+            word.endsWith(".g") -> 1
+            word.endsWith(".b") -> 2
+            word.endsWith(".a") -> 3
+            else -> null
+        }
+        val baseWord = channel?.let { word.dropLast(2) } ?: word
+        val random = baseWord == "rcrosssample" || baseWord == "r-cross-sample"
+        val helper = when {
+            random && channel != null -> "randomCrossSampleChannel"
+            random -> "randomCrossSample"
+            channel != null -> "crossSampleChannel"
+            else -> "crossSample"
+        }
+        requiredHelpers += helper
+
+        val radius = pop(token, "sample radius", "vec4(0.001)")
+        val center = pop(token, "sample center", "input")
+        val call = when (helper) {
+            "randomCrossSampleChannel" -> "${options.prefix}_randomCrossSampleChannel(${sampler.emittedName}, ${ref(center)}, ${ref(radius)}, $channel)"
+            "randomCrossSample" -> "${options.prefix}_randomCrossSample(${sampler.emittedName}, ${ref(center)}, ${ref(radius)})"
+            "crossSampleChannel" -> "${options.prefix}_crossSampleChannel(${sampler.emittedName}, ${ref(center)}, ${ref(radius)}, $channel)"
+            else -> "${options.prefix}_crossSample(${sampler.emittedName}, ${ref(center)}, ${ref(radius)})"
+        }
+        push(expr(call, listOf(center, radius), token, helper))
     }
 
     private fun compare(token: Token, glslPredicate: String) {
@@ -1980,6 +2022,12 @@ private val builtinWords = setOf(
     "sample-abs.w", "sample0-abs.w", "sample1-abs.w", "sample2-abs.w", "sample3-abs.w",
     "prev", "state", "gather", "gather0", "gather1", "gather2", "gather3",
     "gather.w", "gather0.w", "gather1.w", "gather2.w", "gather3.w",
+    "crosssample", "cross-sample",
+    "crosssample.r", "crosssample.g", "crosssample.b", "crosssample.a",
+    "cross-sample.r", "cross-sample.g", "cross-sample.b", "cross-sample.a",
+    "rcrosssample", "r-cross-sample",
+    "rcrosssample.r", "rcrosssample.g", "rcrosssample.b", "rcrosssample.a",
+    "r-cross-sample.r", "r-cross-sample.g", "r-cross-sample.b", "r-cross-sample.a",
     "0->", "1->", "2->", "3->", "->0", "->1", "->2", "->3"
 ) + stackSLArityVariantWords + namedColors.keys + swizzleWords + swizzleWords.map { ".$it" }
 
@@ -2038,13 +2086,17 @@ private fun helperSource(prefix: String, helpers: Set<String>): String {
             appendLine("}")
             appendLine()
         }
-        if ("noise" in helpers || "fbm" in helpers) {
+        val needsHash21 = "noise" in helpers || "fbm" in helpers ||
+            "randomCrossSample" in helpers || "randomCrossSampleChannel" in helpers
+        if (needsHash21) {
             appendLine("float ${prefix}_hash21(vec2 p) {")
             appendLine("    p = fract(p * vec2(123.34, 456.21));")
             appendLine("    p += dot(p, p + 45.32);")
             appendLine("    return fract(p.x * p.y);")
             appendLine("}")
             appendLine()
+        }
+        if ("noise" in helpers || "fbm" in helpers) {
             appendLine("float ${prefix}_noise(vec2 p) {")
             appendLine("    vec2 i = floor(p);")
             appendLine("    vec2 f = fract(p);")
@@ -2382,6 +2434,77 @@ private fun helperSource(prefix: String, helpers: Set<String>): String {
                 appendLine("}")
                 appendLine()
             }
+        }
+        if ("crossSampleChannel" in helpers) {
+            appendLine("vec4 ${prefix}_crossSampleChannelTaps(sampler2D sourceTexture, vec4 center, vec4 radius, int channel) {")
+            appendLine("    vec2 rx = vec2(radius.x, 0.0);")
+            appendLine("    vec2 ry = vec2(0.0, radius.y);")
+            appendLine("    vec4 px = texture(sourceTexture, center.xy + rx);")
+            appendLine("    vec4 nx = texture(sourceTexture, center.xy - rx);")
+            appendLine("    vec4 py = texture(sourceTexture, center.xy + ry);")
+            appendLine("    vec4 ny = texture(sourceTexture, center.xy - ry);")
+            appendLine("    return vec4(px[channel], nx[channel], py[channel], ny[channel]);")
+            appendLine("}")
+            appendLine()
+        }
+        if ("crossSample" in helpers) {
+            appendLine("vec4 ${prefix}_crossSample(sampler2D sourceTexture, vec4 center, vec4 radius) {")
+            appendLine("    vec2 rx = vec2(radius.x, 0.0);")
+            appendLine("    vec2 ry = vec2(0.0, radius.y);")
+            appendLine("    vec4 px = texture(sourceTexture, center.xy + rx);")
+            appendLine("    vec4 nx = texture(sourceTexture, center.xy - rx);")
+            appendLine("    vec4 py = texture(sourceTexture, center.xy + ry);")
+            appendLine("    vec4 ny = texture(sourceTexture, center.xy - ry);")
+            appendLine("    return (px + nx + py + ny) * 0.25;")
+            appendLine("}")
+            appendLine()
+        }
+        if ("crossSampleChannel" in helpers) {
+            appendLine("vec4 ${prefix}_crossSampleChannel(sampler2D sourceTexture, vec4 center, vec4 radius, int channel) {")
+            appendLine("    return ${prefix}_crossSampleChannelTaps(sourceTexture, center, radius, channel);")
+            appendLine("}")
+            appendLine()
+        }
+        if ("randomCrossSample" in helpers || "randomCrossSampleChannel" in helpers) {
+            appendLine("void ${prefix}_randomCrossAxes(vec4 center, vec4 radius, out vec2 rx, out vec2 ry) {")
+            appendLine("    float angle = 6.283185307179586 * ${prefix}_hash21(center.xy + center.zw * 0.071);")
+            appendLine("    vec2 axis = vec2(cos(angle), sin(angle));")
+            appendLine("    rx = axis * radius.x;")
+            appendLine("    ry = vec2(-axis.y, axis.x) * radius.y;")
+            appendLine("}")
+            appendLine()
+        }
+        if ("randomCrossSampleChannel" in helpers) {
+            appendLine("vec4 ${prefix}_randomCrossSampleChannelTaps(sampler2D sourceTexture, vec4 center, vec4 radius, int channel) {")
+            appendLine("    vec2 rx;")
+            appendLine("    vec2 ry;")
+            appendLine("    ${prefix}_randomCrossAxes(center, radius, rx, ry);")
+            appendLine("    vec4 px = texture(sourceTexture, center.xy + rx);")
+            appendLine("    vec4 nx = texture(sourceTexture, center.xy - rx);")
+            appendLine("    vec4 py = texture(sourceTexture, center.xy + ry);")
+            appendLine("    vec4 ny = texture(sourceTexture, center.xy - ry);")
+            appendLine("    return vec4(px[channel], nx[channel], py[channel], ny[channel]);")
+            appendLine("}")
+            appendLine()
+        }
+        if ("randomCrossSample" in helpers) {
+            appendLine("vec4 ${prefix}_randomCrossSample(sampler2D sourceTexture, vec4 center, vec4 radius) {")
+            appendLine("    vec2 rx;")
+            appendLine("    vec2 ry;")
+            appendLine("    ${prefix}_randomCrossAxes(center, radius, rx, ry);")
+            appendLine("    vec4 px = texture(sourceTexture, center.xy + rx);")
+            appendLine("    vec4 nx = texture(sourceTexture, center.xy - rx);")
+            appendLine("    vec4 py = texture(sourceTexture, center.xy + ry);")
+            appendLine("    vec4 ny = texture(sourceTexture, center.xy - ry);")
+            appendLine("    return (px + nx + py + ny) * 0.25;")
+            appendLine("}")
+            appendLine()
+        }
+        if ("randomCrossSampleChannel" in helpers) {
+            appendLine("vec4 ${prefix}_randomCrossSampleChannel(sampler2D sourceTexture, vec4 center, vec4 radius, int channel) {")
+            appendLine("    return ${prefix}_randomCrossSampleChannelTaps(sourceTexture, center, radius, channel);")
+            appendLine("}")
+            appendLine()
         }
     }
 }

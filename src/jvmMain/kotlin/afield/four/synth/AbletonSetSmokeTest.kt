@@ -102,6 +102,23 @@ object AbletonSetSmokeTest {
         require(middle != null && close(middle, 5.45)) {
             "Expected interpolated automation value 5.45, got $middle"
         }
+
+        val before = automation.bracketAt(-20.0)
+        require(before.first == null && before.second?.time == -63072000.0) {
+            "Expected pre-first bracket null..-63072000, got $before"
+        }
+        val exact = automation.bracketAt(0.0)
+        require(exact.first?.time == 0.0 && exact.second?.time == 10.0) {
+            "Expected exact bracket 0..10, got $exact"
+        }
+        val between = automation.bracketAt(5.0)
+        require(between.first?.time == 0.0 && between.second?.time == 10.0) {
+            "Expected between bracket 0..10, got $between"
+        }
+        val after = automation.bracketAt(20.0)
+        require(after.first?.time == 10.0 && after.second == null) {
+            "Expected post-last bracket 10..null, got $after"
+        }
     }
 
     private fun testGzippedAbletonFile() {
@@ -196,7 +213,7 @@ object AbletonSetSmokeTest {
 
         val diskBackedCache = AbletonSampleVolumeAnalysisCache(cacheConfig)
         val diskBackedVolume = set.trackVolumesAtBeat(1.0, mapper, diskBackedCache).single()
-        require(close(diskBackedVolume.bands.low.toDouble(), volume.bands.low.toDouble())) {
+        require(close(diskBackedVolume.bands.low, volume.bands.low)) {
             "Expected disk-backed low band ${volume.bands.low}, got ${diskBackedVolume.bands.low}"
         }
     }

@@ -428,6 +428,8 @@ void main() {
 
 If the surrounding shader already declares the sampler uniforms, call the compiler with `declareSamplers = false` and keep the generated helper/function code only. With `sampleTextures = listOf("otherView")`, sample words call helpers with `otherView` directly.
 
+For shader templates using `stack.auto`, the sampler can be selected inline. `{{ stack.auto.foo }}` keeps the default sampler name `source`; `{{ stack.auto.foo@otherView }}` compiles the same generated function but points sample words at `otherView`. This also composes with entrypoint selection: `{{ stack.auto.foo:bar@otherView }}` uses the StackSL word `bar` and its dependencies while sampling `otherView`.
+
 ## Built-in vocabulary
 
 Stack and input:

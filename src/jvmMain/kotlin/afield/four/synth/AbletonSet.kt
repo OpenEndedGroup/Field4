@@ -23,6 +23,7 @@ import kotlin.math.cos
 import java.util.zip.GZIPInputStream
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 data class AbletonSet(
@@ -486,7 +487,7 @@ data class AbletonTrackVolume(
     val bands: AbletonVolumeBands,
     val clips: List<AbletonClipVolume>
 ) {
-    val rms: Float get() = bands.rms
+    val rms: Double get() = bands.rms
 }
 
 data class AbletonClipVolume(
@@ -496,24 +497,24 @@ data class AbletonClipVolume(
     val sourceSeconds: Double,
     val bands: AbletonVolumeBands
 ) {
-    val rms: Float get() = bands.rms
+    val rms: Double get() = bands.rms
 }
 
 data class AbletonVolumeBands(
-    val low: Float,
-    val mid: Float,
-    val high: Float
+    val low: Double,
+    val mid: Double,
+    val high: Double
 ) {
-    val rms: Float get() = sqrt((low * low + mid * mid + high * high) / 3.0f)
+    val rms: Double get() = sqrt((low * low + mid * mid + high * high) / 3.0)
 
     companion object {
-        val Zero = AbletonVolumeBands(0f, 0f, 0f)
+        val Zero = AbletonVolumeBands(0.0, 0.0, 0.0)
     }
 }
 
 data class AbletonSampleVolumeAnalysisConfig(
-    val windowSeconds: Double = 0.050,
-    val hopSeconds: Double = 0.010,
+    val windowSeconds: Double = 0.150,
+    val hopSeconds: Double = 0.005,
     val lowCutoffHz: Double = 250.0,
     val highCutoffHz: Double = 2_000.0,
     val fftSize: Int = 2048
@@ -532,16 +533,17 @@ data class AbletonSampleVolumeAnalysis(
     val sampleRate: Int,
     val sampleCount: Int,
     val config: AbletonSampleVolumeAnalysisConfig,
+    val hopSeconds: Double,
     val frames: List<AbletonVolumeBands>
 ) {
     val durationSeconds: Double get() = sampleCount.toDouble() / sampleRate.toDouble()
 
     fun volumeAtSeconds(sourceSeconds: Double): AbletonVolumeBands {
         if (frames.isEmpty() || sourceSeconds < 0.0 || sourceSeconds > durationSeconds) return AbletonVolumeBands.Zero
-        val frame = sourceSeconds / config.hopSeconds
+        val frame = sourceSeconds / hopSeconds
         val leftIndex = frame.toInt().coerceIn(0, frames.lastIndex)
         val rightIndex = min(leftIndex + 1, frames.lastIndex)
-        val t = (frame - leftIndex).coerceIn(0.0, 1.0).toFloat()
+        val t = (frame - leftIndex).coerceIn(0.0, 1.0)
         return frames[leftIndex].lerp(frames[rightIndex], t)
     }
 
@@ -551,12 +553,14 @@ data class AbletonSampleVolumeAnalysis(
             config: AbletonSampleVolumeAnalysisConfig = AbletonSampleVolumeAnalysisConfig()
         ): AbletonSampleVolumeAnalysis {
             val wav = WavFloatArrayLoader.loadWavToFloatArray(sourceFile.absolutePath)
-            val frames = analyzeFrames(wav.samples, wav.sampleRate, config)
+            val hopSamples = max(1, (config.hopSeconds * wav.sampleRate).roundToInt())
+            val frames = analyzeFrames(wav.samples, wav.sampleRate, config, hopSamples)
             return AbletonSampleVolumeAnalysis(
                 sourceFile = sourceFile.absoluteFile.normalize(),
                 sampleRate = wav.sampleRate,
                 sampleCount = wav.samples.size,
                 config = config,
+                hopSeconds = hopSamples.toDouble() / wav.sampleRate.toDouble(),
                 frames = frames
             )
         }
@@ -564,33 +568,32 @@ data class AbletonSampleVolumeAnalysis(
         private fun analyzeFrames(
             samples: FloatArray,
             sampleRate: Int,
-            config: AbletonSampleVolumeAnalysisConfig
+            config: AbletonSampleVolumeAnalysisConfig,
+            hopSamples: Int
         ): List<AbletonVolumeBands> {
             if (samples.isEmpty()) return emptyList()
             val fftSize = max(config.fftSize, nextPowerOfTwo((config.windowSeconds * sampleRate).toInt().coerceAtLeast(2)))
-            val fft = FFT(fftSize)
-            val complex = FloatArray(fftSize * 2)
-            val hopSamples = max(1, (config.hopSeconds * sampleRate).toInt())
+            val complex = DoubleArray(fftSize * 2)
             val windowSamples = min(samples.size, (config.windowSeconds * sampleRate).toInt().coerceAtLeast(1))
             val frameCount = max(1, ((samples.size - 1) / hopSamples) + 1)
 
             return List(frameCount) { frameIndex ->
                 val center = frameIndex * hopSamples
                 val start = center - windowSamples / 2
-                java.util.Arrays.fill(complex, 0f)
+                java.util.Arrays.fill(complex, 0.0)
                 for (i in 0 until windowSamples) {
                     val sampleIndex = start + i
                     if (sampleIndex !in samples.indices) continue
                     val window = hann(i, windowSamples)
-                    complex[i * 2] = samples[sampleIndex] * window
+                    complex[i * 2] = samples[sampleIndex].toDouble() * window
                 }
-                fft.forward(complex)
+                forwardFftDouble(complex, fftSize)
                 spectralBands(complex, fftSize, sampleRate, config)
             }
         }
 
         private fun spectralBands(
-            complex: FloatArray,
+            complex: DoubleArray,
             fftSize: Int,
             sampleRate: Int,
             config: AbletonSampleVolumeAnalysisConfig
@@ -604,8 +607,8 @@ data class AbletonSampleVolumeAnalysis(
 
             for (bin in 1..fftSize / 2) {
                 val frequency = bin.toDouble() * sampleRate.toDouble() / fftSize.toDouble()
-                val re = complex[bin * 2].toDouble()
-                val im = complex[bin * 2 + 1].toDouble()
+                val re = complex[bin * 2]
+                val im = complex[bin * 2 + 1]
                 val power = re * re + im * im
                 when {
                     frequency < config.lowCutoffHz -> {
@@ -631,11 +634,65 @@ data class AbletonSampleVolumeAnalysis(
             )
         }
 
-        private fun bandRms(power: Double, count: Int, scale: Double): Float =
-            if (count <= 0) 0f else sqrt(power / count.toDouble()).times(scale).toFloat()
+        private fun bandRms(power: Double, count: Int, scale: Double): Double =
+            if (count <= 0) 0.0 else sqrt(power / count.toDouble()) * scale
 
-        private fun hann(index: Int, size: Int): Float =
-            if (size <= 1) 1f else (0.5 - 0.5 * cos((2.0 * PI * index) / (size - 1))).toFloat()
+        private fun hann(index: Int, size: Int): Double =
+            if (size <= 1) 1.0 else 0.5 - 0.5 * cos((2.0 * PI * index) / (size - 1))
+
+        private fun forwardFftDouble(data: DoubleArray, size: Int) {
+            var j = 0
+            for (i in 0 until size) {
+                if (j > i) {
+                    val ai = i * 2
+                    val aj = j * 2
+                    val re = data[ai]
+                    val im = data[ai + 1]
+                    data[ai] = data[aj]
+                    data[ai + 1] = data[aj + 1]
+                    data[aj] = re
+                    data[aj + 1] = im
+                }
+                var bit = size shr 1
+                while (bit >= 1 && j >= bit) {
+                    j -= bit
+                    bit = bit shr 1
+                }
+                j += bit
+            }
+
+            var step = 2
+            while (step <= size) {
+                val halfStep = step / 2
+                val theta = -2.0 * PI / step.toDouble()
+                val wStepRe = cos(theta)
+                val wStepIm = kotlin.math.sin(theta)
+                for (group in 0 until size step step) {
+                    var wRe = 1.0
+                    var wIm = 0.0
+                    for (pair in 0 until halfStep) {
+                        val even = (group + pair) * 2
+                        val odd = (group + pair + halfStep) * 2
+                        val oddRe = data[odd]
+                        val oddIm = data[odd + 1]
+                        val twiddledRe = wRe * oddRe - wIm * oddIm
+                        val twiddledIm = wRe * oddIm + wIm * oddRe
+                        val evenRe = data[even]
+                        val evenIm = data[even + 1]
+                        data[even] = evenRe + twiddledRe
+                        data[even + 1] = evenIm + twiddledIm
+                        data[odd] = evenRe - twiddledRe
+                        data[odd + 1] = evenIm - twiddledIm
+
+                        val nextWRe = wRe * wStepRe - wIm * wStepIm
+                        val nextWIm = wRe * wStepIm + wIm * wStepRe
+                        wRe = nextWRe
+                        wIm = nextWIm
+                    }
+                }
+                step = step shl 1
+            }
+        }
 
         private fun nextPowerOfTwo(value: Int): Int {
             var out = 1
@@ -699,7 +756,7 @@ class AbletonSampleVolumeAnalysisCache(
 }
 
 private const val ABLETON_VOLUME_CACHE_MAGIC = "F4 Ableton Volume Analysis"
-private const val ABLETON_VOLUME_CACHE_VERSION = 1
+private const val ABLETON_VOLUME_CACHE_VERSION = 3
 
 private fun diskCacheFileFor(file: File, config: AbletonSampleVolumeAnalysisConfig): File {
     val suffix = listOf(
@@ -738,14 +795,15 @@ private fun readDiskCache(
 
             val sampleRate = input.readInt()
             val sampleCount = input.readInt()
+            val actualHopSeconds = input.readDouble()
             val frameCount = input.readInt()
-            if (sampleRate <= 0 || sampleCount < 0 || frameCount < 0) return null
+            if (sampleRate <= 0 || sampleCount < 0 || actualHopSeconds <= 0.0 || frameCount < 0) return null
 
             val frames = List(frameCount) {
                 AbletonVolumeBands(
-                    low = input.readFloat(),
-                    mid = input.readFloat(),
-                    high = input.readFloat()
+                    low = input.readDouble(),
+                    mid = input.readDouble(),
+                    high = input.readDouble()
                 )
             }
             AbletonSampleVolumeAnalysis(
@@ -753,6 +811,7 @@ private fun readDiskCache(
                 sampleRate = sampleRate,
                 sampleCount = sampleCount,
                 config = key.config,
+                hopSeconds = actualHopSeconds,
                 frames = frames
             )
         }
@@ -781,11 +840,12 @@ private fun writeDiskCache(
             output.writeInt(key.config.fftSize)
             output.writeInt(analysis.sampleRate)
             output.writeInt(analysis.sampleCount)
+            output.writeDouble(analysis.hopSeconds)
             output.writeInt(analysis.frames.size)
             for (frame in analysis.frames) {
-                output.writeFloat(frame.low)
-                output.writeFloat(frame.mid)
-                output.writeFloat(frame.high)
+                output.writeDouble(frame.low)
+                output.writeDouble(frame.mid)
+                output.writeDouble(frame.high)
             }
         }
         Files.move(tmp.toPath(), cacheFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
@@ -1130,10 +1190,20 @@ data class AbletonAutomationEnvelope(
     val target: AbletonAutomationTarget,
     val events: List<AbletonAutomationEvent>
 ) {
+    fun bracketAt(arrangementTime: Double): Pair<AbletonAutomationEvent?, AbletonAutomationEvent?> {
+        if (events.isEmpty()) return null to null
+
+        val sorted = sortedEvents()
+        val leftIndex = sorted.indexOfLast { it.time <= arrangementTime }
+        val left = sorted.getOrNull(leftIndex)
+        val right = sorted.drop(leftIndex + 1).firstOrNull { it.time > arrangementTime }
+        return left to right
+    }
+
     fun valueAt(arrangementTime: Double): AbletonAutomationValue {
         if (events.isEmpty()) return AbletonAutomationValue.Missing
 
-        val sorted = events.sortedWith(compareBy<AbletonAutomationEvent> { it.time }.thenBy { it.id.toDoubleOrNull() ?: 0.0 })
+        val sorted = sortedEvents()
         val first = sorted.first()
         if (arrangementTime <= first.time) return first.value
 
@@ -1151,6 +1221,9 @@ data class AbletonAutomationEnvelope(
             else -> left.value
         }
     }
+
+    private fun sortedEvents(): List<AbletonAutomationEvent> =
+        events.sortedWith(compareBy<AbletonAutomationEvent> { it.time }.thenBy { it.id.toDoubleOrNull() ?: 0.0 })
 
     companion object {
         internal fun fromElement(
@@ -1441,14 +1514,14 @@ private fun List<AbletonClipVolume>.rootSumSquareBands(): AbletonVolumeBands {
         high += clip.bands.high * clip.bands.high
     }
     return AbletonVolumeBands(
-        low = sqrt(low).toFloat(),
-        mid = sqrt(mid).toFloat(),
-        high = sqrt(high).toFloat()
+        low = sqrt(low),
+        mid = sqrt(mid),
+        high = sqrt(high)
     )
 }
 
-private fun AbletonVolumeBands.lerp(other: AbletonVolumeBands, t: Float): AbletonVolumeBands {
-    val u = 1.0f - t
+private fun AbletonVolumeBands.lerp(other: AbletonVolumeBands, t: Double): AbletonVolumeBands {
+    val u = 1.0 - t
     return AbletonVolumeBands(
         low = low * u + other.low * t,
         mid = mid * u + other.mid * t,

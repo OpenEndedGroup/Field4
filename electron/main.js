@@ -19,6 +19,7 @@ const FIELD_PRELOAD = path.join(__dirname, "field-preload.js");
 const TAB_STRIP_HEIGHT = 44;
 const TAB_STRIP_REVEAL_ZONE_HEIGHT = 6;
 const TAB_TRAFFIC_LIGHT_INSET = process.platform === "darwin" ? 88 : 12;
+const TAB_WINDOW_CONTROL_INSET = process.platform === "win32" ? 150 : 12;
 const SHELL_BACKGROUND = "#000000";
 const TAB_STRIP_BACKGROUND = "#2a2b2f";
 const WELCOME_BACKGROUND = "rgb(20, 20, 20)";
@@ -129,6 +130,7 @@ function createTabStripMarkup() {
 
     :root {
       --traffic-inset: ${TAB_TRAFFIC_LIGHT_INSET}px;
+      --window-control-inset: ${TAB_WINDOW_CONTROL_INSET}px;
       --bg: #2a2b2f;
       --tab-bg: #1d1f23;
       --tab-hover-bg: #222428;
@@ -161,12 +163,13 @@ function createTabStripMarkup() {
       display: flex;
       align-items: center;
       gap: 0;
-      padding: 7px 10px 0 var(--traffic-inset);
+      padding: 7px var(--window-control-inset) 0 var(--traffic-inset);
       background: var(--bg);
       -webkit-app-region: drag;
     }
 
     #tabs {
+      flex: 0 1 auto;
       min-width: 0;
       display: flex;
       align-items: stretch;
@@ -245,6 +248,7 @@ function createTabStripMarkup() {
 
     .tab-add {
       flex: 0 0 auto;
+      margin-left: 6px;
       border-radius: 5px 5px 0 0;
       color: var(--text-soft);
       background: var(--control-bg);
@@ -260,8 +264,8 @@ function createTabStripMarkup() {
 <body>
   <div id="tabstrip">
     <div id="tabs"></div>
-    <div class="tab-spacer"></div>
     <button id="tab-add" class="tab-add" type="button" aria-label="Open welcome tab">+</button>
+    <div class="tab-spacer"></div>
   </div>
   <script>
     const tabsNode = document.getElementById('tabs');

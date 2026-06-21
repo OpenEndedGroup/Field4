@@ -229,6 +229,10 @@ Definitions are inlined into GLSL, so shared math can still be optimized.
 | `->?name` | `value --` | write the top value to an existing host-side GLSL l-value, for example `->?pc.foo` or `->?pc.inData.p[idx].posvel.Z`. |
 | `gather`, `gather0`, `gather1`, `gather2`, `gather3` | `offset -- vec4` | raw `textureGather` red channel around `uv + offset.xy`. |
 | `gather.w`, `gather0.w`, `gather1.w`, `gather2.w`, `gather3.w` | `offset -- vec4` | wrapped `textureGather` around `fract(uv + offset.xy)`. |
+| `crossSample`, `cross-sample` | `center radius -- color` | average four full-color samples at `center.xy +/- radius.x/y` cross offsets. |
+| `rCrossSample`, `r-cross-sample` | `center radius -- color` | average four full-color samples on a deterministically rotated cross around `center.xy`. |
+| `crossSample.r`/`.g`/`.b`/`.a` | `center radius -- vec4` | return four selected-channel taps in `xyzw`: `+x`, `-x`, `+y`, `-y`. |
+| `rCrossSample.r`/`.g`/`.b`/`.a` | `center radius -- vec4` | return four selected-channel taps from the randomly rotated cross. |
 | `prev`, `state` | `-- color` | sample previous frame at current `uv`. |
 | `sample`, `sample0`, `sample1`, `sample2`, `sample3` | `offset -- color` | sample a configured texture at raw `uv + offset.xy`. |
 | `sample.w`, `sample0.w`, `sample1.w`, `sample2.w`, `sample3.w` | `offset -- color` | sample at wrapped `fract(uv + offset.xy)`. |

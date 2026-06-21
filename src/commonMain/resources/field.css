@@ -2553,6 +2553,9 @@ kbd {
     opacity: 1;
     font-size: 10px;
     z-index: 100;
+    transform: translateY(0);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    will-change: opacity, transform;
 }
 
 .hoverlay-left {
@@ -2569,7 +2572,21 @@ kbd {
     z-index: 100;
     max-width: calc(100% - 220px);
     pointer-events: none;
-    transition: opacity 0.12s ease;
+    transform: translateY(0);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    will-change: opacity, transform;
+}
+
+.monaco-editor.afield-cursor-near-bottom .hoverlay {
+    opacity: 0.12 !important;
+    pointer-events: none;
+    transform: translateY(8px);
+}
+
+.monaco-editor.afield-cursor-near-bottom .hoverlay-left:not(:empty) {
+    opacity: 0.06 !important;
+    pointer-events: none !important;
+    transform: translateY(8px);
 }
 
 .status-good {

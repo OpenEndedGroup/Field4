@@ -348,7 +348,7 @@ class SummaryStatsBuffer(
         padRight: Int = 14,
         padTop: Int = 10,
         padBottom: Int = 22,
-        fontFamily: String = "system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+        fontFamily: String = "'Iosevka Web', Iosevka, monospace",
         title: String? = null,
         showCountsOnHover: Boolean = true,
         decimals: Int = 3,
@@ -393,7 +393,7 @@ class SummaryStatsBuffer(
         padRight: Int = 64,
         padTop: Int = 10,
         padBottom: Int = 22,
-        fontFamily: String = "system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+        fontFamily: String = "'Iosevka Web', Iosevka, monospace",
         title: String? = null,
         decimals: Int = 3,
         background: String = "#000000",
@@ -433,7 +433,7 @@ class SummaryStatsBuffer(
         widthPx: Int = 480,
         chartHeightPx: Int = 120,
         decimals: Int = 3,
-        fontFamily: String = "system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+        fontFamily: String = "'Iosevka Web', Iosevka, monospace",
         background: String = "#000000",
         textColor: String = "#0af",
         axisColor: String = "#0af",
@@ -1047,7 +1047,7 @@ fun histogramToSvg(
     padRight: Int = 14,
     padTop: Int = 10,
     padBottom: Int = 22,
-    fontFamily: String = "Iosevka, monospace",
+    fontFamily: String = "'Iosevka Web', Iosevka, monospace",
     title: String? = null,
     showCountsOnHover: Boolean = true,
     decimals: Int = 3,
@@ -1193,7 +1193,7 @@ fun seriesPlotToSvg(
     padRight: Int = 64,
     padTop: Int = 10,
     padBottom: Int = 22,
-    fontFamily: String = "Iosevka, monospace",
+    fontFamily: String = "'Iosevka Web', Iosevka, monospace",
     title: String? = null,
     decimals: Int = 3,
     background: String = "#000000",
@@ -1207,8 +1207,7 @@ fun seriesPlotToSvg(
     keyTextOpacity: Double = 0.5,
     minLabelSeparationPx: Double = 12.0
 ): String {
-    val source = rawValues.toList()
-    val values = source.filter { it.isFinite() }.sorted()
+    val values = rawValues.filter { it.isFinite() }
     if (values.isEmpty()) {
         return """
             <svg xmlns="http://www.w3.org/2000/svg" width="$widthPx" height="$heightPx" viewBox="0 0 $widthPx $heightPx">
@@ -1226,7 +1225,7 @@ fun seriesPlotToSvg(
     val x0 = padLeft.toDouble()
     val y0 = padTop.toDouble()
 
-    val sorted = values.toDoubleArray()
+    val sorted = values.sorted().toDoubleArray()
     val yMin0 = sorted.first()
     val yMax0 = sorted.last()
     val (yMin, yMax) = if (yMax0 == yMin0) {
@@ -1378,7 +1377,7 @@ fun summaryStatsBoxToHtml(
     widthPx: Int = 480,
     chartHeightPx: Int = 120,
     decimals: Int = 3,
-    fontFamily: String = "Iosevka, monospace",
+    fontFamily: String = "'Iosevka Web', Iosevka, monospace",
     background: String = "#000000",
     textColor: String = "#0af",
     axisColor: String = "#0af",
