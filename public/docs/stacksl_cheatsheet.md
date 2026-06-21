@@ -210,6 +210,7 @@ Arity variants use `word.N` for explicit consumption and `word.all` for stack bl
 | `mirror` | `a -- b` | `1 - abs(2*fract(a/2) - 1)`. |
 | `noise`, `perlin` | `coord -- s` | value noise from `coord.xy + coord.zw * 0.07`. |
 | `palette`, `cos-palette`, `cosine-palette` | `t a b c d -- color` | cosine palette `a + b*cos(t*c + d)`; one-value short form gives a useful default palette. |
+<<<<<<< HEAD
 | `posterize` | `value levels -- out` | `floor(clamp(x, 0, 1) * n + 0.5) / n`, where `n = max(floor(abs(levels)), 2) - 1`; short form uses `6`. |
 | `pulse` | `x center width -- mask` | `smoothstep(center - abs(width), center, x) - smoothstep(center, center + abs(width), x)`; with fewer than three values defaults to center `0.5`, width `0.08`. |
 | `ramp` | `x low high -- out` | `clamp((x - low) / max(abs(high - low), 0.00001), 0, 1)`. |
@@ -217,6 +218,16 @@ Arity variants use `word.N` for explicit consumption and `word.all` for stack bl
 | `saturation`, `sat-color` | `color amount -- color` | `vec4(mix(vec3(luma), color.rgb, amount.x), color.a)`; short form amount defaults to `1`. |
 | `sigmoid` | `x amount -- out` | `1 / (1 + exp(-amount * (x - 0.5)))`; short form uses amount `8`. |
 | `smooth` | `x -- out` | `smoothstep(0, 1, x)`. |
+=======
+| `phacelle`, `directional-noise` | `point frequency offset normalization -- vec` | directional phasor noise; optionally consume a quoted pattern word before or after the arguments. |
+| `posterize` | `value levels -- out` | quantize normalized lanes to a level count; short form uses `6`. |
+| `pulse` | `x center width -- mask` | soft band around `center`; with fewer than three values defaults to center `0.5`, width `0.08`. |
+| `ramp` | `x low high -- out` | remap `low..high` into a clamped `0..1` ramp. |
+| `sat`, `saturate`, `clamp` | `color -- color` | clamp all channels to `0..1`. |
+| `saturation`, `sat-color` | `color amount -- color` | adjust color saturation; short form amount defaults to `1`. |
+| `sigmoid` | `x amount -- out` | logistic S curve around `0.5`; short form uses amount `8`. |
+| `smooth` | `x -- out` | `smoothstep(0, 1, x)` as a one-word shaper. |
+>>>>>>> acb0f2a479bb02d3abea1854ee866317867dcc68
 | `softplus` | `x amount -- out` | soft rectifier `log(1 + exp(k*x)) / k`; short form uses amount `4`. |
 | `threshold` | `x edge -- mask` | `step(edge, x)`; short form uses edge `0.5`. |
 | `tonemap` | `color -- color` | `vec4(max(color.rgb, 0) / (max(color.rgb, 0) + 1), color.a)`. |
@@ -248,6 +259,45 @@ p ring white *
 ```
 
 Definitions are inlined into GLSL, so shared math can still be optimized.
+
+## Word references
+
+Prefix a word with `'` to put a compile-time reference to that word on the stack. `apply`, `call`, and `invoke` consume a word reference and a value, inline the referenced word with that value as its input, and push the result. Both `word value apply` and `value word apply` work.
+
+```diffstatic {data-lang=stacksl}
+: pattern
+  normalize
+;
+
+'pattern p apply
+```
+
+References can be passed through another definition, which is useful for shader helpers that need a pattern or sampling function.
+
+```diffstatic {data-lang=stacksl}
+: pattern
+  xylen
+;
+
+: mapped
+  apply
+;
+
+'pattern uv mapped
+```
+
+This is still static lowering: StackSL carries the word reference while compiling, then emits direct GLSL for the referenced word rather than a runtime function pointer.
+
+`phacelle` / `directional-noise` uses this for directional phasor noise. It takes `point frequency offset normalization -- noise`, with defaults for everything after `point`. Add a quoted pattern definition before or after the arguments to orient the cells. The pattern receives each cell point as its input and may do normal StackSL work, including sampling.
+
+```diffstatic {data-lang=stacksl}
+: flowPattern
+  input sample-abs
+  normalize
+;
+
+'flowPattern p 100 * 1.5 0.2 1 phacelle.4
+```
 
 ## Local marks
 

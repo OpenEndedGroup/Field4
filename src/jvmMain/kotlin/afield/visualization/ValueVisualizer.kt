@@ -3,6 +3,8 @@ package afield
 import afield.graphics.FLine
 import org.joml.*
 import space.kscience.plotly.Plot
+import java.util.Collections
+import java.util.IdentityHashMap
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -97,6 +99,11 @@ object ValueVisualizer {
         val name: String
     )
 
+    private data class RenderedListElement(
+        val html: String,
+        val repeatCount: Int = 1
+    )
+
     /**
      * Visualize any value and return compact HTML representation
      */
@@ -105,17 +112,20 @@ object ValueVisualizer {
             append("<div class='value-viz")
             if (appendable) append(" afield-appendable-output")
             append("' style='font-family: \"Iosevka Web\", monospace; font-size: 12px; color: #ccc; line-height: 1.4;'>")
-            // Use identity hash set to track visited objects and detect circular references
-            val visited = mutableSetOf<Int>()
+            // Track only the current recursion path, using reference equality.
+            val visited = newIdentitySet()
             append(visualizeValue(value, 0, visited))
             append("</div>")
         }
     }
 
+    private fun newIdentitySet(): MutableSet<Any> =
+        Collections.newSetFromMap(IdentityHashMap())
+
     private fun visualizeValue(
         value: Any?,
         depth: Int,
-        visited: MutableSet<Int>,
+        visited: MutableSet<Any>,
         respectDepthLimit: Boolean = true
     ): String {
         // Check depth limit
@@ -130,15 +140,19 @@ object ValueVisualizer {
             // Check custom printers
             else -> {
                 // For complex objects, check for circular references
-                if (shouldCheckCircular(value)) {
-                    val identityHash = System.identityHashCode(value)
-                    if (identityHash in visited) {
+                val trackCircular = shouldCheckCircular(value)
+                if (trackCircular) {
+                    if (value in visited) {
                         return "<span style='color: #f88;'>[circular reference]</span>"
                     }
-                    visited.add(identityHash)
+                    visited.add(value)
                 }
 
-                ValuePrinterRegistry.getPrinter(value)?.invoke(value) ?: visualizeBuiltIn(value, depth, visited, respectDepthLimit)
+                try {
+                    ValuePrinterRegistry.getPrinter(value)?.invoke(value) ?: visualizeBuiltIn(value, depth, visited, respectDepthLimit)
+                } finally {
+                    if (trackCircular) visited.remove(value)
+                }
             }
         }
     }
@@ -165,7 +179,7 @@ object ValueVisualizer {
     private fun visualizeBuiltIn(
         value: Any,
         depth: Int,
-        visited: MutableSet<Int>,
+        visited: MutableSet<Any>,
         respectDepthLimit: Boolean
     ): String = when (value) {
         // Primitives
@@ -792,10 +806,57 @@ object ValueVisualizer {
         }
     }
 
+    private fun formatRepeatSuffix(count: Int): String {
+        if (count <= 1) return ""
+        return " <span style='color: #777;'>same ref x</span>${formatNumberToken(count)}"
+    }
+
+    private fun sameReferenceRunLength(list: List<*>, start: Int, endExclusive: Int): Int {
+        if (start >= endExclusive) return 0
+        val first = list[start] ?: return 1
+        if (!shouldCheckCircular(first)) return 1
+
+        var count = 1
+        while (start + count < endExclusive && list[start + count] === first) {
+            count++
+        }
+        return count
+    }
+
+    private fun renderListPreviewElements(
+        list: List<*>,
+        start: Int,
+        previewEndExclusive: Int,
+        listEndExclusive: Int,
+        depth: Int,
+        visited: MutableSet<Any>,
+        respectDepthLimit: Boolean
+    ): Pair<List<RenderedListElement>, Int> {
+        val elements = mutableListOf<RenderedListElement>()
+        var i = start
+        while (i < previewEndExclusive) {
+            val runLength = sameReferenceRunLength(list, i, listEndExclusive).coerceAtLeast(1)
+            val rendered = visualizeValue(list[i], depth + 1, visited, respectDepthLimit)
+            elements += RenderedListElement(rendered, runLength)
+            i += runLength
+        }
+        return elements to i
+    }
+
+    private fun StringBuilder.appendRenderedListElements(elements: List<RenderedListElement>) {
+        elements.forEachIndexed { i, element ->
+            if (i > 0 && shouldShowInlineSeparator(elements[i - 1].html, element.html)) {
+                append("<span style='color: #888;'>, </span>")
+            }
+            append(element.html)
+            append(formatRepeatSuffix(element.repeatCount))
+        }
+    }
+
     private fun formatList(
         list: List<*>,
         depth: Int,
-        visited: MutableSet<Int>,
+        visited: MutableSet<Any>,
         expandValue: Any? = list,
         expandTitle: String = list::class.simpleName ?: "List",
         respectDepthLimit: Boolean = true
@@ -807,26 +868,26 @@ object ValueVisualizer {
         return buildString {
             append("<span style='color: #aaa;'>[</span>")
 
-            val preview = list.take(previewCount)
-            val renderedPreview = preview.map { item ->
-                visualizeValue(item, depth + 1, visited, respectDepthLimit)
-            }
-            renderedPreview.forEachIndexed { i, rendered ->
-                if (i > 0 && shouldShowInlineSeparator(renderedPreview[i - 1], rendered)) {
-                    append("<span style='color: #888;'>, </span>")
-                }
-                append(rendered)
-            }
+            val (renderedPreview, nextOffset) = renderListPreviewElements(
+                list = list,
+                start = 0,
+                previewEndExclusive = previewCount,
+                listEndExclusive = size,
+                depth = depth,
+                visited = visited,
+                respectDepthLimit = respectDepthLimit
+            )
+            appendRenderedListElements(renderedPreview)
 
-            if (size > previewCount) {
+            if (size > nextOffset) {
                 append(
                     formatMoreSuffix(
-                        size - previewCount,
+                        size - nextOffset,
                         "items",
                         expandValue,
                         expandTitle,
                         "list",
-                        previewCount,
+                        nextOffset,
                         depth
                     )
                 )
@@ -845,7 +906,7 @@ object ValueVisualizer {
         }
     }
 
-    private fun formatSet(set: Set<*>, depth: Int, visited: MutableSet<Int>, respectDepthLimit: Boolean): String {
+    private fun formatSet(set: Set<*>, depth: Int, visited: MutableSet<Any>, respectDepthLimit: Boolean): String {
         if (set.isEmpty()) return "<span style='color: #888;'>{empty set}</span>"
 
         val size = set.size
@@ -883,7 +944,7 @@ object ValueVisualizer {
         }
     }
 
-    private fun formatMap(map: Map<*, *>, depth: Int, visited: MutableSet<Int>, respectDepthLimit: Boolean): String {
+    private fun formatMap(map: Map<*, *>, depth: Int, visited: MutableSet<Any>, respectDepthLimit: Boolean): String {
         if (map.isEmpty()) return "<span style='color: #888;'>{empty map}</span>"
 
         val size = map.size
@@ -925,7 +986,7 @@ object ValueVisualizer {
         }
     }
 
-    private fun formatArray(arr: Array<*>, depth: Int, visited: MutableSet<Int>, respectDepthLimit: Boolean): String {
+    private fun formatArray(arr: Array<*>, depth: Int, visited: MutableSet<Any>, respectDepthLimit: Boolean): String {
         return formatList(
             arr.toList(),
             depth,
@@ -1056,7 +1117,7 @@ object ValueVisualizer {
         }
     }
 
-    private fun formatDataClass(obj: Any, depth: Int, visited: MutableSet<Int>, respectDepthLimit: Boolean): String {
+    private fun formatDataClass(obj: Any, depth: Int, visited: MutableSet<Any>, respectDepthLimit: Boolean): String {
         val className = obj::class.simpleName ?: "DataClass"
 
         return try {
@@ -1115,7 +1176,7 @@ object ValueVisualizer {
         val value = h2GetRawValue(token) ?: return null
         val safeOffset = offset.coerceAtLeast(0)
         val safeDepth = depth.coerceAtLeast(0)
-        val visited = mutableSetOf<Int>()
+        val visited = newIdentitySet()
 
         return when (kind.lowercase()) {
             "full" -> visualizeValue(value, safeDepth, visited, respectDepthLimit = false)
@@ -1174,7 +1235,7 @@ object ValueVisualizer {
         }
     }
 
-    private fun renderListContinuation(value: Any?, offset: Int, depth: Int, visited: MutableSet<Int>): String? {
+    private fun renderListContinuation(value: Any?, offset: Int, depth: Int, visited: MutableSet<Any>): String? {
         val list = toListLike(value) ?: return null
         val safeStart = offset.coerceIn(0, list.size)
         if (safeStart >= list.size) return ""
@@ -1182,27 +1243,25 @@ object ValueVisualizer {
         val title = valueTitle(value, "List")
 
         return buildString {
-            var previousRendered = if (safeStart > 0) {
-                visualizeValue(list[safeStart - 1], depth + 1, mutableSetOf(), respectDepthLimit = false)
-            } else null
-            for (i in safeStart until nextEnd) {
-                val rendered = visualizeValue(list[i], depth + 1, visited, respectDepthLimit = false)
-                val previous = previousRendered
-                if (previous != null && shouldShowInlineSeparator(previous, rendered)) {
-                    append("<span style='color: #888;'>, </span>")
-                }
-                append(rendered)
-                previousRendered = rendered
-            }
-            if (nextEnd < list.size) {
+            val (rendered, nextOffset) = renderListPreviewElements(
+                list = list,
+                start = safeStart,
+                previewEndExclusive = nextEnd,
+                listEndExclusive = list.size,
+                depth = depth,
+                visited = visited,
+                respectDepthLimit = false
+            )
+            appendRenderedListElements(rendered)
+            if (nextOffset < list.size) {
                 append(
                     formatMoreSuffix(
-                        list.size - nextEnd,
+                        list.size - nextOffset,
                         "items",
                         value,
                         title,
                         "list",
-                        nextEnd,
+                        nextOffset,
                         depth
                     )
                 )
@@ -1214,7 +1273,7 @@ object ValueVisualizer {
         value: Map<*, *>,
         offset: Int,
         depth: Int,
-        visited: MutableSet<Int>
+        visited: MutableSet<Any>
     ): String {
         val entries = value.entries.toList()
         val safeStart = offset.coerceIn(0, entries.size)
@@ -1254,7 +1313,7 @@ object ValueVisualizer {
         value: Any?,
         offset: Int,
         depth: Int,
-        visited: MutableSet<Int>
+        visited: MutableSet<Any>
     ): String {
         val obj = value ?: return ""
         if (!obj::class.isData) {
