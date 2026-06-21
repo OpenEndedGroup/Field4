@@ -118,7 +118,7 @@ private fun parseCandidateDocs(commentary: String, count: Int): List<String> {
 object Ai4KotlinAutocomplete {
     private val bridge: OpenAiIdeCodexBridge by lazy {
         val fastModel = System.getenv("AFIELD_KOTLIN_AUTOCOMPLETE_MODEL")
-            ?: Ai4ModelDefaults.FAST_MODEL
+            ?: Ai4ModelDefaults.fastModel()
         OpenAiIdeCodexBridge(
             model = fastModel,
             log = SilentLog,

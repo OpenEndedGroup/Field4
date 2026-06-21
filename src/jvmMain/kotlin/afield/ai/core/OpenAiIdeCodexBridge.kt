@@ -15,10 +15,12 @@ import com.openai.models.conversations.ConversationCreateParams
 import com.openai.models.conversations.items.ItemCreateParams
 import com.openai.models.responses.*
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 
 class OpenAiIdeCodexBridge(
+    private val runtimeConfig: AiProviderRuntimeConfig = activeAiProviderRuntimeConfig(),
     private val client: OpenAIClient = openAiClientFromFieldConfig(),
-    model: String = Ai4ModelDefaults.FLAGSHIP_MODEL,
+    model: String = Ai4ModelDefaults.flagshipModel(),
     private val log: LogSink = StdoutLog,
     private val reasoningEffort: ReasoningEffort = ReasoningEffort.MEDIUM
 ) {
@@ -33,6 +35,7 @@ class OpenAiIdeCodexBridge(
             .effort(reasoningEffort)
             .summary(Reasoning.Summary.DETAILED)
             .build()
+    private val statelessHistory = ConcurrentHashMap<String, MutableList<ResponseInputItem>>()
     private fun info(message: String) = log.log("info,ai.bridge", message)
     private fun warn(message: String) = log.log("warning,ai.bridge", message)
     private fun error(message: String) = log.log("error,ai.bridge", message)
@@ -55,6 +58,19 @@ class OpenAiIdeCodexBridge(
         val t0 = System.nanoTime()
 
         val localThreadId = UUID.randomUUID().toString()
+        if (runtimeConfig.isOpenRouter) {
+            val conversationId = "openrouter:$localThreadId"
+            val ms = (System.nanoTime() - t0) / 1_000_000
+            info("startThread(): stateless conversationId=$conversationId localThreadId=$localThreadId (${ms}ms)")
+            return ThreadState(
+                localThreadId = localThreadId,
+                conversationId = conversationId,
+                fileKey = fileKey,
+                initialInstructions = instructions,
+                initialFileText = fileText
+            )
+        }
+
         val metadata = ConversationCreateParams.Metadata.builder()
             .putAdditionalProperty("ide_file_key", JsonValue.from(fileKey))
             .putAdditionalProperty("local_thread_id", JsonValue.from(localThreadId))
@@ -137,39 +153,28 @@ class OpenAiIdeCodexBridge(
                 "maxOutputTokens=$maxOutputTokens attachments=${ctx.attachments.size} images=${imageDataUrls.size}"
         )
 
+        val promptItems = buildPromptItems(inputText, imageDataUrls)
+
         val paramsBuilder = ResponseCreateParams.builder()
             .model(chatModel)
             .maxOutputTokens(maxOutputTokens)
-        if (imageDataUrls.isEmpty()) {
+
+        if (runtimeConfig.isOpenRouter) {
+            paramsBuilder.input(ResponseCreateParams.Input.ofResponse(historyForRequest(state) + promptItems))
+        } else if (imageDataUrls.isEmpty()) {
             paramsBuilder.input(inputText)
         } else {
-            val message = ResponseInputItem.Message.builder()
-                .role(ResponseInputItem.Message.Role.USER)
-                .addInputTextContent(inputText)
-                .apply {
-                    imageDataUrls.forEach { url ->
-                        try {
-                            addContent(
-                                ResponseInputImage.builder()
-                                    .imageUrl(url)
-                                    .detail(ResponseInputImage.Detail.HIGH)
-                                    .build()
-                            )
-                        } catch (_: Exception) {
-                            // Ignore malformed image strings but keep the rest flowing.
-                        }
-                    }
-                }
-                .build()
-            paramsBuilder.input(ResponseCreateParams.Input.ofResponse(listOf(ResponseInputItem.ofMessage(message))))
+            paramsBuilder.input(ResponseCreateParams.Input.ofResponse(promptItems))
         }
-        if (state.previousResponseId == null) {
+        if (runtimeConfig.isOpenRouter) {
+            // OpenRouter's Responses API is stateless; local history is sent in input instead.
+        } else if (state.previousResponseId == null) {
             paramsBuilder.conversation(state.conversationId)
         } else {
             paramsBuilder.previousResponseId(state.previousResponseId)
         }
         paramsBuilder.text(textConfig)
-        paramsBuilder.reasoning(reasoningConfig)
+        addReasoningIfSupported(paramsBuilder)
         tools.addAllTo(paramsBuilder)
         if (vectorStoreIds.isNotEmpty() && supportsFileSearch()) {
             paramsBuilder.addFileSearchTool(vectorStoreIds)
@@ -181,6 +186,7 @@ class OpenAiIdeCodexBridge(
             info("")
         }
         state.previousResponseId = response.id()
+        appendStatelessHistory(state, promptItems + inputItemsFromOutput(response))
         info("initial response id=${response.id()} outputItems=${response.output().size} <<spinner>>")
 
         val commentaryMessages = mutableListOf<String>()
@@ -321,11 +327,15 @@ class OpenAiIdeCodexBridge(
             info("creating response (follow-up) <<spinner>>")
             val followupBuilder = ResponseCreateParams.builder()
                 .model(chatModel)
-                .previousResponseId(response.id())
-                .input(ResponseCreateParams.Input.ofResponse(toolOutputs))
                 .maxOutputTokens(maxOutputTokens)
+            if (runtimeConfig.isOpenRouter) {
+                followupBuilder.input(ResponseCreateParams.Input.ofResponse(historyForRequest(state) + toolOutputs))
+            } else {
+                followupBuilder.previousResponseId(response.id())
+                followupBuilder.input(ResponseCreateParams.Input.ofResponse(toolOutputs))
+            }
             followupBuilder.text(textConfig)
-            followupBuilder.reasoning(reasoningConfig)
+            addReasoningIfSupported(followupBuilder)
             tools.addAllTo(followupBuilder)
             if (vectorStoreIds.isNotEmpty() && supportsFileSearch()) {
                 followupBuilder.addFileSearchTool(vectorStoreIds)
@@ -336,6 +346,7 @@ class OpenAiIdeCodexBridge(
                 info("")
             }
             state.previousResponseId = response.id()
+            appendStatelessHistory(state, toolOutputs + inputItemsFromOutput(response))
             info("follow-up response id=${response.id()} outputItems=${response.output().size}")
             logOutputShape(response)
             emitResponseProgress(response, onProgress)
@@ -352,6 +363,7 @@ class OpenAiIdeCodexBridge(
                     "requesting a final answer without further tools."
             )
             response = createForcedFinalResponse(
+                state = state,
                 previousResponse = response,
                 pendingCalls = pendingCalls,
                 maxOutputTokens = maxOutputTokens,
@@ -427,6 +439,8 @@ class OpenAiIdeCodexBridge(
         val localThreadId: String,
         val conversationId: String,
         val fileKey: String,
+        val initialInstructions: String = "",
+        val initialFileText: String = "",
         var previousResponseId: String? = null
     )
 
@@ -502,6 +516,7 @@ class OpenAiIdeCodexBridge(
     }
 
     private fun createForcedFinalResponse(
+        state: ThreadState,
         previousResponse: Response,
         pendingCalls: List<ResponseFunctionToolCall>,
         maxOutputTokens: Long,
@@ -535,13 +550,98 @@ class OpenAiIdeCodexBridge(
 
         val builder = ResponseCreateParams.builder()
             .model(chatModel)
-            .previousResponseId(previousResponse.id())
-            .input(ResponseCreateParams.Input.ofResponse(inputItems))
             .maxOutputTokens(maxOutputTokens)
+        if (runtimeConfig.isOpenRouter) {
+            builder.input(ResponseCreateParams.Input.ofResponse(historyForRequest(state) + inputItems))
+        } else {
+            builder.previousResponseId(previousResponse.id())
+            builder.input(ResponseCreateParams.Input.ofResponse(inputItems))
+        }
         builder.text(textConfig)
-        builder.reasoning(reasoningConfig)
+        addReasoningIfSupported(builder)
         info("creating response (forced-final) <<spinner>>")
         return createResponse(builder.build(), onTextDelta)
+    }
+
+    private fun buildMessageItem(
+        role: ResponseInputItem.Message.Role,
+        text: String,
+        imageDataUrls: List<String> = emptyList()
+    ): ResponseInputItem {
+        val message = ResponseInputItem.Message.builder()
+            .role(role)
+            .addInputTextContent(text)
+            .apply {
+                imageDataUrls.forEach { url ->
+                    try {
+                        addContent(
+                            ResponseInputImage.builder()
+                                .imageUrl(url)
+                                .detail(ResponseInputImage.Detail.HIGH)
+                                .build()
+                        )
+                    } catch (_: Exception) {
+                        // Ignore malformed image strings but keep the rest flowing.
+                    }
+                }
+            }
+            .build()
+        return ResponseInputItem.ofMessage(message)
+    }
+
+    private fun buildPromptItems(inputText: String, imageDataUrls: List<String>): List<ResponseInputItem> =
+        listOf(buildMessageItem(ResponseInputItem.Message.Role.USER, inputText, imageDataUrls))
+
+    private fun seedHistory(state: ThreadState): List<ResponseInputItem> {
+        val seed = mutableListOf<ResponseInputItem>()
+        if (state.initialInstructions.isNotBlank()) {
+            seed += buildMessageItem(ResponseInputItem.Message.Role.DEVELOPER, state.initialInstructions)
+        }
+        if (state.initialFileText.isNotBlank()) {
+            seed += buildMessageItem(
+                ResponseInputItem.Message.Role.USER,
+                buildString {
+                    appendLine("IDE_FILE_CONTEXT:")
+                    appendLine("key: ${state.fileKey}")
+                    appendLine("content:")
+                    appendLine(state.initialFileText)
+                }
+            )
+        }
+        return seed
+    }
+
+    private fun historyForRequest(state: ThreadState): List<ResponseInputItem> {
+        val history = statelessHistory.computeIfAbsent(state.localThreadId) { seedHistory(state).toMutableList() }
+        return history.toList()
+    }
+
+    private fun inputItemsFromOutput(response: Response): List<ResponseInputItem> =
+        response.output().mapNotNull { item ->
+            when {
+                item.message().isPresent -> ResponseInputItem.ofResponseOutputMessage(item.message().get())
+                item.functionCall().isPresent -> ResponseInputItem.ofFunctionCall(item.functionCall().get())
+                item.reasoning().isPresent -> ResponseInputItem.ofReasoning(item.reasoning().get())
+                else -> null
+            }
+        }
+
+    private fun appendStatelessHistory(state: ThreadState, items: List<ResponseInputItem>) {
+        if (!runtimeConfig.isOpenRouter || items.isEmpty()) return
+        val history = statelessHistory.computeIfAbsent(state.localThreadId) { seedHistory(state).toMutableList() }
+        history += items
+        val maxItems = System.getenv("AFIELD_OPENROUTER_HISTORY_ITEMS")?.toIntOrNull()?.coerceAtLeast(8) ?: 80
+        if (history.size > maxItems) {
+            val seedCount = seedHistory(state).size
+            val removeCount = (history.size - maxItems).coerceAtMost((history.size - seedCount).coerceAtLeast(0))
+            repeat(removeCount) {
+                if (history.size > seedCount) history.removeAt(seedCount)
+            }
+        }
+    }
+
+    private fun addReasoningIfSupported(builder: ResponseCreateParams.Builder) {
+        if (!runtimeConfig.isOpenRouter) builder.reasoning(reasoningConfig)
     }
 
     private fun extractOutputTextWithNewlines(response: Response): String {
@@ -742,7 +842,7 @@ class OpenAiIdeCodexBridge(
         else -> "type=${toolResult::class.java.simpleName}"
     }
 
-    private fun supportsFileSearch(): Boolean = chatModel != ChatModel.GPT_5_1_CODEX
+    private fun supportsFileSearch(): Boolean = !runtimeConfig.isOpenRouter && chatModel != ChatModel.GPT_5_1_CODEX
 
     /* ------------------------------ Tools ---------------------------------- */
 

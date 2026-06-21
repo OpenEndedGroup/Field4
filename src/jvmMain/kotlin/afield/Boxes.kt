@@ -6,6 +6,8 @@ import afield.stdlib.Action
 import afield.stdlib.Delegation
 import afield.stdlib.Marker
 import afield.stdlib.actions
+import afield.four.synth.musicClock
+import afield.four.synth.patClock
 import io.ktor.util.collections.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.builtins.MapSerializer
@@ -23,6 +25,47 @@ var Box.autorun by Delegation<Boolean>(defaultValue = { false })
 var Box.layers by Delegation<String>(defaultValue = { "default" })
 var Box.layerFrames by Delegation<MutableMap<String, Rect>>(defaultValue = { mutableMapOf() })
 var Box.templateId by Delegation<String?>(defaultValue = { null }) // tracks which template this box was created from
+
+const val METAROOT_ID = "metaroot"
+
+val metaroot: Box by lazy {
+    val root = Box(METAROOT_ID)
+    root.name = METAROOT_ID
+    root.visible = false
+    root.patClock = musicClock()
+    val info = SessionInformation(
+        filename = "<metaroot>",
+        documentName = METAROOT_ID,
+        root = root,
+        ephemeral = true
+    )
+    root.inside = info
+    root
+}
+
+fun attachRootToMetaroot(root: Box) {
+    if (root == metaroot) return
+    val meta = metaroot
+    if (!root.parents.contains(meta)) {
+        root.parents.add(meta)
+        needsResync.add(root to "parents")
+    }
+    if (!meta.children.contains(root)) {
+        meta.children.add(root)
+        needsResync.add(meta to "children")
+    }
+}
+
+fun detachRootFromMetaroot(root: Box) {
+    if (root == metaroot) return
+    val meta = metaroot
+    if (root.parents.remove(meta)) {
+        needsResync.add(root to "parents")
+    }
+    if (meta.children.remove(root)) {
+        needsResync.add(meta to "children")
+    }
+}
 
 
 interface HasProperties {
@@ -686,6 +729,7 @@ fun box(
     initIfCreated: Boolean = true,
     root: SessionInformation = thisSessionInfo.get()
 ): Box {
+    if (u == METAROOT_ID) return metaroot
     if (u == "root") return root.root
     if (createIfMissing) {
         return root.boxes.computeIfAbsent(u) {

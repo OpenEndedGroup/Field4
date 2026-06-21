@@ -232,9 +232,9 @@ internal object Ai4AutoBoxNamer {
         if (flag.equals("false", ignoreCase = true) || flag == "0") {
             return EnabledCheck(false, "disabled by AFIELD_AI_AUTO_NAME_BOXES/afield.ai.autoNameBoxes=$flag")
         }
-        val credential = readOpenAiCredential()
-        if (credential == null) return EnabledCheck(false, "no OpenAI credential found")
-        return EnabledCheck(true, "credential source=${credential.second}")
+        val config = runCatching { activeAiProviderRuntimeConfig() }.getOrNull()
+        if (config == null) return EnabledCheck(false, "no AI credential found")
+        return EnabledCheck(true, "${config.provider} credential source=${config.source}")
     }
 
     private fun requestNames(candidates: List<Candidate>): List<ProposedName> {
@@ -271,7 +271,7 @@ internal object Ai4AutoBoxNamer {
             "AI4 auto box naming prompt for ${candidates.size} candidate(s), ${prompt.length} chars:\n$prompt"
         )
 
-        val model = ChatModel.of(Ai4ModelDefaults.envOrDefault("AFIELD_AI_AUTO_NAME_MODEL", Ai4ModelDefaults.FAST_MODEL))
+        val model = ChatModel.of(Ai4ModelDefaults.envOrDefault("AFIELD_AI_AUTO_NAME_MODEL", Ai4ModelDefaults.fastModel()))
         lprintln("info,ai.boxnames", "AI4 auto box naming sending request to model $model")
         val params = ResponseCreateParams.builder()
             .model(model)

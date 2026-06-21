@@ -119,20 +119,40 @@ data class WorkspaceSwitchRequest(
 @Serializable
 data class AiSettingsStatus(
     val hasOpenAiPlatformKey: Boolean = false,
+    val hasOpenRouterApiKey: Boolean = false,
+    val provider: String = "openai",
     val source: String = "",
-    val configPath: String = ""
+    val configPath: String = "",
+    val openRouterConfigPath: String = "",
+    val baseUrl: String = "",
+    val flagshipModel: String = "",
+    val fastModel: String = "",
+    val fallbackModel: String = ""
 )
 
 @Serializable
 data class AiSettingsUpdateRequest(
-    val openAiPlatformKey: String
+    val provider: String = "openai",
+    val openAiPlatformKey: String = "",
+    val openRouterApiKey: String = "",
+    val openRouterBaseUrl: String = "",
+    val flagshipModel: String = "",
+    val fastModel: String = "",
+    val fallbackModel: String = ""
 )
 
 @Serializable
 data class AiSettingsUpdateResponse(
     val hasOpenAiPlatformKey: Boolean,
+    val hasOpenRouterApiKey: Boolean,
+    val provider: String,
     val source: String,
     val configPath: String,
+    val openRouterConfigPath: String,
+    val baseUrl: String,
+    val flagshipModel: String,
+    val fastModel: String,
+    val fallbackModel: String,
     val message: String
 )
 

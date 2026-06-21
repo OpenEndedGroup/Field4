@@ -451,7 +451,7 @@ fun main(args: Array<String>) {
         }
     } else null
 
-    val bridge = OpenAiIdeCodexBridge(model = Ai4ModelDefaults.FLAGSHIP_MODEL, log = TputLog())
+    val bridge = OpenAiIdeCodexBridge(model = Ai4ModelDefaults.flagshipModel(), log = TputLog())
     val indexForTools = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex()
     val instructions = buildString {
         appendLine(OpenAiIdeCodexBridge.defaultChatThreadInstructions.trim())

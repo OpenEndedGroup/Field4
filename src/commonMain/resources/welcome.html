@@ -298,6 +298,27 @@
             grid-template-columns: 1fr auto;
         }
 
+        .ai-settings-models {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+
+        .ai-settings-field {
+            display: grid;
+            grid-template-columns: 90px 1fr;
+            gap: 8px;
+            align-items: center;
+            font-size: 12px;
+            color: var(--field-text-soft);
+        }
+
+        .ai-settings-provider {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
         .workspace-button-row {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
@@ -307,6 +328,11 @@
         #workspace-path,
         #new-project-name,
         #openai-platform-key,
+        #openrouter-api-key,
+        #openrouter-base-url,
+        #ai-flagship-model,
+        #ai-fast-model,
+        #ai-fallback-model,
         #osc-editor-port,
         #osc-editor-float-address,
         #osc-editor-launch-address,
@@ -326,6 +352,11 @@
         #workspace-path::placeholder,
         #new-project-name::placeholder,
         #openai-platform-key::placeholder,
+        #openrouter-api-key::placeholder,
+        #openrouter-base-url::placeholder,
+        #ai-flagship-model::placeholder,
+        #ai-fast-model::placeholder,
+        #ai-fallback-model::placeholder,
         #osc-editor-port::placeholder,
         #osc-editor-float-address::placeholder,
         #osc-editor-launch-address::placeholder,
@@ -339,6 +370,11 @@
         #workspace-path:focus,
         #new-project-name:focus,
         #openai-platform-key:focus,
+        #openrouter-api-key:focus,
+        #openrouter-base-url:focus,
+        #ai-flagship-model:focus,
+        #ai-fast-model:focus,
+        #ai-fallback-model:focus,
         #osc-editor-port:focus,
         #osc-editor-float-address:focus,
         #osc-editor-launch-address:focus,
@@ -1122,6 +1158,8 @@
             .project-management-controls,
             .ai-settings-header,
             .ai-settings-controls,
+            .ai-settings-field,
+            .ai-settings-provider,
             .osc-settings-header,
             .osc-settings-controls,
             .preferences-header,
@@ -1307,12 +1345,25 @@
                     </summary>
                     <div class="ai-settings-body">
                         <div class="ai-settings-header">
-                            <span class="ai-settings-label">OpenAI</span>
+                            <span class="ai-settings-label">Provider</span>
                             <span id="ai-settings-state">checking</span>
+                        </div>
+                        <div class="ai-settings-provider" role="group" aria-label="AI provider">
+                            <button class="segmented-button ai-provider-button" type="button" data-ai-provider="openai" aria-pressed="true">OpenAI</button>
+                            <button class="segmented-button ai-provider-button" type="button" data-ai-provider="openrouter" aria-pressed="false">OpenRouter</button>
                         </div>
                         <div class="ai-settings-controls">
                             <input id="openai-platform-key" type="password" autocomplete="off" placeholder="OPENAI_PLATFORM_KEY">
-                            <button id="save-openai-platform-key" type="button">Save</button>
+                            <button id="save-ai-settings" type="button">Save</button>
+                        </div>
+                        <div class="ai-settings-controls">
+                            <input id="openrouter-api-key" type="password" autocomplete="off" placeholder="OPENROUTER_API_KEY">
+                            <input id="openrouter-base-url" type="text" autocomplete="off" placeholder="https://openrouter.ai/api/v1">
+                        </div>
+                        <div class="ai-settings-models">
+                            <label class="ai-settings-field" for="ai-flagship-model"><span>agent</span><input id="ai-flagship-model" type="text" autocomplete="off" placeholder="gpt-5.5 or openai/gpt-5.5"></label>
+                            <label class="ai-settings-field" for="ai-fast-model"><span>fast</span><input id="ai-fast-model" type="text" autocomplete="off" placeholder="gpt-5.4-mini or openai/gpt-5.4-mini"></label>
+                            <label class="ai-settings-field" for="ai-fallback-model"><span>fallback</span><input id="ai-fallback-model" type="text" autocomplete="off" placeholder="gpt-5.4 or openai/gpt-5.4"></label>
                         </div>
                         <div id="ai-settings-status" aria-live="polite"></div>
                     </div>
@@ -1431,8 +1482,15 @@
         workspaceSwitching: false,
         aiSettings: {
             hasOpenAiPlatformKey: false,
+            hasOpenRouterApiKey: false,
+            provider: "openai",
             source: "",
-            configPath: ""
+            configPath: "",
+            openRouterConfigPath: "",
+            baseUrl: "",
+            flagshipModel: "",
+            fastModel: "",
+            fallbackModel: ""
         },
         savingAiSettings: false,
         preferences: {
@@ -1622,14 +1680,40 @@
     function renderAiSettings() {
         const summary = document.getElementById("ai-settings-summary");
         const stateNode = document.getElementById("ai-settings-state");
-        const input = document.getElementById("openai-platform-key");
-        const button = document.getElementById("save-openai-platform-key");
+        const openAiInput = document.getElementById("openai-platform-key");
+        const openRouterInput = document.getElementById("openrouter-api-key");
+        const openRouterBaseUrl = document.getElementById("openrouter-base-url");
+        const flagshipModel = document.getElementById("ai-flagship-model");
+        const fastModel = document.getElementById("ai-fast-model");
+        const fallbackModel = document.getElementById("ai-fallback-model");
+        const button = document.getElementById("save-ai-settings");
         const settings = state.aiSettings || {};
-        const configured = !!settings.hasOpenAiPlatformKey;
+        const provider = settings.provider === "openrouter" ? "openrouter" : "openai";
+        const configured = provider === "openrouter" ? !!settings.hasOpenRouterApiKey : !!settings.hasOpenAiPlatformKey;
 
-        if (summary) summary.textContent = configured ? "configured" : "missing key";
-        if (stateNode) stateNode.textContent = configured ? "configured" : "missing OPENAI_PLATFORM_KEY";
-        if (input) input.disabled = state.savingAiSettings;
+        if (summary) summary.textContent = configured ? provider : "missing key";
+        if (stateNode) stateNode.textContent = configured ? `${provider} configured` : `missing ${provider === "openrouter" ? "OPENROUTER_API_KEY" : "OPENAI_PLATFORM_KEY"}`;
+        document.querySelectorAll("[data-ai-provider]").forEach((providerButton) => {
+            const active = providerButton.getAttribute("data-ai-provider") === provider;
+            providerButton.setAttribute("aria-pressed", active ? "true" : "false");
+            providerButton.classList.toggle("active", active);
+            providerButton.disabled = state.savingAiSettings;
+        });
+        if (openAiInput) openAiInput.disabled = state.savingAiSettings;
+        if (openRouterInput) openRouterInput.disabled = state.savingAiSettings;
+        if (openRouterBaseUrl) {
+            openRouterBaseUrl.disabled = state.savingAiSettings;
+            const routerBaseUrl = provider === "openrouter" ? (settings.baseUrl || "") : "";
+            if (!openRouterBaseUrl.value.trim() || openRouterBaseUrl.value.includes("api.openai.com")) {
+                openRouterBaseUrl.value = routerBaseUrl;
+            }
+        }
+        if (flagshipModel && !flagshipModel.value.trim()) flagshipModel.value = settings.flagshipModel || "";
+        if (fastModel && !fastModel.value.trim()) fastModel.value = settings.fastModel || "";
+        if (fallbackModel && !fallbackModel.value.trim()) fallbackModel.value = settings.fallbackModel || "";
+        [flagshipModel, fastModel, fallbackModel].filter(Boolean).forEach((input) => {
+            input.disabled = state.savingAiSettings;
+        });
         if (button) button.disabled = state.savingAiSettings;
     }
 
@@ -2957,10 +3041,18 @@
     }
 
     async function saveAiSettings() {
-        const input = document.getElementById("openai-platform-key");
-        const key = String(input?.value || "").trim();
-        if (!key) {
-            setAiSettingsStatus("Enter an OpenAI Platform key.", true);
+        const provider = state.aiSettings?.provider === "openrouter" ? "openrouter" : "openai";
+        const openAiInput = document.getElementById("openai-platform-key");
+        const openRouterInput = document.getElementById("openrouter-api-key");
+        const openRouterBaseUrl = document.getElementById("openrouter-base-url");
+        const flagshipModel = document.getElementById("ai-flagship-model");
+        const fastModel = document.getElementById("ai-fast-model");
+        const fallbackModel = document.getElementById("ai-fallback-model");
+        const openAiKey = String(openAiInput?.value || "").trim();
+        const openRouterKey = String(openRouterInput?.value || "").trim();
+        const hasSelectedKey = provider === "openrouter" ? (openRouterKey || state.aiSettings.hasOpenRouterApiKey) : (openAiKey || state.aiSettings.hasOpenAiPlatformKey);
+        if (!hasSelectedKey) {
+            setAiSettingsStatus(`Enter ${provider === "openrouter" ? "an OpenRouter API key" : "an OpenAI Platform key"}.`, true);
             return;
         }
 
@@ -2973,7 +3065,15 @@
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 cache: "no-store",
-                body: JSON.stringify({ openAiPlatformKey: key })
+                body: JSON.stringify({
+                    provider,
+                    openAiPlatformKey: openAiKey,
+                    openRouterApiKey: openRouterKey,
+                    openRouterBaseUrl: String(openRouterBaseUrl?.value || "").trim(),
+                    flagshipModel: String(flagshipModel?.value || "").trim(),
+                    fastModel: String(fastModel?.value || "").trim(),
+                    fallbackModel: String(fallbackModel?.value || "").trim()
+                })
             });
             const payload = await response.json().catch(() => ({}));
             if (!response.ok) {
@@ -2982,14 +3082,22 @@
 
             state.aiSettings = {
                 hasOpenAiPlatformKey: !!payload.hasOpenAiPlatformKey,
+                hasOpenRouterApiKey: !!payload.hasOpenRouterApiKey,
+                provider: payload.provider || provider,
                 source: payload.source || "",
-                configPath: payload.configPath || state.aiSettings.configPath || ""
+                configPath: payload.configPath || state.aiSettings.configPath || "",
+                openRouterConfigPath: payload.openRouterConfigPath || state.aiSettings.openRouterConfigPath || "",
+                baseUrl: payload.baseUrl || state.aiSettings.baseUrl || "",
+                flagshipModel: payload.flagshipModel || "",
+                fastModel: payload.fastModel || "",
+                fallbackModel: payload.fallbackModel || ""
             };
-            if (input) input.value = "";
-            setAiSettingsStatus(payload.message || "OpenAI Platform key saved.");
+            if (openAiInput) openAiInput.value = "";
+            if (openRouterInput) openRouterInput.value = "";
+            setAiSettingsStatus(payload.message || "AI settings saved.");
         } catch (error) {
             console.error("Failed to save AI settings", error);
-            setAiSettingsStatus(error?.message || "Could not save OpenAI Platform key.", true);
+            setAiSettingsStatus(error?.message || "Could not save AI settings.", true);
         } finally {
             state.savingAiSettings = false;
             renderAiSettings();
@@ -3219,7 +3327,9 @@
         const chooseWorkspaceButton = document.getElementById("choose-workspace");
         const openWorkspaceButton = document.getElementById("open-workspace");
         const openAiKeyInput = document.getElementById("openai-platform-key");
-        const saveOpenAiKeyButton = document.getElementById("save-openai-platform-key");
+        const openRouterKeyInput = document.getElementById("openrouter-api-key");
+        const aiProviderButtons = document.querySelectorAll("[data-ai-provider]");
+        const saveAiSettingsButton = document.getElementById("save-ai-settings");
         const stickinessButtons = document.querySelectorAll("[data-stickiness-value]");
         const oscInputs = [
             document.getElementById("osc-editor-enabled"),
@@ -3309,7 +3419,18 @@
             if (!state.workspaceSwitching) setWorkspaceStatus("");
         });
 
-        saveOpenAiKeyButton?.addEventListener("click", saveAiSettings);
+        aiProviderButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+                state.aiSettings = {
+                    ...(state.aiSettings || {}),
+                    provider: button.getAttribute("data-ai-provider") || "openai"
+                };
+                renderAiSettings();
+                setAiSettingsStatus("");
+            });
+        });
+
+        saveAiSettingsButton?.addEventListener("click", saveAiSettings);
 
         openAiKeyInput?.addEventListener("keydown", (event) => {
             if (event.key !== "Enter") return;
@@ -3318,6 +3439,16 @@
         });
 
         openAiKeyInput?.addEventListener("input", () => {
+            setAiSettingsStatus("");
+        });
+
+        openRouterKeyInput?.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            saveAiSettings();
+        });
+
+        openRouterKeyInput?.addEventListener("input", () => {
             setAiSettingsStatus("");
         });
 

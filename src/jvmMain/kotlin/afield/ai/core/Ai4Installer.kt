@@ -292,7 +292,7 @@ fun installAi4() {
         if (chatBridge == null) {
             val uiLog = NotifyLog(label = "")
             try {
-                chatBridge = OpenAiIdeCodexBridge(model = Ai4ModelDefaults.FLAGSHIP_MODEL, log = uiLog)
+                chatBridge = OpenAiIdeCodexBridge(model = Ai4ModelDefaults.flagshipModel(), log = uiLog)
                 chatHelpers = IdeChatHelpers(chatBridge!!, log = uiLog)
             } catch (t: Throwable) {
                 val messageText = aiSetupMessage(t)
@@ -1977,7 +1977,7 @@ fun installAi4() {
         
         if (chatBridge == null) {
             val uiLog = NotifyLog(label = "")
-            chatBridge = OpenAiIdeCodexBridge(model = Ai4ModelDefaults.FLAGSHIP_MODEL, log = uiLog)
+            chatBridge = OpenAiIdeCodexBridge(model = Ai4ModelDefaults.flagshipModel(), log = uiLog)
             chatHelpers = IdeChatHelpers(chatBridge!!, log = uiLog)
         }
         
