@@ -660,13 +660,50 @@ open class RenderToTexture(
         require(attachment in imageViewArray.indices) {
             "attachment $attachment is out of range for RenderToTexture with ${imageViewArray.size} color attachments"
         }
+        val sourceProvider = object : HasImageViewArray {
+            override val imageViewArray: List<HasImageView>
+                get() = listOf(this@RenderToTexture.imageViewArray[attachment])
+        }
+        return blitImageToScreen(
+            sourceProvider = sourceProvider,
+            sourceView = imageViewArray[attachment].imageView,
+            renderer = renderer,
+            target = target,
+            name = name,
+            viewport = viewport,
+            sourceRect = sourceRect,
+            blend = blend,
+            additive = additive,
+            sourceLayer = sourceLayer,
+            warper = warper,
+            numSegmentsW = numSegmentsW,
+            numSegmentsH = numSegmentsH,
+            configure = configure
+        )
+    }
+
+    protected fun blitImageToScreen(
+        sourceProvider: HasImageViewArray,
+        sourceView: ImageView,
+        renderer: Renderer = this.renderer,
+        target: RenderTarget = renderer.renderList,
+        name: String = "rtt-blit",
+        viewport: Rect? = null,
+        sourceRect: Rect? = null,
+        blend: Boolean = false,
+        additive: Boolean = false,
+        sourceLayer: Int = 0,
+        warper: String? = null,
+        numSegmentsW: Int = 1,
+        numSegmentsH: Int = 1,
+        configure: ColorGrade.() -> Unit = {}
+    ): ModulePointer {
         require(numSegmentsW >= 1) { "numSegmentsW must be at least 1" }
         require(numSegmentsH >= 1) { "numSegmentsH must be at least 1" }
-        val sourceView = imageViewArray[attachment].imageView
         val sourceIsArray = sourceView.imageViewData.viewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY
         if (sourceIsArray) {
             require(sourceLayer in 0 until sourceView.imageViewData.layerCount) {
-                "sourceLayer $sourceLayer is out of range for RenderToTexture attachment $attachment with ${sourceView.imageViewData.layerCount} layers"
+                "sourceLayer $sourceLayer is out of range for source image with ${sourceView.imageViewData.layerCount} layers"
             }
         } else {
             require(sourceLayer == 0) {
@@ -677,15 +714,11 @@ open class RenderToTexture(
         val grade = ColorGrade().apply(configure)
         val sampler = afield.four.texture.TextureSampler(
             renderer,
-            imageViewArray[attachment].imageView.imageViewData.mipLevels,
+            sourceView.imageViewData.mipLevels,
             true,
             VK_FILTER_NEAREST,
             VK_SAMPLER_MIPMAP_MODE_NEAREST
         )
-        val sourceProvider = object : HasImageViewArray {
-            override val imageViewArray: List<HasImageView>
-                get() = listOf(this@RenderToTexture.imageViewArray[attachment])
-        }
 
         val module = Module(afield.four.modules.parameters(renderer) {
             this.name = name
@@ -734,6 +767,96 @@ open class RenderToTexture(
         target += name to module
         return module
     }
+
+    open fun debugBlitToScreen(
+        renderer: Renderer = this.renderer,
+        target: RenderTarget = renderer.renderList,
+        attachment: Int = 0,
+        name: String = "rtt-debug-blit",
+        viewport: Rect? = null,
+        sourceRect: Rect? = null,
+        blend: Boolean = false,
+        additive: Boolean = false,
+        sourceLayer: Int = 0,
+        warper: String? = null,
+        numSegmentsW: Int = 1,
+        numSegmentsH: Int = 1,
+        configure: ColorGrade.() -> Unit = {}
+    ): ModulePointer = blitToScreen(
+        renderer = renderer,
+        target = target,
+        attachment = attachment,
+        name = name,
+        viewport = viewport,
+        sourceRect = sourceRect,
+        blend = blend,
+        additive = additive,
+        sourceLayer = sourceLayer,
+        warper = warper,
+        numSegmentsW = numSegmentsW,
+        numSegmentsH = numSegmentsH,
+        configure = configure
+    )
+
+    fun debugBlitToScreen(
+        windowIndex: Int,
+        renderer: Renderer = this.renderer,
+        attachment: Int = 0,
+        name: String = "rtt-debug-blit",
+        viewport: Rect? = null,
+        sourceRect: Rect? = null,
+        blend: Boolean = false,
+        additive: Boolean = false,
+        sourceLayer: Int = 0,
+        warper: String? = null,
+        numSegmentsW: Int = 1,
+        numSegmentsH: Int = 1,
+        configure: ColorGrade.() -> Unit = {}
+    ): ModulePointer = debugBlitToScreen(
+        renderer = renderer,
+        target = renderer.renderTargetFor(windowIndex),
+        attachment = attachment,
+        name = name,
+        viewport = viewport,
+        sourceRect = sourceRect,
+        blend = blend,
+        additive = additive,
+        sourceLayer = sourceLayer,
+        warper = warper,
+        numSegmentsW = numSegmentsW,
+        numSegmentsH = numSegmentsH,
+        configure = configure
+    )
+
+    fun debugBlitToScreen(
+        window: Window,
+        renderer: Renderer = this.renderer,
+        attachment: Int = 0,
+        name: String = "rtt-debug-blit",
+        viewport: Rect? = null,
+        sourceRect: Rect? = null,
+        blend: Boolean = false,
+        additive: Boolean = false,
+        sourceLayer: Int = 0,
+        warper: String? = null,
+        numSegmentsW: Int = 1,
+        numSegmentsH: Int = 1,
+        configure: ColorGrade.() -> Unit = {}
+    ): ModulePointer = debugBlitToScreen(
+        windowIndex = renderer.windowIndex(window),
+        renderer = renderer,
+        attachment = attachment,
+        name = name,
+        viewport = viewport,
+        sourceRect = sourceRect,
+        blend = blend,
+        additive = additive,
+        sourceLayer = sourceLayer,
+        warper = warper,
+        numSegmentsW = numSegmentsW,
+        numSegmentsH = numSegmentsH,
+        configure = configure
+    )
 
     fun blitToScreen(
         windowIndex: Int,

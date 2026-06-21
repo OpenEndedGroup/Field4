@@ -295,6 +295,96 @@ class MultiPingPongRenderToTexture(
         configure = configure
     )
 
+    fun debugBlitToScreen(
+        renderer: Renderer = this.renderer,
+        target: RenderTarget = renderer.renderList,
+        attachment: Int = 0,
+        name: String = "rtt-debug-blit",
+        viewport: Rect? = null,
+        sourceRect: Rect? = null,
+        blend: Boolean = false,
+        additive: Boolean = false,
+        sourceLayer: Int = 0,
+        warper: String? = null,
+        numSegmentsW: Int = 1,
+        numSegmentsH: Int = 1,
+        configure: RenderToTexture.ColorGrade.() -> Unit = {}
+    ): ModulePointer = blitToScreen(
+        renderer = renderer,
+        target = target,
+        attachment = attachment,
+        name = name,
+        viewport = viewport,
+        sourceRect = sourceRect,
+        blend = blend,
+        additive = additive,
+        sourceLayer = sourceLayer,
+        warper = warper,
+        numSegmentsW = numSegmentsW,
+        numSegmentsH = numSegmentsH,
+        configure = configure
+    )
+
+    fun debugBlitToScreen(
+        windowIndex: Int,
+        renderer: Renderer = this.renderer,
+        attachment: Int = 0,
+        name: String = "rtt-debug-blit",
+        viewport: Rect? = null,
+        sourceRect: Rect? = null,
+        blend: Boolean = false,
+        additive: Boolean = false,
+        sourceLayer: Int = 0,
+        warper: String? = null,
+        numSegmentsW: Int = 1,
+        numSegmentsH: Int = 1,
+        configure: RenderToTexture.ColorGrade.() -> Unit = {}
+    ): ModulePointer = debugBlitToScreen(
+        renderer = renderer,
+        target = renderer.renderTargetFor(windowIndex),
+        attachment = attachment,
+        name = name,
+        viewport = viewport,
+        sourceRect = sourceRect,
+        blend = blend,
+        additive = additive,
+        sourceLayer = sourceLayer,
+        warper = warper,
+        numSegmentsW = numSegmentsW,
+        numSegmentsH = numSegmentsH,
+        configure = configure
+    )
+
+    fun debugBlitToScreen(
+        window: Window,
+        renderer: Renderer = this.renderer,
+        attachment: Int = 0,
+        name: String = "rtt-debug-blit",
+        viewport: Rect? = null,
+        sourceRect: Rect? = null,
+        blend: Boolean = false,
+        additive: Boolean = false,
+        sourceLayer: Int = 0,
+        warper: String? = null,
+        numSegmentsW: Int = 1,
+        numSegmentsH: Int = 1,
+        configure: RenderToTexture.ColorGrade.() -> Unit = {}
+    ): ModulePointer = debugBlitToScreen(
+        windowIndex = renderer.windowIndex(window),
+        renderer = renderer,
+        attachment = attachment,
+        name = name,
+        viewport = viewport,
+        sourceRect = sourceRect,
+        blend = blend,
+        additive = additive,
+        sourceLayer = sourceLayer,
+        warper = warper,
+        numSegmentsW = numSegmentsW,
+        numSegmentsH = numSegmentsH,
+        configure = configure
+    )
+
     fun addInit(name: String, module: ModulePointer) {
         validateSingleColorModule(module.current)
         initModules[name] = module

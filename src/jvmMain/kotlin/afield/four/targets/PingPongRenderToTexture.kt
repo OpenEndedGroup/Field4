@@ -552,6 +552,45 @@ open class PingPongRenderToTexture(
         )
     }
 
+    override fun debugBlitToScreen(
+        renderer: Renderer,
+        target: RenderTarget,
+        attachment: Int,
+        name: String,
+        viewport: Rect?,
+        sourceRect: Rect?,
+        blend: Boolean,
+        additive: Boolean,
+        sourceLayer: Int,
+        warper: String?,
+        numSegmentsW: Int,
+        numSegmentsH: Int,
+        configure: ColorGrade.() -> Unit
+    ): ModulePointer {
+        checkedAttachment(attachment)
+        val latestView = latestImageViewFor(attachment)
+        val sourceProvider = object : HasImageViewArray {
+            override val imageViewArray: List<HasImageView>
+                get() = listOf(latestView)
+        }
+        return blitImageToScreen(
+            sourceProvider = sourceProvider,
+            sourceView = latestView.imageView,
+            renderer = renderer,
+            target = target,
+            name = name,
+            viewport = viewport,
+            sourceRect = sourceRect,
+            blend = blend,
+            additive = additive,
+            sourceLayer = sourceLayer,
+            warper = warper,
+            numSegmentsW = numSegmentsW,
+            numSegmentsH = numSegmentsH,
+            configure = configure
+        )
+    }
+
     override fun beforeRender(index: Int) {
         val write = writeIndex
         for (attachment in 0 until pingAttachmentCount) {
