@@ -182,9 +182,11 @@ object StackSLCompiler {
         val allFunctions = functionResults + rootResult
         val helpers = linkedSetOf<String>()
         val samplerIndices = linkedSetOf<Int>()
+        val extraHelperSources = linkedMapOf<String, String>()
         allFunctions.forEach {
             helpers += it.requiredHelpers
             samplerIndices += it.requiredSamplerIndices
+            extraHelperSources += it.extraHelperSources
         }
         val requiredSamplers = samplerIndices
             .mapNotNull { normalized.sampleTextures.getOrNull(it)?.emittedName }
@@ -218,6 +220,10 @@ object StackSLCompiler {
             functionResults.forEach { appendLine("vec4 ${it.emittedName}(vec4 ${normalized.inputName}$wireParam);") }
             if (functionResults.isNotEmpty()) appendLine()
             append(helperSource(normalized.prefix, helpers))
+            extraHelperSources.values.forEach {
+                append(finalizeSource(it))
+                appendLine()
+            }
             functionResults.forEach {
                 append(finalizeSource(it.source))
                 appendLine()
@@ -399,6 +405,11 @@ private data class StackValue(
     val note: String
 )
 
+private data class StackSLWordReference(
+    val word: String,
+    val token: Token?
+)
+
 private val glslInputIdentifier = Regex("""\binput\b""")
 
 private data class CompiledFunction(
@@ -406,7 +417,8 @@ private data class CompiledFunction(
     val source: String,
     val analysis: StackSLFunctionAnalysis,
     val requiredHelpers: Set<String>,
-    val requiredSamplerIndices: Set<Int>
+    val requiredSamplerIndices: Set<Int>,
+    val extraHelperSources: Map<String, String>
 )
 
 private class FunctionCompiler(
@@ -417,10 +429,12 @@ private class FunctionCompiler(
     private val emittedName: String
 ) {
     private val values = mutableListOf<StackValue>()
+    private val wordReferences = mutableListOf<StackSLWordReference>()
     private val stack = mutableListOf<Int>()
     private val expressionCache = linkedMapOf<String, Int>()
     private val requiredHelpers = linkedSetOf<String>()
     private val requiredSamplerIndices = linkedSetOf<Int>()
+    private val extraHelperSources = linkedMapOf<String, String>()
     private val calls = linkedSetOf<String>()
     private val channelWrites = linkedMapOf<Int, Int>()
     private val externalWrites = mutableListOf<Pair<String, Int>>()
@@ -438,9 +452,7 @@ private class FunctionCompiler(
         } finally {
             inputStack.removeAt(inputStack.lastIndex)
         }
-        val result = if (stack.isNotEmpty()) {
-            stack.last()
-        } else {
+        val result = lastValueOnStack() ?: run {
             warn(tokens.lastOrNull(), "Function '$sourceName' produced an empty stack; returning the default input color.")
             leaf(options.inputName, tokens.lastOrNull(), "empty-stack result")
         }
@@ -494,7 +506,8 @@ private class FunctionCompiler(
                 channelWrites = channelWrites.keys.toSet()
             ),
             requiredHelpers = requiredHelpers.toSet(),
-            requiredSamplerIndices = requiredSamplerIndices.toSet()
+            requiredSamplerIndices = requiredSamplerIndices.toSet(),
+            extraHelperSources = extraHelperSources.toMap()
         )
     }
 
@@ -508,6 +521,11 @@ private class FunctionCompiler(
 
         parseExternalRead(raw)?.let {
             push(leaf(it, token, "external GLSL read"))
+            return
+        }
+
+        parseWordReference(raw)?.let {
+            pushWordReference(it, token)
             return
         }
 
@@ -582,8 +600,8 @@ private class FunctionCompiler(
             "tau" -> push(leaf("vec4(6.283185307179586)", token, "tau"))
             "e" -> push(leaf("vec4(2.718281828459045)", token, "e"))
 
-            "dup" -> push(peekOrDefault(token, "dup"))
-            "drop" -> pop(token, "drop")
+            "dup" -> push(peekItemOrDefault(token, "dup"))
+            "drop" -> dropItem(token)
             "swap" -> swap(token)
             "over" -> over(token)
             "rot" -> rot(token)
@@ -593,6 +611,7 @@ private class FunctionCompiler(
             "vec2", "v2" -> constructVec(token, 2)
             "vec3", "v3" -> constructVec(token, 3)
             "vec4", "v4" -> constructVec(token, 4)
+            "apply", "call", "invoke" -> applyWordReference(token)
 
             "neg", "negate" -> unary(token, "negate") { "-(${ref(it)})" }
             "1-" -> unary(token, "one minus") { "(vec4(1.0) - ${ref(it)})" }
@@ -1152,6 +1171,7 @@ private class FunctionCompiler(
             "rcrosssample.r", "rcrosssample.g", "rcrosssample.b", "rcrosssample.a",
             "r-cross-sample.r", "r-cross-sample.g", "r-cross-sample.b", "r-cross-sample.a" -> neighborhoodSampleWord(word, token)
             "laplace", "laplacian", "blur", "blur5", "blur9", "sobel", "gradient", "divergence", "curl" -> neighborhoodFieldWord(word, token, raw, requestedArity)
+            "phacelle", "directional-noise", "directionalnoise" -> phacelleNoiseWord(word, token, raw, requestedArity)
 
             else -> {
                 if (rawWord in localMarks) {
@@ -1213,22 +1233,113 @@ private class FunctionCompiler(
         val callerStack = stack.toList()
         val callerMarks = linkedMapOf<String, Int>().also { it.putAll(localMarks) }
         stack.clear()
+        stack += callerStack
         stack += callInput
         localMarks.clear()
         inputStack += callInput
         inlineCallStack += word
-        val result = try {
+        val result: Int
+        val remainder: List<Int>
+        try {
             definition.body.forEach { process(it) }
-            stack.lastOrNull() ?: callInput
+            result = lastValueOnStack() ?: callInput
+            val next = stack.toMutableList()
+            val resultIndex = next.indexOfLast { it == result && !isWordReference(it) }
+            if (resultIndex >= 0) next.removeAt(resultIndex)
+            remainder = next.toList()
         } finally {
             inlineCallStack.removeAt(inlineCallStack.lastIndex)
+            inputStack.removeAt(inputStack.lastIndex)
+            stack.clear()
+            localMarks.clear()
+            localMarks += callerMarks
+        }
+        stack += remainder
+        push(result)
+    }
+
+    private fun pushWordReference(name: String, token: Token) {
+        val word = name.lowercase(Locale.US)
+        if (definitions[word] == null && word !in builtinWords) {
+            errorOrWarning(token, "Unknown StackSL word reference '$name'.")
+            return
+        }
+        push(wordReference(word, token))
+    }
+
+    private fun applyWordReference(token: Token) {
+        if (stack.isEmpty()) {
+            warn(token, "Word '${token.text}' did not find a word reference or input value; using default input.")
+            push(defaultValue(token, "apply input", 0, "input", wrapWarning = false))
+            return
+        }
+
+        val top = stack.last()
+        val pair = if (isWordReference(top)) {
+            stack.removeAt(stack.lastIndex) to pop(token, "apply input", "input")
+        } else if (stack.size >= 2 && isWordReference(stack[stack.lastIndex - 1])) {
+            val value = stack.removeAt(stack.lastIndex)
+            stack.removeAt(stack.lastIndex) to value
+        } else {
+            val value = pop(token, "apply input", "input")
+            warn(token, "Word '${token.text}' did not find a word reference; leaving its input unchanged.")
+            push(value)
+            return
+        }
+
+        val reference = wordReference(pair.first)
+        val input = pair.second
+        push(applyReferencedWord(reference, input, token))
+    }
+
+    private fun applyReferencedWord(reference: StackSLWordReference, input: Int, token: Token): Int {
+        val word = reference.word
+        definitions[word]?.let { definition ->
+            if (functionWord == word || word in inlineCallStack) {
+                errorOrWarning(token, "Recursive StackSL definition '${definition.name}' is not valid GLSL.")
+                return input
+            }
+            calls += definition.name.lowercase(Locale.US)
+            val callerStack = stack.toList()
+            val callerMarks = linkedMapOf<String, Int>().also { it.putAll(localMarks) }
+            stack.clear()
+            stack += input
+            localMarks.clear()
+            inputStack += input
+            inlineCallStack += word
+            return try {
+                definition.body.forEach { process(it) }
+                lastValueOnStack() ?: input
+            } finally {
+                inlineCallStack.removeAt(inlineCallStack.lastIndex)
+                inputStack.removeAt(inputStack.lastIndex)
+                stack.clear()
+                stack += callerStack
+                localMarks.clear()
+                localMarks += callerMarks
+            }
+        }
+
+        if (word !in builtinWords) {
+            errorOrWarning(reference.token ?: token, "Unknown StackSL word reference '${reference.word}'.")
+            return input
+        }
+
+        val callerStack = stack.toList()
+        val callerMarks = linkedMapOf<String, Int>().also { it.putAll(localMarks) }
+        stack.clear()
+        stack += input
+        inputStack += input
+        return try {
+            process(Token(word, reference.token?.location ?: token.location))
+            lastValueOnStack() ?: input
+        } finally {
             inputStack.removeAt(inputStack.lastIndex)
             stack.clear()
             stack += callerStack
             localMarks.clear()
             localMarks += callerMarks
         }
-        push(result)
     }
 
     private fun constantFloat(number: String, token: Token?, note: String): String {
@@ -1359,11 +1470,11 @@ private class FunctionCompiler(
     }
 
     private fun copyLocalMark(name: String, token: Token) {
-        localMarks[name.lowercase(Locale.US)] = peekOrDefault(token, "mark $name")
+        localMarks[name.lowercase(Locale.US)] = peekItemOrDefault(token, "mark $name")
     }
 
     private fun moveLocalMark(name: String, token: Token) {
-        localMarks[name.lowercase(Locale.US)] = pop(token, "mark $name", "input")
+        localMarks[name.lowercase(Locale.US)] = popItemOrDefault(token, "mark $name", "input")
     }
 
     private fun readLocalMark(name: String, token: Token) {
@@ -1377,20 +1488,22 @@ private class FunctionCompiler(
     }
 
     private fun shouldReduceTop(): Boolean {
-        if (stack.size == 1) return true
-        if (stack.size == 2) {
-            val bottom = values[stack[0]]
+        val valueItems = stack.filterNot(::isWordReference)
+        if (valueItems.size == 1) return true
+        if (valueItems.size == 2) {
+            val bottom = values[valueItems[0]]
             return bottom.leaf && bottom.note == "function input"
         }
         return false
     }
 
     private fun explicitStackDepth(): Int {
-        val first = stack.firstOrNull()?.let { values[it] }
+        val valueItems = stack.filterNot(::isWordReference)
+        val first = valueItems.firstOrNull()?.let { values[it] }
         return if (first != null && first.leaf && first.note == "function input") {
-            stack.size - 1
+            valueItems.size - 1
         } else {
-            stack.size
+            valueItems.size
         }
     }
 
@@ -1542,6 +1655,99 @@ private class FunctionCompiler(
         push(expr(call, args, token, helper))
     }
 
+    private fun phacelleNoiseWord(word: String, token: Token, raw: String, requestedArity: Int?) {
+        val trailingReference = popWordReferenceIfTop()
+        val arity = requestedArity ?: explicitStackDepth().coerceIn(1, 4)
+        val args = consumeArityArgs(
+            token,
+            raw,
+            listOf(
+                StackSLArg("point", "input"),
+                StackSLArg("frequency", "vec4(1.5)"),
+                StackSLArg("offset", "vec4(0.0)"),
+                StackSLArg("normalization", "vec4(1.0)")
+            ),
+            arity
+        ) ?: return
+        val leadingReference = trailingReference ?: popWordReferenceIfTop()
+        val helper = phacelleHelperName(leadingReference, token)
+        val (point, frequency, offset, normalization) = args
+        push(
+            expr(
+                "$helper(${ref(point)}, ${ref(frequency)}.x, ${ref(offset)}.x, ${ref(normalization)}.x${options.wireArgPlaceholder})",
+                args,
+                token,
+                word
+            )
+        )
+    }
+
+    private fun phacelleHelperName(reference: StackSLWordReference?, token: Token): String {
+        val suffix = reference?.word?.let(::sanitizeGlslIdentifier) ?: "default"
+        val helperName = "${options.prefix}_phacelle_$suffix"
+        extraHelperSources.getOrPut(helperName) {
+            phacelleHelperSource(helperName, reference, token)
+        }
+        return helperName
+    }
+
+    private fun phacelleHelperSource(helperName: String, reference: StackSLWordReference?, token: Token): String {
+        val patternExpression = when {
+            reference == null -> "normalize(vec4(cellPoint, pValue.zw))"
+            definitions[reference.word] != null -> {
+                calls += reference.word
+                val emitted = "${options.prefix}_${sanitizeGlslIdentifier(definitions.getValue(reference.word).name)}"
+                "$emitted(vec4(cellPoint, pValue.zw)${options.wireArgPlaceholder})"
+            }
+            reference.word == "normalize" -> "normalize(vec4(cellPoint, pValue.zw))"
+            else -> {
+                errorOrWarning(reference.token ?: token, "Word reference '${reference.word}' cannot be used as a phacelle pattern; use a StackSL definition or 'normalize'.")
+                "normalize(vec4(cellPoint, pValue.zw))"
+            }
+        }
+
+        return """
+            vec2 ${helperName}_hash22(vec2 x) {
+                const vec2 k = vec2(0.3183099, 0.3678794);
+                x = x * k + k.yx;
+                return -1.0 + 2.0 * fract(16.0 * k * fract(x.x * x.y * (x.x + x.y)));
+            }
+
+            vec4 $helperName(vec4 pValue, float freq, float offset, float normalization${options.wireParamPlaceholder}) {
+                const float tau = 6.283185307179586;
+                vec2 p = pValue.xy;
+                float phaseOffset = offset * tau;
+                vec2 pInt = floor(p);
+                vec2 pFrac = fract(p);
+                vec2 phaseDir = vec2(0.0);
+                float weightSum = 0.0;
+                for (int i = -1; i <= 2; i++) {
+                    for (int j = -1; j <= 2; j++) {
+                        vec2 gridOffset = vec2(i, j);
+                        vec2 gridPoint = pInt + gridOffset;
+                        vec2 randomOffset = ${helperName}_hash22(gridPoint) * 0.5;
+                        vec2 cellPoint = gridPoint + randomOffset;
+                        vec2 normDir = $patternExpression.xy;
+                        normDir = normalize(mix(vec2(1.0, 0.0), normDir, step(0.00001, dot(normDir, normDir))));
+                        vec2 sideDir = normDir.yx * vec2(-1.0, 1.0) * freq * tau;
+                        vec2 vectorFromCellPoint = pFrac - gridOffset - randomOffset;
+                        float sqrDist = dot(vectorFromCellPoint, vectorFromCellPoint);
+                        float weight = exp(-sqrDist * 2.0);
+                        weight = max(0.0, weight - 0.01111);
+                        weightSum += weight;
+                        float waveInput = dot(vectorFromCellPoint, sideDir) + phaseOffset;
+                        phaseDir += vec2(cos(waveInput), sin(waveInput)) * weight;
+                    }
+                }
+                vec2 interpolated = phaseDir / max(weightSum, 0.00001);
+                float magnitude = sqrt(dot(interpolated, interpolated));
+                magnitude = max(1.0 - normalization, magnitude);
+                vec2 result = interpolated / max(magnitude, 0.00001);
+                return vec4(result, 0.0, 1.0);
+            }
+        """.trimIndent()
+    }
+
     private fun consumeNeighborhoodArgs(token: Token, word: String, requestedArity: Int?): List<Int>? {
         val arity = requestedArity ?: explicitStackDepth().coerceIn(0, 2)
         if (arity !in 0..2) {
@@ -1674,14 +1880,13 @@ private class FunctionCompiler(
             return null
         }
 
-        val available = minOf(arity, stack.size)
+        val available = minOf(arity, valueStackSize())
         val consumed = if (available == 0) {
             emptyList()
         } else {
-            val start = stack.size - available
-            val values = stack.subList(start, stack.size).toList()
-            repeat(available) { stack.removeAt(stack.lastIndex) }
-            values
+            List(available) { index ->
+                pop(token, "$word ${args[available - 1 - index].role}", args[available - 1 - index].defaultExpression, wrap = false)
+            }.asReversed()
         }
 
         val missing = if (available < arity) {
@@ -1711,14 +1916,11 @@ private class FunctionCompiler(
             return null
         }
 
-        val available = minOf(count, stack.size)
+        val available = minOf(count, valueStackSize())
         val consumed = if (available == 0) {
             emptyList()
         } else {
-            val start = stack.size - available
-            val values = stack.subList(start, stack.size).toList()
-            repeat(available) { stack.removeAt(stack.lastIndex) }
-            values
+            List(available) { pop(token, "$word blast value", "input", wrap = false) }.asReversed()
         }
 
         val missing = (available until count).map { index ->
@@ -1773,11 +1975,17 @@ private class FunctionCompiler(
         val before = stack.toList()
         var warned = false
         return roles.mapIndexed { index, role ->
-            if (stack.isNotEmpty()) {
+            val top = stack.lastOrNull()
+            if (top != null && !isWordReference(top)) {
                 stack.removeAt(stack.lastIndex)
             } else {
-                val wrapped = if (wrap && before.isNotEmpty()) {
-                    before[(before.size - 1 - index).floorMod(before.size)]
+                if (top != null && isWordReference(top)) {
+                    stack.removeAt(stack.lastIndex)
+                    warn(token, "Word '${token.text}' expected a value for $role but found word reference '${wordReference(top).word}'; discarding it.")
+                }
+                val valueBefore = before.filterNot(::isWordReference)
+                val wrapped = if (wrap && valueBefore.isNotEmpty()) {
+                    valueBefore[(valueBefore.size - 1 - index).floorMod(valueBefore.size)]
                 } else {
                     null
                 }
@@ -1839,14 +2047,38 @@ private class FunctionCompiler(
         observeDepth()
     }
 
-    private fun peekOrDefault(token: Token, role: String): Int {
+    private fun peekItemOrDefault(token: Token, role: String): Int {
         if (stack.isNotEmpty()) return stack.last()
         warn(token, "Word '$role' read an empty stack; using default input.")
         return defaultValue(token, role, 0, "input")
     }
 
-    private fun pop(token: Token?, role: String, defaultExpression: String? = null, wrap: Boolean = true): Int {
+    private fun dropItem(token: Token) {
+        if (stack.isNotEmpty()) {
+            stack.removeAt(stack.lastIndex)
+        } else {
+            warn(token, "Word 'drop' read an empty stack; using default input.")
+        }
+    }
+
+    private fun popItemOrDefault(token: Token?, role: String, defaultExpression: String? = null): Int {
         if (stack.isNotEmpty()) return stack.removeAt(stack.lastIndex)
+        return defaultValue(token, role, 0, defaultExpression, wrapWarning = true)
+    }
+
+    private fun popWordReferenceIfTop(): StackSLWordReference? {
+        val top = stack.lastOrNull() ?: return null
+        if (!isWordReference(top)) return null
+        stack.removeAt(stack.lastIndex)
+        return wordReference(top)
+    }
+
+    private fun pop(token: Token?, role: String, defaultExpression: String? = null, wrap: Boolean = true): Int {
+        while (stack.isNotEmpty()) {
+            val value = stack.removeAt(stack.lastIndex)
+            if (!isWordReference(value)) return value
+            warn(token, "Expected a value while reading $role but found word reference '${wordReference(value).word}'; discarding it.")
+        }
         return defaultValue(token, role, 0, defaultExpression, wrapWarning = true)
     }
 
@@ -1886,6 +2118,15 @@ private class FunctionCompiler(
         return id
     }
 
+    private fun wordReference(word: String, token: Token?): Int {
+        wordReferences += StackSLWordReference(word, token)
+        return -wordReferences.size
+    }
+
+    private fun isWordReference(id: Int): Boolean = id < 0
+
+    private fun wordReference(id: Int): StackSLWordReference = wordReferences[-id - 1]
+
     private fun expr(expression: String, deps: List<Int>, token: Token, note: String): Int {
         expressionCache[expression]?.let { return it }
         val id = values.size
@@ -1895,6 +2136,7 @@ private class FunctionCompiler(
     }
 
     private fun ref(id: Int): String {
+        if (isWordReference(id)) return "vec4(0.0)"
         val value = values[id]
         return if (value.leaf) value.expression else localName(id)
     }
@@ -1902,9 +2144,14 @@ private class FunctionCompiler(
     private fun localName(id: Int): String = "_${options.prefix}_v$id"
 
     private fun markReachable(id: Int, reachable: MutableSet<Int>) {
+        if (isWordReference(id)) return
         if (!reachable.add(id)) return
         values[id].deps.forEach { markReachable(it, reachable) }
     }
+
+    private fun valueStackSize(): Int = stack.count { !isWordReference(it) }
+
+    private fun lastValueOnStack(): Int? = stack.lastOrNull { !isWordReference(it) }
 
     private fun warn(token: Token?, message: String) {
         diagnostics += StackSLDiagnostic(StackSLSeverity.WARNING, message, token?.location, token?.text)
@@ -2081,6 +2328,9 @@ private val stackSLArityVariantArities = mapOf(
     "gradient" to (1..2).toSet(),
     "divergence" to (1..2).toSet(),
     "curl" to (1..2).toSet(),
+    "phacelle" to (1..4).toSet(),
+    "directional-noise" to (1..4).toSet(),
+    "directionalnoise" to (1..4).toSet(),
     "grade" to (1..4).toSet(),
     "ema" to (1..3).toSet(),
     "ema.c" to (1..3).toSet(),
@@ -2220,6 +2470,11 @@ private fun parseExternalRead(word: String): String? {
     return name.takeIf { hostGlslVec4Regex.matches(it) }
 }
 
+private fun parseWordReference(word: String): String? {
+    if (!word.startsWith("'") || word.length <= 1) return null
+    return word.drop(1)
+}
+
 private fun parseExternalWrite(word: String): String? {
     if (!word.startsWith("->?")) return null
     val name = word.drop(3)
@@ -2287,6 +2542,7 @@ private val builtinWords = setOf(
     "pi", "tau", "e",
     "dup", "drop", "swap", "over", "rot", "nip", "tuck",
     "vec2", "v2", "vec3", "v3", "vec4", "v4",
+    "apply", "call", "invoke",
     "neg", "negate", "1-", "abs", "floor", "ceil", "fract", "sqrt", "inversesqrt", "exp", "log",
     "sin", "cos", "tan", "asin", "acos", "atan", "normalize",
     "len", "length", "len2", "length2", "len3", "length3", "len4", "length4", "luma",
@@ -2318,6 +2574,7 @@ private val builtinWords = setOf(
     "rcrosssample.r", "rcrosssample.g", "rcrosssample.b", "rcrosssample.a",
     "r-cross-sample.r", "r-cross-sample.g", "r-cross-sample.b", "r-cross-sample.a",
     "laplace", "laplacian", "blur", "blur5", "blur9", "sobel", "gradient", "divergence", "curl",
+    "phacelle", "directional-noise", "directionalnoise",
     "0->", "1->", "2->", "3->", "->0", "->1", "->2", "->3"
 ) + stackSLArityVariantWords + namedColors.keys + swizzleWords + swizzleWords.map { ".$it" }
 

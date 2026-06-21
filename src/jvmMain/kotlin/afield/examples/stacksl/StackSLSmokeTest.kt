@@ -51,6 +51,8 @@ object StackSLSmokeTest {
             compilesShapingDomainAndVectorUtilityOperators()
             compilesNeighborhoodFieldOperators()
             compilesLocalNamedMarks()
+            compilesWordReferences()
+            compilesHigherOrderPhacelleNoise()
             compilesExternalHostGlslEscapeHatches()
             expandsStackAutoSamplerOverrides()
             compilesCreativeFreedomVariants()
@@ -639,6 +641,110 @@ object StackSLSmokeTest {
         require(tolerant.diagnostics.any { it.severity == StackSLSeverity.WARNING && "Unknown StackSL local mark 'missing'" in it.message }) {
             tolerant.diagnostics.joinToString("\n")
         }
+    }
+
+    private fun compilesWordReferences() {
+        val direct = StackSLCompiler.compile(
+            """
+            : pattern
+              normalize
+            ;
+
+            'pattern p apply
+            """.trimIndent(),
+            StackSLCompileOptions(prefix = "wordref_direct")
+        )
+
+        require(direct.ok) { direct.diagnostics.joinToString("\n") }
+        require(Regex("""vec4 _wordref_direct_v\d+ = normalize\(_wordref_direct_v\d+\);""").containsMatchIn(direct.glsl)) {
+            direct.glsl
+        }
+        require(direct.analysis.functions.last().calls == setOf("pattern")) { direct.analysis.functions.last().toString() }
+
+        val passedThrough = StackSLCompiler.compile(
+            """
+            : pattern
+              xylen
+            ;
+
+            : mapped
+              apply
+            ;
+
+            'pattern uv mapped
+            """.trimIndent(),
+            StackSLCompileOptions(prefix = "wordref_map")
+        )
+
+        require(passedThrough.ok) { passedThrough.diagnostics.joinToString("\n") }
+        require(Regex("""vec4 _wordref_map_v\d+ = vec4\(length\(_wordref_map_v\d+\.xy\)\);""").containsMatchIn(passedThrough.glsl)) {
+            passedThrough.glsl
+        }
+        require(passedThrough.analysis.functions.last().calls.containsAll(setOf("mapped", "pattern"))) {
+            passedThrough.analysis.functions.last().toString()
+        }
+
+        val builtin = StackSLCompiler.compile(
+            "'normalize p apply",
+            StackSLCompileOptions(prefix = "wordref_builtin")
+        )
+
+        require(builtin.ok) { builtin.diagnostics.joinToString("\n") }
+        require(Regex("""vec4 _wordref_builtin_v\d+ = normalize\(_wordref_builtin_v\d+\);""").containsMatchIn(builtin.glsl)) {
+            builtin.glsl
+        }
+
+        val unknown = StackSLCompiler.compile("'missing p apply", StackSLCompileOptions(prefix = "wordref_strict"))
+        require(!unknown.ok) { unknown.glsl }
+        require(unknown.diagnostics.any { it.severity == StackSLSeverity.ERROR && "Unknown StackSL word reference 'missing'" in it.message }) {
+            unknown.diagnostics.joinToString("\n")
+        }
+    }
+
+    private fun compilesHigherOrderPhacelleNoise() {
+        val result = StackSLCompiler.compile(
+            """
+            : pattern
+              input sample-abs normalize
+            ;
+
+            'pattern p 100 * 1.5 0.2 1 phacelle.4
+            """.trimIndent(),
+            StackSLCompileOptions(prefix = "phacelle_ref", sampleTextures = listOf("state"))
+        )
+
+        require(result.ok) { result.diagnostics.joinToString("\n") }
+        require("uniform sampler2D state;" in result.glsl) { result.glsl }
+        require("vec4 phacelle_ref_phacelle_pattern(vec4 pValue, float freq, float offset, float normalization)" in result.glsl) {
+            result.glsl
+        }
+        require("for (int i = -1; i <= 2; i++)" in result.glsl) { result.glsl }
+        require("phacelle_ref_pattern(vec4(cellPoint, pValue.zw))" in result.glsl) { result.glsl }
+        require("phacelle_ref_sampleAbs(state" in result.glsl) { result.glsl }
+        require(result.analysis.functions.last().calls.contains("pattern")) { result.analysis.functions.last().toString() }
+
+        val trailingReference = StackSLCompiler.compile(
+            """
+            : pattern
+              normalize
+            ;
+
+            p 4 * 1.5 0.2 1 'pattern directional-noise.4
+            """.trimIndent(),
+            StackSLCompileOptions(prefix = "phacelle_trailing")
+        )
+
+        require(trailingReference.ok) { trailingReference.diagnostics.joinToString("\n") }
+        require("phacelle_trailing_phacelle_pattern" in trailingReference.glsl) { trailingReference.glsl }
+
+        val defaultPattern = StackSLCompiler.compile(
+            "p 4 * phacelle",
+            StackSLCompileOptions(prefix = "phacelle_default")
+        )
+
+        require(defaultPattern.ok) { defaultPattern.diagnostics.joinToString("\n") }
+        require("phacelle_default_phacelle_default" in defaultPattern.glsl) { defaultPattern.glsl }
+        require("normalize(vec4(cellPoint, pValue.zw))" in defaultPattern.glsl) { defaultPattern.glsl }
     }
 
     private fun compilesExternalHostGlslEscapeHatches() {
