@@ -155,11 +155,41 @@ private fun deltaColor(current: Double, previous: Double?, fallback: String): St
 }
 
 private fun statMetric(key: String, value: String, style: String = "", keyTextOpacity: Double = 0.5): String = """
-    <div style="display:flex;gap:4px;white-space:nowrap;">
-      <span style="opacity:${keyTextOpacity};">$key</span>
-      <span style="$style">$value</span>
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(3.2em,max-content);gap:4px;white-space:nowrap;min-width:0;align-items:baseline;">
+      <span style="opacity:${keyTextOpacity};text-align:right;overflow:hidden;text-overflow:ellipsis;">$key</span>
+      <span style="$style;font-variant-numeric:tabular-nums;min-width:3.2em;">$value</span>
     </div>
 """.trimIndent()
+
+private fun svgTitleBackdrop(
+    title: String?,
+    widthPx: Int,
+    padTop: Int,
+    fontFamily: String,
+    textColor: String
+): String {
+    if (title == null) return ""
+    val titleWidth = (title.length * 7 + 18).coerceAtLeast(72)
+    val x = ((widthPx - titleWidth) / 2.0).toFloat()
+    val y = (padTop * 0.9 - 14.0).toFloat()
+    return """
+        <foreignObject x="$x" y="$y" width="$titleWidth" height="22">
+          <div xmlns="http://www.w3.org/1999/xhtml" style="
+              height:22px;
+              display:flex;
+              align-items:center;
+              justify-content:center;
+              color:$textColor;
+              font-family:$fontFamily;
+              font-size:12px;
+              line-height:22px;
+              background:rgba(0,0,0,0.88);
+              backdrop-filter:blur(5px);
+              -webkit-backdrop-filter:blur(5px);
+          ">$title</div>
+        </foreignObject>
+    """.trimIndent()
+}
 
 data class Vec2SummaryStats(
     val x: SummaryStats,
@@ -342,6 +372,7 @@ class SummaryStatsBuffer(
     }
 
     fun histogramSvg(
+        previousStats: SummaryStats? = null,
         widthPx: Int = 480,
         heightPx: Int = 240,
         padLeft: Int = 14,
@@ -364,6 +395,7 @@ class SummaryStatsBuffer(
         keyTextOpacity: Double = 0.5
     ): String = histogramToSvg(
         hist = histogram(),
+        previousStats = previousStats,
         widthPx = widthPx,
         heightPx = heightPx,
         padLeft = padLeft,
@@ -387,6 +419,7 @@ class SummaryStatsBuffer(
     )
 
     fun seriesSvg(
+        previousStats: SummaryStats? = null,
         widthPx: Int = 480,
         heightPx: Int = 240,
         padLeft: Int = 40,
@@ -408,6 +441,7 @@ class SummaryStatsBuffer(
         minLabelSeparationPx: Double = 12.0
     ): String = seriesPlotToSvg(
         rawValues = values,
+        previousStats = previousStats,
         widthPx = widthPx,
         heightPx = heightPx,
         padLeft = padLeft,
@@ -437,9 +471,11 @@ class SummaryStatsBuffer(
         background: String = "#000000",
         textColor: String = "#0af",
         axisColor: String = "#0af",
-        keyTextOpacity: Double = 0.5
+        keyTextOpacity: Double = 0.5,
+        previousSummary: SummaryStatsBox? = null
     ): String = summaryStatsBoxToHtml(
         summary = summaryBox(),
+        previousSummary = previousSummary,
         widthPx = widthPx,
         chartHeightPx = chartHeightPx,
         decimals = decimals,
@@ -1157,14 +1193,11 @@ fun histogramToSvg(
         append(dimmedLabel(xQ3, botYAlt.toDouble()-10, "middle", "Q3", hist.q3, q3Color))
     }
 
-    val topTitle = title?.let {
-        """<text x="${(w / 2).toFloat()}" y="${(padTop * 0.9).toFloat()}" text-anchor="middle" font-family="$fontFamily" font-size="12" fill="$textColor">$it</text>"""
-    } ?: ""
+    val topTitle = svgTitleBackdrop(title, widthPx, padTop, fontFamily, textColor)
 
     return """
         <svg xmlns="http://www.w3.org/2000/svg" width="$widthPx" height="$heightPx" viewBox="0 0 $widthPx $heightPx">
           <rect x="0" y="0" width="$widthPx" height="$heightPx" fill="$background"/>
-          $topTitle
           $axisBaseline
           $bars
           ${vTick(xMin, minColor)}
@@ -1174,6 +1207,7 @@ fun histogramToSvg(
           ${vTick(xMax, maxColor)}
           $labelsTop
           $labelsBottom
+          $topTitle
         </svg>
     """.trimIndent()
 }
@@ -1329,14 +1363,11 @@ fun seriesPlotToSvg(
         ), minLabelSeparationPx + 2.0, y0, y0 + innerH
     )
 
-    val titleEl = title?.let {
-        """<text x="${(w / 2).toFloat()}" y="${(padTop * 0.9).toFloat()}" text-anchor="middle" font-family="$fontFamily" font-size="12" fill="$textColor">$it</text>"""
-    } ?: ""
+    val titleEl = svgTitleBackdrop(title, widthPx, padTop, fontFamily, textColor)
 
     return """
         <svg xmlns="http://www.w3.org/2000/svg" width="$widthPx" height="$heightPx" viewBox="0 0 $widthPx $heightPx">
           <rect x="0" y="0" width="$widthPx" height="$heightPx" fill="$background"/>
-          $titleEl
           $axisBaseline
 
           ${hRef(yMaxY, maxColor, opacity = 0.9)} 
@@ -1367,6 +1398,7 @@ fun seriesPlotToSvg(
             }
             rightLabel(it.y, it.key!!, it.value, color)
           }}
+          $titleEl
         </svg>
     """.trimIndent()
 }
@@ -1382,7 +1414,7 @@ fun summaryStatsBoxToHtml(
     textColor: String = "#0af",
     axisColor: String = "#0af",
     keyTextOpacity: Double = 0.5,
-    showFrame: Boolean = true,
+    showFrame: Boolean = false,
     showHeader: Boolean = true,
     histogramTitle: String? = "Histogram",
     seriesTitle: String? = "Series",
@@ -1394,12 +1426,14 @@ fun summaryStatsBoxToHtml(
     val s = summary.stats
     val p = previousSummary?.stats
     val w = widthPx.coerceAtLeast(220)
+    val panelPadding = 3
+    val chartW = (w - panelPadding * 2).coerceAtLeast(214)
     val chartH = chartHeightPx.coerceAtLeast(64)
 
     val histogramSvg = histogramToSvg(
         hist = summary.histogram,
         previousStats = p,
-        widthPx = w,
+        widthPx = chartW,
         heightPx = chartH,
         padLeft = chartPadLeft,
         padRight = chartPadRight,
@@ -1420,7 +1454,7 @@ fun summaryStatsBoxToHtml(
     val seriesSvg = seriesPlotToSvg(
         rawValues = summary.values,
         previousStats = p,
-        widthPx = w,
+        widthPx = chartW,
         heightPx = chartH,
         padLeft = chartPadLeft,
         padRight = chartPadRight,
@@ -1489,7 +1523,7 @@ fun summaryStatsBoxToHtml(
             width:${w}px;
             box-sizing:border-box;
             ${borderStyle}
-            padding:0;
+            padding:${panelPadding}px;
             background:${background};
             color:${textColor};
             font-family:${fontFamily};
@@ -1497,7 +1531,7 @@ fun summaryStatsBoxToHtml(
             line-height:1.25;
         ">
             $headerHtml
-            <div style="display:flex;flex-wrap:wrap;gap:4px 12px;margin-bottom:8px;">
+            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 18px;margin-bottom:8px;align-items:baseline;">
               $metricsHtml
             </div>
             <div style="display:flex;flex-direction:column;gap:10px;">

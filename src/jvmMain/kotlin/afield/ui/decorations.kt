@@ -5,7 +5,10 @@ package afield
 import afield.logger.lprintln
 import afield.stdlib.Delegation
 import afield.stdlib.Marker
+import afield.stdlib.SummaryStats
 import afield.stdlib.SummaryStatsBuffer
+import afield.stdlib.SummaryStatsBox
+import afield.stdlib.summaryStatsBoxToHtml
 import kotlinx.coroutines.yield
 import java.util.*
 import kotlin.uuid.ExperimentalUuidApi
@@ -218,6 +221,9 @@ fun Marker.bop(
  */
 class LittleHistory {
     private val buffer = SummaryStatsBuffer(maxSize = 100)
+    private var previousHistogramStats: SummaryStats? = null
+    private var previousHistoryStats: SummaryStats? = null
+    private var previousSummary: SummaryStatsBox? = null
 
     var outputRateLimiter = RateLimiter(10.0, 0.2)
     /**
@@ -228,18 +234,54 @@ class LittleHistory {
     /**
      * Render a histogram SVG for the current history.
      */
-    fun histogram(): String = buffer.histogramSvg(widthPx = 480, heightPx = 100, padTop = 20, padBottom = 15, decimals = 2)
+    fun histogram(): String {
+        val current = buffer.snapshot()
+        val html = buffer.histogramSvg(
+            previousStats = previousHistogramStats,
+            widthPx = 480,
+            heightPx = 100,
+            padTop = 20,
+            padBottom = 15,
+            decimals = 2
+        )
+        previousHistogramStats = current
+        return html
+    }
 
     /**
      * Render a line chart SVG for the current history.
      */
-    fun history(): String =
-        buffer.seriesSvg(widthPx = 480, heightPx = 100, padTop = 20, padLeft = 50, padRight = 80, padBottom = 15, decimals = 2)
+    fun history(): String {
+        val current = buffer.snapshot()
+        val html = buffer.seriesSvg(
+            previousStats = previousHistoryStats,
+            widthPx = 480,
+            heightPx = 100,
+            padTop = 20,
+            padLeft = 50,
+            padRight = 80,
+            padBottom = 15,
+            decimals = 2
+        )
+        previousHistoryStats = current
+        return html
+    }
 
     /**
      * Render a summary statistics panel (metrics + histogram + series).
      */
-    fun stats(): String = buffer.summaryHtml(widthPx = 480, chartHeightPx = 100, decimals = 2)
+    fun stats(): String {
+        val current = buffer.summaryBox()
+        val html = summaryStatsBoxToHtml(
+            summary = current,
+            previousSummary = previousSummary,
+            widthPx = 480,
+            chartHeightPx = 100,
+            decimals = 2
+        )
+        previousSummary = current
+        return html
+    }
 }
 
 private fun Marker.summaryBuffer(): LittleHistory =
