@@ -4,6 +4,7 @@ import afield.*
 import afield.ai.core.DefinitionInfo
 import afield.ai.core.ListDefinitionsResult
 import afield.ai.core.OpenAiIdeCodexBridge
+import afield.ai.core.Ai4ModelDefaults
 import afield.ai.core.StdoutLog
 import afield.ai.core.ToolExecutionContext
 import afield.logger.lprintln
@@ -109,7 +110,7 @@ object AiMacroBridge {
     val bridge: OpenAiIdeCodexBridge by lazy {
         lprintln("info,ai.macro", "Initializing AI macro bridge")
         OpenAiIdeCodexBridge(
-            model = System.getenv("AFIELD_AI_MACRO_MODEL") ?: "gpt-5.3-codex",
+            model = System.getenv("AFIELD_AI_MACRO_MODEL") ?: Ai4ModelDefaults.flagshipModel(),
             log = StdoutLog,
             reasoningEffort = ReasoningEffort.MEDIUM
         )

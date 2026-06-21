@@ -135,7 +135,7 @@ object Ai4GlslAutocomplete {
     private val bridge: OpenAiIdeCodexBridge by lazy {
         val fastModel = System.getenv("AFIELD_SHADER_AUTOCOMPLETE_MODEL")
             ?: System.getenv("AFIELD_GLSL_AUTOCOMPLETE_MODEL")
-            ?: Ai4ModelDefaults.FAST_MODEL
+            ?: Ai4ModelDefaults.fastModel()
         OpenAiIdeCodexBridge(
             model = fastModel,
             log = SilentLog,

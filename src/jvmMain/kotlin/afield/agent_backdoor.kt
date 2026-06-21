@@ -55,6 +55,7 @@ private fun String.isHttpUrl(): Boolean =
 
 private fun cleanupDetachedSession(info: SessionInformation) {
     if (info.sessions.isNotEmpty()) return
+    detachRootFromMetaroot(info.root)
     info.cleanup()
     if (info.ephemeral) {
         documents.entries.removeIf { it.value === info }
@@ -125,6 +126,7 @@ private fun createSessionInformation(target: DocumentTarget): SessionInformation
         ephemeral = target.scratch
     )
     root.inside = info
+    attachRootToMetaroot(root)
     return info
 }
 
@@ -147,6 +149,7 @@ internal fun attachDocumentSession(
 
     val found = documents[target.sessionKey]
     if (found != null) {
+        attachRootToMetaroot(found.root)
         registerDocumentSession(session, found)
         sendDocumentLoadStatus(
             session,
@@ -198,6 +201,7 @@ internal fun attachDocumentSession(
             refreshFileProxyBoxes(info, notifyMissing = true)
 
             info.root.children.removeIf { it.getPropertyRaw("_tombstone").isTrue() }
+            attachRootToMetaroot(info.root)
             val count = countLoadableBoxes(info)
             sendDocumentLoadStatus(
                 session,

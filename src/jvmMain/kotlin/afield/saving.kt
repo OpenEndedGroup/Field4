@@ -117,12 +117,22 @@ class SavingContext {
 
     var altered = false
 
+    private fun withoutMetarootTopology(name: String, value: Any?): Any? {
+        if (name != "parents" && name != "children") return value
+        return when (value) {
+            is Set<*> -> value.filterNot { it is Box && it.id == METAROOT_ID }.toCollection(LinkedHashSet())
+            is List<*> -> value.filterNot { it is Box && it.id == METAROOT_ID }
+            else -> value
+        }
+    }
+
     fun toTransfer(boxes: Set<Box>, directory: String): List<BoxTransferEdn> {
         val patterns = Box.ioPersistentProperties.map { it.toRegex() }
         return boxes.map { box ->
             val properties = LinkedHashMap<String, Any?>()
-            box.properties.forEach { (name, value) ->
+            box.properties.forEach { (name, rawValue) ->
                 if (!patterns.any { name.matches(it) }) return@forEach
+                val value = withoutMetarootTopology(name, rawValue)
                 if (value == null) return@forEach
 
                 val shouldUseSidecar = box.id != "root" && Box.ioSeparateProperties.containsKey(name)
@@ -145,8 +155,9 @@ class SavingContext {
         val patterns = Box.ioPersistentProperties.map { it.toRegex() }
         return boxes.map { box ->
             val properties = LinkedHashMap<String, Any?>()
-            box.properties.forEach { (name, value) ->
+            box.properties.forEach { (name, rawValue) ->
                 if (!patterns.any { name.matches(it) }) return@forEach
+                val value = withoutMetarootTopology(name, rawValue)
                 if (value == null) return@forEach
 
                 val shouldUseSidecar = box.id != "root" && Box.ioSeparateProperties.containsKey(name)

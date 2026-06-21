@@ -5,8 +5,9 @@ package afield
 import afield.ai.Ai4CompletionDoc
 import afield.ai.core.AI4_AUTO_NAME_PROPERTY
 import afield.ai.core.AI4_AUTO_NAME_SIGNATURE_PROPERTY
-import afield.ai.core.openAiCredentialStatus
-import afield.ai.core.saveOpenAiPlatformKey
+import afield.ai.core.AiSettingsSaveRequest
+import afield.ai.core.aiProviderStatus
+import afield.ai.core.saveAiSettings
 import afield.ai.core.completion.Ai4KotlinAutocomplete
 import afield.debug.RuntimeDebugProbeService
 import afield.four.util.FramePresentationLog
@@ -342,11 +343,18 @@ private fun readPersistedWorkspacePath(): String? =
     }.getOrNull()
 
 private fun currentAiSettingsStatus(): AiSettingsStatus {
-    val status = openAiCredentialStatus()
+    val status = aiProviderStatus()
     return AiSettingsStatus(
-        hasOpenAiPlatformKey = status.configured,
+        hasOpenAiPlatformKey = status.hasOpenAiPlatformKey,
+        hasOpenRouterApiKey = status.hasOpenRouterApiKey,
+        provider = status.provider,
         source = status.source,
-        configPath = status.configPath
+        configPath = status.configPath,
+        openRouterConfigPath = status.openRouterConfigPath,
+        baseUrl = status.baseUrl,
+        flagshipModel = status.modelSettings.flagshipModel,
+        fastModel = status.modelSettings.fastModel,
+        fallbackModel = status.modelSettings.fallbackModel
     )
 }
 
@@ -2223,17 +2231,34 @@ class Server {
                     post("/api/ai-settings") {
                         try {
                             val request = call.receive<AiSettingsUpdateRequest>()
-                            val status = saveOpenAiPlatformKey(request.openAiPlatformKey)
+                            val status = saveAiSettings(
+                                AiSettingsSaveRequest(
+                                    provider = request.provider,
+                                    openAiPlatformKey = request.openAiPlatformKey,
+                                    openRouterApiKey = request.openRouterApiKey,
+                                    openRouterBaseUrl = request.openRouterBaseUrl,
+                                    flagshipModel = request.flagshipModel,
+                                    fastModel = request.fastModel,
+                                    fallbackModel = request.fallbackModel
+                                )
+                            )
                             call.respond(
                                 AiSettingsUpdateResponse(
-                                    hasOpenAiPlatformKey = status.configured,
+                                    hasOpenAiPlatformKey = status.hasOpenAiPlatformKey,
+                                    hasOpenRouterApiKey = status.hasOpenRouterApiKey,
+                                    provider = status.provider,
                                     source = status.source,
                                     configPath = status.configPath,
-                                    message = "OpenAI Platform key saved."
+                                    openRouterConfigPath = status.openRouterConfigPath,
+                                    baseUrl = status.baseUrl,
+                                    flagshipModel = status.modelSettings.flagshipModel,
+                                    fastModel = status.modelSettings.fastModel,
+                                    fallbackModel = status.modelSettings.fallbackModel,
+                                    message = "AI settings saved."
                                 )
                             )
                         } catch (e: IllegalArgumentException) {
-                            call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "invalid OpenAI key")))
+                            call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "invalid AI settings")))
                         } catch (e: Exception) {
                             lprintln("error,server", "saving AI settings failed: ${e.message}")
                             call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "could not save AI settings"))
