@@ -13,6 +13,7 @@ import afield.four.texture.HasImageView
 import afield.four.texture.HasImageViewArray
 import afield.four.texture.ImageView
 import afield.four.texture.TextureSampler
+import afield.four.util.Window
 import org.lwjgl.vulkan.VK10
 import kotlin.math.max
 
@@ -233,6 +234,66 @@ class MultiPingPongRenderToTexture(
             configure = configure
         )
     }
+
+    fun blitToScreen(
+        windowIndex: Int,
+        renderer: Renderer = this.renderer,
+        attachment: Int = 0,
+        name: String = "rtt-blit",
+        viewport: Rect? = null,
+        sourceRect: Rect? = null,
+        blend: Boolean = false,
+        additive: Boolean = false,
+        sourceLayer: Int = 0,
+        warper: String? = null,
+        numSegmentsW: Int = 1,
+        numSegmentsH: Int = 1,
+        configure: RenderToTexture.ColorGrade.() -> Unit = {}
+    ): ModulePointer = blitToScreen(
+        renderer = renderer,
+        target = renderer.renderTargetFor(windowIndex),
+        attachment = attachment,
+        name = name,
+        viewport = viewport,
+        sourceRect = sourceRect,
+        blend = blend,
+        additive = additive,
+        sourceLayer = sourceLayer,
+        warper = warper,
+        numSegmentsW = numSegmentsW,
+        numSegmentsH = numSegmentsH,
+        configure = configure
+    )
+
+    fun blitToScreen(
+        window: Window,
+        renderer: Renderer = this.renderer,
+        attachment: Int = 0,
+        name: String = "rtt-blit",
+        viewport: Rect? = null,
+        sourceRect: Rect? = null,
+        blend: Boolean = false,
+        additive: Boolean = false,
+        sourceLayer: Int = 0,
+        warper: String? = null,
+        numSegmentsW: Int = 1,
+        numSegmentsH: Int = 1,
+        configure: RenderToTexture.ColorGrade.() -> Unit = {}
+    ): ModulePointer = blitToScreen(
+        windowIndex = renderer.windowIndex(window),
+        renderer = renderer,
+        attachment = attachment,
+        name = name,
+        viewport = viewport,
+        sourceRect = sourceRect,
+        blend = blend,
+        additive = additive,
+        sourceLayer = sourceLayer,
+        warper = warper,
+        numSegmentsW = numSegmentsW,
+        numSegmentsH = numSegmentsH,
+        configure = configure
+    )
 
     fun addInit(name: String, module: ModulePointer) {
         validateSingleColorModule(module.current)

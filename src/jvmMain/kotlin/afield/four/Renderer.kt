@@ -262,6 +262,12 @@ class Renderer(
     private val defaultContext get() = windowContexts.first()
     fun windowContext(index: Int = 0): WindowContext = windowContexts[index]
     fun renderTargetFor(windowIndex: Int = 0): RenderTarget = windowContext(windowIndex).renderTarget
+    fun windowIndex(window: Window): Int {
+        val index = windows.indexOf(window)
+        require(index >= 0) { "Window is not owned by this renderer" }
+        return index
+    }
+    fun renderTargetFor(window: Window): RenderTarget = renderTargetFor(windowIndex(window))
     private val windowCaptureLock = Any()
     private val pendingWindowCaptures = mutableMapOf<Int, ArrayDeque<WindowCaptureRequest>>()
     private val graphicsCompletionLock = Any()

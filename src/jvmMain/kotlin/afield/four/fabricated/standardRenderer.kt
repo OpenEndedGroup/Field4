@@ -13,6 +13,7 @@ import afield.four.texture.TextureSampler
 import afield.four.util.Camera
 import afield.four.util.Options
 import afield.four.util.Projection
+import afield.four.util.Window
 import afield.stdlib.Vec3
 import afield.stdlib.fromViews
 import afield.stdlib.vec
@@ -162,11 +163,11 @@ object StandardRenderer {
 		}
 
 		/**
-		 * Add the off-screen passes to a renderer’s main RenderTarget so they run before the swapchain
+		 * Add the off-screen passes to one of the renderer's RenderTargets so they run before the swapchain
 		 * render. This simply wires the passes into preTargets in the right order.
 		 */
-			fun attachTo(renderer: Renderer): RenderTarget {
-				val rt = renderer.renderList
+			fun attachTo(renderer: Renderer, windowIndex: Int = 0): RenderTarget {
+				val rt = renderer.renderTargetFor(windowIndex)
 				rt.preTargets["std-gbuffer"] = gBuffer
 					rt.preTargets["std-shadow"] = shadowMap
 					rt.preTargets["std-ao"] = ao
@@ -175,6 +176,9 @@ object StandardRenderer {
 					rt.preTargets["std-aa"] = antiAlias
 					return rt
 				}
+
+			fun attachTo(renderer: Renderer, window: Window): RenderTarget =
+				attachTo(renderer, renderer.windowIndex(window))
 
 			/** Present the anti-aliased lighting RTT to the swapchain with optional grading and viewport. */
 			fun present(
@@ -189,6 +193,36 @@ object StandardRenderer {
 					configure()
 				})
 
+			fun present(
+				windowIndex: Int,
+				renderer: Renderer = fromContext(),
+				name: String = "std-present",
+				viewport: Rect? = null,
+				configure: RenderToTexture.ColorGrade.() -> Unit = {}
+			): ModulePointer =
+				present(
+					renderer = renderer,
+					target = renderer.renderTargetFor(windowIndex),
+					name = name,
+					viewport = viewport,
+					configure = configure
+				)
+
+			fun present(
+				window: Window,
+				renderer: Renderer = fromContext(),
+				name: String = "std-present",
+				viewport: Rect? = null,
+				configure: RenderToTexture.ColorGrade.() -> Unit = {}
+			): ModulePointer =
+				present(
+					windowIndex = renderer.windowIndex(window),
+					renderer = renderer,
+					name = name,
+					viewport = viewport,
+					configure = configure
+				)
+
 		fun presentInternalBuffers(
 			renderer: Renderer = fromContext(),
 			target: RenderTarget = renderer.renderList,
@@ -198,7 +232,7 @@ object StandardRenderer {
 			gap: Double = 8.0
 		): Map<String, ModulePointer> {
 			require(columns > 0) { "columns must be positive" }
-			val extent = renderer.swapChain.swapChainExtent
+			val extent = renderer.windowContext(target.windowIndex).swapChain.swapChainExtent
 			val bounds = viewport ?: Rect(0.0, 0.0, extent.width().toDouble(), extent.height().toDouble())
 				val cells = debugGrid(bounds, count = 8, columns = columns, gap = gap)
 
@@ -214,6 +248,43 @@ object StandardRenderer {
 				modules["shadowDepth"] = shadowMap.blitDepthToScreen(renderer = renderer, target = target, name = "$namePrefix-shadow", viewport = cells[7])
 				return modules
 			}
+
+		fun presentInternalBuffers(
+			windowIndex: Int,
+			renderer: Renderer = fromContext(),
+			namePrefix: String = "std-debug",
+			viewport: Rect? = null,
+			columns: Int = 3,
+			gap: Double = 8.0
+		): Map<String, ModulePointer> {
+			val extent = renderer.windowContext(windowIndex).swapChain.swapChainExtent
+			val resolvedViewport = viewport ?: Rect(0.0, 0.0, extent.width().toDouble(), extent.height().toDouble())
+			return presentInternalBuffers(
+				renderer = renderer,
+				target = renderer.renderTargetFor(windowIndex),
+				namePrefix = namePrefix,
+				viewport = resolvedViewport,
+				columns = columns,
+				gap = gap
+			)
+		}
+
+		fun presentInternalBuffers(
+			window: Window,
+			renderer: Renderer = fromContext(),
+			namePrefix: String = "std-debug",
+			viewport: Rect? = null,
+			columns: Int = 3,
+			gap: Double = 8.0
+		): Map<String, ModulePointer> =
+			presentInternalBuffers(
+				windowIndex = renderer.windowIndex(window),
+				renderer = renderer,
+				namePrefix = namePrefix,
+				viewport = viewport,
+				columns = columns,
+				gap = gap
+			)
 
 		data class PullingMeshPair(val gBuffer: PullingMesh, val shadow: PullingMesh) {
 			fun setVertexCount(vertexCount: Int): PullingMeshPair {
@@ -777,6 +848,7 @@ object StandardRenderer {
 			depthFormat = Options.defaultDepthFormat
 			depthTest = false
 			blend = false
+			imageFormat = renderer.windowContext(target.windowIndex).swapChain.surfaceFormat.imageFormat
 			this.viewport = viewport
 			vertex = fullscreenVertex
 			fragment = depthBlitFragment
@@ -813,6 +885,7 @@ object StandardRenderer {
 			depthFormat = Options.defaultDepthFormat
 			depthTest = false
 			blend = false
+			imageFormat = renderer.windowContext(target.windowIndex).swapChain.surfaceFormat.imageFormat
 			this.viewport = viewport
 			vertex = fullscreenVertex
 			fragment = motionBlitFragment

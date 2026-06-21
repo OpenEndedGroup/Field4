@@ -16,6 +16,7 @@ import afield.four.texture.*
 import afield.four.texture.Image.ImageData
 import afield.four.texture.ImageView.ImageViewData
 import afield.four.util.Options
+import afield.four.util.Window
 import afield.stdlib.Vec4
 import afield.stdlib.f
 import afield.stdlib.vec
@@ -692,6 +693,7 @@ open class RenderToTexture(
             depth = 1
             depthFormat = Options.defaultDepthFormat
             depthTest = false
+            imageFormat = renderer.windowContext(target.windowIndex).swapChain.surfaceFormat.imageFormat
             this.blend = blend || additive
             if (additive) {
                 colorBlendOp = VK_BLEND_OP_ADD
@@ -732,6 +734,66 @@ open class RenderToTexture(
         target += name to module
         return module
     }
+
+    fun blitToScreen(
+        windowIndex: Int,
+        renderer: Renderer = this.renderer,
+        attachment: Int = 0,
+        name: String = "rtt-blit",
+        viewport: Rect? = null,
+        sourceRect: Rect? = null,
+        blend: Boolean = false,
+        additive: Boolean = false,
+        sourceLayer: Int = 0,
+        warper: String? = null,
+        numSegmentsW: Int = 1,
+        numSegmentsH: Int = 1,
+        configure: ColorGrade.() -> Unit = {}
+    ): ModulePointer = blitToScreen(
+        renderer = renderer,
+        target = renderer.renderTargetFor(windowIndex),
+        attachment = attachment,
+        name = name,
+        viewport = viewport,
+        sourceRect = sourceRect,
+        blend = blend,
+        additive = additive,
+        sourceLayer = sourceLayer,
+        warper = warper,
+        numSegmentsW = numSegmentsW,
+        numSegmentsH = numSegmentsH,
+        configure = configure
+    )
+
+    fun blitToScreen(
+        window: Window,
+        renderer: Renderer = this.renderer,
+        attachment: Int = 0,
+        name: String = "rtt-blit",
+        viewport: Rect? = null,
+        sourceRect: Rect? = null,
+        blend: Boolean = false,
+        additive: Boolean = false,
+        sourceLayer: Int = 0,
+        warper: String? = null,
+        numSegmentsW: Int = 1,
+        numSegmentsH: Int = 1,
+        configure: ColorGrade.() -> Unit = {}
+    ): ModulePointer = blitToScreen(
+        windowIndex = renderer.windowIndex(window),
+        renderer = renderer,
+        attachment = attachment,
+        name = name,
+        viewport = viewport,
+        sourceRect = sourceRect,
+        blend = blend,
+        additive = additive,
+        sourceLayer = sourceLayer,
+        warper = warper,
+        numSegmentsW = numSegmentsW,
+        numSegmentsH = numSegmentsH,
+        configure = configure
+    )
 
     companion object {
         private fun usesSegmentedBlit(warper: String?, numSegmentsW: Int, numSegmentsH: Int): Boolean =
