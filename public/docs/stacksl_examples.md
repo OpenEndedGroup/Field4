@@ -146,6 +146,32 @@ palette
 saturate
 ```
 
+## Local named marks
+
+When a phrase gets larger, local marks let you name a value without turning it into a reusable definition. `=name` copies the current top into a mark and leaves the stack alone. After that, bare `name` pushes the marked value.
+
+```diffstatic {data-lang=stacksl}
+uv 8 * =coord
+coord fbm
+coord 0.2t + fbm
+0.5 mix
+palette
+saturate
+```
+
+If you want the mark to clear the working stack, use the explicit move/read form:
+
+```diffstatic {data-lang=stacksl}
+uv 8 * >coord
+<coord fbm
+<coord 0.2t + fbm
+0.5 mix
+palette
+saturate
+```
+
+Marks are local to the current root program or definition. They are SSA aliases in the generated shader, so they do not create mutable GLSL variables and unused marked values still disappear.
+
 ## Ping-pong RTT sampling
 
 Sample words need a texture environment. If the compiler is called with `sampleTextures = listOf("state")`, `sample` reads from `uniform sampler2D state`. Function and helper names are prefixed; sampler names are not, so several StackSL expansions can share the same texture.
@@ -287,12 +313,13 @@ Modifiers come in three forms:
 
 ```diffstatic {data-lang=stacksl}
 0.4c1.8p0.2   # amount * normalized cos(time * 1.8 + 0.2)
+0.4s3q8        # amount * sine wave quantized to eight levels
 0.5sh4         # amount * sample-and-hold random, 4 buckets per time unit
-0.25 |fbm3    # top-of-stack as amount, fbm factor
-p length ]sh20 # top-of-stack as scalar driver, amount is 1
+0.25 |fbm3q6   # top-of-stack as amount, quantized fbm factor
+p length ]sh20q4 # top-of-stack as scalar driver, amount is 1
 ```
 
-Wave modifiers are `c`, `s`, `sq`, `saw`, `tri`, and `pulse`; pulse also supports duty with `d`, as in `0.5pulse3d0.2`. Sample-and-hold is `sh`: it hashes `floor(driver * frequency + phase)` and stays stable inside each bucket. Spatial/noisy modifiers are `sh`, `n`, `j`, `x`, `y`, `cx`, `cy`, `hash`, `rad`, `ang`, `wx`, `wy`, `wr`, `wa`, `grain`, `noise`, and `fbm`.
+Wave modifiers are `c`, `s`, `sq`, `saw`, `tri`, and `pulse`; pulse also supports duty with `d`, as in `0.5pulse3d0.2`. Sample-and-hold is `sh`: it hashes `floor(driver * frequency + phase)` and stays stable inside each bucket. Spatial/noisy modifiers are `sh`, `n`, `j`, `x`, `y`, `cx`, `cy`, `hash`, `rad`, `ang`, `wx`, `wy`, `wr`, `wa`, `grain`, `noise`, and `fbm`. Suffixes can be stacked left-to-right; each later suffix uses the previous suffix result as its driver. The `q` suffix quantizes that result, so `q8` gives eight levels.
 
 Reducers collapse a `vec4` to a scalar splatted back to `vec4`: `average`, `vmin`, `vmax`, and `median`. Bare `min`/`max` become reducers when there is only one explicit stack value; otherwise they remain binary GLSL min/max.
 
@@ -311,6 +338,63 @@ dup 0.23 + dup 0.37 + dup 0.61 + vec4
 prev 0.006_0.09 ema
 dup average 0.015pulse0.23d0.09 + +
 mirror saturate
+```
+
+## Domain transforms and shapers
+
+Coordinate transforms are normal words, so they can be mixed into short shader phrases without definitions:
+
+```diffstatic {data-lang=stacksl}
+p 7 kaleido
+1.7 twist
+4 tile
+fbm
+0.35 gain
+0.45 0.12 band
+palette
+saturate
+```
+
+`polar` and `cart` use radians in the `.y` lane. That makes polar offsets explicit:
+
+```diffstatic {data-lang=stacksl}
+p polar
+dup y 0.2t + >y
+cart
+fbm
+sigmoid
+palette
+```
+
+The scalar shapers are intentionally direct. Use `smooth`, `sigmoid`, `softplus`, `threshold`, `band`, `ramp`, `posterize`, `bias`, and `gain` when the program is really saying "shape this mask" rather than "do generic math".
+
+```diffstatic {data-lang=stacksl}
+uv 5 * fbm
+0.2 0.8 ramp
+6 posterize
+0.62 bias
+palette
+```
+
+## Neighborhood fields
+
+Neighborhood words read the first configured sampler. With one explicit value, that value is treated as the radius and the center is the current input coordinate; with two values, use `center radius word`.
+
+```diffstatic {data-lang=stacksl}
+prev
+0.002 blur
+0.0015 laplace 0.35 * +
+p 0.003 sobel 0.2 * +
+tonemap
+```
+
+For vector-state feedback, `divergence` and `curl` look at the texture's xy channels:
+
+```diffstatic {data-lang=stacksl}
+p 0.004 divergence
+p 0.004 curl
+vec2
+0.5 + 0.5 *
 ```
 
 ## Color grading
@@ -437,6 +521,7 @@ Stack and input:
 ```diffstatic {data-lang=stacksl}
 dup drop swap over rot nip tuck
 input in uv time t hash h
+=name >name <name
 ```
 
 Math:
@@ -445,21 +530,29 @@ Math:
 + - * / mod pow min max neg abs floor ceil fract
 sqrt inversesqrt exp log sin cos tan asin acos atan atan2
 normalize length len length2 len2 length3 len3 length4 len4
+sum prod any all x+y xylen rgbnorm
 dot cross standoff standoff2 standoff3 mix lerp step smoothstep
 lt lte gt gte eq neq and or not
+```
+
+Domain:
+
+```diffstatic {data-lang=stacksl}
+tile repeat polar cart spiral twist kaleido
 ```
 
 Creative:
 
 ```diffstatic {data-lang=stacksl}
 noise perlin fbm pulse fm palette cos-palette
-luma saturate clamp mirror tonemap
+luma saturate clamp mirror smooth sigmoid softplus threshold band ramp posterize bias gain tonemap
 ryb ryb2rgb from-ryb rgb2ryb to-ryb
 oklab oklab2rgb from-oklab rgb2oklab to-oklab
 saturation contrast grade
 ema ema-diff diff-ema dema
 sample sample0 sample1 sample2 sample3
 sample-abs prev state gather gather0 gather1 gather2 gather3
+laplace laplacian blur blur5 blur9 sobel gradient divergence curl
 ```
 
 Constants:

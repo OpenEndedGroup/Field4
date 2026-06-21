@@ -56,6 +56,7 @@ Mac OS X
 - Use scratch sessions for disposable experiments. Use `--document <name>` when you need to attach to a real saved document.
 - Every run writes a unique log file under `.field-backdoor/logs/`. `status` reports both the session log and the managed server log path.
 - Session logs are debugging artifacts, not durable state. They now store truncated previews of very large websocket payloads, and it is safe to clear `.field-backdoor/logs/` if runaway visualizer output fills the disk during automation.
+- `run-jvm-main` omits the full launched JVM command/classpath from JSON output by default to keep agent context small. Add `--include-command` only when debugging launch/classpath construction.
 
 Minimum hello world:
 
@@ -74,7 +75,7 @@ Recommended agent workflow:
 5. Use `--with-playwright` when you know a session will need DOM inspection, screenshots, or output-area capture. This opens or reuses Field's server-owned Playwright browser immediately after the backdoor attaches to its current session, and again after any later `open ...` command.
 6. Use `playwright-open` manually when you want to defer browser startup until later in the session.
 7. Use `editor-open <box> --property code` before `run` or `launch` when you need inline Monaco visualizers like `histogram`, `history`, `stats`, or `pianoRoll` to exist in the editor before a later `screenshot-editor`.
-8. Use `run-jvm-main <entrypoint> --arg ...` for annotated/standalone JVM smoke checks when you do not need a scratch box UI.
+8. Use `run-jvm-main <entrypoint> --arg ...` for annotated/standalone JVM smoke checks when you do not need a scratch box UI. Its JSON result is intentionally compact; add `--include-command` only when you need the full Java invocation.
 9. Read the `events` array in JSON output to inspect stdout, `display(...)` output, runtime errors, and running-state transitions.
 
 By default this Playwright browser is headless, so screenshot/DOM tests do not steal desktop focus. Set `AFIELD_PLAYWRIGHT_VISIBLE=true` or JVM property `-Dafield.playwright.visible=true` only when you explicitly want to watch the browser while debugging.

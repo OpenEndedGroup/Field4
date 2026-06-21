@@ -89,6 +89,19 @@ data class StackSLCompileResult(
 
 private data class StackSLArityVariant(val base: String, val arity: Int?, val all: Boolean = false)
 
+private data class ParsedModifierStage(
+    val modifier: String,
+    val frequency: String?,
+    val phase: String?,
+    val duty: String?
+)
+
+private data class ParsedModifierChain(
+    val mode: String?,
+    val amount: String?,
+    val stages: List<ParsedModifierStage>
+)
+
 object StackSLCompiler {
     fun compile(source: String, options: StackSLCompileOptions = StackSLCompileOptions()): StackSLCompileResult {
         val diagnostics = mutableListOf<StackSLDiagnostic>()
@@ -413,6 +426,7 @@ private class FunctionCompiler(
     private val externalWrites = mutableListOf<Pair<String, Int>>()
     private val inputStack = mutableListOf<Int>()
     private val inlineCallStack = mutableListOf<String>()
+    private val localMarks = linkedMapOf<String, Int>()
     private var maxStackDepth = 0
 
     fun compile(sourceName: String, tokens: List<Token>): CompiledFunction {
@@ -502,6 +516,21 @@ private class FunctionCompiler(
             return
         }
 
+        parseLocalMarkRead(raw)?.let {
+            readLocalMark(it, token)
+            return
+        }
+
+        parseLocalMarkCopy(raw)?.let {
+            copyLocalMark(it, token)
+            return
+        }
+
+        parseLocalMarkMove(raw)?.let {
+            moveLocalMark(it, token)
+            return
+        }
+
         parseTopModifier(raw)?.let {
             applyTopModifier(it, token)
             return
@@ -509,16 +538,6 @@ private class FunctionCompiler(
 
         parseNumberModifier(raw)?.let {
             pushNumberModifier(it, token)
-            return
-        }
-
-        parseNumberWave(raw)?.let {
-            pushNumberWave(it, token)
-            return
-        }
-
-        parseNumberSuffix(raw)?.let {
-            pushNumberSuffix(it.first, it.second, token)
             return
         }
 
@@ -588,6 +607,31 @@ private class FunctionCompiler(
             "luma" -> unary(token, "luma") {
                 "vec4(dot(${ref(it)}.rgb, vec3(0.2126, 0.7152, 0.0722)))"
             }
+            "sum" -> {
+                requiredHelpers += "reduce"
+                unary(token, "component sum") { "vec4(${options.prefix}_sum4(${ref(it)}))" }
+            }
+            "prod", "product" -> {
+                requiredHelpers += "reduce"
+                unary(token, "component product") { "vec4(${options.prefix}_prod4(${ref(it)}))" }
+            }
+            "any" -> {
+                requiredHelpers += "reduce"
+                unary(token, "component any") { "vec4(${options.prefix}_any4(${ref(it)}))" }
+            }
+            "all" -> {
+                requiredHelpers += "reduce"
+                unary(token, "component all") { "vec4(${options.prefix}_all4(${ref(it)}))" }
+            }
+            "x+y", "xplusy" -> unary(token, "xy sum") {
+                "vec4(${ref(it)}.x + ${ref(it)}.y)"
+            }
+            "xylen" -> unary(token, "xy length") {
+                "vec4(length(${ref(it)}.xy))"
+            }
+            "rgbnorm", "rgb-normalize" -> unary(token, "rgb normalize") {
+                "vec4(normalize(${ref(it)}.rgb), ${ref(it)}.a)"
+            }
             "average", "avg", "mean" -> {
                 if (arityVariant != null) {
                     val args = consumeBlastArgs(token, raw, requestedArity, requestedAll) ?: return
@@ -621,6 +665,65 @@ private class FunctionCompiler(
             }
             "mirror" -> unary(token, "mirror") {
                 "(vec4(1.0) - abs(fract(${ref(it)} * 0.5) * 2.0 - vec4(1.0)))"
+            }
+            "smooth" -> unary(token, "smooth") {
+                "smoothstep(vec4(0.0), vec4(1.0), ${ref(it)})"
+            }
+            "sigmoid" -> shaping2(token, raw, requestedArity, "sigmoid", "vec4(8.0)") { value, amount ->
+                "(vec4(1.0) / (vec4(1.0) + exp(-${ref(amount)} * (${ref(value)} - vec4(0.5)))))"
+            }
+            "softplus" -> shaping2(token, raw, requestedArity, "softplus", "vec4(4.0)") { value, amount ->
+                val k = "max(abs(${ref(amount)}), vec4(0.0001))"
+                "(log(vec4(1.0) + exp($k * ${ref(value)})) / $k)"
+            }
+            "threshold" -> shaping2(token, raw, requestedArity, "threshold", "vec4(0.5)") { value, edge ->
+                "step(${ref(edge)}, ${ref(value)})"
+            }
+            "posterize" -> shaping2(token, raw, requestedArity, "posterize", "vec4(6.0)") { value, levels ->
+                val n = "max(floor(abs(${ref(levels)})), vec4(2.0)) - vec4(1.0)"
+                "(floor(clamp(${ref(value)}, vec4(0.0), vec4(1.0)) * $n + vec4(0.5)) / $n)"
+            }
+            "bias" -> {
+                requiredHelpers += "shaping"
+                shaping2(token, raw, requestedArity, "bias", "vec4(0.5)") { value, amount ->
+                    "${options.prefix}_bias(${ref(value)}, ${ref(amount)})"
+                }
+            }
+            "gain" -> {
+                requiredHelpers += "shaping"
+                shaping2(token, raw, requestedArity, "gain", "vec4(0.5)") { value, amount ->
+                    "${options.prefix}_gain(${ref(value)}, ${ref(amount)})"
+                }
+            }
+            "band" -> {
+                val args = consumeArityArgs(
+                    token,
+                    raw,
+                    listOf(
+                        StackSLArg("x", "input"),
+                        StackSLArg("center", "vec4(0.5)"),
+                        StackSLArg("width", "vec4(0.1)")
+                    ),
+                    requestedArity ?: creativeArity(3)
+                ) ?: return
+                val (x, center, width) = args
+                val w = "max(abs(${ref(width)}), vec4(0.00001))"
+                push(expr("(step(${ref(center)} - $w, ${ref(x)}) - step(${ref(center)} + $w, ${ref(x)}))", args, token, "band"))
+            }
+            "ramp" -> {
+                val args = consumeArityArgs(
+                    token,
+                    raw,
+                    listOf(
+                        StackSLArg("x", "input"),
+                        StackSLArg("low", "vec4(0.0)"),
+                        StackSLArg("high", "vec4(1.0)")
+                    ),
+                    requestedArity ?: creativeArity(3)
+                ) ?: return
+                val (x, low, high) = args
+                val denom = "max(abs(${ref(high)} - ${ref(low)}), vec4(0.00001))"
+                push(expr("clamp((${ref(x)} - ${ref(low)}) / $denom, vec4(0.0), vec4(1.0))", args, token, "ramp"))
             }
             "tonemap" -> {
                 requiredHelpers += "tonemap"
@@ -718,6 +821,36 @@ private class FunctionCompiler(
             }
             "rotate" -> rotate(token)
             "rotates" -> rotates(token)
+            "tile" -> domain2(token, raw, requestedArity, "tile", "vec4(1.0)") { coord, scale ->
+                "vec4(fract(${ref(coord)}.xy * ${ref(scale)}.xy), ${ref(coord)}.zw)"
+            }
+            "repeat" -> unary(token, "repeat") { "fract(${ref(it)})" }
+            "polar" -> {
+                requiredHelpers += "domain"
+                unary(token, "polar") { "${options.prefix}_polar(${ref(it)})" }
+            }
+            "cart", "cartesian" -> {
+                requiredHelpers += "domain"
+                unary(token, "cartesian") { "${options.prefix}_cart(${ref(it)})" }
+            }
+            "twist" -> {
+                requiredHelpers += "domain"
+                domain2(token, raw, requestedArity, "twist", "vec4(6.283185307179586)") { coord, amount ->
+                    "${options.prefix}_twist(${ref(coord)}, ${ref(amount)})"
+                }
+            }
+            "spiral" -> {
+                requiredHelpers += "domain"
+                domain2(token, raw, requestedArity, "spiral", "vec4(6.283185307179586)") { coord, amount ->
+                    "${options.prefix}_spiral(${ref(coord)}, ${ref(amount)})"
+                }
+            }
+            "kaleido", "kaleidoscope" -> {
+                requiredHelpers += "domain"
+                domain2(token, raw, requestedArity, "kaleido", "vec4(6.0)") { coord, sectors ->
+                    "${options.prefix}_kaleido(${ref(coord)}, ${ref(sectors)})"
+                }
+            }
             ">x", ">y", ">z", ">w" -> replaceLane(word[1], token)
 
             "lt", "<" -> compare(token, "lessThan")
@@ -1018,10 +1151,12 @@ private class FunctionCompiler(
             "rcrosssample", "r-cross-sample",
             "rcrosssample.r", "rcrosssample.g", "rcrosssample.b", "rcrosssample.a",
             "r-cross-sample.r", "r-cross-sample.g", "r-cross-sample.b", "r-cross-sample.a" -> neighborhoodSampleWord(word, token)
+            "laplace", "laplacian", "blur", "blur5", "blur9", "sobel", "gradient", "divergence", "curl" -> neighborhoodFieldWord(word, token, raw, requestedArity)
 
             else -> {
-                val definition = definitions[rawWord]
-                if (definition != null) {
+                if (rawWord in localMarks) {
+                    push(localMarks.getValue(rawWord))
+                } else if (definitions[rawWord] != null) {
                     callDefinition(rawWord, token)
                 } else {
                     errorOrWarning(token, "Unknown StackSL word '$raw'.")
@@ -1076,8 +1211,10 @@ private class FunctionCompiler(
         calls += definition.name.lowercase(Locale.US)
         val callInput = pop(token, "function input", "input")
         val callerStack = stack.toList()
+        val callerMarks = linkedMapOf<String, Int>().also { it.putAll(localMarks) }
         stack.clear()
         stack += callInput
+        localMarks.clear()
         inputStack += callInput
         inlineCallStack += word
         val result = try {
@@ -1088,6 +1225,8 @@ private class FunctionCompiler(
             inputStack.removeAt(inputStack.lastIndex)
             stack.clear()
             stack += callerStack
+            localMarks.clear()
+            localMarks += callerMarks
         }
         push(result)
     }
@@ -1100,49 +1239,40 @@ private class FunctionCompiler(
         return leaf("vec4(${constantFloat(number, token, note)})", token, note)
     }
 
-    private fun pushNumberSuffix(number: String, suffix: String, token: Token) {
-        val amount = constantFloat(number, token, "number suffix $suffix")
-        when (suffix.lowercase(Locale.US)) {
-            "t" -> push(leaf("(vec4(${options.inputName}.w) * vec4($amount))", token, "time-scaled number"))
-            "r" -> push(leaf("vec4($amount, 0.0, 0.0, 0.0)", token, "red channel number"))
-            "g" -> push(leaf("vec4(0.0, $amount, 0.0, 0.0)", token, "green channel number"))
-            "b" -> push(leaf("vec4(0.0, 0.0, $amount, 0.0)", token, "blue channel number"))
-            "a" -> push(leaf("vec4(0.0, 0.0, 0.0, $amount)", token, "alpha channel number"))
-        }
-    }
-
-    private fun pushNumberWave(parsed: ParsedModifier, token: Token) {
-        val wave = parsed.modifier
-        val amount = constantFloat(parsed.amount ?: "1.0", token, "$wave amount")
-        val factor = modifierFactor(parsed, token, null)
-        push(leaf("(vec4($amount) * $factor)", token, "$wave wave number"))
-    }
-
-    private fun pushNumberModifier(parsed: ParsedModifier, token: Token) {
-        val modifier = parsed.modifier
+    private fun pushNumberModifier(parsed: ParsedModifierChain, token: Token) {
+        val modifier = parsed.stages.firstOrNull()?.modifier ?: "modifier"
         val amount = constantFloat(parsed.amount ?: "1.0", token, "$modifier amount")
-        val factor = modifierFactor(parsed, token, null)
+        val factor = modifierChainFactor(parsed, token, null)
         push(leaf("(vec4($amount) * $factor)", token, "$modifier modifier number"))
     }
 
-    private fun applyTopModifier(parsed: ParsedModifier, token: Token) {
-        val modifier = parsed.modifier
+    private fun applyTopModifier(parsed: ParsedModifierChain, token: Token) {
+        val modifier = parsed.stages.firstOrNull()?.modifier ?: "modifier"
         val value = pop(token, "${token.text} source", "vec4(1.0)")
         val valueRef = ref(value)
         val expression = if (parsed.mode == "]") {
-            modifierFactor(parsed, token, valueRef)
+            modifierChainFactor(parsed, token, valueRef)
         } else {
-            val factor = modifierFactor(parsed, token, null)
+            val factor = modifierChainFactor(parsed, token, null)
             "($valueRef * $factor)"
         }
         push(expr(expression, listOf(value), token, "top modifier $modifier"))
     }
 
-    private fun modifierFactor(parsed: ParsedModifier, token: Token, driver: String?): String {
-        val modifier = parsed.modifier
-        val frequency = parsed.frequency?.let { constantFloat(it, token, "$modifier frequency") } ?: "1.0"
-        val phaseOffset = parsed.phase?.let { constantFloat(it, token, "$modifier phase") } ?: "0.0"
-        val duty = parsed.duty?.let { constantFloat(it, token, "$modifier duty") } ?: "0.5"
+    private fun modifierChainFactor(parsed: ParsedModifierChain, token: Token, initialDriver: String?): String {
+        var factor = modifierFactor(parsed.stages.first(), token, initialDriver)
+        parsed.stages.drop(1).forEach { stage ->
+            factor = modifierFactor(stage, token, factor)
+        }
+        return factor
+    }
+
+    private fun modifierFactor(stage: ParsedModifierStage, token: Token, driver: String?): String {
+        val modifier = stage.modifier
+        val frequency = stage.frequency?.let { constantFloat(it, token, "$modifier frequency") }
+            ?: if (modifier == "q") "8.0" else "1.0"
+        val phaseOffset = stage.phase?.let { constantFloat(it, token, "$modifier phase") } ?: "0.0"
+        val duty = stage.duty?.let { constantFloat(it, token, "$modifier duty") } ?: "0.5"
         val scalarDriver = if (driver != null) "$driver.x" else "${options.inputName}.w"
         val coordDriver = if (driver != null) "$driver.xy" else "${options.inputName}.xy"
         val hashDriver = if (driver != null) "$driver.w" else "${options.inputName}.z"
@@ -1150,6 +1280,10 @@ private class FunctionCompiler(
 
         fun scalarFactor(expression: String): String = "vec4($expression)"
         fun affine(expression: String): String = "(($expression) * $frequency + $phaseOffset)"
+        fun quantize(value: String): String {
+            val steps = "max(abs($frequency), 2.0) - 1.0"
+            return "(floor(clamp($value, vec4(0.0), vec4(1.0)) * vec4($steps) + vec4(0.5)) / vec4($steps))"
+        }
 
         when (modifier) {
             "t" -> return scalarFactor(scalarDriver)
@@ -1157,6 +1291,7 @@ private class FunctionCompiler(
             "g" -> return "vec4(0.0, ${if (driver != null) "$driver.x" else "1.0"}, 0.0, 0.0)"
             "b" -> return "vec4(0.0, 0.0, ${if (driver != null) "$driver.x" else "1.0"}, 0.0)"
             "a" -> return "vec4(0.0, 0.0, 0.0, ${if (driver != null) "$driver.x" else "1.0"})"
+            "q" -> return quantize(driver ?: scalarFactor(scalarDriver))
             "x" -> return scalarFactor(affine("$coordDriver.x"))
             "y" -> return scalarFactor(affine("$coordDriver.y"))
             "cx" -> return scalarFactor(affine("$centered.x"))
@@ -1223,6 +1358,24 @@ private class FunctionCompiler(
         push(leaf("vec4(${parts.joinToString(", ")})", token, "range vector"))
     }
 
+    private fun copyLocalMark(name: String, token: Token) {
+        localMarks[name.lowercase(Locale.US)] = peekOrDefault(token, "mark $name")
+    }
+
+    private fun moveLocalMark(name: String, token: Token) {
+        localMarks[name.lowercase(Locale.US)] = pop(token, "mark $name", "input")
+    }
+
+    private fun readLocalMark(name: String, token: Token) {
+        val key = name.lowercase(Locale.US)
+        val value = localMarks[key]
+        if (value != null) {
+            push(value)
+        } else {
+            errorOrWarning(token, "Unknown StackSL local mark '$name'.")
+        }
+    }
+
     private fun shouldReduceTop(): Boolean {
         if (stack.size == 1) return true
         if (stack.size == 2) {
@@ -1230,6 +1383,59 @@ private class FunctionCompiler(
             return bottom.leaf && bottom.note == "function input"
         }
         return false
+    }
+
+    private fun explicitStackDepth(): Int {
+        val first = stack.firstOrNull()?.let { values[it] }
+        return if (first != null && first.leaf && first.note == "function input") {
+            stack.size - 1
+        } else {
+            stack.size
+        }
+    }
+
+    private fun creativeArity(maxArity: Int): Int = explicitStackDepth().coerceIn(1, maxArity)
+
+    private fun shaping2(
+        token: Token,
+        word: String,
+        requestedArity: Int?,
+        note: String,
+        defaultAmount: String,
+        build: (Int, Int) -> String
+    ) {
+        val args = consumeArityArgs(
+            token,
+            word,
+            listOf(
+                StackSLArg("value", "input"),
+                StackSLArg("amount", defaultAmount)
+            ),
+            requestedArity ?: creativeArity(2)
+        ) ?: return
+        val (value, amount) = args
+        push(expr(build(value, amount), args, token, note))
+    }
+
+    private fun domain2(
+        token: Token,
+        word: String,
+        requestedArity: Int?,
+        note: String,
+        defaultAmount: String,
+        build: (Int, Int) -> String
+    ) {
+        val args = consumeArityArgs(
+            token,
+            word,
+            listOf(
+                StackSLArg("coord", "input"),
+                StackSLArg("amount", defaultAmount)
+            ),
+            requestedArity ?: creativeArity(2)
+        ) ?: return
+        val (coord, amount) = args
+        push(expr(build(coord, amount), args, token, note))
     }
 
     private fun sampleWord(word: String, token: Token) {
@@ -1309,6 +1515,56 @@ private class FunctionCompiler(
             else -> "${options.prefix}_crossSample(${sampler.emittedName}, ${ref(center)}, ${ref(radius)})"
         }
         push(expr(call, listOf(center, radius), token, helper))
+    }
+
+    private fun neighborhoodFieldWord(word: String, token: Token, raw: String, requestedArity: Int?) {
+        val sampler = options.sampleTextures.firstOrNull()
+        if (sampler == null) {
+            errorOrWarning(token, "Neighborhood field words need at least one sample texture.")
+            return
+        }
+        requiredSamplerIndices += 0
+        requiredHelpers += "neighborhood"
+
+        val args = consumeNeighborhoodArgs(token, raw, requestedArity) ?: return
+        val (center, radius) = args
+        val helper = when (word) {
+            "laplace", "laplacian" -> "laplace"
+            "blur", "blur5" -> "blur5"
+            "blur9" -> "blur9"
+            "sobel" -> "sobel"
+            "gradient" -> "gradient"
+            "divergence" -> "divergence"
+            "curl" -> "curl"
+            else -> word
+        }
+        val call = "${options.prefix}_${helper}(${sampler.emittedName}, ${ref(center)}, ${ref(radius)})"
+        push(expr(call, args, token, helper))
+    }
+
+    private fun consumeNeighborhoodArgs(token: Token, word: String, requestedArity: Int?): List<Int>? {
+        val arity = requestedArity ?: explicitStackDepth().coerceIn(0, 2)
+        if (arity !in 0..2) {
+            unsupportedArity(token, word, word.substringBefore('.'), arity, setOf(0, 1, 2))
+            return null
+        }
+        val center = when (arity) {
+            2 -> null
+            else -> inputExpr(token, "$word implicit center") { it }
+        }
+        val radius = when (arity) {
+            0 -> optionalDefault(token, "$word radius", "vec4(0.001)")
+            1 -> pop(token, "$word radius", "vec4(0.001)")
+            else -> null
+        }
+        if (arity < 2) return listOf(center!!, radius!!)
+
+        val values = popOperands(
+            token = token,
+            roles = listOf("$word radius", "$word center"),
+            defaults = listOf("vec4(0.001)", "input")
+        )
+        return listOf(values[1], values[0])
     }
 
     private fun compare(token: Token, glslPredicate: String) {
@@ -1772,24 +2028,17 @@ private fun detectCallCycles(functions: List<CompiledFunction>, diagnostics: Mut
 
 private val numberPattern = """[+-]?(?:(?:\d+\.\d*)|(?:\d*\.\d+)|(?:\d+))(?:[eE][+-]?\d+)?"""
 private val numberRegex = Regex("^$numberPattern$")
-private val numberSuffixRegex = Regex("^($numberPattern)([trgba])$", RegexOption.IGNORE_CASE)
-private val numberWaveRegex = Regex(
-    "^($numberPattern)(c|s|sq|saw|tri|pulse)($numberPattern)?(?:p($numberPattern))?(?:d($numberPattern))?$",
-    RegexOption.IGNORE_CASE
-)
-private val modifierAlternatives = "pulse|noise|grain|hash|saw|tri|fbm|rad|ang|wx|wy|wr|wa|cx|cy|sq|sh|n|j|c|s|t|r|g|b|a|x|y"
-private val numberModifierRegex = Regex(
-    "^($numberPattern)($modifierAlternatives)($numberPattern)?(?:p($numberPattern))?(?:d($numberPattern))?$",
-    RegexOption.IGNORE_CASE
-)
-private val topModifierRegex = Regex(
-    "^(\\||\\])($modifierAlternatives)($numberPattern)?(?:p($numberPattern))?(?:d($numberPattern))?$",
-    RegexOption.IGNORE_CASE
-)
+private val modifierAlternatives = "pulse|noise|grain|hash|saw|tri|fbm|rad|ang|wx|wy|wr|wa|cx|cy|sq|sh|q|n|j|c|s|t|r|g|b|a|x|y"
+private val modifierNames = modifierAlternatives.split("|").sortedByDescending { it.length }
+private val leadingNumberRegex = Regex(numberPattern)
 private val numberRangeRegex = Regex("^($numberPattern)_($numberPattern)$", RegexOption.IGNORE_CASE)
 private val vecLiteralRegex = Regex("""^\[\s*($numberPattern)(?:\s*,\s*($numberPattern))?(?:\s*,\s*($numberPattern))?(?:\s*,\s*($numberPattern))?\s*]$""")
 private val defaultNumberRegex = Regex("""(?<![A-Za-z_])($numberPattern)(?![A-Za-z_])""")
 private val definitionNameRegex = Regex("""^[A-Za-z_][A-Za-z0-9_-]*$""")
+private val localMarkCopyRegex = Regex("""^=([A-Za-z_][A-Za-z0-9_-]*)$""")
+private val localMarkMoveRegex = Regex("""^>([A-Za-z_][A-Za-z0-9_-]*)$""")
+private val localMarkReadRegex = Regex("""^<([A-Za-z_][A-Za-z0-9_-]*)$""")
+private val localMarkMoveReservedWords = setOf(">x", ">y", ">z", ">w")
 private val stackSLArityVariantRegex = Regex("""^(.+)\.(\d+|all)$""")
 private val stackSLArityVariantArities = mapOf(
     "min" to (1..8).toSet(),
@@ -1810,6 +2059,28 @@ private val stackSLArityVariantArities = mapOf(
     "saturation" to (1..2).toSet(),
     "sat-color" to (1..2).toSet(),
     "contrast" to (1..2).toSet(),
+    "sigmoid" to (1..2).toSet(),
+    "softplus" to (1..2).toSet(),
+    "threshold" to (1..2).toSet(),
+    "posterize" to (1..2).toSet(),
+    "bias" to (1..2).toSet(),
+    "gain" to (1..2).toSet(),
+    "band" to (1..3).toSet(),
+    "ramp" to (1..3).toSet(),
+    "tile" to (1..2).toSet(),
+    "twist" to (1..2).toSet(),
+    "spiral" to (1..2).toSet(),
+    "kaleido" to (1..2).toSet(),
+    "kaleidoscope" to (1..2).toSet(),
+    "laplace" to (1..2).toSet(),
+    "laplacian" to (1..2).toSet(),
+    "blur" to (1..2).toSet(),
+    "blur5" to (1..2).toSet(),
+    "blur9" to (1..2).toSet(),
+    "sobel" to (1..2).toSet(),
+    "gradient" to (1..2).toSet(),
+    "divergence" to (1..2).toSet(),
+    "curl" to (1..2).toSet(),
     "grade" to (1..4).toSet(),
     "ema" to (1..3).toSet(),
     "ema.c" to (1..3).toSet(),
@@ -1835,15 +2106,6 @@ private val stackSLAllVariantWords = setOf(
 private val stackSLArityVariantWords = stackSLArityVariantArities.flatMap { (word, arities) ->
     arities.map { "$word.$it" } + if (word in stackSLAllVariantWords) listOf("$word.all") else emptyList()
 }.toSet()
-
-private data class ParsedModifier(
-    val mode: String?,
-    val amount: String?,
-    val modifier: String,
-    val frequency: String?,
-    val phase: String?,
-    val duty: String?
-)
 
 private fun parseNumberLiteral(text: String): String? {
     if (!numberRegex.matches(text)) return null
@@ -1871,45 +2133,56 @@ private fun parseStackSLArityVariant(text: String): StackSLArityVariant? {
     return StackSLArityVariant(base, arity)
 }
 
-private fun parseNumberSuffix(text: String): Pair<String, String>? {
-    val match = numberSuffixRegex.matchEntire(text) ?: return null
-    return normalizeFloat(match.groupValues[1]) to match.groupValues[2].lowercase(Locale.US)
+private fun parseNumberModifier(text: String): ParsedModifierChain? {
+    val amountMatch = leadingNumberRegex.find(text, 0)?.takeIf { it.range.first == 0 } ?: return null
+    val amount = normalizeFloat(amountMatch.value)
+    val stages = parseModifierStages(text, amountMatch.range.last + 1) ?: return null
+    return ParsedModifierChain(mode = null, amount = amount, stages = stages)
 }
 
-private fun parseNumberWave(text: String): ParsedModifier? {
-    val match = numberWaveRegex.matchEntire(text) ?: return null
-    return ParsedModifier(
-        mode = null,
-        amount = normalizeFloat(match.groupValues[1]),
-        modifier = match.groupValues[2].lowercase(Locale.US),
-        frequency = match.groupValues[3].ifBlank { null }?.let(::normalizeFloat),
-        phase = match.groupValues[4].ifBlank { null }?.let(::normalizeFloat),
-        duty = match.groupValues[5].ifBlank { null }?.let(::normalizeFloat)
-    )
+private fun parseTopModifier(text: String): ParsedModifierChain? {
+    if (text.length < 2) return null
+    val mode = text.first().takeIf { it == '|' || it == ']' }?.toString() ?: return null
+    val stages = parseModifierStages(text, 1) ?: return null
+    return ParsedModifierChain(mode = mode, amount = null, stages = stages)
 }
 
-private fun parseNumberModifier(text: String): ParsedModifier? {
-    val match = numberModifierRegex.matchEntire(text) ?: return null
-    return ParsedModifier(
-        mode = null,
-        amount = normalizeFloat(match.groupValues[1]),
-        modifier = match.groupValues[2].lowercase(Locale.US),
-        frequency = match.groupValues[3].ifBlank { null }?.let(::normalizeFloat),
-        phase = match.groupValues[4].ifBlank { null }?.let(::normalizeFloat),
-        duty = match.groupValues[5].ifBlank { null }?.let(::normalizeFloat)
-    )
-}
+private fun parseModifierStages(text: String, start: Int): List<ParsedModifierStage>? {
+    val stages = mutableListOf<ParsedModifierStage>()
+    var index = start
+    while (index < text.length) {
+        val modifier = modifierNames.firstOrNull {
+            text.regionMatches(index, it, 0, it.length, ignoreCase = true)
+        } ?: return null
+        index += modifier.length
 
-private fun parseTopModifier(text: String): ParsedModifier? {
-    val match = topModifierRegex.matchEntire(text) ?: return null
-    return ParsedModifier(
-        mode = match.groupValues[1],
-        amount = null,
-        modifier = match.groupValues[2].lowercase(Locale.US),
-        frequency = match.groupValues[3].ifBlank { null }?.let(::normalizeFloat),
-        phase = match.groupValues[4].ifBlank { null }?.let(::normalizeFloat),
-        duty = match.groupValues[5].ifBlank { null }?.let(::normalizeFloat)
-    )
+        fun consumeNumber(): String? {
+            val match = leadingNumberRegex.find(text, index)?.takeIf { it.range.first == index } ?: return null
+            index = match.range.last + 1
+            return normalizeFloat(match.value)
+        }
+
+        val frequency = consumeNumber()
+        val phase = if (index < text.length && text[index].lowercaseChar() == 'p') {
+            index++
+            consumeNumber() ?: return null
+        } else {
+            null
+        }
+        val duty = if (index < text.length && text[index].lowercaseChar() == 'd') {
+            index++
+            consumeNumber() ?: return null
+        } else {
+            null
+        }
+        stages += ParsedModifierStage(
+            modifier = modifier.lowercase(Locale.US),
+            frequency = frequency,
+            phase = phase,
+            duty = duty
+        )
+    }
+    return stages.takeIf { it.isNotEmpty() && index == text.length }
 }
 
 private fun parseNumberRange(text: String): Pair<String, String>? {
@@ -1951,6 +2224,19 @@ private fun parseExternalWrite(word: String): String? {
     if (!word.startsWith("->?")) return null
     val name = word.drop(3)
     return name.takeIf { hostGlslVec4Regex.matches(it) }
+}
+
+private fun parseLocalMarkCopy(word: String): String? {
+    return localMarkCopyRegex.matchEntire(word)?.groupValues?.get(1)
+}
+
+private fun parseLocalMarkMove(word: String): String? {
+    if (word.lowercase(Locale.US) in localMarkMoveReservedWords) return null
+    return localMarkMoveRegex.matchEntire(word)?.groupValues?.get(1)
+}
+
+private fun parseLocalMarkRead(word: String): String? {
+    return localMarkReadRegex.matchEntire(word)?.groupValues?.get(1)
 }
 
 private fun swizzleExpression(value: String, swizzle: String): String = when (swizzle.length) {
@@ -2004,10 +2290,13 @@ private val builtinWords = setOf(
     "neg", "negate", "1-", "abs", "floor", "ceil", "fract", "sqrt", "inversesqrt", "exp", "log",
     "sin", "cos", "tan", "asin", "acos", "atan", "normalize",
     "len", "length", "len2", "length2", "len3", "length3", "len4", "length4", "luma",
+    "sum", "prod", "product", "any", "all", "x+y", "xplusy", "xylen", "rgbnorm", "rgb-normalize",
     "average", "avg", "mean", "median", "med", "sort", "intermediate", "vmin", "minimum", "vmax", "maximum",
-    "sat", "saturate", "clamp", "mirror", "tonemap",
+    "sat", "saturate", "clamp", "mirror", "smooth", "sigmoid", "softplus", "threshold", "posterize", "bias", "gain", "band", "ramp", "tonemap",
     "+", "add", "-", "sub", "*", "mul", "/", "div", "mod", "pow", "min", "max", "atan2",
-    "dot", "distance2", "distance3", "distance", "cross", "standoff", "standoff2", "standoff3", "rotate", "rotates", ">x", ">y", ">z", ">w", "lt", "<", "lte", "<=", "gt", ">", "gte", ">=", "eq", "=", "neq", "!=", "<>",
+    "dot", "distance2", "distance3", "distance", "cross", "standoff", "standoff2", "standoff3", "rotate", "rotates",
+    "tile", "repeat", "polar", "cart", "cartesian", "twist", "spiral", "kaleido", "kaleidoscope",
+    ">x", ">y", ">z", ">w", "lt", "<", "lte", "<=", "gt", ">", "gte", ">=", "eq", "=", "neq", "!=", "<>",
     "and", "or", "not", "xor", "bitxor", "gray-code", "graycode", "gray-encode", "gray-decode", "ungray", "lfsr", "bitcrush", "bit-crush",
     "mix", "lerp", "mix.c", "lerp.c", "mix.sc", "lerp.sc", "select", "if", "step", "smoothstep", "pow.safe",
     "noise", "perlin", "fbm", "pulse", "fm", "fmchirp", "palette", "cos-palette", "cosine-palette",
@@ -2028,6 +2317,7 @@ private val builtinWords = setOf(
     "rcrosssample", "r-cross-sample",
     "rcrosssample.r", "rcrosssample.g", "rcrosssample.b", "rcrosssample.a",
     "r-cross-sample.r", "r-cross-sample.g", "r-cross-sample.b", "r-cross-sample.a",
+    "laplace", "laplacian", "blur", "blur5", "blur9", "sobel", "gradient", "divergence", "curl",
     "0->", "1->", "2->", "3->", "->0", "->1", "->2", "->3"
 ) + stackSLArityVariantWords + namedColors.keys + swizzleWords + swizzleWords.map { ".$it" }
 
@@ -2070,6 +2360,38 @@ private fun helperSource(prefix: String, helpers: Set<String>): String {
             appendLine()
             appendLine("vec4 ${prefix}_safeNormalize3(vec4 value) {")
             appendLine("    return value / max(length(value.xyz), 0.00001);")
+            appendLine("}")
+            appendLine()
+        }
+        if ("domain" in helpers) {
+            appendLine("vec4 ${prefix}_polar(vec4 coord) {")
+            appendLine("    return vec4(length(coord.xy), atan(coord.y, coord.x), coord.z, coord.w);")
+            appendLine("}")
+            appendLine()
+            appendLine("vec4 ${prefix}_cart(vec4 polarCoord) {")
+            appendLine("    return vec4(vec2(cos(polarCoord.y), sin(polarCoord.y)) * polarCoord.x, polarCoord.z, polarCoord.w);")
+            appendLine("}")
+            appendLine()
+            appendLine("vec4 ${prefix}_twist(vec4 coord, vec4 amount) {")
+            appendLine("    float angle = length(coord.xy) * amount.x;")
+            appendLine("    float c = cos(angle);")
+            appendLine("    float s = sin(angle);")
+            appendLine("    return vec4(coord.x * c - coord.y * s, coord.x * s + coord.y * c, coord.z, coord.w);")
+            appendLine("}")
+            appendLine()
+            appendLine("vec4 ${prefix}_spiral(vec4 coord, vec4 amount) {")
+            appendLine("    float r = length(coord.xy);")
+            appendLine("    float angle = atan(coord.y, coord.x) + r * amount.x + log(max(r, 0.00001)) * amount.y;")
+            appendLine("    return vec4(vec2(cos(angle), sin(angle)) * r, coord.z, coord.w);")
+            appendLine("}")
+            appendLine()
+            appendLine("vec4 ${prefix}_kaleido(vec4 coord, vec4 sectors) {")
+            appendLine("    float n = max(abs(sectors.x), 1.0);")
+            appendLine("    float sector = 6.283185307179586 / n;")
+            appendLine("    float r = length(coord.xy);")
+            appendLine("    float a = atan(coord.y, coord.x);")
+            appendLine("    a = abs(mod(a + sector * 0.5, sector) - sector * 0.5);")
+            appendLine("    return vec4(vec2(cos(a), sin(a)) * r, coord.z, coord.w);")
             appendLine("}")
             appendLine()
         }
@@ -2127,6 +2449,19 @@ private fun helperSource(prefix: String, helpers: Set<String>): String {
             appendLine("vec4 ${prefix}_pulse(vec4 x, vec4 center, vec4 width) {")
             appendLine("    vec4 w = max(abs(width), vec4(0.00001));")
             appendLine("    return smoothstep(center - w, center, x) - smoothstep(center, center + w, x);")
+            appendLine("}")
+            appendLine()
+        }
+        if ("shaping" in helpers) {
+            appendLine("vec4 ${prefix}_bias(vec4 value, vec4 amount) {")
+            appendLine("    vec4 b = clamp(amount, vec4(0.00001), vec4(0.99999));")
+            appendLine("    return value / (((vec4(1.0) / b - vec4(2.0)) * (vec4(1.0) - value)) + vec4(1.0));")
+            appendLine("}")
+            appendLine()
+            appendLine("vec4 ${prefix}_gain(vec4 value, vec4 amount) {")
+            appendLine("    vec4 lo = ${prefix}_bias(value * vec4(2.0), amount) * vec4(0.5);")
+            appendLine("    vec4 hi = vec4(1.0) - ${prefix}_bias((vec4(1.0) - value) * vec4(2.0), amount) * vec4(0.5);")
+            appendLine("    return mix(lo, hi, step(vec4(0.5), value));")
             appendLine("}")
             appendLine()
         }
@@ -2189,6 +2524,24 @@ private fun helperSource(prefix: String, helpers: Set<String>): String {
             appendLine()
         }
         if ("reduce" in helpers) {
+            appendLine("float ${prefix}_sum4(vec4 v) {")
+            appendLine("    return dot(v, vec4(1.0));")
+            appendLine("}")
+            appendLine()
+            appendLine("float ${prefix}_prod4(vec4 v) {")
+            appendLine("    return v.x * v.y * v.z * v.w;")
+            appendLine("}")
+            appendLine()
+            appendLine("float ${prefix}_any4(vec4 v) {")
+            appendLine("    vec4 m = step(vec4(0.5), abs(v));")
+            appendLine("    return max(max(m.x, m.y), max(m.z, m.w));")
+            appendLine("}")
+            appendLine()
+            appendLine("float ${prefix}_all4(vec4 v) {")
+            appendLine("    vec4 m = step(vec4(0.5), abs(v));")
+            appendLine("    return min(min(m.x, m.y), min(m.z, m.w));")
+            appendLine("}")
+            appendLine()
             appendLine("float ${prefix}_avg4(vec4 v) {")
             appendLine("    return dot(v, vec4(0.25));")
             appendLine("}")
@@ -2434,6 +2787,86 @@ private fun helperSource(prefix: String, helpers: Set<String>): String {
                 appendLine("}")
                 appendLine()
             }
+        }
+        if ("neighborhood" in helpers) {
+            appendLine("float ${prefix}_luma(vec4 color) {")
+            appendLine("    return dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));")
+            appendLine("}")
+            appendLine()
+            appendLine("vec4 ${prefix}_laplace(sampler2D sourceTexture, vec4 center, vec4 radius) {")
+            appendLine("    vec2 rx = vec2(radius.x, 0.0);")
+            appendLine("    vec2 ry = vec2(0.0, radius.y);")
+            appendLine("    vec4 c = texture(sourceTexture, center.xy);")
+            appendLine("    vec4 px = texture(sourceTexture, center.xy + rx);")
+            appendLine("    vec4 nx = texture(sourceTexture, center.xy - rx);")
+            appendLine("    vec4 py = texture(sourceTexture, center.xy + ry);")
+            appendLine("    vec4 ny = texture(sourceTexture, center.xy - ry);")
+            appendLine("    return px + nx + py + ny - c * vec4(4.0);")
+            appendLine("}")
+            appendLine()
+            appendLine("vec4 ${prefix}_blur5(sampler2D sourceTexture, vec4 center, vec4 radius) {")
+            appendLine("    vec2 rx = vec2(radius.x, 0.0);")
+            appendLine("    vec2 ry = vec2(0.0, radius.y);")
+            appendLine("    vec4 c = texture(sourceTexture, center.xy) * vec4(4.0);")
+            appendLine("    c += texture(sourceTexture, center.xy + rx);")
+            appendLine("    c += texture(sourceTexture, center.xy - rx);")
+            appendLine("    c += texture(sourceTexture, center.xy + ry);")
+            appendLine("    c += texture(sourceTexture, center.xy - ry);")
+            appendLine("    return c * vec4(0.125);")
+            appendLine("}")
+            appendLine()
+            appendLine("vec4 ${prefix}_blur9(sampler2D sourceTexture, vec4 center, vec4 radius) {")
+            appendLine("    vec2 rx = vec2(radius.x, 0.0);")
+            appendLine("    vec2 ry = vec2(0.0, radius.y);")
+            appendLine("    vec4 c = texture(sourceTexture, center.xy) * vec4(4.0);")
+            appendLine("    c += (texture(sourceTexture, center.xy + rx) + texture(sourceTexture, center.xy - rx) + texture(sourceTexture, center.xy + ry) + texture(sourceTexture, center.xy - ry)) * vec4(2.0);")
+            appendLine("    c += texture(sourceTexture, center.xy + rx + ry);")
+            appendLine("    c += texture(sourceTexture, center.xy + rx - ry);")
+            appendLine("    c += texture(sourceTexture, center.xy - rx + ry);")
+            appendLine("    c += texture(sourceTexture, center.xy - rx - ry);")
+            appendLine("    return c * vec4(0.0625);")
+            appendLine("}")
+            appendLine()
+            appendLine("vec4 ${prefix}_gradient(sampler2D sourceTexture, vec4 center, vec4 radius) {")
+            appendLine("    vec2 rx = vec2(radius.x, 0.0);")
+            appendLine("    vec2 ry = vec2(0.0, radius.y);")
+            appendLine("    float gx = ${prefix}_luma(texture(sourceTexture, center.xy + rx)) - ${prefix}_luma(texture(sourceTexture, center.xy - rx));")
+            appendLine("    float gy = ${prefix}_luma(texture(sourceTexture, center.xy + ry)) - ${prefix}_luma(texture(sourceTexture, center.xy - ry));")
+            appendLine("    return vec4(gx, gy, length(vec2(gx, gy)), 1.0);")
+            appendLine("}")
+            appendLine()
+            appendLine("vec4 ${prefix}_sobel(sampler2D sourceTexture, vec4 center, vec4 radius) {")
+            appendLine("    vec2 rx = vec2(radius.x, 0.0);")
+            appendLine("    vec2 ry = vec2(0.0, radius.y);")
+            appendLine("    float tl = ${prefix}_luma(texture(sourceTexture, center.xy - rx + ry));")
+            appendLine("    float tc = ${prefix}_luma(texture(sourceTexture, center.xy + ry));")
+            appendLine("    float tr = ${prefix}_luma(texture(sourceTexture, center.xy + rx + ry));")
+            appendLine("    float ml = ${prefix}_luma(texture(sourceTexture, center.xy - rx));")
+            appendLine("    float mr = ${prefix}_luma(texture(sourceTexture, center.xy + rx));")
+            appendLine("    float bl = ${prefix}_luma(texture(sourceTexture, center.xy - rx - ry));")
+            appendLine("    float bc = ${prefix}_luma(texture(sourceTexture, center.xy - ry));")
+            appendLine("    float br = ${prefix}_luma(texture(sourceTexture, center.xy + rx - ry));")
+            appendLine("    float gx = -tl - 2.0 * ml - bl + tr + 2.0 * mr + br;")
+            appendLine("    float gy = tl + 2.0 * tc + tr - bl - 2.0 * bc - br;")
+            appendLine("    return vec4(length(vec2(gx, gy)));")
+            appendLine("}")
+            appendLine()
+            appendLine("vec4 ${prefix}_divergence(sampler2D sourceTexture, vec4 center, vec4 radius) {")
+            appendLine("    vec2 rx = vec2(radius.x, 0.0);")
+            appendLine("    vec2 ry = vec2(0.0, radius.y);")
+            appendLine("    float dx = texture(sourceTexture, center.xy + rx).x - texture(sourceTexture, center.xy - rx).x;")
+            appendLine("    float dy = texture(sourceTexture, center.xy + ry).y - texture(sourceTexture, center.xy - ry).y;")
+            appendLine("    return vec4(0.5 * (dx + dy));")
+            appendLine("}")
+            appendLine()
+            appendLine("vec4 ${prefix}_curl(sampler2D sourceTexture, vec4 center, vec4 radius) {")
+            appendLine("    vec2 rx = vec2(radius.x, 0.0);")
+            appendLine("    vec2 ry = vec2(0.0, radius.y);")
+            appendLine("    float dvyDx = texture(sourceTexture, center.xy + rx).y - texture(sourceTexture, center.xy - rx).y;")
+            appendLine("    float dvxDy = texture(sourceTexture, center.xy + ry).x - texture(sourceTexture, center.xy - ry).x;")
+            appendLine("    return vec4(0.5 * (dvyDx - dvxDy));")
+            appendLine("}")
+            appendLine()
         }
         if ("crossSampleChannel" in helpers) {
             appendLine("vec4 ${prefix}_crossSampleChannelTaps(sampler2D sourceTexture, vec4 center, vec4 radius, int channel) {")

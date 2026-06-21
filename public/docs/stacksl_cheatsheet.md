@@ -67,6 +67,7 @@ Suffixes let you write modulation where you are already thinking about a number.
 | Channel suffix | `0.7r`, `0.2g`, `0.1b`, `1a` | push a channel-weighted vector. |
 | Plain number | `0.25` | push `vec4(0.25)`. |
 | Pulse wave | `0.5pulse4d0.2` | amount times a pulse train; `d` sets duty fraction. |
+| Stacked suffixes | `0.4s3q8`, `p ]fbm4q8` | suffixes compose left-to-right; later suffixes use the previous suffix result as their driver. |
 | Range vector | `0.1_0.2` | push `vec4(0.1, 0.133333, 0.166667, 0.2)`; useful for four memory scales. |
 | Sample hold | `0.5sh10` | amount times stepped random values, changing at integer buckets of `time * 10`. |
 | Time suffix | `0.48t` | push `time 0.48 *`. |
@@ -82,12 +83,13 @@ Suffixes let you write modulation where you are already thinking about a number.
 | --- | --- | --- |
 | Coordinates | `ang`, `cx`, `cy`, `hash`, `rad`, `x`, `y` | use input `uv`, centered `uv`, radial distance, angle, or hash. |
 | Oscillators | `c`, `pulse`, `s`, `saw`, `sq`, `tri` | cosine, pulse train, sine, saw, square, and triangle waves in `0..1`. |
+| Shaping | `q` | quantize the current suffix result to `N` levels; `q8` gives eight levels. |
 | Random time | `j`, `n`, `sh` | jitter hash, smooth value noise, and sample-hold hash from scalar phase; default phase is `time` in `.w`. |
 | Spatial noise | `fbm`, `grain`, `noise` | noise/fbm/hash over coordinates for offsets, masks, and material texture. |
 | Spatial waves | `wa`, `wr`, `wx`, `wy` | sine waves across angle, radius, x, or y. |
 | Time and channels | `a`, `b`, `g`, `r`, `t` | time scalar from `.w`, or put the amount into one RGBA channel. |
 
-Examples: `0.4c2`, `p length |pulse8d0.15`, `p ]fbm5`, `prev xy ]c3p0.1`.
+Examples: `0.4c2`, `0.4s3q8`, `p length |pulse8d0.15q4`, `p ]fbm5q8`, `prev xy ]c3p0.1`.
 
 ## Math and logic
 
@@ -154,6 +156,12 @@ Arity variants use `word.N` for explicit consumption and `word.all` for stack bl
 | `luma` | `color -- s` | Rec.709 luminance splatted. |
 | `median`, `med` | `a -- s` | middle-ish channel value. |
 | `normalize` | `a -- b` | component vector normalize. |
+| `sum` | `a -- s` | sum of RGBA channels. |
+| `prod`, `product` | `a -- s` | product of RGBA channels. |
+| `any`, `all` | `a -- mask` | boolean-ish channel reducers using threshold `0.5`. |
+| `x+y`, `xplusy` | `a -- s` | sum the `x` and `y` lanes. |
+| `xylen` | `a -- s` | length of `a.xy`; alias-like convenience for coordinate code. |
+| `rgbnorm`, `rgb-normalize` | `color -- color` | normalize `rgb` and preserve alpha. |
 | `rotate` | `point angle -- point` | rotate `point.xy` by `angle.x` radians. |
 | `rotates` | `point center angle -- point` | rotate `point.xy` around `center.xy` by `angle.x` radians. |
 | `sort` | `values -- values` | stack-wide component sort; use `.2` through `.8` or `.all`. |
@@ -164,6 +172,18 @@ Arity variants use `word.N` for explicit consumption and `word.all` for stack bl
 | `vmin`, `minimum` | `a -- s` | component min of RGBA. |
 | `>x`, `>y`, `>z`, `>w` | `a b -- c` | replace one lane of `a` with `b.x`. |
 
+## Domain transforms
+
+| Word | Stack | Effect |
+| --- | --- | --- |
+| `cart`, `cartesian` | `polar -- coord` | convert `vec4(radius, angleRadians, z, w)` back to xy. |
+| `kaleido`, `kaleidoscope` | `coord sectors -- coord` | angular mirror/repeat over `sectors.x`; short form uses six sectors. |
+| `polar` | `coord -- polar` | convert xy to `vec4(radius, angleRadians, z, w)`. |
+| `repeat` | `a -- b` | fractional repeat with `fract(a)`. |
+| `spiral` | `coord amount -- coord` | polar twist by radius and log-radius terms; short form uses `tau`. |
+| `tile` | `coord scale -- coord` | repeat `coord.xy` by `scale.xy`, preserving z/w; short form uses scale `1`. |
+| `twist` | `coord amount -- coord` | rotate `coord.xy` by `radius * amount.x`; short form uses `tau`. |
+
 ## Creative operators
 
 | Word | Stack | What it does |
@@ -171,6 +191,8 @@ Arity variants use `word.N` for explicit consumption and `word.all` for stack bl
 | `alpha` | `base modulation range -- alpha` | raw EMA-alpha time-constant modulation: decay rate is multiplied by `pow(range, modulation)`; negative base alpha keeps a negative output sign. |
 | `alpha.c` | `base modulation range -- alpha` | clamped variant: base alpha is clamped to `1e-6..0.999999`, modulation to `-1..1`. |
 | `alpha.sc` | `base modulation range -- alpha` | soft-clamped variant for bounded modulation without a hard edge. |
+| `band` | `x center width -- mask` | hard centered band; short form defaults to center `0.5`, width `0.1`. |
+| `bias` | `value amount -- out` | Schlick-style bias curve; short form uses neutral `0.5`. |
 | `bitcrush`, `bit-crush` | `value bits -- out` | quantize normalized lanes to a bit depth; short form defaults to `4`, explicit forms are `bitcrush.1` and `bitcrush.2`. |
 | `contrast` | `color amount -- color` | contrast around mid gray; short form amount defaults to `1.2`. |
 | `ema` | `current previous alpha -- smooth` | raw-alpha exponential moving average; use `prev 0.006_0.09 ema` for RGBA memories at different speeds. |
@@ -180,6 +202,7 @@ Arity variants use `word.N` for explicit consumption and `word.all` for stack bl
 | `fbm` | `coord -- s` | five-octave fractal noise. |
 | `fm` | `phase carrier mod -- wave` | frequency-modulated sine color field; has defaults when short. |
 | `fmchirp` | `x freq mod modPhase phase chirp modChirp inputPow outputPow -- out` | FM residual curve with signed power warping; `fmchirp.8` uses `input.x` as implicit x. |
+| `gain` | `value amount -- out` | Schlick-style gain curve; short form uses neutral `0.5`. |
 | `grade` | `color lift gain gamma -- color` | color grading; short form uses neutral lift/gain/gamma. |
 | `gray-code`, `graycode`, `gray-encode` | `value -- out` | convert normalized 16-bit lanes into Gray code. |
 | `gray-decode`, `ungray` | `value -- out` | decode normalized 16-bit Gray-code lanes. |
@@ -187,9 +210,15 @@ Arity variants use `word.N` for explicit consumption and `word.all` for stack bl
 | `mirror` | `a -- b` | triangle-wrap values into `0..1`. |
 | `noise`, `perlin` | `coord -- s` | value noise from `coord.xy + coord.zw * 0.07`. |
 | `palette`, `cos-palette`, `cosine-palette` | `t a b c d -- color` | cosine palette `a + b*cos(t*c + d)`; one-value short form gives a useful default palette. |
+| `posterize` | `value levels -- out` | quantize normalized lanes to a level count; short form uses `6`. |
 | `pulse` | `x center width -- mask` | soft band around `center`; with fewer than three values defaults to center `0.5`, width `0.08`. |
+| `ramp` | `x low high -- out` | remap `low..high` into a clamped `0..1` ramp. |
 | `sat`, `saturate`, `clamp` | `color -- color` | clamp all channels to `0..1`. |
 | `saturation`, `sat-color` | `color amount -- color` | adjust color saturation; short form amount defaults to `1`. |
+| `sigmoid` | `x amount -- out` | logistic S curve around `0.5`; short form uses amount `8`. |
+| `smooth` | `x -- out` | `smoothstep(0, 1, x)` as a one-word shaper. |
+| `softplus` | `x amount -- out` | soft rectifier `log(1 + exp(k*x)) / k`; short form uses amount `4`. |
+| `threshold` | `x edge -- mask` | hard threshold mask; short form uses edge `0.5`. |
 | `tonemap` | `color -- color` | filmic-ish compression for bright feedback. |
 | `xor`, `bitxor` | `a b -- out` | normalized 16-bit lane XOR. |
 
@@ -220,6 +249,35 @@ p ring white *
 
 Definitions are inlined into GLSL, so shared math can still be optimized.
 
+## Local marks
+
+Local marks name a stack value inside the current root program or definition. They are compile-time aliases, not mutable variables, so unused marked values are still pruned.
+
+| Form | Stack | Meaning |
+| --- | --- | --- |
+| `=name` | `a -- a` | copy the current top into `name`, leaving the stack unchanged. |
+| `>name` | `a --` | move the current top into `name`. |
+| `<name` | `-- a` | push a marked value back onto the stack. |
+| `name` | `-- a` | bare read of an existing mark, useful after `=name`. |
+
+```diffstatic {data-lang=stacksl}
+uv 8 * =coord
+coord fbm
+coord 0.2t + fbm
+0.5 mix
+palette
+```
+
+Use the explicit move/read form when you want to keep the working stack clean:
+
+```diffstatic {data-lang=stacksl}
+uv 8 * >coord
+<coord fbm
+<coord 0.2t + fbm
+0.5 mix
+palette
+```
+
 ## Feedback sampling, store, and host values
 
 | Word | Stack | Meaning |
@@ -229,8 +287,15 @@ Definitions are inlined into GLSL, so shared math can still be optimized.
 | `->?name` | `value --` | write the top value to an existing host-side GLSL l-value, for example `->?pc.foo` or `->?pc.inData.p[idx].posvel.Z`. |
 | `gather`, `gather0`, `gather1`, `gather2`, `gather3` | `offset -- vec4` | raw `textureGather` red channel around `uv + offset.xy`. |
 | `gather.w`, `gather0.w`, `gather1.w`, `gather2.w`, `gather3.w` | `offset -- vec4` | wrapped `textureGather` around `fract(uv + offset.xy)`. |
+| `blur`, `blur5` | `radius -- color` / `center radius -- color` | five-tap weighted blur of the first configured sampler. |
+| `blur9` | `radius -- color` / `center radius -- color` | nine-tap weighted blur. |
 | `crossSample`, `cross-sample` | `center radius -- color` | average four full-color samples at `center.xy +/- radius.x/y` cross offsets. |
+| `curl` | `radius -- s` / `center radius -- s` | central-difference 2D curl of texture xy channels. |
+| `divergence` | `radius -- s` / `center radius -- s` | central-difference divergence of texture xy channels. |
+| `gradient` | `radius -- vec4` / `center radius -- vec4` | luminance gradient as `vec4(gx, gy, magnitude, 1)`. |
+| `laplace`, `laplacian` | `radius -- color` / `center radius -- color` | four-neighbor Laplacian. |
 | `rCrossSample`, `r-cross-sample` | `center radius -- color` | average four full-color samples on a deterministically rotated cross around `center.xy`. |
+| `sobel` | `radius -- s` / `center radius -- s` | Sobel luminance edge magnitude. |
 | `crossSample.r`/`.g`/`.b`/`.a` | `center radius -- vec4` | return four selected-channel taps in `xyzw`: `+x`, `-x`, `+y`, `-y`. |
 | `rCrossSample.r`/`.g`/`.b`/`.a` | `center radius -- vec4` | return four selected-channel taps from the randomly rotated cross. |
 | `prev`, `state` | `-- color` | sample previous frame at current `uv`. |

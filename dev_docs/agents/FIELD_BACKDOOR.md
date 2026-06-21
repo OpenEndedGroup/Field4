@@ -70,6 +70,7 @@ python3 tools/run_field_tests.py --refresh-catalog
 
 That regenerates `build/field-tests/catalog.json` and then invokes `python3 tools/field_backdoor.py --json` once per test.
 For the phase-1 `jvm-main` entries, the backdoor command it uses is `run-jvm-main`, which asks the running Field JVM to execute the annotated entrypoint and return `exitCode`, `stdout`, and `stderr`.
+By default, `run-jvm-main` omits the full launched JVM command/classpath from the JSON payload because it is huge and rarely useful in agent transcripts. Add `--include-command` to the `run-jvm-main` command only when debugging launch or classpath construction.
 
 For docs work, treat the smoke suite and the MkDocs runner as one loop:
 
@@ -459,6 +460,7 @@ Read it like this:
 - `timedOut`: command-specific timeout flag
 
 For code execution, the important evidence is usually in `events`.
+For `run-jvm-main`, the important evidence is usually `data.exitCode`, `data.stdout`, `data.stderr`, and `data.durationMs`; the full Java command/classpath is hidden unless the command includes `--include-command`.
 
 ## Logs
 

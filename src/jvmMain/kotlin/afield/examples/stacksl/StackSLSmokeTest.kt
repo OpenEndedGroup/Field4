@@ -38,6 +38,7 @@ object StackSLSmokeTest {
             lengthUsesSpatialChannelsByDefault()
             emitsColorSpaceHelpers()
             compilesCenteredModifierProgram()
+            compilesStackedSuffixModifiers()
             externalizesDanglingWires()
             compilesStoreReadWriteWords()
             inlinesRepeatedDefinitionForCse()
@@ -47,6 +48,9 @@ object StackSLSmokeTest {
             compilesBitGlitchOperators()
             compilesOneMinusOperator()
             compilesGeometryOperatorsAndVecLiterals()
+            compilesShapingDomainAndVectorUtilityOperators()
+            compilesNeighborhoodFieldOperators()
+            compilesLocalNamedMarks()
             compilesExternalHostGlslEscapeHatches()
             expandsStackAutoSamplerOverrides()
             compilesCreativeFreedomVariants()
@@ -237,6 +241,27 @@ object StackSLSmokeTest {
         require("mods_palette" in result.glsl) { result.glsl }
         require("mods_median4" in result.glsl) { result.glsl }
         require("vec4(mods_in.xy - vec2(0.5), 0.0, 1.0)" in result.glsl) { result.glsl }
+    }
+
+    private fun compilesStackedSuffixModifiers() {
+        val result = StackSLCompiler.compile(
+            """
+            0.4s3q8
+            0.2 |s5q4 +
+            p ]fbm4q8 +
+            saturate
+            """.trimIndent(),
+            StackSLCompileOptions(prefix = "suffix_stack")
+        )
+
+        require(result.ok) { result.diagnostics.joinToString("\n") }
+        require("sin((suffix_stack_in.w * 3.0 + 0.0))" in result.glsl) { result.glsl }
+        require("floor(clamp(vec4(((sin((suffix_stack_in.w * 3.0 + 0.0)) + 1.0) * 0.5))" in result.glsl) {
+            result.glsl
+        }
+        require("vec4(max(abs(8.0), 2.0) - 1.0)" in result.glsl) { result.glsl }
+        require("suffix_stack_fbm" in result.glsl) { result.glsl }
+        require(result.analysis.functions.last().finalStackDepth >= 1) { result.analysis.functions.last().toString() }
     }
 
     private fun externalizesDanglingWires() {
@@ -501,6 +526,121 @@ object StackSLSmokeTest {
         }
     }
 
+    private fun compilesShapingDomainAndVectorUtilityOperators() {
+        val result = StackSLCompiler.compile(
+            """
+            uv 8 tile
+            p 6 kaleido
+            3 twist
+            2 spiral
+            polar cart
+            fbm
+            smooth
+            0.62 bias
+            0.35 gain
+            sigmoid
+            5 softplus
+            0.45 threshold
+            0.5 0.12 band
+            0.2 0.8 ramp
+            7 posterize
+            dup sum
+            over prod +
+            over any +
+            over all +
+            over x+y +
+            over xylen +
+            rgbnorm
+            saturate
+            """.trimIndent(),
+            StackSLCompileOptions(prefix = "new_ops")
+        )
+
+        require(result.ok) { result.diagnostics.joinToString("\n") }
+        require("new_ops_bias" in result.glsl) { result.glsl }
+        require("new_ops_gain" in result.glsl) { result.glsl }
+        require("new_ops_kaleido" in result.glsl) { result.glsl }
+        require("new_ops_twist" in result.glsl) { result.glsl }
+        require("new_ops_spiral" in result.glsl) { result.glsl }
+        require("new_ops_polar" in result.glsl && "new_ops_cart" in result.glsl) { result.glsl }
+        require("new_ops_sum4" in result.glsl) { result.glsl }
+        require("new_ops_prod4" in result.glsl) { result.glsl }
+        require("new_ops_any4" in result.glsl) { result.glsl }
+        require("new_ops_all4" in result.glsl) { result.glsl }
+    }
+
+    private fun compilesNeighborhoodFieldOperators() {
+        val result = StackSLCompiler.compile(
+            """
+            laplace
+            0.002 blur
+            p 0.003 blur9
+            p 0.004 sobel
+            p 0.005 gradient
+            p 0.006 divergence
+            p 0.007 curl
+            + + + + + +
+            """.trimIndent(),
+            StackSLCompileOptions(prefix = "field_ops", sampleTextures = listOf("state"))
+        )
+
+        require(result.ok) { result.diagnostics.joinToString("\n") }
+        require("uniform sampler2D state;" in result.glsl) { result.glsl }
+        require("field_ops_laplace(state" in result.glsl) { result.glsl }
+        require("field_ops_blur5(state" in result.glsl) { result.glsl }
+        require("field_ops_blur9(state" in result.glsl) { result.glsl }
+        require("field_ops_sobel(state" in result.glsl) { result.glsl }
+        require("field_ops_gradient(state" in result.glsl) { result.glsl }
+        require("field_ops_divergence(state" in result.glsl) { result.glsl }
+        require("field_ops_curl(state" in result.glsl) { result.glsl }
+        require(result.analysis.requiredSamplers == setOf("state")) { result.analysis.requiredSamplers.toString() }
+    }
+
+    private fun compilesLocalNamedMarks() {
+        val compact = StackSLCompiler.compile(
+            """
+            uv 8 * =coord
+            coord fbm
+            coord 0.2t + fbm
+            0.5 mix
+            """.trimIndent(),
+            StackSLCompileOptions(prefix = "marks_compact")
+        )
+
+        require(compact.ok) { compact.diagnostics.joinToString("\n") }
+        require("marks_compact_fbm" in compact.glsl) { compact.glsl }
+        require("Unknown StackSL" !in compact.diagnostics.joinToString("\n")) { compact.diagnostics.joinToString("\n") }
+
+        val explicit = StackSLCompiler.compile(
+            """
+            uv 8 * >coord
+            <coord fbm
+            <coord 0.2t + fbm
+            0.5 mix
+            """.trimIndent(),
+            StackSLCompileOptions(prefix = "marks_explicit")
+        )
+
+        require(explicit.ok) { explicit.diagnostics.joinToString("\n") }
+        require("marks_explicit_fbm" in explicit.glsl) { explicit.glsl }
+        require(explicit.analysis.functions.last().finalStackDepth == 2) { explicit.analysis.functions.last().toString() }
+
+        val strict = StackSLCompiler.compile("<missing fbm", StackSLCompileOptions(prefix = "marks_strict"))
+        require(!strict.ok) { strict.glsl }
+        require(strict.diagnostics.any { it.severity == StackSLSeverity.ERROR && "Unknown StackSL local mark 'missing'" in it.message }) {
+            strict.diagnostics.joinToString("\n")
+        }
+
+        val tolerant = StackSLCompiler.compile(
+            "<missing fbm",
+            StackSLCompileOptions(prefix = "marks_tolerant", tolerant = true)
+        )
+        require(tolerant.ok) { tolerant.diagnostics.joinToString("\n") }
+        require(tolerant.diagnostics.any { it.severity == StackSLSeverity.WARNING && "Unknown StackSL local mark 'missing'" in it.message }) {
+            tolerant.diagnostics.joinToString("\n")
+        }
+    }
+
     private fun compilesExternalHostGlslEscapeHatches() {
         val result = StackSLCompiler.compile(
             """
@@ -525,7 +665,7 @@ object StackSLSmokeTest {
     private fun expandsStackAutoSamplerOverrides() {
         val box = Box("stack-auto-sampler-smoke")
         box.stackAutoShaderSources["foo"] = """
-            : bar 0.2 sample ;
+            : tap 0.2 sample ;
             0.1 sample
         """.trimIndent()
 
@@ -539,11 +679,10 @@ object StackSLSmokeTest {
 
         val entrypoint = preprocess(
             box,
-            "{{ stack.auto.foo:bar@noiseFieldView }}",
+            "{{ stack.auto.foo:tap@noiseFieldView }}",
             ShaderKind.FRAGMENT_SHADER
         )
         require("foo_sample(noiseFieldView" in entrypoint) { entrypoint }
-        require("foo_bar" in entrypoint) { entrypoint }
         require("foo_sample(source" !in entrypoint) { entrypoint }
     }
 

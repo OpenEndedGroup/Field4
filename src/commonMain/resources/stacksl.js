@@ -40,8 +40,10 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         "sqrt", "inversesqrt", "exp", "log", "sin", "cos", "tan",
         "asin", "acos", "atan", "atan2", "normalize",
         "len", "length", "len2", "length2", "len3", "length3", "len4", "length4",
+        "sum", "prod", "product", "any", "all", "x+y", "xplusy", "xylen", "rgbnorm", "rgb-normalize",
         "average", "avg", "mean", "median", "med", "sort", "intermediate", "vmin", "minimum", "vmax", "maximum",
         "dot", "distance2", "distance3", "distance", "cross", "standoff", "standoff2", "standoff3", "rotate", "rotates", ">x", ">y", ">z", ">w",
+        "tile", "repeat", "polar", "cart", "cartesian", "twist", "spiral", "kaleido", "kaleidoscope",
         "mix", "lerp", "mix.c", "lerp.c", "mix.sc", "lerp.sc", "select", "if", "step", "smoothstep",
         "lt", "lte", "gt", "gte", "eq", "neq", "and", "or", "not",
         "xor", "bitxor", "gray-code", "graycode", "gray-encode", "gray-decode", "ungray", "lfsr",
@@ -51,7 +53,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
     var creativeWords = [
         "noise", "perlin", "fbm", "pulse", "fm", "fmchirp",
         "palette", "cos-palette", "cosine-palette",
-        "luma", "sat", "saturate", "clamp", "mirror", "tonemap",
+        "luma", "sat", "saturate", "clamp", "mirror", "smooth", "sigmoid", "softplus", "threshold", "band", "ramp", "posterize", "bias", "gain", "tonemap",
         "ryb", "ryb2rgb", "from-ryb", "rgb2ryb", "to-ryb",
         "ryb.c", "ryb2rgb.c", "from-ryb.c", "rgb2ryb.c", "to-ryb.c",
         "oklab", "oklab2rgb", "from-oklab", "rgb2oklab", "to-oklab",
@@ -70,6 +72,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         "rcrosssample", "r-cross-sample",
         "rcrosssample.r", "rcrosssample.g", "rcrosssample.b", "rcrosssample.a",
         "r-cross-sample.r", "r-cross-sample.g", "r-cross-sample.b", "r-cross-sample.a",
+        "laplace", "laplacian", "blur", "blur5", "blur9", "sobel", "gradient", "divergence", "curl",
         "bitcrush", "bit-crush"
     ];
 
@@ -104,6 +107,28 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         .concat(registerArityVariants("saturation", 1, 2, false))
         .concat(registerArityVariants("sat-color", 1, 2, false))
         .concat(registerArityVariants("contrast", 1, 2, false))
+        .concat(registerArityVariants("sigmoid", 1, 2, false))
+        .concat(registerArityVariants("softplus", 1, 2, false))
+        .concat(registerArityVariants("threshold", 1, 2, false))
+        .concat(registerArityVariants("posterize", 1, 2, false))
+        .concat(registerArityVariants("bias", 1, 2, false))
+        .concat(registerArityVariants("gain", 1, 2, false))
+        .concat(registerArityVariants("band", 1, 3, false))
+        .concat(registerArityVariants("ramp", 1, 3, false))
+        .concat(registerArityVariants("tile", 1, 2, false))
+        .concat(registerArityVariants("twist", 1, 2, false))
+        .concat(registerArityVariants("spiral", 1, 2, false))
+        .concat(registerArityVariants("kaleido", 1, 2, false))
+        .concat(registerArityVariants("kaleidoscope", 1, 2, false))
+        .concat(registerArityVariants("laplace", 1, 2, false))
+        .concat(registerArityVariants("laplacian", 1, 2, false))
+        .concat(registerArityVariants("blur", 1, 2, false))
+        .concat(registerArityVariants("blur5", 1, 2, false))
+        .concat(registerArityVariants("blur9", 1, 2, false))
+        .concat(registerArityVariants("sobel", 1, 2, false))
+        .concat(registerArityVariants("gradient", 1, 2, false))
+        .concat(registerArityVariants("divergence", 1, 2, false))
+        .concat(registerArityVariants("curl", 1, 2, false))
         .concat(registerArityVariants("grade", 1, 4, false))
         .concat(registerArityVariants("ema", 1, 3, false))
         .concat(registerArityVariants("ema.c", 1, 3, false))
@@ -130,18 +155,21 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
     ];
 
     var numberSource = "[+\\-]?(?:(?:\\d+\\.\\d*)|(?:\\d*\\.\\d+)|(?:\\d+))(?:[eE][+\\-]?\\d+)?";
-    var modifierSource = "pulse|noise|grain|hash|saw|tri|fbm|rad|ang|wx|wy|wr|wa|cx|cy|sq|sh|n|j|c|s|t|r|g|b|a|x|y";
+    var modifierSource = "pulse|noise|grain|hash|saw|tri|fbm|rad|ang|wx|wy|wr|wa|cx|cy|sq|sh|q|n|j|c|s|t|r|g|b|a|x|y";
+    var modifierUnitSource = "(?:" + modifierSource + ")(?:" + numberSource + ")?(?:p" + numberSource + ")?(?:d" + numberSource + ")?";
     var numberRegex = new RegExp("^" + numberSource + "$", "i");
     var numberSuffixRegex = new RegExp("^" + numberSource + "[trgba]$", "i");
     var numberRangeRegex = new RegExp("^" + numberSource + "_" + numberSource + "$", "i");
     var vecLiteralRegex = new RegExp("^\\[\\s*" + numberSource + "(?:\\s*,\\s*" + numberSource + "){0,3}\\s*\\]$", "i");
-    var numberModifierRegex = new RegExp("^" + numberSource + "(?:" + modifierSource + ")(?:" + numberSource + ")?(?:p" + numberSource + ")?(?:d" + numberSource + ")?$", "i");
-    var topModifierRegex = new RegExp("^[\\|\\]](?:" + modifierSource + ")(?:" + numberSource + ")?(?:p" + numberSource + ")?(?:d" + numberSource + ")?$", "i");
+    var numberModifierRegex = new RegExp("^" + numberSource + "(?:" + modifierUnitSource + ")+$", "i");
+    var topModifierRegex = new RegExp("^[\\|\\]](?:" + modifierUnitSource + ")+$", "i");
     var swizzleRegex = /^\.?[xyzwrgba]{1,4}$/i;
     var numberRangeTokenRegex = new RegExp("(" + numberSource + ")(_)" + "(" + numberSource + ")");
     var vecLiteralTokenRegex = new RegExp("\\[\\s*" + numberSource + "(?:\\s*,\\s*" + numberSource + "){0,3}\\s*\\]", "i");
     var topModifierTokenRegex = new RegExp("([\\|\\]])(" + modifierSource + ")(" + numberSource + ")?(?:(p)(" + numberSource + "))?(?:(d)(" + numberSource + "))?(?=$|[\\s()#;])", "i");
     var numberModifierTokenRegex = new RegExp("(" + numberSource + ")(" + modifierSource + ")(" + numberSource + ")?(?:(p)(" + numberSource + "))?(?:(d)(" + numberSource + "))?(?=$|[\\s()#;])", "i");
+    var stackedTopModifierTokenRegex = new RegExp("[\\|\\]](?:" + modifierUnitSource + "){2,}(?=$|[\\s()#;])", "i");
+    var stackedNumberModifierTokenRegex = new RegExp(numberSource + "(?:" + modifierUnitSource + "){2,}(?=$|[\\s()#;])", "i");
     var simpleNumberSuffixTokenRegex = new RegExp("(" + numberSource + ")([trgba])\\b", "i");
     var hostGlslIdentifierSource = "[A-Za-z_][A-Za-z0-9_]*";
     var hostGlslIndexSource = "\\[[^\\]\\s]+\\]";
@@ -150,6 +178,14 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
     var externalWriteRegex = new RegExp("^->\\?" + hostGlslVec4Source + "$");
     var externalReadTokenRegex = new RegExp("(\\?)(" + hostGlslVec4Source + ")");
     var externalWriteTokenRegex = new RegExp("(->\\?)(" + hostGlslVec4Source + ")");
+    var localMarkNameSource = "[A-Za-z_][A-Za-z0-9_-]*";
+    var localMarkCopyRegex = new RegExp("^=(" + localMarkNameSource + ")$");
+    var localMarkMoveRegex = new RegExp("^>(" + localMarkNameSource + ")$");
+    var localMarkReadRegex = new RegExp("^<(" + localMarkNameSource + ")$");
+    var localMarkMoveReservedRegex = /^>[xyzw]$/i;
+    var localMarkCopyTokenRegex = new RegExp("(=)(" + localMarkNameSource + ")");
+    var localMarkMoveTokenRegex = new RegExp("(>)(?!(?:x|y|z|w)\\b)(" + localMarkNameSource + ")", "i");
+    var localMarkReadTokenRegex = new RegExp("(<)(" + localMarkNameSource + ")");
 
     function wordSet(words) {
         var out = Object.create(null);
@@ -162,8 +198,9 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         "neg", "negate", "1-", "abs", "floor", "ceil", "fract", "sqrt", "inversesqrt", "exp", "log",
         "sin", "cos", "tan", "asin", "acos", "atan", "normalize",
         "len", "length", "len2", "length2", "len3", "length3", "len4", "length4",
-        "luma", "average", "avg", "mean", "median", "med", "vmin", "minimum", "vmax", "maximum",
-        "sat", "saturate", "clamp", "mirror", "tonemap",
+        "luma", "sum", "prod", "product", "any", "all", "x+y", "xplusy", "xylen", "rgbnorm", "rgb-normalize",
+        "average", "avg", "mean", "median", "med", "vmin", "minimum", "vmax", "maximum",
+        "sat", "saturate", "clamp", "mirror", "smooth", "repeat", "polar", "cart", "cartesian", "tonemap",
         "ryb", "ryb2rgb", "from-ryb", "rgb2ryb", "to-ryb",
         "oklab", "oklab2rgb", "from-oklab", "rgb2oklab", "to-oklab",
         "noise", "perlin", "fbm", "not",
@@ -212,7 +249,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         return requestedAll ? Math.max(2, depth) : requestedArity;
     }
 
-    function stackEffectForWord(rawWord, depth, definitionWords) {
+    function stackEffectForWord(rawWord, depth, definitionWords, localMarkWords) {
         var raw = String(rawWord || "").toLowerCase();
         var variant = arityVariant(raw);
         var word = variant ? variant.base : raw;
@@ -225,6 +262,10 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
 
         if (word === "noop") return effect(0, 0);
         if (externalWriteRegex.test(word)) return effect(1, 0);
+        if (localMarkCopyRegex.test(word)) return effect(1, 1);
+        if (localMarkMoveRegex.test(word) && !localMarkMoveReservedRegex.test(word)) return effect(1, 0);
+        if (localMarkReadRegex.test(word)) return effect(0, 1);
+        if (localMarkWords && localMarkWords.has(word)) return effect(0, 1);
         if (word === "dup") return effect(1, 2);
         if (word === "drop") return effect(1, 0);
         if (word === "swap") return effect(2, 2);
@@ -259,6 +300,10 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         if (word === "alpha" || word === "alpha.c" || word === "alpha.sc") return effect(3, 1);
         if (word === "step") return effect(2, 1);
         if (word === "smoothstep") return effect(3, 1);
+        if (word === "sigmoid" || word === "softplus" || word === "threshold" || word === "posterize" ||
+            word === "bias" || word === "gain" || word === "tile" || word === "twist" ||
+            word === "spiral" || word === "kaleido" || word === "kaleidoscope") return requestedArity ? effect(requestedArity, 1) : dynamicEffect(depth, 2);
+        if (word === "band" || word === "ramp") return requestedArity ? effect(requestedArity, 1) : dynamicEffect(depth, 3);
         if (word === "pulse" || word === "fm" ||
             word === "ema" || word === "ema.c" || word === "ema.sc" ||
             word === "ema-diff" || word === "ema-diff.c" || word === "ema-diff.sc" ||
@@ -281,6 +326,8 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             word === "rcrosssample" || word === "r-cross-sample" ||
             word === "rcrosssample.r" || word === "rcrosssample.g" || word === "rcrosssample.b" || word === "rcrosssample.a" ||
             word === "r-cross-sample.r" || word === "r-cross-sample.g" || word === "r-cross-sample.b" || word === "r-cross-sample.a") return effect(2, 1);
+        if (word === "laplace" || word === "laplacian" || word === "blur" || word === "blur5" || word === "blur9" ||
+            word === "sobel" || word === "gradient" || word === "divergence" || word === "curl") return requestedArity ? effect(requestedArity, 1) : effect(Math.min(2, depth), 1);
         if (definitionWords && definitionWords[word]) return effect(1, 1);
         return effect(0, 0);
     }
@@ -379,6 +426,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         var inDefinition = false;
         var expectDefinitionName = false;
         var lastBlank = true;
+        var localMarks = new Set();
 
         function indentForLevel(level) {
             return new Array(level + 1).join(unit);
@@ -428,6 +476,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
                 inDefinition = true;
                 expectDefinitionName = !name;
                 depth = 1;
+                localMarks = new Set();
                 if (name) i++;
                 continue;
             }
@@ -446,11 +495,12 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
                 pushFinalLine(";", 0);
                 inDefinition = false;
                 depth = 1;
+                localMarks = new Set();
                 pushFinalBlank();
                 continue;
             }
 
-            var stackEffect = stackEffectForWord(text, depth, definitionWords);
+            var stackEffect = stackEffectForWord(text, depth, definitionWords, localMarks);
             if (stackEffect.consume === 0 && stackEffect.produce > 0) {
                 pendingPushes.push(text);
             } else if (stackEffect.consume > 0 && pendingPushes.length > 0) {
@@ -460,6 +510,11 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
                 pushFinalLine(text, bodyLevel());
             }
             depth = applyEffect(depth, stackEffect);
+            var lowerText = String(text || "").toLowerCase();
+            var copyName = localMarkCopyRegex.exec(lowerText);
+            var moveName = localMarkMoveReservedRegex.test(lowerText) ? null : localMarkMoveRegex.exec(lowerText);
+            if (copyName) localMarks.add(copyName[1]);
+            if (moveName) localMarks.add(moveName[1]);
         }
 
         flushPendingPushes();
@@ -485,19 +540,25 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
     }
 
     const STACKSL_NUMBER_SOURCE = "[+-]?(?:(?:\\d+\\.\\d*)|(?:\\d*\\.\\d+)|(?:\\d+))(?:[eE][+-]?\\d+)?"
-    const STACKSL_MODIFIER_SOURCE = "pulse|noise|grain|hash|saw|tri|fbm|rad|ang|wx|wy|wr|wa|cx|cy|sq|sh|n|j|c|s|t|r|g|b|a|x|y"
+    const STACKSL_MODIFIER_SOURCE = "pulse|noise|grain|hash|saw|tri|fbm|rad|ang|wx|wy|wr|wa|cx|cy|sq|sh|q|n|j|c|s|t|r|g|b|a|x|y"
+    const STACKSL_MODIFIER_UNIT_SOURCE = `(?:${STACKSL_MODIFIER_SOURCE})(?:${STACKSL_NUMBER_SOURCE})?(?:p${STACKSL_NUMBER_SOURCE})?(?:d${STACKSL_NUMBER_SOURCE})?`
     const STACKSL_NUMBER_RE = new RegExp(`^${STACKSL_NUMBER_SOURCE}$`)
     const STACKSL_NUMBER_SUFFIX_RE = new RegExp(`^${STACKSL_NUMBER_SOURCE}[trgba]$`, "i")
     const STACKSL_NUMBER_RANGE_RE = new RegExp(`^${STACKSL_NUMBER_SOURCE}_${STACKSL_NUMBER_SOURCE}$`, "i")
     const STACKSL_VEC_LITERAL_RE = new RegExp(`^\\[\\s*${STACKSL_NUMBER_SOURCE}(?:\\s*,\\s*${STACKSL_NUMBER_SOURCE}){0,3}\\s*\\]$`, "i")
-    const STACKSL_NUMBER_MODIFIER_RE = new RegExp(`^${STACKSL_NUMBER_SOURCE}(?:${STACKSL_MODIFIER_SOURCE})(?:${STACKSL_NUMBER_SOURCE})?(?:p${STACKSL_NUMBER_SOURCE})?(?:d${STACKSL_NUMBER_SOURCE})?$`, "i")
-    const STACKSL_TOP_MODIFIER_RE = new RegExp(`^[\\|\\]](?:${STACKSL_MODIFIER_SOURCE})(?:${STACKSL_NUMBER_SOURCE})?(?:p${STACKSL_NUMBER_SOURCE})?(?:d${STACKSL_NUMBER_SOURCE})?$`, "i")
+    const STACKSL_NUMBER_MODIFIER_RE = new RegExp(`^${STACKSL_NUMBER_SOURCE}(?:${STACKSL_MODIFIER_UNIT_SOURCE})+$`, "i")
+    const STACKSL_TOP_MODIFIER_RE = new RegExp(`^[\\|\\]](?:${STACKSL_MODIFIER_UNIT_SOURCE})+$`, "i")
     const STACKSL_SWIZZLE_RE = /^\.?[xyzwrgba]{1,4}$/i
     const STACKSL_HOST_GLSL_IDENTIFIER_SOURCE = "[A-Za-z_][A-Za-z0-9_]*"
     const STACKSL_HOST_GLSL_INDEX_SOURCE = "\\[[^\\]\\s]+\\]"
     const STACKSL_HOST_GLSL_VEC4_SOURCE = `${STACKSL_HOST_GLSL_IDENTIFIER_SOURCE}(?:${STACKSL_HOST_GLSL_INDEX_SOURCE})*(?:\\.${STACKSL_HOST_GLSL_IDENTIFIER_SOURCE}(?:${STACKSL_HOST_GLSL_INDEX_SOURCE})*)*`
     const STACKSL_EXTERNAL_READ_RE = new RegExp(`^\\?${STACKSL_HOST_GLSL_VEC4_SOURCE}$`)
     const STACKSL_EXTERNAL_WRITE_RE = new RegExp(`^->\\?${STACKSL_HOST_GLSL_VEC4_SOURCE}$`)
+    const STACKSL_LOCAL_MARK_NAME_SOURCE = "[A-Za-z_][A-Za-z0-9_-]*"
+    const STACKSL_LOCAL_MARK_COPY_RE = new RegExp(`^=(${STACKSL_LOCAL_MARK_NAME_SOURCE})$`)
+    const STACKSL_LOCAL_MARK_MOVE_RE = new RegExp(`^>(${STACKSL_LOCAL_MARK_NAME_SOURCE})$`)
+    const STACKSL_LOCAL_MARK_READ_RE = new RegExp(`^<(${STACKSL_LOCAL_MARK_NAME_SOURCE})$`)
+    const STACKSL_LOCAL_MARK_MOVE_RESERVED_RE = /^>[xyzw]$/i
     const STACKSL_COLOR_WORDS = new Set([
             "black", "white", "gray", "grey", "red", "green", "blue", "cyan", "magenta", "yellow", "orange",
     ])
@@ -514,8 +575,9 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             "neg", "negate", "1-", "abs", "floor", "ceil", "fract", "sqrt", "inversesqrt", "exp", "log",
             "sin", "cos", "tan", "asin", "acos", "atan", "normalize",
             "len", "length", "len2", "length2", "len3", "length3", "len4", "length4",
-            "luma", "average", "avg", "mean", "median", "med", "vmin", "minimum", "vmax", "maximum",
-            "sat", "saturate", "clamp", "mirror", "tonemap",
+            "luma", "sum", "prod", "product", "any", "all", "x+y", "xplusy", "xylen", "rgbnorm", "rgb-normalize",
+            "average", "avg", "mean", "median", "med", "vmin", "minimum", "vmax", "maximum",
+            "sat", "saturate", "clamp", "mirror", "smooth", "repeat", "polar", "cart", "cartesian", "tonemap",
             "ryb", "ryb2rgb", "from-ryb", "rgb2ryb", "to-ryb",
             "ryb.c", "ryb2rgb.c", "from-ryb.c", "rgb2ryb.c", "to-ryb.c",
             "oklab", "oklab2rgb", "from-oklab", "rgb2oklab", "to-oklab",
@@ -554,8 +616,13 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             ["med", "median"],
             ["minimum", "vmin"],
             ["maximum", "vmax"],
+            ["product", "prod"],
+            ["xplusy", "x+y"],
+            ["rgb-normalize", "rgbnorm"],
             ["saturate", "sat"],
             ["clamp", "sat"],
+            ["cartesian", "cart"],
+            ["kaleidoscope", "kaleido"],
             ["perlin", "noise"],
             ["cos-palette", "palette"],
             ["cosine-palette", "palette"],
@@ -606,6 +673,8 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             ["r-cross-sample.g", "rcrosssample.g"],
             ["r-cross-sample.b", "rcrosssample.b"],
             ["r-cross-sample.a", "rcrosssample.a"],
+            ["laplacian", "laplace"],
+            ["blur5", "blur"],
     ])
 
     const STACKSL_WORD_DOCS = new Map([
@@ -653,6 +722,13 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             ["distance3", stackslDoc("a b -- scalar", "Distance between a.xyz and b.xyz, splatted.")],
             ["distance", stackslDoc("a b -- scalar", "Distance between full vec4 values, splatted.")],
             ["luma", stackslDoc("color -- scalar", "Rec.709 luminance, splatted.")],
+            ["sum", stackslDoc("vec -- scalar", "Sum of RGBA channels, splatted.")],
+            ["prod", stackslDoc("vec -- scalar", "Product of RGBA channels, splatted.")],
+            ["any", stackslDoc("vec -- mask", "Any channel above threshold 0.5, splatted.")],
+            ["all", stackslDoc("vec -- mask", "All channels above threshold 0.5, splatted.")],
+            ["x+y", stackslDoc("vec -- scalar", "Sum x and y, splatted.")],
+            ["xylen", stackslDoc("vec -- scalar", "Length of vec.xy, splatted.")],
+            ["rgbnorm", stackslDoc("color -- color", "Normalize rgb while preserving alpha.")],
             ["avg", stackslDoc("vec -- scalar", "Average of RGBA channels, splatted.")],
             ["median", stackslDoc("vec -- scalar", "Median-ish RGBA channel value, splatted.")],
             ["sort", stackslDoc("values -- values", "Component-wise ascending stack sort; use .2-.8 or .all.")],
@@ -661,6 +737,8 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             ["vmax", stackslDoc("vec -- scalar", "Maximum RGBA channel, splatted.")],
             ["sat", stackslDoc("color -- color", "Clamp all channels to 0..1.")],
             ["mirror", stackslDoc("a -- out", "Triangle-wrap values into 0..1.")],
+            ["smooth", stackslDoc("a -- out", "Apply smoothstep(0, 1, a).")],
+            ["repeat", stackslDoc("a -- out", "Fractional repeat with fract(a).")],
             ["tonemap", stackslDoc("color -- color", "Compress bright colors for feedback.")],
             ["ryb", stackslDoc("ryb -- rgb", "Convert paint-like RYB color to RGB without clamping.")],
             ["ryb.c", stackslDoc("ryb -- rgb", "Convert paint-like RYB color to RGB with 0..1 input/output clamping.")],
@@ -682,6 +760,12 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             ["standoff3", stackslDoc("a b c -- out", "Move from b toward a by c using safe xyz normalization while carrying all vec4 lanes.")],
             ["rotate", stackslDoc("a b -- out", "Rotate a.xy by b.x and a.zw by b.y.")],
             ["rotates", stackslDoc("a b c -- out", "Rotate and scale a.xy around b.xy using c.xy, and a.zw around b.zw using c.zw.")],
+            ["tile", stackslDoc("coord scale -- coord", "Repeat coord.xy by scale.xy with fract, preserving z/w.")],
+            ["polar", stackslDoc("coord -- polar", "Convert xy to vec4(radius, angleRadians, z, w).")],
+            ["cart", stackslDoc("polar -- coord", "Convert vec4(radius, angleRadians, z, w) back to xy coordinates.")],
+            ["twist", stackslDoc("coord amount -- coord", "Rotate coord.xy by radius * amount.x.")],
+            ["spiral", stackslDoc("coord amount -- coord", "Polar twist coord.xy by radius and log-radius terms.")],
+            ["kaleido", stackslDoc("coord sectors -- coord", "Angular mirror/repeat coord.xy into kaleidoscope sectors.")],
             [">x", stackslDoc("a b -- out", "Copy a, replacing x with b.x.")],
             [">y", stackslDoc("a b -- out", "Copy a, replacing y with b.y.")],
             [">z", stackslDoc("a b -- out", "Copy a, replacing z with b.z.")],
@@ -709,6 +793,14 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             ["alpha.sc", stackslDoc("baseAlpha modulation range -- alpha", "Soft-clamped alpha modulation for smoother bounded control.")],
             ["step", stackslDoc("edge x -- mask", "GLSL step, with defaults if needed.")],
             ["smoothstep", stackslDoc("low high x -- mask", "GLSL smoothstep, with defaults if needed.")],
+            ["sigmoid", stackslDoc("x amount -- out", "Logistic S curve around 0.5; short form uses amount 8.")],
+            ["softplus", stackslDoc("x amount -- out", "Soft rectifier log(1 + exp(k*x))/k; short form uses amount 4.")],
+            ["threshold", stackslDoc("x edge -- mask", "Hard threshold mask; short form uses edge 0.5.")],
+            ["band", stackslDoc("x center width -- mask", "Hard centered band mask with trailing defaults.")],
+            ["ramp", stackslDoc("x low high -- out", "Clamp x remapped from low..high into 0..1.")],
+            ["posterize", stackslDoc("value levels -- out", "Quantize normalized lanes to a level count; short form uses 6 levels.")],
+            ["bias", stackslDoc("value amount -- out", "Schlick-style bias curve; short form uses neutral amount 0.5.")],
+            ["gain", stackslDoc("value amount -- out", "Schlick-style gain curve; short form uses neutral amount 0.5.")],
             ["noise", stackslDoc("coord -- scalar", "Value noise from coord.xy + coord.zw * 0.07.")],
             ["fbm", stackslDoc("coord -- scalar", "Five-octave fractal noise.")],
             ["sample", stackslDoc("offset -- color", "Sample previous frame at uv + offset.xy without wrapping.")],
@@ -727,6 +819,13 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             ["rcrosssample.g", stackslDoc("center radius -- taps", "Return four green-channel rotated-cross taps in xyzw.")],
             ["rcrosssample.b", stackslDoc("center radius -- taps", "Return four blue-channel rotated-cross taps in xyzw.")],
             ["rcrosssample.a", stackslDoc("center radius -- taps", "Return four alpha-channel rotated-cross taps in xyzw.")],
+            ["laplace", stackslDoc("center radius -- color", "Four-neighbor Laplacian of the first configured sampler.")],
+            ["blur", stackslDoc("center radius -- color", "Five-tap blur of the first configured sampler.")],
+            ["blur9", stackslDoc("center radius -- color", "Nine-tap weighted blur of the first configured sampler.")],
+            ["sobel", stackslDoc("center radius -- edge", "Sobel edge magnitude from sampler luminance.")],
+            ["gradient", stackslDoc("center radius -- vec", "Central-difference luminance gradient as vec4(gx, gy, magnitude, 1).")],
+            ["divergence", stackslDoc("center radius -- scalar", "Central-difference divergence of xy texture channels.")],
+            ["curl", stackslDoc("center radius -- scalar", "Central-difference 2D curl of xy texture channels.")],
             ["prev", stackslDoc("-- color", "Sample previous frame at the current uv.")],
             ["state", stackslDoc("-- color", "Alias for prev.")],
             ["0->", stackslDoc("-- value", "Read stored red channel at this pixel.")],
@@ -741,7 +840,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
 
     const stackSLCanonicalWord = (word) => STACKSL_WORD_DOC_ALIASES.get(word) || word
 
-    const stackSLDocForWord = (rawWord, effect, definitionWords) => {
+    const stackSLDocForWord = (rawWord, effect, definitionWords, localMarkWords = null) => {
             const raw = String(rawWord || "").toLowerCase()
             const variant = arityVariant(raw)
             const word = variant ? variant.base : raw
@@ -757,7 +856,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
                     return stackslDoc("-- value", "Push a time-scaled or channel-weighted number.")
             }
             if (STACKSL_NUMBER_MODIFIER_RE.test(raw)) {
-                    return stackslDoc("-- value", "Push amount times a time/spatial/noise modifier.")
+                    return stackslDoc("-- value", "Push amount times one or more chained time/spatial/noise modifiers.")
             }
             if (STACKSL_NUMBER_RE.test(raw)) {
                     return stackslDoc("-- value", "Push the number splatted to vec4.")
@@ -770,8 +869,8 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             }
             if (STACKSL_TOP_MODIFIER_RE.test(raw)) {
                     return raw.startsWith("]")
-                            ? stackslDoc("driver -- out", "Use the consumed value as modifier driver; amplitude is one.")
-                            : stackslDoc("amount -- out", "Multiply consumed amount by a time/spatial/noise modifier.")
+                            ? stackslDoc("driver -- out", "Use the consumed value as modifier driver; chained suffixes transform the result.")
+                            : stackslDoc("amount -- out", "Multiply consumed amount by one or more chained time/spatial/noise modifiers.")
             }
             if (STACKSL_SWIZZLE_RE.test(raw)) {
                     return stackslDoc("vec -- vec", "Swizzle channels and return a vec4-shaped value.")
@@ -781,6 +880,15 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             }
             if (STACKSL_EXTERNAL_WRITE_RE.test(rawWord || "")) {
                     return stackslDoc("value --", "Write the top stack value to a host GLSL vec4 expression.")
+            }
+            if (STACKSL_LOCAL_MARK_COPY_RE.test(raw)) {
+                    return stackslDoc("a -- a", "Copy the top stack value into a local mark.")
+            }
+            if (STACKSL_LOCAL_MARK_MOVE_RE.test(raw) && !STACKSL_LOCAL_MARK_MOVE_RESERVED_RE.test(raw)) {
+                    return stackslDoc("a --", "Move the top stack value into a local mark.")
+            }
+            if (STACKSL_LOCAL_MARK_READ_RE.test(raw) || (localMarkWords && localMarkWords.has(raw))) {
+                    return stackslDoc("-- a", "Read a local mark and push it onto the stack.")
             }
 
             if (word === "min" || word === "max") {
@@ -1127,7 +1235,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             return stackslEffect(fullArity, 1)
     }
 
-    const stackSLEffectForWord = (rawWord, depth, definitionWords) => {
+    const stackSLEffectForWord = (rawWord, depth, definitionWords, localMarkWords = null) => {
             const raw = String(rawWord || "").toLowerCase()
             const variant = arityVariant(raw)
             const word = variant ? variant.base : raw
@@ -1140,6 +1248,10 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             if (isStackSLPushToken(raw)) return stackslEffect(0, 1, "push")
             if (STACKSL_SWIZZLE_RE.test(raw)) return stackslEffect(1, 1, "swizzle")
             if (STACKSL_EXTERNAL_WRITE_RE.test(rawWord || "")) return stackslEffect(1, 0, "host write")
+            if (STACKSL_LOCAL_MARK_COPY_RE.test(raw)) return stackslEffect(1, 1, "mark copy")
+            if (STACKSL_LOCAL_MARK_MOVE_RE.test(raw) && !STACKSL_LOCAL_MARK_MOVE_RESERVED_RE.test(raw)) return stackslEffect(1, 0, "mark move")
+            if (STACKSL_LOCAL_MARK_READ_RE.test(raw)) return stackslEffect(0, 1, "mark read")
+            if (localMarkWords && localMarkWords.has(raw)) return stackslEffect(0, 1, "mark read")
 
             if (word === "noop") return stackslEffect(0, 0)
             if (word === "dup") return stackslEffect(1, 2)
@@ -1181,6 +1293,14 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             if (word === "alpha" || word === "alpha.c" || word === "alpha.sc") return stackslEffect(3, 1)
             if (word === "step") return stackslEffect(2, 1)
             if (word === "smoothstep") return stackslEffect(3, 1)
+            if (word === "sigmoid" || word === "softplus" || word === "threshold" || word === "posterize" ||
+                    word === "bias" || word === "gain" || word === "tile" || word === "twist" ||
+                    word === "spiral" || word === "kaleido" || word === "kaleidoscope") {
+                    return requestedArity ? stackslEffect(requestedArity, 1, requestedArity < 2 ? "trailing defaults" : "") : dynamicStackSLEffect(depth, 2, "short form")
+            }
+            if (word === "band" || word === "ramp") {
+                    return requestedArity ? stackslEffect(requestedArity, 1, requestedArity < 3 ? "trailing defaults" : "") : dynamicStackSLEffect(depth, 3, "short form")
+            }
             if (word === "pulse" || word === "fm" ||
                     word === "ema" || word === "ema.c" || word === "ema.sc" ||
                     word === "ema-diff" || word === "ema-diff.c" || word === "ema-diff.sc" ||
@@ -1220,9 +1340,18 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
                     word === "r-cross-sample.r" || word === "r-cross-sample.g" || word === "r-cross-sample.b" || word === "r-cross-sample.a") {
                     return stackslEffect(2, 1, "neighborhood sample")
             }
+            if (word === "laplace" || word === "laplacian" || word === "blur" || word === "blur5" || word === "blur9" ||
+                    word === "sobel" || word === "gradient" || word === "divergence" || word === "curl") {
+                    return requestedArity ? stackslEffect(requestedArity, 1, "neighborhood field") : stackslEffect(Math.min(2, depth), 1, "neighborhood field")
+            }
 
             if (definitionWords && definitionWords.has(word)) return stackslEffect(1, 1, "word call")
             return stackslEffect(0, 0, "unknown")
+    }
+
+    const stackSLLocalMarkName = (rawWord, regex) => {
+            const match = regex.exec(String(rawWord || "").toLowerCase())
+            return match ? match[1] : null
     }
 
     const applyStackSLEffectToDepth = (depth, effect) => {
@@ -1247,19 +1376,35 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             return synthetic.concat(available)
     }
 
-    const applyStackSLFlowToken = (stack, token, definitionWords) => {
-            const effect = stackSLEffectForWord(token.text, stack.length, definitionWords)
+    const applyStackSLFlowToken = (stack, token, definitionWords, localMarks) => {
+            const lower = token.lower || String(token.text || "").toLowerCase()
+            const effect = stackSLEffectForWord(token.text, stack.length, definitionWords, localMarks)
             const consume = Math.max(0, effect.consume || 0)
             const produce = Math.max(0, effect.produce || 0)
             const consumed = readStackSLFlowInputs(stack, consume)
             const rest = consume > 0 ? stack.slice(0, Math.max(0, stack.length - consume)) : stack.slice()
-            const lower = token.lower || String(token.text || "").toLowerCase()
             let next = rest
             let produced = []
 
             const make = (source = null) => newStackSLFlowValue(token, source)
 
-            if (lower === "dup") {
+            const markCopyName = stackSLLocalMarkName(lower, STACKSL_LOCAL_MARK_COPY_RE)
+            const markMoveName = STACKSL_LOCAL_MARK_MOVE_RESERVED_RE.test(lower) ? null : stackSLLocalMarkName(lower, STACKSL_LOCAL_MARK_MOVE_RE)
+            const markReadName = stackSLLocalMarkName(lower, STACKSL_LOCAL_MARK_READ_RE)
+
+            if (markCopyName) {
+                    const value = stack[stack.length - 1] || consumed[consumed.length - 1] || null
+                    localMarks.set(markCopyName, value)
+                    next = stack.slice()
+            } else if (markMoveName) {
+                    const value = consumed[consumed.length - 1] || null
+                    localMarks.set(markMoveName, value)
+                    next = rest
+            } else if (markReadName || localMarks.has(lower)) {
+                    const value = localMarks.get(markReadName || lower) || make()
+                    produced = [make(value)]
+                    next = stack.concat(produced)
+            } else if (lower === "dup") {
                     const a = consumed[consumed.length - 1] || make()
                     produced = [make(a)]
                     next = rest.concat([a], produced)
@@ -1308,6 +1453,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             for (let i = 0; i < initialDepth; i++) {
                     stack.push(newStackSLFlowValue(null))
             }
+            const localMarks = new Map()
 
             let active = null
             let seenActive = false
@@ -1315,7 +1461,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             const futureConsumers = []
 
             for (const token of tokens) {
-                    const step = applyStackSLFlowToken(stack, token, definitionWords)
+                    const step = applyStackSLFlowToken(stack, token, definitionWords, localMarks)
                     stack = step.stack
                     if (token === activeToken) {
                             active = step
@@ -1479,13 +1625,19 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
     const analyzeStackSLDepth = (tokens, initialDepth, definitionWords) => {
             let depth = initialDepth
             let underflows = 0
+            const localMarks = new Set()
             for (const token of tokens) {
-                    const effect = stackSLEffectForWord(token.text, depth, definitionWords)
+                    const effect = stackSLEffectForWord(token.text, depth, definitionWords, localMarks)
                     const applied = applyStackSLEffectToDepth(depth, effect)
+                    const raw = String(token.text || "").toLowerCase()
+                    const copyName = stackSLLocalMarkName(raw, STACKSL_LOCAL_MARK_COPY_RE)
+                    const moveName = STACKSL_LOCAL_MARK_MOVE_RESERVED_RE.test(raw) ? null : stackSLLocalMarkName(raw, STACKSL_LOCAL_MARK_MOVE_RE)
+                    if (copyName) localMarks.add(copyName)
+                    if (moveName) localMarks.add(moveName)
                     depth = applied.depth
                     underflows += applied.missing
             }
-            return { depth, underflows }
+            return { depth, underflows, localMarks }
     }
 
     const formatStackSLRelativeDepth = (depth, initialDepth) => {
@@ -1525,8 +1677,8 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             let wordHtml = ""
             if (activeToken) {
                     if (activeInContext) {
-                            const effect = stackSLEffectForWord(activeInContext.text, before.depth, parsed.definitionWords)
-                            const doc = stackSLDocForWord(activeInContext.text, effect, parsed.definitionWords)
+                            const effect = stackSLEffectForWord(activeInContext.text, before.depth, parsed.definitionWords, before.localMarks)
+                            const doc = stackSLDocForWord(activeInContext.text, effect, parsed.definitionWords, before.localMarks)
                             const applied = applyStackSLEffectToDepth(before.depth, effect)
                             after = { depth: applied.depth, underflows: before.underflows + applied.missing }
                             const afterDepth = context.kind === "definition"
@@ -1651,6 +1803,8 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             if (expectDefinitionName) return "afield-stacksl-token-definition"
             if (word === ":" || word === ";") return "afield-stacksl-token-control"
             if (/^(?:0->|1->|2->|3->|->0|->1|->2|->3)$/.test(word)) return "afield-stacksl-token-keyword"
+            if (STACKSL_LOCAL_MARK_COPY_RE.test(word) || STACKSL_LOCAL_MARK_READ_RE.test(word) ||
+                    (STACKSL_LOCAL_MARK_MOVE_RE.test(word) && !STACKSL_LOCAL_MARK_MOVE_RESERVED_RE.test(word))) return "afield-stacksl-token-keyword"
             if (STACKSL_NUMBER_RANGE_RE.test(word)) return "afield-stacksl-token-number"
             if (STACKSL_TOP_MODIFIER_RE.test(word) || STACKSL_NUMBER_MODIFIER_RE.test(word)) return "afield-stacksl-token-modifier"
             if (STACKSL_NUMBER_SUFFIX_RE.test(word) || STACKSL_NUMBER_RE.test(word)) return "afield-stacksl-token-number"
@@ -1764,9 +1918,14 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
                 [externalWriteTokenRegex, ["keyword", "variable.predefined"]],
                 [externalReadTokenRegex, ["keyword", "variable.predefined"]],
                 [/(?:0->|1->|2->|3->|->0|->1|->2|->3)/, "keyword"],
+                [localMarkCopyTokenRegex, ["keyword", "variable.predefined"]],
+                [localMarkReadTokenRegex, ["keyword", "variable.predefined"]],
+                [localMarkMoveTokenRegex, ["keyword", "variable.predefined"]],
                 [/1-/, "operator"],
                 [vecLiteralTokenRegex, "number"],
                 [numberRangeTokenRegex, ["number", "operator.stacksl.range", "number"]],
+                [stackedTopModifierTokenRegex, "number.stacksl.modifier"],
+                [stackedNumberModifierTokenRegex, "number.stacksl.modifier"],
                 [topModifierTokenRegex, ["operator.stacksl.prefix", "number.stacksl.modifier", "number", "number.stacksl.option", "number", "number.stacksl.option", "number"]],
                 [numberModifierTokenRegex, ["number", "number.stacksl.modifier", "number", "number.stacksl.option", "number", "number.stacksl.option", "number"]],
                 [simpleNumberSuffixTokenRegex, ["number", "number.stacksl.suffix"]],

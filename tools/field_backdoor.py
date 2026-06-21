@@ -1451,7 +1451,14 @@ class FieldBackdoor:
         self.logger.log("raw_send_complete", name=name, replyName=None, timedOut=False)
         return {"reply": None}, self.events_since(start_seq), False
 
-    async def run_jvm_main(self, entrypoint: str, *, jvm_args: list[str], timeout: float) -> dict[str, Any]:
+    async def run_jvm_main(
+        self,
+        entrypoint: str,
+        *,
+        jvm_args: list[str],
+        timeout: float,
+        include_command: bool = False,
+    ) -> dict[str, Any]:
         self.logger.log("run_jvm_main_start", entrypoint=entrypoint, args=jvm_args, timeout=timeout)
         event = await self.call_for_single_reply(
             "agent-run-jvm-main",
@@ -1465,6 +1472,11 @@ class FieldBackdoor:
         payload = event["payload"]
         if not isinstance(payload, dict):
             raise BackdoorError("agent-run-jvm-main returned an invalid payload")
+        if not include_command and "command" in payload:
+            payload = dict(payload)
+            payload.pop("command", None)
+            payload["commandOmitted"] = True
+            payload["commandOmittedReason"] = "Use run-jvm-main --include-command to include the full JVM command/classpath."
         self.logger.log(
             "run_jvm_main_complete",
             entrypoint=entrypoint,
@@ -1644,6 +1656,7 @@ def build_command_parser() -> argparse.ArgumentParser:
     run_jvm_main.add_argument("entrypoint")
     run_jvm_main.add_argument("--arg", dest="entry_args", action="append", default=[])
     run_jvm_main.add_argument("--timeout", type=float)
+    run_jvm_main.add_argument("--include-command", action="store_true")
 
     return parser
 
@@ -2110,7 +2123,12 @@ async def dispatch_command(
 
     if args.command == "run-jvm-main":
         timeout = args.timeout or client.default_timeout
-        data = await client.run_jvm_main(args.entrypoint, jvm_args=args.entry_args, timeout=timeout)
+        data = await client.run_jvm_main(
+            args.entrypoint,
+            jvm_args=args.entry_args,
+            timeout=timeout,
+            include_command=args.include_command,
+        )
         timed_out = bool(data.get("timedOut"))
         ok = bool(data.get("ok")) and not timed_out
         result = command_result(command_line, ok, data=data, events=[], timed_out=timed_out)
