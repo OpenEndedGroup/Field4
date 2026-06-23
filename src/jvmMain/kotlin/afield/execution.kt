@@ -1095,7 +1095,7 @@ class KotlinExecution : BoxExecution {
                 }
                 if (first && it.severity.ordinal > ScriptDiagnostic.Severity.WARNING.ordinal) {
                     first = false
-                    val message = improveMessage(box, it.message)
+                    val message = improveMessage(box, it.message, code, it)
                     val location = it.location
                     val output = if (location != null) {
                         Output(
@@ -1106,7 +1106,7 @@ class KotlinExecution : BoxExecution {
                             endColumn = location.end?.col ?: -1,
                             kind = "error",
                             property = property,
-                            html = escapeForHtml(message),
+                            html = message,
                             frame = Runloop.runLoop.frame.toInt()
                         )
                     } else {
@@ -1115,7 +1115,7 @@ class KotlinExecution : BoxExecution {
                             line = fallbackLine,
                             kind = "error",
                             property = property,
-                            html = escapeForHtml(message),
+                            html = message,
                             frame = Runloop.runLoop.frame.toInt()
                         )
                     }
@@ -1595,7 +1595,7 @@ class KotlinExecution : BoxExecution {
                     }
                     if (first && it.severity.ordinal > ScriptDiagnostic.Severity.WARNING.ordinal) {
                         var message = it.message
-                        message = improveMessage(box, message)
+                        message = improveMessage(box, message, code, it)
                         first = false
                         if (it.location != null) {
                             dispatchExecutionOutput(
@@ -1609,7 +1609,7 @@ class KotlinExecution : BoxExecution {
                                     endColumn = it.location!!.end?.col ?: -1,
                                     kind = "error",
                                     property = property,
-                                    html = escapeForHtml(message),
+                                    html = message,
                                     frame = Runloop.runLoop.frame.toInt()
                                 ),
                                 originSession = originSession
@@ -1623,7 +1623,7 @@ class KotlinExecution : BoxExecution {
                                     line = ln + dur,
                                     kind = "error",
                                     property = property,
-                                    html = escapeForHtml(message),
+                                    html = message,
                                     frame = Runloop.runLoop.frame.toInt()
                                 ),
                                 originSession = originSession
@@ -2411,78 +2411,390 @@ private fun MutableMap<String, Int>.incrementAndGet(name: String): Int {
     return this[name]!!
 }
 
-fun improveMessage(b : Box, errorMessage : String) : String {
-    val unresolved = Regex("Unresolved reference: ([^\\s]+)")
-    val match = unresolved.find(errorMessage) ?: return errorMessage
+fun improveMessage(
+    b: Box,
+    errorMessage: String,
+    code: String? = null,
+    diagnostic: ScriptDiagnostic? = null
+): String {
+    val hints = mutableListOf<String>()
 
-    val missing = match.groupValues[1].trim('\'', '`', '"', '.', ';')
-    if (missing.isBlank()) return errorMessage
+    unresolvedReferenceName(errorMessage)?.let { missing ->
+        val suggestions = suggestResolvableSymbols(b, missing, code, diagnostic)
+        if (suggestions.isNotEmpty()) {
+            hints += unresolvedReferenceHint(suggestions)
+        }
+    }
 
-    val candidates = collectDefinedNames(b)
-    val suggestions = suggestCloseNames(missing, candidates)
+    numericMismatchHint(errorMessage)?.let { hints += escapeNotifyHtml(it) }
 
-    if (suggestions.isEmpty()) return errorMessage
-
-    val alternatives = suggestions.joinToString(", ") { "`$it`" }
-    return "$errorMessage. Did you mean $alternatives?"
+    val escapedMessage = escapeNotifyHtml(errorMessage)
+    if (hints.isEmpty()) return escapedMessage
+    return appendErrorHints(escapedMessage, hints)
 }
 
-private fun collectDefinedNames(box: Box): Set<String> {
+private data class ErrorMessageSuggestion(
+    val name: String,
+    val detail: String,
+    val score: Int,
+    val sourceRank: Int
+) {
+    fun renderHtml(): String {
+        val renderedName = renderErrorSuggestionName(name)
+        return if (detail.isBlank()) {
+            renderedName
+        } else {
+            "$renderedName <span style='color:#aaa;font-style:normal;'>(${highlightErrorSuggestionDetail(detail)})</span>"
+        }
+    }
+}
+
+private fun unresolvedReferenceHint(suggestions: List<ErrorMessageSuggestion>): String =
+    buildString {
+        append("Did you mean:")
+        suggestions.forEach { suggestion ->
+            append('\n')
+            append("  - ")
+            append(suggestion.renderHtml())
+        }
+    }
+
+private fun renderErrorSuggestionName(name: String): String =
+    "<code style='font-weight:700;font-style:normal;color:#f2f2f2;'>`${escapeNotifyHtml(name)}`</code>"
+
+private fun highlightErrorSuggestionDetail(detail: String): String {
+    val keywords = setOf("private", "protected", "internal", "public", "fun", "val", "var", "for", "keyword")
+    val types = setOf(
+        "Unit", "Nothing", "Any", "String", "Boolean", "Byte", "Short", "Int", "Long", "Float", "Double", "Char",
+        "Pair", "Triple", "List", "MutableList", "Set", "MutableSet", "Map", "MutableMap", "Array"
+    )
+    val token = Regex(
+        """\b(?:private|protected|internal|public|fun|val|var|for|keyword|Unit|Nothing|Any|String|Boolean|Byte|Short|Int|Long|Float|Double|Char|Pair|Triple|List|MutableList|Set|MutableSet|Map|MutableMap|Array)\b|(?<![A-Za-z0-9_])\d+(?:\.\d+)?[fFlL]?(?![A-Za-z0-9_])"""
+    )
+
+    return buildString {
+        var cursor = 0
+        token.findAll(detail).forEach { match ->
+            append(escapeNotifyHtml(detail.substring(cursor, match.range.first)))
+            val value = match.value
+            val escaped = escapeNotifyHtml(value)
+            when {
+                value in keywords -> append("<span style='color:#f2cf66;font-weight:700;font-style:normal;'>$escaped</span>")
+                value in types -> append("<span style='color:#8ec8ff;font-weight:700;font-style:normal;'>$escaped</span>")
+                else -> append("<span style='color:#9ee37d;font-style:normal;'>$escaped</span>")
+            }
+            cursor = match.range.last + 1
+        }
+        append(escapeNotifyHtml(detail.substring(cursor)))
+    }
+}
+
+private fun appendErrorHints(errorMessage: String, hints: List<String>): String =
+    buildString {
+        append(errorMessage.trimEnd())
+        hints.forEachIndexed { index, hint ->
+            val previous = hints.getOrNull(index - 1)
+            val separator = when {
+                index == 0 -> " "
+                previous?.contains('\n') == true || hint.contains('\n') -> "\n"
+                else -> " "
+            }
+            append(separator)
+            append(hint)
+        }
+    }
+
+private data class ErrorMessageSymbol(
+    val name: String,
+    val detail: String = "",
+    val sourceRank: Int = 10
+)
+
+private fun unresolvedReferenceName(errorMessage: String): String? {
+    val match = Regex(
+        """Unresolved reference(?::|\s+)?\s*['"`]?([A-Za-z_][A-Za-z0-9_]*)['"`]?""",
+        RegexOption.IGNORE_CASE
+    ).find(errorMessage) ?: return null
+    return match.groupValues[1].trim('\'', '`', '"', '.', ';').takeIf { it.isNotBlank() }
+}
+
+private fun numericMismatchHint(errorMessage: String): String? {
+    val match = Regex(
+        """Argument type mismatch:\s*actual type is ['"`]([^'"`]+)['"`],\s*but ['"`]([^'"`]+)['"`]\s+was expected""",
+        RegexOption.IGNORE_CASE
+    ).find(errorMessage) ?: return null
+
+    val actual = simplifyTypeForOutput(match.groupValues[1].substringBefore('?'))
+    val expected = simplifyTypeForOutput(match.groupValues[2].substringBefore('?'))
+    val numericTypes = setOf("Byte", "Short", "Int", "Long", "Float", "Double")
+    if (actual !in numericTypes || expected !in numericTypes) return null
+
+    val primary = when (expected) {
+        "Double" -> "Use Field's `.d` helper on the value, or write a Double literal like `1.0`."
+        "Float" -> "Use Field's `.f` helper on the value, or write a Float literal like `1f`."
+        "Int" -> "Use Field's `.i` helper on the value when truncation is what you want."
+        "Long" -> "Use Field's `.l` helper on the value when a Long is what you want."
+        else -> "Use an explicit numeric conversion before passing the value."
+    }
+
+    return "Kotlin does not widen numeric types automatically. $primary Field also provides `.d` -> Double, `.f` -> Float, `.i` -> Int, and `.l` -> Long."
+}
+
+private fun suggestResolvableSymbols(
+    box: Box,
+    missing: String,
+    code: String?,
+    diagnostic: ScriptDiagnostic?,
+    limit: Int = 5
+): List<ErrorMessageSuggestion> {
+    val candidates = LinkedHashMap<String, ErrorMessageSymbol>()
+    fun add(symbol: ErrorMessageSymbol) {
+        val name = symbol.name.substringBefore('<').substringBefore('(').substringAfterLast('.').trim()
+        if (name.isBlank() || name == missing) return
+        val key = name.lowercase()
+        val existing = candidates[key]
+        if (existing == null || symbol.sourceRank < existing.sourceRank || symbol.detail.length > existing.detail.length) {
+            candidates[key] = symbol.copy(name = name)
+        }
+    }
+
+    collectDefinedSymbols(box).forEach(::add)
+    collectAmbientCompletionSymbols(box, missing, code, diagnostic).forEach(::add)
+    collectIndexedSymbols(missing).forEach(::add)
+
+    val maxDistance = maxTypoDistance(missing)
+    return candidates.values
+        .mapNotNull { symbol ->
+            val distance = typoDistance(missing, symbol.name)
+            val caseOnly = symbol.name.equals(missing, ignoreCase = true)
+            val usefulPrefix = symbol.name.startsWith(missing, ignoreCase = true) && symbol.name.length > missing.length
+            if (!caseOnly && !usefulPrefix && distance > maxDistance) return@mapNotNull null
+            val score = when {
+                caseOnly -> 0
+                usefulPrefix -> 1
+                else -> 10 + distance
+            }
+            ErrorMessageSuggestion(
+                name = symbol.name,
+                detail = formatErrorSuggestionDetail(symbol.detail, symbol.name),
+                score = score,
+                sourceRank = symbol.sourceRank
+            )
+        }
+        .sortedWith(
+            compareBy<ErrorMessageSuggestion> { it.score }
+                .thenBy { it.name.length }
+                .thenBy { it.sourceRank }
+                .thenBy { it.name }
+        )
+        .take(limit)
+}
+
+private fun collectDefinedSymbols(box: Box): List<ErrorMessageSymbol> {
     val visited = mutableSetOf<Box>()
-    val names = LinkedHashSet<String>()
+    val symbols = mutableListOf<ErrorMessageSymbol>()
 
     fun visit(b: Box) {
         if (!visited.add(b)) return
-        names.addAll(b.properties.keys)
-        names.addAll(b.ki.context.vars.keys)
+        b.properties.forEach { (name, value) ->
+            val type = value?.let { shortenType(it::class.qualifiedName ?: it::class.java.name) }
+            symbols += ErrorMessageSymbol(name, type?.let { "property: $it" }.orEmpty(), sourceRank = 0)
+        }
+        b.ki.context.vars.forEach { (name, info) ->
+            symbols += ErrorMessageSymbol(name, shortenVariableInfo(info), sourceRank = 0)
+        }
+        b.ki.context.functions.forEach { (name, info) ->
+            symbols += ErrorMessageSymbol(name, shortenFunctionInfo(info), sourceRank = 0)
+        }
         b.parents.forEach { visit(it) }
     }
 
     visit(box)
-    return names
+    return symbols
 }
 
-private fun suggestCloseNames(missing: String, candidates: Set<String>, limit: Int = 3): List<String> {
-    val maxDistance = when {
+private fun collectAmbientCompletionSymbols(
+    box: Box,
+    missing: String,
+    code: String?,
+    diagnostic: ScriptDiagnostic?
+): List<ErrorMessageSymbol> {
+    if (code.isNullOrBlank()) return emptyList()
+    val bounds = unresolvedTokenBounds(code, diagnostic, missing) ?: return emptyList()
+    val probes = buildList {
+        add(code.removeRange(bounds.start, bounds.end) to bounds.start)
+        add(code to bounds.end)
+    }
+
+    return probes.flatMap { (probeCode, cursor) ->
+        val completion = runCatching {
+            box.ki.completeAndWait(probeCode, cursor.coerceIn(0, probeCode.length))
+        }.getOrNull()
+        (completion as? CompletionResult.Success)?.metadata.orEmpty().mapNotNull { variant ->
+            val name = completionCandidateName(variant).takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            ErrorMessageSymbol(name, shortenCompletionInfo(variant), sourceRank = 1)
+        }
+    }
+}
+
+private fun collectIndexedSymbols(missing: String): List<ErrorMessageSymbol> {
+    val index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex() ?: return emptyList()
+    val maxDistance = maxTypoDistance(missing)
+    return index.definitions.asSequence()
+        .mapNotNull { def ->
+            val name = def.name.substringAfterLast('.')
+            val distance = typoDistance(missing, name)
+            val caseOnly = name.equals(missing, ignoreCase = true)
+            val usefulPrefix = name.startsWith(missing, ignoreCase = true) && name.length > missing.length
+            if (!caseOnly && !usefulPrefix && distance > maxDistance) return@mapNotNull null
+            ErrorMessageSymbol(name, indexedSymbolDetail(def), sourceRank = 2)
+        }
+        .take(40)
+        .toList()
+}
+
+private fun shortenVariableInfo(info: KotlinVariableInfo): String =
+    shortenType(info.toString(shortenTypes = true))
+        .substringAfter(": ", missingDelimiterValue = "")
+        .substringBefore(" = ")
+        .take(80)
+        .ifBlank { "value" }
+
+private fun shortenFunctionInfo(info: KotlinFunctionInfo): String =
+    shortenType(info.toString(shortenTypes = true))
+        .replace(Regex("\\s+"), " ")
+        .take(100)
+
+private fun shortenCompletionInfo(variant: SourceCodeCompletionVariant): String {
+    val signature = renderCompletionFallbackSignature(variant.displayText, variant.tail)
+        .replace(Regex("\\s+"), " ")
+        .let(::shortenType)
+        .trim()
+    val detail = formatErrorSuggestionDetail(signature, variant.text)
+    val withKind = if (
+        detail.startsWith("${variant.text}(") &&
+        variant.text.firstOrNull()?.isLowerCase() == true
+    ) {
+        "fun $detail"
+    } else {
+        detail
+    }
+    return withKind.take(110)
+}
+
+private fun indexedSymbolDetail(def: afield.ai.KotlinDefinitionRecord): String {
+    val sourceLine = runCatching {
+        File(def.filePath).takeIf { it.exists() }
+            ?: File(System.getProperty("user.dir"), def.filePath).takeIf { it.exists() }
+    }.getOrNull()
+        ?.useLines { lines -> lines.drop(def.line - 1).firstOrNull()?.trim() }
+        ?.substringBefore(" {")
+        ?.replace(Regex("\\s+"), " ")
+        ?.let(::shortenType)
+        ?.let { formatErrorSuggestionDetail(it, def.name.substringAfterLast('.')) }
+        ?.take(110)
+
+    return sourceLine ?: "${def.kind} ${def.filePath}:${def.line}"
+}
+
+private fun formatErrorSuggestionDetail(raw: String, name: String): String {
+    if (raw.isBlank()) return ""
+    var text = shortenType(raw)
+        .replace(Regex("\\s+"), " ")
+        .trim()
+
+    text = text
+        .replace(Regex(""",\s*(?=\))"""), "")
+        .trimEnd(',', ';')
+        .trim()
+
+    text = text.replace(
+        Regex("""(\))\s+([A-Za-z_][A-Za-z0-9_.<>, ?]*\??)$""")
+    ) { match ->
+        val returnType = match.groupValues[2].trim()
+        if (returnType.isBlank() || text.contains("):")) {
+            match.value
+        } else {
+            "${match.groupValues[1]}: $returnType"
+        }
+    }
+
+    return text.removeRedundantSuggestionName(name).take(140)
+}
+
+private fun String.removeRedundantSuggestionName(name: String): String {
+    if (name.isBlank()) return this
+    val compact = trim()
+    return when {
+        compact == name -> ""
+        compact == "`$name`" -> ""
+        else -> compact
+    }
+}
+
+private fun unresolvedTokenBounds(code: String, diagnostic: ScriptDiagnostic?, missing: String): CompletionTokenBounds? {
+    val start = diagnostic?.location?.start
+    if (start != null) {
+        val absolute = absoluteOffset(code, start.line, start.col)
+        val boundsAtLocation = findSymbolBoundsAt(code, absolute)?.takeIf { it.text == missing }
+        if (boundsAtLocation != null) return CompletionTokenBounds(boundsAtLocation.start, boundsAtLocation.end)
+
+        val lineStart = absoluteOffset(code, start.line, 1)
+        val lineEnd = code.indexOf('\n', lineStart).let { if (it < 0) code.length else it }
+        val lineText = code.substring(lineStart, lineEnd)
+        val local = lineText.indexOf(missing)
+        if (local >= 0) return CompletionTokenBounds(lineStart + local, lineStart + local + missing.length)
+    }
+
+    val first = Regex("""\b${Regex.escape(missing)}\b""").find(code) ?: return null
+    return CompletionTokenBounds(first.range.first, first.range.last + 1)
+}
+
+private fun absoluteOffset(code: String, line: Int, col: Int): Int {
+    var currentLine = 1
+    var offset = 0
+    while (currentLine < line && offset < code.length) {
+        val next = code.indexOf('\n', offset)
+        if (next < 0) return code.length
+        offset = next + 1
+        currentLine++
+    }
+    return (offset + col - 1).coerceIn(0, code.length)
+}
+
+private fun maxTypoDistance(missing: String): Int =
+    when {
         missing.length <= 4 -> 1
         missing.length <= 8 -> 2
         else -> 3
     }
 
-    return candidates
-        .filter { it.isNotBlank() && it != missing }
-        .map { candidate ->
-            val distance = levenshteinDistance(missing, candidate)
-            candidate to distance
-        }
-        .filter { it.second <= maxDistance }
-        .sortedWith(compareBy<Pair<String, Int>> { it.second }.thenBy { it.first.length })
-        .take(limit)
-        .map { it.first }
-}
+private fun typoDistance(a: String, b: String): Int = damerauLevenshteinDistance(a.lowercase(), b.lowercase())
 
-private fun levenshteinDistance(a: String, b: String): Int {
+private fun damerauLevenshteinDistance(a: String, b: String): Int {
     if (a == b) return 0
     if (a.isEmpty()) return b.length
     if (b.isEmpty()) return a.length
 
-    var previous = IntArray(b.length + 1) { it }
-    var current = IntArray(b.length + 1)
+    val dp = Array(a.length + 1) { IntArray(b.length + 1) }
+    for (i in 0..a.length) dp[i][0] = i
+    for (j in 0..b.length) dp[0][j] = j
 
-    for (i in a.indices) {
-        current[0] = i + 1
-        for (j in b.indices) {
-            val cost = if (a[i] == b[j]) 0 else 1
-            current[j + 1] = minOf(
-                previous[j + 1] + 1,
-                current[j] + 1,
-                previous[j] + cost
+    for (i in 1..a.length) {
+        for (j in 1..b.length) {
+            val ai = i - 1
+            val bj = j - 1
+            val cost = if (a[ai] == b[bj]) 0 else 1
+            dp[i][j] = minOf(
+                dp[i - 1][j] + 1,
+                dp[i][j - 1] + 1,
+                dp[i - 1][j - 1] + cost
             )
+            if (i > 1 && j > 1 && a[ai] == b[bj - 1] && a[ai - 1] == b[bj]) {
+                dp[i][j] = minOf(dp[i][j], dp[i - 2][j - 2] + 1)
+            }
         }
-        val temp = previous
-        previous = current
-        current = temp
     }
 
-    return previous[b.length]
+    return dp[a.length][b.length]
 }
