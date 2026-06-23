@@ -4496,6 +4496,11 @@ suspend fun main() {
                     notifyEmbeddedEditorOfRemoteUpdate(u, "attic", set.value)
                 }
 
+                "notes" -> {
+                    found.unsafeCast<dynamic>().notes = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "notes", set.value)
+                }
+
                 "vertex" -> {
                     found.unsafeCast<dynamic>().vertex = set.value
                     notifyEmbeddedEditorOfRemoteUpdate(u, "vertex", set.value)

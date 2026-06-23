@@ -64,7 +64,7 @@ private val oscEditorNumberPattern = Regex("""[-+]?(?:(?:\d+\.\d*)|(?:\d+)|(?:\.
 private val oscEditorVectorSeparatorPattern = Regex("""\s*,\s*""")
 private var oscEditorDebounceTimer: Int? = null
 private var oscEditorMaxTimer: Int? = null
-private var oscEditorPendingEditor: dynamic = null
+private var oscEditorPendingEditorTarget: OscEditorEditorTarget? = null
 private var oscEditorPendingTarget: OscEditorLockedNumberTarget? = null
 private var oscEditorSavedNumber: OscEditorSavedNumber? = null
 private var oscEditorLockedTarget: OscEditorLockedNumberTarget? = null
@@ -95,16 +95,41 @@ private data class OscEditorLockedNumberTarget(
     val targetKey: String get() = "$uid:$property"
 }
 
+private class OscEditorEditorTarget(
+    val editor: dynamic,
+    val uid: String,
+    val property: String
+)
+
 private fun oscEditorIdentifierChar(ch: Char): Boolean = ch == '_' || ch.isLetterOrDigit()
 
-private fun oscEditorCurrentEditor(): dynamic = js(
-    """(() => {
+private fun oscEditorCurrentTarget(): OscEditorEditorTarget? {
+    val target = js(
+        """(() => {
         const focused = window.embeddedEditors && typeof window.embeddedEditors.getFocused === "function"
             ? window.embeddedEditors.getFocused()
             : null;
-        return (focused && focused.editor) || window.globalEditor || null;
+        if (focused && focused.editor && focused.uid) {
+            return { editor: focused.editor, uid: focused.uid, property: focused.property || "code" };
+        }
+        const selected = window.currentSelectedCode || [];
+        if (window.globalEditor && selected.length === 1 && selected[0] && selected[0].uid) {
+            return {
+                editor: window.globalEditor,
+                uid: selected[0].uid,
+                property: window.currentSelectedProperty || "code"
+            };
+        }
+        return null;
     })()"""
-)
+    )
+    if (target == null || target == undefined) return null
+    val editor = target.editor
+    if (editor == null || editor == undefined) return null
+    val uid = target.uid as? String ?: return null
+    val property = (target.property as? String)?.trim()?.ifBlank { "code" } ?: "code"
+    return OscEditorEditorTarget(editor, uid, property)
+}
 
 private fun formatOscEditorNumber(value: Double): String {
     if (!value.isFinite()) return "0"
@@ -1174,24 +1199,31 @@ private fun monacoRunShaderUpdate(editor: dynamic) {
 }
 
 fun monacoRunOscEditorCommand(command: OscEditorCommand) {
-    val editor = oscEditorCurrentEditor()
-    if (editor == null || editor == undefined) return
+    val editorTarget = oscEditorCurrentTarget() ?: return
+    val editor = editorTarget.editor
 
     when (command.command.trim().lowercase()) {
         "float" -> {
-            if (!monacoReplaceNumberUnderCursor(editor, command)) return
-            scheduleOscEditorExecute(editor, command.debounceMs, command.maxExecutionMs)
+            if (!monacoReplaceNumberUnderCursor(editorTarget, command)) return
+            scheduleOscEditorExecute(editorTarget, command.debounceMs, command.maxExecutionMs)
         }
 
-        "save" -> monacoSaveNumberUnderCursor(editor)
+        "save" -> monacoSaveNumberUnderCursor(editorTarget)
         "restore" -> {
-            if (!monacoRestoreNumberUnderCursor(editor)) return
-            scheduleOscEditorExecute(editor, command.debounceMs, command.maxExecutionMs)
+            if (!monacoRestoreNumberUnderCursor(editorTarget)) return
+            scheduleOscEditorExecute(editorTarget, command.debounceMs, command.maxExecutionMs)
         }
-        "lock" -> monacoLockNumberBinding(editor)
+        "lock" -> monacoLockNumberBinding(editorTarget)
         "unlock" -> monacoUnlockNumberBinding()
         "launch" -> monacoRunLaunchAll(editor)
         "stop" -> monacoRunStopAll(editor)
+        "update-shader" -> {
+            if (monacoRunOscEditorShaderUpdate(editorTarget)) {
+                clearOscEditorTimers(js("window"))
+                oscEditorPendingEditorTarget = null
+                oscEditorPendingTarget = null
+            }
+        }
     }
 }
 
@@ -1216,7 +1248,11 @@ private fun oscEditorBoxByUid(uid: String): dynamic {
     return null
 }
 
-private fun oscEditorTargetText(uid: String, property: String): String? {
+private fun oscEditorTargetText(uid: String, property: String, editorTarget: OscEditorEditorTarget? = null): String? {
+    if (editorTarget != null && editorTarget.uid == uid && editorTarget.property == property) {
+        val model = editorTarget.editor.getModel()
+        if (model != null && model != undefined) return model.getValue() as? String ?: ""
+    }
     val w = js("window")
     val current = w.currentSelectedCode
     val currentLen = (current?.length as? Number)?.toInt() ?: 0
@@ -1229,7 +1265,8 @@ private fun oscEditorTargetText(uid: String, property: String): String? {
     return if (box == null || box == undefined) null else box[property] as? String ?: ""
 }
 
-private fun oscEditorTargetIsCurrent(uid: String, property: String): Boolean {
+private fun oscEditorTargetIsCurrent(uid: String, property: String, editorTarget: OscEditorEditorTarget? = null): Boolean {
+    if (editorTarget != null && editorTarget.uid == uid && editorTarget.property == property) return true
     val w = js("window")
     val current = w.currentSelectedCode
     val currentLen = (current?.length as? Number)?.toInt() ?: 0
@@ -1238,7 +1275,7 @@ private fun oscEditorTargetIsCurrent(uid: String, property: String): Boolean {
         (w.currentSelectedProperty as? String ?: "code") == property
 }
 
-private fun oscEditorSetTargetText(uid: String, property: String, text: String) {
+private fun oscEditorUpdateLocalTargetText(uid: String, property: String, text: String) {
     val box = oscEditorBoxByUid(uid)
     if (box != null && box != undefined) box[property] = text
 
@@ -1248,7 +1285,10 @@ private fun oscEditorSetTargetText(uid: String, property: String, text: String) 
     if (currentLen == 1 && (current[0].uid as? String) == uid && (w.currentSelectedProperty as? String ?: "code") == property) {
         current[0][property] = text
     }
+}
 
+private fun oscEditorSetTargetText(uid: String, property: String, text: String) {
+    oscEditorUpdateLocalTargetText(uid, property, text)
     val payload = js("{}")
     payload.uid = uid
     payload.property = property
@@ -1359,7 +1399,12 @@ private fun monacoVector2UnderCursor(editor: dynamic, hit: OscEditorNumberMatch)
     return oscEditorVector2Near(line, hit)
 }
 
-private fun monacoApplyNumberReplacement(editor: dynamic, hit: OscEditorNumberMatch, replacement: String): Boolean {
+private fun monacoApplyNumberReplacement(
+    editorTarget: OscEditorEditorTarget,
+    hit: OscEditorNumberMatch,
+    replacement: String
+): Boolean {
+    val editor = editorTarget.editor
     val model = editor.getModel()
     if (model == null || model == undefined) return false
 
@@ -1381,22 +1426,17 @@ private fun monacoApplyNumberReplacement(editor: dynamic, hit: OscEditorNumberMa
     nextPosition.column = nextColumn
     editor.setPosition(nextPosition)
 
-    val w = js("window")
-    val current = w.currentSelectedCode
-    val currentLen = (current?.length as? Number)?.toInt() ?: 0
-    if (currentLen == 1) {
-        val property = w.currentSelectedProperty as? String ?: "code"
-        current[0][property] = model.getValue()
-    }
+    oscEditorUpdateLocalTargetText(editorTarget.uid, editorTarget.property, model.getValue() as? String ?: "")
     return true
 }
 
 private fun monacoApplyVectorReplacement(
-    editor: dynamic,
+    editorTarget: OscEditorEditorTarget,
     vector: OscEditorVector2Match,
     firstReplacement: String,
     secondReplacement: String
 ): Boolean {
+    val editor = editorTarget.editor
     val model = editor.getModel()
     if (model == null || model == undefined) return false
 
@@ -1430,13 +1470,7 @@ private fun monacoApplyVectorReplacement(
     nextPosition.column = adjustedSecondStart + secondReplacement.length + 1
     editor.setPosition(nextPosition)
 
-    val w = js("window")
-    val current = w.currentSelectedCode
-    val currentLen = (current?.length as? Number)?.toInt() ?: 0
-    if (currentLen == 1) {
-        val property = w.currentSelectedProperty as? String ?: "code"
-        current[0][property] = model.getValue()
-    }
+    oscEditorUpdateLocalTargetText(editorTarget.uid, editorTarget.property, model.getValue() as? String ?: "")
     return true
 }
 
@@ -1481,13 +1515,13 @@ private fun oscEditorApplyLockedVectorReplacement(
 }
 
 private fun oscEditorApplyNumberReplacementForTarget(
-    editor: dynamic,
+    editorTarget: OscEditorEditorTarget,
     target: OscEditorLockedNumberTarget,
     hit: OscEditorNumberMatch,
     replacement: String
 ): Boolean {
-    val replaced = if (oscEditorTargetIsCurrent(target.uid, target.property)) {
-        monacoApplyNumberReplacement(editor, hit, replacement)
+    val replaced = if (oscEditorTargetIsCurrent(target.uid, target.property, editorTarget)) {
+        monacoApplyNumberReplacement(editorTarget, hit, replacement)
     } else {
         oscEditorApplyLockedNumberReplacement(target, hit, replacement)
     }
@@ -1498,14 +1532,14 @@ private fun oscEditorApplyNumberReplacementForTarget(
 }
 
 private fun oscEditorApplyVectorReplacementForTarget(
-    editor: dynamic,
+    editorTarget: OscEditorEditorTarget,
     target: OscEditorLockedNumberTarget,
     vector: OscEditorVector2Match,
     firstReplacement: String,
     secondReplacement: String
 ): Boolean {
-    val replaced = if (oscEditorTargetIsCurrent(target.uid, target.property)) {
-        monacoApplyVectorReplacement(editor, vector, firstReplacement, secondReplacement)
+    val replaced = if (oscEditorTargetIsCurrent(target.uid, target.property, editorTarget)) {
+        monacoApplyVectorReplacement(editorTarget, vector, firstReplacement, secondReplacement)
     } else {
         oscEditorApplyLockedVectorReplacement(target, vector, firstReplacement, secondReplacement)
     }
@@ -1557,52 +1591,61 @@ private fun oscEditorVector2ReplacementsFor(vector: OscEditorVector2Match, comma
     return Pair(firstReplacement, secondReplacement)
 }
 
-private fun oscEditorLockedNumberHit(target: OscEditorLockedNumberTarget): OscEditorNumberMatch? {
-    val text = oscEditorTargetText(target.uid, target.property) ?: return null
+private fun oscEditorLockedNumberHit(
+    target: OscEditorLockedNumberTarget,
+    editorTarget: OscEditorEditorTarget? = null
+): OscEditorNumberMatch? {
+    val text = oscEditorTargetText(target.uid, target.property, editorTarget) ?: return null
     val line = oscEditorLineContent(text, target.lineNumber) ?: return null
     return oscEditorNumberAt(line, target.lineNumber, target.column)
 }
 
-private fun oscEditorLockedVector2Hit(target: OscEditorLockedNumberTarget, hit: OscEditorNumberMatch): OscEditorVector2Match? {
-    val text = oscEditorTargetText(target.uid, target.property) ?: return null
+private fun oscEditorLockedVector2Hit(
+    target: OscEditorLockedNumberTarget,
+    hit: OscEditorNumberMatch,
+    editorTarget: OscEditorEditorTarget? = null
+): OscEditorVector2Match? {
+    val text = oscEditorTargetText(target.uid, target.property, editorTarget) ?: return null
     val line = oscEditorLineContent(text, target.lineNumber) ?: return null
     return oscEditorVector2Near(line, hit)
 }
 
-private fun monacoReplaceNumberUnderCursor(editor: dynamic, command: OscEditorCommand): Boolean {
+private fun monacoReplaceNumberUnderCursor(editorTarget: OscEditorEditorTarget, command: OscEditorCommand): Boolean {
     val locked = oscEditorLockedTarget
     if (locked != null) {
-        val hit = oscEditorLockedNumberHit(locked) ?: run {
+        val hit = oscEditorLockedNumberHit(locked, editorTarget) ?: run {
             notify("Locked number is gone", "osc-editor")
             return false
         }
         if (command.vector2) {
-            val vector = oscEditorLockedVector2Hit(locked, hit)
+            val vector = oscEditorLockedVector2Hit(locked, hit, editorTarget)
             val replacements = vector?.let { oscEditorVector2ReplacementsFor(it, command) }
             if (vector != null && replacements != null) {
-                return oscEditorApplyVectorReplacementForTarget(editor, locked, vector, replacements.first, replacements.second)
+                return oscEditorApplyVectorReplacementForTarget(editorTarget, locked, vector, replacements.first, replacements.second)
             }
         }
         val replacement = oscEditorReplacementFor(hit.text, command) ?: return false
-        return oscEditorApplyNumberReplacementForTarget(editor, locked, hit, replacement)
+        return oscEditorApplyNumberReplacementForTarget(editorTarget, locked, hit, replacement)
     }
 
+    val editor = editorTarget.editor
     val hit = monacoNumberUnderCursor(editor) ?: return false
     if (command.vector2) {
         val vector = monacoVector2UnderCursor(editor, hit)
         val replacements = vector?.let { oscEditorVector2ReplacementsFor(it, command) }
         if (vector != null && replacements != null) {
-            return monacoApplyVectorReplacement(editor, vector, replacements.first, replacements.second)
+            return monacoApplyVectorReplacement(editorTarget, vector, replacements.first, replacements.second)
         }
     }
     val replacement = oscEditorReplacementFor(hit.text, command) ?: return false
-    return monacoApplyNumberReplacement(editor, hit, replacement)
+    return monacoApplyNumberReplacement(editorTarget, hit, replacement)
 }
 
-private fun monacoSaveNumberUnderCursor(editor: dynamic): Boolean {
+private fun monacoSaveNumberUnderCursor(editorTarget: OscEditorEditorTarget): Boolean {
+    val editor = editorTarget.editor
     val locked = oscEditorLockedTarget
     if (locked != null) {
-        val hit = oscEditorLockedNumberHit(locked)
+        val hit = oscEditorLockedNumberHit(locked, editorTarget)
         if (hit == null) {
             notify("Locked number is gone", "osc-editor")
             return false
@@ -1617,12 +1660,13 @@ private fun monacoSaveNumberUnderCursor(editor: dynamic): Boolean {
         notify("No number under cursor", "osc-editor")
         return false
     }
-    oscEditorSavedNumber = OscEditorSavedNumber(oscEditorTargetKey(), hit.text)
+    oscEditorSavedNumber = OscEditorSavedNumber("${editorTarget.uid}:${editorTarget.property}", hit.text)
     notify("Saved ${hit.text}", "osc-editor")
     return true
 }
 
-private fun monacoRestoreNumberUnderCursor(editor: dynamic): Boolean {
+private fun monacoRestoreNumberUnderCursor(editorTarget: OscEditorEditorTarget): Boolean {
+    val editor = editorTarget.editor
     val saved = oscEditorSavedNumber
     if (saved == null) {
         notify("No saved number", "osc-editor")
@@ -1634,17 +1678,17 @@ private fun monacoRestoreNumberUnderCursor(editor: dynamic): Boolean {
             notify("Saved number belongs to another editor", "osc-editor")
             return false
         }
-        val hit = oscEditorLockedNumberHit(locked)
+        val hit = oscEditorLockedNumberHit(locked, editorTarget)
         if (hit == null) {
             notify("Locked number is gone", "osc-editor")
             return false
         }
-        val restored = oscEditorApplyNumberReplacementForTarget(editor, locked, hit, saved.text)
+        val restored = oscEditorApplyNumberReplacementForTarget(editorTarget, locked, hit, saved.text)
         if (restored) notify("Restored locked ${saved.text}", "osc-editor")
         return restored
     }
 
-    val currentTarget = oscEditorTargetKey()
+    val currentTarget = "${editorTarget.uid}:${editorTarget.property}"
     if (saved.targetKey.isNotBlank() && currentTarget.isNotBlank() && saved.targetKey != currentTarget) {
         notify("Saved number belongs to another editor", "osc-editor")
         return false
@@ -1654,21 +1698,13 @@ private fun monacoRestoreNumberUnderCursor(editor: dynamic): Boolean {
         notify("No number under cursor", "osc-editor")
         return false
     }
-    val restored = monacoApplyNumberReplacement(editor, hit, saved.text)
+    val restored = monacoApplyNumberReplacement(editorTarget, hit, saved.text)
     if (restored) notify("Restored ${saved.text}", "osc-editor")
     return restored
 }
 
-private fun monacoLockNumberBinding(editor: dynamic): Boolean {
-    val w = js("window")
-    val current = w.currentSelectedCode
-    val currentLen = (current?.length as? Number)?.toInt() ?: 0
-    if (currentLen != 1) {
-        notify("Select one box to lock", "osc-editor")
-        return false
-    }
-    val uid = current[0].uid as? String ?: return false
-    val property = w.currentSelectedProperty as? String ?: "code"
+private fun monacoLockNumberBinding(editorTarget: OscEditorEditorTarget): Boolean {
+    val editor = editorTarget.editor
     val position = editor.getPosition()
     if (position == null || position == undefined) return false
     val hit = monacoNumberUnderCursor(editor)
@@ -1678,12 +1714,12 @@ private fun monacoLockNumberBinding(editor: dynamic): Boolean {
     }
 
     oscEditorLockedTarget = OscEditorLockedNumberTarget(
-        uid = uid,
-        property = property,
+        uid = editorTarget.uid,
+        property = editorTarget.property,
         lineNumber = hit.lineNumber,
         column = (position.column as Number).toInt()
     )
-    notify("Locked ${property}:${hit.lineNumber}", "osc-editor")
+    notify("Locked ${editorTarget.property}:${hit.lineNumber}", "osc-editor")
     return true
 }
 
@@ -1707,21 +1743,21 @@ private fun clearOscEditorTimers(w: dynamic) {
 
 private fun runScheduledOscEditorExecute() {
     val w = js("window")
-    val editor = oscEditorPendingEditor
+    val editorTarget = oscEditorPendingEditorTarget
     val target = oscEditorPendingTarget
-    oscEditorPendingEditor = null
+    oscEditorPendingEditorTarget = null
     oscEditorPendingTarget = null
     clearOscEditorTimers(w)
     if (target != null) {
-        oscEditorExecuteTarget(target)
-    } else if (editor != null && editor != undefined) {
-        monacoRunExecuteFragmentOrShaderReload(editor)
+        oscEditorExecuteTarget(target, editorTarget)
+    } else if (editorTarget != null) {
+        oscEditorRunTargetAtDebounce(editorTarget)
     }
 }
 
-private fun scheduleOscEditorExecute(editor: dynamic, debounceMs: Int, maxExecutionMs: Int) {
+private fun scheduleOscEditorExecute(editorTarget: OscEditorEditorTarget, debounceMs: Int, maxExecutionMs: Int) {
     val w = js("window")
-    oscEditorPendingEditor = editor
+    oscEditorPendingEditorTarget = editorTarget
     oscEditorPendingTarget = oscEditorLockedTarget
     val delay = debounceMs.coerceIn(0, 5_000)
     oscEditorDebounceTimer?.let { w.clearTimeout(it) }
@@ -1748,6 +1784,58 @@ private fun oscEditorPerformAction(uid: String, actionId: String) {
     )
 }
 
+private fun monacoRunOscEditorShaderUpdate(editorTarget: OscEditorEditorTarget): Boolean {
+    val locked = oscEditorLockedTarget
+    if (locked != null) {
+        val property = locked.property.trim().lowercase()
+        val actionId = shaderUpdateActionForProperty(property) ?: return false
+        val text = oscEditorTargetText(locked.uid, property, editorTarget) ?: return false
+        oscEditorSetTargetText(locked.uid, property, text)
+        oscEditorPerformAction(locked.uid, actionId)
+        return true
+    }
+
+    val property = editorTarget.property.trim().lowercase()
+    val actionId = shaderUpdateActionForProperty(property) ?: return false
+    val uid = editorTarget.uid
+    val model = editorTarget.editor.getModel()
+    val value = if (model != null && model != undefined) {
+        model.getValue() as? String ?: ""
+    } else {
+        oscEditorTargetText(uid, property, editorTarget) ?: ""
+    }
+
+    oscEditorSetTargetText(uid, property, value)
+    oscEditorPerformAction(uid, actionId)
+    return true
+}
+
+private fun oscEditorRunTargetAtDebounce(editorTarget: OscEditorEditorTarget): Boolean {
+    val property = editorTarget.property.trim().lowercase()
+    val model = editorTarget.editor.getModel()
+    val value = if (model != null && model != undefined) {
+        model.getValue() as? String ?: ""
+    } else {
+        oscEditorTargetText(editorTarget.uid, property, editorTarget) ?: ""
+    }
+
+    val updateAction = shaderUpdateActionForProperty(property)
+    if (updateAction != null) {
+        oscEditorSetTargetText(editorTarget.uid, property, value)
+        oscEditorPerformAction(editorTarget.uid, updateAction)
+        return true
+    }
+
+    val reloadAction = shaderReloadActionForProperty(property)
+    if (reloadAction != null) {
+        oscEditorSetTargetText(editorTarget.uid, property, value)
+        oscEditorPerformAction(editorTarget.uid, reloadAction)
+        return true
+    }
+
+    return oscEditorRunExecuteFragment(editorTarget)
+}
+
 private fun oscEditorExtractScopeFromText(text: String, lineNumber: Int): Triple<String, Int, Boolean> {
     val lines = text.split("\n")
     val zeroLine = (lineNumber - 1).coerceIn(0, (lines.size - 1).coerceAtLeast(0))
@@ -1763,15 +1851,26 @@ private fun oscEditorExtractScopeFromText(text: String, lineNumber: Int): Triple
     return Triple(scopeLines.joinToString("\n"), start, true)
 }
 
-private fun oscEditorExecuteTarget(target: OscEditorLockedNumberTarget) {
+private fun oscEditorExecuteTarget(target: OscEditorLockedNumberTarget, editorTarget: OscEditorEditorTarget? = null) {
     val property = target.property
-    val actionId = shaderReloadActionForProperty(property.trim().lowercase())
-    if (actionId != null) {
-        oscEditorPerformAction(target.uid, actionId)
+    val normalizedProperty = property.trim().lowercase()
+    val updateAction = shaderUpdateActionForProperty(normalizedProperty)
+    if (updateAction != null) {
+        val text = oscEditorTargetText(target.uid, normalizedProperty, editorTarget) ?: return
+        oscEditorSetTargetText(target.uid, normalizedProperty, text)
+        oscEditorPerformAction(target.uid, updateAction)
         return
     }
 
-    val text = oscEditorTargetText(target.uid, property) ?: return
+    val reloadAction = shaderReloadActionForProperty(normalizedProperty)
+    if (reloadAction != null) {
+        val text = oscEditorTargetText(target.uid, normalizedProperty, editorTarget) ?: return
+        oscEditorSetTargetText(target.uid, normalizedProperty, text)
+        oscEditorPerformAction(target.uid, reloadAction)
+        return
+    }
+
+    val text = oscEditorTargetText(target.uid, property, editorTarget) ?: return
     val (code, belowLine, singleLine) = oscEditorExtractScopeFromText(text, target.lineNumber)
     val topLine = belowLine + 1
     val bottomLine = topLine + code.split("\n").size - 1
@@ -1793,6 +1892,31 @@ private fun oscEditorExecuteTarget(target: OscEditorLockedNumberTarget) {
         w.LineHeatmap.recordExecutionRange(target.uid, property, topLine, bottomLine)
     }
     sendWithReply("execute-fragment", payload, "exec_${target.uid}", callback.asDynamic())
+}
+
+private fun oscEditorRunExecuteFragment(editorTarget: OscEditorEditorTarget): Boolean {
+    val (code, belowLine, singleLine) = extractSelectionOrScope(editorTarget.editor)
+    val topLine = belowLine + 1
+    val bottomLine = topLine + code.split("\n").size - 1
+
+    val payload = js("{}")
+    payload.uid = editorTarget.uid
+    payload.type = "fragment"
+    payload.line = belowLine
+    payload.code = code
+    payload.singleLine = singleLine
+
+    val w = js("window")
+    val handler = w.handleOutput
+    val callback: (dynamic, dynamic) -> Boolean = { message, response ->
+        handler(response, message, editorTarget.uid)
+        true
+    }
+    if (w.LineHeatmap != null && w.LineHeatmap != undefined) {
+        w.LineHeatmap.recordExecutionRange(editorTarget.uid, editorTarget.property, topLine, bottomLine)
+    }
+    sendWithReply("execute-fragment", payload, "exec_${editorTarget.uid}", callback.asDynamic())
+    return true
 }
 
 private fun extractSelectionOrScope(editor: dynamic): Triple<String, Int, Boolean> {
@@ -1973,6 +2097,16 @@ fun monacoRunToggleFold(editor: dynamic) {
 @JsExport
 fun monacoRunNextProperty(editor: dynamic, inc: Int) {
     monacoNextProperty(editor, inc)
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun monacoRunToggleNotesMarkdownPreview(editor: dynamic) {
+    val w = js("window")
+    val toggle = w.toggleNotesMarkdownPreview
+    if (toggle != null && toggle != undefined) {
+        toggle(editor)
+    }
 }
 
 private fun extractSelectionOrScopeForLaunch(editor: dynamic): LaunchSelection {

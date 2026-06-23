@@ -1564,9 +1564,168 @@ function ensureAiChat(container, uid, property) {
 
 function applyCodeHighlight(container) {
         if (!container) return;
-        if (!window.hljs || typeof window.hljs.highlightElement !== "function") return;
         const blocks = container.querySelectorAll("pre code");
-        blocks.forEach((block) => window.hljs.highlightElement(block));
+        blocks.forEach((block) => highlightCodeBlock(block));
+}
+
+function normalizeCodeFenceLanguage(language) {
+        const raw = String(language || "").trim().toLowerCase().replace(/^language-/, "");
+        if (!raw) return "";
+        const aliases = {
+                kt: "kotlin",
+                kts: "kotlin",
+                glsl: "glsl",
+                frag: "glsl",
+                fragment: "glsl",
+                vert: "glsl",
+                vertex: "glsl",
+                comp: "glsl",
+                compute: "glsl",
+                shader: "glsl",
+                js: "javascript",
+                ts: "typescript",
+                sh: "bash",
+                shell: "bash"
+        };
+        return aliases[raw] || raw;
+}
+
+function escapeCodeHtml(value) {
+        return String(value ?? "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+}
+
+const GLSL_KEYWORDS = new Set([
+        "attribute", "break", "buffer", "case", "centroid", "coherent", "const", "continue", "default",
+        "discard", "do", "else", "flat", "for", "highp", "if", "in", "inout", "invariant", "layout",
+        "lowp", "mediump", "noperspective", "out", "patch", "precision", "readonly", "restrict",
+        "return", "sample", "shared", "smooth", "struct", "subroutine", "switch", "uniform", "varying",
+        "volatile", "while", "writeonly"
+]);
+
+const GLSL_TYPES = new Set([
+        "void", "bool", "int", "uint", "float", "double",
+        "vec2", "vec3", "vec4", "ivec2", "ivec3", "ivec4", "uvec2", "uvec3", "uvec4", "bvec2", "bvec3", "bvec4",
+        "dvec2", "dvec3", "dvec4", "mat2", "mat3", "mat4", "mat2x2", "mat2x3", "mat2x4", "mat3x2", "mat3x3",
+        "mat3x4", "mat4x2", "mat4x3", "mat4x4", "dmat2", "dmat3", "dmat4", "sampler1D", "sampler2D",
+        "sampler3D", "samplerCube", "sampler2DArray", "samplerCubeArray", "isampler2D", "usampler2D",
+        "image1D", "image2D", "image3D", "imageCube", "atomic_uint"
+]);
+
+const GLSL_LITERALS = new Set(["true", "false"]);
+
+const GLSL_BUILTINS = new Set([
+        "abs", "acos", "all", "any", "asin", "atan", "ceil", "clamp", "cos", "cross", "degrees", "determinant",
+        "distance", "dot", "dFdx", "dFdy", "equal", "exp", "exp2", "faceforward", "floor", "fract", "fwidth",
+        "greaterThan", "greaterThanEqual", "inversesqrt", "length", "lessThan", "lessThanEqual", "log", "log2",
+        "max", "min", "mix", "mod", "normalize", "not", "notEqual", "pow", "radians", "reflect", "refract",
+        "round", "sign", "sin", "smoothstep", "sqrt", "step", "tan", "texture", "textureGrad", "textureLod",
+        "transpose", "gl_FragCoord", "gl_FragDepth", "gl_GlobalInvocationID", "gl_InstanceIndex",
+        "gl_LocalInvocationID", "gl_Position", "gl_VertexIndex"
+]);
+
+function highlightGlslCode(source) {
+        let out = "";
+        let i = 0;
+        let lineStart = true;
+        const text = String(source || "");
+        const push = (className, value) => {
+                out += `<span class="${className}">${escapeCodeHtml(value)}</span>`;
+        };
+
+        while (i < text.length) {
+                const ch = text[i];
+                const next = text[i + 1];
+                if (lineStart && ch === "#") {
+                        const end = text.indexOf("\n", i);
+                        const stop = end === -1 ? text.length : end;
+                        push("hljs-meta", text.slice(i, stop));
+                        i = stop;
+                        lineStart = false;
+                        continue;
+                }
+                if (ch === "/" && next === "/") {
+                        const end = text.indexOf("\n", i);
+                        const stop = end === -1 ? text.length : end;
+                        push("hljs-comment", text.slice(i, stop));
+                        i = stop;
+                        lineStart = false;
+                        continue;
+                }
+                if (ch === "/" && next === "*") {
+                        const end = text.indexOf("*/", i + 2);
+                        const stop = end === -1 ? text.length : end + 2;
+                        push("hljs-comment", text.slice(i, stop));
+                        lineStart = text.slice(i, stop).endsWith("\n");
+                        i = stop;
+                        continue;
+                }
+                if (ch === "\"" || ch === "'") {
+                        const quote = ch;
+                        let j = i + 1;
+                        while (j < text.length) {
+                                if (text[j] === "\\" && j + 1 < text.length) {
+                                        j += 2;
+                                        continue;
+                                }
+                                if (text[j] === quote) {
+                                        j++;
+                                        break;
+                                }
+                                j++;
+                        }
+                        push("hljs-string", text.slice(i, j));
+                        i = j;
+                        lineStart = false;
+                        continue;
+                }
+                const number = text.slice(i).match(/^(?:0x[0-9a-fA-F]+|(?:\d+\.\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?)[uUlLfF]?/);
+                if (number) {
+                        push("hljs-number", number[0]);
+                        i += number[0].length;
+                        lineStart = false;
+                        continue;
+                }
+                const ident = text.slice(i).match(/^[A-Za-z_][A-Za-z0-9_]*/);
+                if (ident) {
+                        const word = ident[0];
+                        if (GLSL_KEYWORDS.has(word)) push("hljs-keyword", word);
+                        else if (GLSL_TYPES.has(word)) push("hljs-type", word);
+                        else if (GLSL_LITERALS.has(word)) push("hljs-literal", word);
+                        else if (GLSL_BUILTINS.has(word)) push("hljs-built_in", word);
+                        else out += escapeCodeHtml(word);
+                        i += word.length;
+                        lineStart = false;
+                        continue;
+                }
+                out += escapeCodeHtml(ch);
+                lineStart = ch === "\n" || (lineStart && /\s/.test(ch));
+                i++;
+        }
+        return out;
+}
+
+function highlightCodeBlock(block) {
+        const rawLanguage = block.className.match(/(?:^|\s)language-([A-Za-z0-9_+-]+)/)?.[1] || block.closest(".ai-chat-code-block")?.dataset?.lang || "";
+        const language = normalizeCodeFenceLanguage(rawLanguage);
+        block.className = language ? `language-${language}` : "";
+        if (language === "glsl") {
+                block.innerHTML = highlightGlslCode(block.textContent || "");
+                block.classList.add("hljs", "language-glsl");
+                return;
+        }
+        if (!window.hljs || typeof window.hljs.highlightElement !== "function") return;
+        try {
+                if (language && window.hljs.getLanguage && !window.hljs.getLanguage(language)) {
+                        block.className = "language-plaintext";
+                }
+                window.hljs.highlightElement(block);
+        } catch (_) {
+        }
 }
 
 function aiChatUpdate(container, uid, markdown) {

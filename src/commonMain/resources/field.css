@@ -521,6 +521,29 @@
     margin: 2px 0;
 }
 
+.ai-chat-markdown table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0;
+    font-size: inherit;
+}
+
+.ai-chat-markdown th,
+.ai-chat-markdown td {
+    border: 1px solid var(--field-border-medium);
+    padding: 4px 6px;
+    vertical-align: top;
+}
+
+.ai-chat-markdown th {
+    background: var(--field-surface);
+    font-weight: 600;
+}
+
+.ai-chat-markdown tbody tr:nth-child(even) {
+    background: color-mix(in srgb, var(--field-surface) 55%, transparent);
+}
+
 .ai-chat-markdown code {
     color: var(--field-code-accent);
     padding: 0 2px;
@@ -1858,6 +1881,133 @@ body {
     outline: none;
     border: 5px solid transparent;
     /*filter: blur(10px) !important;*/
+}
+
+.monaco-editor-container.afield-notes-preview-active > .monaco-editor {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.afield-notes-preview {
+    position: absolute;
+    inset: 2px;
+    display: none;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    background: var(--field-editor-bg);
+    color: var(--field-fg);
+    border-radius: 3px;
+    z-index: 75;
+    outline: none;
+    overflow: hidden;
+}
+
+.afield-notes-preview-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    min-height: 28px;
+    padding: 4px 6px;
+    border-bottom: 1px solid var(--field-border-medium);
+    background: var(--field-panel-medium);
+    flex: 0 0 auto;
+}
+
+.afield-notes-preview-toolbar button {
+    min-width: 28px;
+    height: 22px;
+    padding: 0 6px;
+    border: 1px solid var(--field-border-medium);
+    border-radius: 4px;
+    background: var(--field-surface);
+    color: var(--field-fg-strong);
+    font-family: var(--field-font-code);
+    font-size: 11px;
+    line-height: 20px;
+    cursor: pointer;
+}
+
+.afield-notes-preview-toolbar button:hover {
+    background: var(--field-hover);
+}
+
+.afield-notes-preview-body {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+    padding: 16px 18px 32px 18px;
+}
+
+.afield-notes-preview .ai-chat-markdown {
+    max-width: 760px;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--field-fg);
+}
+
+.afield-notes-preview .ai-chat-markdown h1,
+.afield-notes-preview .ai-chat-markdown h2,
+.afield-notes-preview .ai-chat-markdown h3 {
+    font-family: var(--field-font);
+    font-weight: 600;
+    line-height: 1.2;
+    margin: 18px 0 8px 0;
+}
+
+.afield-notes-preview .ai-chat-markdown h1 {
+    font-size: 22px;
+}
+
+.afield-notes-preview .ai-chat-markdown h2 {
+    font-size: 18px;
+}
+
+.afield-notes-preview .ai-chat-markdown h3 {
+    font-size: 15px;
+}
+
+.afield-notes-preview .ai-chat-markdown p {
+    margin: 8px 0;
+}
+
+.afield-notes-preview .ai-chat-markdown ul {
+    margin: 8px 0 8px 22px;
+}
+
+.afield-notes-preview .ai-chat-markdown li {
+    margin: 4px 0;
+}
+
+.afield-notes-preview .ai-chat-markdown table {
+    margin: 12px 0;
+}
+
+.afield-notes-preview .ai-chat-markdown th,
+.afield-notes-preview .ai-chat-markdown td {
+    padding: 7px 9px;
+}
+
+.afield-notes-preview .ai-chat-markdown code {
+    font-family: var(--field-font-code);
+    font-size: 0.92em;
+}
+
+.afield-notes-preview .ai-chat-markdown pre {
+    margin: 10px 0;
+    padding: 10px;
+    background: var(--field-surface);
+    border: 1px solid var(--field-border-medium);
+    border-radius: 5px;
+}
+
+.afield-notes-preview .ai-chat-code-block {
+    margin: 10px 0;
+}
+
+.afield-notes-preview .ai-chat-copy-wrap {
+    display: none;
 }
 
 .docs-iframe-container {

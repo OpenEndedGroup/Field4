@@ -135,6 +135,18 @@
     });
   }
 
+  function sendRelease(values) {
+    send({
+      type: "release",
+      phase: "release",
+      valueAxis: state.axis,
+      x: values.x,
+      y: values.y,
+      dx: values.dx || 0,
+      dy: values.dy || 0,
+    });
+  }
+
   function commandLabel(command) {
     switch (command) {
       case "save": return "saved";
@@ -178,6 +190,16 @@
     const values = pointerToValues(event, phase);
     renderPad(values);
     sendTouch(values);
+  }
+
+  function releasePointer(event) {
+    if (state.activePointerId === null || event.pointerId !== state.activePointerId) return;
+    event.preventDefault();
+    const values = pointerToValues(event, "release");
+    renderPad(values);
+    sendTouch(values);
+    sendRelease(values);
+    state.activePointerId = null;
   }
 
   function setActive(selector, attr, value) {
@@ -478,11 +500,14 @@
     if (event.pointerId === state.activePointerId) handlePointer(event, "move");
   });
 
-  for (const eventName of ["pointerup", "pointercancel", "lostpointercapture"]) {
-    area.addEventListener(eventName, () => {
+  area.addEventListener("pointerup", releasePointer);
+  area.addEventListener("pointercancel", releasePointer);
+  area.addEventListener("lostpointercapture", () => {
+    if (state.activePointerId !== null) {
+      sendRelease({ x: state.last.x, y: state.last.y, dx: 0, dy: 0 });
       state.activePointerId = null;
-    });
-  }
+    }
+  });
 
   thumb.addEventListener("keydown", (event) => {
     const step = event.shiftKey ? 0.05 : 0.01;

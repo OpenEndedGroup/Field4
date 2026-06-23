@@ -759,7 +759,7 @@ class FLine : HasProperties {
         var q = Vec3(
             Float.POSITIVE_INFINITY,
             Float.POSITIVE_INFINITY,
-            Float.NEGATIVE_INFINITY
+            Float.POSITIVE_INFINITY
         ) to Vec3(Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY)
         nodes.forEach {
             it.storage.forEach { X ->

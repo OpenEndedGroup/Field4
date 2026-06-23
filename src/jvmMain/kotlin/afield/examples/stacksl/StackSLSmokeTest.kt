@@ -50,6 +50,7 @@ object StackSLSmokeTest {
             compilesGeometryOperatorsAndVecLiterals()
             compilesShapingDomainAndVectorUtilityOperators()
             compilesNeighborhoodFieldOperators()
+            compilesSamplerSizeAndChannelGradientOperators()
             compilesLocalNamedMarks()
             compilesWordReferences()
             compilesHigherOrderPhacelleNoise()
@@ -596,6 +597,28 @@ object StackSLSmokeTest {
         require("field_ops_divergence(state" in result.glsl) { result.glsl }
         require("field_ops_curl(state" in result.glsl) { result.glsl }
         require(result.analysis.requiredSamplers == setOf("state")) { result.analysis.requiredSamplers.toString() }
+    }
+
+    private fun compilesSamplerSizeAndChannelGradientOperators() {
+        val result = StackSLCompiler.compile(
+            """
+            texelSize gradient.r
+            uv texelSize gradient.g.2
+            +
+            texelSize1 +
+            textureSize0 0.0 * +
+            """.trimIndent(),
+            StackSLCompileOptions(prefix = "sizes", sampleTextures = listOf("state", "other"))
+        )
+
+        require(result.ok) { result.diagnostics.joinToString("\n") }
+        require("uniform sampler2D state;" in result.glsl) { result.glsl }
+        require("uniform sampler2D other;" in result.glsl) { result.glsl }
+        require("textureSize(state, 0)" in result.glsl) { result.glsl }
+        require("textureSize(other, 0)" in result.glsl) { result.glsl }
+        require("sizes_gradientChannel(state" in result.glsl) { result.glsl }
+        require("sizes_gradient(state" !in result.glsl) { result.glsl }
+        require(result.analysis.requiredSamplers == setOf("state", "other")) { result.analysis.requiredSamplers.toString() }
     }
 
     private fun compilesLocalNamedMarks() {

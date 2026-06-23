@@ -21,6 +21,7 @@ var Box.offline by Delegation<Boolean>(defaultValue = { true }) // boxes are off
 var Box.preamble by Delegation<String>(defaultValue = { "" })
 var Box.introduction by Delegation<String>(defaultValue = { "" })
 var Box.attic by Delegation<String>(defaultValue = { "" })
+var Box.notes by Delegation<String>(defaultValue = { "" })
 var Box.autorun by Delegation<Boolean>(defaultValue = { false })
 var Box.layers by Delegation<String>(defaultValue = { "default" })
 var Box.layerFrames by Delegation<MutableMap<String, Rect>>(defaultValue = { mutableMapOf() })
@@ -203,6 +204,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "filename",
             "preamble",
             "attic",
+            "notes",
             "fragment",
             "stackSL",
             "vertex",
@@ -261,6 +263,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "preamble",
             "introduction",
             "attic",
+            "notes",
             "fragment",
             "stackSL",
             "vertex",
@@ -337,6 +340,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "code" to "kt",
             "customization" to "js",
             "remote_js" to "js",
+            "notes" to "md",
             "metadata" to "yaml"
         )
         val context = ThreadLocal<Box>()

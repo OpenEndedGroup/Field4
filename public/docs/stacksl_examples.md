@@ -212,6 +212,12 @@ uv 0.002 * gather
 luma
 ```
 
+Sampler dimensions are available from the configured sampler environment. `texelSize` pushes `vec4(1/width, 1/height, 0, 1)` for the first sampler, and `textureSize` pushes `vec4(width, height, 0, 1)`. Numbered variants such as `texelSize1` mirror `sample1`.
+
+```diffstatic {data-lang=stacksl}
+uv texelSize gradient.r
+```
+
 ## Per-pixel store channels
 
 `0->`, `1->`, `2->`, and `3->` read the x/y/z/w channel of the per-point `vec4` store and push it as `vec4(channel)`. In the ping-pong harness, that store aliases the previous output at the current pixel, so `0->` is a compact red-memory read.
@@ -397,6 +403,14 @@ vec2
 0.5 + 0.5 *
 ```
 
+`gradient` uses luminance. Use channel variants when the scalar field is stored in a specific channel:
+
+```diffstatic {data-lang=stacksl}
+uv texelSize gradient.r
+```
+
+This is equivalent to a red-channel cross sample followed by `vec4(+x - -x, +y - -y, magnitude, 1)`.
+
 ## Color grading
 
 The one-value forms are intentionally boring and safe:
@@ -552,7 +566,8 @@ saturation contrast grade
 ema ema-diff diff-ema dema
 sample sample0 sample1 sample2 sample3
 sample-abs prev state gather gather0 gather1 gather2 gather3
-laplace laplacian blur blur5 blur9 sobel gradient divergence curl
+texelSize textureSize
+laplace laplacian blur blur5 blur9 sobel gradient gradient.r gradient.g gradient.b gradient.a divergence curl
 ```
 
 Constants:

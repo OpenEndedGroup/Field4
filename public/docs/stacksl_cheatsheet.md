@@ -337,12 +337,15 @@ palette
 | `->?name` | `value --` | write the top value to an existing host-side GLSL l-value, for example `->?pc.foo` or `->?pc.inData.p[idx].posvel.Z`. |
 | `gather`, `gather0`, `gather1`, `gather2`, `gather3` | `offset -- vec4` | raw `textureGather` red channel around `uv + offset.xy`. |
 | `gather.w`, `gather0.w`, `gather1.w`, `gather2.w`, `gather3.w` | `offset -- vec4` | wrapped `textureGather` around `fract(uv + offset.xy)`. |
+| `texelSize`, `texel-size` | `-- vec4` | inverse size of the first configured sampler as `vec4(1/width, 1/height, 0, 1)`; numbered forms `texelSize1` etc. select later samplers. |
+| `textureSize`, `texture-size` | `-- vec4` | size of the first configured sampler as `vec4(width, height, 0, 1)`; numbered forms `textureSize1` etc. select later samplers. |
 | `blur`, `blur5` | `radius -- color` / `center radius -- color` | five-tap weighted blur of the first configured sampler. |
 | `blur9` | `radius -- color` / `center radius -- color` | nine-tap weighted blur. |
 | `crossSample`, `cross-sample` | `center radius -- color` | average four full-color samples at `center.xy +/- radius.x/y` cross offsets. |
 | `curl` | `radius -- s` / `center radius -- s` | central-difference 2D curl of texture xy channels. |
 | `divergence` | `radius -- s` / `center radius -- s` | central-difference divergence of texture xy channels. |
 | `gradient` | `radius -- vec4` / `center radius -- vec4` | luminance gradient as `vec4(gx, gy, magnitude, 1)`. |
+| `gradient.r`/`.g`/`.b`/`.a` | `radius -- vec4` / `center radius -- vec4` | selected-channel central-difference gradient as `vec4(gx, gy, magnitude, 1)`. |
 | `laplace`, `laplacian` | `radius -- color` / `center radius -- color` | four-neighbor Laplacian. |
 | `rCrossSample`, `r-cross-sample` | `center radius -- color` | average four full-color samples on a deterministically rotated cross around `center.xy`. |
 | `sobel` | `radius -- s` / `center radius -- s` | Sobel luminance edge magnitude. |
@@ -404,6 +407,12 @@ dup 0.23 + dup 0.37 + dup 0.61 + vec4
 prev 0.006_0.09 ema
 dup average 0.015pulse0.23d0.09 + +
 mirror saturate
+```
+
+Channel gradient with sampler texel size:
+
+```diffstatic {data-lang=stacksl}
+uv texelSize gradient.r
 ```
 
 </div>

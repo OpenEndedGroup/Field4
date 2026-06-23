@@ -248,6 +248,11 @@ private fun setStackAutoShaderSource(module: Any, name: String, source: String, 
     val box = stackAutoShaderBoxFor(module)
         ?: throw IllegalStateException("Cannot set stack.auto.$name without a module owner or active Box context.")
 
+    val currentSource = box.stackAutoShaderSources[name] ?: ""
+    if (currentSource == source) {
+        return
+    }
+
     val compiled = try {
         compileStackAutoShaderFunction(StackAutoShaderTarget(name), source)
     } catch (t: Throwable) {

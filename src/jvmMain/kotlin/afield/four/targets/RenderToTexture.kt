@@ -1240,34 +1240,16 @@ open class RenderToTexture(
             command.inRenderPassInstance = true
             KHRDynamicRendering.vkCmdBeginRenderingKHR(command.vkCommandBuffer, renderInfo)
 
-            // Set viewport/scissor array (default to full size)
-            val vpRects = if (parameters.viewports.isNotEmpty()) parameters.viewports
+            val targetViewports = if (parameters.viewports.isNotEmpty()) parameters.viewports
             else listOf(Rect(0.0, 0.0, width.toDouble(), height.toDouble()))
 
-            val viewports = VkViewport.calloc(vpRects.size, stack)
-            vpRects.forEachIndexed { i, r ->
-                viewports[i]
-                    .x(r.x.toFloat())
-                    .y((r.y + r.h).toFloat()) // flip Y
-                    .width(r.w.toFloat())
-                    .height((-r.h).toFloat())
-                    .minDepth(0f).maxDepth(1f)
-            }
-            VK10.vkCmdSetViewport(command.vkCommandBuffer, 0, viewports)
-
-            val scissors = VkRect2D.calloc(vpRects.size, stack)
-            vpRects.forEachIndexed { i, r ->
-                scissors[i]
-                    .offset(VkOffset2D.calloc(stack).x(r.x.toInt()).y(r.y.toInt()))
-                    .extent(VkExtent2D.calloc(stack).width(r.w.toInt()).height(r.h.toInt()))
-            }
-            VK10.vkCmdSetScissor(command.vkCommandBuffer, 0, scissors)
-
             modules.values.forEach {
+                setViewportAndScissorArray(command.vkCommandBuffer, targetViewports, stack)
                 it.render(command, Rectanglef(0f, 0f, width.toFloat(), height.toFloat()))
             }
 
             // Allow subclasses to emit additional drawing inside the dynamic rendering region.
+            setViewportAndScissorArray(command.vkCommandBuffer, targetViewports, stack)
             renderAdditional(command, index, stack)
 
             KHRDynamicRendering.vkCmdEndRenderingKHR(command.vkCommandBuffer)
@@ -1390,6 +1372,27 @@ open class RenderToTexture(
         require(module.parameters.viewportCount >= expectedViewportCount) {
             "RenderToTexture viewport count mismatch for module '${module.parameters.name}': module=${module.parameters.viewportCount} target=$expectedViewportCount. Call target.apply() inside module parameters."
         }
+    }
+
+    private fun setViewportAndScissorArray(cmd: VkCommandBuffer, rects: List<Rect>, stack: MemoryStack) {
+        val viewports = VkViewport.calloc(rects.size, stack)
+        rects.forEachIndexed { i, r ->
+            viewports[i]
+                .x(r.x.toFloat())
+                .y((r.y + r.h).toFloat()) // flip Y
+                .width(r.w.toFloat())
+                .height((-r.h).toFloat())
+                .minDepth(0f).maxDepth(1f)
+        }
+        VK10.vkCmdSetViewport(cmd, 0, viewports)
+
+        val scissors = VkRect2D.calloc(rects.size, stack)
+        rects.forEachIndexed { i, r ->
+            scissors[i]
+                .offset(VkOffset2D.calloc(stack).x(r.x.toInt()).y(r.y.toInt()))
+                .extent(VkExtent2D.calloc(stack).width(r.w.toInt()).height(r.h.toInt()))
+        }
+        VK10.vkCmdSetScissor(cmd, 0, scissors)
     }
 
     override fun toString(): String {

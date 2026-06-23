@@ -12,6 +12,17 @@ private var provisionalDiffText: String? = null
 private var provisionalDiffRetry: Int? = null
 private var provisionalListenerInstalled = false
 
+private fun syncNotesMarkdownPreview() {
+    val w = js("window")
+    val sync = w.syncNotesMarkdownPreview
+    if (sync != null && sync != undefined) {
+        try {
+            sync()
+        } catch (_: dynamic) {
+        }
+    }
+}
+
 private fun ensureSelectionState() {
     val w = js("window")
     if (w.currentSelectedCode != null) {
@@ -180,6 +191,10 @@ private fun monitorSelection() {
                 payloadState.property = editorStateKey
                 payloadState.value = vs
                 send("set-string", payloadState)
+
+                if (currentSelectedProperty == "notes") {
+                    syncNotesMarkdownPreview()
+                }
             }
         }
     }
@@ -262,6 +277,8 @@ private fun monitorSelection() {
             globalEditor._domElement.querySelectorAll(".hoverlay")[0].innerHTML = ""
         }
 
+        syncNotesMarkdownPreview()
+
         val monaco = w.globalMonaco
         if (monaco != null && monaco != undefined) {
             monacoInstallPropertySwitchActions(monaco, globalEditor)
@@ -326,6 +343,9 @@ private fun forceEditedPropertyToRemoteValue(w: dynamic, selected: dynamic, edit
     currentValueAtOrigination = normalized
     recentChangeCache.add(normalized)
     if (recentChangeCache.size > 5) recentChangeCache.removeAt(0)
+    if (property == "notes") {
+        syncNotesMarkdownPreview()
+    }
 }
 
 fun notifyPotentialEditedPropertyHasBeenRemoteUpdated(uid: String, property: String, value: String) {
@@ -360,6 +380,9 @@ fun notifyPotentialEditedPropertyHasBeenRemoteUpdated(uid: String, property: Str
     editor.setSelection(selection)
     currentValueAtOrigination = result
     selected[0][property] = result
+    if (property == "notes") {
+        syncNotesMarkdownPreview()
+    }
 }
 
 /**

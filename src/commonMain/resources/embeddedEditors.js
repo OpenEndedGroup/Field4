@@ -62,7 +62,10 @@ const PROPERTY_LANGUAGES = {
 	callable_s:   "slang",
 	preamble:     "kotlin",
 	introduction: "kotlin",
+	attic:        "kotlin",
+	notes:        "markdown",
 	metadata:     "yaml",
+	contents:     "plaintext",
 	customization:"javascript",
 	remote_js:    "javascript",
 };

@@ -117,6 +117,7 @@ fun Route.installControllerRoutes(preferences: () -> FieldPreferences) {
 private fun handleControllerInput(input: ControllerInput, preferences: FieldPreferences, targetDocument: String) {
     when (input.type.trim().lowercase(Locale.US)) {
         "touch" -> handleTouch(input, preferences, targetDocument)
+        "release" -> sendControllerRelease(input, preferences, targetDocument)
         "command" -> sendControllerCommand(input, preferences, targetDocument)
         "slider" -> updateControllerSlider(input, targetDocument)
         "vec2" -> updateControllerVec2(input, targetDocument)
@@ -124,6 +125,18 @@ private fun handleControllerInput(input: ControllerInput, preferences: FieldPref
         "string" -> updateControllerString(input, targetDocument)
         "color" -> updateControllerColor(input, targetDocument)
     }
+}
+
+private fun sendControllerRelease(input: ControllerInput, preferences: FieldPreferences, targetDocument: String) {
+    sendControllerMessage(
+        OscEditorCommand(
+            command = "update-shader",
+            address = "/controllers/touch/release",
+            debounceMs = 0,
+            maxExecutionMs = controllerMaxExecution(input, preferences)
+        ),
+        targetDocument
+    )
 }
 
 private fun handleTouch(input: ControllerInput, preferences: FieldPreferences, targetDocument: String) {

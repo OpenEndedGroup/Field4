@@ -1293,6 +1293,17 @@ fun registerBuiltinCommands() {
                 window.switchToMonaco();
             }
         },{
+            id:'toggle-notes-markdown-preview',
+            label:"Toggle Notes Markdown Preview",
+            keybindings:(typeof monaco !== 'undefined') ? [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KEY_M] : [],
+            detail:"Switch the notes property between rendered Markdown and editable Markdown source",
+            canvasKeybinding: (event) => (event.key=='M' || event.key=='m') && event.shiftKey && !event.altKey && (event.ctrlKey || event.metaKey),
+            run: () => {
+                if (typeof window.toggleNotesMarkdownPreview === 'function') {
+                    window.toggleNotesMarkdownPreview(window.globalEditor || null);
+                }
+            }
+        },{
             id:'add-editor-to-output',
             label:"Add Editor to Output Area",
             detail:"Open an embedded text editor for a property (e.g. fragment, vertex) in the selected box's output area",

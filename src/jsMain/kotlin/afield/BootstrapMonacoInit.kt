@@ -31,6 +31,7 @@ internal val monacoPropertyNames = arrayOf(
     "preamble",
     "introduction",
     "attic",
+    "notes",
     "metadata",
     "contents"
 )
@@ -63,6 +64,7 @@ internal val monacoPropertyDescriptions = arrayOf(
     "Kotlin (preamble)",
     "Kotlin (introduction)",
     "Kotlin (attic)",
+    "Notes (Markdown)",
     "Metadata about this box",
     "File contents"
 )
@@ -95,6 +97,7 @@ internal val monacoPropertyLanguages = arrayOf(
     "kotlin",
     "kotlin",
     "kotlin",
+    "markdown",
     "yaml",
     "plaintext"
 )

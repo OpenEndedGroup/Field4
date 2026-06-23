@@ -72,6 +72,17 @@ function filenameFromUrl(rawUrl) {
   return "welcome";
 }
 
+function documentKeyFromUrl(rawUrl) {
+  try {
+    const parsed = new URL(rawUrl);
+    const file = parsed.searchParams.get("file");
+    if (!file || !file.trim()) return null;
+    return `${parsed.origin}\u0000${file.trim()}`;
+  } catch (_) {
+    return null;
+  }
+}
+
 function isWelcomeUrl(rawUrl) {
   try {
     return new URL(rawUrl).pathname.replace(/\/+$/, "").endsWith("/welcome");
@@ -514,6 +525,16 @@ function createMainWindow() {
 
   const activeTab = () => tabs.find((tab) => tab.id === activeTabId) || null;
 
+  const existingTabForDocument = (targetUrl, exceptTabId = null) => {
+    const key = documentKeyFromUrl(targetUrl);
+    if (!key) return null;
+    return (
+      tabs.find(
+        (tab) => tab.id !== exceptTabId && documentKeyFromUrl(tab.url) === key,
+      ) || null
+    );
+  };
+
   const sendTabState = () => {
     if (tabStripView.webContents.isDestroyed()) return;
     tabStripView.webContents.send("tabs-state", {
@@ -666,6 +687,12 @@ function createMainWindow() {
     { activate = true, baseUrl = initialUrl } = {},
   ) => {
     const normalizedUrl = normalizeUrl(targetUrl, baseUrl);
+    const existing = existingTabForDocument(normalizedUrl);
+    if (existing) {
+      activateTab(existing.id);
+      return existing;
+    }
+
     const tab = {
       id: `tab-${++nextTabId}`,
       url: normalizedUrl,
@@ -700,6 +727,12 @@ function createMainWindow() {
     tab.view.webContents.on("will-navigate", (event, url) => {
       const currentUrl = tab.view.webContents.getURL() || tab.url;
       const target = normalizeUrl(url, currentUrl || initialUrl);
+      const existing = existingTabForDocument(target, tab.id);
+      if (existing) {
+        event.preventDefault();
+        activateTab(existing.id);
+        return;
+      }
       if (isWelcomeUrl(currentUrl) && !isWelcomeUrl(target)) {
         event.preventDefault();
         openTab(target, { activate: true, baseUrl: currentUrl || initialUrl });

@@ -1164,13 +1164,20 @@ private class FunctionCompiler(
             "sample-abs.w", "sample0-abs.w", "sample1-abs.w", "sample2-abs.w", "sample3-abs.w",
             "prev", "state", "gather", "gather0", "gather1", "gather2", "gather3",
             "gather.w", "gather0.w", "gather1.w", "gather2.w", "gather3.w" -> sampleWord(word, token)
+            "texelsize", "texel-size", "texture-size", "texturesize",
+            "texelsize0", "texel-size0", "texture-size0", "texturesize0",
+            "texelsize1", "texel-size1", "texture-size1", "texturesize1",
+            "texelsize2", "texel-size2", "texture-size2", "texturesize2",
+            "texelsize3", "texel-size3", "texture-size3", "texturesize3" -> samplerSizeWord(word, token)
             "crosssample", "cross-sample",
             "crosssample.r", "crosssample.g", "crosssample.b", "crosssample.a",
             "cross-sample.r", "cross-sample.g", "cross-sample.b", "cross-sample.a",
             "rcrosssample", "r-cross-sample",
             "rcrosssample.r", "rcrosssample.g", "rcrosssample.b", "rcrosssample.a",
             "r-cross-sample.r", "r-cross-sample.g", "r-cross-sample.b", "r-cross-sample.a" -> neighborhoodSampleWord(word, token)
-            "laplace", "laplacian", "blur", "blur5", "blur9", "sobel", "gradient", "divergence", "curl" -> neighborhoodFieldWord(word, token, raw, requestedArity)
+            "laplace", "laplacian", "blur", "blur5", "blur9", "sobel", "gradient",
+            "gradient.r", "gradient.g", "gradient.b", "gradient.a",
+            "divergence", "curl" -> neighborhoodFieldWord(word, token, raw, requestedArity)
             "phacelle", "directional-noise", "directionalnoise" -> phacelleNoiseWord(word, token, raw, requestedArity)
 
             else -> {
@@ -1594,6 +1601,26 @@ private class FunctionCompiler(
         push(expr(call, deps, token, helper))
     }
 
+    private fun samplerSizeWord(word: String, token: Token) {
+        val normalized = word.replace("-", "")
+        val textureSizeWord = normalized.startsWith("texturesize")
+        val suffix = normalized.removePrefix(if (textureSizeWord) "texturesize" else "texelsize")
+        val index = if (suffix.isBlank()) 0 else suffix.toIntOrNull() ?: 0
+        if (index !in options.sampleTextures.indices) {
+            errorOrWarning(token, "Sampler size word '$word' asks for texture $index, but only ${options.sampleTextures.size} texture(s) were configured.")
+        }
+        val samplerIndex = index.coerceIn(0, options.sampleTextures.lastIndex)
+        val sampler = options.sampleTextures[samplerIndex]
+        requiredSamplerIndices += samplerIndex
+        val size = "vec2(textureSize(${sampler.emittedName}, 0))"
+        val expression = if (textureSizeWord) {
+            "vec4($size, 0.0, 1.0)"
+        } else {
+            "vec4(1.0 / max($size, vec2(1.0)), 0.0, 1.0)"
+        }
+        push(leaf(expression, token, if (textureSizeWord) "sampler texture size" else "sampler texel size"))
+    }
+
     private fun neighborhoodSampleWord(word: String, token: Token) {
         val sampler = options.sampleTextures.firstOrNull()
         if (sampler == null) {
@@ -1641,17 +1668,29 @@ private class FunctionCompiler(
 
         val args = consumeNeighborhoodArgs(token, raw, requestedArity) ?: return
         val (center, radius) = args
-        val helper = when (word) {
+        val channel = when {
+            word.endsWith(".r") -> 0
+            word.endsWith(".g") -> 1
+            word.endsWith(".b") -> 2
+            word.endsWith(".a") -> 3
+            else -> null
+        }
+        val baseWord = channel?.let { word.dropLast(2) } ?: word
+        val helper = when (baseWord) {
             "laplace", "laplacian" -> "laplace"
             "blur", "blur5" -> "blur5"
             "blur9" -> "blur9"
             "sobel" -> "sobel"
-            "gradient" -> "gradient"
+            "gradient" -> if (channel == null) "gradient" else "gradientChannel"
             "divergence" -> "divergence"
             "curl" -> "curl"
-            else -> word
+            else -> baseWord
         }
-        val call = "${options.prefix}_${helper}(${sampler.emittedName}, ${ref(center)}, ${ref(radius)})"
+        val call = if (helper == "gradientChannel") {
+            "${options.prefix}_gradientChannel(${sampler.emittedName}, ${ref(center)}, ${ref(radius)}, $channel)"
+        } else {
+            "${options.prefix}_${helper}(${sampler.emittedName}, ${ref(center)}, ${ref(radius)})"
+        }
         push(expr(call, args, token, helper))
     }
 
@@ -2326,6 +2365,10 @@ private val stackSLArityVariantArities = mapOf(
     "blur9" to (1..2).toSet(),
     "sobel" to (1..2).toSet(),
     "gradient" to (1..2).toSet(),
+    "gradient.r" to (1..2).toSet(),
+    "gradient.g" to (1..2).toSet(),
+    "gradient.b" to (1..2).toSet(),
+    "gradient.a" to (1..2).toSet(),
     "divergence" to (1..2).toSet(),
     "curl" to (1..2).toSet(),
     "phacelle" to (1..4).toSet(),
@@ -2567,13 +2610,20 @@ private val builtinWords = setOf(
     "sample-abs.w", "sample0-abs.w", "sample1-abs.w", "sample2-abs.w", "sample3-abs.w",
     "prev", "state", "gather", "gather0", "gather1", "gather2", "gather3",
     "gather.w", "gather0.w", "gather1.w", "gather2.w", "gather3.w",
+    "texelsize", "texel-size", "texture-size", "texturesize",
+    "texelsize0", "texel-size0", "texture-size0", "texturesize0",
+    "texelsize1", "texel-size1", "texture-size1", "texturesize1",
+    "texelsize2", "texel-size2", "texture-size2", "texturesize2",
+    "texelsize3", "texel-size3", "texture-size3", "texturesize3",
     "crosssample", "cross-sample",
     "crosssample.r", "crosssample.g", "crosssample.b", "crosssample.a",
     "cross-sample.r", "cross-sample.g", "cross-sample.b", "cross-sample.a",
     "rcrosssample", "r-cross-sample",
     "rcrosssample.r", "rcrosssample.g", "rcrosssample.b", "rcrosssample.a",
     "r-cross-sample.r", "r-cross-sample.g", "r-cross-sample.b", "r-cross-sample.a",
-    "laplace", "laplacian", "blur", "blur5", "blur9", "sobel", "gradient", "divergence", "curl",
+    "laplace", "laplacian", "blur", "blur5", "blur9", "sobel", "gradient",
+    "gradient.r", "gradient.g", "gradient.b", "gradient.a",
+    "divergence", "curl",
     "phacelle", "directional-noise", "directionalnoise",
     "0->", "1->", "2->", "3->", "->0", "->1", "->2", "->3"
 ) + stackSLArityVariantWords + namedColors.keys + swizzleWords + swizzleWords.map { ".$it" }
@@ -3089,6 +3139,14 @@ private fun helperSource(prefix: String, helpers: Set<String>): String {
             appendLine("    vec2 ry = vec2(0.0, radius.y);")
             appendLine("    float gx = ${prefix}_luma(texture(sourceTexture, center.xy + rx)) - ${prefix}_luma(texture(sourceTexture, center.xy - rx));")
             appendLine("    float gy = ${prefix}_luma(texture(sourceTexture, center.xy + ry)) - ${prefix}_luma(texture(sourceTexture, center.xy - ry));")
+            appendLine("    return vec4(gx, gy, length(vec2(gx, gy)), 1.0);")
+            appendLine("}")
+            appendLine()
+            appendLine("vec4 ${prefix}_gradientChannel(sampler2D sourceTexture, vec4 center, vec4 radius, int channel) {")
+            appendLine("    vec2 rx = vec2(radius.x, 0.0);")
+            appendLine("    vec2 ry = vec2(0.0, radius.y);")
+            appendLine("    float gx = texture(sourceTexture, center.xy + rx)[channel] - texture(sourceTexture, center.xy - rx)[channel];")
+            appendLine("    float gy = texture(sourceTexture, center.xy + ry)[channel] - texture(sourceTexture, center.xy - ry)[channel];")
             appendLine("    return vec4(gx, gy, length(vec2(gx, gy)), 1.0);")
             appendLine("}")
             appendLine()

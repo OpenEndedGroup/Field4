@@ -111,24 +111,28 @@ private fun renderTextBlock(text: String): String {
         paragraph.clear()
     }
 
-    for (raw in lines) {
+    fun closeList() {
+        if (inList) {
+            html.append("</ul>")
+            inList = false
+        }
+    }
+
+    var lineIndex = 0
+    while (lineIndex < lines.size) {
+        val raw = lines[lineIndex]
         val line = raw.trim()
         if (line.isEmpty()) {
             flushParagraph()
-            if (inList) {
-                html.append("</ul>")
-                inList = false
-            }
+            closeList()
+            lineIndex++
             continue
         }
 
         val headingMatch = Regex("^(#{1,3})\\s+(.*)$").find(line)
         if (headingMatch != null) {
             flushParagraph()
-            if (inList) {
-                html.append("</ul>")
-                inList = false
-            }
+            closeList()
             val level = headingMatch.groupValues[1].length
             html.append("<h")
             html.append(level)
@@ -137,6 +141,22 @@ private fun renderTextBlock(text: String): String {
             html.append("</h")
             html.append(level)
             html.append(">")
+            lineIndex++
+            continue
+        }
+
+        if (lineIndex + 1 < lines.size && looksLikeMarkdownTableHeader(line, lines[lineIndex + 1].trim())) {
+            flushParagraph()
+            closeList()
+            val tableLines = mutableListOf(line, lines[lineIndex + 1].trim())
+            lineIndex += 2
+            while (lineIndex < lines.size) {
+                val tableLine = lines[lineIndex].trim()
+                if (tableLine.isEmpty() || !looksLikeMarkdownTableRow(tableLine)) break
+                tableLines.add(tableLine)
+                lineIndex++
+            }
+            html.append(renderMarkdownTable(tableLines))
             continue
         }
 
@@ -149,14 +169,85 @@ private fun renderTextBlock(text: String): String {
             html.append("<li>")
             html.append(inlineFormat(line.replaceFirst(Regex("^[-*]\\s+"), "")))
             html.append("</li>")
+            lineIndex++
             continue
         }
 
         paragraph.add(line)
+        lineIndex++
     }
 
     flushParagraph()
     if (inList) html.append("</ul>")
+    return html.toString()
+}
+
+private fun looksLikeMarkdownTableRow(line: String): Boolean {
+    return line.contains("|") && splitMarkdownTableRow(line).size >= 2
+}
+
+private fun looksLikeMarkdownTableHeader(header: String, divider: String): Boolean {
+    val headerCells = splitMarkdownTableRow(header)
+    val dividerCells = splitMarkdownTableRow(divider)
+    return headerCells.size >= 2 &&
+        dividerCells.size >= headerCells.size &&
+        dividerCells.all { isMarkdownTableDividerCell(it) }
+}
+
+private fun splitMarkdownTableRow(line: String): List<String> {
+    var row = line.trim()
+    if (row.startsWith("|")) row = row.substring(1)
+    if (row.endsWith("|")) row = row.substring(0, row.length - 1)
+    return row.split("|").map { it.trim() }
+}
+
+private fun isMarkdownTableDividerCell(cell: String): Boolean {
+    return Regex("^:?-{3,}:?$").matches(cell.trim())
+}
+
+private fun renderMarkdownTable(lines: List<String>): String {
+    val headerCells = splitMarkdownTableRow(lines[0])
+    val alignments = splitMarkdownTableRow(lines[1]).map {
+        val cell = it.trim()
+        when {
+            cell.startsWith(":") && cell.endsWith(":") -> "center"
+            cell.endsWith(":") -> "right"
+            else -> ""
+        }
+    }
+    val columnCount = headerCells.size
+    val html = StringBuilder()
+
+    fun appendCell(tag: String, content: String, column: Int) {
+        val align = alignments.getOrNull(column).orEmpty()
+        html.append("<")
+        html.append(tag)
+        if (align.isNotEmpty()) {
+            html.append(" style=\"text-align:")
+            html.append(align)
+            html.append("\"")
+        }
+        html.append(">")
+        html.append(inlineFormat(content))
+        html.append("</")
+        html.append(tag)
+        html.append(">")
+    }
+
+    html.append("<table><thead><tr>")
+    headerCells.forEachIndexed { column, cell -> appendCell("th", cell, column) }
+    html.append("</tr></thead><tbody>")
+
+    lines.drop(2).forEach { row ->
+        val cells = splitMarkdownTableRow(row)
+        html.append("<tr>")
+        for (column in 0 until columnCount) {
+            appendCell("td", cells.getOrNull(column).orEmpty(), column)
+        }
+        html.append("</tr>")
+    }
+
+    html.append("</tbody></table>")
     return html.toString()
 }
 
