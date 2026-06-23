@@ -927,20 +927,23 @@ class KotlinExecution : BoxExecution {
                 configureOutputProxies(box, reply, request.originSession)
 
                 for (compiledSource in expanded.sources) {
-                    val snippet = box.ki.compileSnippet(
-                        compiledSource,
-                        implicits = listOf(box),
-                        onCompileError = { diagnostics ->
-                            reportCompileDiagnostics(
-                                box = box,
-                                reply = reply,
-                                originSession = request.originSession,
-                                code = request.normalizedCode,
-                                diagnostics = diagnostics,
-                                fallbackLine = request.exec.line + request.normalizedCode.lines().size
-                            )
-                        }
-                    )
+                    val snippet = box.ki.withSourceProperty(request.exec.property) {
+                        box.ki.compileSnippet(
+                            compiledSource,
+                            implicits = listOf(box),
+                            onCompileError = { diagnostics ->
+                                reportCompileDiagnostics(
+                                    box = box,
+                                    reply = reply,
+                                    originSession = request.originSession,
+                                    code = request.normalizedCode,
+                                    diagnostics = diagnostics,
+                                    fallbackLine = request.exec.line + request.normalizedCode.lines().size,
+                                    property = request.exec.property
+                                )
+                            }
+                        )
+                    }
                     if (snippet == null) {
                         compileFailed = true
                         snippets.clear()
@@ -1034,7 +1037,7 @@ class KotlinExecution : BoxExecution {
                         },
                         onEvalException = { throwable ->
                             hasError = true
-                            reportEvalException(box, reply, request.originSession, throwable, request.exec.line)
+                            reportEvalException(box, reply, request.originSession, throwable, request.exec.line, request.exec.property)
                         }
                     )
                 }
@@ -1077,7 +1080,8 @@ class KotlinExecution : BoxExecution {
             originSession: WebSocketSession?,
             code: String,
             diagnostics: List<ScriptDiagnostic>,
-            fallbackLine: Int
+            fallbackLine: Int,
+            property: String = "code"
         ) {
             lprintln("error,execution", "compiler error")
             var first = true
@@ -1101,6 +1105,7 @@ class KotlinExecution : BoxExecution {
                             endLine = location.end?.line ?: -1,
                             endColumn = location.end?.col ?: -1,
                             kind = "error",
+                            property = property,
                             html = escapeForHtml(message),
                             frame = Runloop.runLoop.frame.toInt()
                         )
@@ -1109,6 +1114,7 @@ class KotlinExecution : BoxExecution {
                             uid = box.id,
                             line = fallbackLine,
                             kind = "error",
+                            property = property,
                             html = escapeForHtml(message),
                             frame = Runloop.runLoop.frame.toInt()
                         )
@@ -1123,33 +1129,94 @@ class KotlinExecution : BoxExecution {
             reply: ((Message) -> Unit)?,
             originSession: WebSocketSession?,
             throwable: Throwable,
-            lineOffset: Int
+            lineOffset: Int,
+            fallbackProperty: String = "code"
         ) {
             lprintln("error,execution", "exception thrown in batch launch inside box $box")
             lprintln("error,execution", throwable.stackTraceToString())
 
-            var fallbackFirstLine = -1
-            var firstLineInThisBox = -1
-            throwable.stackTrace.forEach { e ->
-                if (fallbackFirstLine == -1) fallbackFirstLine = e.lineNumber
-                if (e.fileName?.contains(box.id) == true && firstLineInThisBox == -1) {
-                    firstLineInThisBox = e.lineNumber
-                }
-            }
-
-            val firstLine = if (firstLineInThisBox != -1) firstLineInThisBox else fallbackFirstLine
+            val location = editorLocationForEvalException(box, throwable)
+            val stack = stackLocationsForEvalException(box, throwable, location, fallbackProperty)
             dispatchExecutionOutput(
                 box,
                 reply,
                 Output(
                     uid = box.id,
-                    line = if (firstLine >= 0) firstLine else lineOffset,
+                    line = location?.line ?: lineOffset,
                     kind = "error",
+                    property = location?.property ?: fallbackProperty,
                     html = escapeForHtml(throwable.message ?: throwable.javaClass.name),
-                    frame = Runloop.runLoop.frame.toInt()
+                    frame = Runloop.runLoop.frame.toInt(),
+                    stack = stack
                 ),
                 originSession = originSession
             )
+        }
+
+        private data class EditorStackLocation(val uid: String?, val line: Int, val property: String?)
+
+        private fun editorLocationForEvalException(box: Box, throwable: Throwable): EditorStackLocation? {
+            val fallback = throwable.stackTrace.firstOrNull { it.lineNumber > 0 }?.let {
+                EditorStackLocation(resolveStackFrameBoxUid(box, it), it.lineNumber, fieldSourcePropertyFromFileName(it.fileName))
+            }
+            val boxFrames = throwable.stackTrace.filter {
+                it.lineNumber > 0 && it.fileName?.contains(box.id) == true
+            }
+            return boxFrames.firstOrNull { !it.isGeneratedPropertyAccessorFrame() }?.let {
+                EditorStackLocation(box.id, it.lineNumber, fieldSourcePropertyFromFileName(it.fileName))
+            }
+                ?: boxFrames.firstOrNull()?.let {
+                    EditorStackLocation(box.id, it.lineNumber, fieldSourcePropertyFromFileName(it.fileName))
+                }
+                ?: fallback
+        }
+
+        private fun stackLocationsForEvalException(
+            box: Box,
+            throwable: Throwable,
+            primary: EditorStackLocation?,
+            fallbackProperty: String
+        ): List<OutputStackLocation> {
+            val seen = linkedSetOf<Triple<String, String, Int>>()
+            val out = mutableListOf<OutputStackLocation>()
+            throwable.stackTrace.forEach { frame ->
+                if (frame.lineNumber <= 0) return@forEach
+                val uid = resolveStackFrameBoxUid(box, frame) ?: return@forEach
+                val property = fieldSourcePropertyFromFileName(frame.fileName) ?: fallbackProperty.ifBlank { "code" }
+                val key = Triple(uid, property, frame.lineNumber)
+                if (!seen.add(key)) return@forEach
+                val isPrimary = uid == (primary?.uid ?: box.id) &&
+                    property == (primary?.property ?: fallbackProperty) &&
+                    frame.lineNumber == primary?.line
+                out += OutputStackLocation(
+                    uid = uid,
+                    property = property,
+                    line = frame.lineNumber,
+                    method = frame.methodName ?: "",
+                    primary = isPrimary
+                )
+            }
+            return out
+        }
+
+        private fun resolveStackFrameBoxUid(box: Box, frame: StackTraceElement): String? {
+            val fileName = frame.fileName ?: return null
+            val candidates = buildList {
+                if (box.isInsideInitialized()) {
+                    addAll(box.inside.boxes.values)
+                    add(box.inside.root)
+                } else {
+                    add(box)
+                }
+            }
+            return candidates.firstOrNull { fileName.contains(it.id) }?.id
+        }
+
+        private fun StackTraceElement.isGeneratedPropertyAccessorFrame(): Boolean {
+            val method = methodName ?: return false
+            if (method.startsWith("get") && method.getOrNull(3)?.isUpperCase() == true) return true
+            if (method.startsWith("set") && method.getOrNull(3)?.isUpperCase() == true) return true
+            return method.contains("\$delegate") || method.contains("\$delegatedProperties")
         }
 
         private fun reportReturnValueAndLaunch(
@@ -1326,7 +1393,7 @@ class KotlinExecution : BoxExecution {
         box._currentlyExecutingFragment = true
         send(Message("is-running").payload(IsRunning(exec.uid, true, wm, "__fragment__")))
         inMain {
-            execute(box, code, reply, originSession, 0, runSetupBlocks = true, finishedHandler = {
+            execute(box, code, reply, originSession, 0, property = exec.property, runSetupBlocks = true, finishedHandler = {
                 box._currentlyExecutingFragment = false
                 send(Message("is-running").payload(IsRunning(exec.uid, false, wm, "__fragment__")))
             }) {}
@@ -1344,7 +1411,7 @@ class KotlinExecution : BoxExecution {
         send(Message("is-running").payload(IsRunning(exec.uid, true, wm, "__fragment__")))
         inMain {
             box.resetStdlibRandom()
-            execute(box, code, reply, originSession, code.split("\n").size, finishedHandler = {
+            execute(box, code, reply, originSession, code.split("\n").size, property = exec.property, finishedHandler = {
                 send(Message("is-running").payload(IsRunning(exec.uid, false, wm, "__fragment__")))
             }) {}
         }
@@ -1383,6 +1450,7 @@ class KotlinExecution : BoxExecution {
                 reply,
                 originSession,
                 exec.line,
+                property = exec.property,
                 finishedHandler = {
                     if (box.currentRunningStates[strand]?.watermark == pendingWatermark) {
                         box.currentRunningStates.remove(strand)
@@ -1458,6 +1526,7 @@ class KotlinExecution : BoxExecution {
         reply: ((Message) -> Unit)?,
         originSession: WebSocketSession?,
         ln: Int,
+        property: String = "code",
         runSetupBlocks: Boolean = true,
         finishedHandler: () -> Unit = {},
         handleReturn: (Any?) -> Unit
@@ -1510,7 +1579,8 @@ class KotlinExecution : BoxExecution {
                     send(Message("set-output").payload(Set_output(box.id, "outputarea", channel, renderDisplayContent(content))))
                 }
 
-            val returnValues: List<ResultValue?> = standardExecutionPractice(box.ki, code, { compileError ->
+            val returnValues: List<ResultValue?> = box.ki.withSourceProperty(property) {
+                standardExecutionPractice(box.ki, code, { compileError ->
                 hasError = true
                 lprintln("error,execution", "compiler error")
                 var first = true
@@ -1538,6 +1608,7 @@ class KotlinExecution : BoxExecution {
                                     endLine = it.location!!.end?.line ?: -1,
                                     endColumn = it.location!!.end?.col ?: -1,
                                     kind = "error",
+                                    property = property,
                                     html = escapeForHtml(message),
                                     frame = Runloop.runLoop.frame.toInt()
                                 ),
@@ -1551,6 +1622,7 @@ class KotlinExecution : BoxExecution {
                                     uid = box.id,
                                     line = ln + dur,
                                     kind = "error",
+                                    property = property,
                                     html = escapeForHtml(message),
                                     frame = Runloop.runLoop.frame.toInt()
                                 ),
@@ -1570,18 +1642,9 @@ class KotlinExecution : BoxExecution {
                 lprintln("error,execution", "exception thrown in fragment inside box $box")
                 lprintln("error,execution", evalException.stackTraceToString())
 
-                var fallbackFirstLine = -1
-                var firstLineInThisBox = -1
-                evalException.stackTrace.forEach { e ->
-                    if (fallbackFirstLine == -1) {
-                        fallbackFirstLine = e.lineNumber
-                    }
-                    if(e.fileName?.contains(box.id) == true && firstLineInThisBox == -1) {
-                        firstLineInThisBox = e.lineNumber
-                    }
-                }
-
-                var firstLine = if (firstLineInThisBox!=-1) firstLineInThisBox else fallbackFirstLine
+                val location = editorLocationForEvalException(box, evalException)
+                val firstLine = location?.line ?: ln
+                val stack = stackLocationsForEvalException(box, evalException, location, property)
                 dispatchExecutionOutput(
                     box,
                     reply,
@@ -1589,13 +1652,16 @@ class KotlinExecution : BoxExecution {
                         uid = box.id,
                         line = firstLine,
                         kind = "error",
+                        property = location?.property ?: property,
                         html = escapeForHtml(evalException.message ?: evalException.javaClass.name),
-                        frame = Runloop.runLoop.frame.toInt()
+                        frame = Runloop.runLoop.frame.toInt(),
+                        stack = stack
                     ),
                     originSession = originSession
                 )
 
             }, implicits = listOf(box), runSetupBlocks = runSetupBlocks)
+            }
 
             if (!hasError) {
                 var size = 0

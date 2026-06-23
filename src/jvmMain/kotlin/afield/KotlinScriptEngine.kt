@@ -31,6 +31,7 @@ interface KotlinScriptEngine {
     var compilerConfig: ScriptCompilationConfiguration
     var classLoader: ClassLoader?
     var execNumber: Int
+    var sourceProperty: String
 
     /**
      * Dispatcher for CPU-bound compilation and macro-expansion work.
@@ -83,6 +84,36 @@ interface KotlinScriptEngine {
      * Not all implementations require disposal; default is a no-op.
      */
     fun dispose() {}
+}
+
+private fun sanitizeFieldSourceProperty(property: String): String {
+    val sanitized = property.ifBlank { "code" }.map {
+        if (it.isLetterOrDigit() || it == '_' || it == '-') it else '_'
+    }.joinToString("")
+    return sanitized.ifBlank { "code" }
+}
+
+internal fun fieldSourceName(filePrefix: String, property: String, number: Int): String =
+    "${filePrefix}__${sanitizeFieldSourceProperty(property)}_\$$number"
+
+internal fun fieldSourcePropertyFromFileName(fileName: String?): String? {
+    val name = fileName ?: return null
+    val marker = "__"
+    val at = name.indexOf(marker)
+    if (at < 0) return null
+    val rest = name.substring(at + marker.length)
+    val end = rest.lastIndexOf("_$")
+    return (if (end >= 0) rest.substring(0, end) else rest).ifBlank { null }
+}
+
+suspend fun <T> KotlinScriptEngine.withSourceProperty(property: String, block: suspend () -> T): T {
+    val previous = sourceProperty
+    sourceProperty = property.ifBlank { "code" }
+    try {
+        return block()
+    } finally {
+        sourceProperty = previous
+    }
 }
 
 /**
@@ -156,6 +187,24 @@ private fun Throwable.causeChain(): Sequence<Throwable> = sequence {
 )
 @Retention(AnnotationRetention.RUNTIME)
 annotation class exported
+
+@Target(
+    AnnotationTarget.FUNCTION,
+    AnnotationTarget.PROPERTY,
+    AnnotationTarget.FIELD,
+    AnnotationTarget.PROPERTY_GETTER
+)
+@Retention(AnnotationRetention.RUNTIME)
+annotation class rootExported
+
+@Target(
+    AnnotationTarget.FUNCTION,
+    AnnotationTarget.PROPERTY,
+    AnnotationTarget.FIELD,
+    AnnotationTarget.PROPERTY_GETTER
+)
+@Retention(AnnotationRetention.RUNTIME)
+annotation class metarootExported
 
 
 enum class CompletionStatus(private val value: String) {

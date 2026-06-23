@@ -149,9 +149,11 @@ suspend fun checkPreambleAndExecute(
     val extraLines = extra.values.joinToString(separator = "\n")
     if (extraLines.trim().isNotEmpty()) {
         println(" preamble, extra lines are ${extraLines}, executing")
-        (inside as Box).ki.exec(
-            extraLines, onCompileError, onEvalError, onEvalException, implicits = listOf(inside as Box)
-        )
+        (inside as Box).ki.withSourceProperty("preamble") {
+            inside.ki.exec(
+                extraLines, onCompileError, onEvalError, onEvalException, implicits = listOf(inside)
+            )
+        }
         println(" finished ")
     }
 
@@ -175,9 +177,11 @@ suspend fun checkIntroductionAndExecute(
     // Execute all of introduction if and only if any of it has changed
     if (current.trim().isNotEmpty() && current != was) {
         println(" introduction has changed, executing all of it")
-        inside.ki.exec(
-            current, onCompileError, onEvalError, onEvalException, implicits = listOf(inside)
-        )
+        inside.ki.withSourceProperty("introduction") {
+            inside.ki.exec(
+                current, onCompileError, onEvalError, onEvalException, implicits = listOf(inside)
+            )
+        }
         println(" finished introduction ")
         inside.setPropertyRaw("_introduction", current)
     }
@@ -201,9 +205,11 @@ suspend fun checkAtticAndExecute(
 
     if (!isEmpty && !isSame) {
         lprintln("info,attic", "attic changed for '${inside.name}' — executing all of it (${currentTrimmed.lines().size} lines)")
-        inside.ki.exec(
-            current, onCompileError, onEvalError, onEvalException, implicits = listOf(inside)
-        )
+        inside.ki.withSourceProperty("attic") {
+            inside.ki.exec(
+                current, onCompileError, onEvalError, onEvalException, implicits = listOf(inside)
+            )
+        }
         inside.setPropertyRaw("_attic", current)
         lprintln("info,attic", "attic execution complete for '${inside.name}', _attic cache updated")
     } else if (isEmpty) {

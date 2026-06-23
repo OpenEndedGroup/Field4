@@ -52,9 +52,10 @@ class KotlinInterface(
 ) : KotlinScriptEngine {
 
     override val compilationDispatcher get() = compilationThread
+    override var sourceProperty: String = "code"
 
     internal inner class SourceCodeImpl(number: Int, override val text: String) : SourceCode {
-        override val name: String? = "${filePrefix}_\$$number"
+        override val name: String? = fieldSourceName(filePrefix, sourceProperty, number)
         override val locationId: String? = "LOCATION_$number"
 
         override fun equals(other: Any?): Boolean {
@@ -99,7 +100,7 @@ class KotlinInterface(
         }
 
         compilerConfig = ScriptCompilationConfiguration {
-            defaultImports(DependsOn::class, Repository::class, exported::class)
+            defaultImports(DependsOn::class, Repository::class, exported::class, rootExported::class, metarootExported::class)
             hostConfiguration.update {
                 myHostConfiguration
             }
@@ -695,24 +696,66 @@ class KotlinInterface(
                     val function = method.kotlinFunction ?: continue
                     context.functions[function.name] = KotlinFunctionInfo(function, line)
 
-                    // Check for @exported annotation
-                    if (method.isAnnotationPresent(exported::class.java)) {
-                        processExportedFunction(function, line)
+                    val exportTargets = exportTargetsForFunction(method)
+                    if (exportTargets.isNotEmpty()) {
+                        processExportedFunction(function, line, exportTargets)
                     }
                 }
             }
         }
 
-        private fun processExportedFunction(function: KFunction<*>, line: Any) {
+        private enum class ExportTarget {
+            Local,
+            Root,
+            Metaroot
+        }
+
+        private fun exportTargetsForFunction(method: java.lang.reflect.Method): Set<ExportTarget> {
+            val targets = linkedSetOf<ExportTarget>()
+            if (method.isAnnotationPresent(exported::class.java)) targets += ExportTarget.Local
+            if (method.isAnnotationPresent(rootExported::class.java)) targets += ExportTarget.Root
+            if (method.isAnnotationPresent(metarootExported::class.java)) targets += ExportTarget.Metaroot
+            return targets.withLocalExport()
+        }
+
+        private fun exportTargetsForProperty(field: Field?, descriptor: KProperty<*>): Set<ExportTarget> {
+            val targets = linkedSetOf<ExportTarget>()
+            val annotations = descriptor.annotations + descriptor.getter.annotations
+            if (field?.isAnnotationPresent(exported::class.java) == true ||
+                annotations.any { it.annotationClass == exported::class }
+            ) targets += ExportTarget.Local
+            if (field?.isAnnotationPresent(rootExported::class.java) == true ||
+                annotations.any { it.annotationClass == rootExported::class }
+            ) targets += ExportTarget.Root
+            if (field?.isAnnotationPresent(metarootExported::class.java) == true ||
+                annotations.any { it.annotationClass == metarootExported::class }
+            ) targets += ExportTarget.Metaroot
+            return targets.withLocalExport()
+        }
+
+        private fun Set<ExportTarget>.withLocalExport(): Set<ExportTarget> =
+            if (isEmpty() || contains(ExportTarget.Local)) this else this + ExportTarget.Local
+
+        private fun boxesForExportTargets(targets: Set<ExportTarget>): List<Box> {
+            val box = ki.associatedBox as? Box ?: return emptyList()
+            return targets.mapNotNull {
+                when (it) {
+                    ExportTarget.Local -> box
+                    ExportTarget.Root -> box.root
+                    ExportTarget.Metaroot -> metaroot
+                }
+            }.distinctBy { it.id }
+        }
+
+        private fun processExportedFunction(function: KFunction<*>, line: Any, targets: Set<ExportTarget>) {
             try {
                 val exportedName = exportedAlias(function.name)
                 val declaration = generateFunctionDeclaration(function, exportedName)
 
-                // Add to box preamble if box is available
-                val box = ki.associatedBox
-                if (box != null && box is HasProperties) {
+                boxesForExportTargets(targets).forEach { box ->
                     try {
                         val functionReference = createBoundFunctionReference(function, line)
+                        box.ki.context.functions[function.name] = KotlinFunctionInfo(function, line)
                         box.setPropertyRaw(exportedName, functionReference, doResync = false)
                         upsertExportedDeclaration(box, exportedName, declaration)
                     } catch (e: Exception) {
@@ -744,14 +787,20 @@ class KotlinInterface(
             return "val Box.$exportedName by InheritanceFromContext<$functionType>() /**/"
         }
 
-        private fun processExportedProperty(name: String, descriptor: KProperty<*>, value: Any?) {
+        private fun processExportedProperty(
+            name: String,
+            descriptor: KProperty<*>,
+            value: Any?,
+            line: Any,
+            targets: Set<ExportTarget>
+        ) {
             try {
                 val exportedName = exportedAlias(name)
                 val declaration = generatePropertyDeclaration(descriptor, exportedName)
 
-                val box = ki.associatedBox
-                if (box != null && box is HasProperties) {
+                boxesForExportTargets(targets).forEach { box ->
                     try {
+                        box.ki.context.vars[name] = KotlinVariableInfo(value, descriptor, line)
                         if (value != null) {
                             box.setPropertyRaw(exportedName, value, doResync = true)
                         }
@@ -940,11 +989,9 @@ class KotlinInterface(
                 if (descriptor != null) {
                     context.vars[descriptor.name] = KotlinVariableInfo(value, descriptor, o)
                     seen += descriptor.name
-                    val isExported = field.isAnnotationPresent(exported::class.java) ||
-                            descriptor.annotations.any { it.annotationClass == exported::class } ||
-                            descriptor.getter.annotations.any { it.annotationClass == exported::class }
-                    if (isExported) {
-                        processExportedProperty(descriptor.name, descriptor, value)
+                    val exportTargets = exportTargetsForProperty(field, descriptor)
+                    if (exportTargets.isNotEmpty()) {
+                        processExportedProperty(descriptor.name, descriptor, value, o, exportTargets)
                     }
                 }
             }
@@ -964,10 +1011,9 @@ class KotlinInterface(
                 context.vars[name] = KotlinVariableInfo(value, descriptor, o)
                 seen += name
 
-                val isExported = descriptor.annotations.any { it.annotationClass == exported::class } ||
-                        descriptor.getter.annotations.any { it.annotationClass == exported::class }
-                if (isExported) {
-                    processExportedProperty(name, descriptor, value)
+                val exportTargets = exportTargetsForProperty(null, descriptor)
+                if (exportTargets.isNotEmpty()) {
+                    processExportedProperty(name, descriptor, value, o, exportTargets)
                 }
             }
         }

@@ -33,6 +33,7 @@ private fun editorDecorationsFor(editor: dynamic): EditorDecorations? {
 
 private var executionDecorations = mutableListOf<dynamic>()
 private var executionsCollection: dynamic = null
+private val stackTraceHintCollections = mutableMapOf<Double, dynamic>()
 private val debounceTimers = mutableMapOf<String, Int>()
 
 private var orderCounter = 0
@@ -443,6 +444,16 @@ private fun clearEditorDecorations(editor: dynamic) {
     decorations.collection?.clear()
 }
 
+fun clearStackTraceHints(editor: dynamic) {
+    val collection = stackTraceHintCollections.remove(weakHash(editor)) ?: return
+    collection.clear()
+}
+
+private fun clearAllStackTraceHints() {
+    stackTraceHintCollections.values.forEach { it.clear() }
+    stackTraceHintCollections.clear()
+}
+
 private fun clearOutputsForEditor(editor: dynamic, clearInlineDecorations: Boolean = false) {
     val outputs = knownOutputsForEditor(editor)
     if (outputs.isNotEmpty()) {
@@ -463,6 +474,35 @@ private fun clearOutputsForEditor(editor: dynamic, clearInlineDecorations: Boole
     if (clearInlineDecorations) {
         clearEditorDecorations(editor)
     }
+    clearStackTraceHints(editor)
+}
+
+fun setStackTraceHints(editor: dynamic, locations: List<OutputStackLocation>) {
+    val model = editor.getModel() ?: return
+    clearStackTraceHints(editor)
+    if (locations.isEmpty()) return
+
+    val lineCount = ((model.getLineCount() as? Number)?.toInt() ?: 1).coerceAtLeast(1)
+    val decorations = locations
+        .filter { it.line > 0 }
+        .map { location ->
+            val line = location.line.coerceIn(1, lineCount)
+            val options = js("{}")
+            options.linesDecorationsClassName = "kotlin-stack-marker"
+            val hover = js("{}")
+            hover.value = "Stack frame: `${location.property}:${location.line}`" +
+                if (location.method.isNotBlank()) " in `${location.method}`" else ""
+            options.hoverMessage = hover
+            val entry = js("{}")
+            entry.range = newRange(line, 1, line, 1)
+            entry.options = options
+            entry
+        }
+        .toTypedArray()
+    if (decorations.isEmpty()) return
+
+    val collection = editor.createDecorationsCollection(decorations)
+    stackTraceHintCollections[weakHash(editor)] = collection
 }
 
 private fun setOutputErrorMarkerDecoration(
@@ -593,12 +633,14 @@ fun clear(editor: dynamic) {
         ed.collection?.clear()
     }
     perEditorDecorations.clear()
+    clearAllStackTraceHints()
     if (executionsCollection != null) executionsCollection.clear()
 }
 
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun clearErrors(editor: dynamic) {
+    clearAllStackTraceHints()
     val toRemove = mutableListOf<dynamic>()
     for (output in knownOutputs) {
         if ((output.kind as? String) == "error") {

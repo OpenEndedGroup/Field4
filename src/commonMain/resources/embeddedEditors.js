@@ -402,7 +402,7 @@ function registerEmbeddedActions(editor, uid, property) {
 			}
 			const { code, belowLine, singleLine } = extractSelectionOrScope(ed);
 			if (!code || !code.trim()) return;
-			const payload = { uid, type: "fragment", line: belowLine, code, singleLine };
+			const payload = { uid, type: "fragment", line: belowLine, code, singleLine, property };
 			sendWithReply("execute-fragment", payload, "exec_" + uid, makeOutputCallback(uid));
 		},
 	});
@@ -439,7 +439,7 @@ function registerEmbeddedActions(editor, uid, property) {
 				send("perform-action", { uid_currentSelection: [uid], uid_action: reloadAction });
 				return;
 			}
-			const payload = { uid, type: "all", line: 0, code, singleLine: false };
+			const payload = { uid, type: "all", line: 0, code, singleLine: false, property };
 			sendWithReply("execute-all", payload, "exec_" + uid, makeOutputCallback(uid));
 		},
 	});
@@ -462,7 +462,7 @@ function registerEmbeddedActions(editor, uid, property) {
 			const { code, belowLine, singleLine } = extractSelectionOrScope(ed);
 			if (!code || !code.trim()) return;
 			// addExecutionMarker is for main editor only; skip it for embedded
-			const payload = { uid, type: "fragment", line: belowLine, code, singleLine, strand: "default" };
+			const payload = { uid, type: "fragment", line: belowLine, code, singleLine, property, strand: "default" };
 			sendWithReply("launch-fragment", payload, "exec_" + uid, makeOutputCallback(uid));
 		},
 	});
@@ -483,12 +483,8 @@ function registerEmbeddedActions(editor, uid, property) {
 				send("perform-action", { uid_currentSelection: [uid], uid_action: reloadAction });
 				return;
 			}
-			if (typeof window.launchAll === "function") {
-				window.launchAll(uid, code);
-			} else {
-				const payload = { uid, type: "fragment", line: 0, code, singleLine: false, strand: "default" };
-				sendWithReply("launch-fragment", payload, "exec_" + uid, makeOutputCallback(uid));
-			}
+			const payload = { uid, type: "launch", line: 0, code, singleLine: false, property, strand: "default" };
+			sendWithReply("launch-all", payload, "exec_" + uid, makeOutputCallback(uid));
 		},
 	});
 
@@ -502,11 +498,8 @@ function registerEmbeddedActions(editor, uid, property) {
 		run: (ed) => {
 			const code = ed.getModel().getValue();
 			if (!code || !code.trim()) return;
-			if (typeof window.continueAll === "function") {
-				window.continueAll(uid, code);
-			} else if (typeof window.launchAll === "function") {
-				window.launchAll(uid, code);
-			}
+			const payload = { uid, type: "continue", line: 0, code, singleLine: false, property, strand: "default" };
+			sendWithReply("continue-all", payload, "exec_" + uid, makeOutputCallback(uid));
 		},
 	});
 
@@ -523,7 +516,7 @@ function registerEmbeddedActions(editor, uid, property) {
 		run: () => {
 			const code = editor.getModel().getValue();
 			const line = code.split("\n").length + 1;
-			const payload = { uid, type: "launch", line, code, singleLine: false };
+			const payload = { uid, type: "launch", line, code, singleLine: false, property };
 			sendWithReply("stop-all", payload, "stop_" + uid, () => true);
 		},
 	});

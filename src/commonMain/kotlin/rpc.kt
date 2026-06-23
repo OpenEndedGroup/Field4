@@ -86,7 +86,17 @@ data class Output(
     val frame: Int,
     val startColumn: Int = -1,
     val endLine: Int = -1,
-    val endColumn: Int = -1
+    val endColumn: Int = -1,
+    val stack: List<OutputStackLocation> = emptyList()
+)
+
+@Serializable
+data class OutputStackLocation(
+    val uid: String,
+    val property: String = "code",
+    val line: Int,
+    val method: String = "",
+    val primary: Boolean = false
 )
 
 @Serializable
@@ -96,6 +106,7 @@ data class Execute(
     val line: Int,
     val code: String,
     val singleLine: Boolean,
+    val property: String = "code",
     val strand: String = "default"
 )
 

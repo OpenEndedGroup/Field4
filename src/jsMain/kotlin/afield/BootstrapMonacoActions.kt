@@ -1881,6 +1881,7 @@ private fun oscEditorExecuteTarget(target: OscEditorLockedNumberTarget, editorTa
     payload.line = belowLine
     payload.code = code
     payload.singleLine = singleLine
+    payload.property = property
 
     val w = js("window")
     val handler = w.handleOutput
@@ -1905,6 +1906,7 @@ private fun oscEditorRunExecuteFragment(editorTarget: OscEditorEditorTarget): Bo
     payload.line = belowLine
     payload.code = code
     payload.singleLine = singleLine
+    payload.property = editorTarget.property
 
     val w = js("window")
     val handler = w.handleOutput
@@ -1965,6 +1967,7 @@ fun monacoRunExecuteFragment(editor: dynamic) {
     payload.line = belowLine
     payload.code = code
     payload.singleLine = singleLine
+    payload.property = property
 
     val handler = w.handleOutput
     val callback: (dynamic, dynamic) -> Boolean = { message, response ->
@@ -1992,6 +1995,7 @@ fun monacoRunExecuteAll(editor: dynamic) {
     payload.line = 0
     payload.code = code
     payload.singleLine = false
+    payload.property = property
 
     val handler = w.handleOutput
     val callback: (dynamic, dynamic) -> Boolean = { message, response ->
@@ -2166,6 +2170,7 @@ fun monacoRunLaunchFragment(editor: dynamic) {
     payload.line = selection.belowLine
     payload.code = selection.code
     payload.singleLine = selection.singleLine
+    payload.property = property
     payload.strand = className
 
     val handler = w.handleOutput
@@ -2221,6 +2226,7 @@ fun monacoRunStopAll(editor: dynamic) {
     payload.line = line
     payload.code = code
     payload.singleLine = false
+    payload.property = w.currentSelectedProperty as? String ?: "code"
 
     val callback: (dynamic, dynamic) -> Boolean = { _, _ -> true }
     sendWithReply("stop-all", payload, "stop_$uid", callback.asDynamic())

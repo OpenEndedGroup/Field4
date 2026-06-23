@@ -1799,6 +1799,16 @@ body {
     border-radius: 4px;
 }
 
+.monaco-editor .kotlin-stack-marker {
+    background: var(--field-danger-marker-dot);
+    width: 5px !important;
+    height: 5px !important;
+    margin-left: 2px;
+    margin-top: 7px;
+    border-radius: 50%;
+    opacity: 0.75;
+}
+
 ::-webkit-scrollbar-corner {
     background: var(--field-transparent);
 }

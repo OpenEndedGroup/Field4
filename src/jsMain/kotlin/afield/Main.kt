@@ -416,6 +416,7 @@ var canvasGestures = CanvasGestures(launcher = {
             payload.line = 0
             payload.code = box.unsafeCast<dynamic>().code as String
             payload.singleLine = false
+            payload.property = "code"
             payload.strand = "default"
             payload
         }.toTypedArray()

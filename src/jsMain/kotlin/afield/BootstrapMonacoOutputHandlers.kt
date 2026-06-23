@@ -281,6 +281,82 @@ fun monacoSetStatus(uid: String, good: Boolean, text: String) {
     tooltip.innerHTML = text
 }
 
+private fun stackLocationsFor(payload: Output, uid: String, property: String): List<OutputStackLocation> {
+    return payload.stack.filter {
+        it.uid == uid && it.property == property && !it.primary
+    }
+}
+
+private fun stackSummaryHtml(locations: List<OutputStackLocation>): String {
+    if (locations.isEmpty()) return ""
+    val summary = locations.take(4).joinToString("<br>") {
+        val method = if (it.method.isNotBlank()) " <code>${escapeHtml(it.method)}</code>" else ""
+        "<code>${escapeHtml(it.property)}:${it.line}</code>$method"
+    }
+    val more = if (locations.size > 4) "<br>... ${locations.size - 4} more" else ""
+    return "Stack frame:<br>$summary$more"
+}
+
+private fun markStackBoxes(payload: Output, primaryUid: String, primaryHtml: String) {
+    val byBox = payload.stack
+        .filter { !it.primary }
+        .groupBy { it.uid }
+    byBox.forEach { (uid, locations) ->
+        val stackHtml = stackSummaryHtml(locations)
+        if (stackHtml.isNotBlank()) {
+            val html = if (uid == primaryUid && primaryHtml.isNotBlank()) {
+                "$primaryHtml<br><br>$stackHtml"
+            } else {
+                stackHtml
+            }
+            monacoSetStatus(uid, false, html)
+        }
+    }
+}
+
+private fun markOpenStackEditors(payload: Output) {
+    val w = js("window")
+    val grouped = payload.stack
+        .filter { !it.primary }
+        .groupBy { "${it.uid}::${it.property}" }
+    grouped.values.forEach { locations ->
+        val first = locations.firstOrNull() ?: return@forEach
+        val embeddedEditor: dynamic = if (w.embeddedEditors != null && w.embeddedEditors != undefined)
+            w.embeddedEditors.getFor(first.uid, first.property) else null
+        if (embeddedEditor != null) {
+            setStackTraceHints(embeddedEditor.editor, locations)
+            return@forEach
+        }
+
+        val selected = w.currentSelectedCode
+        val selectedUid = if (selected != null && (selected.length as? Number)?.toInt() == 1) {
+            selected[0].uid as? String
+        } else null
+        val selectedProperty = w.currentSelectedProperty as? String ?: "code"
+        if (selectedUid == first.uid && selectedProperty == first.property) {
+            setStackTraceHints(w.globalEditor, locations)
+        }
+    }
+}
+
+private fun dynamicOutputStack(raw: dynamic): List<OutputStackLocation> {
+    val stack = raw?.stack ?: return emptyList()
+    val length = (stack.length as? Number)?.toInt() ?: return emptyList()
+    val out = mutableListOf<OutputStackLocation>()
+    for (i in 0 until length) {
+        val item = stack[i] ?: continue
+        val uid = item.uid as? String ?: continue
+        out += OutputStackLocation(
+            uid = uid,
+            property = item.property as? String ?: "code",
+            line = (item.line as? Number)?.toInt() ?: continue,
+            method = item.method as? String ?: "",
+            primary = item.primary as? Boolean ?: false
+        )
+    }
+    return out
+}
+
 fun routeMonacoOutput(payload: Output, uidOverride: String = ""): Boolean {
     val uid = uidOverride.ifBlank { payload.uid }
     if (uid.isBlank()) return true
@@ -316,10 +392,12 @@ fun routeMonacoOutput(payload: Output, uidOverride: String = ""): Boolean {
             monacoSetStatus(uid, true, html)
             if (routeToMain) {
                 clearErrors(w.globalEditor)
+                clearStackTraceHints(w.globalEditor)
                 addOutput(w.globalEditor, html, line, "normal", annotation, frameMarker, -1, -1, -1)
             }
             if (embeddedEditor != null) {
                 clearErrors(embeddedEditor.editor)
+                clearStackTraceHints(embeddedEditor.editor)
                 addOutput(embeddedEditor.editor, html, line, "normal", annotation, frameMarker, -1, -1, -1)
             }
         }
@@ -327,10 +405,12 @@ fun routeMonacoOutput(payload: Output, uidOverride: String = ""): Boolean {
             monacoSetStatus(uid, true, html)
             if (routeToMain) {
                 clearErrors(w.globalEditor)
+                clearStackTraceHints(w.globalEditor)
                 addOutput(w.globalEditor, html, line, "ok", annotation, frameMarker, -1, -1, -1)
             }
             if (embeddedEditor != null) {
                 clearErrors(embeddedEditor.editor)
+                clearStackTraceHints(embeddedEditor.editor)
                 addOutput(embeddedEditor.editor, html, line, "ok", annotation, frameMarker, -1, -1, -1)
             }
         }
@@ -345,6 +425,7 @@ fun routeMonacoOutput(payload: Output, uidOverride: String = ""): Boolean {
                         ?: formatKotlinSingleLineErrorHtml(html, uid)
                         ?: html
                     addOutput(w.globalEditor, formatted, line, "error", annotation, frameMarker, startColumn, endLine, endColumn)
+                    setStackTraceHints(w.globalEditor, stackLocationsFor(payload, uid, property))
                     w.lastErrorIs = arrayOf(line - 1, html)
                 }
             }
@@ -357,7 +438,12 @@ fun routeMonacoOutput(payload: Output, uidOverride: String = ""): Boolean {
                         ?: formatKotlinSingleLineErrorHtml(html, uid)
                         ?: html
                     addOutput(embeddedEditor.editor, formatted, line, "error", annotation, frameMarker, startColumn, endLine, endColumn)
+                    setStackTraceHints(embeddedEditor.editor, stackLocationsFor(payload, uid, property))
                 }
+            }
+            if (html.isNotEmpty()) {
+                markStackBoxes(payload, uid, html)
+                markOpenStackEditors(payload)
             }
         }
     }
@@ -382,7 +468,8 @@ fun monacoHandleOutput(payload: dynamic, message: dynamic, uid: String): Boolean
             frame = (payload.frame as? Number)?.toInt() ?: 0,
             startColumn = (payload.startColumn as? Number)?.toInt() ?: -1,
             endLine = (payload.endLine as? Number)?.toInt() ?: -1,
-            endColumn = (payload.endColumn as? Number)?.toInt() ?: -1
+            endColumn = (payload.endColumn as? Number)?.toInt() ?: -1,
+            stack = dynamicOutputStack(payload)
         ),
         uid
     )
@@ -393,12 +480,14 @@ fun monacoHandleOutput(payload: dynamic, message: dynamic, uid: String): Boolean
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun monacoLaunchAll(uid: String, code: String) {
+    val property = js("window").currentSelectedProperty as? String ?: "code"
     val payload = js("{}")
     payload.uid = uid
     payload.type = "launch"
     payload.line = 0
     payload.code = code
     payload.singleLine = false
+    payload.property = property
 
     sendWithReply("launch-all", payload, "exec_$uid") { message : dynamic, response: dynamic ->
         monacoHandleOutput(response, message, uid)
@@ -425,12 +514,14 @@ fun monacoLaunchBatch(items: Array<dynamic>) {
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun monacoContinueAll(uid: String, code: String) {
+    val property = js("window").currentSelectedProperty as? String ?: "code"
     val payload = js("{}")
     payload.uid = uid
     payload.type = "continue"
     payload.line = 0
     payload.code = code
     payload.singleLine = false
+    payload.property = property
 
     sendWithReply("continue-all", payload, "exec_$uid") { message: dynamic, response: dynamic ->
         monacoHandleOutput(response, message, uid)
