@@ -83,6 +83,31 @@ operator fun Box.minusAssign(child: Box) {
 
 class MissingInheritedPropertyException(message: String) : IllegalStateException(message)
 
+private fun Box.isMetarootBox(): Boolean = id == METAROOT_ID
+
+private fun missingInheritedPropertyMessage(box: Box, propertyName: String, parentCount: Int): String {
+    val boxName = box.name.ifBlank { box.id }
+    if (box.isMetarootBox()) {
+        return "Can't find a value for inherited property '$propertyName' in metaroot. " +
+            "Metaroot is shared by open tabs/documents and has no parent boxes; this usually means the box in another open tab/document that exports '$propertyName' hasn't executed yet, or failed while executing."
+    }
+    return "Can't find a value for inherited property '$propertyName' in '$boxName' or any of its $parentCount parent boxes. " +
+        "Are you sure the parent boxes that define '$propertyName' have been executed?"
+}
+
+private fun missingContextualInheritedPropertyMessage(box: Box, propertyName: String, candidates: List<String>): String {
+    val boxName = box.name.ifBlank { box.id }
+    val candidateList = candidates.joinToString("', '", prefix = "'", postfix = "'")
+    if (box.isMetarootBox()) {
+        return "Can't find a value for contextual inherited property '$propertyName' in metaroot. " +
+            "Looked for $candidateList in metaroot properties and live Kotlin variables. " +
+            "Metaroot is shared by open tabs/documents and has no parent boxes; this usually means the box in another open tab/document that exports '$propertyName' hasn't executed yet, or failed while executing."
+    }
+    return "Can't find a value for contextual inherited property '$propertyName' in '$boxName' or any of its parent boxes. " +
+        "Looked for $candidateList in box properties and live Kotlin variables. " +
+        "Are you sure the parent boxes that define '$propertyName' have been executed?"
+}
+
 class Inheritance<T>(val defaultValue: T? = null) {
     operator fun getValue(f: Box, property: KProperty<*>): T {
         val a = f.getPropertyRaw(property.name)
@@ -104,11 +129,7 @@ class Inheritance<T>(val defaultValue: T? = null) {
         }
         if (defaultValue != null) return defaultValue as T
         if (!property.returnType.isMarkedNullable) {
-            val boxName = f.name.ifBlank { f.id }
-            throw MissingInheritedPropertyException(
-                "Can't find a value for inherited property '${property.name}' in '$boxName' or any of its $num parent boxes. " +
-                    "Are you sure the parent boxes that define '${property.name}' have been executed?"
-            )
+            throw MissingInheritedPropertyException(missingInheritedPropertyMessage(f, property.name, num))
         }
         return null as T
     }
@@ -138,12 +159,8 @@ class InheritanceFromContext<T>(val defaultValue: T? = null) {
 
         if (defaultValue != null) return defaultValue as T
         if (!property.returnType.isMarkedNullable) {
-            val boxName = f.name.ifBlank { f.id }
-            val candidates = candidateNames.joinToString("', '", prefix = "'", postfix = "'")
             throw MissingInheritedPropertyException(
-                "Can't find a value for contextual inherited property '${property.name}' in '$boxName' or any of its parent boxes. " +
-                    "Looked for $candidates in box properties and live Kotlin variables. " +
-                    "Are you sure the parent boxes that define '${property.name}' have been executed?"
+                missingContextualInheritedPropertyMessage(f, property.name, candidateNames)
             )
         }
         return null as T

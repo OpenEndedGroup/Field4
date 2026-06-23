@@ -2,6 +2,7 @@ package afield
 
 import afield.logger.SaveReloadLog
 import afield.logger.lprintln
+import afield.stdlib.FILE_MANAGER_ACCESS_HISTORY_PROPERTY
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
@@ -63,7 +64,8 @@ object HistoryManager {
         "customization",
         "metadata",
         "name",
-        "filename"
+        "filename",
+        FILE_MANAGER_ACCESS_HISTORY_PROPERTY
     )
 
     /**
@@ -132,6 +134,8 @@ object HistoryManager {
     )
 
     private val topologyProperties = setOf("children", "parents", "nested", "nestedIn")
+    private const val syntheticRootHistoryName = "Document file access"
+    private val syntheticRootHistoryProperties = setOf(FILE_MANAGER_ACCESS_HISTORY_PROPERTY)
     private val hiddenScrubProperties = setOf(
         "code_decorationState",
         "_restored_from_version",
@@ -518,7 +522,6 @@ object HistoryManager {
             val currentStates = snapshotStates(currentSnapshot, savingContext)
             val targetStates = snapshotStates(targetSnapshot, savingContext)
             val ids = (currentStates.keys + targetStates.keys)
-                .filter { it != "root" }
                 .filter { boxFilter.isEmpty() || it in boxFilter }
                 .toSet()
 
@@ -583,7 +586,6 @@ object HistoryManager {
             val previousStates = snapshotStates(previousSnapshot, savingContext)
             val targetStates = snapshotStates(targetSnapshot, savingContext)
             val ids = (previousStates.keys + targetStates.keys)
-                .filter { it != "root" }
                 .filter { boxFilter.isEmpty() || it in boxFilter }
                 .toSet()
 
@@ -641,7 +643,6 @@ object HistoryManager {
 	            val liveStates = currentStates ?: liveStatesForRailStats(documentPath, sessionInfo, savingContext)
 	            val targetStates = snapshotStates(loadVersionSnapshot(version, documentPath, savingContext), savingContext)
 	            val ids = (liveStates.keys + targetStates.keys)
-	                .filter { it != "root" }
 	                .filter { boxFilter.isEmpty() || it in boxFilter }
 	                .toSet()
 	            sumLineStats(
@@ -842,11 +843,13 @@ object HistoryManager {
         fun isPersistent(name: String) = patterns.any { name.matches(it) }
 
         return snapshot.transfers
-            .filterNot { it.id == "root" || isTombstoned(it, snapshot.directory, savingContext) }
-            .associate { transfer ->
+            .filterNot { isTombstoned(it, snapshot.directory, savingContext) }
+            .mapNotNull { transfer ->
+                val isSyntheticRoot = transfer.id == "root"
                 val props = LinkedHashMap<String, Any?>()
                 transfer.properties.forEach { (name, rawValue) ->
                     if (!isPersistent(name)) return@forEach
+                    if (isSyntheticRoot && name !in syntheticRootHistoryProperties) return@forEach
                     props[name] = savingContext.resolveStoredValue(
                         rawValue,
                         snapshot.directory,
@@ -854,19 +857,24 @@ object HistoryManager {
                     )
                 }
 
-                val name = (props["name"] as? String)?.takeIf { it.isNotBlank() }
-                    ?: transfer.id.take(8)
-                val frame = props["frame"] as? Rect
+                if (isSyntheticRoot && props.isEmpty()) return@mapNotNull null
+
+                val name = if (isSyntheticRoot) {
+                    syntheticRootHistoryName
+                } else {
+                    (props["name"] as? String)?.takeIf { it.isNotBlank() } ?: transfer.id.take(8)
+                }
+                val frame = if (isSyntheticRoot) null else props["frame"] as? Rect
 
                 transfer.id to HistoryBoxState(
                     uid = transfer.id,
                     name = name,
                     properties = props,
                     frame = frame,
-                    children = topologyIds(props["children"]),
-                    parents = topologyIds(props["parents"])
+                    children = if (isSyntheticRoot) emptyList() else topologyIds(props["children"]),
+                    parents = if (isSyntheticRoot) emptyList() else topologyIds(props["parents"])
                 )
-            }
+            }.toMap()
     }
 
     private fun boxDiff(
@@ -1035,12 +1043,17 @@ object HistoryManager {
         )
     }
 
-    private fun valueToText(value: Any?): String = when (value) {
-        null -> ""
-        is String -> value
-        is Collection<*> -> value.joinToString("\n") { canonicalValue(it) }
-        is Map<*, *> -> value.entries.joinToString("\n") { "${canonicalValue(it.key)}: ${canonicalValue(it.value)}" }
-        else -> value.toString()
+    private fun valueToText(value: Any?): String {
+        if (isFileManagerAccessHistoryValue(value)) {
+            return (value as Collection<*>).joinToString("\n") { fileManagerAccessEntryText(it) }
+        }
+        return when (value) {
+            null -> ""
+            is String -> value
+            is Collection<*> -> value.joinToString("\n") { canonicalValue(it) }
+            is Map<*, *> -> value.entries.joinToString("\n") { "${canonicalValue(it.key)}: ${canonicalValue(it.value)}" }
+            else -> value.toString()
+        }
     }
 
     private fun fullTextForDiff(value: Any?): String {
@@ -1052,12 +1065,37 @@ object HistoryManager {
         val text = when (value) {
             null -> ""
             is Rect -> "${trimNumber(value.x)}, ${trimNumber(value.y)}, ${trimNumber(value.w)}, ${trimNumber(value.h)}"
-            is Collection<*> -> value.map { canonicalValue(it) }.joinToString(", ")
+            is Collection<*> -> if (isFileManagerAccessHistoryValue(value)) {
+                value.map { fileManagerAccessEntryText(it) }.joinToString(" | ")
+            } else {
+                value.map { canonicalValue(it) }.joinToString(", ")
+            }
             is Map<*, *> -> value.entries.joinToString(", ") { "${canonicalValue(it.key)}: ${canonicalValue(it.value)}" }
             else -> value.toString()
         }.replace("\r\n", "\n").replace("\n", " | ").trim()
 
         return if (text.length <= 180) text else text.take(177) + "..."
+    }
+
+    private fun isFileManagerAccessHistoryValue(value: Any?): Boolean {
+        val entries = value as? Collection<*> ?: return false
+        return entries.any() && entries.all { entry ->
+            val map = entry as? Map<*, *> ?: return@all false
+            map.containsKey("request") && map.containsKey("resolvedPath") && map.containsKey("access")
+        }
+    }
+
+    private fun fileManagerAccessEntryText(entry: Any?): String {
+        val map = entry as? Map<*, *> ?: return canonicalValue(entry)
+        val index = map["index"]?.let { "#$it " } ?: ""
+        val access = map["access"]?.toString()?.takeIf { it.isNotBlank() } ?: "access"
+        val request = map["request"]?.toString()?.takeIf { it.isNotBlank() } ?: "<unknown>"
+        val resolved = map["resolvedPath"]?.toString()?.takeIf { it.isNotBlank() } ?: "<unresolved>"
+        val source = map["source"]?.toString()?.takeIf { it.isNotBlank() } ?: "unknown"
+        val box = map["boxName"]?.toString()?.takeIf { it.isNotBlank() }
+            ?: map["box"]?.toString()?.takeIf { it.isNotBlank() }
+        val boxText = box?.let { " box=$it" } ?: ""
+        return "$index$access $request -> $resolved ($source)$boxText"
     }
 
     private fun trimNumber(value: Double): String {
@@ -1928,9 +1966,8 @@ object HistoryManager {
         null -> ""
         is String -> resolved
         is Number, is Boolean -> resolved.toString()
-        is List<*> -> resolved.joinToString("\n") { it?.toString() ?: "" }
-        is Set<*> -> resolved.joinToString("\n") { it?.toString() ?: "" }
-        is Map<*, *> -> resolved.entries.joinToString("\n") { "${it.key}: ${it.value}" }
+        is Collection<*> -> valueToText(resolved)
+        is Map<*, *> -> valueToText(resolved)
         else -> resolved.toString()
     }
 
@@ -2233,16 +2270,7 @@ object HistoryManager {
                     documentPath,
                     preferInlineFiles = preferInlineFiles
                 )
-                val text = when (resolved) {
-                    null -> ""
-                    is String -> resolved
-                    is Number, is Boolean -> resolved.toString()
-                    is List<*> -> resolved.joinToString("\n") { it?.toString() ?: "" }
-                    is Set<*> -> resolved.joinToString("\n") { it?.toString() ?: "" }
-                    is Map<*, *> -> resolved.entries.joinToString("\n") { "${it.key}: ${it.value}" }
-                    else -> resolved.toString()
-                }
-                props[name] = text
+                props[name] = valueToText(resolved)
             }
             transfer.id to props
         }
