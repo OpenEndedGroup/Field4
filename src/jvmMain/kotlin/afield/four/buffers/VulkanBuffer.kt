@@ -407,11 +407,16 @@ class VulkanBuffer(
     }
 
     override fun mapAndRead_bytes(builder: ByteBuffer.() -> Unit): VulkanBuffer {
+        return mapAndReadBytes(requestedSize, builder)
+    }
+
+    fun mapAndReadBytes(size: Long, builder: ByteBuffer.() -> Unit): VulkanBuffer {
         hint_read = true
         readWatermark++
-        invalidate(0, requestedSize)
+        val readSize = size.coerceIn(0L, requestedSize)
+        invalidate(0, readSize)
         val m = map()
-        val data = MemoryUtil.memByteBuffer(m, requestedSize.toInt())
+        val data = MemoryUtil.memByteBuffer(m, readSize.toInt())
         builder.invoke(data)
         return this
     }

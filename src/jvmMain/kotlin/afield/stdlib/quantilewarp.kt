@@ -301,6 +301,7 @@ fun Box.fieldProbeQuantileWarp(
     apply: (warp: QuantileWarpState, batch: FieldProbeScalarBatch) -> Unit
 ): ShaderFieldQuantileWarpController {
     _fieldProbeQuantileWarpController?.stop(runloop = runloop)
+    probe.requireContinuousSnapshotReads()
 
     return ShaderFieldQuantileWarpController(
         box = this,

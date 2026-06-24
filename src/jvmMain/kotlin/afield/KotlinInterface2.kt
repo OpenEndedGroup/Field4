@@ -2358,7 +2358,12 @@ class KotlinInterface2(
                                                 }
                                             }
 
-                                            edits.add((expression.startOffset to expression.endOffset) to e.here)
+                                            val replacement =
+                                                if (expression.parent is KtBlockExpression || expression.parent is KtScriptInitializer)
+                                                    e.standaloneHere ?: e.here
+                                                else
+                                                    e.here
+                                            edits.add((expression.startOffset to expression.endOffset) to replacement)
 
                                             if (!previewOnly) {
                                                 if (e.preamble.isNotBlank() || e.preambleAfterImports.isNotBlank()) {

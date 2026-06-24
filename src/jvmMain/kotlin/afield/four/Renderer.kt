@@ -37,6 +37,7 @@ import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.util.*
 import java.util.concurrent.Executors
+import java.util.concurrent.Future
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.coroutineContext
@@ -273,6 +274,10 @@ class Renderer(
     private val graphicsCompletionLock = Any()
     private val graphicsRecordingContext = ThreadLocal<Pair<Int, Int>?>()
     private val graphicsCompletionCallbacks = mutableMapOf<Pair<Int, Int>, MutableList<() -> Unit>>()
+    private val computeSubmissionLock = Any()
+    private val computeRecordingContext = ThreadLocal<Pair<Int, Int>?>()
+    private val computeSubmissionCallbacks = mutableMapOf<Pair<Int, Int>, MutableList<(Fence) -> Future<*>?>>()
+    private val computePostSubmitTasks = mutableMapOf<Pair<Int, Int>, MutableList<Future<*>>>()
 
     var cleanup = mutableListOf<Runnable>()
     var cleanupStack = mutableListOf<Pair<Long, MutableList<Runnable>>>()
@@ -283,6 +288,41 @@ class Renderer(
         synchronized(graphicsCompletionLock) {
             graphicsCompletionCallbacks.getOrPut(key) { mutableListOf() }.add(callback)
         }
+    }
+
+    internal fun afterCurrentComputeFrameSubmitted(callback: (Fence) -> Future<*>?) {
+        val key = computeRecordingContext.get()
+            ?: throw IllegalStateException("afterCurrentComputeFrameSubmitted must be called while recording a compute frame")
+        synchronized(computeSubmissionLock) {
+            computeSubmissionCallbacks.getOrPut(key) { mutableListOf() }.add(callback)
+        }
+    }
+
+    private fun drainComputeSubmissionCallbacks(ctxIndex: Int, imageIndex: Int, fence: Fence) {
+        val key = ctxIndex to imageIndex
+        val callbacks = synchronized(computeSubmissionLock) {
+            computeSubmissionCallbacks.remove(key)?.toList() ?: emptyList()
+        }
+        val tasks = mutableListOf<Future<*>>()
+        callbacks.forEach { callback ->
+            runCatching { callback(fence) }.onSuccess { task ->
+                if (task != null) tasks += task
+            }.onFailure {
+                lprintln("warning,graphics", "compute submission callback failed: ${it.message ?: it::class.simpleName}")
+            }
+        }
+        if (tasks.isNotEmpty()) {
+            synchronized(computeSubmissionLock) {
+                computePostSubmitTasks.getOrPut(key) { mutableListOf() }.addAll(tasks)
+            }
+        }
+    }
+
+    private fun awaitComputePostSubmitTasks(ctxIndex: Int, imageIndex: Int) {
+        val tasks = synchronized(computeSubmissionLock) {
+            computePostSubmitTasks.remove(ctxIndex to imageIndex)?.toList() ?: emptyList()
+        }
+        tasks.forEach { it.get() }
     }
 
     private fun drainCompletedGraphicsCallbacks(
@@ -1088,6 +1128,7 @@ class Renderer(
                 } else break
             }
         }
+        var computeSubmittedThisFrame = false
         windowContexts.forEachIndexed { ctxIndex, ctx ->
             for (imageIndex in 0 until ctx.numImages) {
                 drainCompletedGraphicsCallbacks(ctx, ctxIndex, imageIndex)
@@ -1126,22 +1167,29 @@ class Renderer(
 
                 withWorkerParallelism {
                     runBlocking {
-                        val computeRecording = asyncWorker {
-                            recordComputePass(ctx, ctxIndex, imageIndex, frameId)
-                        }
+                        val runComputeForWindow = !Options.computeOncePerFrame || !computeSubmittedThisFrame
+                        val computeRecording = if (runComputeForWindow) {
+                            asyncWorker {
+                                recordComputePass(ctx, ctxIndex, imageIndex, frameId)
+                            }
+                        } else null
                         val graphicsRecording = asyncWorker {
                             recordGraphicsPass(ctx, ctxIndex, imageIndex, frameId)
                         }
 
-                        computeRecording.await()
-                        CPUSpan.time("submit_cs[$ctxIndex]") {
-                            submitCompute(
-                                ctx,
-                                ctx.computeCommandBuffers[imageIndex],
-                                ctx.computeFences[imageIndex],
-                                ctx.computeFinishedSemaphores[imageIndex],
-                                graphQueue
-                            )
+                        computeRecording?.await()
+                        if (runComputeForWindow) {
+                            CPUSpan.time("submit_cs[$ctxIndex]") {
+                                submitCompute(
+                                    ctx,
+                                    ctx.computeCommandBuffers[imageIndex],
+                                    ctx.computeFences[imageIndex],
+                                    ctx.computeFinishedSemaphores[imageIndex],
+                                    graphQueue
+                                )
+                            }
+                            drainComputeSubmissionCallbacks(ctxIndex, imageIndex, ctx.computeFences[imageIndex])
+                            computeSubmittedThisFrame = true
                         }
 
                         val recordedWindowCaptures = graphicsRecording.await()
@@ -1151,7 +1199,7 @@ class Renderer(
                                 ctx.commandBuffers[imageIndex],
                                 ctx.fences[imageIndex],
                                 graphQueue,
-                                ctx.computeFinishedSemaphores[imageIndex]
+                                ctx.computeFinishedSemaphores[imageIndex].takeIf { runComputeForWindow }
                             )
                         }
                         if (recordedWindowCaptures.isNotEmpty()) {
@@ -1215,6 +1263,7 @@ class Renderer(
     ) {
         CPUSpan.time("record_cs[$ctxIndex]") {
             ctx.computeFences[imageIndex].fenceWait()
+            awaitComputePostSubmitTasks(ctxIndex, imageIndex)
             ctx.computeFences[imageIndex].reset()
 
             val computeElements = mutableListOf<Pair<String, (CommandBuffer) -> Unit>>()
@@ -1239,7 +1288,12 @@ class Renderer(
                         )
                         cb.reset()
                         cb.beginRecording(CommandBuffer.SecondaryInheritance())
-                        action(cb)
+                        computeRecordingContext.set(ctxIndex to imageIndex)
+                        try {
+                            action(cb)
+                        } finally {
+                            computeRecordingContext.remove()
+                        }
                         cb.endRecording()
                         secondaryBuffers[idx] = cb
                     }
@@ -1281,7 +1335,12 @@ class Renderer(
                     VK10.vkCmdExecuteCommands(ccmd.vkCommandBuffer, pb)
                 }
             } else {
-                computeList.render(ccmd, imageIndex)
+                computeRecordingContext.set(ctxIndex to imageIndex)
+                try {
+                    computeList.render(ccmd, imageIndex)
+                } finally {
+                    computeRecordingContext.remove()
+                }
             }
 
             profilerState?.let { p ->
@@ -1455,7 +1514,7 @@ class Renderer(
         commandBuffer: CommandBuffer,
         currentFence: Fence,
         queue: Queue,
-        computeSemaphore: Semaphore
+        computeSemaphore: Semaphore?
     ) {
         runOnQueueThread {
             MemoryStack.stackPush().use { stack ->
@@ -1469,19 +1528,21 @@ class Renderer(
                     .commandBuffer(commandBuffer.vkCommandBuffer)
                     .deviceMask(0)
 
-                // Wait semaphores: image-acquired + compute-finished
-                val waits = VkSemaphoreSubmitInfo.calloc(2, stack)
+                // Always wait for image acquisition; wait for compute only when this window ran it.
+                val waits = VkSemaphoreSubmitInfo.calloc(if (computeSemaphore == null) 1 else 2, stack)
                 waits[0].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
                     .semaphore(sync.imgAcquisitionSemaphore.vkSemaphore)
                     .value(sync.imgAcquisitionSemaphore.currentValue())
                     .stageMask(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT)
                     .deviceIndex(0)
-                waits[1].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
-                    .semaphore(computeSemaphore.vkSemaphore)
-                    .value(computeSemaphore.currentValue())
-                    // conservative: ensure graphics won't start any stage before compute finished
-                    .stageMask(VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT)
-                    .deviceIndex(0)
+                if (computeSemaphore != null) {
+                    waits[1].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
+                        .semaphore(computeSemaphore.vkSemaphore)
+                        .value(computeSemaphore.currentValue())
+                        // conservative: ensure graphics won't start any stage before compute finished
+                        .stageMask(VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT)
+                        .deviceIndex(0)
+                }
 
                 // Signal semaphore: render complete
                 val signals = VkSemaphoreSubmitInfo.calloc(1, stack)

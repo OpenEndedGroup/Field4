@@ -307,6 +307,9 @@ object MacroRegistry {
         callRewrite["computeModuleHere"] = { box, id, args ->
             box.macro_computeModuleHere(args)
         }
+        callRewrite["fieldStatsHere"] = { box, id, args ->
+            box.macro_fieldStatsHere(args)
+        }
         callRewrite["shadertoyHere"] = { box, id, args ->
             box.macro_shadertoyHere(args)
         }
@@ -346,6 +349,7 @@ data class Insert(
     val start: String = "",
     val afterImports: String = "",
     val here: String = "",
+    val standaloneHere: String? = null,
     val end: String = "",
     val preamble: String = "",
     val preambleAfterImports: String = "",

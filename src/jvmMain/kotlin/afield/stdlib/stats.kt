@@ -1239,7 +1239,8 @@ fun seriesPlotToSvg(
     seriesStrokeWidth: Double = 1.5,
     refDash: String = "3,2",
     keyTextOpacity: Double = 0.5,
-    minLabelSeparationPx: Double = 12.0
+    minLabelSeparationPx: Double = 12.0,
+    maxSeriesPoints: Int = 500
 ): String {
     val values = rawValues.filter { it.isFinite() }
     if (values.isEmpty()) {
@@ -1284,9 +1285,46 @@ fun seriesPlotToSvg(
 
     fun fmt(d: Double) = formatNumber(d, decimals)
 
+    data class IndexedValue(val index: Int, val value: Double)
     data class PlotPoint(val x: Double, val y: Double)
-    val points = values.mapIndexed { j, v ->
-        PlotPoint(xForIndex(j.toDouble()), yForVal(v))
+
+    fun envelopeDownsample(source: List<Double>, limit: Int): List<IndexedValue> {
+        if (source.size <= limit || limit < 4) {
+            return source.mapIndexed(::IndexedValue)
+        }
+
+        val interiorCount = source.size - 2
+        val bucketCount = min((limit - 2) / 2, interiorCount)
+        val sampled = ArrayList<IndexedValue>(limit)
+        sampled += IndexedValue(0, source.first())
+
+        repeat(bucketCount) { bucket ->
+            val start = 1 + bucket * interiorCount / bucketCount
+            val endExclusive = 1 + (bucket + 1) * interiorCount / bucketCount
+            if (start >= endExclusive) return@repeat
+
+            var minIndex = start
+            var maxIndex = start
+            for (index in start + 1 until endExclusive) {
+                if (source[index] < source[minIndex]) minIndex = index
+                if (source[index] > source[maxIndex]) maxIndex = index
+            }
+
+            if (minIndex <= maxIndex) {
+                sampled += IndexedValue(minIndex, source[minIndex])
+                if (maxIndex != minIndex) sampled += IndexedValue(maxIndex, source[maxIndex])
+            } else {
+                sampled += IndexedValue(maxIndex, source[maxIndex])
+                sampled += IndexedValue(minIndex, source[minIndex])
+            }
+        }
+
+        sampled += IndexedValue(source.lastIndex, source.last())
+        return sampled
+    }
+
+    val points = envelopeDownsample(values, maxSeriesPoints.coerceAtLeast(4)).map { sample ->
+        PlotPoint(xForIndex(sample.index.toDouble()), yForVal(sample.value))
     }
     val seriesPath = if (points.isNotEmpty()) {
         buildString {

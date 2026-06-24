@@ -9,8 +9,10 @@ import afield.four.Renderer
 import afield.four.buffers.BufferParameters
 import afield.four.buffers.VulkanBuffer
 import afield.four.buffers.buffer
+import afield.four.device.Fence
 import afield.logger.lprintln
 import afield.stdlib.ScalarSampleBatch
+import afield.stdlib.Histogram
 import afield.stdlib.SummaryStats
 import afield.stdlib.SummaryStatsBox
 import afield.stdlib.Vec2
@@ -29,6 +31,10 @@ import afield.stdlib.summaryStatsBoxToHtml
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.Locale
+import java.util.concurrent.Executors
+import java.util.concurrent.Future
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -36,7 +42,7 @@ import kotlin.math.min
 const val FIELD_PROBE_BUFFER_NAME = "FieldProbeBuffer"
 const val FIELD_PROBE_INCLUDE_NAME = "fieldProbe"
 const val FIELD_PROBE_DEFAULT_SAMPLES = 1024
-const val FIELD_PROBE_MAX_SAMPLES = FIELD_PROBE_DEFAULT_SAMPLES
+const val FIELD_PROBE_MAX_SAMPLES = 1024 * 256
 const val FIELD_PROBE_DEFAULT_BINDING = 63
 const val FIELD_PROBE_DEFAULT_SET = 0
 
@@ -70,6 +76,14 @@ private const val PROBE_TYPE_VEC2 = 2
 private const val PROBE_TYPE_VEC3 = 3
 private const val PROBE_TYPE_VEC4 = 4
 
+private val fieldProbeDisplayExecutor = Executors.newSingleThreadExecutor { runnable ->
+    Thread(runnable, "field-probe-display").apply { isDaemon = true }
+}
+
+private val fieldProbeReadbackExecutor = Executors.newCachedThreadPool { runnable ->
+    Thread(runnable, "field-probe-readback").apply { isDaemon = true }
+}
+
 private fun orderedUintForFloat(value: Float): UInt {
     val bits = value.toRawBits().toUInt()
     return if ((bits and 0x80000000u) != 0u) bits.inv() else bits or 0x80000000u
@@ -102,6 +116,24 @@ data class FieldProbeSnapshot(
     val samples: List<Vec4>
 ) {
     private val smallChangePivot = 0.08
+    private val cachedScalarValues: List<Double>? by lazy {
+        if (dimensions == PROBE_TYPE_SCALAR) samples.map { it.x.toDouble() } else null
+    }
+    private val cachedVec2Values: List<Vec2>? by lazy {
+        if (dimensions == PROBE_TYPE_VEC2) samples.map { Vec2(it.x, it.y) } else null
+    }
+    private val cachedVec3Values: List<Vec3>? by lazy {
+        if (dimensions == PROBE_TYPE_VEC3) samples.map { Vec3(it.x, it.y, it.z) } else null
+    }
+    private val cachedVec4Values: List<Vec4>? by lazy {
+        if (dimensions == PROBE_TYPE_VEC4) samples.map { Vec4(it.x, it.y, it.z, it.w) } else null
+    }
+    private val cachedSortedScalarValues: List<Double>? by lazy { cachedScalarValues?.sorted() }
+    private val cachedScalarSummary: SummaryStats? by lazy { cachedScalarValues?.let(::buildSummaryStats) }
+    private val cachedScalarHistogram: Histogram? by lazy { cachedScalarValues?.let(::buildHistogram) }
+    private val cachedVec2Summary: Vec2SummaryStats? by lazy { cachedVec2Values?.let(::buildVec2SummaryStats) }
+    private val cachedVec3Summary: Vec3SummaryStats? by lazy { cachedVec3Values?.let(::buildVec3SummaryStats) }
+    private val cachedVec4Summary: Vec4SummaryStats? by lazy { cachedVec4Values?.let(::buildVec4SummaryStats) }
 
     private fun mixChannel(a: Int, b: Int, t: Double): Int =
         (a + ((b - a) * t.coerceIn(0.0, 1.0))).toInt().coerceIn(0, 255)
@@ -169,28 +201,24 @@ data class FieldProbeSnapshot(
     val anyNonZero: Boolean
         get() = nonZeroCount > 0
 
-    fun scalarValues(): List<Double>? =
-        if (dimensions == PROBE_TYPE_SCALAR) samples.map { it.x.toDouble() } else null
+    fun scalarValues(): List<Double>? = cachedScalarValues
 
-    fun vec2Values(): List<Vec2>? =
-        if (dimensions == PROBE_TYPE_VEC2) samples.map { Vec2(it.x, it.y) } else null
+    fun vec2Values(): List<Vec2>? = cachedVec2Values
 
-    fun vec3Values(): List<Vec3>? =
-        if (dimensions == PROBE_TYPE_VEC3) samples.map { Vec3(it.x, it.y, it.z) } else null
+    fun vec3Values(): List<Vec3>? = cachedVec3Values
 
-    fun vec4Values(): List<Vec4>? =
-        if (dimensions == PROBE_TYPE_VEC4) samples.map { Vec4(it.x, it.y, it.z, it.w) } else null
+    fun vec4Values(): List<Vec4>? = cachedVec4Values
 
-    fun scalarSummary(): SummaryStats? = scalarValues()?.let(::buildSummaryStats)
+    fun scalarSummary(): SummaryStats? = cachedScalarSummary
 
-    fun vec2Summary(): Vec2SummaryStats? = vec2Values()?.let(::buildVec2SummaryStats)
+    fun vec2Summary(): Vec2SummaryStats? = cachedVec2Summary
 
-    fun vec3Summary(): Vec3SummaryStats? = vec3Values()?.let(::buildVec3SummaryStats)
+    fun vec3Summary(): Vec3SummaryStats? = cachedVec3Summary
 
-    fun vec4Summary(): Vec4SummaryStats? = vec4Values()?.let(::buildVec4SummaryStats)
+    fun vec4Summary(): Vec4SummaryStats? = cachedVec4Summary
 
     fun percentile(alpha: Double): Double {
-        val values = scalarValues()?.sorted() ?: return Double.NaN
+        val values = cachedSortedScalarValues ?: return Double.NaN
         if (values.isEmpty()) return Double.NaN
         if (values.size == 1) return values.first()
         val t = alpha.coerceIn(0.0, 1.0)
@@ -229,11 +257,11 @@ data class FieldProbeSnapshot(
 
         val detailHtml = when (dimensions) {
             PROBE_TYPE_SCALAR -> scalarValues()?.let { values ->
-                val stats = buildSummaryStats(values)
+                val stats = requireNotNull(scalarSummary())
                 val box = SummaryStatsBox(
                     values = values,
                     stats = stats,
-                    histogram = buildHistogram(values),
+                    histogram = requireNotNull(cachedScalarHistogram),
                     windowSize = sampleCount,
                     samplesSeen = invocationCount,
                     droppedNonFinite = nanCount + infCount,
@@ -242,8 +270,8 @@ data class FieldProbeSnapshot(
                 val previousBox = previous?.scalarValues()?.let { previousValues ->
                     SummaryStatsBox(
                         values = previousValues,
-                        stats = buildSummaryStats(previousValues),
-                        histogram = buildHistogram(previousValues),
+                        stats = requireNotNull(previous.scalarSummary()),
+                        histogram = requireNotNull(previous.cachedScalarHistogram),
                         windowSize = previous.sampleCount,
                         samplesSeen = previous.invocationCount,
                         droppedNonFinite = previous.nanCount + previous.infCount,
@@ -473,6 +501,12 @@ fun FieldProbeSnapshot.scalarBatch(
 class ShaderFieldProbe(
     val box: Box
 ) {
+    private data class DisplayWork(
+        val channel: String,
+        val snapshot: FieldProbeSnapshot,
+        val generation: Long
+    )
+
     var sampleCapacity: Int = FIELD_PROBE_DEFAULT_SAMPLES
         set(value) {
             field = value.coerceIn(1, FIELD_PROBE_MAX_SAMPLES)
@@ -488,16 +522,24 @@ class ShaderFieldProbe(
     var ordinalEndExclusive: UInt = UInt.MAX_VALUE
         private set
 
+    @Volatile
     var latestSnapshot: FieldProbeSnapshot? = null
         private set
 
     private var bufferParameters: BufferParameters? = null
     private var rendererRef: Renderer? = null
     private var pendingPerImage: BooleanArray = BooleanArray(0)
+    private var computeReadbacks: Array<Future<*>?> = emptyArray()
     private var displayChannel: String? = null
     private var snapshotCallback: ((FieldProbeSnapshot) -> Unit)? = null
+    private var continuousSnapshotReads: Boolean = false
     private var previousDisplayedSnapshot: FieldProbeSnapshot? = null
     private var lastDisplayDispatchNanos: Long = 0L
+    private var lastSnapshotReadNanos: Long = 0L
+    private val pendingDisplayWork = AtomicReference<DisplayWork?>(null)
+    private val displayWorkerScheduled = AtomicBoolean(false)
+    @Volatile
+    private var displayGeneration: Long = 0L
 
     fun configure(
         samples: Int = sampleCapacity,
@@ -549,6 +591,9 @@ class ShaderFieldProbe(
         latestSnapshot = null
         previousDisplayedSnapshot = null
         lastDisplayDispatchNanos = 0L
+        lastSnapshotReadNanos = 0L
+        pendingDisplayWork.set(null)
+        displayGeneration += 1L
 
         val channel = displayChannel
         if (channel != null) {
@@ -567,25 +612,32 @@ class ShaderFieldProbe(
     internal fun resetLiveCodingRegistrations() {
         displayChannel = null
         snapshotCallback = null
+        continuousSnapshotReads = false
         previousDisplayedSnapshot = null
         lastDisplayDispatchNanos = 0L
+        lastSnapshotReadNanos = 0L
+        pendingDisplayWork.set(null)
+        displayGeneration += 1L
+    }
+
+    internal fun requireContinuousSnapshotReads() {
+        continuousSnapshotReads = true
+    }
+
+    private fun shouldReadSnapshot(now: Long): Boolean {
+        if (continuousSnapshotReads || snapshotCallback != null || displayChannel == null) return true
+        if (maxDisplayHz <= 0.0) return true
+        val minIntervalNanos = (1_000_000_000.0 / maxDisplayHz).toLong()
+        return now - lastSnapshotReadNanos >= minIntervalNanos
     }
 
     private fun dispatchSnapshot(snapshot: FieldProbeSnapshot) {
-        displayChannel?.let { channel ->
+        displayChannel?.takeIf { snapshot.sampleCount > 0 }?.let { channel ->
             val now = System.nanoTime()
             val minIntervalNanos = if (maxDisplayHz > 0.0) (1_000_000_000.0 / maxDisplayHz).toLong() else 0L
             if (minIntervalNanos == 0L || now - lastDisplayDispatchNanos >= minIntervalNanos) {
-                runCatching {
-                    box.display(channel, snapshot.summaryHtml(previous = previousDisplayedSnapshot))
-                }.onFailure {
-                    lprintln(
-                        "error,graphics",
-                        "field probe display callback failed for '${box.name}' (${box.id}): ${it.message}"
-                    )
-                }
-                previousDisplayedSnapshot = snapshot
                 lastDisplayDispatchNanos = now
+                enqueueDisplay(DisplayWork(channel, snapshot, displayGeneration))
             }
         }
 
@@ -595,6 +647,48 @@ class ShaderFieldProbe(
                     "error,graphics",
                     "field probe callback failed for '${box.name}' (${box.id}): ${it.message}"
                 )
+            }
+        }
+    }
+
+    private fun enqueueDisplay(work: DisplayWork) {
+        pendingDisplayWork.set(work)
+        if (displayWorkerScheduled.compareAndSet(false, true)) {
+            fieldProbeDisplayExecutor.execute(::drainDisplayWork)
+        }
+    }
+
+    private fun drainDisplayWork() {
+        try {
+            while (true) {
+                val work = pendingDisplayWork.getAndSet(null) ?: break
+                if (work.generation != displayGeneration) continue
+
+                val previous = previousDisplayedSnapshot
+                val html = runCatching {
+                    work.snapshot.summaryHtml(previous = previous)
+                }.onFailure {
+                    lprintln(
+                        "error,graphics",
+                        "field probe statistics failed for '${box.name}' (${box.id}): ${it.message}"
+                    )
+                }.getOrNull() ?: continue
+
+                if (work.generation != displayGeneration) continue
+                runCatching {
+                    box.display(work.channel, html)
+                }.onFailure {
+                    lprintln(
+                        "error,graphics",
+                        "field probe display callback failed for '${box.name}' (${box.id}): ${it.message}"
+                    )
+                }
+                previousDisplayedSnapshot = work.snapshot
+            }
+        } finally {
+            displayWorkerScheduled.set(false)
+            if (pendingDisplayWork.get() != null && displayWorkerScheduled.compareAndSet(false, true)) {
+                fieldProbeDisplayExecutor.execute(::drainDisplayWork)
             }
         }
     }
@@ -751,12 +845,17 @@ class ShaderFieldProbe(
     internal fun beforeShaderUse(renderer: Renderer, imageIndex: Int) {
         ensureRenderer(renderer)
         val group = ensureBufferParameters(renderer).toBuffer(renderer)
+        awaitComputeReadback(imageIndex)
 
         if (imageIndex in pendingPerImage.indices && pendingPerImage[imageIndex]) {
             try {
-                val snapshot = readSnapshot(renderer, imageIndex)
-                latestSnapshot = snapshot
-                dispatchSnapshot(snapshot)
+                val now = System.nanoTime()
+                if (shouldReadSnapshot(now)) {
+                    val snapshot = readSnapshot(renderer, imageIndex)
+                    lastSnapshotReadNanos = now
+                    latestSnapshot = snapshot
+                    dispatchSnapshot(snapshot)
+                }
             } finally {
                 pendingPerImage[imageIndex] = false
             }
@@ -770,6 +869,31 @@ class ShaderFieldProbe(
         ensureRenderer(renderer)
         if (enabled && imageIndex in pendingPerImage.indices) {
             pendingPerImage[imageIndex] = true
+        }
+    }
+
+    internal fun afterComputeShaderUse(renderer: Renderer, imageIndex: Int) {
+        ensureRenderer(renderer)
+        if (!enabled || imageIndex !in computeReadbacks.indices) return
+
+        val now = System.nanoTime()
+        if (!shouldReadSnapshot(now)) return
+        lastSnapshotReadNanos = now
+
+        renderer.afterCurrentComputeFrameSubmitted { fence ->
+            fieldProbeReadbackExecutor.submit {
+                runCatching {
+                    fence.fenceWait()
+                    val snapshot = readSnapshot(renderer, imageIndex)
+                    latestSnapshot = snapshot
+                    dispatchSnapshot(snapshot)
+                }.onFailure {
+                    lprintln(
+                        "error,graphics",
+                        "field probe readback failed for '${box.name}' (${box.id}): ${it.message}"
+                    )
+                }
+            }.also { computeReadbacks[imageIndex] = it }
         }
     }
 
@@ -804,7 +928,8 @@ class ShaderFieldProbe(
         val header = UIntArray(FIELD_PROBE_HEADER_INTS)
         val values = mutableListOf<Vec4>()
 
-        target.mapAndRead_bytes {
+        val readSize = FIELD_PROBE_HEADER_BYTES.toLong() + sampleCapacity.toLong() * 16L
+        target.mapAndReadBytes(readSize) {
             val data = duplicate().nativeOrder()
             repeat(FIELD_PROBE_HEADER_INTS) { index ->
                 header[index] = data.getInt(index * 4).toUInt()
@@ -853,9 +978,17 @@ class ShaderFieldProbe(
 
     private fun ensureRenderer(renderer: Renderer) {
         if (rendererRef !== renderer) {
+            computeReadbacks.forEach { it?.get() }
             rendererRef = renderer
             pendingPerImage = BooleanArray(renderer.numImages)
+            computeReadbacks = arrayOfNulls(renderer.numImages)
         }
+    }
+
+    private fun awaitComputeReadback(imageIndex: Int) {
+        if (imageIndex !in computeReadbacks.indices) return
+        computeReadbacks[imageIndex]?.get()
+        computeReadbacks[imageIndex] = null
     }
 
     private fun ensureBufferParameters(renderer: Renderer): BufferParameters {

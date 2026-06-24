@@ -11,6 +11,7 @@ import afield.four.device.DescriptorSetLayout.SimpleDescriptorSetLayout
 import afield.four.modules.Module.*
 import afield.four.util.AutoDisposer
 import afield.four.util.FIELD_PROBE_BUFFER_NAME
+import afield.four.util.FIELD_STATS_PARTIAL_BUFFER_NAME
 import afield.four.util.vkCheck
 import afield.logger.lprintln
 import afield.stdlib.f
@@ -446,6 +447,8 @@ class ComputeModule(val parameters: Parameters) : Renderable {
                 val frameIndex = parameters.renderer.currentImage
                 val profiler = parameters.renderer.getProfiler()
                 val fieldProbe = parameters.fieldProbe?.takeIf { FIELD_PROBE_BUFFER_NAME in uniforms }
+                val fieldStats = parameters.fieldStats
+                    ?.takeIf { it.producer && FIELD_STATS_PARTIAL_BUFFER_NAME in uniforms }
 
                 val marks = if (profiler != null) afield.four.Renderer.ModuleMarks(parameters.name) else null
                 var psScope: GpuProfiler.PipeStatScope? = null
@@ -462,6 +465,8 @@ class ComputeModule(val parameters: Parameters) : Renderable {
                 before.values.forEach { target ->
                     target.render(command, parameters.renderer.currentImage)
                 }
+
+                fieldStats?.stats?.beforeProducer(command, parameters.renderer)
 
                 zeroBefore.values.forEach { buffer ->
                     buffer.get(write = true).zero(command)
@@ -492,13 +497,15 @@ class ComputeModule(val parameters: Parameters) : Renderable {
                     mesh.compute(this, command, pushConstantBuffer)
                 }
 
+                fieldStats?.stats?.afterProducer(command, parameters.renderer)
+
                 after.values.forEach { target ->
                     target.render(command, parameters.renderer.currentImage)
                 }
 
                 fieldProbe?.let {
                     hostReadBarrier(command, it.bufferForImage(parameters.renderer, frameIndex))
-                    it.afterShaderUse(parameters.renderer, frameIndex)
+                    it.afterComputeShaderUse(parameters.renderer, frameIndex)
                 }
 
                 if (profiler != null) {

@@ -22,7 +22,10 @@ class FieldProbeSmokeTest {
             val box = Box("field-probe-smoke").apply {
                 name = "field-probe-smoke"
             }
-            val probe = ShaderFieldProbe(box).configure(samples = 128)
+            val probe = ShaderFieldProbe(box).configure(samples = 1024 * 256)
+            check(probe.sampleCapacity == 1024 * 256) {
+                "Field probe sample capacity was clamped to ${probe.sampleCapacity}"
+            }
             box._fieldProbe = probe
 
             var latest = probe.readLatest()

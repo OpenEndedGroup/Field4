@@ -49,6 +49,10 @@ object Options {
         "afield.four.logShadercSource",
         System.getenv("AFIELD_FOUR_LOG_SHADERC_SOURCE") ?: "true"
     ).toBoolean()
+    var computeOncePerFrame = System.getProperty(
+        "afield.four.computeOncePerFrame",
+        System.getenv("AFIELD_FOUR_COMPUTE_ONCE_PER_FRAME") ?: "true"
+    ).toBoolean()
     var enableVR = true && !isMac
 
     fun doVulkanSDK() {

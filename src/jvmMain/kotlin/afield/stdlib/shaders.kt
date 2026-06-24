@@ -90,6 +90,7 @@ var Box.meshShader by Inheritance<MeshModulePointer?>()
 var Box._meshShader by Delegation<MeshModulePointer?>()
 var Box._fieldProbe by Delegation<ShaderFieldProbe?>()
 var Box._fieldProbeAutoController by Delegation<ShaderFieldAutoController?>()
+var Box._fieldStatsBinding by Delegation<ShaderFieldStatsBinding?>()
 
 val Box.shaderTemplate by Delegation<MutableMap<String, Any>>(
     defaultValue = { HashMap<String, Any>() })
@@ -484,6 +485,106 @@ fun Box.fieldProbeHere(
     return probe
 }
 
+fun Box.fieldStatsHere(
+    channels: Int = 1,
+    sketchSize: Int = 256,
+    maxPartials: Int = 65_536,
+    descriptorSet: Int = 0,
+    partialBinding: Int = FIELD_STATS_DEFAULT_PARTIAL_BINDING,
+    resultBinding: Int = FIELD_STATS_DEFAULT_RESULT_BINDING
+): ShaderFieldStats = _fieldStatsHere(
+    channels = channels,
+    sketchSize = sketchSize,
+    maxPartials = maxPartials,
+    descriptorSet = descriptorSet,
+    partialBinding = partialBinding,
+    resultBinding = resultBinding
+)
+
+fun Box._fieldStatsHere(
+    channels: Int = 1,
+    sketchSize: Int = 256,
+    maxPartials: Int = 65_536,
+    descriptorSet: Int = 0,
+    partialBinding: Int = FIELD_STATS_DEFAULT_PARTIAL_BINDING,
+    resultBinding: Int = FIELD_STATS_DEFAULT_RESULT_BINDING
+): ShaderFieldStats {
+    _fieldStatsBinding?.stats?.takeIf {
+        it.box === this &&
+            it.channels == channels &&
+            it.sketchSize == sketchSize &&
+            it.maxPartials == maxPartials &&
+            it.descriptorSet == descriptorSet &&
+            it.partialBinding == partialBinding &&
+            it.resultBinding == resultBinding
+    }?.let { existing ->
+        _fieldStatsBinding = ShaderFieldStatsBinding(existing, producer = true)
+        return existing
+    }
+
+    val stats = ShaderFieldStats(
+        box = this,
+        channels = channels,
+        sketchSize = sketchSize,
+        maxPartials = maxPartials,
+        descriptorSet = descriptorSet,
+        partialBinding = partialBinding,
+        resultBinding = resultBinding
+    )
+    _fieldStatsBinding = ShaderFieldStatsBinding(stats, producer = true)
+    return stats
+}
+
+fun Box.macro_fieldStatsHere(args: List<String>): Insert {
+    val call = args.joinToString("").trim()
+    val body = call.removePrefix("(").removeSuffix(")").trim()
+    val defaults = linkedMapOf(
+        "channels" to 1,
+        "sketchSize" to 256,
+        "maxPartials" to 65_536,
+        "descriptorSet" to 0,
+        "partialBinding" to FIELD_STATS_DEFAULT_PARTIAL_BINDING,
+        "resultBinding" to FIELD_STATS_DEFAULT_RESULT_BINDING
+    )
+    val positionalNames = defaults.keys.toList()
+    var positionalIndex = 0
+
+    if (body.isNotEmpty()) {
+        body.split(',').map { it.trim() }.filter { it.isNotEmpty() }.forEach { argument ->
+            val (name, valueText) = if ('=' in argument) {
+                argument.substringBefore('=').trim() to argument.substringAfter('=').trim()
+            } else {
+                require(positionalIndex < positionalNames.size) {
+                    "fieldStatsHere has too many positional arguments."
+                }
+                positionalNames[positionalIndex++] to argument
+            }
+            require(name in defaults) { "Unknown fieldStatsHere argument '$name'." }
+            val value = valueText.replace("_", "").toIntOrNull()
+                ?: throw IllegalArgumentException(
+                    "fieldStatsHere argument '$name' must be an integer literal so computeModuleHere can compile during macro expansion."
+                )
+            defaults[name] = value
+        }
+    }
+
+    _fieldStatsHere(
+        channels = defaults.getValue("channels"),
+        sketchSize = defaults.getValue("sketchSize"),
+        maxPartials = defaults.getValue("maxPartials"),
+        descriptorSet = defaults.getValue("descriptorSet"),
+        partialBinding = defaults.getValue("partialBinding"),
+        resultBinding = defaults.getValue("resultBinding")
+    )
+
+    return Insert(here = "_fieldStatsHere$call")
+}
+
+fun Box.useFieldStats(stats: ShaderFieldStats): ShaderFieldStats {
+    _fieldStatsBinding = ShaderFieldStatsBinding(stats, producer = false)
+    return stats
+}
+
 data class ShaderProbeAutoControlConfig(
     val minSamples: Int = 128,
     val clipLower: Double? = 0.0,
@@ -595,6 +696,7 @@ fun Box.fieldProbeAutoControl(
     apply: (params: DoubleArray, output: ControlOutput, batch: FieldProbeScalarBatch) -> Unit
 ): ShaderFieldAutoController {
     _fieldProbeAutoController?.stop(runloop = runloop)
+    probe.requireContinuousSnapshotReads()
 
     return ShaderFieldAutoController(
         box = this,
@@ -972,6 +1074,12 @@ private fun Box.ensureFieldProbe(): ShaderFieldProbe {
 private fun builtInShaderInclude(inside: Box, includePath: String): String? {
     return when (includePath.trim()) {
         FIELD_PROBE_INCLUDE_NAME -> inside.ensureFieldProbe().includeSource()
+        FIELD_STATS_INCLUDE_NAME -> inside._fieldStatsBinding?.let {
+            it.stats.includeSource(producer = it.producer)
+        }
+            ?: throw IllegalStateException(
+                "Include '$FIELD_STATS_INCLUDE_NAME' requires fieldStatsHere(...) or useFieldStats(...)."
+            )
         FIELD_QUANTILE_WARP_INCLUDE_NAME -> fieldQuantileWarpIncludeSource()
         else -> null
     }
@@ -1012,15 +1120,28 @@ private fun shaderIncludeResolverFor(inside: Box, defaultProperty: String): Shad
 }
 
 private fun attachFieldProbe(box: Box, parameters: Parameters) {
-    val probe = box._fieldProbe ?: return
-    parameters.fieldProbe = probe
+    box._fieldProbe?.let { probe ->
+        parameters.fieldProbe = probe
 
-    val previousResolver = parameters.ssboResolver
-    parameters.ssboResolver = { requested ->
-        if (requested.name == FIELD_PROBE_BUFFER_NAME) {
-            probe.bufferParameters(parameters.renderer)
-        } else {
-            previousResolver(requested)
+        val previousResolver = parameters.ssboResolver
+        parameters.ssboResolver = { requested ->
+            if (requested.name == FIELD_PROBE_BUFFER_NAME) {
+                probe.bufferParameters(parameters.renderer)
+            } else {
+                previousResolver(requested)
+            }
+        }
+    }
+
+    box._fieldStatsBinding?.let { binding ->
+        parameters.fieldStats = binding
+        val previousResolver = parameters.ssboResolver
+        parameters.ssboResolver = { requested ->
+            when (requested.name) {
+                FIELD_STATS_PARTIAL_BUFFER_NAME -> binding.stats.partialBufferParameters(parameters.renderer)
+                FIELD_STATS_RESULT_BUFFER_NAME -> binding.stats.resultBufferParameters(parameters.renderer)
+                else -> previousResolver(requested)
+            }
         }
     }
 }
