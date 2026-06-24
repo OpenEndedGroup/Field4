@@ -89,20 +89,20 @@ class SavingContext {
     fun listTemplates(dir: String): List<String> {
         val directory = File(dir)
         if (!directory.exists()) return emptyList()
-        
+
         val files = directory.listFiles() ?: return emptyList()
         val result = mutableListOf<String>()
-        
+
         // Add subdirectories containing metadata files
         files.filter { file ->
             file.isDirectory && (File(file, METADATA_EDN).exists() || File(file, METADATA_JSON).exists())
         }.mapTo(result) { it.name }
-        
+
         // Add standalone metadata.edn files (but not the main metadata.edn)
         files.filter { file ->
             file.isFile && file.name.endsWith(".edn") && file.name != METADATA_EDN
         }.mapTo(result) { it.nameWithoutExtension }
-        
+
         return result
     }
 
@@ -222,6 +222,7 @@ class SavingContext {
             }
             mapped
         }
+
         else -> {
             lprintln("warning,save", "unhandled class $value ${value.javaClass}")
             null
@@ -241,6 +242,7 @@ class SavingContext {
             val inline = if (file.exists()) file.readText() else ""
             FileInline(value.path, inline)
         }
+
         is FileInline -> value
         is List<*> -> value.map { normalizeInlineValue(it, directory) }
         is Set<*> -> value.mapTo(LinkedHashSet()) { normalizeInlineValue(it, directory) }
@@ -251,6 +253,7 @@ class SavingContext {
             }
             mapped
         }
+
         else -> {
             lprintln("warning,save", "unhandled class $value ${value.javaClass}")
             null
@@ -259,11 +262,11 @@ class SavingContext {
 
     /**
      * Save boxes to disk, optimized to minimize main thread blocking.
-     * 
+     *
      * This method works in two phases:
      * 1. Snapshot phase (main thread): Quickly capture all box properties into memory structures
      * 2. I/O phase (background thread): Write files, create backups, and perform git operations
-     * 
+     *
      * This approach prevents frame hiccups in VR by moving heavy I/O operations off the main thread.
      */
     fun save(fn: String, boxes: Set<Box>, message: String? = null, onComplete: (() -> Unit)? = null) {
@@ -281,11 +284,11 @@ class SavingContext {
                 "slow save snapshot doc=$fn ms=$snapshotMs boxes=${snapshot.transfers.size} properties=${snapshot.propertyCount} sidecars=${snapshot.sidecarCount}"
             )
         }
-        
+
         // Phase 2: Perform I/O operations in background thread
         saveInBackground(snapshot, fn, boxes, message, onComplete, System.nanoTime())
     }
-    
+
     /**
      * Phase 1: Snapshot all box properties in the main thread.
      * This is a quick operation that just reads properties without any I/O.
@@ -320,7 +323,7 @@ class SavingContext {
             }
             BoxTransferEdn(box.id, properties)
         }
-        
+
         val watchManager = try {
             thisSessionInfo.get()?.fileWatchManager
         } catch (e: Exception) {
@@ -336,7 +339,7 @@ class SavingContext {
             sidecarChars = sidecarChars
         )
     }
-    
+
     /**
      * Phase 2: Perform all I/O operations in a background thread.
      * This includes file writing and backups.
@@ -464,7 +467,11 @@ class SavingContext {
 
                     SaveReloadLog.log(
                         "save",
-                        "doc=$fn altered=$altered touched=${touched.size} changed=${alteredFiles.size} message=${message ?: ""} files=[${touched.joinToString(",")}], changed=[${alteredFiles.joinToString(",")}]"
+                        "doc=$fn altered=$altered touched=${touched.size} changed=${alteredFiles.size} message=${message ?: ""} files=[${
+                            touched.joinToString(
+                                ","
+                            )
+                        }], changed=[${alteredFiles.joinToString(",")}]"
                     )
 
                     if (altered) {
@@ -516,7 +523,8 @@ class SavingContext {
                                 }
                                 File(root).listFiles()?.forEach { file ->
                                     if (file.isFile && file.name.contains("_") &&
-                                        Box.ioSeparateProperties.values.contains(file.extension)) {
+                                        Box.ioSeparateProperties.values.contains(file.extension)
+                                    ) {
                                         it.markInternalSave(file)
                                     }
                                 }
@@ -565,7 +573,7 @@ class SavingContext {
             }
         }
     }
-    
+
     /**
      * Data class to hold a snapshot of box data captured in the main thread.
      */
@@ -753,11 +761,13 @@ class SavingContext {
                 path = value.path
                 text = value.inline
             }
+
             is String -> {
                 if (!shouldWriteStringAsBlock(name, value)) return null
                 path = null
                 text = value
             }
+
             else -> return null
         }
         return MarkdownBlockProperty(
@@ -828,7 +838,13 @@ class SavingContext {
             val trimmed = raw.trimStart()
             val body = when {
                 trimmed.startsWith("//") -> trimmed.removePrefix("//")
-                trimmed.startsWith("#") && language in setOf("python", "yaml", "text", "markdown") -> trimmed.removePrefix("#")
+                trimmed.startsWith("#") && language in setOf(
+                    "python",
+                    "yaml",
+                    "text",
+                    "markdown"
+                ) -> trimmed.removePrefix("#")
+
                 trimmed.startsWith(";") && language == "clojure" -> trimmed.removePrefix(";")
                 collected.isNotEmpty() && raw.isBlank() -> ""
                 else -> break
@@ -926,22 +942,23 @@ class SavingContext {
     fun load(
         fn: String,
         filterId: (String) -> String = { it },
-        upgradeOnLoad: Boolean = true
+        upgradeOnLoad: Boolean = true,
+        initIfCreated: Boolean = true
     ): Set<Box> {
         val file = File(fn)
-        
+
         // Check if fn points to a standalone .edn file
         if (file.isFile && file.name.endsWith(".edn")) {
             val ednText = file.readText()
             val directory = file.absoluteFile.parentFile?.absolutePath ?: file.absolutePath
-            return loadFromEdnText(ednText, directory, filterId)
+            return loadFromEdnText(ednText, directory, filterId, initIfCreated = initIfCreated)
         }
-        
+
         // Otherwise, treat as directory
         val root = ensureDirectory(fn)
         val ednFile = File(root, METADATA_EDN)
         if (ednFile.exists()) {
-            return loadEdn(root, filterId)
+            return loadEdn(root, filterId, initIfCreated = initIfCreated)
         }
 
         val jsonFile = File(root, METADATA_JSON)
@@ -949,7 +966,7 @@ class SavingContext {
             throw FileNotFoundException("missing $METADATA_EDN or $METADATA_JSON in $root")
         }
 
-        val boxes = loadJson(root, filterId)
+        val boxes = loadJson(root, filterId, initIfCreated = initIfCreated)
         if (upgradeOnLoad) {
             try {
                 save(root, boxes, "upgrade to edn")
@@ -975,10 +992,13 @@ class SavingContext {
             is Map<*, *> -> {
                 val savedProps = mapLookup(rootValue, "persistentProperties")
                 when (savedProps) {
-                    is Collection<*> -> savedProps.mapNotNull { it?.toString() }.ifEmpty { Box.ioPersistentProperties.toList() }
+                    is Collection<*> -> savedProps.mapNotNull { it?.toString() }
+                        .ifEmpty { Box.ioPersistentProperties.toList() }
+
                     else -> Box.ioPersistentProperties.toList()
                 }
             }
+
             else -> Box.ioPersistentProperties.toList()
         }
 
@@ -1070,6 +1090,7 @@ class SavingContext {
             val id = value.removePrefix(":").trim()
             if (id.isEmpty()) null else BoxRef(id)
         }
+
         else -> null
     }
 
@@ -1093,6 +1114,7 @@ class SavingContext {
                 if (valid) refs else value
             }
         }
+
         "nestedIn" -> coerceBoxRefLike(value) ?: value
         else -> value
     }
@@ -1130,6 +1152,7 @@ class SavingContext {
                 mergePersistentProperties(rootValue)
                 mapLookup(rootValue, "boxes")
             }
+
             is List<*> -> rootValue
             is Set<*> -> rootValue.toList()
             else -> throw IllegalArgumentException("expected EDN map or list in ${File(directory, METADATA_EDN).path}")
@@ -1162,6 +1185,7 @@ class SavingContext {
                 mergePersistentProperties(rootValue)
                 mapLookup(rootValue, "boxes")
             }
+
             is List<*> -> rootValue
             is Set<*> -> rootValue.toList()
             else -> throw IllegalArgumentException("expected EDN map or list in provided text")
@@ -1201,6 +1225,7 @@ class SavingContext {
             val file = File(directory, value.path)
             if (!preferInlineFiles && file.exists()) file.readText() else value.inline
         }
+
         is BoxRef -> {
             if (allowedRefIds != null && value.id !in allowedRefIds) {
                 SkipRef
@@ -1225,47 +1250,56 @@ class SavingContext {
                 }
             }
         }
+
         is List<*> -> {
             val resolved = mutableListOf<Any?>()
             value.forEach { item ->
-                val result = resolveValue(item, directory, filterId, createBoxes, allowedRefIds, root, preferInlineFiles)
+                val result =
+                    resolveValue(item, directory, filterId, createBoxes, allowedRefIds, root, preferInlineFiles)
                 if (result !== SkipRef) {
                     resolved.add(result)
                 }
             }
             resolved
         }
+
         is Set<*> -> {
             val resolved = LinkedHashSet<Any?>()
             value.forEach { item ->
-                val result = resolveValue(item, directory, filterId, createBoxes, allowedRefIds, root, preferInlineFiles)
+                val result =
+                    resolveValue(item, directory, filterId, createBoxes, allowedRefIds, root, preferInlineFiles)
                 if (result !== SkipRef) {
                     resolved.add(result)
                 }
             }
             resolved
         }
+
         is Map<*, *> -> {
             val mapped = LinkedHashMap<Any?, Any?>()
             for ((k, v) in value) {
-                val keyResolved = resolveValue(k, directory, filterId, createBoxes, allowedRefIds, root, preferInlineFiles)
+                val keyResolved =
+                    resolveValue(k, directory, filterId, createBoxes, allowedRefIds, root, preferInlineFiles)
                 if (keyResolved === SkipRef) continue
-                val valueResolved = resolveValue(v, directory, filterId, createBoxes, allowedRefIds, root, preferInlineFiles)
+                val valueResolved =
+                    resolveValue(v, directory, filterId, createBoxes, allowedRefIds, root, preferInlineFiles)
                 if (valueResolved === SkipRef) continue
                 mapped[keyResolved] = valueResolved
             }
             mapped
         }
+
         is EdnValue -> {
             lprintln("warning,decode", "can't decode $value")
             null
         }
+
         else -> value
     }
 
-    private fun loadEdn(root: String, filterId: (String) -> String): Set<Box> {
+    private fun loadEdn(root: String, filterId: (String) -> String, initIfCreated: Boolean = true): Set<Box> {
         val transfers = readEdnTransfers(root)
-        return instantiateTransfers(transfers, root, filterId, createBoxes = true)
+        return instantiateTransfers(transfers, root, filterId, createBoxes = true, initIfCreated = initIfCreated)
     }
 
     private fun instantiateTransfers(
@@ -1274,11 +1308,12 @@ class SavingContext {
         filterId: (String) -> String,
         createBoxes: Boolean,
         allowedRefIds: Set<String>? = null,
-        preferInlineFiles: Boolean = false
+        preferInlineFiles: Boolean = false,
+        initIfCreated: Boolean = true
     ): Set<Box> {
         val boxes = transfers.map { transfer ->
             val id = filterId(transfer.id)
-            val b = box(id, createIfMissing = createBoxes)
+            val b = box(id, createIfMissing = createBoxes, initIfCreated = initIfCreated)
             transfer.properties.forEach { (name, value) ->
                 val v = resolveValue(
                     value,
@@ -1347,7 +1382,8 @@ class SavingContext {
         directory: String,
         filterId: (String) -> String = { it },
         allowedRefIds: Set<String>? = null,
-        preferInlineFiles: Boolean = false
+        preferInlineFiles: Boolean = false,
+        initIfCreated: Boolean = true
     ): Set<Box> {
         val transfers = readEdnTransfersFromString(ednText)
         return instantiateTransfers(
@@ -1356,15 +1392,16 @@ class SavingContext {
             filterId,
             createBoxes = true,
             allowedRefIds = allowedRefIds,
-            preferInlineFiles = preferInlineFiles
+            preferInlineFiles = preferInlineFiles,
+            initIfCreated = initIfCreated
         )
     }
 
-    private fun loadJson(root: String, filterId: (String) -> String): Set<Box> {
+    private fun loadJson(root: String, filterId: (String) -> String, initIfCreated: Boolean = true): Set<Box> {
         val transfers = format.decodeFromString<Set<Box_transfer>>(File(root, METADATA_JSON).readText())
         return transfers.map {
             val id = filterId(it.id)
-            val b = box(id, createIfMissing = true)
+            val b = box(id, createIfMissing = true, initIfCreated = initIfCreated)
             it.properties.forEach { (name, element) ->
                 val v = fromTypedPair(element, root, filterId)
                 if (v != null) {
@@ -1404,12 +1441,15 @@ class SavingContext {
                 v
             }
         }
+
         "List" -> format.decodeFromJsonElement<List<Pair<String, JsonElement>>>(element.second).map {
             fromTypedPair(it, directory, filterId, createBoxes)
         }.toMutableList() as Any
+
         "Set" -> format.decodeFromJsonElement<List<Pair<String, JsonElement>>>(element.second).map {
             fromTypedPair(it, directory, filterId, createBoxes)
         }.toMutableSet() as Any
+
         else -> {
             lprintln("error,decode", "can't decode $element")
             null
@@ -1490,7 +1530,7 @@ class SavingContext {
         ensureAgentGuides(fn)
         return fn
     }
-    
+
     /**
      * Ensure agent guides are present in the workspace directory.
      * Copies README and agent guide files if they don't exist.
@@ -1500,21 +1540,21 @@ class SavingContext {
         try {
             val workspace = File(workspaceDir)
             if (!workspace.exists() || !workspace.isDirectory) return
-            
+
             // Define the guide files to copy
             val guidesToCopy = mapOf(
                 "templates/WORKSPACE_README.md" to "README.md",
                 "AGENT_GUIDE.md" to "AGENT_GUIDE.md",
                 "AGENT_QUICK_REF.md" to "AGENT_QUICK_REF.md"
             )
-            
+
             // Get the repository root (go up from wherever we are)
             val repoRoot = findRepositoryRoot() ?: return
-            
+
             guidesToCopy.forEach { (sourcePath, destName) ->
                 val sourceFile = File(repoRoot, sourcePath)
                 val destFile = File(workspace, destName)
-                
+
                 // Only copy if source exists and destination doesn't exist
                 if (sourceFile.exists() && !destFile.exists()) {
                     try {
@@ -1531,7 +1571,7 @@ class SavingContext {
             lprintln("debug,workspace", "Guide copying failed: ${e.message}")
         }
     }
-    
+
     /**
      * Find the repository root by looking for characteristic files.
      * Searches up the directory tree for build.gradle.kts or .git directory.
@@ -1539,20 +1579,21 @@ class SavingContext {
     private fun findRepositoryRoot(): File? {
         // Try common locations relative to the classpath
         var current = File(System.getProperty("user.dir"))
-        
+
         // Look up the tree for repository markers
         var attempts = 10
         while (attempts > 0 && current.parent != null) {
             // Check for repository markers
-            if (File(current, "build.gradle.kts").exists() || 
+            if (File(current, "build.gradle.kts").exists() ||
                 File(current, ".git").exists() ||
-                File(current, "AGENT_GUIDE.md").exists()) {
+                File(current, "AGENT_GUIDE.md").exists()
+            ) {
                 return current
             }
             current = current.parentFile ?: break
             attempts--
         }
-        
+
         // Fallback: use current directory
         return File(System.getProperty("user.dir"))
     }

@@ -491,14 +491,16 @@ fun Box.fieldStatsHere(
     maxPartials: Int = 65_536,
     descriptorSet: Int = 0,
     partialBinding: Int = FIELD_STATS_DEFAULT_PARTIAL_BINDING,
-    resultBinding: Int = FIELD_STATS_DEFAULT_RESULT_BINDING
+    resultBinding: Int = FIELD_STATS_DEFAULT_RESULT_BINDING,
+    stateSlots: Int = 8
 ): ShaderFieldStats = _fieldStatsHere(
     channels = channels,
     sketchSize = sketchSize,
     maxPartials = maxPartials,
     descriptorSet = descriptorSet,
     partialBinding = partialBinding,
-    resultBinding = resultBinding
+    resultBinding = resultBinding,
+    stateSlots = stateSlots
 )
 
 fun Box._fieldStatsHere(
@@ -507,7 +509,8 @@ fun Box._fieldStatsHere(
     maxPartials: Int = 65_536,
     descriptorSet: Int = 0,
     partialBinding: Int = FIELD_STATS_DEFAULT_PARTIAL_BINDING,
-    resultBinding: Int = FIELD_STATS_DEFAULT_RESULT_BINDING
+    resultBinding: Int = FIELD_STATS_DEFAULT_RESULT_BINDING,
+    stateSlots: Int = 8
 ): ShaderFieldStats {
     _fieldStatsBinding?.stats?.takeIf {
         it.box === this &&
@@ -516,7 +519,8 @@ fun Box._fieldStatsHere(
             it.maxPartials == maxPartials &&
             it.descriptorSet == descriptorSet &&
             it.partialBinding == partialBinding &&
-            it.resultBinding == resultBinding
+            it.resultBinding == resultBinding &&
+            it.stateSlots == stateSlots
     }?.let { existing ->
         _fieldStatsBinding = ShaderFieldStatsBinding(existing, producer = true)
         return existing
@@ -527,6 +531,7 @@ fun Box._fieldStatsHere(
         channels = channels,
         sketchSize = sketchSize,
         maxPartials = maxPartials,
+        stateSlots = stateSlots,
         descriptorSet = descriptorSet,
         partialBinding = partialBinding,
         resultBinding = resultBinding
@@ -544,7 +549,8 @@ fun Box.macro_fieldStatsHere(args: List<String>): Insert {
         "maxPartials" to 65_536,
         "descriptorSet" to 0,
         "partialBinding" to FIELD_STATS_DEFAULT_PARTIAL_BINDING,
-        "resultBinding" to FIELD_STATS_DEFAULT_RESULT_BINDING
+        "resultBinding" to FIELD_STATS_DEFAULT_RESULT_BINDING,
+        "stateSlots" to 8
     )
     val positionalNames = defaults.keys.toList()
     var positionalIndex = 0
@@ -574,7 +580,8 @@ fun Box.macro_fieldStatsHere(args: List<String>): Insert {
         maxPartials = defaults.getValue("maxPartials"),
         descriptorSet = defaults.getValue("descriptorSet"),
         partialBinding = defaults.getValue("partialBinding"),
-        resultBinding = defaults.getValue("resultBinding")
+        resultBinding = defaults.getValue("resultBinding"),
+        stateSlots = defaults.getValue("stateSlots")
     )
 
     return Insert(here = "_fieldStatsHere$call")

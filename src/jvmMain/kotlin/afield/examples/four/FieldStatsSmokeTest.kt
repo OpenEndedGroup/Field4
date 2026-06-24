@@ -26,7 +26,12 @@ class FieldStatsSmokeTest {
             val window = Window("FieldStats Smoke Test")
             val renderer = Renderer(window)
             val box = Box("field-stats-smoke").apply { name = "field-stats-smoke" }
-            val stats = box.fieldStatsHere(channels = 1, sketchSize = 64, maxPartials = 2048)
+            val stats = box.fieldStatsHere(
+                channels = 2,
+                sketchSize = 64,
+                maxPartials = 2048,
+                stateSlots = 2
+            )
 
             val shader = preprocess(
                 box,
@@ -36,7 +41,15 @@ class FieldStatsSmokeTest {
                     {% include "fieldStats" %}
 
                     void main() {
+                        float smoothedMedian =
+                            fieldStatsSmoothedQuantile(0u, 0u, 0.5, 2.0);
+                        float smoothedMean =
+                            fieldStatsSmoothedMean(1u, 1u, 2.0);
                         fieldStatsRecord(0u, float(gl_GlobalInvocationID.x));
+                        fieldStatsRecord(1u, float(fieldStatsResult.generation) * 100.0);
+                        if (smoothedMedian < -1e30 || smoothedMean < -1e30) {
+                            fieldStatsResult.generation = 0u;
+                        }
                     }
                 """.trimIndent(),
                 ShaderKind.COMPUTE_SHADER
@@ -71,7 +84,8 @@ class FieldStatsSmokeTest {
 
                     void main() {
                         float median = fieldStatsQuantile(0u, 0.5);
-                        if (median < -1e30) {
+                        float smoothedMedian = fieldStatsState(0u);
+                        if (median < -1e30 || smoothedMedian < -1e30) {
                             fieldStatsResult.generation = 0u;
                         }
                     }
@@ -105,10 +119,32 @@ class FieldStatsSmokeTest {
                 require(snapshot.quantile(0.5) in 400.0..624.0) {
                     "Expected approximate median near the center, got ${snapshot.quantile(0.5)}"
                 }
+                val state = requireNotNull(stats.state(0).latest()) {
+                    "FieldStats asynchronous state snapshot was not published"
+                }
+                require(state.initialized) { "Expected smoothing state to be initialized" }
+                require(state.mode == 2) { "Expected quantile smoothing mode, got ${state.mode}" }
+                require(state.channel == 0) { "Expected smoothing channel 0, got ${state.channel}" }
+                require(state.value in 400.0..624.0) {
+                    "Expected smoothed median near the center, got ${state.value}"
+                }
+                val changingSnapshot = requireNotNull(stats.scalar(1).latest()) {
+                    "FieldStats changing-channel snapshot was not published"
+                }
+                val changingState = requireNotNull(stats.state(1).latest()) {
+                    "FieldStats mean smoothing state was not published"
+                }
+                require(abs(changingSnapshot.mean - 500.0) < 0.1) {
+                    "Expected current changing mean 500, got ${changingSnapshot.mean}"
+                }
+                require(changingState.value in 250.0..400.0) {
+                    "Expected half-life smoothing to lag current mean, got ${changingState.value}"
+                }
 
                 println(
                     "FieldStatsSmokeTest ok: generation=${snapshot.generation} count=${snapshot.finiteCount} " +
-                        "mean=${snapshot.mean} q50=${snapshot.quantile(0.5)}"
+                        "mean=${snapshot.mean} q50=${snapshot.quantile(0.5)} smoothedQ50=${state.value} " +
+                        "changingMean=${changingSnapshot.mean} smoothedMean=${changingState.value}"
                 )
             } finally {
                 module.current.cleanup()

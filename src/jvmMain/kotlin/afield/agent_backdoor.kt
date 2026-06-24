@@ -63,7 +63,10 @@ private fun cleanupDetachedSession(info: SessionInformation) {
     }
 }
 
-internal fun detachDocumentSession(session: WebSocketSession, info: SessionInformation? = sessions.remove(session)): SessionInformation? {
+internal fun detachDocumentSession(
+    session: WebSocketSession,
+    info: SessionInformation? = sessions.remove(session)
+): SessionInformation? {
     val target = info ?: return null
     detachSpreadsheetClient(session)
     target.sessions.remove(session)
@@ -180,19 +183,23 @@ internal fun attachDocumentSession(
         return found
     }
 
-	val info = createSessionInformation(target)
-	info.loading = !target.scratch
-	documents[target.sessionKey] = info
-	registerDocumentSession(session, info)
+    val info = createSessionInformation(target)
+    info.loading = !target.scratch
+    documents[target.sessionKey] = info
+    registerDocumentSession(session, info)
 
-	if (!target.scratch) {
-		try {
+    if (!target.scratch) {
+        try {
             sendDocumentLoadStatus(
                 session,
                 phase = "metadata-loading",
                 message = "reading metadata"
             )
-            val boxes = SavingContext().load(target.sessionKey)
+            // Phase 1: Load boxes without triggering KotlinInterface init.
+            // Box creation and property deserialization is fast; the heavy
+            // synchronous KotlinInterface2 construction is deferred so we can
+            // report progress to the frontend between boxes.
+            val boxes = SavingContext().load(target.sessionKey, initIfCreated = false)
             lprintln("info,agent_backdoor", "loaded boxes from ${target.sessionKey} for ${username}")
             boxes.forEach {
                 it.children.removeIf { child -> child.getPropertyRaw("_tombstone").isTrue() }
@@ -202,13 +209,16 @@ internal fun attachDocumentSession(
 
             info.root.children.removeIf { it.getPropertyRaw("_tombstone").isTrue() }
             attachRootToMetaroot(info.root)
+
+            // Phase 2: Tell the frontend how many boxes to expect BEFORE the
+            // slow initialization work begins.
             val count = countLoadableBoxes(info)
             sendDocumentLoadStatus(
                 session,
                 phase = "metadata-loaded",
                 message = "metadata loaded",
                 count = count,
-                completed = count
+                completed = 0
             )
             sendExpectedBoxCount(session, info)
             sendDocumentLoadStatus(
@@ -218,15 +228,20 @@ internal fun attachDocumentSession(
                 count = count,
                 completed = 0
             )
+
+            // Phase 3: Initialize KotlinInterface for every box.
+            // Progress messages are sent every 5 boxes; _send dispatches
+            // them via GlobalScope so they reach the frontend independently.
             var initialized = 0
-            info.root.children.forEach {
+            info.boxes.values.forEach {
+                if (it.id == "root" || it.getPropertyRaw("_tombstone").isTrue()) return@forEach
                 it.ki
                 initialized++
-                if (initialized == count || initialized % 25 == 0) {
+                if (initialized % 5 == 0 || initialized == count) {
                     sendDocumentLoadStatus(
                         session,
                         phase = "stdlib-queued",
-                        message = "queued box initialization",
+                        message = "initializing box Kotlin runtimes",
                         count = count,
                         completed = initialized,
                         terminal = initialized == count
@@ -237,7 +252,7 @@ internal fun attachDocumentSession(
                 sendDocumentLoadStatus(
                     session,
                     phase = "stdlib-queued",
-                    message = "queued box initialization",
+                    message = "initializing box Kotlin runtimes",
                     count = count,
                     completed = initialized,
                     terminal = true
@@ -253,10 +268,15 @@ internal fun attachDocumentSession(
                     terminal = true
                 )
             }
-			info.topologyGeneration++
-			info.fileWatchManager
-			info.scheduleAutorunBoxes()
-		} catch (fnf: FileNotFoundException) {
+
+            // Phase 4: Queue box property resyncs so the frontend receives
+            // frame/name/code for every loaded box.
+            info.boxes.values.forEach { it.resyncAll() }
+
+            info.topologyGeneration++
+            info.fileWatchManager
+            info.scheduleAutorunBoxes()
+        } catch (fnf: FileNotFoundException) {
             lprintln("warning,agent_backdoor", "file '${target.sessionKey}' not found; will be created on first save")
             sendExpectedBoxCount(session, info)
             sendDocumentLoadStatus(
@@ -265,14 +285,14 @@ internal fun attachDocumentSession(
                 message = "new document",
                 count = 0,
                 completed = 0,
-				terminal = true
-			)
-		} finally {
-			info.loading = false
-		}
-	} else {
-		info.loading = false
-		sendExpectedBoxCount(session, info)
+                terminal = true
+            )
+        } finally {
+            info.loading = false
+        }
+    } else {
+        info.loading = false
+        sendExpectedBoxCount(session, info)
         sendDocumentLoadStatus(
             session,
             phase = "empty",
@@ -419,6 +439,7 @@ private fun applyAgentProperty(box: Box, property: String, value: JsonElement) {
                     box.inside.markSidecarPending(box.id, property)
                 }
             }
+
             value.booleanOrNull != null -> box.setPropertyRaw(property, value.booleanOrNull!!, doResync = true)
             value.doubleOrNull != null -> box.setPropertyRaw(property, value.doubleOrNull!!, doResync = true)
             value.contentOrNull == null -> {}
@@ -430,10 +451,11 @@ private fun ensureAgentGraphicsContext(info: SessionInformation): Pair<Box, Bool
     val existing = info.root.children.firstOrNull {
         it.name == AGENT_GRAPHICS_CONTEXT_NAME && it.getPropertyRaw("renderer") is Renderer
     }
-    val graphicsBox = existing ?: box(UUID.randomUUID().toString(), createIfMissing = true, initIfCreated = true, root = info).also {
-        it.name = AGENT_GRAPHICS_CONTEXT_NAME
-        it.frame = Rect(0.0, 0.0, 120.0, 80.0)
-    }
+    val graphicsBox =
+        existing ?: box(UUID.randomUUID().toString(), createIfMissing = true, initIfCreated = true, root = info).also {
+            it.name = AGENT_GRAPHICS_CONTEXT_NAME
+            it.frame = Rect(0.0, 0.0, 120.0, 80.0)
+        }
 
     val renderer = graphicsBox.getPropertyRaw("renderer") as? Renderer ?: Renderer(Window("Field")).also {
         graphicsBox.setPropertyRaw("window", it.window, doResync = true)
@@ -456,7 +478,17 @@ private fun ensureAgentGraphicsContext(info: SessionInformation): Pair<Box, Bool
                 if (graphicsBox.currentRunningStates[strand]?.watermark == generation) {
                     graphicsBox.currentRunningStates.remove(strand)
                 }
-                send(Message("is-running").payload(IsRunning(graphicsBox.id, false, generation, strand, "graphics-context")))
+                send(
+                    Message("is-running").payload(
+                        IsRunning(
+                            graphicsBox.id,
+                            false,
+                            generation,
+                            strand,
+                            "graphics-context"
+                        )
+                    )
+                )
             }
         }
         graphicsBox.jobs += job
@@ -686,7 +718,10 @@ fun installAgentBackdoorHandlers() {
             val response = runCatching {
                 ensurePlaywrightForSession(info)
             }.getOrElse { throwable ->
-                lprintln("warning,agent_backdoor", "playwright open failed for ${info.documentName}: ${throwable.message}")
+                lprintln(
+                    "warning,agent_backdoor",
+                    "playwright open failed for ${info.documentName}: ${throwable.message}"
+                )
                 AgentOpenPlaywrightResponse(
                     ok = false,
                     error = throwable.message ?: throwable::class.simpleName ?: "Unknown Playwright error",
@@ -737,7 +772,10 @@ fun installAgentBackdoorHandlers() {
                 }
                 performPlaywrightInput(info, request)
             }.getOrElse { throwable ->
-                lprintln("warning,agent_backdoor", "playwright input failed for ${request.action}: ${throwable.message}")
+                lprintln(
+                    "warning,agent_backdoor",
+                    "playwright input failed for ${request.action}: ${throwable.message}"
+                )
                 AgentPlaywrightInputResponse(
                     ok = false,
                     action = request.action,
@@ -760,7 +798,10 @@ fun installAgentBackdoorHandlers() {
             val response = runCatching {
                 runJvmMainViaSubprocess(request)
             }.getOrElse { throwable ->
-                lprintln("warning,agent_backdoor", "jvm-main run failed for ${request.entrypoint}: ${throwable.message}")
+                lprintln(
+                    "warning,agent_backdoor",
+                    "jvm-main run failed for ${request.entrypoint}: ${throwable.message}"
+                )
                 AgentRunJvmMainResponse(
                     ok = false,
                     entrypoint = request.entrypoint,
@@ -847,7 +888,10 @@ fun installAgentBackdoorHandlers() {
                     message = ""
                 )
             }.getOrElse { throwable ->
-                lprintln("warning,agent_backdoor", "native window screenshot failed for ${request.path}: ${throwable.message}")
+                lprintln(
+                    "warning,agent_backdoor",
+                    "native window screenshot failed for ${request.path}: ${throwable.message}"
+                )
                 AgentScreenshotResponse(
                     ok = false,
                     kind = "native-window",
@@ -856,7 +900,8 @@ fun installAgentBackdoorHandlers() {
                     documentName = info.documentName,
                     scratch = info.ephemeral,
                     sessionKey = info.filename,
-                    message = throwable.message ?: throwable::class.simpleName ?: "Unknown native window screenshot error"
+                    message = throwable.message ?: throwable::class.simpleName
+                    ?: "Unknown native window screenshot error"
                 )
             }
             reply(Message("agent-native-window-screenshot").payload(response))

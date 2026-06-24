@@ -70,6 +70,15 @@ data class FieldScalarStatsSnapshot(
     }
 }
 
+data class FieldStatsStateSnapshot(
+    val mode: Int,
+    val channel: Int,
+    val parameter: Double,
+    val halfLife: Double,
+    val value: Double,
+    val initialized: Boolean
+)
+
 class ShaderFieldStatsScalar internal constructor(
     private val stats: ShaderFieldStats,
     val index: Int
@@ -78,11 +87,20 @@ class ShaderFieldStatsScalar internal constructor(
     fun latest(): FieldScalarStatsSnapshot? = stats.latest(index)
 }
 
+class ShaderFieldStatsState internal constructor(
+    private val stats: ShaderFieldStats,
+    val index: Int
+) {
+    fun read(): FieldStatsStateSnapshot = stats.readState(index)
+    fun latest(): FieldStatsStateSnapshot? = stats.latestState(index)
+}
+
 class ShaderFieldStats(
     val box: Box,
     val channels: Int = 1,
     val sketchSize: Int = 256,
     val maxPartials: Int = 65_536,
+    val stateSlots: Int = 8,
     val descriptorSet: Int = 0,
     val partialBinding: Int = FIELD_STATS_DEFAULT_PARTIAL_BINDING,
     val resultBinding: Int = FIELD_STATS_DEFAULT_RESULT_BINDING
@@ -93,12 +111,14 @@ class ShaderFieldStats(
             "sketchSize must be a power of two in 16..256"
         }
         require(maxPartials >= sketchSize) { "maxPartials must be >= sketchSize" }
+        require(stateSlots in 1..64) { "stateSlots must be in 1..64" }
     }
 
     private val partialHeaderBytes = 16L + channels.toLong() * 16L
     private val partialRecordBytes = 48L
     private val resultHeaderBytes = 16L
     private val resultRecordBytes = 48L
+    private val stateRecordBytes = 48L
     private val centroidBytes = 8L
 
     private val partialBufferBytes =
@@ -106,6 +126,7 @@ class ShaderFieldStats(
     private val resultBufferBytes =
         resultHeaderBytes +
             2L * channels * resultRecordBytes +
+            stateSlots * stateRecordBytes +
             2L * channels * sketchSize * centroidBytes
 
     private var rendererRef: Renderer? = null
@@ -115,6 +136,7 @@ class ShaderFieldStats(
     private var reduceModule: ComputeModulePointer? = null
     private var initialized = false
     private val latestSnapshots = AtomicReferenceArray<FieldScalarStatsSnapshot?>(channels)
+    private val latestStates = AtomicReferenceArray<FieldStatsStateSnapshot?>(stateSlots)
 
     @Volatile
     var cpuSnapshotsEnabled: Boolean = true
@@ -146,6 +168,7 @@ class ShaderFieldStats(
     internal fun afterProducer(command: CommandBuffer, renderer: Renderer) {
         ensureRenderer(renderer)
         computeMemoryBarrier(command, partialBuffer())
+        computeMemoryBarrier(command, resultBuffer())
         reduceModule!!.current.render(command, Rectanglef())
         computeMemoryBarrier(command, resultBuffer())
         if (cpuSnapshotsEnabled) {
@@ -153,7 +176,9 @@ class ShaderFieldStats(
                 fieldStatsReadbackExecutor.submit {
                     runCatching {
                         fence.fenceWait()
-                        readAll().forEachIndexed(latestSnapshots::set)
+                        val readback = readAll()
+                        readback.snapshots.forEachIndexed(latestSnapshots::set)
+                        readback.states.forEachIndexed(latestStates::set)
                     }.onFailure {
                         lprintln(
                             "error,graphics",
@@ -177,12 +202,33 @@ class ShaderFieldStats(
 
     fun read(channel: Int = 0): FieldScalarStatsSnapshot {
         require(channel in 0 until channels) { "channel must be in 0 until $channels" }
-        return readAll()[channel]
+        return readAll().snapshots[channel]
     }
 
-    private fun readAll(): List<FieldScalarStatsSnapshot> {
+    fun state(index: Int): ShaderFieldStatsState {
+        require(index in 0 until stateSlots) { "index must be in 0 until $stateSlots" }
+        return ShaderFieldStatsState(this, index)
+    }
+
+    fun latestState(index: Int): FieldStatsStateSnapshot? {
+        require(index in 0 until stateSlots) { "index must be in 0 until $stateSlots" }
+        return latestStates.get(index)
+    }
+
+    fun readState(index: Int): FieldStatsStateSnapshot {
+        require(index in 0 until stateSlots) { "index must be in 0 until $stateSlots" }
+        return readAll().states[index]
+    }
+
+    private data class Readback(
+        val snapshots: List<FieldScalarStatsSnapshot>,
+        val states: List<FieldStatsStateSnapshot>
+    )
+
+    private fun readAll(): Readback {
         val header = IntArray(4)
         val snapshots = MutableList<FieldScalarStatsSnapshot?>(channels) { null }
+        val states = MutableList<FieldStatsStateSnapshot?>(stateSlots) { null }
 
         resultBuffer().mapAndRead_bytes {
             val data = duplicate().order(ByteOrder.nativeOrder())
@@ -201,6 +247,7 @@ class ShaderFieldStats(
 
                 val centroidBase = resultHeaderBytes.toInt() +
                     channels * 2 * resultRecordBytes.toInt() +
+                    stateSlots * stateRecordBytes.toInt() +
                     (slot * channels + channel) * sketchSize * centroidBytes.toInt()
                 repeat(sketchSize) { index ->
                     val offset = centroidBase + index * centroidBytes.toInt()
@@ -226,9 +273,25 @@ class ShaderFieldStats(
                     centroids = centroids
                 )
             }
+
+            val stateBase = resultHeaderBytes.toInt() + channels * 2 * resultRecordBytes.toInt()
+            repeat(stateSlots) { index ->
+                val offset = stateBase + index * stateRecordBytes.toInt()
+                states[index] = FieldStatsStateSnapshot(
+                    mode = data.getInt(offset),
+                    channel = data.getInt(offset + 4),
+                    parameter = data.getFloat(offset + 8).toDouble(),
+                    halfLife = data.getFloat(offset + 12).toDouble(),
+                    value = data.getFloat(offset + 16).toDouble(),
+                    initialized = data.getInt(offset + 20) != 0
+                )
+            }
         }
 
-        return snapshots.map { requireNotNull(it) }
+        return Readback(
+            snapshots = snapshots.map { requireNotNull(it) },
+            states = states.map { requireNotNull(it) }
+        )
     }
 
     private fun partialBuffer(): VulkanBuffer =
@@ -326,6 +389,21 @@ class ShaderFieldStats(
             shared float sMax[FIELD_STATS_SKETCH_SIZE];
             shared float sCentroidValue[FIELD_STATS_SKETCH_SIZE];
             shared float sCentroidWeight[FIELD_STATS_SKETCH_SIZE];
+
+            float fieldStatsReducedQuantile(float q) {
+                float totalWeight = float(sFinite[0]);
+                if (totalWeight <= 0.0) return 0.0;
+                float target = clamp(q, 0.0, 1.0) * totalWeight;
+                float cumulative = 0.0;
+                float answer = sCentroidValue[0];
+                for (uint i = 0u; i < FIELD_STATS_SKETCH_SIZE; i++) {
+                    if (sCentroidWeight[i] <= 0.0) break;
+                    answer = sCentroidValue[i];
+                    cumulative += sCentroidWeight[i];
+                    if (cumulative >= target) break;
+                }
+                return answer;
+            }
 
             void main() {
                 uint lane = gl_LocalInvocationID.x;
@@ -443,6 +521,36 @@ class ShaderFieldStats(
                     result.standardDeviation = sqrt(variance);
                     result.droppedPartials = float(fieldStatsPartial.droppedPartials[countIndex]);
                     fieldStatsResult.stats[resultIndex] = result;
+
+                    if (sFinite[0] > 0u) {
+                        for (uint stateSlot = 0u; stateSlot < FIELD_STATS_STATE_SLOTS; stateSlot++) {
+                            FieldStatsState state = fieldStatsResult.states[stateSlot];
+                            if (state.mode == FIELD_STATS_STATE_UNUSED || state.channel != channel) {
+                                continue;
+                            }
+
+                            bool configurationChanged =
+                                state.appliedMode != state.mode ||
+                                state.appliedChannel != state.channel ||
+                                state.appliedParameter != state.parameter ||
+                                state.appliedHalfLife != state.halfLife;
+                            float current = state.mode == FIELD_STATS_STATE_MEAN
+                                ? mean
+                                : fieldStatsReducedQuantile(state.parameter);
+                            float halfLife = max(state.halfLife, 0.000001);
+                            float alpha = 1.0 - exp2(-1.0 / halfLife);
+                            state.value = state.initialized == 0u || configurationChanged
+                                ? current
+                                : mix(state.value, current, alpha);
+                            state.initialized = 1u;
+                            state.appliedMode = state.mode;
+                            state.appliedChannel = state.channel;
+                            state.appliedParameter = state.parameter;
+                            state.appliedHalfLife = state.halfLife;
+                            fieldStatsResult.states[stateSlot] = state;
+                        }
+                    }
+
                     if (channel == 0u) {
                         fieldStatsResult.readableSlot = slot;
                         atomicAdd(fieldStatsResult.generation, 1u);
@@ -464,12 +572,30 @@ class ShaderFieldStats(
     }
 
     internal fun includeSource(producer: Boolean): String {
-        val producerSource = if (producer) """
+        val producerExtensions = if (producer) """
             #extension GL_KHR_shader_subgroup_basic : require
             #extension GL_KHR_shader_subgroup_arithmetic : require
             #extension GL_KHR_shader_subgroup_ballot : require
+        """.trimIndent() else ""
 
+        val producerSource = if (producer) """
             ${partialBufferDeclaration()}
+
+            void fieldStatsConfigureState(
+                uint stateSlot,
+                uint mode,
+                uint channel,
+                float parameter,
+                float halfLife
+            ) {
+                if (stateSlot >= FIELD_STATS_STATE_SLOTS || channel >= FIELD_STATS_CHANNELS) return;
+                if (any(notEqual(gl_GlobalInvocationID, uvec3(0u)))) return;
+
+                fieldStatsResult.states[stateSlot].mode = mode;
+                fieldStatsResult.states[stateSlot].channel = channel;
+                fieldStatsResult.states[stateSlot].parameter = parameter;
+                fieldStatsResult.states[stateSlot].halfLife = halfLife;
+            }
 
             void fieldStatsRecord(uint channel, float value) {
             if (channel >= FIELD_STATS_CHANNELS) return;
@@ -520,9 +646,10 @@ class ShaderFieldStats(
         """.trimIndent() else ""
 
         return """
+        $producerExtensions
         ${statsConstants()}
-        $producerSource
         ${resultBufferDeclaration()}
+        $producerSource
 
         FieldScalarStats fieldStatsRead(uint channel) {
             uint slot = fieldStatsResult.readableSlot;
@@ -560,6 +687,32 @@ class ShaderFieldStats(
             }
             return clamp(cumulative / totalWeight, 0.0, 1.0);
         }
+
+        float fieldStatsState(uint stateSlot) {
+            if (stateSlot >= FIELD_STATS_STATE_SLOTS) return 0.0;
+            return fieldStatsResult.states[stateSlot].initialized != 0u
+                ? fieldStatsResult.states[stateSlot].value
+                : 0.0;
+        }
+
+        float fieldStatsSmoothedMean(
+            uint stateSlot,
+            uint channel,
+            float halfLife
+        ) {
+            ${if (producer) "fieldStatsConfigureState(stateSlot, FIELD_STATS_STATE_MEAN, channel, 0.0, halfLife);" else ""}
+            return fieldStatsState(stateSlot);
+        }
+
+        float fieldStatsSmoothedQuantile(
+            uint stateSlot,
+            uint channel,
+            float q,
+            float halfLife
+        ) {
+            ${if (producer) "fieldStatsConfigureState(stateSlot, FIELD_STATS_STATE_QUANTILE, channel, clamp(q, 0.0, 1.0), halfLife);" else ""}
+            return fieldStatsState(stateSlot);
+        }
         """.trimIndent()
     }
 
@@ -567,6 +720,10 @@ class ShaderFieldStats(
         const uint FIELD_STATS_CHANNELS = ${channels}u;
         const uint FIELD_STATS_SKETCH_SIZE = ${sketchSize}u;
         const uint FIELD_STATS_MAX_PARTIALS = ${maxPartials}u;
+        const uint FIELD_STATS_STATE_SLOTS = ${stateSlots}u;
+        const uint FIELD_STATS_STATE_UNUSED = 0u;
+        const uint FIELD_STATS_STATE_MEAN = 1u;
+        const uint FIELD_STATS_STATE_QUANTILE = 2u;
     """.trimIndent()
 
     private fun partialBufferDeclaration(): String = """
@@ -603,12 +760,28 @@ class ShaderFieldStats(
             float droppedPartials;
         };
 
+        struct FieldStatsState {
+            uint mode;
+            uint channel;
+            float parameter;
+            float halfLife;
+            float value;
+            uint initialized;
+            uint appliedMode;
+            uint appliedChannel;
+            float appliedParameter;
+            float appliedHalfLife;
+            uint padding0;
+            uint padding1;
+        };
+
         layout(set = $descriptorSet, binding = $resultBinding, std430) buffer $FIELD_STATS_RESULT_BUFFER_NAME {
             uint readableSlot;
             uint generation;
             uint channels;
             uint sketchSize;
             FieldScalarStats stats[${channels * 2}];
+            FieldStatsState states[$stateSlots];
             vec2 centroids[];
         } fieldStatsResult;
     """.trimIndent()
