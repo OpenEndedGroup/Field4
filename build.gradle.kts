@@ -1213,6 +1213,20 @@ tasks.register<JavaExec>("polishCompletionDocs") {
     standardInput = System.`in`
 }
 
+tasks.register<JavaExec>("polishCompletionDocsDryRun") {
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
+    })
+    group = "application"
+    description = "Runs AI4 completion-doc cache/source polishing CLI without writing files"
+
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+
+    mainClass.set("afield.ai.core.completion.Ai4CompletionDocPolishCliKt")
+    args("--dry-run")
+    standardInput = System.`in`
+}
+
 tasks.register("generateApiDocs") {
     group = "documentation"
     description = "Generates API documentation (HTML) with Dokka"

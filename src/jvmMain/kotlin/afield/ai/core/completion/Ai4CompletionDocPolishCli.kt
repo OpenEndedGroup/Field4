@@ -3,6 +3,7 @@ package afield.ai.core.completion
 import afield.ai.KotlinSourceIndex
 import afield.ai.searchWorkspaceSymbols
 import afield.ai.core.AttachmentResponse
+import afield.ai.core.AgentMemoryState
 import afield.ai.core.ContextAttachment
 import afield.ai.core.EditFileRequest
 import afield.ai.core.EditFileResponse
@@ -14,10 +15,12 @@ import afield.ai.core.OpenAiIdeCodexBridge
 import afield.ai.core.ToolExecutionContext
 import afield.ai.core.WorkspaceSymbolSearch
 import afield.ai.core.WorkspaceSymbolSearchResult
+import com.fasterxml.jackson.annotation.JsonClassDescription
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.extension
 import kotlin.io.path.name
@@ -37,9 +40,27 @@ private data class PolishOptions(
         ?.takeIf { it.isNotBlank() }
         ?: afield.ai.core.Ai4ModelDefaults.flagshipModel(),
     val dryRun: Boolean = false,
+    val verbose: Boolean = false,
     val maxToolRounds: Int = 40,
     val maxOutputTokens: Long = 24000,
-    val promptFile: Path? = null
+    val promptFile: Path? = null,
+    val diffFile: Path = Paths.get("build", "completion-doc-polish-dry-run.patch")
+)
+
+@JsonClassDescription("Patch a writable file by replacing an exact oldText snippet with newText. Prefer this over EditFile for small KDoc/documentation edits.")
+data class ReplaceInFileRequest(
+    val file: String,
+    val oldText: String,
+    val newText: String,
+    val expectedOccurrences: Int = 1
+)
+
+data class ReplaceInFileResponse(
+    val success: Boolean,
+    val message: String,
+    val file: String,
+    val occurrences: Int = 0,
+    val newContentChars: Int = 0
 )
 
 fun main(args: Array<String>) {
@@ -47,17 +68,23 @@ fun main(args: Array<String>) {
     val workspaceRoot = Paths.get("").toAbsolutePath().normalize()
     val cacheFile = options.cacheFile.toAbsolutePath().normalize()
     val srcDir = workspaceRoot.resolve(options.srcDir).normalize()
+    val diffFile = workspaceRoot.resolve(options.diffFile).normalize()
 
     println("Completion doc cache: ${cacheFile.absolutePathString()}")
     println("Source root: ${srcDir.absolutePathString()}")
     println("Model: ${options.model}")
-    if (options.dryRun) println("Dry run: EditFile requests will be reported but not written.")
+    if (options.dryRun) {
+        println("Dry run: patch/edit requests update an in-memory overlay only.")
+        println("Dry-run patch: ${diffFile.absolutePathString()}")
+    }
+    val dryRunOverlay = ConcurrentHashMap<Path, String>()
+    val dryRunDiffs = mutableListOf<String>()
 
     val cacheAttachment = ContextAttachment(
-        fileName = "completion-doc-cache.json",
-        language = "json",
-        code = readTextIfExists(cacheFile),
-        description = "Generated completion docs cache at ${cacheFile.absolutePathString()}"
+        fileName = "completion-doc-cache-ref.txt",
+        language = "text",
+        code = "Use AttachmentRequest(\"completion-doc-cache.json\") to read the current cache contents.",
+        description = "Generated completion docs cache at ${cacheFile.absolutePathString()}."
     )
     val sourceManifest = buildSourceManifest(workspaceRoot, srcDir)
     val manifestAttachment = ContextAttachment(
@@ -68,7 +95,10 @@ fun main(args: Array<String>) {
     )
 
     val indexForTools = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex()
-    val bridge = OpenAiIdeCodexBridge(model = options.model, log = CliLog())
+    val bridge = OpenAiIdeCodexBridge(model = options.model, log = CliLog(options.verbose))
+    bridge.registerTool(ReplaceInFileRequest::class.java) { _, req ->
+        replaceInFile(workspaceRoot, srcDir, cacheFile, dryRunOverlay, dryRunDiffs, req, options.dryRun)
+    }
     val instructions = buildString {
         appendLine(OpenAiIdeCodexBridge.defaultChatThreadInstructions.trim())
         appendLine()
@@ -76,10 +106,14 @@ fun main(args: Array<String>) {
         appendLine("You may read the generated completion-doc cache and source files under src/.")
         appendLine("You may edit only source files under src/ and the generated completion-doc cache file.")
         appendLine("Use AttachmentRequest to inspect specific files from src-manifest.txt.")
-        appendLine("Use EditFile only when you have the full new file content.")
+        appendLine("Prefer ReplaceInFileRequest for small KDoc edits. Use EditFile only as a last resort when exact snippet replacement is impossible.")
         appendLine("Do not make behavior changes. Keep Kotlin signatures intact.")
         appendLine("Prefer integrating useful generated docs into real KDoc near source declarations.")
         appendLine("Keep KDoc concise and specific. Remove or rewrite cache entries only when they are obsolete, duplicated, or clearly superseded by source KDoc.")
+        appendLine("Make small, reviewable documentation edits. Avoid rewriting implementation bodies or unrelated formatting.")
+        if (options.dryRun) {
+            appendLine("This is a dry run. ReplaceInFileRequest and EditFile update an in-memory overlay; later AttachmentRequest reads see that overlay. Do not reread files just to check whether disk changed.")
+        }
         if (!indexForTools?.definitions.isNullOrEmpty()) {
             appendLine("WorkspaceSymbolSearch is available for Kotlin source definitions.")
         }
@@ -94,7 +128,7 @@ fun main(args: Array<String>) {
     val ctx = ToolExecutionContext(
         attachments = listOf(cacheAttachment, manifestAttachment),
         resolveAttachment = { requested ->
-            resolveAttachment(workspaceRoot, srcDir, cacheFile, requested)
+            resolveAttachment(workspaceRoot, srcDir, cacheFile, dryRunOverlay, requested)
         },
         listFileContents = {
             ListContentsResult(
@@ -103,7 +137,7 @@ fun main(args: Array<String>) {
                         fileRef = "completion-doc-cache.json",
                         property = "cache",
                         language = "json",
-                        content = readTextIfExists(cacheFile),
+                        content = readTextWithOverlay(cacheFile, dryRunOverlay),
                         boxName = "Generated completion doc cache",
                         relation = "cache"
                     ),
@@ -119,13 +153,14 @@ fun main(args: Array<String>) {
             )
         },
         editOtherFile = { req ->
-            applyEdit(workspaceRoot, srcDir, cacheFile, req, options.dryRun)
+            applyEdit(workspaceRoot, srcDir, cacheFile, dryRunOverlay, dryRunDiffs, req, options.dryRun)
         },
         workspaceSymbolSearch = if (!indexForTools?.definitions.isNullOrEmpty()) {
             workspaceSymbolSearchFromIndex()
         } else {
             { _: WorkspaceSymbolSearch -> WorkspaceSymbolSearchResult(emptyList()) }
-        }
+        },
+        agentMemory = AgentMemoryState()
     )
 
     val prompt = options.promptFile
@@ -143,16 +178,24 @@ fun main(args: Array<String>) {
             print(it)
             System.out.flush()
         },
-        onProgress = { progress ->
-            val body = progress.body.takeIf { it.isNotBlank() }?.let { ": $it" } ?: ""
-            println("\n[progress] ${progress.title}$body")
-        }
+        onProgress = if (options.verbose) {
+            { progress ->
+                val body = progress.body.takeIf { it.isNotBlank() }?.let { ": $it" } ?: ""
+                println("\n[progress] ${progress.title}$body")
+            }
+        } else null
     )
 
     println()
     if (result.commentary.isNotEmpty()) {
         println("[commentary]")
         println(result.commentary.joinToString("\n"))
+    }
+
+    if (!options.dryRun) {
+        removeConsumedCache(cacheFile)
+    } else {
+        writeDryRunPatch(diffFile, dryRunDiffs)
     }
 }
 
@@ -178,6 +221,7 @@ private fun parseOptions(args: List<String>): PolishOptions? {
                 i++
             }
             "--dry-run" -> options = options.copy(dryRun = true)
+            "--verbose" -> options = options.copy(verbose = true)
             "--max-tool-rounds" -> {
                 options = options.copy(maxToolRounds = args.valueAfter(i, arg).toInt())
                 i++
@@ -188,6 +232,10 @@ private fun parseOptions(args: List<String>): PolishOptions? {
             }
             "--prompt-file" -> {
                 options = options.copy(promptFile = Paths.get(args.valueAfter(i, arg)))
+                i++
+            }
+            "--diff-file" -> {
+                options = options.copy(diffFile = Paths.get(args.valueAfter(i, arg)))
                 i++
             }
             else -> error("Unknown argument '$arg'. Use --help.")
@@ -206,15 +254,20 @@ private fun printUsage() {
         """
 Usage:
   ./gradlew polishCompletionDocs --args="[...]"
+  ./gradlew polishCompletionDocsDryRun
 
 Options:
   --cache-file <path>        Generated docs cache. Defaults to ~/.afield/filestore/generated_completion_docs.json
   --src-dir <path>           Source root relative to the repo. Defaults to src
   --model <model>            Model to use. Defaults to AFIELD_COMPLETION_DOC_POLISH_MODEL or AFIELD_AI_MODEL/flagship.
-  --dry-run                  Let the model request edits, but do not write them.
+  --dry-run                  Let the model request edits, but do not write them. Pass as --args="--dry-run"; bare Gradle --dry-run skips the task.
+  --verbose                  Show bridge internals and per-tool progress.
   --prompt-file <path>       Use a custom user prompt.
+  --diff-file <path>         Dry-run patch output. Defaults to build/completion-doc-polish-dry-run.patch.
   --max-tool-rounds <n>      Defaults to 40.
   --max-output-tokens <n>    Defaults to 24000.
+
+The tool exposes ReplaceInFileRequest for small exact snippet patches and asks the model to prefer it over full-file EditFile.
         """.trimIndent()
     )
 }
@@ -232,8 +285,11 @@ Task:
 3. Prefer source KDoc over keeping polished text only in the cache.
 4. Avoid duplicated parameter lists. Do not restate obvious names or types unless the description adds meaning.
 5. Preserve behavior, signatures, defaults, imports, and formatting style.
-6. Clean the cache file if entries are clearly obsolete, low quality, or superseded by KDoc you moved into source.
-7. Stop after a coherent first pass; summarize the files changed and any declarations you intentionally left for later.
+6. Use ReplaceInFileRequest for small, exact KDoc/documentation patches. Use EditFile only when a small exact replacement cannot work.
+7. Clean the cache file if entries are clearly obsolete, low quality, or superseded by KDoc you moved into source.
+8. Stop after a coherent first pass; summarize the files changed and any declarations you intentionally left for later.
+
+After a successful non-dry-run, this CLI deletes the generated completion-doc cache file so consumed fast-model work is not applied twice.
 """.trimIndent()
 
 private fun workspaceSymbolSearchFromIndex(): (WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult {
@@ -255,6 +311,7 @@ private fun resolveAttachment(
     workspaceRoot: Path,
     srcDir: Path,
     cacheFile: Path,
+    overlay: Map<Path, String>,
     requested: String
 ): AttachmentResponse? {
     val path = resolveAllowedPath(workspaceRoot, srcDir, cacheFile, requested) ?: return null
@@ -262,7 +319,7 @@ private fun resolveAttachment(
     return AttachmentResponse(
         file = workspaceRoot.relativizeOrAbsolute(path),
         language = language,
-        content = readTextIfExists(path)
+        content = readTextWithOverlay(path, overlay)
     )
 }
 
@@ -270,17 +327,100 @@ private fun applyEdit(
     workspaceRoot: Path,
     srcDir: Path,
     cacheFile: Path,
+    overlay: MutableMap<Path, String>,
+    dryRunDiffs: MutableList<String>,
     req: EditFileRequest,
     dryRun: Boolean
 ): EditFileResponse {
     val path = resolveAllowedPath(workspaceRoot, srcDir, cacheFile, req.file)
         ?: return EditFileResponse(false, "Refusing to edit '${req.file}': only src/ and the completion-doc cache are writable.")
+    val file = workspaceRoot.relativizeOrAbsolute(path)
+    val response = applyContentChange(
+        workspaceRoot = workspaceRoot,
+        path = path,
+        overlay = overlay,
+        dryRunDiffs = dryRunDiffs,
+        newContent = req.newContent,
+        dryRun = dryRun,
+        action = if (dryRun) "DRY RUN edit" else "Wrote"
+    )
+    return EditFileResponse(response.success, response.message)
+}
+
+private fun replaceInFile(
+    workspaceRoot: Path,
+    srcDir: Path,
+    cacheFile: Path,
+    overlay: MutableMap<Path, String>,
+    dryRunDiffs: MutableList<String>,
+    req: ReplaceInFileRequest,
+    dryRun: Boolean
+): ReplaceInFileResponse {
+    val path = resolveAllowedPath(workspaceRoot, srcDir, cacheFile, req.file)
+        ?: return ReplaceInFileResponse(false, "Refusing to patch '${req.file}': only src/ and the completion-doc cache are writable.", req.file)
+    if (req.oldText.isEmpty()) {
+        return ReplaceInFileResponse(false, "oldText must not be empty.", workspaceRoot.relativizeOrAbsolute(path))
+    }
+    if (req.expectedOccurrences < 1) {
+        return ReplaceInFileResponse(false, "expectedOccurrences must be at least 1.", workspaceRoot.relativizeOrAbsolute(path))
+    }
+    val before = readTextWithOverlay(path, overlay)
+    val occurrences = before.countNonOverlapping(req.oldText)
+    val file = workspaceRoot.relativizeOrAbsolute(path)
+    if (occurrences != req.expectedOccurrences) {
+        return ReplaceInFileResponse(
+            false,
+            "Expected ${req.expectedOccurrences} occurrence(s), found $occurrences in $file.",
+            file,
+            occurrences
+        )
+    }
+    val after = before.replace(req.oldText, req.newText)
+    val response = applyContentChange(
+        workspaceRoot = workspaceRoot,
+        path = path,
+        overlay = overlay,
+        dryRunDiffs = dryRunDiffs,
+        newContent = after,
+        dryRun = dryRun,
+        action = if (dryRun) "DRY RUN patch" else "Patched"
+    )
+    return ReplaceInFileResponse(
+        response.success,
+        response.message ?: "",
+        file,
+        occurrences,
+        after.length
+    )
+}
+
+private fun applyContentChange(
+    workspaceRoot: Path,
+    path: Path,
+    overlay: MutableMap<Path, String>,
+    dryRunDiffs: MutableList<String>,
+    newContent: String,
+    dryRun: Boolean,
+    action: String
+): EditFileResponse {
+    val file = workspaceRoot.relativizeOrAbsolute(path)
     if (dryRun) {
-        return EditFileResponse(true, "Dry run: would write ${workspaceRoot.relativizeOrAbsolute(path)} (${req.newContent.length} chars).")
+        val before = readTextWithOverlay(path, overlay)
+        val diff = unifiedDiff(file, before, newContent)
+        overlay[path] = newContent
+        println("$action: $file (${newContent.length} chars, overlay updated)")
+        if (diff.isBlank()) {
+            println("DRY RUN diff: no textual changes for $file")
+        } else {
+            dryRunDiffs += diff
+            println(diff.trimEnd())
+        }
+        return EditFileResponse(true, "Dry run: accepted $file (${newContent.length} chars); no disk write; subsequent AttachmentRequest reads use the in-memory overlay.")
     }
     Files.createDirectories(path.parent)
-    Files.writeString(path, req.newContent, StandardCharsets.UTF_8)
-    return EditFileResponse(true, "Wrote ${workspaceRoot.relativizeOrAbsolute(path)} (${req.newContent.length} chars).")
+    Files.writeString(path, newContent, StandardCharsets.UTF_8)
+    println("$action $file (${newContent.length} chars).")
+    return EditFileResponse(true, "$action $file (${newContent.length} chars).")
 }
 
 private fun resolveAllowedPath(
@@ -330,6 +470,112 @@ private fun languageFor(path: Path): String = when (path.extension.lowercase()) 
 private fun readTextIfExists(path: Path): String =
     if (Files.exists(path)) Files.readString(path, StandardCharsets.UTF_8) else ""
 
+private fun readTextWithOverlay(path: Path, overlay: Map<Path, String>): String =
+    overlay[path.toAbsolutePath().normalize()] ?: readTextIfExists(path)
+
+private fun String.countNonOverlapping(needle: String): Int {
+    if (needle.isEmpty()) return 0
+    var count = 0
+    var start = 0
+    while (true) {
+        val next = indexOf(needle, start)
+        if (next < 0) return count
+        count++
+        start = next + needle.length
+    }
+}
+
+private fun unifiedDiff(displayFile: String, before: String, after: String): String {
+    if (before == after) return ""
+    val tempDir = Files.createTempDirectory("completion-doc-polish-diff")
+    return try {
+        val beforeFile = tempDir.resolve("before")
+        val afterFile = tempDir.resolve("after")
+        Files.writeString(beforeFile, before, StandardCharsets.UTF_8)
+        Files.writeString(afterFile, after, StandardCharsets.UTF_8)
+        val process = ProcessBuilder(
+            "git",
+            "diff",
+            "--no-index",
+            "--src-prefix=a/",
+            "--dst-prefix=b/",
+            "--",
+            beforeFile.toString(),
+            afterFile.toString()
+        )
+            .redirectErrorStream(true)
+            .start()
+        val text = process.inputStream.bufferedReader(StandardCharsets.UTF_8).readText()
+        process.waitFor()
+        normalizeDiffHeaders(text, displayFile).ifBlank {
+            fallbackFullFileDiff(displayFile, before, after)
+        }
+    } catch (_: Exception) {
+        fallbackFullFileDiff(displayFile, before, after)
+    } finally {
+        deleteRecursively(tempDir)
+    }
+}
+
+private fun normalizeDiffHeaders(diff: String, displayFile: String): String {
+    if (diff.isBlank()) return ""
+    return diff.lineSequence().joinToString("\n") { line ->
+        when {
+            line.startsWith("diff --git ") -> "diff --git a/$displayFile b/$displayFile"
+            line.startsWith("--- ") -> "--- a/$displayFile"
+            line.startsWith("+++ ") -> "+++ b/$displayFile"
+            else -> line
+        }
+    }.trimEnd() + "\n"
+}
+
+private fun fallbackFullFileDiff(displayFile: String, before: String, after: String): String {
+    fun removed(text: String): String = text.lineSequence().joinToString("\n") { "-$it" }
+    fun added(text: String): String = text.lineSequence().joinToString("\n") { "+$it" }
+    return buildString {
+        appendLine("diff --git a/$displayFile b/$displayFile")
+        appendLine("--- a/$displayFile")
+        appendLine("+++ b/$displayFile")
+        appendLine("@@")
+        if (before.isNotEmpty()) appendLine(removed(before))
+        if (after.isNotEmpty()) appendLine(added(after))
+    }
+}
+
+private fun writeDryRunPatch(diffFile: Path, dryRunDiffs: List<String>) {
+    if (dryRunDiffs.isEmpty()) {
+        Files.deleteIfExists(diffFile)
+        println("Dry-run patch: no changes proposed.")
+        return
+    }
+    Files.createDirectories(diffFile.parent)
+    Files.writeString(
+        diffFile,
+        dryRunDiffs.joinToString(separator = "\n") { it.trimEnd() } + "\n",
+        StandardCharsets.UTF_8
+    )
+    println("Dry-run patch written: ${diffFile.absolutePathString()}")
+}
+
+private fun deleteRecursively(root: Path) {
+    if (!Files.exists(root)) return
+    Files.walk(root).use { stream ->
+        stream.sorted(Comparator.reverseOrder()).forEach { Files.deleteIfExists(it) }
+    }
+}
+
+private fun removeConsumedCache(cacheFile: Path) {
+    runCatching {
+        if (Files.deleteIfExists(cacheFile)) {
+            println("Removed consumed completion doc cache: ${cacheFile.absolutePathString()}")
+        } else {
+            println("Completion doc cache already absent: ${cacheFile.absolutePathString()}")
+        }
+    }.onFailure {
+        println("Warning: failed to remove consumed completion doc cache ${cacheFile.absolutePathString()}: ${it.message}")
+    }
+}
+
 private fun Path.relativizeOrAbsolute(path: Path): String =
     try {
         relativize(path).pathString
@@ -337,8 +583,9 @@ private fun Path.relativizeOrAbsolute(path: Path): String =
         path.absolutePathString()
     }
 
-private class CliLog : LogSink {
+private class CliLog(private val verbose: Boolean) : LogSink {
     override fun log(event: LogEvent) {
+        if (!verbose && !event.channel.startsWith("error") && !event.channel.startsWith("warning")) return
         val channel = if (event.channel.isBlank()) "" else "[${event.channel}] "
         println("[completion-doc-polish] $channel${event.message}")
     }

@@ -231,11 +231,12 @@ class OpenAiIdeCodexBridge(
             info("toolCalls=${calls.size} (round ${rounds + 1}/$maxToolRounds)")
             val toolOutputs = mutableListOf<ResponseInputItem>()
             for (call in calls) {
-                info("tool: name=${call.name()} callId=${call.callId()} ${call.arguments()}")
+                val argumentSummary = summarizeToolArguments(call.name(), call.arguments())
+                info("tool: name=${call.name()} callId=${call.callId()} $argumentSummary")
                 onProgress?.invoke(
                     ProgressUpdate(
                         title = "Using ${call.name()}",
-                        body = truncate(call.arguments(), 700)
+                        body = truncate(argumentSummary, 700)
                     )
                 )
                 trace?.log(
@@ -794,6 +795,16 @@ class OpenAiIdeCodexBridge(
 
     private fun truncate(text: String, max: Int): String =
         if (text.length <= max) text else text.substring(0, max) + "..."
+
+    private fun summarizeToolArguments(toolName: String, arguments: String): String {
+        if (toolName != EditFileRequest::class.java.simpleName) return truncate(arguments, 2_000)
+        return runCatching {
+            val req = mapper.readValue(arguments, EditFileRequest::class.java)
+            """{"file":${mapper.writeValueAsString(req.file)},"newContentChars":${req.newContent.length},"newContentPreview":${mapper.writeValueAsString(truncate(req.newContent, 240))}}"""
+        }.getOrElse {
+            truncate(arguments, 2_000)
+        }
+    }
 
     private fun renderThrowableChain(error: Throwable): String {
         val seen = linkedSetOf<String>()

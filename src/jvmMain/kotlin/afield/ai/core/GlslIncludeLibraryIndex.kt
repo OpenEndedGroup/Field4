@@ -200,10 +200,14 @@ object GlslIncludeLibraryIndex {
 
         val apiKey = System.getenv("OPENAI_API_KEY")?.takeIf { it.isNotBlank() }
         val previous = loadIndex()
+        val previousByLibraryKey = previous?.libraries
+            ?.associateBy { libraryKey(it.name, it.includePrefix, it.root) }
+            .orEmpty()
         val records = mutableListOf<GlslIncludeLibraryRecord>()
 
         specs.forEach { spec ->
             val root = prepareRoot(spec) ?: return@forEach
+            val rootString = root.toAbsolutePath().normalize().toString()
             val revision = revisionFor(root)
             val files = collectIncludeFiles(root, spec.includePrefix)
             if (files.isEmpty()) {
@@ -219,9 +223,12 @@ object GlslIncludeLibraryIndex {
                     files.forEach { appendLine("${it.includePath}:${it.contentHash}") }
                 }
             )
+            val previousLibrary = previousByLibraryKey[libraryKey(spec.name, spec.includePrefix, rootString)]
 
             val vectorStoreId = if (apiKey != null) {
-                runCatching {
+                if (previousLibrary?.bundleVersion == bundleVersion && !previousLibrary.vectorStoreId.isNullOrBlank()) {
+                    previousLibrary.vectorStoreId
+                } else runCatching {
                     mapper.ensureCanonicalBundleReady(
                         apiKey = apiKey,
                         bundle = CanonicalBundle(
@@ -235,13 +242,13 @@ object GlslIncludeLibraryIndex {
                     lprintln("error,glsl.includes", "vector store sync failed for ${spec.name}: ${it.message}")
                 }.getOrNull()
             } else {
-                null
+                previousLibrary?.vectorStoreId
             }
 
             records += GlslIncludeLibraryRecord(
                 name = spec.name,
                 includePrefix = spec.includePrefix,
-                root = root.toAbsolutePath().normalize().toString(),
+                root = rootString,
                 source = spec.source,
                 gitUrl = spec.gitUrl,
                 gitRef = spec.gitRef,
@@ -277,6 +284,9 @@ object GlslIncludeLibraryIndex {
         version == other.version &&
             libraries.map { it.copy(updatedAtEpochMs = 0L) } ==
             other.libraries.map { it.copy(updatedAtEpochMs = 0L) }
+
+    private fun libraryKey(name: String, includePrefix: String, root: String): String =
+        "$name\u0000$includePrefix\u0000$root"
 
     private fun enabled(): Boolean =
         !System.getenv("AFIELD_GLSL_INCLUDE_INDEX").equals("off", ignoreCase = true)
