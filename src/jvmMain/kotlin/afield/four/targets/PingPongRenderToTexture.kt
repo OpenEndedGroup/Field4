@@ -518,6 +518,12 @@ open class PingPongRenderToTexture(
         }
     }
 
+    /**
+     * Blits the latest ping-pong output to a screen target.
+     *
+     * Registers this object as the named source pre-target and removes duplicate
+     * `others` entries before delegating to [RenderToTexture.blitToScreen].
+     */
     override fun blitToScreen(
         renderer: Renderer,
         target: RenderTarget,

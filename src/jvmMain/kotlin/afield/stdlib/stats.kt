@@ -332,6 +332,12 @@ class SummaryStatsBuffer(
         return this
     }
 
+    /**
+     * Adds a numeric sample and returns this buffer for chaining.
+     *
+     * Null and non-finite values are counted as dropped; finite values are
+     * converted to `Double`, appended, and trimmed to the current window.
+     */
     fun add(value: Number?): SummaryStatsBuffer {
         samplesSeen++
         val v = value?.toDouble()

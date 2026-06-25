@@ -25,6 +25,7 @@ import kotlin.io.path.absolutePathString
 import kotlin.io.path.extension
 import kotlin.io.path.name
 import kotlin.io.path.pathString
+import kotlin.system.exitProcess
 
 private val defaultGeneratedDocCachePath: Path = Paths.get(
     System.getProperty("user.home"),
@@ -197,6 +198,7 @@ fun main(args: Array<String>) {
     } else {
         writeDryRunPatch(diffFile, dryRunDiffs)
     }
+    exitProcess(0)
 }
 
 private fun parseOptions(args: List<String>): PolishOptions? {

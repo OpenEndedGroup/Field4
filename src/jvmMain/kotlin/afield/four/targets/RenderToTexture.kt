@@ -637,6 +637,9 @@ open class RenderToTexture(
      * Simple on-screen blit of a color attachment from this RTT. Generates a fullscreen triangle
      * mesh internally (no vertex inputs) and wires a small grading push-constant block.
      *
+     * [viewport] clips the destination on the screen target, [sourceRect] crops the sampled source
+     * texture, and the returned [ModulePointer] identifies the generated blit module.
+     *
      * If [warper] is supplied, it should be the GLSL body of `vec2 warp(vec2 x, float t)`. `x` is
      * the unwarped NDC vertex position, `t` is `time.x`, and the return value is added as an NDC
      * offset. Warped blits use a viewport-local grid sized by [numSegmentsW] and [numSegmentsH],
@@ -858,6 +861,13 @@ open class RenderToTexture(
         configure = configure
     )
 
+    /**
+     * Blits a color attachment to the renderer window identified by [windowIndex].
+     *
+     * This resolves the window's [RenderTarget] and delegates to the main
+     * [blitToScreen] overload, preserving optional cropping, blending, warping,
+     * and color grading.
+     */
     fun blitToScreen(
         windowIndex: Int,
         renderer: Renderer = this.renderer,
@@ -888,6 +898,12 @@ open class RenderToTexture(
         configure = configure
     )
 
+    /**
+     * Blits a color attachment to the screen for [window].
+     *
+     * The window is resolved through [renderer], then forwarded to the
+     * window-index overload.
+     */
     fun blitToScreen(
         window: Window,
         renderer: Renderer = this.renderer,

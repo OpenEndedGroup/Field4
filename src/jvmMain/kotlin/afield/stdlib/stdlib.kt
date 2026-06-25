@@ -257,6 +257,12 @@ fun frameLogLine(message: String) {
 }
 
 
+/**
+ * Starts a new [Frames] scope and runs [a] inside it.
+ *
+ * This is a small convenience wrapper around `frames { ... }` that returns the
+ * created [Frames] instance.
+ */
 fun start(a: suspend Frames.() -> Unit): Frames {
     return frames {
         a()
@@ -358,6 +364,12 @@ fun FloatBuffer.add(a: Vector4f): FloatBuffer {
     }
 }
 
+/**
+ * Appends three float components and returns this buffer for chaining.
+ *
+ * Throws if there is not enough remaining space; the overflow message reports
+ * the buffer limit in three-float groups.
+ */
 fun FloatBuffer.add(x: Float, y: Float, z: Float): FloatBuffer {
     try {
 

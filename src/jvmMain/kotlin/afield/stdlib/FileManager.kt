@@ -239,6 +239,12 @@ class FieldFileManager internal constructor(private val session: SessionInformat
     private data class FileResolution(val path: Path, val source: String)
 }
 
+/**
+ * File-related utilities for the active AField session.
+ *
+ * Resolves document/project-relative paths, named `%directory` mappings, globs,
+ * and absolute or home-relative paths while keeping a small per-session cache.
+ */
 object FileManager {
     private val managers = Collections.synchronizedMap(WeakHashMap<SessionInformation, FieldFileManager>())
     private val namedDirectories = ConcurrentHashMap<String, Path>()
