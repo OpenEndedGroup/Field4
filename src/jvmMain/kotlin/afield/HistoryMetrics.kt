@@ -418,7 +418,7 @@ object HistoryMetrics {
         )
         val file = metricsFile(documentPath)
         file.parentFile?.mkdirs()
-        file.safeSave(Edn.write(payload, Edn.CustomTypes()))
+        file.safeSave(Edn.write(payload, Edn.CustomTypes()), maxBackups = 10)
     }
 
     private fun recordFromAny(value: Any?): MetricRecord? {

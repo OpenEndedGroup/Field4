@@ -1508,7 +1508,10 @@ class Server {
                             existingDoc = exec.existingDocumentation,
                             allCode = exec.allCode,
                             line = exec.line,
-                            column = exec.column
+                            column = exec.column,
+                            documentationSourceName = exec.documentationSourceName,
+                            documentationSourcePath = exec.documentationSourcePath,
+                            documentationSourceLine = exec.documentationSourceLine
                         )
                     }.getOrElse { "" }
                     reply(Message("resolve-completion").payload(CompletionResolveResult(doc)))

@@ -84,7 +84,8 @@ object FlightRecorder {
         val entries: MutableList<LinkedHashMap<String, Any?>> = mutableListOf(),
         val launchedBoxes: MutableSet<String> = mutableSetOf(),
         var loaded: Boolean = false,
-        var dirty: Boolean = false
+        var dirty: Boolean = false,
+        var previousProcessArchived: Boolean = false
     )
 
     private val states = ConcurrentHashMap<String, DocumentState>()
@@ -206,11 +207,16 @@ object FlightRecorder {
             state.entries.map { LinkedHashMap(it) }
         }
 
+        val createBackup = synchronized(state.lock) {
+            !state.previousProcessArchived
+        }
+
         return try {
-            val wrote = saveSnapshot(normalizedDocumentPath, snapshot)
+            val wrote = saveSnapshot(normalizedDocumentPath, snapshot, createBackup)
             if (wrote) {
                 synchronized(state.lock) {
                     state.dirty = false
+                    state.previousProcessArchived = true
                 }
             }
             wrote
@@ -396,7 +402,11 @@ object FlightRecorder {
         // We intentionally do not load any previous transcript from disk.
     }
 
-    private fun saveSnapshot(documentPath: String, snapshot: List<LinkedHashMap<String, Any?>>): Boolean {
+    private fun saveSnapshot(
+        documentPath: String,
+        snapshot: List<LinkedHashMap<String, Any?>>,
+        createBackup: Boolean
+    ): Boolean {
         val file = transcriptFile(documentPath)
         file.parentFile?.mkdirs()
         val payload = linkedMapOf<String, Any?>(
@@ -404,7 +414,7 @@ object FlightRecorder {
             "entries" to snapshot
         )
         val text = Edn.write(payload, Edn.CustomTypes())
-        return file.safeSave(text)
+        return file.safeSave(text, createBackup, maxBackups = 10)
     }
 
     private fun readEntriesFromDisk(documentPath: String): List<LinkedHashMap<String, Any?>> {

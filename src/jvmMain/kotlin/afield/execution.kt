@@ -177,6 +177,20 @@ private fun renderCompletionFallbackSignature(displayText: String, tail: String)
     return display + separator + suffix
 }
 
+private fun callableBeforeArgumentCursor(code: String, position: Int): String? {
+    var cursor = position.coerceIn(0, code.length)
+    while (cursor > 0 && code[cursor - 1].isWhitespace()) cursor--
+    if (cursor == 0 || code[cursor - 1] != '(') return null
+
+    cursor--
+    while (cursor > 0 && code[cursor - 1].isWhitespace()) cursor--
+    val end = cursor
+    while (cursor > 0 && (code[cursor - 1].isLetterOrDigit() || code[cursor - 1] == '_')) cursor--
+    if (cursor == end) return null
+
+    return code.substring(cursor, end)
+}
+
 private fun escapeNotifyHtml(text: String): String {
     return text
         .replace("&", "&amp;")
@@ -2242,6 +2256,7 @@ class KotlinExecution : BoxExecution {
 
         fun completionFor(c: CompletionResult.Success): List<Metadata> {
             val activeToken = allCode.substring(c.bounds.start, c.bounds.end).trim()
+            val argumentCallable = callableBeforeArgumentCursor(allCode, position)
             return c.metadata.map {
 //                println(it.extraInfo)
                 var extraDoc = ""
@@ -2266,9 +2281,10 @@ class KotlinExecution : BoxExecution {
                 }
 
                 val candidateName = (symbolName ?: rawSymbolName).trim()
-                val shouldEnrich = activeToken.isNotBlank() &&
-                    candidateName.isNotBlank() &&
-                    candidateName.startsWith(activeToken)
+                val shouldEnrich = candidateName.isNotBlank() && (
+                    (activeToken.isNotBlank() && candidateName.startsWith(activeToken)) ||
+                        candidateName == argumentCallable
+                    )
 
                 // Try to get KDoc from the source index for afield symbols.
                 // Skip for dot-completion (member access) since the simple name is ambiguous —
@@ -2330,14 +2346,16 @@ class KotlinExecution : BoxExecution {
                 )
 
                 if (shouldEnrich) {
+                    val receiverTypeHint = it.extraInfo?.get("receiverQualifiedName") as? String
+                        ?: it.extraInfo?.get("receiverType") as? String
+                        ?: if (!isDotCompletion && it.icon in setOf("property", "val", "var")) "Box" else null
                     KotlinCompletionSupport.enrichMetadata(
                         box = box,
                         allCode = allCode,
                         symbolName = symbolName,
                         metadata = rawMetadata,
                         position = position,
-                        receiverTypeHint = it.extraInfo?.get("receiverQualifiedName") as? String
-                            ?: it.extraInfo?.get("receiverType") as? String
+                        receiverTypeHint = receiverTypeHint
                     )
                 } else {
                     rawMetadata

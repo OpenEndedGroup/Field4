@@ -196,7 +196,11 @@ data class Metadata(
     val text: String,
     val displayText: String,
     val documentation: String = "",
-    val prefix: String = ""
+    val prefix: String = "",
+    val generateDocumentation: Boolean = false,
+    val documentationSourceName: String = "",
+    val documentationSourcePath: String = "",
+    val documentationSourceLine: Int = -1
 )
 
 
@@ -232,7 +236,10 @@ data class CompletionResolveRequest(
     val allCode: String,
     val line: Int,
     val column: Int,
-    val position: Int
+    val position: Int,
+    val documentationSourceName: String = "",
+    val documentationSourcePath: String = "",
+    val documentationSourceLine: Int = -1
 )
 
 @Serializable

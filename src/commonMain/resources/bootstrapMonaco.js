@@ -704,6 +704,7 @@ const initMonaco = () => {
                 provideCompletionItems: (model, position, context, cancellationToken) => {
                         var word = model.getWordUntilPosition(position);
                         var languageId = model.getLanguageId()
+                        const shouldRefreshAsPrefixChanges = languageId === "kotlin" && word.word.length === 0
                         var range = {
                                 startLineNumber: position.lineNumber,
                                 endLineNumber: position.lineNumber,
@@ -724,7 +725,10 @@ const initMonaco = () => {
                         if (window.kotlinAiCompletion && window.kotlinAiCompletion.key === sessionKey && window.kotlinAiCompletion.useCacheOnce) {
                                 const cached = window.kotlinAiCompletion
                                 cached.useCacheOnce = false
-                                return {suggestions: cached.merged || cached.base || [], incomplete: false}
+                                return {
+                                        suggestions: cached.merged || cached.base || [],
+                                        incomplete: shouldRefreshAsPrefixChanges
+                                }
                         }
 
 // Resolve uid/property: check embedded editor first, fall back to main editor globals
@@ -802,6 +806,10 @@ const initMonaco = () => {
                                                         detail: m.tail,
                                                         aiDocPending: false,
                                                         aiDocResolved: !!opts.ai,
+                                                        generateDocumentation: !!m.generateDocumentation,
+                                                        documentationSourceName: m.documentationSourceName || "",
+                                                        documentationSourcePath: m.documentationSourcePath || "",
+                                                        documentationSourceLine: m.documentationSourceLine || -1,
                                                         ai: !!opts.ai
                                                 },
                                                 command: command
@@ -858,7 +866,10 @@ const initMonaco = () => {
                                         window.kotlinAiCompletion.merged = baseSuggestions.length > 0 ? baseSuggestions : aiExisting
 
                                         monacoLog("resolving. Answer is ", {suggestions: baseSuggestions})
-                                        resolve({suggestions: baseSuggestions})
+                                        resolve({
+                                                suggestions: baseSuggestions,
+                                                incomplete: shouldRefreshAsPrefixChanges
+                                        })
 
                                         return true
                                 })
@@ -871,7 +882,7 @@ const initMonaco = () => {
                                 if (item.data.aiDocResolved || item.data.aiDocPending) return item
                                 if (item.data.source !== "kotlin") return item
                                 const existingDocValue = (item.documentation && item.documentation.value) ? item.documentation.value.trim() : ""
-                                if (existingDocValue.length > 0) {
+                                if (existingDocValue.length > 0 && !item.data.generateDocumentation) {
                                         item.data.aiDocResolved = true
                                         return item
                                 }
@@ -903,7 +914,10 @@ const initMonaco = () => {
                                         allCode: model.getValue(),
                                         line: pos.lineNumber,
                                         column: pos.column,
-                                        position: model.getOffsetAt({lineNumber: pos.lineNumber, column: pos.column})
+                                        position: model.getOffsetAt({lineNumber: pos.lineNumber, column: pos.column}),
+                                        documentationSourceName: item.data.documentationSourceName || "",
+                                        documentationSourcePath: item.data.documentationSourcePath || "",
+                                        documentationSourceLine: item.data.documentationSourceLine || -1
                                 }
 
                                 return new Promise(resolve => {

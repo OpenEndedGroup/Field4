@@ -573,6 +573,30 @@ internal fun getFLineClickCallback(callbackId: String): ((FLineIntersection) -> 
     return flineClickCallbacks[callbackId]
 }
 
+/**
+ * Displays a numeric slider in an output disclosure and calls [onUpdate] whenever its value changes.
+ *
+ * Use this standalone form for one control. Use [controlGroup] when several related controls should
+ * share one compact surface.
+ *
+ * ```kotlin
+ * var gain = 0.35
+ * slider("gain", min = 0.0, max = 1.0, step = 0.01, initialValue = gain) {
+ *     gain = it
+ * }
+ * ```
+ *
+ * This control is recreated when the box runs. Use [syncToProperty] when the value should also be
+ * written to a persistent box property.
+ *
+ * @param label text shown beside the control
+ * @param min smallest selectable value
+ * @param max largest selectable value
+ * @param step increment used for interaction and displayed precision
+ * @param initialValue value shown when the control is created
+ * @param channel output disclosure that receives the control
+ * @param onUpdate callback invoked with the selected value
+ */
 fun Box.slider(
     label: String,
     min: Double = 0.0,
@@ -1140,9 +1164,28 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         ordinals[ordinalKey] = ordinal + 1
         val cacheKey = controlGroupControlKey(channel, type, label, ordinal)
         val id = stableControlId(prefix, box.id, cacheKey)
-        return CachedControl(cacheKey, id, box.cachedControlGroupValue(cacheKey, id))
+    return CachedControl(cacheKey, id, box.cachedControlGroupValue(cacheKey, id))
     }
 
+    /**
+     * Adds a bounded numeric value to this control group.
+     *
+     * ```kotlin
+     * slider("speed", min = 0.0, max = 5.0, step = 0.1, initialValue = speed) {
+     *     speed = it
+     * }
+     * ```
+     *
+     * On a rerun, a cached UI value is reused when available and [onUpdate] is called with that
+     * value so the live variable and visible control remain synchronized.
+     *
+     * @param label text shown beside the slider
+     * @param min smallest selectable value
+     * @param max largest selectable value
+     * @param step increment used for interaction and displayed precision
+     * @param initialValue value used when no cached value exists
+     * @param onUpdate callback invoked with the current value
+     */
     fun slider(
         label: String,
         min: Double = 0.0,
@@ -1174,6 +1217,22 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         box.storeControlGroupValue(cached.cacheKey, control)
     }
 
+    /**
+     * Adds an RGBA color editor to this control group.
+     *
+     * Components use normalized `0.0f..1.0f` values: `x`, `y`, `z`, and `w` correspond to red,
+     * green, blue, and alpha.
+     *
+     * ```kotlin
+     * colorPicker("tint", initialValue = tint) {
+     *     tint = it
+     * }
+     * ```
+     *
+     * @param label text shown beside the picker
+     * @param initialValue color used when no cached value exists
+     * @param onUpdate callback invoked with the selected RGBA color
+     */
     fun colorPicker(
         label: String,
         initialValue: Vector4f = Vector4f(1.0f, 1.0f, 1.0f, 1.0f),
@@ -1208,6 +1267,31 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         box.storeControlGroupValue(cached.cacheKey, control)
     }
 
+    /**
+     * Adds an XY pad for editing a related pair of numeric values.
+     *
+     * Prefer this to two independent sliders for positions, directions, velocities, and other
+     * values where the relationship between axes matters.
+     *
+     * ```kotlin
+     * vec2Control(
+     *     "velocity",
+     *     initialValue = velocity,
+     *     xRange = -1.0 to 1.0,
+     *     yRange = -1.0 to 1.0,
+     *     step = 0.05
+     * ) {
+     *     velocity = it
+     * }
+     * ```
+     *
+     * @param label text shown beside the XY control
+     * @param initialValue vector used when no cached value exists
+     * @param xRange selectable range for the x component
+     * @param yRange selectable range for the y component
+     * @param step increment used for interaction and displayed precision
+     * @param onUpdate callback invoked with the selected vector
+     */
     fun vec2Control(
         label: String,
         initialValue: Vector2f = Vector2f(0.0f, 0.0f),
@@ -1246,6 +1330,13 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         box.storeControlGroupValue(cached.cacheKey, control)
     }
 
+    /**
+     * Adds a boolean toggle to this control group.
+     *
+     * @param label text shown beside the checkbox
+     * @param initialValue value used when no cached value exists
+     * @param onUpdate callback invoked with the selected state
+     */
     fun checkbox(
         label: String,
         initialValue: Boolean = false,
@@ -1270,6 +1361,16 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         box.storeControlGroupValue(cached.cacheKey, control)
     }
 
+    /**
+     * Adds a small text editor to this control group.
+     *
+     * Use this for names, labels, prompts, and other short text parameters rather than large source
+     * or document content.
+     *
+     * @param label text shown beside the input
+     * @param initialValue text used when no cached value exists
+     * @param onUpdate callback invoked with the edited text
+     */
     fun text(
         label: String,
         initialValue: String = "",
@@ -1294,6 +1395,9 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         box.storeControlGroupValue(cached.cacheKey, control)
     }
 
+    /**
+     * Adds a small text editor. This is the descriptive alias for [text].
+     */
     fun stringInput(
         label: String,
         initialValue: String = "",
@@ -1304,6 +1408,33 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
     internal fun buildControls(): List<ControllerControl> = controls.toList()
 }
 
+/**
+ * Builds a compact set of related controls in one output disclosure.
+ *
+ * Values are cached by channel, control type, label, and occurrence. Rerunning the box therefore
+ * preserves the visible control values and feeds them back through each callback. Keep labels and
+ * ordering stable when you want that continuity.
+ *
+ * ```kotlin
+ * var gain = 0.35
+ * var enabled = true
+ *
+ * controlGroup("surface") {
+ *     slider("gain", min = 0.0, max = 1.0, step = 0.01, initialValue = gain) {
+ *         gain = it
+ *     }
+ *     checkbox("enabled", initialValue = enabled) {
+ *         enabled = it
+ *     }
+ * }
+ * ```
+ *
+ * Use explicit grouped controls when you need custom ranges or callback behavior. Use
+ * [syncToProperty] when the main goal is a persistent editable box property.
+ *
+ * @param channel output disclosure that receives the complete control surface
+ * @param block controls to add to the surface
+ */
 fun Box.controlGroup(channel: String = "controls", block: ControlGroupBuilder.() -> Unit) {
     val builder = ControlGroupBuilder(this, channel)
     builder.apply(block)

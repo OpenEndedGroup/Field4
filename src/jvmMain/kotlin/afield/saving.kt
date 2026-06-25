@@ -176,13 +176,18 @@ class SavingContext {
         }
     }
 
-    fun checkDifference(p: String, contents: String): Boolean {
+    fun checkDifference(
+        p: String,
+        contents: String,
+        createBackup: Boolean = true,
+        maxBackups: Int? = null
+    ): Boolean {
         if (!File(p).exists()) {
-            File(p).safeSave(contents)
+            File(p).safeSave(contents, createBackup, maxBackups)
             return true
         } else {
             try {
-                return File(p).safeSave(contents)
+                return File(p).safeSave(contents, createBackup, maxBackups)
             } catch (ex: Exception) {
                 File(p).writeText(contents)
                 return true
@@ -198,7 +203,7 @@ class SavingContext {
         contents: String
     ): FileInline {
         val path = filenameFor(id, name, extension)
-        val cd = checkDifference(File(directory, path).path, contents)
+        val cd = checkDifference(File(directory, path).path, contents, maxBackups = 10)
         altered = altered || cd
         return FileInline(path, contents)
     }
@@ -415,7 +420,7 @@ class SavingContext {
                             if (value is FileInline) {
                                 val target = File(root, value.path).path
                                 touched.add(target)
-                                val cd = checkDifference(target, value.inline)
+                                val cd = checkDifference(target, value.inline, maxBackups = 10)
                                 altered = altered || cd
                                 if (cd) alteredFiles.add(target)
                             }
@@ -452,7 +457,7 @@ class SavingContext {
                     val markdownPath = File(root, DOCUMENT_MARKDOWN).path
                     touched.add(markdownPath)
                     val markdownSaveStartedAt = System.nanoTime()
-                    markdownChanged = checkDifference(markdownPath, markdownText)
+                    markdownChanged = checkDifference(markdownPath, markdownText, createBackup = false)
                     markdownSaveMs = SaveReloadLog.elapsedMillis(markdownSaveStartedAt)
                     altered = altered || markdownChanged
                     if (markdownChanged) alteredFiles.add(markdownPath)
@@ -1607,9 +1612,15 @@ class SavingContext {
  * that previous metadata.edn files should be stored in backups/ directory.
  *
  * @param text The text content to save
+ * @param maxBackups Maximum backups retained for this file, or null for unlimited retention
  * @return true if the file was modified, false if content was unchanged
  */
-fun File.safeSave(text: String): Boolean {
+fun File.safeSave(
+    text: String,
+    createBackup: Boolean = true,
+    maxBackups: Int? = null
+): Boolean {
+    require(maxBackups == null || maxBackups >= 0) { "maxBackups must be non-negative" }
     val file = this
     val startedAt = System.nanoTime()
     val existed = file.exists()
@@ -1620,6 +1631,8 @@ fun File.safeSave(text: String): Boolean {
     var backupCompareMs = 0L
     var nextBackupMs = 0L
     var renameMs = 0L
+    var pruneMs = 0L
+    var prunedBackups = 0
     var writeMs = 0L
     var backupCreated = false
     var alreadyBackedUp = false
@@ -1632,29 +1645,36 @@ fun File.safeSave(text: String): Boolean {
             readCurrentMs = SaveReloadLog.elapsedMillis(readStartedAt)
             currentChars = currentContent.length
             if (currentContent != text) {
-                val backupDir = File(file.parentFile, "backups")
-                val latestStartedAt = System.nanoTime()
-                val latestBackup = file.latestSafeSaveBackup(backupDir)
-                latestBackupMs = SaveReloadLog.elapsedMillis(latestStartedAt)
-                latestBackupName = latestBackup?.name ?: ""
-                val compareStartedAt = System.nanoTime()
-                alreadyBackedUp = latestBackup?.let { backup ->
-                    runCatching { backup.readText() == currentContent }.getOrDefault(false)
-                } ?: false
-                backupCompareMs = SaveReloadLog.elapsedMillis(compareStartedAt)
+                if (createBackup) {
+                    val backupDir = File(file.parentFile, "backups")
+                    val latestStartedAt = System.nanoTime()
+                    val latestBackup = file.latestSafeSaveBackup(backupDir)
+                    latestBackupMs = SaveReloadLog.elapsedMillis(latestStartedAt)
+                    latestBackupName = latestBackup?.name ?: ""
+                    val compareStartedAt = System.nanoTime()
+                    alreadyBackedUp = latestBackup?.let { backup ->
+                        runCatching { backup.readText() == currentContent }.getOrDefault(false)
+                    } ?: false
+                    backupCompareMs = SaveReloadLog.elapsedMillis(compareStartedAt)
 
-                if (!alreadyBackedUp) {
-                    if (!backupDir.exists()) {
-                        backupDir.mkdirs()
+                    if (!alreadyBackedUp) {
+                        if (!backupDir.exists()) {
+                            backupDir.mkdirs()
+                        }
+
+                        val nextStartedAt = System.nanoTime()
+                        val backupFile = file.nextSafeSaveBackup(backupDir)
+                        nextBackupMs = SaveReloadLog.elapsedMillis(nextStartedAt)
+                        // Rename the current file to the backup file name in the backup directory
+                        val renameStartedAt = System.nanoTime()
+                        backupCreated = file.renameTo(backupFile)
+                        renameMs = SaveReloadLog.elapsedMillis(renameStartedAt)
+                        if (backupCreated && maxBackups != null) {
+                            val pruneStartedAt = System.nanoTime()
+                            prunedBackups = file.pruneSafeSaveBackups(backupDir, maxBackups)
+                            pruneMs = SaveReloadLog.elapsedMillis(pruneStartedAt)
+                        }
                     }
-
-                    val nextStartedAt = System.nanoTime()
-                    val backupFile = file.nextSafeSaveBackup(backupDir)
-                    nextBackupMs = SaveReloadLog.elapsedMillis(nextStartedAt)
-                    // Rename the current file to the backup file name in the backup directory
-                    val renameStartedAt = System.nanoTime()
-                    backupCreated = file.renameTo(backupFile)
-                    renameMs = SaveReloadLog.elapsedMillis(renameStartedAt)
                 }
             } else {
                 // If the content is the same, do nothing.
@@ -1672,7 +1692,7 @@ fun File.safeSave(text: String): Boolean {
         if (changed || totalMs >= 250L) {
             SaveReloadLog.log(
                 "safe-save-timing",
-                "ms=$totalMs path=${file.path} changed=$changed existed=$existed inputChars=${text.length} currentChars=$currentChars readCurrentMs=$readCurrentMs latestBackupMs=$latestBackupMs backupCompareMs=$backupCompareMs nextBackupMs=$nextBackupMs renameMs=$renameMs writeMs=$writeMs backupCreated=$backupCreated alreadyBackedUp=$alreadyBackedUp latestBackup=$latestBackupName"
+                "ms=$totalMs path=${file.path} changed=$changed existed=$existed createBackup=$createBackup maxBackups=${maxBackups ?: "unlimited"} inputChars=${text.length} currentChars=$currentChars readCurrentMs=$readCurrentMs latestBackupMs=$latestBackupMs backupCompareMs=$backupCompareMs nextBackupMs=$nextBackupMs renameMs=$renameMs pruneMs=$pruneMs prunedBackups=$prunedBackups writeMs=$writeMs backupCreated=$backupCreated alreadyBackedUp=$alreadyBackedUp latestBackup=$latestBackupName"
             )
         }
         if (totalMs >= 1000L) {
@@ -1716,11 +1736,20 @@ private fun File.latestSafeSaveBackup(backupDir: File): File? {
 }
 
 private fun File.nextSafeSaveBackup(backupDir: File): File {
-    var backupIndex = 0
-    var backupFile: File
-    do {
-        backupFile = File(backupDir, safeSaveBackupName(backupIndex))
-        backupIndex++
-    } while (backupFile.exists())
-    return backupFile
+    val nextIndex = backupDir.listFiles()
+        ?.mapNotNull(::safeSaveBackupIndex)
+        ?.maxOrNull()
+        ?.plus(1)
+        ?: 0
+    return File(backupDir, safeSaveBackupName(nextIndex))
+}
+
+private fun File.pruneSafeSaveBackups(backupDir: File, maxBackups: Int): Int {
+    if (!backupDir.isDirectory) return 0
+    val obsolete = backupDir.listFiles()
+        ?.mapNotNull { backup -> safeSaveBackupIndex(backup)?.let { it to backup } }
+        ?.sortedByDescending { it.first }
+        ?.drop(maxBackups)
+        .orEmpty()
+    return obsolete.count { (_, backup) -> backup.delete() }
 }

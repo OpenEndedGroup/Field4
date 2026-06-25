@@ -60,7 +60,8 @@ internal object KotlinCompletionSupport {
         val fqName: String? = null,
         val parameters: List<ConstructorParameterInfo> = emptyList(),
         val classDocumentation: String? = null,
-        val sourceFile: String? = null
+        val sourceFile: String? = null,
+        val sourceLine: Int = -1
     ) {
         fun signature(): String =
             "$simpleName(${parameters.joinToString(", ") { it.signature() }})"
@@ -124,7 +125,9 @@ internal object KotlinCompletionSupport {
         val parameters: List<ConstructorParameterInfo> = emptyList(),
         val returnType: String? = null,
         val documentation: String? = null,
-        val sourceFile: String? = null
+        val sourceFile: String? = null,
+        val sourceLine: Int = -1,
+        val sourceName: String? = null
     ) {
         private fun typedSignature(includeDefaults: Boolean = true): String {
             val renderedParams = parameters.joinToString(", ") { it.signature(includeDefault = includeDefaults) }
@@ -209,6 +212,8 @@ internal object KotlinCompletionSupport {
 
     private data class SourceConstructorInfo(
         val sourceFile: String,
+        val sourceLine: Int,
+        val sourceName: String,
         val classDocumentation: String? = null,
         val parameters: List<ConstructorParameterInfo> = emptyList()
     )
@@ -216,9 +221,23 @@ internal object KotlinCompletionSupport {
     private data class SourceCallableInfo(
         val ownerName: String? = null,
         val sourceFile: String,
+        val sourceLine: Int,
+        val sourceName: String,
         val documentation: String? = null,
         val parameters: List<ConstructorParameterInfo> = emptyList(),
         val returnType: String? = null
+    )
+
+    private data class IndexedDocumentationTarget(
+        val sourceName: String,
+        val sourceFile: String,
+        val sourceLine: Int,
+        val hasDocumentation: Boolean
+    )
+
+    private data class ParsedKDoc(
+        val body: String? = null,
+        val parameterDocs: Map<String, String> = emptyMap()
     )
 
     private data class CallContext(
@@ -243,12 +262,38 @@ internal object KotlinCompletionSupport {
 
         if (name.isBlank()) return metadata
 
+        if (metadata.icon in setOf("property", "val", "var")) {
+            val target = resolveIndexedDocumentationTarget(
+                simpleName = name,
+                receiverTypeHint = receiverTypeHint,
+                kinds = setOf("val", "var")
+            ) ?: return metadata
+            return metadata.copy(
+                documentation = if (target.hasDocumentation) {
+                    metadata.documentation
+                } else {
+                    leadingFallbackSignature(metadata.documentation)
+                },
+                generateDocumentation = !target.hasDocumentation,
+                documentationSourceName = if (target.hasDocumentation) "" else target.sourceName,
+                documentationSourcePath = if (target.hasDocumentation) "" else target.sourceFile,
+                documentationSourceLine = if (target.hasDocumentation) -1 else target.sourceLine
+            )
+        }
+
         if (name.firstOrNull()?.isUpperCase() == true) {
             val info = resolveConstructorInfo(box, allCode, name) ?: return metadata
-            val documentation = info.documentationMarkdown(metadata.documentation)
+            val fallbackDocumentation = withoutLeadingFallbackSignature(metadata.documentation)
+            val documentation = info.documentationMarkdown(
+                if (info.sourceFile == null) fallbackDocumentation else ""
+            )
             return metadata.copy(
                 displayText = info.label(),
-                documentation = documentation
+                documentation = documentation,
+                generateDocumentation = info.classDocumentation.isNullOrBlank() && info.sourceFile != null,
+                documentationSourceName = if (info.classDocumentation.isNullOrBlank()) info.fqName.orEmpty() else "",
+                documentationSourcePath = if (info.classDocumentation.isNullOrBlank()) info.sourceFile.orEmpty() else "",
+                documentationSourceLine = if (info.classDocumentation.isNullOrBlank()) info.sourceLine else -1
             )
         }
 
@@ -260,13 +305,62 @@ internal object KotlinCompletionSupport {
             displayText = metadata.displayText,
             tail = metadata.tail,
             receiverTypeHint = receiverTypeHint
-        ) ?: return metadata
+        )
+
+        if (callableInfo == null) return metadata
+
+        val hasSourceDocumentation = !callableInfo.documentation.isNullOrBlank() ||
+            callableInfo.parameters.any { !it.documentation.isNullOrBlank() }
 
         return metadata.copy(
             displayText = callableInfo.label(),
             tail = callableInfo.returnType?.takeIf { it.isNotBlank() }?.let { ": ${shortenType(it)}" } ?: metadata.tail,
-            documentation = callableInfo.documentationMarkdown(metadata.documentation)
+            documentation = callableInfo.documentationMarkdown(),
+            generateDocumentation = !hasSourceDocumentation && !callableInfo.sourceFile.isNullOrBlank(),
+            documentationSourceName = if (hasSourceDocumentation) "" else callableInfo.sourceName.orEmpty(),
+            documentationSourcePath = if (hasSourceDocumentation) "" else callableInfo.sourceFile.orEmpty(),
+            documentationSourceLine = if (hasSourceDocumentation) -1 else callableInfo.sourceLine
         )
+    }
+
+    private fun resolveIndexedDocumentationTarget(
+        simpleName: String,
+        receiverTypeHint: String?,
+        kinds: Set<String>
+    ): IndexedDocumentationTarget? {
+        val index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex() ?: return null
+        val receiverSimpleName = receiverTypeHint?.substringAfterLast('.')
+        val candidates = index.definitions.filter {
+            it.kind in kinds && it.name.substringAfterLast('.') == simpleName
+        }
+        val definition = candidates.firstOrNull {
+            receiverSimpleName != null && it.name.substringBeforeLast('.', "").substringAfterLast('.') == receiverSimpleName
+        } ?: candidates.singleOrNull()
+            ?: candidates.firstOrNull { it.name == simpleName }
+            ?: return null
+
+        return IndexedDocumentationTarget(
+            sourceName = definition.name,
+            sourceFile = definition.filePath,
+            sourceLine = definition.line,
+            hasDocumentation = !definition.kdoc.isNullOrBlank()
+        )
+    }
+
+    private fun withoutLeadingFallbackSignature(documentation: String): String {
+        val trimmed = documentation.trim()
+        if (!trimmed.startsWith("```kotlin")) return trimmed
+        val closingFence = trimmed.indexOf("```", startIndex = "```kotlin".length)
+        if (closingFence == -1) return trimmed
+        return trimmed.substring(closingFence + 3).trim()
+    }
+
+    private fun leadingFallbackSignature(documentation: String): String {
+        val trimmed = documentation.trim()
+        if (!trimmed.startsWith("```kotlin")) return trimmed
+        val closingFence = trimmed.indexOf("```", startIndex = "```kotlin".length)
+        if (closingFence == -1) return trimmed
+        return trimmed.substring(0, closingFence + 3).trim()
     }
 
     fun namedArgumentCompletions(
@@ -356,7 +450,8 @@ internal object KotlinCompletionSupport {
                 fqName = fqName,
                 parameters = parameters,
                 classDocumentation = sourceInfo?.classDocumentation,
-                sourceFile = sourceInfo?.sourceFile
+                sourceFile = sourceInfo?.sourceFile,
+                sourceLine = sourceInfo?.sourceLine ?: -1
             )
         }
         constructorInfoCache[cacheKey] = resolved
@@ -390,7 +485,9 @@ internal object KotlinCompletionSupport {
                 parameters = it.parameters,
                 returnType = it.returnType,
                 documentation = it.documentation,
-                sourceFile = it.sourceFile
+                sourceFile = it.sourceFile,
+                sourceLine = it.sourceLine,
+                sourceName = it.sourceName
             )
         }
 
@@ -534,8 +631,14 @@ internal object KotlinCompletionSupport {
         val parsedName = headerName.substringBefore('(').substringAfterLast('.').substringAfterLast(' ').trim()
         if (parsedName != simpleName) return null
 
+        val parsedKDoc = parseKDoc(definition.kdoc)
         val parameters = splitTopLevelConstructorParameters(rawText.substring(parenOpen + 1, close))
             .mapNotNull { parseParameter(it) }
+            .map { parameter ->
+                parameter.copy(
+                    documentation = parsedKDoc.parameterDocs[parameter.name] ?: parameter.documentation
+                )
+            }
 
         var cursor = skipWhitespace(rawText, close + 1)
         var returnType: String? = null
@@ -551,9 +654,45 @@ internal object KotlinCompletionSupport {
         return SourceCallableInfo(
             ownerName = definition.name.substringBeforeLast('.', "").ifBlank { null },
             sourceFile = relativePath,
-            documentation = definition.kdoc,
+            sourceLine = definition.line,
+            sourceName = definition.name,
+            documentation = parsedKDoc.body,
             parameters = parameters,
             returnType = returnType
+        )
+    }
+
+    private fun parseKDoc(kdoc: String?): ParsedKDoc {
+        if (kdoc.isNullOrBlank()) return ParsedKDoc()
+
+        val body = mutableListOf<String>()
+        val parameterDocs = linkedMapOf<String, StringBuilder>()
+        var activeParameter: String? = null
+
+        kdoc.lineSequence().forEach { rawLine ->
+            val line = rawLine.trimEnd()
+            val parameterMatch = Regex("""^\s*@param\s+([A-Za-z_][A-Za-z0-9_]*)\s*(.*)$""").matchEntire(line)
+            when {
+                parameterMatch != null -> {
+                    val name = parameterMatch.groupValues[1]
+                    parameterDocs.getOrPut(name) { StringBuilder() }
+                        .append(parameterMatch.groupValues[2].trim())
+                    activeParameter = name
+                }
+                line.trimStart().startsWith("@") -> activeParameter = null
+                activeParameter != null && line.isNotBlank() -> {
+                    parameterDocs.getValue(activeParameter).append(' ').append(line.trim())
+                }
+                else -> {
+                    activeParameter = null
+                    body += line
+                }
+            }
+        }
+
+        return ParsedKDoc(
+            body = body.joinToString("\n").trim().ifBlank { null },
+            parameterDocs = parameterDocs.mapValues { it.value.toString().trim() }
         )
     }
 
@@ -566,7 +705,7 @@ internal object KotlinCompletionSupport {
         displayText: String,
         allCode: String
     ): Int {
-        var score = 0
+        var score = 20
 
         val ownerSimpleName = info.ownerName?.substringAfterLast('.')
         if (!receiverOwnerHint.isNullOrBlank()) {
@@ -587,7 +726,7 @@ internal object KotlinCompletionSupport {
         }
 
         if (displayText.contains("fun ")) score += 5
-        if (definitionName in allCode) score += 10
+        if (definitionName.substringAfterLast('.') in allCode) score += 10
         return score
     }
 
@@ -598,6 +737,7 @@ internal object KotlinCompletionSupport {
         receiverTypeHint: String?
     ): String? {
         receiverTypeHint?.takeIf { it.isNotBlank() }?.let { return it.substringAfterLast('.') }
+        inferEnclosingLambdaReceiverOwner(allCode, position)?.let { return it }
 
         val receiverExpression = extractReceiverExpressionAtCompletion(allCode, position) ?: return null
         val identifier = receiverExpression.trim()
@@ -611,6 +751,69 @@ internal object KotlinCompletionSupport {
         if (!explicitType.isNullOrBlank()) return explicitType.substringAfterLast('.')
 
         return null
+    }
+
+    private fun inferEnclosingLambdaReceiverOwner(allCode: String, position: Int): String? {
+        val callName = enclosingLambdaCallName(allCode, position) ?: return null
+        val index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex() ?: return null
+        val root = Paths.get(System.getProperty("user.dir")).normalize()
+
+        return index.definitions.asSequence()
+            .filter { it.kind == "fun" && it.name.substringAfterLast('.') == callName }
+            .mapNotNull { parseSourceCallableInfo(it, root, callName) }
+            .flatMap { it.parameters.asSequence() }
+            .mapNotNull { parameter ->
+                Regex("""([A-Za-z_][A-Za-z0-9_.]*)\s*\.\s*\(\s*\)\s*->""")
+                    .find(parameter.type)
+                    ?.groupValues
+                    ?.get(1)
+                    ?.substringAfterLast('.')
+            }
+            .firstOrNull()
+    }
+
+    private fun enclosingLambdaCallName(allCode: String, position: Int): String? {
+        var cursor = position.coerceIn(0, allCode.length) - 1
+        var braceDepth = 0
+
+        while (cursor >= 0) {
+            when (allCode[cursor]) {
+                '}' -> braceDepth++
+                '{' -> {
+                    if (braceDepth > 0) {
+                        braceDepth--
+                    } else {
+                        return callNameBeforeLambdaBrace(allCode, cursor)
+                    }
+                }
+            }
+            cursor--
+        }
+        return null
+    }
+
+    private fun callNameBeforeLambdaBrace(code: String, bracePosition: Int): String? {
+        var cursor = bracePosition
+        while (cursor > 0 && code[cursor - 1].isWhitespace()) cursor--
+
+        if (cursor > 0 && code[cursor - 1] == ')') {
+            var parenDepth = 1
+            cursor--
+            while (cursor > 0 && parenDepth > 0) {
+                cursor--
+                when (code[cursor]) {
+                    ')' -> parenDepth++
+                    '(' -> parenDepth--
+                }
+            }
+            if (parenDepth != 0) return null
+        }
+
+        while (cursor > 0 && code[cursor - 1].isWhitespace()) cursor--
+        val end = cursor
+        while (cursor > 0 && (code[cursor - 1].isLetterOrDigit() || code[cursor - 1] == '_')) cursor--
+        if (cursor == end) return null
+        return code.substring(cursor, end)
     }
 
     private fun extractReceiverExpressionAtCompletion(allCode: String, position: Int): String? {
@@ -819,6 +1022,8 @@ internal object KotlinCompletionSupport {
 
         return SourceConstructorInfo(
             sourceFile = relativePath,
+            sourceLine = rawText.substring(0, classStart).count { it == '\n' } + 1,
+            sourceName = if (packageName.isBlank()) simpleName else "$packageName.$simpleName",
             classDocumentation = classDocumentation,
             parameters = parameters
         )

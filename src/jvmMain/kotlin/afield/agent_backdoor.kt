@@ -230,14 +230,14 @@ internal fun attachDocumentSession(
             )
 
             // Phase 3: Initialize KotlinInterface for every box.
-            // Progress messages are sent every 5 boxes; _send dispatches
+            // Progress messages are sent after each box; _send dispatches
             // them via GlobalScope so they reach the frontend independently.
             var initialized = 0
             info.boxes.values.forEach {
                 if (it.id == "root" || it.getPropertyRaw("_tombstone").isTrue()) return@forEach
                 it.ki
                 initialized++
-                if (initialized % 5 == 0 || initialized == count) {
+                if (initialized % 1 == 0 || initialized == count) {
                     sendDocumentLoadStatus(
                         session,
                         phase = "stdlib-queued",
