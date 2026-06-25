@@ -11,6 +11,7 @@ private var provisionalDiffKey: String? = null
 private var provisionalDiffText: String? = null
 private var provisionalDiffRetry: Int? = null
 private var provisionalListenerInstalled = false
+private var provisionalAcceptedValueListenerInstalled = false
 
 private fun syncNotesMarkdownPreview() {
     val w = js("window")
@@ -116,6 +117,17 @@ internal fun resolveAllProvisional(accept: Boolean) {
     send(if (accept) "provisional-accept-all" else "provisional-reject-all", js("{}"))
 }
 
+private fun recordCurrentAcceptedProvisionalValue() {
+    val w = js("window")
+    val entry = currentProvisionalEntry() ?: return
+    val editor = w.globalEditor ?: return
+    val payload = js("{}")
+    payload.uid = entry.uid
+    payload.property = entry.property
+    payload.value = editor.getValue() as String
+    send("provisional-record-accepted-value", payload)
+}
+
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun monacoStartSelectionMonitor() {
@@ -125,6 +137,13 @@ fun monacoStartSelectionMonitor() {
         val w = js("window")
         w.addEventListener("provisional-change", { _: dynamic ->
             updateProvisionalDiff()
+        })
+    }
+    if (!provisionalAcceptedValueListenerInstalled) {
+        provisionalAcceptedValueListenerInstalled = true
+        val w = js("window")
+        w.addEventListener("ai-diff-hunk-accepted", { _: dynamic ->
+            recordCurrentAcceptedProvisionalValue()
         })
     }
     monitorSelection()

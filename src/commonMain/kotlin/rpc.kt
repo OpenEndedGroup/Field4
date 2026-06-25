@@ -504,6 +504,9 @@ data class ProvisionalSet(val entries: List<ProvisionalEntry>)
 data class ProvisionalTarget(val uid: String, val property: String)
 
 @Serializable
+data class ProvisionalAcceptedValue(val uid: String, val property: String, val value: String)
+
+@Serializable
 data class Notify(val text: String, val category: String)
 
 @Serializable

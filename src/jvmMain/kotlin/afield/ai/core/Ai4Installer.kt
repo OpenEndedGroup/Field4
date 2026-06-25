@@ -120,6 +120,94 @@ fun installAi4() {
             chatThreadByKey[fileKey] = it
         }
 
+    fun provisionalKey(entry: ProvisionalEntry): String = "${entry.uid}\u0000${entry.property}"
+
+    fun provisionalDelta(
+        before: Map<String, String>,
+        after: List<ProvisionalEntry>
+    ): List<ProvisionalEntry> =
+        after.filter { entry -> before[provisionalKey(entry)] != entry.contents }
+
+    fun markdownFence(text: String): String =
+        text.replace("```", "`\u200b``")
+
+    fun aiPanelMarkdownForArchive(panelMarkdown: String): String {
+        val lines = panelMarkdown.replace("\r\n", "\n").replace("\r", "\n").lines()
+        return buildString {
+            lines.forEach { line ->
+                when (line.trim()) {
+                    "<<you>>" -> appendLine("## User")
+                    "<<ai>>" -> appendLine("## Assistant")
+                    "<<progress>>", "<<progress-open>>" -> appendLine("### Progress")
+                    else -> appendLine(line)
+                }
+            }
+        }.trim()
+    }
+
+    fun buildAiProposalArchiveMarkdown(
+        docPath: String,
+        fileKey: String,
+        exec: AiAssist,
+        responseId: String,
+        panelMarkdown: String,
+        acceptedEntries: List<ProvisionalEntry>,
+        toolTranscript: List<OpenAiIdeCodexBridge.ToolTranscriptEntry>
+    ): String = buildString {
+        appendLine("# AI4 Proposal Archive")
+        appendLine()
+        appendLine("- Document: `$docPath`")
+        appendLine("- Primary file: `$fileKey`")
+        appendLine("- Request kind: `${exec.kind}`")
+        appendLine("- Primary property: `${exec.property}`")
+        appendLine("- Start line: `${exec.startLine}`")
+        appendLine("- Response id: `$responseId`")
+        if (exec.extraPrompt.isNotBlank()) {
+            appendLine()
+            appendLine("## User Request")
+            appendLine()
+            appendLine(exec.extraPrompt.trim())
+        }
+        if (acceptedEntries.isNotEmpty()) {
+            appendLine()
+            appendLine("## Provisional Edits")
+            appendLine()
+            acceptedEntries.forEach { entry ->
+                appendLine("- `${entry.uid}/${entry.property}` (${entry.contents.length} chars)")
+            }
+        }
+        appendLine()
+        appendLine("## Conversation")
+        appendLine()
+        appendLine(aiPanelMarkdownForArchive(panelMarkdown).ifBlank { "_No visible chat transcript was recorded._" })
+        appendLine()
+        appendLine("## Tool Calls")
+        appendLine()
+        if (toolTranscript.isEmpty()) {
+            appendLine("_No tool calls were made._")
+        } else {
+            toolTranscript.forEachIndexed { index, tool ->
+                appendLine("### ${index + 1}. ${tool.name}")
+                appendLine()
+                appendLine("- Call id: `${tool.callId}`")
+                appendLine("- Result: ${tool.resultSummary}")
+                appendLine()
+                appendLine("Arguments:")
+                appendLine()
+                appendLine("```json")
+                appendLine(markdownFence(tool.argumentsJson))
+                appendLine("```")
+                appendLine()
+                appendLine("Result:")
+                appendLine()
+                appendLine("```json")
+                appendLine(markdownFence(tool.resultJson))
+                appendLine("```")
+                appendLine()
+            }
+        }
+    }.trim()
+
     fun aiSetupMessage(t: Throwable): String {
         if (t is MissingOpenAiCredentialException) return t.message ?: "AI4 needs an OpenAI Platform key."
         return "AI4 could not initialize OpenAI support: ${t.message ?: t::class.java.simpleName}"
@@ -1550,6 +1638,9 @@ fun installAi4() {
             clearProvisional(docPath)
         }
 
+        val provisionalBeforeAi = provisionalEntries(docPath)
+            .associate { provisionalKey(it) to it.contents }
+
         val state = if (exec.kind == "general") {
             chatThreadFor(fileKey, exec.prompt)
         } else {
@@ -1672,7 +1763,7 @@ fun installAi4() {
                 }
             }
 
-            fun sendFinalVisibleAiPanel(markdown: String, additions: String = "") {
+            fun sendFinalVisibleAiPanel(markdown: String, additions: String = ""): String {
                 val next = renderLiveConversation(
                     aiText = markdown,
                     latestProgressOpen = false,
@@ -1681,6 +1772,7 @@ fun installAi4() {
                 chatHistoryByKey[fileKey] = next
                 val payload = Set_output(box.id, "outputarea", "ai-chat", next)
                 _send(Message("set-output").payload(payload), document = escapedDocPath)
+                return next
             }
 
             if (exec.kind != "general") {
@@ -1936,6 +2028,24 @@ fun installAi4() {
                     chatHistoryByKey[fileKey] = next
                     val payload = Set_output(box.id, "outputarea", "ai-chat", next)
                     _send(Message("set-output").payload(payload), document = escapedDocPath)
+                    val changedEntries = provisionalDelta(provisionalBeforeAi, provisionalEntries(docPath))
+                    if (changedEntries.isNotEmpty()) {
+                        setProvisionalArchive(
+                            docPath,
+                            changedEntries,
+                            AiProvisionalArchive(
+                                markdown = buildAiProposalArchiveMarkdown(
+                                    docPath = docPath,
+                                    fileKey = fileKey,
+                                    exec = exec,
+                                    responseId = chatResult.rawResponseId,
+                                    panelMarkdown = next,
+                                    acceptedEntries = changedEntries,
+                                    toolTranscript = chatResult.toolTranscript
+                                )
+                            )
+                        )
+                    }
                     notify("Finished AI conversation", "AI4")
                 } else if (editResult != null) {
                     threadByKey[fileKey] = editResult.threadState
@@ -1955,7 +2065,25 @@ fun installAi4() {
                             append(checklistMarkdown)
                         }
                     }
-                    sendFinalVisibleAiPanel(finalMarkdown)
+                    val next = sendFinalVisibleAiPanel(finalMarkdown)
+                    val changedEntries = provisionalDelta(provisionalBeforeAi, provisionalEntries(docPath))
+                    if (changedEntries.isNotEmpty()) {
+                        setProvisionalArchive(
+                            docPath,
+                            changedEntries,
+                            AiProvisionalArchive(
+                                markdown = buildAiProposalArchiveMarkdown(
+                                    docPath = docPath,
+                                    fileKey = fileKey,
+                                    exec = exec,
+                                    responseId = editResult.rawResponseId,
+                                    panelMarkdown = next,
+                                    acceptedEntries = changedEntries,
+                                    toolTranscript = editResult.toolTranscript
+                                )
+                            )
+                        )
+                    }
                     streamActive.set(false)
                     notify("Finished AI ${exec.kind}", "AI4")
                 }

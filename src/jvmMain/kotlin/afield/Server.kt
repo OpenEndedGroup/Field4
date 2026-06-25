@@ -1239,6 +1239,11 @@ class Server {
                 acceptProvisional(thisSessionInfo.get().filename, target.uid, target.property)
                 Handled.yes
             })
+            handlers["provisional-record-accepted-value"] = mutableSetOf({ message, reply ->
+                val target = Json.decodeFromJsonElement<ProvisionalAcceptedValue>(message.payload!!)
+                recordAcceptedProvisionalValue(thisSessionInfo.get().filename, target.uid, target.property, target.value)
+                Handled.yes
+            })
             handlers["provisional-reject"] = mutableSetOf({ message, reply ->
                 val target = Json.decodeFromJsonElement<ProvisionalTarget>(message.payload!!)
                 rejectProvisional(thisSessionInfo.get().filename, target.uid, target.property)

@@ -27,7 +27,8 @@ class IdeChatHelpers(
         val editedCode: String,
         val commentary: List<String>,
         val rawResponseId: String,
-        val threadState: OpenAiIdeCodexBridge.ThreadState
+        val threadState: OpenAiIdeCodexBridge.ThreadState,
+        val toolTranscript: List<OpenAiIdeCodexBridge.ToolTranscriptEntry> = emptyList()
     )
 
     fun chatFile(
@@ -95,7 +96,8 @@ class IdeChatHelpers(
             editedCode = unwrapped,
             commentary = result.commentary,
             rawResponseId = result.rawResponseId,
-            threadState = result.threadState
+            threadState = result.threadState,
+            toolTranscript = result.toolTranscript
         )
     }
 
@@ -244,7 +246,8 @@ class IdeChatHelpers(
             editedCode = unwrapped,
             commentary = result.commentary,
             rawResponseId = result.rawResponseId,
-            threadState = result.threadState
+            threadState = result.threadState,
+            toolTranscript = result.toolTranscript
         )
     }
 
@@ -313,7 +316,8 @@ class IdeChatHelpers(
             editedCode = unwrapped,
             commentary = result.commentary,
             rawResponseId = result.rawResponseId,
-            threadState = result.threadState
+            threadState = result.threadState,
+            toolTranscript = result.toolTranscript
         )
     }
 }

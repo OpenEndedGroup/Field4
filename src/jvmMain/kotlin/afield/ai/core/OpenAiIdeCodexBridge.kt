@@ -191,6 +191,7 @@ class OpenAiIdeCodexBridge(
 
         val commentaryMessages = mutableListOf<String>()
         val conversationAdditions = mutableListOf<String>()
+        val toolTranscript = mutableListOf<ToolTranscriptEntry>()
 
         fun logOutputShape(resp: Response) {
             val out = resp.output()
@@ -253,20 +254,29 @@ class OpenAiIdeCodexBridge(
                     )
                 }
 
+                val toolResultJson = runCatching { mapper.writeValueAsString(toolResult) }
+                    .getOrElse { toolResult.toString() }
+                val toolResultSummary = summarizeToolResult(toolResult)
+                toolTranscript += ToolTranscriptEntry(
+                    name = call.name(),
+                    callId = call.callId(),
+                    argumentsJson = call.arguments(),
+                    resultSummary = toolResultSummary,
+                    resultJson = toolResultJson
+                )
+
                 trace?.log(
                     "TOOL_OUTPUT",
                     buildString {
                         appendLine("name=${call.name()} callId=${call.callId()}")
-                        val json = runCatching { mapper.writeValueAsString(toolResult) }
-                            .getOrElse { toolResult.toString() }
-                        append(json)
+                        append(toolResultJson)
                     }
                 )
-                info("tool: result name=${call.name()} ${summarizeToolResult(toolResult)}")
+                info("tool: result name=${call.name()} $toolResultSummary")
                 onProgress?.invoke(
                     ProgressUpdate(
                         title = "${call.name()} finished",
-                        body = summarizeToolResult(toolResult)
+                        body = toolResultSummary
                     )
                 )
 
@@ -415,7 +425,8 @@ class OpenAiIdeCodexBridge(
             text = text,
             rawResponseId = response.id(),
             commentary = commentaryMessages.toList(),
-            conversationAdditions = conversationAdditions.toList()
+            conversationAdditions = conversationAdditions.toList(),
+            toolTranscript = toolTranscript.toList()
         )
     }
 
@@ -427,7 +438,16 @@ class OpenAiIdeCodexBridge(
         val text: String,
         val rawResponseId: String,
         val commentary: List<String> = emptyList(),
-        val conversationAdditions: List<String> = emptyList()
+        val conversationAdditions: List<String> = emptyList(),
+        val toolTranscript: List<ToolTranscriptEntry> = emptyList()
+    )
+
+    data class ToolTranscriptEntry(
+        val name: String,
+        val callId: String,
+        val argumentsJson: String,
+        val resultSummary: String,
+        val resultJson: String
     )
 
     data class ProgressUpdate(

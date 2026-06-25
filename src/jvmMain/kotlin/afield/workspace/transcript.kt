@@ -486,6 +486,31 @@ object FlightRecorder {
         }
     }
 
+    fun recordAiProvisionalAccepted(
+        box: Box,
+        property: String,
+        acceptedValue: String,
+        archiveMarkdown: String?
+    ) {
+        val documentPath = documentPathFor(box) ?: return
+        append(stateFor(documentPath)) { state, nowMs, nowIso ->
+            eventBase(
+                state = state,
+                box = box,
+                nowMs = nowMs,
+                nowIso = nowIso,
+                event = "ai-provisional-accept",
+                entrypoint = "provisional-accept"
+            ).apply {
+                this["property"] = property
+                this["acceptedValue"] = acceptedValue
+                archiveMarkdown?.takeIf { it.isNotBlank() }?.let {
+                    this["archiveMarkdown"] = it
+                }
+            }
+        }
+    }
+
     private fun currentLineRangeForTranscriptEntry(
         entry: Map<String, Any?>,
         liveLines: List<String>
@@ -648,6 +673,16 @@ object FlightRecorder {
                 }
             }
 
+            if (entry["event"] == "ai-provisional-accept") {
+                val property = entry["property"]?.toString()?.ifBlank { primaryProperty } ?: primaryProperty
+                entry["acceptedValue"]?.toString()?.let {
+                    append(renderCodeBlock("Accepted Value", box, property, it))
+                }
+                entry["archiveMarkdown"]?.toString()?.takeIf { it.isNotBlank() }?.let {
+                    append(renderCodeBlock("AI Archive Markdown", box, property, it))
+                }
+            }
+
             val properties = mapOfStringAny(entry["properties"])
             if (!properties.isNullOrEmpty()) {
                 append(renderPropertySnapshot(properties, box))
@@ -693,6 +728,7 @@ object FlightRecorder {
         "launch" -> "Launch"
         "stop" -> "Stop"
         "property-change" -> "Property Change"
+        "ai-provisional-accept" -> "Accepted AI Proposal"
         else -> event.replace('-', ' ').replaceFirstChar { it.uppercase() }
     }
 

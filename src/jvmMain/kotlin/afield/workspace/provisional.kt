@@ -9,6 +9,14 @@ import java.util.concurrent.ConcurrentHashMap
 private val provisionalByDocument =
     ConcurrentHashMap<String, ConcurrentHashMap<String, ConcurrentHashMap<String, String>>>()
 
+private val provisionalArchiveByDocument =
+    ConcurrentHashMap<String, ConcurrentHashMap<String, ConcurrentHashMap<String, AiProvisionalArchive>>>()
+
+data class AiProvisionalArchive(
+    val markdown: String,
+    val source: String = "AI4"
+)
+
 private val shaderProvisionalProperties = setOf(
     "vertex",
     "fragment",
@@ -111,6 +119,31 @@ fun setProvisional(document: String, uid: String, property: String, contents: St
     sendProvisionalSet(document)
 }
 
+fun setProvisionalArchive(document: String, uid: String, property: String, archive: AiProvisionalArchive) {
+    if (archive.markdown.isBlank()) return
+    val props = provisionalArchiveByDocument
+        .computeIfAbsent(document) { ConcurrentHashMap() }
+        .computeIfAbsent(uid) { ConcurrentHashMap() }
+    props[property] = archive
+}
+
+fun setProvisionalArchive(document: String, entries: List<ProvisionalEntry>, archive: AiProvisionalArchive) {
+    entries.forEach { entry ->
+        setProvisionalArchive(document, entry.uid, entry.property, archive)
+    }
+}
+
+private fun provisionalArchive(document: String, uid: String, property: String): AiProvisionalArchive? =
+    provisionalArchiveByDocument[document]?.get(uid)?.get(property)
+
+private fun removeProvisionalArchive(document: String, uid: String, property: String) {
+    val docMap = provisionalArchiveByDocument[document] ?: return
+    val props = docMap[uid] ?: return
+    props.remove(property)
+    if (props.isEmpty()) docMap.remove(uid)
+    if (docMap.isEmpty()) provisionalArchiveByDocument.remove(document)
+}
+
 fun clearProvisional(box: Box, property: String): Boolean {
     val document = documentKeyFor(box) ?: return false
     return removeProvisional(document, box.id, property)
@@ -128,12 +161,14 @@ fun removeProvisional(document: String, uid: String, property: String): Boolean 
     val removed = props.remove(property) != null
     if (props.isEmpty()) docMap.remove(uid)
     if (docMap.isEmpty()) provisionalByDocument.remove(document)
+    removeProvisionalArchive(document, uid, property)
     sendProvisionalSet(document)
     return removed
 }
 
 fun clearProvisional(document: String) {
     provisionalByDocument.remove(document)
+    provisionalArchiveByDocument.remove(document)
     sendProvisionalSet(document)
 }
 
@@ -158,8 +193,28 @@ fun acceptProvisional(document: String, uid: String, property: String): Boolean 
         return false
     }
     target.setPropertyRaw(property, contents, doResync = true)
+    FlightRecorder.recordAiProvisionalAccepted(
+        box = target,
+        property = property,
+        acceptedValue = contents,
+        archiveMarkdown = provisionalArchive(document, uid, property)?.markdown
+    )
     removeProvisional(document, uid, property)
     reloadShaderRuntimeForProvisionalProperty(target, property)
+    return true
+}
+
+fun recordAcceptedProvisionalValue(document: String, uid: String, property: String, acceptedValue: String): Boolean {
+    val docMap = provisionalByDocument[document] ?: return false
+    val props = docMap[uid] ?: return false
+    if (!props.containsKey(property)) return false
+    val target = thisSessionInfo.get().boxes[uid] ?: return false
+    FlightRecorder.recordAiProvisionalAccepted(
+        box = target,
+        property = property,
+        acceptedValue = acceptedValue,
+        archiveMarkdown = provisionalArchive(document, uid, property)?.markdown
+    )
     return true
 }
 
@@ -181,6 +236,12 @@ fun acceptAllProvisional(document: String) {
     entries.forEach { entry ->
         val target = thisSessionInfo.get().boxes[entry.uid] ?: return@forEach
         target.setPropertyRaw(entry.property, entry.contents, doResync = true)
+        FlightRecorder.recordAiProvisionalAccepted(
+            box = target,
+            property = entry.property,
+            acceptedValue = entry.contents,
+            archiveMarkdown = provisionalArchive(document, entry.uid, entry.property)?.markdown
+        )
         reloadShaderRuntimeForProvisionalProperty(target, entry.property)
     }
     clearProvisional(document)

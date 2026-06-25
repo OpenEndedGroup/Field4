@@ -283,6 +283,11 @@ function acceptByKey(editor, key, approxLine, options) {
     if (!chosen) { dbg(options, "acceptByKey(): no match"); return; }
 
     acceptHunk(editor, chosen);
+    if (typeof window !== "undefined" && window.dispatchEvent) {
+        window.dispatchEvent(new CustomEvent("ai-diff-hunk-accepted", {
+            detail: { key, line: approxLine }
+        }));
+    }
     dbg(options, "acceptByKey(): applied; redraw");
     apply(editor, target, options || s._lastOptions || {});
 }
