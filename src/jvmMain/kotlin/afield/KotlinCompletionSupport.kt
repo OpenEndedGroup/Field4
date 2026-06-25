@@ -1,19 +1,23 @@
 package afield
 
 import afield.ai.KotlinSourceIndex
+import afield.logger.lprintln
 import org.jetbrains.kotlin.com.intellij.lang.Language
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.com.intellij.psi.PsiFileFactory
 import org.jetbrains.kotlin.psi.KtCallExpression
+import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.util.zip.ZipFile
 import kotlin.reflect.KParameter
 import kotlin.reflect.full.primaryConstructor
 
 internal object KotlinCompletionSupport {
     private val constructorInfoCache = HashMap<String, ConstructorInfo?>()
     private val callableInfoCache = HashMap<String, CallableInfo?>()
+    private val classpathSourceCache = HashMap<String, List<SourceCallableInfo>>()
 
     data class ReplacementBounds(val start: Int, val end: Int)
 
@@ -61,20 +65,19 @@ internal object KotlinCompletionSupport {
         val parameters: List<ConstructorParameterInfo> = emptyList(),
         val classDocumentation: String? = null,
         val sourceFile: String? = null,
-        val sourceLine: Int = -1
+        val sourceLine: Int = -1,
+        val isObject: Boolean = false
     ) {
         fun signature(): String =
-            "$simpleName(${parameters.joinToString(", ") { it.signature() }})"
+            if (isObject) simpleName else "$simpleName(${parameters.joinToString(", ") { it.signature() }})"
 
         fun namedArgumentSignature(): String =
-            "$simpleName(${parameters.joinToString(", ") { it.namedArgumentPreview().trimEnd() }})"
+            if (isObject) simpleName else "$simpleName(${parameters.joinToString(", ") { it.namedArgumentPreview().trimEnd() }})"
 
-        fun label(maxChars: Int = 180): String {
-            val raw = namedArgumentSignature()
-            return if (raw.length <= maxChars) raw else raw.take(maxChars - 1) + "..."
-        }
+        fun label(): String = namedArgumentSignature()
 
         fun namedArgumentBlock(): String = when {
+            isObject -> simpleName
             parameters.isEmpty() -> "$simpleName()"
             parameters.size <= 2 -> "$simpleName(${parameters.joinToString(", ") { it.namedArgumentPreview().trimEnd() }})"
             else -> buildString {
@@ -153,22 +156,7 @@ internal object KotlinCompletionSupport {
             }
         }
 
-        fun label(maxChars: Int = 92): String {
-            val typed = typedSignature(includeDefaults = false)
-            if (typed.length <= maxChars) return typed
-
-            val namesOnly = parameters.joinToString(", ") { parameter ->
-                buildString {
-                    if (parameter.vararg) append("vararg ")
-                    append(parameter.name)
-                }
-            }
-            val compact = "fun $name($namesOnly)"
-            if (compact.length <= maxChars) return compact
-
-            val shortened = parameters.take(3).joinToString(", ") { it.name } + if (parameters.size > 3) ", ..." else ""
-            return "fun $name($shortened)"
-        }
+        fun label(): String = typedSignature(includeDefaults = false)
 
         fun documentationMarkdown(existingDocumentation: String = ""): String {
             val sections = mutableListOf<String>()
@@ -181,10 +169,11 @@ internal object KotlinCompletionSupport {
 
             documentation?.trim()?.takeIf { it.isNotEmpty() }?.let { sections += it }
 
-            if (parameters.isNotEmpty()) {
+            val documentedParameters = parameters.filter { !it.documentation.isNullOrBlank() }
+            if (documentedParameters.isNotEmpty()) {
                 sections += buildString {
                     append("**Parameters**\n")
-                    parameters.forEach { parameter ->
+                    documentedParameters.forEach { parameter ->
                         append(parameter.parameterSummary()).append('\n')
                     }
                 }.trimEnd()
@@ -214,6 +203,7 @@ internal object KotlinCompletionSupport {
         val sourceFile: String,
         val sourceLine: Int,
         val sourceName: String,
+        val isObject: Boolean = false,
         val classDocumentation: String? = null,
         val parameters: List<ConstructorParameterInfo> = emptyList()
     )
@@ -251,7 +241,9 @@ internal object KotlinCompletionSupport {
         metadata: Metadata,
         symbolName: String?,
         position: Int,
-        receiverTypeHint: String? = null
+        receiverTypeHint: String? = null,
+        requireReceiverOwnerMatch: Boolean = false,
+        descriptorText: String? = null
     ): Metadata {
         val name = symbolName
             ?.substringBefore('<')
@@ -262,11 +254,15 @@ internal object KotlinCompletionSupport {
 
         if (name.isBlank()) return metadata
 
+        val receiverOwnerHint = inferReceiverOwnerName(box, allCode, position, receiverTypeHint)
+            ?: descriptorOwnerName(descriptorText)
+
         if (metadata.icon in setOf("property", "val", "var")) {
             val target = resolveIndexedDocumentationTarget(
                 simpleName = name,
-                receiverTypeHint = receiverTypeHint,
-                kinds = setOf("val", "var")
+                receiverOwnerHint = receiverOwnerHint,
+                kinds = setOf("val", "var"),
+                requireReceiverOwnerMatch = requireReceiverOwnerMatch
             ) ?: return metadata
             return metadata.copy(
                 documentation = if (target.hasDocumentation) {
@@ -275,13 +271,14 @@ internal object KotlinCompletionSupport {
                     leadingFallbackSignature(metadata.documentation)
                 },
                 generateDocumentation = !target.hasDocumentation,
-                documentationSourceName = if (target.hasDocumentation) "" else target.sourceName,
-                documentationSourcePath = if (target.hasDocumentation) "" else target.sourceFile,
-                documentationSourceLine = if (target.hasDocumentation) -1 else target.sourceLine
+                documentationSourceName = target.sourceName,
+                documentationSourcePath = target.sourceFile,
+                documentationSourceLine = target.sourceLine
             )
         }
 
         if (name.firstOrNull()?.isUpperCase() == true) {
+            if (requireReceiverOwnerMatch) return metadata
             val info = resolveConstructorInfo(box, allCode, name) ?: return metadata
             val fallbackDocumentation = withoutLeadingFallbackSignature(metadata.documentation)
             val documentation = info.documentationMarkdown(
@@ -291,9 +288,9 @@ internal object KotlinCompletionSupport {
                 displayText = info.label(),
                 documentation = documentation,
                 generateDocumentation = info.classDocumentation.isNullOrBlank() && info.sourceFile != null,
-                documentationSourceName = if (info.classDocumentation.isNullOrBlank()) info.fqName.orEmpty() else "",
-                documentationSourcePath = if (info.classDocumentation.isNullOrBlank()) info.sourceFile.orEmpty() else "",
-                documentationSourceLine = if (info.classDocumentation.isNullOrBlank()) info.sourceLine else -1
+                documentationSourceName = info.fqName.orEmpty(),
+                documentationSourcePath = info.sourceFile.orEmpty(),
+                documentationSourceLine = info.sourceLine
             )
         }
 
@@ -304,7 +301,9 @@ internal object KotlinCompletionSupport {
             position = position,
             displayText = metadata.displayText,
             tail = metadata.tail,
-            receiverTypeHint = receiverTypeHint
+            receiverOwnerHint = receiverOwnerHint,
+            requireReceiverOwnerMatch = requireReceiverOwnerMatch,
+            descriptorText = descriptorText
         )
 
         if (callableInfo == null) return metadata
@@ -317,27 +316,29 @@ internal object KotlinCompletionSupport {
             tail = callableInfo.returnType?.takeIf { it.isNotBlank() }?.let { ": ${shortenType(it)}" } ?: metadata.tail,
             documentation = callableInfo.documentationMarkdown(),
             generateDocumentation = !hasSourceDocumentation && !callableInfo.sourceFile.isNullOrBlank(),
-            documentationSourceName = if (hasSourceDocumentation) "" else callableInfo.sourceName.orEmpty(),
-            documentationSourcePath = if (hasSourceDocumentation) "" else callableInfo.sourceFile.orEmpty(),
-            documentationSourceLine = if (hasSourceDocumentation) -1 else callableInfo.sourceLine
+            documentationSourceName = callableInfo.sourceName.orEmpty(),
+            documentationSourcePath = callableInfo.sourceFile.orEmpty(),
+            documentationSourceLine = callableInfo.sourceLine
         )
     }
 
     private fun resolveIndexedDocumentationTarget(
         simpleName: String,
-        receiverTypeHint: String?,
-        kinds: Set<String>
+        receiverOwnerHint: String?,
+        kinds: Set<String>,
+        requireReceiverOwnerMatch: Boolean
     ): IndexedDocumentationTarget? {
         val index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex() ?: return null
-        val receiverSimpleName = receiverTypeHint?.substringAfterLast('.')
         val candidates = index.definitions.filter {
             it.kind in kinds && it.name.substringAfterLast('.') == simpleName
         }
-        val definition = candidates.firstOrNull {
-            receiverSimpleName != null && it.name.substringBeforeLast('.', "").substringAfterLast('.') == receiverSimpleName
-        } ?: candidates.singleOrNull()
-            ?: candidates.firstOrNull { it.name == simpleName }
-            ?: return null
+        val definition = (if (!receiverOwnerHint.isNullOrBlank()) {
+            candidates.firstOrNull { ownerMatches(indexedOwnerName(it.name), receiverOwnerHint) }
+        } else if (requireReceiverOwnerMatch) {
+            null
+        } else {
+            candidates.singleOrNull() ?: candidates.firstOrNull { it.name == simpleName }
+        }) ?: return null
 
         return IndexedDocumentationTarget(
             sourceName = definition.name,
@@ -420,6 +421,11 @@ internal object KotlinCompletionSupport {
             val reflectionInfo = candidates.asSequence()
                 .mapNotNull { resolveReflectionInfo(box, it) }
                 .firstOrNull()
+                ?.takeUnless { reflected ->
+                    sourceInfo != null &&
+                        reflected.fqName != null &&
+                        reflected.fqName != sourceInfo.sourceName
+                }
 
             if (reflectionInfo == null && sourceInfo == null) return@run null
 
@@ -444,14 +450,15 @@ internal object KotlinCompletionSupport {
                 merged.takeIf { it.name.isNotBlank() }
             }
 
-            val fqName = reflectionInfo?.fqName ?: candidates.firstOrNull()
+            val fqName = sourceInfo?.sourceName ?: reflectionInfo?.fqName ?: candidates.firstOrNull()
             ConstructorInfo(
                 simpleName = simpleName,
                 fqName = fqName,
                 parameters = parameters,
                 classDocumentation = sourceInfo?.classDocumentation,
                 sourceFile = sourceInfo?.sourceFile,
-                sourceLine = sourceInfo?.sourceLine ?: -1
+                sourceLine = sourceInfo?.sourceLine ?: -1,
+                isObject = sourceInfo?.isObject ?: false
             )
         }
         constructorInfoCache[cacheKey] = resolved
@@ -466,19 +473,42 @@ internal object KotlinCompletionSupport {
         position: Int,
         displayText: String,
         tail: String,
-        receiverTypeHint: String?
+        receiverOwnerHint: String?,
+        requireReceiverOwnerMatch: Boolean,
+        descriptorText: String?
     ): CallableInfo? {
-        val receiverOwnerHint = inferReceiverOwnerName(box, allCode, position, receiverTypeHint)
-        val cacheKey = buildCallableCacheKey(allCode, simpleName, receiverOwnerHint, displayText, tail)
+        if (requireReceiverOwnerMatch && receiverOwnerHint.isNullOrBlank()) return null
+        val cacheKey = buildCallableCacheKey(
+            allCode,
+            simpleName,
+            receiverOwnerHint,
+            displayText,
+            descriptorText,
+            tail,
+            requireReceiverOwnerMatch
+        )
         if (callableInfoCache.containsKey(cacheKey)) return callableInfoCache[cacheKey]
 
         val resolved = resolveSourceCallableInfo(
             allCode = allCode,
             simpleName = simpleName,
             receiverOwnerHint = receiverOwnerHint,
+            requireReceiverOwnerMatch = requireReceiverOwnerMatch,
             displayText = displayText,
+            descriptorText = descriptorText,
             tail = tail
-        )?.let {
+        ) ?: resolveClasspathCallableInfo(
+            box = box,
+            allCode = allCode,
+            simpleName = simpleName,
+            receiverOwnerHint = receiverOwnerHint,
+            requireReceiverOwnerMatch = requireReceiverOwnerMatch,
+            displayText = displayText,
+            descriptorText = descriptorText,
+            tail = tail
+        )
+
+        val callable = resolved?.let {
             CallableInfo(
                 name = simpleName,
                 ownerName = it.ownerName,
@@ -491,8 +521,8 @@ internal object KotlinCompletionSupport {
             )
         }
 
-        callableInfoCache[cacheKey] = resolved
-        return resolved
+        callableInfoCache[cacheKey] = callable
+        return callable
     }
 
     private fun buildCacheKey(allCode: String, simpleName: String): String {
@@ -505,10 +535,20 @@ internal object KotlinCompletionSupport {
         simpleName: String,
         receiverOwnerHint: String?,
         displayText: String,
-        tail: String
+        descriptorText: String?,
+        tail: String,
+        requireReceiverOwnerMatch: Boolean
     ): String {
         val imports = importCandidates(allCode, simpleName).sorted().joinToString("|")
-        return listOf(simpleName, receiverOwnerHint.orEmpty(), displayText, tail.trim(), imports).joinToString("::")
+        return listOf(
+            simpleName,
+            receiverOwnerHint.orEmpty(),
+            displayText,
+            descriptorText.orEmpty(),
+            tail.trim(),
+            requireReceiverOwnerMatch.toString(),
+            imports
+        ).joinToString("::")
     }
 
     private fun resolveClassCandidates(allCode: String, simpleName: String): List<String> {
@@ -576,19 +616,27 @@ internal object KotlinCompletionSupport {
         allCode: String,
         simpleName: String,
         receiverOwnerHint: String?,
+        requireReceiverOwnerMatch: Boolean,
         displayText: String,
+        descriptorText: String?,
         tail: String
     ): SourceCallableInfo? {
         val index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex() ?: return null
         val root = Paths.get(System.getProperty("user.dir")).normalize()
-        val expectedParamCount = parameterCountHint(displayText)
+        val signatureText = descriptorText?.takeIf { it.isNotBlank() } ?: displayText
+        val expectedParamCount = parameterCountHint(signatureText)
+        val expectedParamTypes = parameterTypeHints(signatureText)
         val expectedReturnType = tail.removePrefix(":").trim().ifBlank { null }
+        val hasSignatureHints = expectedParamCount != null || !expectedParamTypes.isNullOrEmpty()
 
         val candidates = index.definitions
             .asSequence()
             .filter { it.kind == "fun" && it.name.substringAfterLast('.') == simpleName }
             .mapNotNull { definition ->
                 parseSourceCallableInfo(definition, root, simpleName)?.let { definition to it }
+            }
+            .filter { (_, info) ->
+                !requireReceiverOwnerMatch || ownerMatches(info.ownerName, receiverOwnerHint) || hasSignatureHints
             }
             .toList()
 
@@ -600,6 +648,7 @@ internal object KotlinCompletionSupport {
                 info = info,
                 receiverOwnerHint = receiverOwnerHint,
                 expectedParamCount = expectedParamCount,
+                expectedParamTypes = expectedParamTypes,
                 expectedReturnType = expectedReturnType,
                 displayText = displayText,
                 allCode = allCode
@@ -608,8 +657,393 @@ internal object KotlinCompletionSupport {
 
         val best = scored.firstOrNull() ?: return null
         if (best.first <= 0) return null
+        return mergeCallableInfoFromCompatibleBase(best.second, candidates.map { it.second })
+    }
+
+    private fun mergeCallableInfoFromCompatibleBase(
+        selected: SourceCallableInfo,
+        candidates: List<SourceCallableInfo>
+    ): SourceCallableInfo {
+        val needsDefaults = selected.parameters.any { it.defaultValue.isNullOrBlank() }
+        val needsDocumentation = selected.documentation.isNullOrBlank() ||
+            selected.parameters.any { it.documentation.isNullOrBlank() }
+        if (!needsDefaults && !needsDocumentation) return selected
+
+        val base = candidates.asSequence()
+            .filter { it !== selected }
+            .filter { callableShapeMatches(selected, it) }
+            .filter { ownerIsAssignableFrom(it.ownerName.orEmpty(), selected.ownerName.orEmpty()) }
+            .sortedByDescending { inherited ->
+                var score = 0
+                if (!inherited.documentation.isNullOrBlank()) score += 20
+                score += inherited.parameters.count { !it.defaultValue.isNullOrBlank() } * 3
+                score += inherited.parameters.count { !it.documentation.isNullOrBlank() }
+                score
+            }
+            .firstOrNull()
+            ?: return selected
+
+        return selected.copy(
+            documentation = selected.documentation?.takeIf { it.isNotBlank() } ?: base.documentation,
+            parameters = selected.parameters.mapIndexed { index, parameter ->
+                val inherited = base.parameters.getOrNull(index) ?: return@mapIndexed parameter
+                parameter.copy(
+                    defaultValue = parameter.defaultValue?.takeIf { it.isNotBlank() } ?: inherited.defaultValue,
+                    documentation = parameter.documentation?.takeIf { it.isNotBlank() } ?: inherited.documentation,
+                    optional = parameter.optional || inherited.optional || inherited.defaultValue != null
+                )
+            }
+        )
+    }
+
+    private fun callableShapeMatches(
+        selected: SourceCallableInfo,
+        candidate: SourceCallableInfo
+    ): Boolean {
+        if (selected.parameters.size != candidate.parameters.size) return false
+        selected.returnType?.let { selectedReturn ->
+            candidate.returnType?.let { candidateReturn ->
+                if (!parameterTypesMatch(candidateReturn, selectedReturn)) return false
+            }
+        }
+        return selected.parameters.indices.all { index ->
+            val left = selected.parameters[index].type
+            val right = candidate.parameters[index].type
+            left.isBlank() || right.isBlank() || parameterTypesMatch(left, right)
+        }
+    }
+
+    private fun resolveClasspathCallableInfo(
+        box: Box,
+        allCode: String,
+        simpleName: String,
+        receiverOwnerHint: String?,
+        requireReceiverOwnerMatch: Boolean,
+        displayText: String,
+        descriptorText: String?,
+        tail: String
+    ): SourceCallableInfo? {
+        if (receiverOwnerHint.isNullOrBlank()) return null
+        val signatureText = descriptorText?.takeIf { it.isNotBlank() } ?: displayText
+        val expectedParamCount = parameterCountHint(signatureText)
+        val expectedParamTypes = parameterTypeHints(signatureText)
+        val expectedReturnType = tail.removePrefix(":").trim().ifBlank { null }
+        val owners = resolveReceiverClassNames(allCode, receiverOwnerHint)
+        if (owners.isEmpty()) {
+            lprintln("info,completion", "completion classpath-source miss: no class candidates for receiver=$receiverOwnerHint symbol=$simpleName")
+            return null
+        }
+
+        val classLoader = box.ki.classLoader ?: Thread.currentThread().contextClassLoader
+        val candidates = owners.asSequence()
+            .mapNotNull { ownerName ->
+                val clazz = runCatching { Class.forName(ownerName, false, classLoader) }
+                    .recoverCatching { classLoader.loadClass(ownerName) }
+                    .getOrNull()
+                if (clazz == null) {
+                    lprintln("info,completion", "completion classpath-source miss: could not load receiver=$ownerName symbol=$simpleName")
+                    null
+                } else {
+                    classpathSourceMethods(clazz, simpleName)
+                }
+            }
+            .flatten()
+            .filter { !requireReceiverOwnerMatch || ownerMatches(it.ownerName, receiverOwnerHint) }
+            .toList()
+
+        if (candidates.isEmpty()) {
+            lprintln(
+                "info,completion",
+                "completion classpath-source miss: no source methods receiver=$receiverOwnerHint owners=${owners.take(4)} symbol=$simpleName display='$displayText' tail='$tail'"
+            )
+            return null
+        }
+
+        val scored = candidates.map { info ->
+            scoreCallableCandidate(
+                definitionName = info.sourceName,
+                info = info,
+                receiverOwnerHint = receiverOwnerHint,
+                expectedParamCount = expectedParamCount,
+                expectedParamTypes = expectedParamTypes,
+                expectedReturnType = expectedReturnType,
+                displayText = displayText,
+                allCode = allCode
+            ) to info
+        }.sortedByDescending { it.first }
+
+        val best = scored.firstOrNull() ?: return null
+        if (best.first <= 0) {
+            lprintln(
+                "info,completion",
+                "completion classpath-source miss: candidates scored <=0 receiver=$receiverOwnerHint symbol=$simpleName best=${best.first} display='$displayText'"
+            )
+            return null
+        }
         return best.second
     }
+
+    private fun resolveReceiverClassNames(allCode: String, receiverOwnerHint: String): List<String> {
+        val raw = receiverOwnerHint.trim().substringBefore('<').substringBefore('?')
+        if (raw.isBlank()) return emptyList()
+        if ('.' in raw) return listOf(raw)
+
+        val imported = Regex(
+            pattern = "^\\s*import\\s+([A-Za-z0-9_.]+\\.${Regex.escape(raw)})\\s*$",
+            options = setOf(RegexOption.MULTILINE)
+        ).findAll(allCode).map { it.groupValues[1] }.toList()
+        if (imported.isNotEmpty()) return imported
+
+        return findClassesNamed(raw)
+            ?.filter { '$' !in it }
+            ?.sortedWith(
+                compareBy<String>(
+                    { !it.startsWith("afield.") },
+                    { !it.startsWith("org.joml.") },
+                    { it }
+                )
+            )
+            .orEmpty()
+    }
+
+    private fun classpathSourceMethods(clazz: Class<*>, simpleName: String): List<SourceCallableInfo> {
+        val key = "${clazz.name}#$simpleName"
+        classpathSourceCache[key]?.let { return it }
+        val loaded = loadClasspathSourceMethods(clazz, simpleName)
+        classpathSourceCache[key] = loaded
+        return loaded
+    }
+
+    private fun loadClasspathSourceMethods(clazz: Class<*>, simpleName: String): List<SourceCallableInfo> {
+        val source = classpathSourceFor(clazz) ?: return emptyList()
+        return source.use { (zip, entryName, sourcePath) ->
+            val entry = zip.getEntry(entryName) ?: return@use emptyList()
+            val text = zip.getInputStream(entry).bufferedReader().use { it.readText() }
+            parseJavaSourceMethods(
+                text = text,
+                ownerName = clazz.name,
+                simpleName = simpleName,
+                sourcePath = sourcePath
+            )
+        }
+    }
+
+    private data class OpenClasspathSource(
+        val zip: ZipFile,
+        val entryName: String,
+        val sourcePath: String
+    ) : AutoCloseable {
+        override fun close() {
+            zip.close()
+        }
+    }
+
+    private fun classpathSourceFor(clazz: Class<*>): OpenClasspathSource? {
+        val codeSource = clazz.protectionDomain?.codeSource?.location ?: return null
+        val binaryPath = runCatching { Paths.get(codeSource.toURI()) }.getOrNull() ?: return null
+        if (!Files.isRegularFile(binaryPath) || binaryPath.fileName.toString().endsWith("-sources.jar")) return null
+
+        val sourceJarName = binaryPath.fileName.toString().removeSuffix(".jar") + "-sources.jar"
+        val searchRoot = binaryPath.parent?.parent ?: binaryPath.parent ?: return null
+        val sourceJar = runCatching {
+            Files.walk(searchRoot, 3).use { stream ->
+                stream
+                    .filter { Files.isRegularFile(it) && it.fileName.toString() == sourceJarName }
+                    .findFirst()
+                    .orElse(null)
+            }
+        }.getOrNull() ?: return null
+
+        val entryBase = clazz.name.substringBefore('$').replace('.', '/')
+        val zip = ZipFile(sourceJar.toFile())
+        val entryName = listOf("$entryBase.java", "$entryBase.kt")
+            .firstOrNull { zip.getEntry(it) != null }
+        if (entryName == null) {
+            zip.close()
+            return null
+        }
+        return OpenClasspathSource(
+            zip = zip,
+            entryName = entryName,
+            sourcePath = "jar:${sourceJar.toUri()}!/$entryName"
+        )
+    }
+
+    private fun parseJavaSourceMethods(
+        text: String,
+        ownerName: String,
+        simpleName: String,
+        sourcePath: String
+    ): List<SourceCallableInfo> {
+        val out = mutableListOf<SourceCallableInfo>()
+        val lines = text.split('\n')
+        var pendingDoc: ParsedKDoc? = null
+        var i = 0
+        while (i < lines.size) {
+            val trimmed = lines[i].trim()
+            if (trimmed.startsWith("/**")) {
+                val docLines = mutableListOf<String>()
+                var done = false
+                while (i < lines.size) {
+                    val line = lines[i].trim()
+                    docLines += line
+                    if (line.contains("*/")) {
+                        done = true
+                        break
+                    }
+                    i++
+                }
+                pendingDoc = if (done) parseJavaDoc(docLines.joinToString("\n")) else null
+                i++
+                continue
+            }
+
+            if (trimmed.isBlank() || trimmed.startsWith("@")) {
+                i++
+                continue
+            }
+
+            parseJavaMethodLine(trimmed, simpleName)?.let { method ->
+                val doc = pendingDoc ?: ParsedKDoc()
+                out += SourceCallableInfo(
+                    ownerName = ownerName.substringAfterLast('.'),
+                    sourceFile = sourcePath,
+                    sourceLine = i + 1,
+                    sourceName = "$ownerName.$simpleName",
+                    documentation = doc.body,
+                    parameters = method.parameters.map { parameter ->
+                        parameter.copy(documentation = doc.parameterDocs[parameter.name] ?: parameter.documentation)
+                    },
+                    returnType = method.returnType
+                )
+            }
+            pendingDoc = null
+            i++
+        }
+        return out
+    }
+
+    private data class ParsedJavaMethod(
+        val returnType: String,
+        val parameters: List<ConstructorParameterInfo>
+    )
+
+    private fun parseJavaMethodLine(line: String, simpleName: String): ParsedJavaMethod? {
+        if (!line.contains("$simpleName(")) return null
+        val beforeParen = line.substringBefore('(').trim()
+        val afterParen = line.substringAfter('(', "")
+        if (afterParen.isBlank()) return null
+        val rawName = beforeParen.substringAfterLast(' ')
+        if (rawName != simpleName) return null
+        if (beforeParen.contains("=")) return null
+
+        val returnType = beforeParen
+            .split(Regex("\\s+"))
+            .asReversed()
+            .drop(1)
+            .firstOrNull { it !in javaMethodModifiers }
+            ?: return null
+        val closeIndex = line.indexOf(')', line.indexOf('('))
+        if (closeIndex == -1) return null
+        val parameterText = line.substring(line.indexOf('(') + 1, closeIndex)
+        val parameters = splitTopLevelConstructorParameters(parameterText)
+            .mapNotNull { parseJavaParameter(it) }
+        return ParsedJavaMethod(returnType = javaTypeToKotlinish(returnType), parameters = parameters)
+    }
+
+    private val javaMethodModifiers = setOf(
+        "public", "protected", "private", "static", "final", "abstract", "synchronized", "native",
+        "strictfp", "default", "transient", "volatile"
+    )
+
+    private fun parseJavaParameter(raw: String): ConstructorParameterInfo? {
+        var text = raw.trim()
+        if (text.isBlank()) return null
+        text = text.replace(Regex("@[A-Za-z0-9_.]+(\\([^)]*\\))?\\s*"), "")
+        text = text.replace(Regex("\\bfinal\\s+"), "").trim()
+        val name = text.substringAfterLast(' ').trim().removePrefix("...")
+        val type = text.substringBeforeLast(' ', "").trim().replace("...", "...")
+        if (name.isBlank() || type.isBlank()) return null
+        return ConstructorParameterInfo(
+            name = name,
+            type = javaTypeToKotlinish(type),
+            vararg = "..." in type
+        )
+    }
+
+    private fun javaTypeToKotlinish(raw: String): String {
+        val arrays = raw.count { it == '[' }
+        val base = raw.replace("[]", "").replace("...", "").trim()
+        val mapped = when (base) {
+            "boolean" -> "Boolean"
+            "byte" -> "Byte"
+            "char" -> "Char"
+            "double" -> "Double"
+            "float" -> "Float"
+            "int" -> "Int"
+            "long" -> "Long"
+            "short" -> "Short"
+            "void" -> "Unit"
+            else -> base.substringAfterLast('.')
+        }
+        return if (arrays > 0) "Array<$mapped>" else mapped
+    }
+
+    private fun parseJavaDoc(raw: String): ParsedKDoc {
+        val body = mutableListOf<String>()
+        val parameterDocs = linkedMapOf<String, StringBuilder>()
+        var activeParameter: String? = null
+        raw.lineSequence()
+            .map { line ->
+                line.trim()
+                    .removePrefix("/**")
+                    .removeSuffix("*/")
+                    .trim()
+                    .removePrefix("*")
+                    .trim()
+            }
+            .forEach { line ->
+                val parameterMatch = Regex("""^@param\s+([A-Za-z_][A-Za-z0-9_]*)\s*(.*)$""").matchEntire(line)
+                when {
+                    line.isBlank() -> {
+                        activeParameter = null
+                        if (body.lastOrNull()?.isNotBlank() == true) body += ""
+                    }
+                    parameterMatch != null -> {
+                        val name = parameterMatch.groupValues[1]
+                        parameterDocs.getOrPut(name) { StringBuilder() }
+                            .append(cleanJavaDocMarkdown(parameterMatch.groupValues[2].trim()))
+                        activeParameter = name
+                    }
+                    line.startsWith("@return") -> {
+                        activeParameter = null
+                    }
+                    line.startsWith("@") -> {
+                        activeParameter = null
+                    }
+                    activeParameter != null -> {
+                        parameterDocs.getValue(activeParameter).append(' ').append(cleanJavaDocMarkdown(line))
+                    }
+                    else -> {
+                        activeParameter = null
+                        body += cleanJavaDocMarkdown(line)
+                    }
+                }
+            }
+        return ParsedKDoc(
+            body = body.joinToString("\n").trim().ifBlank { null },
+            parameterDocs = parameterDocs.mapValues { it.value.toString().trim() }
+        )
+    }
+
+    private fun cleanJavaDocMarkdown(raw: String): String =
+        raw.replace(Regex("<code>(.*?)</code>"), "`$1`")
+            .replace("<p>", "\n\n")
+            .replace("</p>", "")
+            .replace(Regex("<[^>]+>"), "")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&amp;", "&")
 
     private fun parseSourceCallableInfo(
         definition: afield.ai.KotlinDefinitionRecord,
@@ -628,7 +1062,8 @@ internal object KotlinCompletionSupport {
 
         val header = rawText.substring(funIndex, close)
         val headerName = header.substringAfter("fun").trim()
-        val parsedName = headerName.substringBefore('(').substringAfterLast('.').substringAfterLast(' ').trim()
+        val rawCallableName = headerName.substringBefore('(').substringAfterLast(' ').trim()
+        val parsedName = rawCallableName.substringAfterLast('.').trim()
         if (parsedName != simpleName) return null
 
         val parsedKDoc = parseKDoc(definition.kdoc)
@@ -650,9 +1085,13 @@ internal object KotlinCompletionSupport {
 
         val relativePath = runCatching { root.relativize(path).toString().replace("\\", "/") }
             .getOrDefault(path.toString())
+        val ownerName = rawCallableName.substringBeforeLast('.', missingDelimiterValue = "")
+            .takeIf { it.isNotBlank() }
+            ?.substringAfterLast('.')
+            ?: definition.name.substringBeforeLast('.', "").ifBlank { null }
 
         return SourceCallableInfo(
-            ownerName = definition.name.substringBeforeLast('.', "").ifBlank { null },
+            ownerName = ownerName,
             sourceFile = relativePath,
             sourceLine = definition.line,
             sourceName = definition.name,
@@ -701,23 +1140,30 @@ internal object KotlinCompletionSupport {
         info: SourceCallableInfo,
         receiverOwnerHint: String?,
         expectedParamCount: Int?,
+        expectedParamTypes: List<String>?,
         expectedReturnType: String?,
         displayText: String,
         allCode: String
     ): Int {
         var score = 20
 
-        val ownerSimpleName = info.ownerName?.substringAfterLast('.')
         if (!receiverOwnerHint.isNullOrBlank()) {
-            score += when {
-                info.ownerName == receiverOwnerHint -> 120
-                ownerSimpleName == receiverOwnerHint.substringAfterLast('.') -> 90
-                else -> -40
-            }
+            score += ownerCompatibilityScore(info.ownerName, receiverOwnerHint)
         }
 
         expectedParamCount?.let {
             score += if (info.parameters.size == it) 40 else -20 * kotlin.math.abs(info.parameters.size - it)
+        }
+
+        expectedParamTypes?.takeIf { it.isNotEmpty() }?.let { expectedTypes ->
+            expectedTypes.forEachIndexed { index, expected ->
+                val actual = info.parameters.getOrNull(index)?.type?.let(::shortenType).orEmpty()
+                score += when {
+                    actual.isBlank() -> 0
+                    parameterTypesMatch(actual, expected) -> 35
+                    else -> -25
+                }
+            }
         }
 
         expectedReturnType?.let {
@@ -728,6 +1174,49 @@ internal object KotlinCompletionSupport {
         if (displayText.contains("fun ")) score += 5
         if (definitionName.substringAfterLast('.') in allCode) score += 10
         return score
+    }
+
+    private fun ownerCompatibilityScore(candidateOwner: String?, receiverOwner: String?): Int {
+        val candidate = candidateOwner?.takeIf { it.isNotBlank() } ?: return 0
+        val receiver = receiverOwner?.takeIf { it.isNotBlank() } ?: return 0
+        if (candidate == receiver) return 120
+        if (candidate.substringAfterLast('.') == receiver.substringAfterLast('.')) return 90
+        if (ownerIsAssignableFrom(candidate, receiver)) return 70
+        return -40
+    }
+
+    private fun ownerIsAssignableFrom(candidateOwner: String, receiverOwner: String): Boolean {
+        val candidateNames = resolveOwnerClassNames(candidateOwner)
+        val receiverNames = resolveOwnerClassNames(receiverOwner)
+        if (candidateNames.isEmpty() || receiverNames.isEmpty()) return false
+        val classLoader = Thread.currentThread().contextClassLoader
+        val candidateClasses = candidateNames.mapNotNull { name ->
+            runCatching { Class.forName(name, false, classLoader) }.getOrNull()
+        }
+        val receiverClasses = receiverNames.mapNotNull { name ->
+            runCatching { Class.forName(name, false, classLoader) }.getOrNull()
+        }
+        return candidateClasses.any { candidate ->
+            receiverClasses.any { receiver -> candidate.isAssignableFrom(receiver) }
+        }
+    }
+
+    private fun resolveOwnerClassNames(owner: String): List<String> {
+        val raw = owner.substringBefore('<').substringBefore('?').trim()
+        if (raw.isBlank()) return emptyList()
+        if ('.' in raw) return listOf(raw)
+        return findClassesNamed(raw).orEmpty()
+    }
+
+    private fun descriptorOwnerName(descriptorText: String?): String? {
+        val text = descriptorText?.takeIf { it.isNotBlank() } ?: return null
+        return Regex("""\bdefined\s+in\s+([A-Za-z_][A-Za-z0-9_.$]*(?:\.[A-Za-z_][A-Za-z0-9_$]*)*)""")
+            .find(text)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.substringBefore('[')
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
     }
 
     private fun inferReceiverOwnerName(
@@ -749,6 +1238,9 @@ internal object KotlinCompletionSupport {
 
         val explicitType = explicitTypeForLocal(allCode, identifier)
         if (!explicitType.isNullOrBlank()) return explicitType.substringAfterLast('.')
+
+        val constructedType = constructedTypeForLocal(allCode, identifier)
+        if (!constructedType.isNullOrBlank()) return constructedType.substringAfterLast('.')
 
         return null
     }
@@ -875,6 +1367,26 @@ internal object KotlinCompletionSupport {
             .takeIf { it.isNotBlank() }
     }
 
+    private fun constructedTypeForLocal(allCode: String, identifier: String): String? {
+        val regex = Regex("\\b(?:val|var)\\s+${Regex.escape(identifier)}\\s*=\\s*([A-Za-z_][A-Za-z0-9_.]*)\\s*(?:<[^\\n=(){}]*>)?\\s*\\(")
+        val match = regex.find(allCode) ?: return null
+        return match.groupValues[1]
+            .substringBefore('<')
+            .trim()
+            .takeIf { it.isNotBlank() }
+    }
+
+    private fun indexedOwnerName(definitionName: String): String? =
+        definitionName.substringBeforeLast('.', "")
+            .takeIf { it.isNotBlank() }
+
+    private fun ownerMatches(candidateOwner: String?, receiverOwner: String?): Boolean {
+        val candidate = candidateOwner?.takeIf { it.isNotBlank() } ?: return false
+        val receiver = receiverOwner?.takeIf { it.isNotBlank() } ?: return false
+        return candidate == receiver ||
+            candidate.substringAfterLast('.') == receiver.substringAfterLast('.')
+    }
+
     private fun parameterCountHint(displayText: String): Int? {
         val open = displayText.indexOf('(')
         val close = displayText.lastIndexOf(')')
@@ -882,6 +1394,37 @@ internal object KotlinCompletionSupport {
         val inside = displayText.substring(open + 1, close).trim()
         if (inside.isEmpty()) return 0
         return splitTopLevelConstructorParameters(inside).size
+    }
+
+    private fun parameterTypeHints(displayText: String): List<String>? {
+        val open = displayText.indexOf('(')
+        val close = displayText.lastIndexOf(')')
+        if (open == -1 || close <= open) return null
+        val inside = displayText.substring(open + 1, close).trim()
+        if (inside.isEmpty()) return emptyList()
+        return splitTopLevelConstructorParameters(inside)
+            .mapNotNull { raw ->
+                val withoutDefault = raw.substringBefore('=').trim()
+                val typeText = if (':' in withoutDefault) {
+                    withoutDefault.substringAfter(':').trim()
+                } else {
+                    withoutDefault
+                }
+                typeText
+                    .removePrefix("vararg ")
+                    .substringBefore('=')
+                    .trim()
+                    .takeIf { it.isNotBlank() }
+                    ?.let(::shortenType)
+            }
+    }
+
+    private fun parameterTypesMatch(actual: String, expected: String): Boolean {
+        fun normalize(type: String): String =
+            shortenType(type)
+                .removeSuffix("?")
+                .replace(" ", "")
+        return normalize(actual) == normalize(expected)
     }
 
     private fun findFunctionHeaderEnd(text: String, start: Int): Int {
@@ -947,7 +1490,7 @@ internal object KotlinCompletionSupport {
         val index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex()
         index?.definitions
             ?.asSequence()
-            ?.filter { it.kind == "class" && it.name.substringAfterLast('.') == simpleName }
+            ?.filter { it.kind in setOf("class", "object") && it.name.substringAfterLast('.') == simpleName }
             ?.map { root.resolve(it.filePath).normalize() }
             ?.filter { Files.exists(it) }
             ?.forEach { ordered.add(it) }
@@ -959,7 +1502,7 @@ internal object KotlinCompletionSupport {
                     paths.filter { Files.isRegularFile(it) && it.fileName.toString().endsWith(".kt") }
                         .forEach { path ->
                             val raw = runCatching { Files.readString(path) }.getOrNull() ?: return@forEach
-                            if (Regex("\\bclass\\s+${Regex.escape(simpleName)}\\b").containsMatchIn(raw)) {
+                            if (Regex("\\b(?:class|object)\\s+${Regex.escape(simpleName)}\\b").containsMatchIn(raw)) {
                                 ordered.add(path)
                             }
                         }
@@ -997,10 +1540,11 @@ internal object KotlinCompletionSupport {
             if (expectedPackage.isNotBlank() && packageName != expectedPackage) return null
         }
 
-        val classMatch = Regex("\\bclass\\s+${Regex.escape(simpleName)}\\b").find(rawText) ?: return null
-        val classStart = classMatch.range.first
+        val declarationMatch = Regex("\\b(class|object)\\s+${Regex.escape(simpleName)}\\b").find(rawText) ?: return null
+        val isObject = declarationMatch.groupValues[1] == "object"
+        val classStart = declarationMatch.range.first
         val classDocumentation = leadingKDoc(rawText, classStart)
-        var cursor = classMatch.range.last + 1
+        var cursor = declarationMatch.range.last + 1
         cursor = skipWhitespace(rawText, cursor)
         if (cursor < rawText.length && rawText[cursor] == '<') {
             val genericEnd = matchingDelimiter(rawText, cursor, '<', '>')
@@ -1008,14 +1552,18 @@ internal object KotlinCompletionSupport {
             cursor = genericEnd + 1
             cursor = skipWhitespace(rawText, cursor)
         }
-        if (cursor >= rawText.length || rawText[cursor] != '(') return null
+        val parameters = if (isObject) {
+            emptyList()
+        } else {
+            if (cursor >= rawText.length || rawText[cursor] != '(') return null
 
-        val close = matchingDelimiter(rawText, cursor, '(', ')')
-        if (close <= cursor) return null
+            val close = matchingDelimiter(rawText, cursor, '(', ')')
+            if (close <= cursor) return null
 
-        val constructorText = rawText.substring(cursor + 1, close)
-        val parameters = splitTopLevelConstructorParameters(constructorText)
-            .mapNotNull { parseParameter(it) }
+            val constructorText = rawText.substring(cursor + 1, close)
+            splitTopLevelConstructorParameters(constructorText)
+                .mapNotNull { parseParameter(it) }
+        }
 
         val relativePath = runCatching { root.relativize(path).toString().replace("\\", "/") }
             .getOrDefault(path.toString())
@@ -1024,6 +1572,7 @@ internal object KotlinCompletionSupport {
             sourceFile = relativePath,
             sourceLine = rawText.substring(0, classStart).count { it == '\n' } + 1,
             sourceName = if (packageName.isBlank()) simpleName else "$packageName.$simpleName",
+            isObject = isObject,
             classDocumentation = classDocumentation,
             parameters = parameters
         )
@@ -1381,6 +1930,14 @@ internal object KotlinCompletionSupport {
         return -1
     }
 
-    private fun shortenType(type: String): String =
-        type.replace("(\\b[_a-zA-Z$][_a-zA-Z0-9$]*\\b\\.)+".toRegex(), "")
+    private fun shortenType(type: String): String {
+        val receiverFunctionMarker = "__afield_receiver_function_dot__"
+        val receiverFunctionTypes = Regex("""((?:\b[_a-zA-Z$][_a-zA-Z0-9$]*\.)*)([_a-zA-Z$][_a-zA-Z0-9$]*)\.\(\)""")
+        val protectedReceiverFunctions = type.replace(receiverFunctionTypes) {
+            "${it.groupValues[2]}$receiverFunctionMarker()"
+        }
+        return protectedReceiverFunctions
+            .replace("(\\b[_a-zA-Z$][_a-zA-Z0-9$]*\\b\\.)+".toRegex(), "")
+            .replace(receiverFunctionMarker, ".")
+    }
 }

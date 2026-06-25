@@ -26,6 +26,10 @@ import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.descriptors.annotations.Annotated
 import org.jetbrains.kotlin.renderer.DescriptorRenderer
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.nio.file.StandardOpenOption
+import java.time.Instant
 import kotlin.script.experimental.api.ResultValue
 import kotlin.script.experimental.api.ScriptDiagnostic
 import kotlin.script.experimental.api.SourceCodeCompletionVariant
@@ -175,6 +179,28 @@ private fun renderCompletionFallbackSignature(displayText: String, tail: String)
     if (display.isBlank()) return suffix
     val separator = if (suffix.firstOrNull() in setOf(':', ')', ',', '.', '[', '<')) "" else " "
     return display + separator + suffix
+}
+
+private fun completionTraceEnabled(): Boolean =
+    System.getenv("AFIELD_COMPLETION_TRACE")
+        ?.trim()
+        ?.lowercase()
+        ?.let { it !in setOf("0", "false", "off", "no") }
+        ?: true
+
+private fun completionTrace(message: String) {
+    if (!completionTraceEnabled()) return
+    lprintln("info,completion", message)
+    runCatching {
+        val path = Paths.get(".field-backdoor", "logs", "completion-trace.log")
+        Files.createDirectories(path.parent)
+        Files.writeString(
+            path,
+            "${Instant.now()} $message\n",
+            StandardOpenOption.CREATE,
+            StandardOpenOption.APPEND
+        )
+    }
 }
 
 private fun callableBeforeArgumentCursor(code: String, position: Int): String? {
@@ -2345,21 +2371,36 @@ class KotlinExecution : BoxExecution {
                     documentation = documentation
                 )
 
-                if (shouldEnrich) {
-                    val receiverTypeHint = it.extraInfo?.get("receiverQualifiedName") as? String
-                        ?: it.extraInfo?.get("receiverType") as? String
-                        ?: if (!isDotCompletion && it.icon in setOf("property", "val", "var")) "Box" else null
-                    KotlinCompletionSupport.enrichMetadata(
+                val receiverTypeHint = it.extraInfo?.get("receiverQualifiedName") as? String
+                    ?: it.extraInfo?.get("receiverType") as? String
+                    ?: if (!isDotCompletion && it.icon in setOf("property", "val", "var")) "Box" else null
+                val descriptorText = it.extraInfo?.get("original")?.toString()
+                val enrichedMetadata = if (shouldEnrich) {
+                    val enriched = KotlinCompletionSupport.enrichMetadata(
                         box = box,
                         allCode = allCode,
                         symbolName = symbolName,
                         metadata = rawMetadata,
                         position = position,
-                        receiverTypeHint = receiverTypeHint
+                        receiverTypeHint = receiverTypeHint,
+                        requireReceiverOwnerMatch = isDotCompletion,
+                        descriptorText = descriptorText
                     )
+                    if (completionTraceEnabled()) {
+                        completionTrace(
+                            "completion enrich candidate='$candidateName' dot=$isDotCompletion active='$activeToken' display='${it.displayText}' tail='${it.tail}' text='${it.text}' icon='${it.icon}' receiverHint='${receiverTypeHint.orEmpty()}' extra=${it.extraInfo} enriched=${enriched != rawMetadata} finalDisplay='${enriched.displayText}' finalTail='${enriched.tail}' source='${enriched.documentationSourcePath}:${enriched.documentationSourceLine}' sourceName='${enriched.documentationSourceName}' generate=${enriched.generateDocumentation} docChars=${enriched.documentation.length}"
+                        )
+                    }
+                    enriched
                 } else {
+                    if (completionTraceEnabled() && candidateName.isNotBlank()) {
+                        completionTrace(
+                            "completion skip-enrich candidate='$candidateName' dot=$isDotCompletion active='$activeToken' argumentCallable='${argumentCallable.orEmpty()}' display='${it.displayText}' tail='${it.tail}' text='${it.text}' icon='${it.icon}' extra=${it.extraInfo}"
+                        )
+                    }
                     rawMetadata
                 }
+                enrichedMetadata
             }
         }
 

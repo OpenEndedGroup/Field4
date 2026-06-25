@@ -2,14 +2,26 @@ package afield.ai.core.completion
 
 import afield.ai.KotlinDefinitionRecord
 import afield.ai.KotlinSourceIndex
+import afield.ai.OpenAiFileStoreCache
+import afield.ai.Sha256
 import afield.ai.core.Ai4ModelDefaults
 import afield.ai.core.OpenAiIdeCodexBridge
 import afield.ai.core.SilentLog
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.openai.models.ReasoningEffort
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import java.nio.file.Path
 import java.nio.file.Paths
+import java.nio.file.StandardCopyOption
+import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.locks.ReentrantReadWriteLock
+import java.util.zip.ZipFile
+import kotlin.concurrent.read
+import kotlin.concurrent.write
+
+private const val COMPLETION_DOC_PROMPT_VERSION = "completion-doc-param-notes-v2"
 
 object Ai4CompletionDoc {
     private val model = Ai4ModelDefaults.envOrDefault(
@@ -107,10 +119,13 @@ object Ai4CompletionDoc {
         val cursorContext = snippetAroundCursor(allCode, line, column)
 
         val instructions = """
-You draft concise KDoc body text for Kotlin declarations that currently have no documentation.
-Infer behavior only from the supplied declaration source and usage context.
+You improve Kotlin completion documentation for declarations that currently have no human KDoc.
+Use the deterministic completion documentation as the factual starting point: keep its signature, defaults, return type, and source location authoritative.
+Infer behavior only from the supplied declaration source, inherited/base documentation, deterministic completion documentation, and usage context.
 Return Markdown only, without /** */ delimiters and without @param, @return, or other KDoc tags.
 Write a direct one-sentence summary followed by at most one short explanatory paragraph.
+If parameters are non-obvious, add a short **Parameter notes** section with bullets that explain purpose, constraints, units, side effects, or important interactions.
+Do not merely repeat parameter names, types, or default values from the completion signature; describe what each parameter means.
 Mention side effects, lifecycle, units, or constraints only when the source supports them.
         """.trimIndent()
 
@@ -149,17 +164,17 @@ Mention side effects, lifecycle, units, or constraints only when the source supp
             appendLine("```")
             if (existingDoc.isNotBlank()) {
                 appendLine()
-                appendLine("Existing generated signature/context (not human documentation):")
+                appendLine("Deterministic completion documentation (authoritative skeleton; do not repeat mechanically):")
                 appendLine(existingDoc.trimEnd())
             }
             appendLine()
-            appendLine("Draft the missing KDoc body.")
+            appendLine("Draft the missing documentation. Prefer adding useful parameter descriptions when the source supports them.")
         }
 
         val result = bridge.send(
             state = state,
             userPrompt = prompt,
-            maxOutputTokens = 500
+            maxOutputTokens = 900
         )
         return result.text.trimEnd()
     }
@@ -262,6 +277,18 @@ Mention side effects, lifecycle, units, or constraints only when the source supp
         sourcePath: String,
         sourceLine: Int
     ): KotlinDefinitionRecord? {
+        if (sourcePath.startsWith("jar:") && sourceLine > 0) {
+            return KotlinDefinitionRecord(
+                name = sourceName.ifBlank { symbol },
+                kind = "fun",
+                filePath = sourcePath,
+                line = sourceLine,
+                fileId = null,
+                contentHash = "",
+                kdoc = null
+            )
+        }
+
         val index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex()
         val definitions = index?.definitions.orEmpty()
         if (sourcePath.isNotBlank() && sourceLine > 0) {
@@ -296,6 +323,10 @@ Mention side effects, lifecycle, units, or constraints only when the source supp
     }
 
     private fun loadDefinitionSnippet(def: KotlinDefinitionRecord): DefinitionSnippet? {
+        if (def.filePath.startsWith("jar:")) {
+            return loadJarDefinitionSnippet(def)
+        }
+
         val path = Paths.get(def.filePath)
         if (!Files.exists(path)) return null
         val text = runCatching { Files.readString(path, StandardCharsets.UTF_8) }.getOrNull() ?: return null
@@ -315,7 +346,75 @@ Mention side effects, lifecycle, units, or constraints only when the source supp
             ?: text.length
         val source = text.substring(start, end).trimEnd()
         if (source.isBlank()) return null
-        return DefinitionSnippet(source = source, sourceHash = afield.ai.Sha256.hexUtf8(source))
+        return DefinitionSnippet(source = source, sourceHash = Sha256.hexUtf8(source))
+    }
+
+    private fun loadJarDefinitionSnippet(def: KotlinDefinitionRecord): DefinitionSnippet? {
+        val marker = "!/"
+        val split = def.filePath.indexOf(marker)
+        if (!def.filePath.startsWith("jar:") || split == -1) return null
+        val jarUri = def.filePath.substring("jar:".length, split)
+        val entryName = def.filePath.substring(split + marker.length)
+        val jarPath = runCatching { Paths.get(java.net.URI.create(jarUri)) }.getOrNull() ?: return null
+        if (!Files.exists(jarPath)) return null
+        val text = runCatching {
+            ZipFile(jarPath.toFile()).use { zip ->
+                val entry = zip.getEntry(entryName) ?: return null
+                zip.getInputStream(entry).bufferedReader(StandardCharsets.UTF_8).use { it.readText() }
+            }
+        }.getOrNull() ?: return null
+
+        val lineOffsets = mutableListOf(0)
+        text.forEachIndexed { index, ch ->
+            if (ch == '\n' && index + 1 < text.length) lineOffsets += index + 1
+        }
+        val start = lineOffsets.getOrNull((def.line - 1).coerceAtLeast(0)) ?: return null
+        val end = sourceSnippetEnd(text, start)
+        val source = text.substring(start, end).trimEnd()
+        if (source.isBlank()) return null
+        return DefinitionSnippet(source = source, sourceHash = Sha256.hexUtf8(source))
+    }
+
+    private fun sourceSnippetEnd(text: String, start: Int): Int {
+        val firstBrace = text.indexOf('{', start)
+        val firstSemicolon = text.indexOf(';', start).takeIf { it >= 0 } ?: Int.MAX_VALUE
+        if (firstBrace == -1 || firstSemicolon < firstBrace) {
+            return (if (firstSemicolon == Int.MAX_VALUE) text.indexOf('\n', start) else firstSemicolon + 1)
+                .takeIf { it > start }
+                ?: text.length
+        }
+
+        var depth = 0
+        var inString = false
+        var stringChar = '"'
+        var i = firstBrace
+        while (i < text.length) {
+            val ch = text[i]
+            if (inString) {
+                if (ch == '\\' && i + 1 < text.length) {
+                    i += 2
+                    continue
+                }
+                if (ch == stringChar) inString = false
+                i++
+                continue
+            }
+            if (ch == '"' || ch == '\'') {
+                inString = true
+                stringChar = ch
+                i++
+                continue
+            }
+            when (ch) {
+                '{' -> depth++
+                '}' -> {
+                    depth--
+                    if (depth <= 0) return (i + 1).coerceAtMost(text.length)
+                }
+            }
+            i++
+        }
+        return text.length
     }
 
     private fun snippetAroundCursor(text: String, line: Int, column: Int): String {
@@ -332,5 +431,107 @@ Mention side effects, lifecycle, units, or constraints only when the source supp
             snippet[lineIdx] = raw.substring(0, col) + "<cursor>" + raw.substring(col)
         }
         return snippet.joinToString("\n")
+    }
+}
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+private data class GeneratedCompletionDocRecord(
+    val sourceName: String = "",
+    val sourcePath: String = "",
+    val sourceLine: Int = -1,
+    val sourceHash: String = "",
+    val documentation: String = "",
+    val model: String = "",
+    val createdAtEpochMs: Long = Instant.now().toEpochMilli()
+)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+private data class GeneratedCompletionDocCacheDb(
+    val version: Int = 1,
+    val records: MutableMap<String, GeneratedCompletionDocRecord> = mutableMapOf()
+)
+
+private class GeneratedCompletionDocCache(
+    private val dbPath: Path = Paths.get(
+        System.getProperty("user.home"),
+        ".afield",
+        "filestore",
+        "generated_completion_docs.json"
+    )
+) {
+    private val mapper = OpenAiFileStoreCache.defaultMapper()
+    private val lock = ReentrantReadWriteLock()
+
+    @Volatile
+    private var db = loadOrCreate()
+
+    fun lookup(
+        sourceName: String,
+        sourcePath: String,
+        sourceLine: Int,
+        sourceCode: String
+    ): GeneratedCompletionDocRecord? {
+        val key = cacheKey(sourceName, sourcePath, sourceLine, sourceCode)
+        return lock.read { db.records[key] }
+    }
+
+    fun put(
+        sourceName: String,
+        sourcePath: String,
+        sourceLine: Int,
+        sourceCode: String,
+        documentation: String,
+        model: String
+    ) {
+        val sourceHash = Sha256.hexUtf8(sourceCode)
+        val key = cacheKey(sourceName, sourcePath, sourceLine, sourceHash)
+        val record = GeneratedCompletionDocRecord(
+            sourceName = sourceName,
+            sourcePath = sourcePath,
+            sourceLine = sourceLine,
+            sourceHash = sourceHash,
+            documentation = documentation,
+            model = model
+        )
+        lock.write {
+            db.records[key] = record
+            persistLocked()
+        }
+    }
+
+    private fun cacheKey(
+        sourceName: String,
+        sourcePath: String,
+        sourceLine: Int,
+        sourceCodeOrHash: String
+    ): String {
+        val sourceHash = if (sourceCodeOrHash.length == 64 && sourceCodeOrHash.all { it in '0'..'9' || it in 'a'..'f' }) {
+            sourceCodeOrHash
+        } else {
+            Sha256.hexUtf8(sourceCodeOrHash)
+        }
+        return Sha256.hexUtf8("$COMPLETION_DOC_PROMPT_VERSION\n$sourceName\n$sourcePath\n$sourceLine\n$sourceHash")
+    }
+
+    private fun loadOrCreate(): GeneratedCompletionDocCacheDb {
+        if (!Files.exists(dbPath)) return GeneratedCompletionDocCacheDb()
+        return runCatching {
+            mapper.readValue(dbPath.toFile(), GeneratedCompletionDocCacheDb::class.java)
+        }.getOrElse {
+            val backup = dbPath.resolveSibling(dbPath.fileName.toString() + ".corrupt")
+            runCatching { Files.copy(dbPath, backup, StandardCopyOption.REPLACE_EXISTING) }
+            GeneratedCompletionDocCacheDb()
+        }
+    }
+
+    private fun persistLocked() {
+        Files.createDirectories(dbPath.parent)
+        val tmp = dbPath.resolveSibling(dbPath.fileName.toString() + ".tmp")
+        mapper.writerWithDefaultPrettyPrinter().writeValue(tmp.toFile(), db)
+        runCatching {
+            Files.move(tmp, dbPath, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+        }.getOrElse {
+            Files.move(tmp, dbPath, StandardCopyOption.REPLACE_EXISTING)
+        }
     }
 }

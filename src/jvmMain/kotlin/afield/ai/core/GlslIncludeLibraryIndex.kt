@@ -199,6 +199,7 @@ object GlslIncludeLibraryIndex {
         }
 
         val apiKey = System.getenv("OPENAI_API_KEY")?.takeIf { it.isNotBlank() }
+        val previous = loadIndex()
         val records = mutableListOf<GlslIncludeLibraryRecord>()
 
         specs.forEach { spec ->
@@ -256,13 +257,26 @@ object GlslIncludeLibraryIndex {
             updatedAtEpochMs = System.currentTimeMillis(),
             libraries = records
         )
-        writeIndex(db)
-        latestIndex = db
-        lprintln(
-            "info,glsl.includes",
-            "indexed ${records.sumOf { it.files.size }} GLSL include files across ${records.size} libraries"
-        )
+        if (previous != null && previous.materiallySameAs(db)) {
+            latestIndex = previous
+            lprintln(
+                "info,glsl.includes",
+                "index unchanged: ${records.sumOf { it.files.size }} GLSL include files across ${records.size} libraries"
+            )
+        } else {
+            writeIndex(db)
+            latestIndex = db
+            lprintln(
+                "info,glsl.includes",
+                "indexed ${records.sumOf { it.files.size }} GLSL include files across ${records.size} libraries"
+            )
+        }
     }
+
+    private fun GlslIncludeIndexDb.materiallySameAs(other: GlslIncludeIndexDb): Boolean =
+        version == other.version &&
+            libraries.map { it.copy(updatedAtEpochMs = 0L) } ==
+            other.libraries.map { it.copy(updatedAtEpochMs = 0L) }
 
     private fun enabled(): Boolean =
         !System.getenv("AFIELD_GLSL_INCLUDE_INDEX").equals("off", ignoreCase = true)

@@ -1200,6 +1200,19 @@ tasks.register<JavaExec>("runfilestore") {
     standardInput = System.`in`
 }
 
+tasks.register<JavaExec>("polishCompletionDocs") {
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
+    })
+    group = "application"
+    description = "Runs AI4 completion-doc cache/source polishing CLI"
+
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+
+    mainClass.set("afield.ai.core.completion.Ai4CompletionDocPolishCliKt")
+    standardInput = System.`in`
+}
+
 tasks.register("generateApiDocs") {
     group = "documentation"
     description = "Generates API documentation (HTML) with Dokka"

@@ -186,11 +186,19 @@ object KotlinSourceIndex {
             vectorStoreFileHash = vectorStoreFileHash
         )
 
-        runCatching {
-            Files.createDirectories(indexPath.parent)
-            mapper.writerWithDefaultPrettyPrinter().writeValue(indexPath.toFile(), index)
-        }.onFailure {
-            lprintln("error,sourceindex", "failed to persist index: ${it.message}")
+        if (previous != null && previous.materiallySameAs(index)) {
+            latestIndex = previous
+            lprintln("info,sourceindex", "index unchanged: ${files.size} files, ${definitions.size} definitions")
+        } else {
+            runCatching {
+                Files.createDirectories(indexPath.parent)
+                mapper.writerWithDefaultPrettyPrinter().writeValue(indexPath.toFile(), index)
+            }.onFailure {
+                lprintln("error,sourceindex", "failed to persist index: ${it.message}")
+            }
+
+            latestIndex = index
+            lprintln("info,sourceindex", "indexed ${files.size} files, ${definitions.size} definitions")
         }
 
         runCatching {
@@ -198,10 +206,15 @@ object KotlinSourceIndex {
         }.onFailure {
             lprintln("error,sourceindex", "failed to persist filestore cache: ${it.message}")
         }
-
-        latestIndex = index
-        lprintln("info,sourceindex", "indexed ${files.size} files, ${definitions.size} definitions")
     }
+
+    private fun KotlinSourceIndexDb.materiallySameAs(other: KotlinSourceIndexDb): Boolean =
+        root == other.root &&
+            apiKeyHash == other.apiKeyHash &&
+            vectorStoreId == other.vectorStoreId &&
+            vectorStoreFileHash == other.vectorStoreFileHash &&
+            files.map { it.copy(modifiedEpochMs = 0L) } == other.files.map { it.copy(modifiedEpochMs = 0L) } &&
+            definitions == other.definitions
 
     /**
      * Get KDoc for a symbol from the index.
@@ -372,7 +385,11 @@ object KotlinSourceIndex {
 
     private data class ParsedDefinition(val kind: String, val name: String, val line: Int, val kdoc: String? = null)
     private data class ClassContext(val name: String, val depth: Int)
-    private data class PendingClass(val name: String, val lineNumber: Int)
+    private data class PendingClass(
+        val name: String,
+        val lineNumber: Int,
+        var headerParenDepth: Int = 0
+    )
 
     private val modifierTokens = setOf(
         "public", "private", "internal", "protected",
@@ -404,7 +421,11 @@ object KotlinSourceIndex {
 
             if (canParse) {
                 val def = parseDefinitionFromLine(rawLine)
-                if (pendingClass != null && pendingClass.lineNumber != lineNumber && def != null) {
+                if (pendingClass != null &&
+                    pendingClass.lineNumber != lineNumber &&
+                    pendingClass.headerParenDepth == 0 &&
+                    def != null
+                ) {
                     // A new declaration appeared before the pending class body opened.
                     pendingClass = null
                 }
@@ -433,11 +454,18 @@ object KotlinSourceIndex {
             }
 
             var openedClassThisLine = false
-            state.consumeLine(rawLine) { ch, _, after ->
-                if (ch == '{' && pendingClass != null && !openedClassThisLine) {
-                    classStack.addLast(ClassContext(pendingClass!!.name, after))
-                    pendingClass = null
-                    openedClassThisLine = true
+            state.consumeLine(rawLine) { ch, _, _, after ->
+                val pending = pendingClass
+                if (pending != null && !openedClassThisLine) {
+                    when (ch) {
+                        '(' -> pending.headerParenDepth++
+                        ')' -> if (pending.headerParenDepth > 0) pending.headerParenDepth--
+                        '{' -> if (pending.headerParenDepth == 0) {
+                            classStack.addLast(ClassContext(pending.name, after))
+                            pendingClass = null
+                            openedClassThisLine = true
+                        }
+                    }
                 }
             }
 
@@ -556,7 +584,7 @@ object KotlinSourceIndex {
         var inString: Boolean = false
         private var stringChar: Char = '"'
 
-        fun consumeLine(line: String, onBrace: ((ch: Char, before: Int, after: Int) -> Unit)? = null) {
+        fun consumeLine(line: String, onToken: ((ch: Char, index: Int, before: Int, after: Int) -> Unit)? = null) {
             var i = 0
             var inLineComment = false
             while (i < line.length) {
@@ -615,12 +643,13 @@ object KotlinSourceIndex {
                 if (ch == '{') {
                     val before = depth
                     depth++
-                    onBrace?.invoke(ch, before, depth)
-                }
-                if (ch == '}') {
+                    onToken?.invoke(ch, i, before, depth)
+                } else if (ch == '}') {
                     val before = depth
                     depth = (depth - 1).coerceAtLeast(0)
-                    onBrace?.invoke(ch, before, depth)
+                    onToken?.invoke(ch, i, before, depth)
+                } else if (ch == '(' || ch == ')') {
+                    onToken?.invoke(ch, i, depth, depth)
                 }
                 i++
             }
