@@ -13,13 +13,13 @@ That makes StackSL both a real consumer and the reference implementation.
 
 The registry is available in the editor page as:
 
-```js
+```diffstatic {data-lang=javascript}
 window.FieldLanguageExtensions
 ```
 
 It is also exposed through convenience functions:
 
-```js
+```diffstatic {data-lang=javascript}
 window.installLanguageExtensions(editor, monaco)
 window.updateLanguageExtensions(editor)
 window.buildLanguageContextPayload(editor, resolveContext, options)
@@ -36,7 +36,7 @@ changes. An out-of-tree extension that loads after Monaco starts can still call
 
 An extension is a plain JavaScript object:
 
-```js
+```diffstatic {data-lang=javascript}
 FieldLanguageExtensions.register({
   id: "rectsl",
   label: "RectSL",
@@ -77,7 +77,7 @@ FieldLanguageExtensions.register({
 
 `context` contains:
 
-```js
+```diffstatic {data-lang=javascript}
 {
   editor,
   model,
@@ -96,7 +96,7 @@ Embedded language support starts with a region detector. A region should include
 absolute offsets into the Monaco model so later hooks can map tokens back to
 editor positions:
 
-```js
+```diffstatic {data-lang=javascript}
 {
   source: "0 0 xy 1 square",
   bodyStart: 125,
@@ -108,7 +108,7 @@ editor positions:
 
 The registry annotates returned regions with:
 
-```js
+```diffstatic {data-lang=javascript}
 {
   languageExtensionId: "rectsl",
   languageLabel: "RectSL"
@@ -120,7 +120,7 @@ The registry annotates returned regions with:
 This example detects Kotlin triple-quoted strings whose first non-empty line is
 `#rectsl`.
 
-```js
+```diffstatic {data-lang=javascript}
 const rectslHeader = /^(?:[ \t]*(?:\r?\n|$))*[ \t]*#rectsl\b[^\n]*(?:\r?\n|$)/i
 
 function findRectSLEmbeddedRegions(model) {
@@ -155,7 +155,7 @@ function findRectSLEmbeddedRegions(model) {
 
 Register it:
 
-```js
+```diffstatic {data-lang=javascript}
 FieldLanguageExtensions.register({
   id: "rectsl",
   label: "RectSL",
@@ -197,14 +197,14 @@ track producers, duplicated rectangles, mirrored keyframes, or timing
 transformations. Use Monaco decorations, preferably with an editor-local
 decoration collection:
 
-```js
+```diffstatic {data-lang=javascript}
 const state = editor._rectslFlow || (editor._rectslFlow = editor.createDecorationsCollection([]))
 state.set(decorations)
 ```
 
 `buildContextPayload(...)` feeds the small editor context badge:
 
-```js
+```diffstatic {data-lang=javascript}
 buildContextPayload(editor, resolveContext) {
   const model = editor.getModel()
   const position = editor.getPosition()
@@ -234,7 +234,7 @@ server-side completion path. This is useful for embedded DSLs, because the
 language often knows its local vocabulary without needing Kotlin compiler
 context:
 
-```js
+```diffstatic {data-lang=javascript}
 provideCompletionItems(editor, model, position, { monaco }) {
   const region = findRectSLEmbeddedRegions(model).find((r) => {
     const offset = model.getOffsetAt(position)

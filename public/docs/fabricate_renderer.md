@@ -6,7 +6,7 @@ These examples are also `FIELD_TEST` smoke tests, so the page doubles as a small
 
 The common pattern is:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val bundle = StandardRenderer.build(renderer)
 bundle.attachTo(renderer)
 
@@ -25,7 +25,7 @@ The default scene is deliberately plain: three colored torii, the standard camer
 
 The scene is intentionally just mesh registration, transforms, and material pushes:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val left = bundle.registerTestTorus(name = "left", slices = 48, stacks = 48, renderer = renderer)
 left.setModel(Matrix4f().translate(-0.95f, 0f, 0f))
 left.gBuffer.mesh.push["baseColor"] = Vector4f(0.17f, 0.98f, 0.24f, 1f)
@@ -78,7 +78,7 @@ A compact "hero" scene: reflective torii over a checkerboard floor. This is a qu
 
 The checkerboard here is mesh-side: alternating tile geometry receives alternating material values. The harness packs the two parities into pulling meshes for fewer draw items; conceptually, the scene logic is this:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 bundle.scene.camera.at.set(0f, 0.9f, -5.3f)
 bundle.scene.camera.target.set(0f, -0.25f, 0f)
 bundle.scene.lightDirection.set(Vector3f(-0.55f, -1.0f, -0.20f).normalize())
@@ -148,7 +148,7 @@ This scene keeps geometry fixed and compares two camera framings over the same c
 
 Nothing changes between the two halves except `camera.at` and `camera.target`:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 bundle.scene.camera.at.set(-1.8f, 0.8f, -2.2f)
 bundle.scene.camera.target.set(-0.95f, -0.2f, 0.95f)
 // capture the near framing
@@ -205,7 +205,7 @@ Limitations:
 
 The mesh is one scaled cube. The checker controls are pushed into the g-buffer material:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val floor = bundle.registerCube(name = "shader-floor", size = 1f, renderer = renderer)
 floor.setModel(
     Matrix4f()
@@ -259,7 +259,7 @@ The two torii use the same base color and roughness. The left one is dielectric;
 
 `baseColor` and `roughness` stay fixed; only `metallic` changes:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 left.gBuffer.mesh.push["baseColor"] = Vector4f(0.78f, 0.80f, 0.84f, 1f)
 left.gBuffer.mesh.push["metallic"] = 0.0f
 left.gBuffer.mesh.push["roughness"] = 0.16f
@@ -309,7 +309,7 @@ The left side disables shadowing. The right side uses the default shadowed scene
 
 The comparison is a single scene captured twice:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 bundle.scene.aoStrength = 0f
 bundle.scene.ambientColor.set(0.015f, 0.015f, 0.018f)
 bundle.scene.lightIntensity = 1.35f
@@ -361,7 +361,7 @@ The left side disables ambient occlusion. The right side uses the default AO set
 
 AO is also just a scene parameter in this harness:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val originalAoStrength = bundle.scene.aoStrength
 
 bundle.scene.aoStrength = 0f

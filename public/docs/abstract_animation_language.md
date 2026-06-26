@@ -4,7 +4,7 @@ This is an incubating rectangle-animation language in `organic.abstract_animatio
 
 The current JVM workout is:
 
-```bash
+```diffstatic {data-lang=bash}
 python3 tools/field_backdoor.py --json --port 9477 \
   --command 'run-jvm-main organic.AbstractAnimationWorkout'
 ```
@@ -60,7 +60,7 @@ dup "r2" rename
 
 Kotlin usage:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val result = RectAnimationOracle.compile(source)
 require(result.ok) { result.diagnostics.joinToString("\n") }
 
@@ -262,7 +262,7 @@ Solids become one vertex color for all four corners. Linear gradients are CPU-ba
 
 Lowering emits four vertices and six indices per rect. Each vertex carries:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 RectVertex(
     position = Vec4f(worldX, worldY, z, 1f),
     color = Vec4f(r, g, b, a),
@@ -306,7 +306,7 @@ This convention is intentionally thin. It can be generalized later with more hos
 
 To generate shader text, ask for the insertion block and decide how much wrapping you want:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val program = RectAnimationOracle.compile(source).program!!
 val shaderCode = rectMaterialShaderCode(program)
 
@@ -331,7 +331,7 @@ The full wrapper adds the standard Field rectangle varyings, push constants, and
 
 Use `RectAnimationOracle` for small tools:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val parse = RectAnimationOracle.parse(source)
 val compile = RectAnimationOracle.compile(source)
 val sampled = RectAnimationOracle.sample(program, time)
@@ -352,7 +352,7 @@ Good first-pass checks:
 
 When the shader module uses the standard vertex attribute names from `RECT_ANIMATION_VERTEX_SHADER`, sampled geometry can be written straight into a Field `Mesh`:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val program = RectAnimationOracle.compile(source).program!!
 val shaderCode = rectMaterialShaderCode(program)
 
@@ -370,7 +370,7 @@ program.writeFrameToMesh(time = 1.25, mesh = mesh)
 
 The writer expects a triangle-list module with four `vec4` inputs:
 
-```glsl
+```diffstatic {data-lang=glsl}
 layout(location = 0) in vec4 a_position;
 layout(location = 1) in vec4 a_color;
 layout(location = 2) in vec4 a_material;
@@ -379,7 +379,7 @@ layout(location = 3) in vec4 a_shader;
 
 If your shader uses different names, pass an attribute map:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 program.writeFrameToMesh(
     time = 1.25,
     mesh = mesh,
@@ -398,7 +398,7 @@ Under the hood this resizes the mesh to `rectCount * 4` vertices and `rectCount 
 
 The companion workout is the executable truth for this page:
 
-```bash
+```diffstatic {data-lang=bash}
 python3 tools/field_backdoor.py --json --port 9477 \
   --command 'run-jvm-main organic.AbstractAnimationWorkout'
 ```
@@ -421,7 +421,7 @@ For agent work, add a workout case whenever a language feature gets a new surfac
 
 Because the implementation lives under `src/personal`, the normal Field test catalog does not discover it unless asked directly:
 
-```bash
+```diffstatic {data-lang=bash}
 python3 tools/run_field_tests.py --refresh-catalog \
   --root src/personal/kotlin/organic/abstract_animation_workout.kt \
   --id organic.abstract-animation.workout \
