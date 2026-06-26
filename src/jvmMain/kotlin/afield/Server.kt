@@ -202,15 +202,16 @@ fun SessionInformation.autorunBoxes(targetBoxes: Collection<Box>, delayMs: Long 
             attempts++
         }
 
-        targetBoxes.filter { it.autorun.isTrue() && it.id != "root" && !it.getPropertyRaw("_tombstone").isTrue() }.forEach { box ->
-            launch {
-                try {
-                    box.begin()
-                } catch (t: Throwable) {
-                    lprintln("warning,autorun", "autorun failed for ${box.name}: ${t.message}")
+        targetBoxes.filter { it.autorun.isTrue() && it.id != "root" && !it.getPropertyRaw("_tombstone").isTrue() }
+            .forEach { box ->
+                launch {
+                    try {
+                        box.begin()
+                    } catch (t: Throwable) {
+                        lprintln("warning,autorun", "autorun failed for ${box.name}: ${t.message}")
+                    }
                 }
             }
-        }
     }
 }
 
@@ -377,6 +378,7 @@ private fun normalizeFieldPreferences(preferences: FieldPreferences): FieldPrefe
         "global" -> "global"
         else -> "none"
     }
+
     fun normalizeOscAddress(address: String): String {
         val trimmed = address.trim()
         return when {
@@ -551,9 +553,9 @@ private val outputBackPressureLogTimes = ConcurrentHashMap<String, Long>()
 
 private fun isBackPressuredOutputMessage(message: Message): Boolean {
     return message.name == "set-output" ||
-        message.name == "output" ||
-        message.name == "peer-output" ||
-        message.originalName == "output"
+            message.name == "output" ||
+            message.name == "peer-output" ||
+            message.originalName == "output"
 }
 
 private fun outputBackPressureMessageName(message: Message): String {
@@ -592,7 +594,11 @@ private fun outputBackPressureLog(
 }
 
 @OptIn(DelicateCoroutinesApi::class)
-private fun sendWithOutputBackPressure(session: WebSocketSession, message: Message, encoded: String = Json.encodeToString(message)) {
+private fun sendWithOutputBackPressure(
+    session: WebSocketSession,
+    message: Message,
+    encoded: String = Json.encodeToString(message)
+) {
     if (!isBackPressuredOutputMessage(message)) {
         GlobalScope.launch {
             session.send(encoded)
@@ -634,7 +640,14 @@ private fun sendWithOutputBackPressure(session: WebSocketSession, message: Messa
             session.send(encoded)
         } catch (_: Exception) {
             repeat(1 + buffered.size) { bp.release() }
-            outputBackPressureLog(session, "send-failed-release", message, bp, detail = "released=${1 + buffered.size}", force = true)
+            outputBackPressureLog(
+                session,
+                "send-failed-release",
+                message,
+                bp,
+                detail = "released=${1 + buffered.size}",
+                force = true
+            )
         }
     }
 }
@@ -666,7 +679,13 @@ private fun releaseAndFlushOutputBackPressure(session: WebSocketSession) {
             }
         } catch (_: Exception) {
             repeat(buffered.size) { bp.release() }
-            outputBackPressureLog(session, "flush-failed-release", pressure = bp, detail = "released=${buffered.size}", force = true)
+            outputBackPressureLog(
+                session,
+                "flush-failed-release",
+                pressure = bp,
+                detail = "released=${buffered.size}",
+                force = true
+            )
         }
     }
 }
@@ -683,8 +702,8 @@ fun _send(message: Message, document: String = ".*") {
     val m = Json.encodeToString(message)
     sessions.forEach { (session, info) ->
         val matchesDocument = info.filename.matches(documentRegex) ||
-            info.documentName.matches(documentRegex) ||
-            File(info.filename).name.matches(documentRegex)
+                info.documentName.matches(documentRegex) ||
+                File(info.filename).name.matches(documentRegex)
         if (!matchesDocument) return@forEach
         sendWithOutputBackPressure(session, message, m)
     }
@@ -960,7 +979,11 @@ private fun ensurePlaywrightForSessionOnce(info: SessionInformation): AgentOpenP
     }.getOrElse { failure ->
         lprintln(
             "warning,server",
-            "Playwright readiness wait failed for ${info.documentName} (${info.filename}) at ${page.url()}: ${failure.message}; status=${playwrightSessionStatus(page)}"
+            "Playwright readiness wait failed for ${info.documentName} (${info.filename}) at ${page.url()}: ${failure.message}; status=${
+                playwrightSessionStatus(
+                    page
+                )
+            }"
         )
         throw failure
     }
@@ -1138,12 +1161,12 @@ class Server {
                             syncExecutionStatus()
                         }
 
-	                        documents.forEach { _, info ->
-	                            if (info.ephemeral) return@forEach
-	                            if (info.loading) return@forEach
-	                            refreshFileProxyBoxes(info, notifyMissing = false)
-	                            // Only persist when we know sidecar-bearing properties changed.
-	                            if (info.pendingSidecarSaves.isNotEmpty()) {
+                        documents.forEach { _, info ->
+                            if (info.ephemeral) return@forEach
+                            if (info.loading) return@forEach
+                            refreshFileProxyBoxes(info, notifyMissing = false)
+                            // Only persist when we know sidecar-bearing properties changed.
+                            if (info.pendingSidecarSaves.isNotEmpty()) {
 //                            lblock(" saving to ${info.filename}")
                                 run {
                                     try {
@@ -1241,7 +1264,12 @@ class Server {
             })
             handlers["provisional-record-accepted-value"] = mutableSetOf({ message, reply ->
                 val target = Json.decodeFromJsonElement<ProvisionalAcceptedValue>(message.payload!!)
-                recordAcceptedProvisionalValue(thisSessionInfo.get().filename, target.uid, target.property, target.value)
+                recordAcceptedProvisionalValue(
+                    thisSessionInfo.get().filename,
+                    target.uid,
+                    target.property,
+                    target.value
+                )
                 Handled.yes
             })
             handlers["provisional-reject"] = mutableSetOf({ message, reply ->
@@ -1442,14 +1470,20 @@ class Server {
                                 position = exec.position
                             )
                         }.onFailure {
-                            lprintln("warning,ai_completions", "kotlin-ai failed uid=${exec.uid}: ${it.javaClass.simpleName}: ${it.message}")
+                            lprintln(
+                                "warning,ai_completions",
+                                "kotlin-ai failed uid=${exec.uid}: ${it.javaClass.simpleName}: ${it.message}"
+                            )
                         }.getOrElse { emptyList() }
                         val ms = (System.nanoTime() - t0) / 1_000_000
                         lblock(
                             "info, ai_completions", "responses are"
 
                         ) {
-                            lprint("info, ai_completions", "kotlin-ai response uid=${exec.uid} prop=${exec.property} candidates=${candidates.size} in ${ms}ms")
+                            lprint(
+                                "info, ai_completions",
+                                "kotlin-ai response uid=${exec.uid} prop=${exec.property} candidates=${candidates.size} in ${ms}ms"
+                            )
                             candidates.forEach {
                                 lprint("info, ai_completions", "${it.text} ${it.documentation}")
                             }
@@ -1628,6 +1662,7 @@ class Server {
                                         lprintln("warning,slideshow", "No callback registered for: $callbackName")
                                     }
                                 }
+
                                 else -> {
                                     // Try to parse as a step number
                                     val stepNum = cmd.command.toIntOrNull()
@@ -1675,7 +1710,8 @@ class Server {
             handlers["vec2-update"] = mutableSetOf({ message, reply ->
                 val update = Json.decodeFromJsonElement<Vec2Update>(message.payload!!)
                 lprintln("debug,controls", "Received vec2 update: ${update.controlId} = (${update.x}, ${update.y})")
-                val updatedControls = updateControllerControlValue(update.controlId) { it.copy(x = update.x, y = update.y) }
+                val updatedControls =
+                    updateControllerControlValue(update.controlId) { it.copy(x = update.x, y = update.y) }
                 broadcastControllerControlUpdates(updatedControls, thisSessionInfo.get().filename)
 
                 val callback = getVec2Callback(update.controlId)
@@ -1913,7 +1949,10 @@ class Server {
 
             handlers["file-upload-update"] = mutableSetOf({ message, reply ->
                 val update = Json.decodeFromJsonElement<FileUploadUpdate>(message.payload!!)
-                lprintln("debug,controls", "Received file upload: ${update.controlId} with ${update.files.size} file(s)")
+                lprintln(
+                    "debug,controls",
+                    "Received file upload: ${update.controlId} with ${update.files.size} file(s)"
+                )
 
                 // Always store for polling (Python widgets read via getFileUploadData)
                 storeFileUploadData(update.controlId, update.files)
@@ -1936,7 +1975,10 @@ class Server {
 
             handlers["color-update"] = mutableSetOf({ message, reply ->
                 val update = Json.decodeFromJsonElement<ColorUpdate>(message.payload!!)
-                lprintln("debug,controls", "Received color update: ${update.controlId} = rgba(${update.r}, ${update.g}, ${update.b}, ${update.a})")
+                lprintln(
+                    "debug,controls",
+                    "Received color update: ${update.controlId} = rgba(${update.r}, ${update.g}, ${update.b}, ${update.a})"
+                )
                 val updatedControls = updateControllerControlValue(update.controlId) {
                     it.copy(
                         r = update.r,
@@ -1952,7 +1994,14 @@ class Server {
                 if (callback != null) {
                     GlobalScope.launch {
                         try {
-                            callback(Vector4f(update.r.toFloat(), update.g.toFloat(), update.b.toFloat(), update.a.toFloat()))
+                            callback(
+                                Vector4f(
+                                    update.r.toFloat(),
+                                    update.g.toFloat(),
+                                    update.b.toFloat(),
+                                    update.a.toFloat()
+                                )
+                            )
                         } catch (e: Exception) {
                             lprintln("error,controls", "Error in color callback: ${e.message}")
                             e.printStackTrace()
@@ -2011,7 +2060,10 @@ class Server {
                             val boxLayers = parseLayersList(box.layers)
                             if (boxLayers.contains(oldActiveLayer)) {
                                 box.layerFrames[oldActiveLayer] = box.frame
-                                lprintln("debug,layers", "Saved frame for box ${box.id} in layer $oldActiveLayer: ${box.frame}")
+                                lprintln(
+                                    "debug,layers",
+                                    "Saved frame for box ${box.id} in layer $oldActiveLayer: ${box.frame}"
+                                )
                             }
                         }
                     }
@@ -2024,7 +2076,10 @@ class Server {
                             val layerFrame = box.layerFrames[update.layer]
                             if (layerFrame != null) {
                                 box.frame = layerFrame
-                                lprintln("debug,layers", "Applied frame for box ${box.id} from layer ${update.layer}: ${layerFrame}")
+                                lprintln(
+                                    "debug,layers",
+                                    "Applied frame for box ${box.id} from layer ${update.layer}: ${layerFrame}"
+                                )
 
                                 // Send animated rect if animation is requested
                                 if (update.animated) {
@@ -2072,10 +2127,12 @@ class Server {
             persistWorkspacePath(home)
 
             val preferredPort = System.getenv("PORT")?.trim()?.toIntOrNull() ?: 9092
-            val portFallbackCount = System.getenv("AFIELD_PORT_FALLBACK_COUNT")?.trim()?.toIntOrNull()?.coerceAtLeast(1) ?: 20
+            val portFallbackCount =
+                System.getenv("AFIELD_PORT_FALLBACK_COUNT")?.trim()?.toIntOrNull()?.coerceAtLeast(1) ?: 20
             var port = preferredPort
             val httpsHost = "0.0.0.0"
-            val keystorePath = System.getenv("AFIELD_KEYSTORE_PATH") ?: File(app, "config/field4-local.p12").absolutePath
+            val keystorePath =
+                System.getenv("AFIELD_KEYSTORE_PATH") ?: File(app, "config/field4-local.p12").absolutePath
             val keystorePassword = System.getenv("AFIELD_KEYSTORE_PASS") ?: "changeit"
             val keystoreAlias = System.getenv("AFIELD_KEYSTORE_ALIAS") ?: "field4"
             val keystoreFile = ensureLocalKeystore(File(keystorePath), keystorePassword, keystoreAlias)
@@ -2095,779 +2152,849 @@ class Server {
                         this.port = bindPort
                     }
                 }) {
-                install(ContentNegotiation) {
-                    json()
-                }
-
-                install(CORS) {
-                    allowHeader(HttpHeaders.ContentType)
-                    allowMethod(HttpMethod.Get)
-                    allowMethod(HttpMethod.Post)
-                    allowMethod(HttpMethod.Delete)
-                    anyHost()
-                }
-
-                intercept(ApplicationCallPipeline.Setup) {
-                    if (call.request.path() == "/api/import-offline-doc") {
-                        call.response.headers.append("Access-Control-Allow-Private-Network", "true")
-                        call.response.headers.append(HttpHeaders.Vary, "Origin")
-                        call.response.headers.append(HttpHeaders.Vary, "Access-Control-Request-Private-Network")
-                    }
-                }
-
-                install(Compression) {
-                    gzip()
-                }
-
-                install(WebSockets) {
-                    pingPeriod = 10.seconds
-                    timeout = 30.minutes
-                    maxFrameSize = Long.MAX_VALUE
-                    masking = false
-                }
-
-                install(PartialContent)
-                install(AutoHeadResponse)
-
-                routing {
-                    get("/health") {
-                        call.respondText("ok", ContentType.Text.Plain)
+                    install(ContentNegotiation) {
+                        json()
                     }
 
-                    installControllerRoutes(::currentFieldPreferences)
-
-                    get("/app-url") {
-                        val preferences = currentFieldPreferences().also(::applyFieldPreferences)
-                        val url = if (preferences.autoOpenLastDocumentInDesktop) {
-                            val target = URLEncoder.encode(lastFn ?: "welcome", "UTF-8")
-                            "https://localhost:${port}/index.html?file=$target"
-                        } else {
-                            "https://localhost:${port}/welcome"
-                        }
-                        call.respondText(url, ContentType.Text.Plain)
+                    install(CORS) {
+                        allowHeader(HttpHeaders.ContentType)
+                        allowMethod(HttpMethod.Get)
+                        allowMethod(HttpMethod.Post)
+                        allowMethod(HttpMethod.Delete)
+                        anyHost()
                     }
 
-                    get("/api/welcome-docs") {
-                        val preferences = currentFieldPreferences().also(::applyFieldPreferences)
-                        val recentDocuments = parseRecentDocuments(recentFns)
-                        val liveSessions = documents.values
-                            .asSequence()
-                            .filter { it.sessions.isNotEmpty() }
-                            .toList()
-                        val liveWorkspaceCounts = liveSessions
-                            .filter { !it.ephemeral }
-                            .groupingBy { it.documentName }
-                            .fold(0) { count, info -> count + info.sessions.size }
-                        val runningExecutionCounts = documents.values
-                            .asSequence()
-                            .filter { !it.ephemeral }
-                            .map { info ->
-                                info.documentName to info.boxes.values.count { box ->
-                                    box.currentRunningStates.isNotEmpty() ||
-                                        box.jobs.any { job -> !job.isCancelled && job.isActive }
-                                }
-                            }
-                            .filter { (_, count) -> count > 0 }
-                            .groupBy({ it.first }, { it.second })
-                            .mapValues { (_, counts) -> counts.sum() }
-                        val workspaceDocs = withContext(workspaceSearchDispatcher) {
-                            welcomeDir(home, recentDocuments)
-                        }
-                        val projects = withContext(workspaceSearchDispatcher) {
-                            listWorkspaceProjects(home)
-                        }
-                        val docs = workspaceDocs.map {
-                            it.copy(
-                                runningSessionCount = liveWorkspaceCounts[it.filename] ?: 0,
-                                runningExecutionCount = runningExecutionCounts[it.filename] ?: 0
-                            )
-                        }
-                        val fallback = lastFn ?: "welcome"
-                        val defaultDocument = docs.firstOrNull()?.filename ?: fallback
-                        val allTags = docs.flatMap { it.tags }.distinct().sortedWith(String.CASE_INSENSITIVE_ORDER)
-                        val workspaceDocumentNames = docs.mapTo(linkedSetOf()) { it.filename }
-                        val runningDocuments = liveSessions
-                            .filter { it.documentName !in workspaceDocumentNames }
-                            .sortedWith(
-                                compareByDescending<SessionInformation> { it.sessions.size }
-                                    .thenBy { it.documentName.lowercase() }
-                                    .thenBy { it.filename.lowercase() }
-                            )
-                            .map { info ->
-                                val params = mutableListOf(
-                                    "file=${URLEncoder.encode(info.documentName, "UTF-8")}",
-                                    "sessionKey=${URLEncoder.encode(info.filename, "UTF-8")}"
-                                )
-                                if (info.ephemeral) {
-                                    params += "scratch=1"
-                                }
-                                RunningDocumentEntry(
-                                    documentName = info.documentName,
-                                    sessionCount = info.sessions.size,
-                                    ephemeral = info.ephemeral,
-                                    openUrl = "/index.html?${params.joinToString("&")}"
-                                )
-                            }
-                        val currentWorkspace = runCatching { File(home).canonicalFile.absolutePath }
-                            .getOrElse { File(home).absolutePath }
-                        val defaultWorkspace = runCatching { displayWorkspacePath(defaultWorkspacePath()) }
-                            .getOrElse { defaultWorkspacePath() }
-                        call.respond(
-                            WelcomeDocsResponse(
-                                docs,
-                                fallback,
-                                defaultDocument,
-                                allTags,
-                                runningDocuments,
-                                currentWorkspace,
-                                defaultWorkspace,
-                                currentAiSettingsStatus(),
-                                preferences,
-                                projects
-                            )
-                        )
-                    }
-
-                    get("/api/welcome-changelog") {
-                        val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 30
-                        val response = withContext(workspaceSearchDispatcher) {
-                            readWelcomeChangelog(limit)
-                        }
-                        call.respond(response)
-                    }
-
-                    post("/api/ai-settings") {
-                        try {
-                            val request = call.receive<AiSettingsUpdateRequest>()
-                            val status = saveAiSettings(
-                                AiSettingsSaveRequest(
-                                    provider = request.provider,
-                                    openAiPlatformKey = request.openAiPlatformKey,
-                                    openRouterApiKey = request.openRouterApiKey,
-                                    openRouterBaseUrl = request.openRouterBaseUrl,
-                                    flagshipModel = request.flagshipModel,
-                                    fastModel = request.fastModel,
-                                    fallbackModel = request.fallbackModel
-                                )
-                            )
-                            call.respond(
-                                AiSettingsUpdateResponse(
-                                    hasOpenAiPlatformKey = status.hasOpenAiPlatformKey,
-                                    hasOpenRouterApiKey = status.hasOpenRouterApiKey,
-                                    provider = status.provider,
-                                    source = status.source,
-                                    configPath = status.configPath,
-                                    openRouterConfigPath = status.openRouterConfigPath,
-                                    baseUrl = status.baseUrl,
-                                    flagshipModel = status.modelSettings.flagshipModel,
-                                    fastModel = status.modelSettings.fastModel,
-                                    fallbackModel = status.modelSettings.fallbackModel,
-                                    message = "AI settings saved."
-                                )
-                            )
-                        } catch (e: IllegalArgumentException) {
-                            call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "invalid AI settings")))
-                        } catch (e: Exception) {
-                            lprintln("error,server", "saving AI settings failed: ${e.message}")
-                            call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "could not save AI settings"))
+                    intercept(ApplicationCallPipeline.Setup) {
+                        if (call.request.path() == "/api/import-offline-doc") {
+                            call.response.headers.append("Access-Control-Allow-Private-Network", "true")
+                            call.response.headers.append(HttpHeaders.Vary, "Origin")
+                            call.response.headers.append(HttpHeaders.Vary, "Access-Control-Request-Private-Network")
                         }
                     }
 
-                    post("/api/preferences") {
-                        try {
-                            val request = call.receive<FieldPreferencesUpdateRequest>()
-                            persistFieldPreferences(request.preferences)
-                            call.respond(
-                                FieldPreferencesUpdateResponse(
-                                    preferences = currentFieldPreferences(),
-                                    message = "Preferences saved. Renderer and desktop startup changes may need a restart or fresh window."
-                                )
-                            )
-                        } catch (e: SerializationException) {
-                            call.respond(HttpStatusCode.BadRequest, mapOf("error" to "invalid preferences payload"))
-                        } catch (e: Exception) {
-                            lprintln("error,server", "saving preferences failed: ${e.message}")
-                            call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "could not save preferences"))
-                        }
+                    install(Compression) {
+                        gzip()
                     }
 
-                    post("/api/osc-editor-learn") {
-                        val preferencesBeforeLearn = currentFieldPreferences()
-                        var pausedBackdoor = false
-                        try {
-                            val request = call.receive<OscEditorLearnRequest>()
-                            val learnPort = request.port.coerceIn(1, 65535)
-                            if (preferencesBeforeLearn.oscEditorEnabled && preferencesBeforeLearn.oscEditorPort == learnPort) {
-                                pausedBackdoor = true
-                                OscEditorBackdoor.stop()
-                            }
+                    install(WebSockets) {
+                        pingPeriod = 10.seconds
+                        timeout = 30.minutes
+                        maxFrameSize = Long.MAX_VALUE
+                        masking = false
+                    }
 
-                            val address = OscEditorBackdoor.learnNextAddress(
-                                learnPort,
-                                request.timeoutMs,
-                                request.ignoreAddresses.toSet()
-                            )
-                            if (address.isNullOrBlank()) {
-                                call.respond(HttpStatusCode.RequestTimeout, mapOf("error" to "no OSC message received"))
+                    install(PartialContent)
+                    install(AutoHeadResponse)
+
+                    routing {
+                        get("/health") {
+                            call.respondText("ok", ContentType.Text.Plain)
+                        }
+
+                        installControllerRoutes(::currentFieldPreferences)
+
+                        get("/app-url") {
+                            val preferences = currentFieldPreferences().also(::applyFieldPreferences)
+                            val url = if (preferences.autoOpenLastDocumentInDesktop) {
+                                val target = URLEncoder.encode(lastFn ?: "welcome", "UTF-8")
+                                "https://localhost:${port}/index.html?file=$target"
                             } else {
-                                call.respond(OscEditorLearnResponse(address = address, message = "Learned $address."))
+                                "https://localhost:${port}/welcome"
                             }
-                        } catch (e: Exception) {
-                            lprintln("error,server", "OSC learn failed: ${e.message}")
-                            call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "OSC learn failed"))
-                        } finally {
-                            if (pausedBackdoor) {
-                                OscEditorBackdoor.configure(currentFieldPreferences())
+                            call.respondText(url, ContentType.Text.Plain)
+                        }
+
+                        get("/api/welcome-docs") {
+                            val preferences = currentFieldPreferences().also(::applyFieldPreferences)
+                            val recentDocuments = parseRecentDocuments(recentFns)
+                            val liveSessions = documents.values
+                                .asSequence()
+                                .filter { it.sessions.isNotEmpty() }
+                                .toList()
+                            val liveWorkspaceCounts = liveSessions
+                                .filter { !it.ephemeral }
+                                .groupingBy { it.documentName }
+                                .fold(0) { count, info -> count + info.sessions.size }
+                            val runningExecutionCounts = documents.values
+                                .asSequence()
+                                .filter { !it.ephemeral }
+                                .map { info ->
+                                    info.documentName to info.boxes.values.count { box ->
+                                        box.currentRunningStates.isNotEmpty() ||
+                                                box.jobs.any { job -> !job.isCancelled && job.isActive }
+                                    }
+                                }
+                                .filter { (_, count) -> count > 0 }
+                                .groupBy({ it.first }, { it.second })
+                                .mapValues { (_, counts) -> counts.sum() }
+                            val workspaceDocs = withContext(workspaceSearchDispatcher) {
+                                welcomeDir(home, recentDocuments)
+                            }
+                            val projects = withContext(workspaceSearchDispatcher) {
+                                listWorkspaceProjects(home)
+                            }
+                            val docs = workspaceDocs.map {
+                                it.copy(
+                                    runningSessionCount = liveWorkspaceCounts[it.filename] ?: 0,
+                                    runningExecutionCount = runningExecutionCounts[it.filename] ?: 0
+                                )
+                            }
+                            val fallback = lastFn ?: "welcome"
+                            val defaultDocument = docs.firstOrNull()?.filename ?: fallback
+                            val allTags = docs.flatMap { it.tags }.distinct().sortedWith(String.CASE_INSENSITIVE_ORDER)
+                            val workspaceDocumentNames = docs.mapTo(linkedSetOf()) { it.filename }
+                            val runningDocuments = liveSessions
+                                .filter { it.documentName !in workspaceDocumentNames }
+                                .sortedWith(
+                                    compareByDescending<SessionInformation> { it.sessions.size }
+                                        .thenBy { it.documentName.lowercase() }
+                                        .thenBy { it.filename.lowercase() }
+                                )
+                                .map { info ->
+                                    val params = mutableListOf(
+                                        "file=${URLEncoder.encode(info.documentName, "UTF-8")}",
+                                        "sessionKey=${URLEncoder.encode(info.filename, "UTF-8")}"
+                                    )
+                                    if (info.ephemeral) {
+                                        params += "scratch=1"
+                                    }
+                                    RunningDocumentEntry(
+                                        documentName = info.documentName,
+                                        sessionCount = info.sessions.size,
+                                        ephemeral = info.ephemeral,
+                                        openUrl = "/index.html?${params.joinToString("&")}"
+                                    )
+                                }
+                            val currentWorkspace = runCatching { File(home).canonicalFile.absolutePath }
+                                .getOrElse { File(home).absolutePath }
+                            val defaultWorkspace = runCatching { displayWorkspacePath(defaultWorkspacePath()) }
+                                .getOrElse { defaultWorkspacePath() }
+                            call.respond(
+                                WelcomeDocsResponse(
+                                    docs,
+                                    fallback,
+                                    defaultDocument,
+                                    allTags,
+                                    runningDocuments,
+                                    currentWorkspace,
+                                    defaultWorkspace,
+                                    currentAiSettingsStatus(),
+                                    preferences,
+                                    projects
+                                )
+                            )
+                        }
+
+                        get("/api/welcome-changelog") {
+                            val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 30
+                            val response = withContext(workspaceSearchDispatcher) {
+                                readWelcomeChangelog(limit)
+                            }
+                            call.respond(response)
+                        }
+
+                        post("/api/ai-settings") {
+                            try {
+                                val request = call.receive<AiSettingsUpdateRequest>()
+                                val status = saveAiSettings(
+                                    AiSettingsSaveRequest(
+                                        provider = request.provider,
+                                        openAiPlatformKey = request.openAiPlatformKey,
+                                        openRouterApiKey = request.openRouterApiKey,
+                                        openRouterBaseUrl = request.openRouterBaseUrl,
+                                        flagshipModel = request.flagshipModel,
+                                        fastModel = request.fastModel,
+                                        fallbackModel = request.fallbackModel
+                                    )
+                                )
+                                call.respond(
+                                    AiSettingsUpdateResponse(
+                                        hasOpenAiPlatformKey = status.hasOpenAiPlatformKey,
+                                        hasOpenRouterApiKey = status.hasOpenRouterApiKey,
+                                        provider = status.provider,
+                                        source = status.source,
+                                        configPath = status.configPath,
+                                        openRouterConfigPath = status.openRouterConfigPath,
+                                        baseUrl = status.baseUrl,
+                                        flagshipModel = status.modelSettings.flagshipModel,
+                                        fastModel = status.modelSettings.fastModel,
+                                        fallbackModel = status.modelSettings.fallbackModel,
+                                        message = "AI settings saved."
+                                    )
+                                )
+                            } catch (e: IllegalArgumentException) {
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf("error" to (e.message ?: "invalid AI settings"))
+                                )
+                            } catch (e: Exception) {
+                                lprintln("error,server", "saving AI settings failed: ${e.message}")
+                                call.respond(
+                                    HttpStatusCode.InternalServerError,
+                                    mapOf("error" to "could not save AI settings")
+                                )
                             }
                         }
-                    }
 
-                    post("/api/workspace-switch") {
-                        try {
-                            val request = call.receive<WorkspaceSwitchRequest>()
-                            val target = canonicalWorkspaceFile(request.path)
-                            val current = runCatching { File(home).canonicalFile }
-                                .getOrElse { File(home).absoluteFile }
+                        post("/api/preferences") {
+                            try {
+                                val request = call.receive<FieldPreferencesUpdateRequest>()
+                                persistFieldPreferences(request.preferences)
+                                call.respond(
+                                    FieldPreferencesUpdateResponse(
+                                        preferences = currentFieldPreferences(),
+                                        message = "Preferences saved. Renderer and desktop startup changes may need a restart or fresh window."
+                                    )
+                                )
+                            } catch (e: SerializationException) {
+                                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "invalid preferences payload"))
+                            } catch (e: Exception) {
+                                lprintln("error,server", "saving preferences failed: ${e.message}")
+                                call.respond(
+                                    HttpStatusCode.InternalServerError,
+                                    mapOf("error" to "could not save preferences")
+                                )
+                            }
+                        }
 
-                            if (target == current) {
-                                persistWorkspacePath(target.absolutePath)
+                        post("/api/osc-editor-learn") {
+                            val preferencesBeforeLearn = currentFieldPreferences()
+                            var pausedBackdoor = false
+                            try {
+                                val request = call.receive<OscEditorLearnRequest>()
+                                val learnPort = request.port.coerceIn(1, 65535)
+                                if (preferencesBeforeLearn.oscEditorEnabled && preferencesBeforeLearn.oscEditorPort == learnPort) {
+                                    pausedBackdoor = true
+                                    OscEditorBackdoor.stop()
+                                }
+
+                                val address = OscEditorBackdoor.learnNextAddress(
+                                    learnPort,
+                                    request.timeoutMs,
+                                    request.ignoreAddresses.toSet()
+                                )
+                                if (address.isNullOrBlank()) {
+                                    call.respond(
+                                        HttpStatusCode.RequestTimeout,
+                                        mapOf("error" to "no OSC message received")
+                                    )
+                                } else {
+                                    call.respond(
+                                        OscEditorLearnResponse(
+                                            address = address,
+                                            message = "Learned $address."
+                                        )
+                                    )
+                                }
+                            } catch (e: Exception) {
+                                lprintln("error,server", "OSC learn failed: ${e.message}")
+                                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "OSC learn failed"))
+                            } finally {
+                                if (pausedBackdoor) {
+                                    OscEditorBackdoor.configure(currentFieldPreferences())
+                                }
+                            }
+                        }
+
+                        post("/api/workspace-switch") {
+                            try {
+                                val request = call.receive<WorkspaceSwitchRequest>()
+                                val target = canonicalWorkspaceFile(request.path)
+                                val current = runCatching { File(home).canonicalFile }
+                                    .getOrElse { File(home).absoluteFile }
+
+                                if (target == current) {
+                                    persistWorkspacePath(target.absolutePath)
+                                    call.respond(
+                                        WorkspaceSwitchResponse(
+                                            workspace = target.absolutePath,
+                                            current = true,
+                                            restarting = false,
+                                            message = "Already using this workspace."
+                                        )
+                                    )
+                                    return@post
+                                }
+
                                 call.respond(
                                     WorkspaceSwitchResponse(
                                         workspace = target.absolutePath,
-                                        current = true,
-                                        restarting = false,
-                                        message = "Already using this workspace."
+                                        current = false,
+                                        restarting = true,
+                                        message = "Restarting Field with the selected workspace."
                                     )
                                 )
-                                return@post
-                            }
 
-                            call.respond(
-                                WorkspaceSwitchResponse(
-                                    workspace = target.absolutePath,
-                                    current = false,
-                                    restarting = true,
-                                    message = "Restarting Field with the selected workspace."
+                                persistWorkspacePath(target.absolutePath)
+                                thread(name = "field-workspace-switch", isDaemon = false) {
+                                    try {
+                                        Thread.sleep(200)
+                                    } catch (_: InterruptedException) {
+                                    }
+
+                                    lprintln(
+                                        "info,server",
+                                        "switching workspace from ${current.absolutePath} to ${target.absolutePath}"
+                                    )
+                                    runCatching {
+                                        if (this@Companion::ourServer.isInitialized) {
+                                            ourServer.stop(500, 2000)
+                                        }
+                                    }.onFailure {
+                                        lprintln(
+                                            "warning,server",
+                                            "error while stopping server for workspace switch: ${it.message}"
+                                        )
+                                    }
+
+                                    runCatching {
+                                        relaunchWithWorkspace(target.absolutePath)
+                                    }.onFailure {
+                                        lprintln(
+                                            "error,server",
+                                            "failed to relaunch with workspace ${target.absolutePath}: ${it.message}"
+                                        )
+                                    }
+
+                                    exitProcess(0)
+                                }
+                            } catch (e: IllegalArgumentException) {
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf("error" to (e.message ?: "invalid workspace path"))
                                 )
-                            )
+                            } catch (e: Exception) {
+                                lprintln("error,server", "workspace switch failed: ${e.message}")
+                                call.respond(
+                                    HttpStatusCode.InternalServerError,
+                                    mapOf("error" to "workspace switch failed")
+                                )
+                            }
+                        }
 
-                            persistWorkspacePath(target.absolutePath)
-                            thread(name = "field-workspace-switch", isDaemon = false) {
+                        put("/api/document-tags") {
+                            try {
+                                val request = call.receive<DocumentTagsUpdateRequest>()
+                                val response = withContext(workspaceSearchDispatcher) {
+                                    updateDocumentTags(home, request.filename, request.tags)
+                                }
+                                call.respond(response)
+                            } catch (e: IllegalArgumentException) {
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf("error" to (e.message ?: "invalid tag update"))
+                                )
+                            }
+                        }
+
+                        post("/api/duplicate-document") {
+                            try {
+                                val request = call.receive<DuplicateDocumentRequest>()
+                                val response = withContext(workspaceSearchDispatcher) {
+                                    duplicateWorkspaceDocument(home, request.sourceFilename, request.newFilename)
+                                }
+                                recordRecentDocument(response.filename)
+                                broadcastWelcomeEvent("document-duplicated")
+                                call.respond(response)
+                            } catch (e: IllegalArgumentException) {
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf("error" to (e.message ?: "invalid duplicate request"))
+                                )
+                            }
+                        }
+
+                        post("/api/projects") {
+                            try {
+                                val request = call.receive<ProjectCreateRequest>()
+                                val response = withContext(workspaceSearchDispatcher) {
+                                    createWorkspaceProject(home, request.name, request.documents)
+                                }
+                                broadcastWelcomeEvent("project-created")
+                                call.respond(response)
+                            } catch (e: IllegalArgumentException) {
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf("error" to (e.message ?: "invalid project request"))
+                                )
+                            }
+                        }
+
+                        post("/api/projects/add-document") {
+                            try {
+                                val request = call.receive<ProjectAddDocumentRequest>()
+                                val response = withContext(workspaceSearchDispatcher) {
+                                    addDocumentToWorkspaceProject(home, request.projectName, request.filename)
+                                }
+                                broadcastWelcomeEvent("project-updated")
+                                call.respond(response)
+                            } catch (e: IllegalArgumentException) {
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf("error" to (e.message ?: "invalid project update"))
+                                )
+                            }
+                        }
+
+                        post("/api/projects/delete") {
+                            try {
+                                val request = call.receive<ProjectDeleteRequest>()
+                                val response = withContext(workspaceSearchDispatcher) {
+                                    deleteWorkspaceProject(home, request.name)
+                                }
+                                broadcastWelcomeEvent("project-deleted")
+                                call.respond(response)
+                            } catch (e: IllegalArgumentException) {
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf("error" to (e.message ?: "invalid project delete"))
+                                )
+                            }
+                        }
+
+                        get("/api/export-tagged-documents") {
+                            try {
+                                val tag = call.request.queryParameters["tag"].orEmpty()
+                                val archive = withContext(workspaceSearchDispatcher) {
+                                    exportTaggedDocumentsZip(home, tag)
+                                }
+                                call.response.headers.append(
+                                    HttpHeaders.ContentDisposition,
+                                    "attachment; filename=\"${archive.filename}\""
+                                )
+                                call.response.headers.append("X-Field-Document-Count", archive.documentCount.toString())
+                                call.respondBytes(archive.bytes, ContentType.parse("application/zip"))
+                            } catch (e: IllegalArgumentException) {
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf("error" to (e.message ?: "invalid export request"))
+                                )
+                            }
+                        }
+
+                        get("/api/workspace-search") {
+                            val query = call.request.queryParameters["q"].orEmpty()
+                            val maxDocuments = call.request.queryParameters["maxDocuments"]?.toIntOrNull() ?: 50
+                            val maxMatchesPerDocument =
+                                call.request.queryParameters["maxMatchesPerDocument"]?.toIntOrNull() ?: 5
+                            val maxScanMillis =
+                                call.request.queryParameters["maxScanMillis"]?.toLongOrNull() ?: 3_000L
+
+                            val searchGeneration = workspaceSearchGeneration.incrementAndGet()
+                            val response = try {
+                                withContext(workspaceSearchDispatcher) {
+                                    val requestJob = coroutineContext.job
+                                    searchWorkspace(
+                                        base = home,
+                                        rawQuery = query,
+                                        maxDocuments = maxDocuments,
+                                        maxMatchesPerDocument = maxMatchesPerDocument,
+                                        maxScanMillis = maxScanMillis,
+                                        cancellationCheck = {
+                                            if (!requestJob.isActive) throw CancellationException("workspace search cancelled")
+                                            if (workspaceSearchGeneration.get() != searchGeneration) {
+                                                throw CancellationException("workspace search superseded")
+                                            }
+                                        }
+                                    )
+                                }
+                            } catch (e: CancellationException) {
+                                if (workspaceSearchGeneration.get() == searchGeneration) throw e
+                                WorkspaceSearchResponse(
+                                    query = query.trim(),
+                                    documents = emptyList(),
+                                    totalDocuments = 0,
+                                    totalMatches = 0,
+                                    truncated = true
+                                )
+                            }
+                            call.respond(response)
+                        }
+
+                        route("/welcome") {
+                            handle {
+                                val originalContent =
+                                    File("./src/commonMain/resources/welcome.html").readText(Charsets.UTF_8)
+                                val modifiedContent = filter(originalContent)
+                                call.respondText(modifiedContent, ContentType.Text.Html)
+                            }
+                        }
+
+                        post("/api/import-offline-doc") {
+                            try {
+                                val payload = call.receive<OfflineImportRequest>()
+                                val rawName = payload.recommendedName ?: "imported-document"
+                                val ednText = payload.ednText ?: throw IllegalArgumentException("missing ednText")
+
+                                fun sanitize(base: String): String {
+                                    val cleaned = base.lowercase().replace(Regex("[^a-z0-9_-]+"), "-").trim('-')
+                                    return cleaned.ifBlank { "imported-document" }
+                                }
+
+                                val baseName = sanitize(rawName.removeSuffix(".edn"))
+                                var candidate = baseName
+                                var counter = 2
+                                while (File(home, candidate).exists()) {
+                                    candidate = "${baseName}_${counter}"
+                                    counter++
+                                }
+
+                                val targetDir = File(home, candidate)
+                                targetDir.mkdirs()
+
+                                // Persist the incoming EDN as-is; Field will expand sidecar files on next save.
+                                val metadataFile = File(targetDir, SavingContext.METADATA_EDN)
+                                metadataFile.writeText(ednText)
+
+                                val encodedName = URLEncoder.encode(candidate, "UTF-8")
+                                val openUrl = "https://localhost:${port}/index.html?file=${encodedName}"
+                                val projectUrl =
+                                    "https://localhost:${port}/${encodedName}/${SavingContext.METADATA_EDN}"
+
+                                call.respond(OfflineImportResponse(candidate, openUrl, projectUrl))
+                            } catch (ex: Exception) {
+                                lprintln("error,server", "offline import failed: ${ex.message}")
+                                call.respond(HttpStatusCode.BadRequest, ex.message ?: "import failed")
+                            }
+                        }
+
+                        post("/api/shutdown-instance") {
+                            call.respond(HttpStatusCode.OK, "Shutting down this Field instance")
+
+                            thread(name = "field-instance-shutdown", isDaemon = true) {
                                 try {
-                                    Thread.sleep(200)
+                                    Thread.sleep(150)
                                 } catch (_: InterruptedException) {
                                 }
 
-                                lprintln("info,server", "switching workspace from ${current.absolutePath} to ${target.absolutePath}")
                                 runCatching {
                                     if (this@Companion::ourServer.isInitialized) {
                                         ourServer.stop(500, 2000)
                                     }
-                                }.onFailure {
-                                    lprintln("warning,server", "error while stopping server for workspace switch: ${it.message}")
-                                }
-
-                                runCatching {
-                                    relaunchWithWorkspace(target.absolutePath)
-                                }.onFailure {
-                                    lprintln("error,server", "failed to relaunch with workspace ${target.absolutePath}: ${it.message}")
                                 }
 
                                 exitProcess(0)
                             }
-                        } catch (e: IllegalArgumentException) {
-                            call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "invalid workspace path")))
-                        } catch (e: Exception) {
-                            lprintln("error,server", "workspace switch failed: ${e.message}")
-                            call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "workspace switch failed"))
                         }
-                    }
 
-                    put("/api/document-tags") {
-                        try {
-                            val request = call.receive<DocumentTagsUpdateRequest>()
-                            val response = withContext(workspaceSearchDispatcher) {
-                                updateDocumentTags(home, request.filename, request.tags)
-                            }
-                            call.respond(response)
-                        } catch (e: IllegalArgumentException) {
-                            call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "invalid tag update")))
-                        }
-                    }
-
-                    post("/api/duplicate-document") {
-                        try {
-                            val request = call.receive<DuplicateDocumentRequest>()
-                            val response = withContext(workspaceSearchDispatcher) {
-                                duplicateWorkspaceDocument(home, request.sourceFilename, request.newFilename)
-                            }
-                            recordRecentDocument(response.filename)
-                            broadcastWelcomeEvent("document-duplicated")
-                            call.respond(response)
-                        } catch (e: IllegalArgumentException) {
-                            call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "invalid duplicate request")))
-                        }
-                    }
-
-                    post("/api/projects") {
-                        try {
-                            val request = call.receive<ProjectCreateRequest>()
-                            val response = withContext(workspaceSearchDispatcher) {
-                                createWorkspaceProject(home, request.name, request.documents)
-                            }
-                            broadcastWelcomeEvent("project-created")
-                            call.respond(response)
-                        } catch (e: IllegalArgumentException) {
-                            call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "invalid project request")))
-                        }
-                    }
-
-                    post("/api/projects/add-document") {
-                        try {
-                            val request = call.receive<ProjectAddDocumentRequest>()
-                            val response = withContext(workspaceSearchDispatcher) {
-                                addDocumentToWorkspaceProject(home, request.projectName, request.filename)
-                            }
-                            broadcastWelcomeEvent("project-updated")
-                            call.respond(response)
-                        } catch (e: IllegalArgumentException) {
-                            call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "invalid project update")))
-                        }
-                    }
-
-                    post("/api/projects/delete") {
-                        try {
-                            val request = call.receive<ProjectDeleteRequest>()
-                            val response = withContext(workspaceSearchDispatcher) {
-                                deleteWorkspaceProject(home, request.name)
-                            }
-                            broadcastWelcomeEvent("project-deleted")
-                            call.respond(response)
-                        } catch (e: IllegalArgumentException) {
-                            call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "invalid project delete")))
-                        }
-                    }
-
-                    get("/api/export-tagged-documents") {
-                        try {
-                            val tag = call.request.queryParameters["tag"].orEmpty()
-                            val archive = withContext(workspaceSearchDispatcher) {
-                                exportTaggedDocumentsZip(home, tag)
-                            }
-                            call.response.headers.append(
-                                HttpHeaders.ContentDisposition,
-                                "attachment; filename=\"${archive.filename}\""
-                            )
-                            call.response.headers.append("X-Field-Document-Count", archive.documentCount.toString())
-                            call.respondBytes(archive.bytes, ContentType.parse("application/zip"))
-                        } catch (e: IllegalArgumentException) {
-                            call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: "invalid export request")))
-                        }
-                    }
-
-                    get("/api/workspace-search") {
-                        val query = call.request.queryParameters["q"].orEmpty()
-                        val maxDocuments = call.request.queryParameters["maxDocuments"]?.toIntOrNull() ?: 50
-                        val maxMatchesPerDocument =
-                            call.request.queryParameters["maxMatchesPerDocument"]?.toIntOrNull() ?: 5
-                        val maxScanMillis =
-                            call.request.queryParameters["maxScanMillis"]?.toLongOrNull() ?: 3_000L
-
-                        val searchGeneration = workspaceSearchGeneration.incrementAndGet()
-                        val response = try {
-                            withContext(workspaceSearchDispatcher) {
-                                val requestJob = coroutineContext.job
-                                searchWorkspace(
-                                    base = home,
-                                    rawQuery = query,
-                                    maxDocuments = maxDocuments,
-                                    maxMatchesPerDocument = maxMatchesPerDocument,
-                                    maxScanMillis = maxScanMillis,
-                                    cancellationCheck = {
-                                        if (!requestJob.isActive) throw CancellationException("workspace search cancelled")
-                                        if (workspaceSearchGeneration.get() != searchGeneration) {
-                                            throw CancellationException("workspace search superseded")
-                                        }
-                                    }
-                                )
-                            }
-                        } catch (e: CancellationException) {
-                            if (workspaceSearchGeneration.get() == searchGeneration) throw e
-                            WorkspaceSearchResponse(
-                                query = query.trim(),
-                                documents = emptyList(),
-                                totalDocuments = 0,
-                                totalMatches = 0,
-                                truncated = true
-                            )
-                        }
-                        call.respond(response)
-                    }
-
-                    route("/welcome") {
-                        handle {
-                            val originalContent = File("./src/commonMain/resources/welcome.html").readText(Charsets.UTF_8)
-                            val modifiedContent = filter(originalContent)
-                            call.respondText(modifiedContent, ContentType.Text.Html)
-                        }
-                    }
-
-                    post("/api/import-offline-doc") {
-                        try {
-                            val payload = call.receive<OfflineImportRequest>()
-                            val rawName = payload.recommendedName ?: "imported-document"
-                            val ednText = payload.ednText ?: throw IllegalArgumentException("missing ednText")
-
-                            fun sanitize(base: String): String {
-                                val cleaned = base.lowercase().replace(Regex("[^a-z0-9_-]+"), "-").trim('-')
-                                return cleaned.ifBlank { "imported-document" }
-                            }
-
-                            val baseName = sanitize(rawName.removeSuffix(".edn"))
-                            var candidate = baseName
-                            var counter = 2
-                            while (File(home, candidate).exists()) {
-                                candidate = "${baseName}_${counter}"
-                                counter++
-                            }
-
-                            val targetDir = File(home, candidate)
-                            targetDir.mkdirs()
-
-                            // Persist the incoming EDN as-is; Field will expand sidecar files on next save.
-                            val metadataFile = File(targetDir, SavingContext.METADATA_EDN)
-                            metadataFile.writeText(ednText)
-
-                            val encodedName = URLEncoder.encode(candidate, "UTF-8")
-                            val openUrl = "https://localhost:${port}/index.html?file=${encodedName}"
-                            val projectUrl = "https://localhost:${port}/${encodedName}/${SavingContext.METADATA_EDN}"
-
-                            call.respond(OfflineImportResponse(candidate, openUrl, projectUrl))
-                        } catch (ex: Exception) {
-                            lprintln("error,server", "offline import failed: ${ex.message}")
-                            call.respond(HttpStatusCode.BadRequest, ex.message ?: "import failed")
-                        }
-                    }
-
-                    post("/api/shutdown-instance") {
-                        call.respond(HttpStatusCode.OK, "Shutting down this Field instance")
-
-                        thread(name = "field-instance-shutdown", isDaemon = true) {
+                        webSocket("/welcome-events") {
+                            welcomeEventSessions.add(this)
+                            runCatching { send("""{"type":"welcome-refresh","reason":"connected"}""") }
                             try {
-                                Thread.sleep(150)
-                            } catch (_: InterruptedException) {
-                            }
-
-                            runCatching {
-                                if (this@Companion::ourServer.isInitialized) {
-                                    ourServer.stop(500, 2000)
+                                for (frame in incoming) {
+                                    if (frame is Frame.Close) break
                                 }
+                            } finally {
+                                welcomeEventSessions.remove(this)
                             }
-
-                            exitProcess(0)
                         }
-                    }
 
-                    webSocket("/welcome-events") {
-                        welcomeEventSessions.add(this)
-                        runCatching { send("""{"type":"welcome-refresh","reason":"connected"}""") }
-                        try {
-                            for (frame in incoming) {
-                                if (frame is Frame.Close) break
-                            }
-                        } finally {
-                            welcomeEventSessions.remove(this)
-                        }
-                    }
+                        webSocket("/ws") {
+                            val ts = this
+                            thisSession.set(ts)
+                            try {
+                                for (frame in incoming) {
+                                    if (frame is Frame.Text) {
+                                        val text = frame.readText()
+                                        sessions.entries.removeIf { (session, info) ->
+                                            if (session.outgoing.isClosedForSend) {
+                                                detachDocumentSession(session, info)
+                                                true
+                                            } else false
+                                        }
 
-                    webSocket("/ws") {
-                        val ts = this
-                        thisSession.set(ts)
-                        try {
-                            for (frame in incoming) {
-                                if (frame is Frame.Text) {
-                                    val text = frame.readText()
-                                    sessions.entries.removeIf { (session, info) ->
-                                        if (session.outgoing.isClosedForSend) {
-                                            detachDocumentSession(session, info)
-                                            true
-                                        } else false
-                                    }
+                                        var message: Message? = null
+                                        try {
+                                            message = Json.decodeFromString<Message>(text)
+                                        } catch (t: SerializationException) {
+                                        }
 
-                                    var message: Message? = null
-                                    try {
-                                        message = Json.decodeFromString<Message>(text)
-                                    } catch (t: SerializationException) {
-                                    }
-
-                                    if (message == null) {
-                                        launch {
-                                            thisSession.set(ts)
-                                            thisSessionInfo.set(sessions.get(ts))
-                                            try {
-                                                rawHandlers.values.forEach {
-                                                    it.forEach {
-                                                        it(text)
+                                        if (message == null) {
+                                            launch {
+                                                thisSession.set(ts)
+                                                thisSessionInfo.set(sessions.get(ts))
+                                                try {
+                                                    rawHandlers.values.forEach {
+                                                        it.forEach {
+                                                            it(text)
+                                                        }
                                                     }
+                                                } catch (t: Throwable) {
+                                                    t.printStackTrace()
                                                 }
-                                            } catch (t: Throwable) {
-                                                t.printStackTrace()
                                             }
-                                        }
-                                    } else {
-                                        launch { // should this block or not?...
-                                            thisSession.set(ts)
-                                            thisSessionInfo.set(sessions.get(ts))
-                                            val savedScope = this.coroutineContext
-                                            try {
-                                                val r = handle(message) { message2 ->
-                                                    val message3 = message.replyTo?.let { message2.toName(it) } ?: message2
-                                                    val m = Json.encodeToString(message3)
-                                                    // Keeps _print() responsive while user code hogs the main execution thread,
-                                                    // but still applies output back pressure when the browser falls behind.
-                                                    sendWithOutputBackPressure(ts, message3, m)
+                                        } else {
+                                            launch { // should this block or not?...
+                                                thisSession.set(ts)
+                                                thisSessionInfo.set(sessions.get(ts))
+                                                val savedScope = this.coroutineContext
+                                                try {
+                                                    val r = handle(message) { message2 ->
+                                                        val message3 =
+                                                            message.replyTo?.let { message2.toName(it) } ?: message2
+                                                        val m = Json.encodeToString(message3)
+                                                        // Keeps _print() responsive while user code hogs the main execution thread,
+                                                        // but still applies output back pressure when the browser falls behind.
+                                                        sendWithOutputBackPressure(ts, message3, m)
+                                                    }
+                                                } catch (t: Throwable) {
+                                                    t.printStackTrace()
                                                 }
-                                            } catch (t: Throwable) {
-                                                t.printStackTrace()
                                             }
                                         }
                                     }
                                 }
+                            } finally {
+                                detachDocumentSession(ts)
+                                // Clean up back pressure state for this session.
+                                sessionOutputPressure.remove(ts)
                             }
-                        } finally {
-                            detachDocumentSession(ts)
-                            // Clean up back pressure state for this session.
-                            sessionOutputPressure.remove(ts)
                         }
-                    }
-                    route("/dir") {
-                        handle {
-                            val originalContent = File("./src/commonMain/resources/dir.html").readText(Charsets.UTF_8)
-                            val modifiedContent = filter(originalContent)
-                            call.respondText(modifiedContent, ContentType.Text.Html)
-                        }
-                    }
-                    route("/browse") {
-                        handle {
-                            val originalContent =
-                                File("./src/commonMain/resources/browser.html").readText(Charsets.UTF_8)
-                            val modifiedContent = filter(originalContent)
-                            call.respondText(modifiedContent, ContentType.Text.Html)
-                        }
-                    }
-                    route("/tree") {
-                        handle {
-                            val originalContent = File("./src/commonMain/resources/tree.html").readText(Charsets.UTF_8)
-                            val modifiedContent = filter(originalContent)
-                            call.respondText(modifiedContent, ContentType.Text.Html)
-                        }
-                    }
-                    route("/h2-explorer") {
-                        handle {
-                            val originalContent =
-                                File("./src/commonMain/resources/h2_explorer.html").readText(Charsets.UTF_8)
-                            val modifiedContent = filter(originalContent)
-                            call.respondText(modifiedContent, ContentType.Text.Html)
-                        }
-                    }
-                    route("/lazy-value-fragment") {
-                        handle {
-                            val root = call.request.queryParameters["root"]
-                            val kind = call.request.queryParameters["kind"]
-                            val offset = call.request.queryParameters["offset"]?.toIntOrNull()
-                            val depth = call.request.queryParameters["depth"]?.toIntOrNull() ?: 0
-
-                            if (root.isNullOrBlank() || kind.isNullOrBlank() || offset == null) {
-                                call.respond(HttpStatusCode.BadRequest, "missing or invalid lazy value fragment parameters")
-                                return@handle
+                        route("/dir") {
+                            handle {
+                                val originalContent =
+                                    File("./src/commonMain/resources/dir.html").readText(Charsets.UTF_8)
+                                val modifiedContent = filter(originalContent)
+                                call.respondText(modifiedContent, ContentType.Text.Html)
                             }
-
-                            val html = ValueVisualizer.renderLazyFragment(root, kind, offset, depth)
-                            if (html == null) {
-                                call.respond(HttpStatusCode.NotFound, "unknown or expired lazy value token")
-                                return@handle
+                        }
+                        route("/browse") {
+                            handle {
+                                val originalContent =
+                                    File("./src/commonMain/resources/browser.html").readText(Charsets.UTF_8)
+                                val modifiedContent = filter(originalContent)
+                                call.respondText(modifiedContent, ContentType.Text.Html)
                             }
-
-                            call.respondText(html, ContentType.Text.Html)
                         }
-                    }
-                    route("/inspect") {
-                        handle {
-                            val originalContent =
-                                File("./src/commonMain/resources/inspector.html").readText(Charsets.UTF_8)
-                            val modifiedContent = filter(originalContent)
-                            call.respondText(modifiedContent, ContentType.Text.Html)
-                        }
-                    }
-                    route("/logs") {
-                        handle {
-                            val originalContent =
-                                File("./src/commonMain/resources/logs.html").readText(Charsets.UTF_8)
-                            val modifiedContent = filter(originalContent)
-                            call.respondText(modifiedContent, ContentType.Text.Html)
-                        }
-                    }
-                    route("/keyframe") {
-                        handle {
-                            val originalContent =
-                                File("./src/commonMain/resources/keyframe_editor.html").readText(Charsets.UTF_8)
-                            val modifiedContent = filter(originalContent)
-                            call.respondText(modifiedContent, ContentType.Text.Html)
-                        }
-                    }
-                    route("/threejs") {
-                        handle {
-                            val originalContent =
-                                File("./src/commonMain/resources/threejs_viewer.html").readText(Charsets.UTF_8)
-                            val modifiedContent = filter(originalContent)
-                            call.respondText(modifiedContent, ContentType.Text.Html)
-                        }
-                    }
-                    route("/history") {
-                        handle {
-                            val originalContent =
-                                File("./src/commonMain/resources/history.html").readText(Charsets.UTF_8)
-                            val modifiedContent = filter(originalContent)
-                            call.respondText(modifiedContent, ContentType.Text.Html)
-                        }
-                    }
-
-                    route("/history-screenshot") {
-                        get {
-                            val document = call.request.queryParameters["file"]?.takeIf { it.isNotBlank() }
-                            val relativePath = call.request.queryParameters["path"]?.takeIf { it.isNotBlank() }
-                            if (document == null || relativePath == null) {
-                                call.respond(HttpStatusCode.BadRequest, "missing file or path")
-                                return@get
+                        route("/tree") {
+                            handle {
+                                val originalContent =
+                                    File("./src/commonMain/resources/tree.html").readText(Charsets.UTF_8)
+                                val modifiedContent = filter(originalContent)
+                                call.respondText(modifiedContent, ContentType.Text.Html)
                             }
+                        }
+                        route("/h2-explorer") {
+                            handle {
+                                val originalContent =
+                                    File("./src/commonMain/resources/h2_explorer.html").readText(Charsets.UTF_8)
+                                val modifiedContent = filter(originalContent)
+                                call.respondText(modifiedContent, ContentType.Text.Html)
+                            }
+                        }
+                        route("/lazy-value-fragment") {
+                            handle {
+                                val root = call.request.queryParameters["root"]
+                                val kind = call.request.queryParameters["kind"]
+                                val offset = call.request.queryParameters["offset"]?.toIntOrNull()
+                                val depth = call.request.queryParameters["depth"]?.toIntOrNull() ?: 0
 
-                            val workspaceRoot = File(home).canonicalFile
-                            val liveDocument = documents[document]
-                                ?: documents.values.firstOrNull {
-                                    it.documentName == document ||
-                                        it.filename == document ||
-                                        File(it.filename).name == document
+                                if (root.isNullOrBlank() || kind.isNullOrBlank() || offset == null) {
+                                    call.respond(
+                                        HttpStatusCode.BadRequest,
+                                        "missing or invalid lazy value fragment parameters"
+                                    )
+                                    return@handle
                                 }
-                            val documentDir = if (liveDocument != null) {
-                                File(liveDocument.filename).canonicalFile
-                            } else {
-                                val requested = File(document)
-                                if (requested.isAbsolute) requested.canonicalFile else File(workspaceRoot, document).canonicalFile
-                            }
-                            val screenshotRoot = File(documentDir, "history_screenshots").canonicalFile
-                            val file = File(documentDir, relativePath).canonicalFile
-                            val insideWorkspace = documentDir == workspaceRoot ||
-                                documentDir.path.startsWith(workspaceRoot.path + File.separator)
-                            val liveDocumentAllowed = liveDocument != null && documentDir == File(liveDocument.filename).canonicalFile
-                            if ((!insideWorkspace && !liveDocumentAllowed) ||
-                                !file.path.startsWith(screenshotRoot.path + File.separator) ||
-                                file.extension.lowercase() !in setOf("png", "jpg", "jpeg") ||
-                                !file.isFile ||
-                                file.length() <= 8
-                            ) {
-                                call.respond(HttpStatusCode.NotFound, "history screenshot not found")
-                                return@get
-                            }
 
-                            call.respondFile(file)
-                        }
-                    }
-
-                    files("./build/js/packages/afield/kotlin")
-                    files("./src/jsChatMain/resources/static/")
-                    files("./src/jsMain/kotlin/resources/")
-                    files("./src/jsMain/resources/")
-                    files("./src/jsMain/resources/monaco")
-                    files("./src/commonMain/kotlin/resources/")
-                    files("./src/commonMain/resources/")
-
-                    route("/chat") {
-                        handle {
-                            call.respondFile(File("./build/js/packages/afield-js-chat/kotlin/static/chat.html"))
-                        }
-                    }
-
-                    static("/") {
-                        intercept(ApplicationCallPipeline.Call) {
-                            var effectivePath = URI(call.request.uri).path
-                            if (effectivePath.endsWith("/")) effectivePath = effectivePath + "index.html"
-                            if (effectivePath.endsWith("index.html")) {
-                                // List directories in the order you want to search for index.html
-                                val directories = listOf(
-                                    File("./build/kotlin-webpack/js/productionExecutable/"),
-                                    File("./build/kotlin-webpack/jsChat/productionExecutable/"),
-                                    File("./src/jsChatMain/resources/"),
-                                    File("./src/jsMain/resources/"),
-                                    File("./src/commonMain/resources/"),
-//                                    File("./build/vite/dist/")
-                                )
-
-                                val indexFile = directories.map { File(it, effectivePath.trim('.', '/')) }
-                                    .firstOrNull { it.exists() }
-
-                                if (indexFile != null) {
-                                    val originalContent = indexFile.readText(Charsets.UTF_8)
-
-                                    lprintln("info,server", "serving index file from ${indexFile.absolutePath}")
-
-                                    val modifiedContent = filter(originalContent)
-                                    call.respondText(modifiedContent, ContentType.Text.Html)
-                                    finish() // Stop further processing of this call
+                                val html = ValueVisualizer.renderLazyFragment(root, kind, offset, depth)
+                                if (html == null) {
+                                    call.respond(HttpStatusCode.NotFound, "unknown or expired lazy value token")
+                                    return@handle
                                 }
+
+                                call.respondText(html, ContentType.Text.Html)
                             }
                         }
-                        files(home + "/")
-                    }
-
-                    route("/project") {
-                        get("{...}") {
-                            lprintln("debug,server", "routing /project for ${call.request.uri}")
-                            // Serve files from the project directory ($home)
-                            val fullUri = call.request.uri
-                            val pathOnly = URI(fullUri).path
-                            val relativeUri = pathOnly.removePrefix("/project/")
-
-                            val file = File(home, relativeUri)
-                            if (file.exists() && file.isFile && file.canonicalPath.startsWith(File(home).canonicalPath)) {
-                                // Security check: ensure the file is within the home directory
-                                call.respondFile(file)
-                            } else {
-                                lprintln("warning,server", "project file not found or outside project directory: $relativeUri")
-                                call.respond(HttpStatusCode.NotFound, "File not found in project directory")
+                        route("/inspect") {
+                            handle {
+                                val originalContent =
+                                    File("./src/commonMain/resources/inspector.html").readText(Charsets.UTF_8)
+                                val modifiedContent = filter(originalContent)
+                                call.respondText(modifiedContent, ContentType.Text.Html)
                             }
                         }
-                    }
+                        route("/logs") {
+                            handle {
+                                val originalContent =
+                                    File("./src/commonMain/resources/logs.html").readText(Charsets.UTF_8)
+                                val modifiedContent = filter(originalContent)
+                                call.respondText(modifiedContent, ContentType.Text.Html)
+                            }
+                        }
+                        route("/keyframe") {
+                            handle {
+                                val originalContent =
+                                    File("./src/commonMain/resources/keyframe_editor.html").readText(Charsets.UTF_8)
+                                val modifiedContent = filter(originalContent)
+                                call.respondText(modifiedContent, ContentType.Text.Html)
+                            }
+                        }
+                        route("/threejs") {
+                            handle {
+                                val originalContent =
+                                    File("./src/commonMain/resources/threejs_viewer.html").readText(Charsets.UTF_8)
+                                val modifiedContent = filter(originalContent)
+                                call.respondText(modifiedContent, ContentType.Text.Html)
+                            }
+                        }
+                        route("/history") {
+                            handle {
+                                val originalContent =
+                                    File("./src/commonMain/resources/history.html").readText(Charsets.UTF_8)
+                                val modifiedContent = filter(originalContent)
+                                call.respondText(modifiedContent, ContentType.Text.Html)
+                            }
+                        }
 
-                    route("/local") {
-                        get("{...}") {
-                            lprintln("debug,server", "routing /local dynamically ${call.request.uri}")
-                            // Obtain the full request URI, strip any query or fragment, and remove the "/local" prefix
-                            val fullUri = call.request.uri
-                            val pathOnly = URI(fullUri).path
-                            val relativeUri = pathOnly.removePrefix("/local/")
-
-                            // Check the dynamic mappings for a matching prefix
-                            val match = dynamicRoutes.getRoutes().entries.filter { relativeUri.startsWith(it.key) }
-                                .maxByOrNull { it.key.length } // use longest match if overlapping
-
-                            if (match != null) {
-                                // Remove the mapping prefix to get the file's relative path
-                                val fileRelativePath = relativeUri.removePrefix(match.key)
-                                val file = File(match.value, fileRelativePath)
-                                if (file.exists() && file.isFile) {
-                                    call.respondFile(file)
+                        route("/history-screenshot") {
+                            get {
+                                val document = call.request.queryParameters["file"]?.takeIf { it.isNotBlank() }
+                                val relativePath = call.request.queryParameters["path"]?.takeIf { it.isNotBlank() }
+                                if (document == null || relativePath == null) {
+                                    call.respond(HttpStatusCode.BadRequest, "missing file or path")
                                     return@get
+                                }
+
+                                val workspaceRoot = File(home).canonicalFile
+                                val liveDocument = documents[document]
+                                    ?: documents.values.firstOrNull {
+                                        it.documentName == document ||
+                                                it.filename == document ||
+                                                File(it.filename).name == document
+                                    }
+                                val documentDir = if (liveDocument != null) {
+                                    File(liveDocument.filename).canonicalFile
                                 } else {
-                                    lprintln("warning,server", "route found but missing file $fileRelativePath")
-                                    call.respond(HttpStatusCode.NotFound, "File '${file}' not found")
+                                    val requested = File(document)
+                                    if (requested.isAbsolute) requested.canonicalFile else File(
+                                        workspaceRoot,
+                                        document
+                                    ).canonicalFile
+                                }
+                                val screenshotRoot = File(documentDir, "history_screenshots").canonicalFile
+                                val file = File(documentDir, relativePath).canonicalFile
+                                val insideWorkspace = documentDir == workspaceRoot ||
+                                        documentDir.path.startsWith(workspaceRoot.path + File.separator)
+                                val liveDocumentAllowed =
+                                    liveDocument != null && documentDir == File(liveDocument.filename).canonicalFile
+                                if ((!insideWorkspace && !liveDocumentAllowed) ||
+                                    !file.path.startsWith(screenshotRoot.path + File.separator) ||
+                                    file.extension.lowercase() !in setOf("png", "jpg", "jpeg") ||
+                                    !file.isFile ||
+                                    file.length() <= 8
+                                ) {
+                                    call.respond(HttpStatusCode.NotFound, "history screenshot not found")
                                     return@get
                                 }
+
+                                call.respondFile(file)
                             }
-                            lprintln("warning,server", "failed to find route for $fullUri; checked ${dynamicRoutes.getRoutes().entries}")
-                            call.respond(HttpStatusCode.NotFound, "No dynamic route for $fullUri")
+                        }
+
+                        staticFiles(remotePath = "", dir = File("./build/js/packages/afield/kotlin"))
+                        staticFiles(remotePath = "", dir = File("./src/jsChatMain/resources/static/"))
+                        staticFiles(remotePath = "", dir = File("./src/jsMain/kotlin/resources/"))
+                        staticFiles(remotePath = "", dir = File("./src/jsMain/resources/"))
+                        staticFiles(remotePath = "", dir = File("./src/jsMain/resources/monaco"))
+                        staticFiles(remotePath = "", dir = File("./src/commonMain/kotlin/resources/"))
+                        staticFiles(remotePath = "", dir = File("./src/commonMain/resources/"))
+
+                        route("/chat") {
+                            handle {
+                                call.respondFile(File("./build/js/packages/afield-js-chat/kotlin/static/chat.html"))
+                            }
+                        }
+
+                        val indexHtmlInterceptor = createRouteScopedPlugin("IndexHtmlInterceptor") {
+                            onCall { call ->
+                                var effectivePath = URI(call.request.uri).path
+                                if (effectivePath.endsWith("/")) effectivePath = effectivePath + "index.html"
+                                if (effectivePath.endsWith("index.html")) {
+                                    // List directories in the order you want to search for index.html
+                                    val directories = listOf(
+                                        File("./build/kotlin-webpack/js/productionExecutable/"),
+                                        File("./build/kotlin-webpack/jsChat/productionExecutable/"),
+                                        File("./src/jsChatMain/resources/"),
+                                        File("./src/jsMain/resources/"),
+                                        File("./src/commonMain/resources/"),
+//                                    File("./build/vite/dist/")
+                                    )
+
+                                    val indexFile = directories.map { File(it, effectivePath.trim('.', '/')) }
+                                        .firstOrNull { it.exists() }
+
+                                    if (indexFile != null) {
+                                        val originalContent = indexFile.readText(Charsets.UTF_8)
+
+                                        lprintln("info,server", "serving index file from ${indexFile.absolutePath}")
+
+                                        val modifiedContent = filter(originalContent)
+                                        call.respondText(modifiedContent, ContentType.Text.Html)
+                                    }
+                                }
+                            }
+                        }
+                        route("/") {
+                            install(indexHtmlInterceptor)
+                            staticFiles(remotePath = "", dir = File(home))
+                        }
+
+                        route("/project") {
+                            get("{...}") {
+                                lprintln("debug,server", "routing /project for ${call.request.uri}")
+                                // Serve files from the project directory ($home)
+                                val fullUri = call.request.uri
+                                val pathOnly = URI(fullUri).path
+                                val relativeUri = pathOnly.removePrefix("/project/")
+
+                                val file = File(home, relativeUri)
+                                if (file.exists() && file.isFile && file.canonicalPath.startsWith(File(home).canonicalPath)) {
+                                    // Security check: ensure the file is within the home directory
+                                    call.respondFile(file)
+                                } else {
+                                    lprintln(
+                                        "warning,server",
+                                        "project file not found or outside project directory: $relativeUri"
+                                    )
+                                    call.respond(HttpStatusCode.NotFound, "File not found in project directory")
+                                }
+                            }
+                        }
+
+                        route("/local") {
+                            get("{...}") {
+                                lprintln("debug,server", "routing /local dynamically ${call.request.uri}")
+                                // Obtain the full request URI, strip any query or fragment, and remove the "/local" prefix
+                                val fullUri = call.request.uri
+                                val pathOnly = URI(fullUri).path
+                                val relativeUri = pathOnly.removePrefix("/local/")
+
+                                // Check the dynamic mappings for a matching prefix
+                                val match = dynamicRoutes.getRoutes().entries.filter { relativeUri.startsWith(it.key) }
+                                    .maxByOrNull { it.key.length } // use longest match if overlapping
+
+                                if (match != null) {
+                                    // Remove the mapping prefix to get the file's relative path
+                                    val fileRelativePath = relativeUri.removePrefix(match.key)
+                                    val file = File(match.value, fileRelativePath)
+                                    if (file.exists() && file.isFile) {
+                                        call.respondFile(file)
+                                        return@get
+                                    } else {
+                                        lprintln("warning,server", "route found but missing file $fileRelativePath")
+                                        call.respond(HttpStatusCode.NotFound, "File '${file}' not found")
+                                        return@get
+                                    }
+                                }
+                                lprintln(
+                                    "warning,server",
+                                    "failed to find route for $fullUri; checked ${dynamicRoutes.getRoutes().entries}"
+                                )
+                                call.respond(HttpStatusCode.NotFound, "No dynamic route for $fullUri")
+                            }
                         }
                     }
-                }
 
                 }
             }
@@ -2882,7 +3009,10 @@ class Server {
                     ourServer.start(wait = false)
                     started = true
                     if (offset > 0) {
-                        lprintln("warning,server", "Requested port ${preferredPort} was unavailable; using fallback port ${candidatePort}")
+                        lprintln(
+                            "warning,server",
+                            "Requested port ${preferredPort} was unavailable; using fallback port ${candidatePort}"
+                        )
                     }
                     break
                 } catch (t: Throwable) {
@@ -2893,7 +3023,8 @@ class Server {
             }
 
             if (!started) {
-                throw bindFailure ?: IllegalStateException("Unable to bind Field server to any port in range ${preferredPort}..${preferredPort + portFallbackCount - 1}")
+                throw bindFailure
+                    ?: IllegalStateException("Unable to bind Field server to any port in range ${preferredPort}..${preferredPort + portFallbackCount - 1}")
             }
 
             globalServerPort = port
@@ -2906,8 +3037,7 @@ class Server {
 
             if (preferSystemBrowser) {
 //                    thread { openSystemBrowser(initialURL) }
-            }
-            else {
+            } else {
                 thread {
                     Playwright.create().let { pw ->
                         globalPlaywright = pw

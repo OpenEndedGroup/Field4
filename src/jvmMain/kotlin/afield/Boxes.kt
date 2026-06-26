@@ -138,6 +138,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             val (accessor, counterName, counterAccessor) = if (property == "children") {
                 Triple(::children, "parents", to::parents)
             } else {
+                @Suppress("UNCHECKED_CAST")
                 Triple({ to.getPropertyRaw(property) as MutableSet<Box> }, null, null)
             }
 
@@ -166,6 +167,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
         val (accessor, counterName, counterAccessor) = if (property == "children") {
             Triple(::children, "parents", to::parents)
         } else {
+            @Suppress("UNCHECKED_CAST")
             Triple({ to.getPropertyRaw(property) as MutableSet<Box> }, null, null)
         }
 
@@ -413,7 +415,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
 
             actionTable["-un-nest"] = { boxes ->
                 val targets = boxes.filter { it.nestedIn != null }
-                targets.forEach {child ->
+                targets.forEach { child ->
 //                    child.nestedIn?.let {
 //                        val parentWas = it
 //                        parentWas.nested.remove(child)
@@ -461,6 +463,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                 var names = ""
                 notify("Checking for updates from '${defaultUpdateUrl}'", "update")
                 val session = thisSession.get()
+                @OptIn(DelicateCoroutinesApi::class)
                 GlobalScope.launch(Dispatchers.IO) {
                     val ui = fetchUpdateInfo()
                     thisSession.set(session)
@@ -609,7 +612,10 @@ fun doResync() {
 
             "actions" -> {
                 val actionList = box.gather<MutableMap<String, Action>>("actions").entries.map { it.key to it.value }
-                lprintln("debug,boxes", "actions for ${box.id}: are ${actionList.map { it.first }} ${actionList.map { it.second.desc }}}")
+                lprintln(
+                    "debug,boxes",
+                    "actions for ${box.id}: are ${actionList.map { it.first }} ${actionList.map { it.second.desc }}}"
+                )
 
                 message = Message("describe-action").payload(
                     Describe_actions(
@@ -633,6 +639,7 @@ fun doResync() {
                         }
                         Message("set-string").payload(Set_string(box.id, name, value))
                     }
+
                     is Number -> Message("set-number").payload(Set_number(box.id, name, value.toDouble()))
                     is Boolean -> Message("set-boolean").payload(Set_boolean(box.id, name, value))
                     is Map<*, *> -> {
@@ -643,12 +650,18 @@ fun doResync() {
                                 // Validate all keys are strings and values are Rect
                                 val isValid = value.keys.all { it is String } && value.values.all { it is Rect }
                                 if (!isValid) {
-                                    lprintln("warning,boxes", "layerFrames property has invalid types - expected Map<String, Rect>")
+                                    lprintln(
+                                        "warning,boxes",
+                                        "layerFrames property has invalid types - expected Map<String, Rect>"
+                                    )
                                     null
                                 } else {
                                     @Suppress("UNCHECKED_CAST")
                                     val mapValue = value as Map<String, Rect>
-                                    val jsonString = Json.encodeToString(MapSerializer(String.serializer(), Rect.serializer()), mapValue)
+                                    val jsonString = Json.encodeToString(
+                                        MapSerializer(String.serializer(), Rect.serializer()),
+                                        mapValue
+                                    )
                                     Message("set-string").payload(Set_string(box.id, name, jsonString))
                                 }
                             } catch (e: Exception) {
@@ -660,8 +673,12 @@ fun doResync() {
                             null
                         }
                     }
+
                     else -> {
-                        lprintln("warning,boxes", "trying to resync something that can't be resync'd -- unknown value type $value ${value.javaClass}")
+                        lprintln(
+                            "warning,boxes",
+                            "trying to resync something that can't be resync'd -- unknown value type $value ${value.javaClass}"
+                        )
                         null
                     }
                 }
@@ -847,7 +864,10 @@ fun makeKI(box: Box, reason: String = "makeKI call"): KotlinScriptEngine {
 //                        t.printStackTrace()
 //                        box.preamble = ""
 //                    }
-                    lprintln("info,ki,startup", "complete #$startupId box=${box.kotlinStartupLabel()} box is no longer offline")
+                    lprintln(
+                        "info,ki,startup",
+                        "complete #$startupId box=${box.kotlinStartupLabel()} box is no longer offline"
+                    )
                     box.offline = false
                     si?.topologyGeneration++
                 }
@@ -922,6 +942,7 @@ fun <T : MutableMap<String, *>> Box.gather(name: String): T {
     visitParents {
         val m = it.getPropertyRaw(name)
         if (m != null) {
+            @Suppress("UNCHECKED_CAST")
             all.add(m as MutableMap<String, *>)
         }
     }
@@ -929,6 +950,7 @@ fun <T : MutableMap<String, *>> Box.gather(name: String): T {
     all.reversed().forEach {
         together.putAll(it)
     }
+    @Suppress("UNCHECKED_CAST")
     return together as T
 }
 

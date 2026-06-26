@@ -1,3 +1,5 @@
+@file:OptIn(DelicateCoroutinesApi::class)
+
 package afield.examples
 
 import afield.Box
@@ -8,6 +10,7 @@ import afield.notify
 import afield.slideShow
 import afield.stdlib.action
 import afield.stdlib.actions
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
@@ -92,7 +95,8 @@ fun Box.exampleSlideShow() {
                 **Click the links below to navigate:**
 
                 [[start:Start the tour →]] · [[home:🏠 Home]]
-                """.trimIndent(), animated = true)
+                """.trimIndent(), animated = true
+            )
 
             selectBox(welcomeBox, property = "code")
         }
@@ -185,7 +189,7 @@ fun Box.exampleSlideShow() {
             selectBox(welcomeBox, property = "code")
 
             onEnter {
-                lprintln("info,slideshow","User completed the tour!")
+                lprintln("info,slideshow", "User completed the tour!")
             }
         }
     }
@@ -300,19 +304,20 @@ fun Box.slideShowWithImagesExample() {
  */
 fun Box.installSlideShowControls() {
     // Add actions to control the slideshow
-    this.actions["▶ Start Slideshow"] = action(desc="▶ Start Slideshow", detail = "Start the slideshow associated with this box") {
-        GlobalScope.launch {
-            this@installSlideShowControls.slideShow?.start()
+    this.actions["▶ Start Slideshow"] =
+        action(desc = "▶ Start Slideshow", detail = "Start the slideshow associated with this box") {
+            GlobalScope.launch {
+                this@installSlideShowControls.slideShow?.start()
+            }
         }
-    }
 
-    this.actions["→ Next Step"] = action(desc="→ Next Step", detail = "Advance slide show forwards") {
+    this.actions["→ Next Step"] = action(desc = "→ Next Step", detail = "Advance slide show forwards") {
         GlobalScope.launch {
             this@installSlideShowControls.slideShow?.next()
         }
     }
 
-    this.actions["← Previous Step"] = action(desc="← Previous Step", detail = "Go back one slide") {
+    this.actions["← Previous Step"] = action(desc = "← Previous Step", detail = "Go back one slide") {
         GlobalScope.launch {
             this@installSlideShowControls.slideShow?.previous()
         }
@@ -532,7 +537,7 @@ fun Box.interactiveGuideExample() {
                 """
                 ### Per-slide live chat (Markdown)
                 Open the chat pane to ask questions while staying on this slide.
-                
+
                 This chat is specific to this slideshow instance.
 
                 [[back]] [[next]]
@@ -548,7 +553,7 @@ fun Box.interactiveGuideExample() {
                 ### Shared chat across template instances
                 Use `withChat(id = "templateId")` to create a shared discussion space
                 across all boxes created from the same template.
-                
+
                 This is useful for:
                 - Collaborative learning materials
                 - Shared project discussions
@@ -633,4 +638,3 @@ fun Box.interactiveGuideExample() {
         show.start()
     }
 }
-

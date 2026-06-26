@@ -266,7 +266,7 @@ object CommentCommandRewriter {
                 }
             } else {
                 val closer = fenceOpenerOrCloser(raw)
-                if (closer != null && fenceMarker != null && closer[0] == fenceMarker!![0]) {
+                if (closer != null && fenceMarker != null && closer[0] == fenceMarker[0]) {
                     inFence = false; fenceMarker = null
                 }
                 out.append(raw)
@@ -644,7 +644,7 @@ suspend fun Window.raiseAndScreenshot(
     Thread.sleep(500)
     captureGlfwWindow(windowHandle) { x, y, w, h ->
         val proc = ProcessBuilder(
-            "screencapture", "-x", "-R", "$x,$y,$w,$h", outPath.toString()
+            "screencapture", "-x", "-R", "$x,$y,$w,$h", outPath
         ).redirectErrorStream(true).start()
         val code = proc.waitFor()
         require(code == 0) { "screencapture failed (exit $code): ${proc.inputStream.bufferedReader().readText()}" }
@@ -754,9 +754,11 @@ suspend fun runProcessLogged(
 
     // Non-blocking wait for process exit
     val exit = suspendCancellableCoroutine<Int> { cont ->
+        @Suppress("DEPRECATION")
         p.onExit().thenAccept { cont.resume(it.exitValue()) {} }
         cont.invokeOnCancellation {
             runCatching { p.destroy() }
+            @OptIn(DelicateCoroutinesApi::class)
             GlobalScope.launch(Dispatchers.IO) {
                 delay(200)
                 if (p.isAlive) runCatching { p.destroyForcibly() }

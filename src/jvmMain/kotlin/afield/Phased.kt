@@ -275,7 +275,6 @@ class Framer : CoroutineDispatcher() {
     }
 
 
-
     @OptIn(ExperimentalAtomicApi::class)
     fun frame(): Int {
         val currentList = synchronized(queueLock) {
@@ -327,9 +326,15 @@ class GeneratorScope<In, Out>(
             onYield(value, cont)
         }
 
+    /**
+     * Convenience `yield()` without value — yields `true`.
+     * Only valid for generators whose output type is `Boolean`;
+     * any other output type will fail at runtime with a ClassCastException.
+     */
+    @Suppress("UNCHECKED_CAST")
     suspend fun yield(): In =
         suspendCoroutine { cont: Continuation<In> ->
-            onYield(true as Out, cont) // dies if we aren't Generator<In, Boolean>
+            onYield(true as Out, cont)
         }
 }
 
@@ -356,11 +361,11 @@ class Generator<In, Out> internal constructor(
     private var pendingOutput: Out? = null
     private var waitingContinuation: Continuation<In>? = null
 
-    companion object
-    {
+    companion object {
         @OptIn(ExperimentalAtomicApi::class)
-        val isMain : AtomicBoolean = AtomicBoolean(false)
+        val isMain: AtomicBoolean = AtomicBoolean(false)
     }
+
     /**
      * Starts the coroutine and runs until the first `yield`.
      * Returns the first yielded value, or null if the generator completed
@@ -422,7 +427,8 @@ class Generator<In, Out> internal constructor(
  * Inside the block you can:
  *   val input: In = yield(out)
  */
-@JvmName("generator_2") fun <In, Out> generator2(
+@JvmName("generator_2")
+fun <In, Out> generator2(
     block: suspend GeneratorScope<In, Out>.() -> Unit
 ): Generator<In, Out> = Generator(block)
 
@@ -430,7 +436,8 @@ class Generator<In, Out> internal constructor(
  * Convenience overload when you don't need to send inputs.
  * Input type is `Unit`, so `yield(out)` just returns `Unit`.
  */
-@JvmName("generator_1") fun <Out> generator(
+@JvmName("generator_1")
+fun <Out> generator(
     block: suspend GeneratorScope<Unit, Out>.() -> Unit
 ): Generator<Unit, Out> = Generator(block)
 
@@ -504,7 +511,7 @@ fun <In, Out, Out2> Generator<In, Out>.map(m: (Out) -> (Out2)) = generator2<In, 
     }
 }
 
-infix fun <In, Out, Out2> Generator<In, Out>.pipe(g : Generator<Out, Out2>) = generator2<In, Out2> {
+infix fun <In, Out, Out2> Generator<In, Out>.pipe(g: Generator<Out, Out2>) = generator2<In, Out2> {
     var a: Out? = this@pipe.start() ?: return@generator2
     val b: Out2 = g.start() ?: return@generator2
 

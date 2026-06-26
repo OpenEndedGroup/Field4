@@ -84,21 +84,21 @@ object GraphConnectivitySmokeTest {
             vec(1.0, 1.0),
             vec(0.5, 0.5)
         )
-        
+
         val graph = vec2KnnGraph(points, k = 2)
-        
+
         require(graph.pointCount == 5) { "Expected 5 points, got ${graph.pointCount}" }
         require(graph.edges.isNotEmpty()) { "KNN graph should have edges" }
-        
+
         // Each point should have approximately k neighbors (edges are undirected)
         for (i in 0 until graph.pointCount) {
             val degree = graph.degree(i)
             require(degree >= 1) { "Point $i has degree $degree, expected at least 1" }
         }
-        
+
         // All edges should have positive weights
         require(graph.edges.all { it.weight > 0.0 }) { "All edges should have positive weights" }
-        
+
         println("  ✓ 2D KNN graph test passed")
     }
 
@@ -111,15 +111,15 @@ object GraphConnectivitySmokeTest {
                 rnd.nextDouble(-10.0, 10.0)
             )
         }
-        
+
         val graph = vec3KnnGraph(points, k = 3)
-        
+
         require(graph.pointCount == 20) { "Expected 20 points, got ${graph.pointCount}" }
         require(graph.edges.isNotEmpty()) { "KNN graph should have edges" }
         require(graph.edges.all { it.weight > 0.0 && it.weight.isFinite() }) {
             "All edges should have positive, finite weights"
         }
-        
+
         println("  ✓ 3D KNN graph test passed")
     }
 
@@ -131,16 +131,16 @@ object GraphConnectivitySmokeTest {
             vec(1.0, -1.0),
             vec(-1.0, -1.0)
         )
-        
+
         val graph = vec2OrthantGraph(points)
-        
+
         require(graph.pointCount == 5) { "Expected 5 points" }
         require(graph.edges.isNotEmpty()) { "Orthant graph should have edges" }
-        
+
         // Center point should connect to all four orthants
         val centerDegree = graph.degree(0)
         require(centerDegree == 4) { "Center point should have 4 neighbors (one per orthant), got $centerDegree" }
-        
+
         println("  ✓ 2D Orthant graph test passed")
     }
 
@@ -156,16 +156,16 @@ object GraphConnectivitySmokeTest {
             vec(1.0, -1.0, -1.0),
             vec(-1.0, -1.0, -1.0)
         )
-        
+
         val graph = vec3OrthantGraph(points)
-        
+
         require(graph.pointCount == 9) { "Expected 9 points" }
         require(graph.edges.isNotEmpty()) { "Orthant graph should have edges" }
-        
+
         // Center point should connect to all eight octants
         val centerDegree = graph.degree(0)
         require(centerDegree == 8) { "Center point should have 8 neighbors (one per octant), got $centerDegree" }
-        
+
         println("  ✓ 3D Orthant graph test passed")
     }
 
@@ -176,16 +176,16 @@ object GraphConnectivitySmokeTest {
             vec(0.5, 0.5),
             vec(2.0, 0.0)
         )
-        
+
         val graph = vec2RelativeNeighborhoodGraph(points)
-        
+
         require(graph.pointCount == 4) { "Expected 4 points" }
         require(graph.edges.isNotEmpty()) { "RNG should have edges" }
-        
+
         // RNG should be a connected graph (or close to it)
         // At minimum, we should have some edges
         require(graph.edges.size >= 2) { "RNG should have at least 2 edges for 4 points" }
-        
+
         println("  ✓ 2D Relative Neighborhood graph test passed")
     }
 
@@ -196,12 +196,12 @@ object GraphConnectivitySmokeTest {
             vec(0.0, 1.0, 0.0),
             vec(0.0, 0.0, 1.0)
         )
-        
+
         val graph = vec3RelativeNeighborhoodGraph(points)
-        
+
         require(graph.pointCount == 4) { "Expected 4 points" }
         require(graph.edges.isNotEmpty()) { "RNG should have edges" }
-        
+
         println("  ✓ 3D Relative Neighborhood graph test passed")
     }
 
@@ -212,12 +212,12 @@ object GraphConnectivitySmokeTest {
             vec(0.0, 1.0),
             vec(1.0, 1.0)
         )
-        
+
         val graph = vec2GabrielGraph(points)
-        
+
         require(graph.pointCount == 4) { "Expected 4 points" }
         require(graph.edges.isNotEmpty()) { "Gabriel graph should have edges" }
-        
+
         val undirectedEdges = graph.edges
             .map { minOf(it.i, it.j) to maxOf(it.i, it.j) }
             .toSet()
@@ -229,7 +229,7 @@ object GraphConnectivitySmokeTest {
         require((0 to 2) in undirectedEdges) { "Expected square edge 0-2" }
         require((1 to 3) in undirectedEdges) { "Expected square edge 1-3" }
         require((2 to 3) in undirectedEdges) { "Expected square edge 2-3" }
-        
+
         println("  ✓ 2D Gabriel graph test passed")
     }
 
@@ -240,12 +240,12 @@ object GraphConnectivitySmokeTest {
             vec(0.0, 1.0, 0.0),
             vec(0.0, 0.0, 1.0)
         )
-        
+
         val graph = vec3GabrielGraph(points)
-        
+
         require(graph.pointCount == 4) { "Expected 4 points" }
         require(graph.edges.isNotEmpty()) { "Gabriel graph should have edges" }
-        
+
         println("  ✓ 3D Gabriel graph test passed")
     }
 
@@ -255,17 +255,17 @@ object GraphConnectivitySmokeTest {
             vec(1.0, 0.0),
             vec(0.0, 1.0)
         )
-        
+
         // Test beta = 1.0 (Gabriel graph)
         val gabriel = vec2BetaSkeleton(points, beta = 1.0)
         require(gabriel.pointCount == 3) { "Expected 3 points" }
         require(gabriel.edges.size == 3) { "Triangle should have 3 Gabriel edges" }
-        
+
         // Test beta = 2.0 (closer to RNG)
         val rng = vec2BetaSkeleton(points, beta = 2.0)
         require(rng.pointCount == 3) { "Expected 3 points" }
         require(rng.edges.isNotEmpty()) { "Beta-skeleton should have edges" }
-        
+
         println("  ✓ 2D Beta-skeleton test passed")
     }
 
@@ -276,12 +276,12 @@ object GraphConnectivitySmokeTest {
             vec(0.0, 1.0, 0.0),
             vec(0.0, 0.0, 1.0)
         )
-        
+
         val skeleton = vec3BetaSkeleton(points, beta = 1.0)
-        
+
         require(skeleton.pointCount == 4) { "Expected 4 points" }
         require(skeleton.edges.isNotEmpty()) { "Beta-skeleton should have edges" }
-        
+
         println("  ✓ 3D Beta-skeleton test passed")
     }
 
@@ -336,17 +336,17 @@ object GraphConnectivitySmokeTest {
             vec(2.0, 0.0),
             vec(10.0, 0.0)
         )
-        
+
         val graph = vec2MaximumDiameterGraph(points, maxDiameter = 1.5)
-        
+
         require(graph.pointCount == 4) { "Expected 4 points" }
-        
+
         // Should connect first 3 points (distances <= 1.5) but not the last one
         require(graph.edges.size == 2) { "Should have 2 edges (0-1, 1-2), got ${graph.edges.size}" }
         require(graph.edges.all { it.weight <= 1.5 + 1e-10 }) {
             "All edges should be within diameter"
         }
-        
+
         println("  ✓ 2D Maximum Diameter graph test passed")
     }
 
@@ -357,14 +357,14 @@ object GraphConnectivitySmokeTest {
             vec(0.0, 1.0, 0.0),
             vec(10.0, 10.0, 10.0)
         )
-        
+
         val graph = vec3MaximumDiameterGraph(points, maxDiameter = 2.0)
-        
+
         require(graph.pointCount == 4) { "Expected 4 points" }
         require(graph.edges.all { it.weight <= 2.0 + 1e-10 }) {
             "All edges should be within diameter"
         }
-        
+
         println("  ✓ 3D Maximum Diameter graph test passed")
     }
 
@@ -375,17 +375,17 @@ object GraphConnectivitySmokeTest {
             vec(0.0, 1.0),
             vec(1.0, 1.0)
         )
-        
+
         val nng = vec2NearestNeighborGraph(points)
-        
+
         require(nng.pointCount == 4) { "Expected 4 points" }
         require(nng.edges.isNotEmpty()) { "Nearest neighbor graph should have edges" }
-        
+
         // Each point connects to at least its nearest neighbor
         for (i in 0 until nng.pointCount) {
             require(nng.degree(i) >= 1) { "Each point should have at least 1 neighbor" }
         }
-        
+
         println("  ✓ 2D Nearest Neighbor graph test passed")
     }
 
@@ -396,12 +396,12 @@ object GraphConnectivitySmokeTest {
             vec(0.0, 1.0, 0.0),
             vec(0.0, 0.0, 1.0)
         )
-        
+
         val nng = vec3NearestNeighborGraph(points)
-        
+
         require(nng.pointCount == 4) { "Expected 4 points" }
         require(nng.edges.isNotEmpty()) { "Nearest neighbor graph should have edges" }
-        
+
         println("  ✓ 3D Nearest Neighbor graph test passed")
     }
 
@@ -434,12 +434,12 @@ object GraphConnectivitySmokeTest {
             vec(1.0, 0.0),
             vec(0.0, 1.0)
         )
-        
+
         val delaunay = vec2DelaunayGraph(points)
-        
+
         require(delaunay.pointCount == 3) { "Expected 3 points" }
         require(delaunay.edges.size == 3) { "Triangle Delaunay should have 3 edges" }
-        
+
         println("  ✓ 2D Delaunay graph test passed")
     }
 
@@ -450,16 +450,16 @@ object GraphConnectivitySmokeTest {
             vec(2.0, 0.0),
             vec(3.0, 0.0)
         )
-        
+
         val maxCut = vec2MaximumCutGraph(points)
-        
+
         require(maxCut.pointCount == 4) { "Expected 4 points" }
         require(maxCut.edges.isNotEmpty()) { "Max cut graph should have edges" }
-        
+
         // Should partition into two sets and connect between them
         // With 4 points in 2 partitions, we expect cross-partition edges
         require(maxCut.edges.size >= 2) { "Max cut should have at least some cross-partition edges" }
-        
+
         println("  ✓ 2D Maximum Cut graph test passed")
     }
 
@@ -470,12 +470,12 @@ object GraphConnectivitySmokeTest {
             vec(2.0, 0.0, 0.0),
             vec(3.0, 0.0, 0.0)
         )
-        
+
         val maxCut = vec3MaximumCutGraph(points)
-        
+
         require(maxCut.pointCount == 4) { "Expected 4 points" }
         require(maxCut.edges.isNotEmpty()) { "Max cut graph should have edges" }
-        
+
         println("  ✓ 3D Maximum Cut graph test passed")
     }
 
@@ -485,22 +485,22 @@ object GraphConnectivitySmokeTest {
             vec(1.0, 0.0),
             vec(0.0, 1.0)
         )
-        
+
         val complete = vec2CompleteGraph(points)
-        
+
         require(complete.pointCount == 3) { "Expected 3 points" }
-        
+
         // Complete graph with n points has n*(n-1)/2 edges
         val expectedEdges = 3 * 2 / 2
         require(complete.edges.size == expectedEdges) {
             "Complete graph of 3 points should have $expectedEdges edges, got ${complete.edges.size}"
         }
-        
+
         // All points should be fully connected
         for (i in 0 until complete.pointCount) {
             require(complete.degree(i) == 2) { "Each point in complete graph should have degree 2" }
         }
-        
+
         println("  ✓ 2D Complete graph test passed")
     }
 
@@ -511,16 +511,16 @@ object GraphConnectivitySmokeTest {
             vec(0.0, 1.0, 0.0),
             vec(0.0, 0.0, 1.0)
         )
-        
+
         val complete = vec3CompleteGraph(points)
-        
+
         require(complete.pointCount == 4) { "Expected 4 points" }
-        
+
         // Complete graph with 4 points has 6 edges
         require(complete.edges.size == 6) {
             "Complete graph of 4 points should have 6 edges, got ${complete.edges.size}"
         }
-        
+
         println("  ✓ 3D Complete graph test passed")
     }
 
@@ -530,19 +530,19 @@ object GraphConnectivitySmokeTest {
             vec(1.0, 0.0),
             vec(0.0, 1.0)
         )
-        
+
         val graph = vec2KnnGraph(points, k = 2)
-        
+
         // Test PointGraph methods
         val neighbors0 = graph.neighbors(0)
         require(neighbors0.isNotEmpty()) { "Point 0 should have neighbors" }
         require(neighbors0.all { it in 0 until graph.pointCount }) {
             "All neighbor indices should be valid"
         }
-        
+
         val degree0 = graph.degree(0)
         require(degree0 == neighbors0.size) { "Degree should match neighbors count" }
-        
+
         println("  ✓ Graph structure test passed")
     }
 
@@ -552,22 +552,22 @@ object GraphConnectivitySmokeTest {
             vec(1.0, 0.0),
             vec(0.0, 1.0)
         )
-        
+
         val graph = vec2MinimumSpanningTree(points)
-        
+
         // Edges should be symmetric: if (i,j) is in the graph, both points should see each other
         for (edge in graph.edges) {
             val neighbors_i = graph.neighbors(edge.i)
             val neighbors_j = graph.neighbors(edge.j)
-            
+
             require(edge.j in neighbors_i) {
-                "Edge (${ edge.i},${ edge.j}) exists but ${ edge.j} not in neighbors of ${ edge.i}"
+                "Edge (${edge.i},${edge.j}) exists but ${edge.j} not in neighbors of ${edge.i}"
             }
             require(edge.i in neighbors_j) {
-                "Edge (${ edge.i},${ edge.j}) exists but ${ edge.i} not in neighbors of ${ edge.j}"
+                "Edge (${edge.i},${edge.j}) exists but ${edge.i} not in neighbors of ${edge.j}"
             }
         }
-        
+
         println("  ✓ Edge symmetry test passed")
     }
 
@@ -578,18 +578,18 @@ object GraphConnectivitySmokeTest {
             vec(0.5, 1.0),
             vec(0.5, 0.5)
         )
-        
+
         val voronoi = vec2VoronoiDiagram(points)
-        
+
         require(voronoi.pointCount == 4) { "Expected 4 points" }
         require(voronoi.cells.isNotEmpty()) { "Voronoi diagram should have cells" }
-        
+
         // Each cell should have vertices
         for (cell in voronoi.cells) {
             require(cell.vertices.isNotEmpty()) { "Cell should have vertices" }
             require(cell.siteIndex in 0 until points.size) { "Site index should be valid" }
         }
-        
+
         println("  ✓ Voronoi diagram test passed")
     }
 
@@ -600,18 +600,18 @@ object GraphConnectivitySmokeTest {
             vec(0.0, 1.0),
             vec(1.0, 1.0)
         )
-        
+
         val delaunay = vec2DelaunayGraph(points)
-        
+
         require(delaunay.pointCount == 4) { "Expected 4 points" }
         require(delaunay.edges.isNotEmpty()) { "Delaunay graph should have edges" }
-        
+
         // Delaunay should have more edges than MST but fewer than complete
         val mst = vec2MinimumSpanningTree(points)
         require(delaunay.edges.size >= mst.edges.size) {
             "Delaunay should have at least as many edges as MST"
         }
-        
+
         println("  ✓ Delaunay triangulation test passed")
     }
 
@@ -622,11 +622,11 @@ object GraphConnectivitySmokeTest {
             vec(0.0, 1.0),
             vec(1.0, 1.0)
         )
-        
+
         val triangles = vec2DelaunayTriangles(points)
-        
+
         require(triangles.isNotEmpty()) { "Should have triangles" }
-        
+
         // Verify triangle indices are valid
         for ((i, j, k) in triangles) {
             require(i in 0 until points.size) { "Triangle vertex i out of bounds" }
@@ -634,7 +634,7 @@ object GraphConnectivitySmokeTest {
             require(k in 0 until points.size) { "Triangle vertex k out of bounds" }
             require(i != j && j != k && i != k) { "Triangle vertices should be distinct" }
         }
-        
+
         println("  ✓ Delaunay triangles test passed")
     }
 
@@ -646,13 +646,13 @@ object GraphConnectivitySmokeTest {
             vec(0.0, 1.0),
             vec(0.5, 0.5)  // Interior point
         )
-        
+
         val hull = vec2ConvexHull(points)
-        
+
         require(hull.hullPoints.size == 4) { "Square hull should have 4 vertices" }
         require(hull.hullIndices.size == 4) { "Should have 4 hull indices" }
         require(4 !in hull.hullIndices) { "Interior point should not be on hull" }
-        
+
         println("  ✓ Convex hull test passed")
     }
 
@@ -664,12 +664,12 @@ object GraphConnectivitySmokeTest {
             vec(0.0, 1.0),
             vec(0.5, 0.5)
         )
-        
+
         val hullGraph = vec2ConvexHullGraph(points)
-        
+
         require(hullGraph.pointCount == 5) { "Expected 5 points" }
         require(hullGraph.edges.size == 4) { "Square hull should have 4 edges" }
-        
+
         println("  ✓ Convex hull graph test passed")
     }
 
@@ -681,16 +681,16 @@ object GraphConnectivitySmokeTest {
             vec(0.0, 1.0),
             vec(0.5, 0.5)  // Interior point
         )
-        
+
         val projection = vec2HullProjectionGraph(points)
-        
+
         require(projection.pointCount == 5) { "Expected 5 points" }
         require(projection.edges.size == 1) { "Should have 1 edge from interior to hull" }
-        
+
         // The edge should connect point 4 (interior) to a hull point
         val edge = projection.edges[0]
         require(edge.i == 4 || edge.j == 4) { "Edge should involve interior point" }
-        
+
         println("  ✓ Hull projection graph test passed")
     }
 
@@ -700,18 +700,19 @@ object GraphConnectivitySmokeTest {
             vec(1.0, 0.0),
             vec(0.0, 1.0)
         )
-        
+
         // Manhattan distance metric
         val manhattanMetric: (Int, Int, List<*>) -> Double = { i, j, pts ->
+            @Suppress("UNCHECKED_CAST")
             val p = pts as List<Vec2>
             abs(p[i].x - p[j].x).toDouble() + abs(p[i].y - p[j].y).toDouble()
         }
-        
+
         val options = GraphConnectivityOptions(customDistanceMetric = manhattanMetric)
         val knn = vec2KnnGraph(points, k = 1, options)
-        
+
         require(knn.edges.isNotEmpty()) { "KNN with custom metric should have edges" }
-        
+
         // With Manhattan distance, distances should match
         for (edge in knn.edges) {
             val p1 = points[edge.i]
@@ -719,7 +720,7 @@ object GraphConnectivitySmokeTest {
             val expectedDist = abs(p1.x - p2.x).toDouble() + abs(p1.y - p2.y).toDouble()
             assertClose("Custom metric distance", edge.weight, expectedDist, 1e-9)
         }
-        
+
         println("  ✓ Custom distance metric test passed")
     }
 

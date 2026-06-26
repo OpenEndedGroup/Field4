@@ -30,6 +30,7 @@ class Runloop {
     companion object {
         val runLoop = Runloop()
         val miscPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() + 2)
+
         @Volatile
         var mainThread: Thread? = null
 
@@ -95,6 +96,7 @@ class RateLimiter(
 
     operator fun invoke(block: () -> Unit) = submit(block)
 
+    @OptIn(DelicateCoroutinesApi::class)
     private fun schedule(block: () -> Unit, executeAt: Long) {
         val delayMs = max(0, executeAt - System.currentTimeMillis())
         job = GlobalScope.launch {
