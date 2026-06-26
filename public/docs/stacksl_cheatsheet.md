@@ -21,6 +21,7 @@ Stack signatures use `a b -- c`, where the top of stack is on the right. If a wo
 | --- | --- | --- |
 | `?name` | host GLSL value | read an existing host-side GLSL `vec4`, for example `?pc.foo` or `?pc.inData.p[idx].posvel.Z`. |
 | `[x]`, `[x,y]`, `[x,y,z]`, `[x,y,z,w]` | vector literal | bracketed vector literal; missing z/w use StackSL's usual `0,1` fillers. |
+| `[3x,2y,2z,0x]` | stack selector | build a vector from stack-indexed swizzles; `0` is top of stack, so this consumes four values. Compact swizzles such as `[2yz]` are also valid. |
 | `black`, `blue`, `cyan`, `gray`, `green`, `grey`, `magenta`, `orange`, `red`, `white`, `yellow` | named color | RGBA colors. |
 | `e`, `pi`, `tau` | scalar constant | splatted to all four channels. |
 | `hash`, `h` | `vec4(hash)` | third coordinate or per-pixel seed from `stack_in.z`. |
@@ -119,8 +120,8 @@ Examples: `0.4c2`, `0.4s3q8`, `p length |pulse8d0.15q4`, `p ]fbm5q8`, `prev xy ]
 | `fract` | `a -- b` | fractional part. |
 | `inversesqrt` | `a -- b` | inverse square root. |
 | `log` | `a -- b` | natural log. |
-| `max` | `a b -- c` | binary max; with one explicit value, reduce RGBA. |
-| `min` | `a b -- c` | binary min; with one explicit value, reduce RGBA. |
+| `max` | `a b -- c` | GLSL-style binary max. Use `max.1` or `vmax` to reduce RGBA channels. |
+| `min` | `a b -- c` | GLSL-style binary min. Use `min.1` or `vmin` to reduce RGBA channels. |
 | `mix`, `lerp` | `a b t -- c` | raw GLSL mix; `t` is not clamped. |
 | `mix.c`, `lerp.c` | `a b t -- c` | mix with `t` hard-clamped to `0..1`. |
 | `mix.sc`, `lerp.sc` | `a b t -- c` | mix with `t` soft-clamped toward `0..1`. |
@@ -137,7 +138,7 @@ Examples: `0.4c2`, `0.4s3q8`, `p length |pulse8d0.15q4`, `p ]fbm5q8`, `prev xy ]
 | `step` | `edge x -- c` | GLSL step with defaults if needed. |
 | `tan` | `a -- b` | tangent. |
 
-Arity variants use `word.N` for explicit consumption and `word.all` for stack blasts where supported. Examples: `average.4`, `median.5`, `min.all`, `sort.all`.
+Arity variants use `word.N` for explicit consumption and `word.all` for stack blasts where supported. Examples: `average.4`, `median.5`, `min.1`, `min.all`, `sort.all`.
 
 ## Reducers and geometry
 
@@ -210,24 +211,15 @@ Arity variants use `word.N` for explicit consumption and `word.all` for stack bl
 | `mirror` | `a -- b` | `1 - abs(2*fract(a/2) - 1)`. |
 | `noise`, `perlin` | `coord -- s` | value noise from `coord.xy + coord.zw * 0.07`. |
 | `palette`, `cos-palette`, `cosine-palette` | `t a b c d -- color` | cosine palette `a + b*cos(t*c + d)`; one-value short form gives a useful default palette. |
-<<<<<<< HEAD
-| `posterize` | `value levels -- out` | `floor(clamp(x, 0, 1) * n + 0.5) / n`, where `n = max(floor(abs(levels)), 2) - 1`; short form uses `6`. |
-| `pulse` | `x center width -- mask` | `smoothstep(center - abs(width), center, x) - smoothstep(center, center + abs(width), x)`; with fewer than three values defaults to center `0.5`, width `0.08`. |
-| `ramp` | `x low high -- out` | `clamp((x - low) / max(abs(high - low), 0.00001), 0, 1)`. |
-| `sat`, `saturate`, `clamp` | `color -- color` | `clamp(color, 0, 1)`. |
-| `saturation`, `sat-color` | `color amount -- color` | `vec4(mix(vec3(luma), color.rgb, amount.x), color.a)`; short form amount defaults to `1`. |
-| `sigmoid` | `x amount -- out` | `1 / (1 + exp(-amount * (x - 0.5)))`; short form uses amount `8`. |
-| `smooth` | `x -- out` | `smoothstep(0, 1, x)`. |
-=======
+| `clamp` | `value low high -- out` | GLSL clamp; one-value short form clamps to `0..1`. |
 | `phacelle`, `directional-noise` | `point frequency offset normalization -- vec` | directional phasor noise; optionally consume a quoted pattern word before or after the arguments. |
 | `posterize` | `value levels -- out` | quantize normalized lanes to a level count; short form uses `6`. |
 | `pulse` | `x center width -- mask` | soft band around `center`; with fewer than three values defaults to center `0.5`, width `0.08`. |
 | `ramp` | `x low high -- out` | remap `low..high` into a clamped `0..1` ramp. |
-| `sat`, `saturate`, `clamp` | `color -- color` | clamp all channels to `0..1`. |
+| `sat`, `saturate` | `color -- color` | clamp all channels to `0..1`. |
 | `saturation`, `sat-color` | `color amount -- color` | adjust color saturation; short form amount defaults to `1`. |
 | `sigmoid` | `x amount -- out` | logistic S curve around `0.5`; short form uses amount `8`. |
 | `smooth` | `x -- out` | `smoothstep(0, 1, x)` as a one-word shaper. |
->>>>>>> acb0f2a479bb02d3abea1854ee866317867dcc68
 | `softplus` | `x amount -- out` | soft rectifier `log(1 + exp(k*x)) / k`; short form uses amount `4`. |
 | `threshold` | `x edge -- mask` | `step(edge, x)`; short form uses edge `0.5`. |
 | `tonemap` | `color -- color` | `vec4(max(color.rgb, 0) / (max(color.rgb, 0) + 1), color.a)`. |

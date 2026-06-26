@@ -84,6 +84,13 @@ Constructors consume scalar `.x` components from the stack:
 red hash vec4
 ```
 
+Stack-selector literals combine swizzles from multiple stack values. The index counts down from the top of stack, so `0` is the top value:
+
+```diffstatic {data-lang=stacksl}
+1 2 3 4 [3x,2x,1x,0x]  # vec4(1,2,3,4)
+uv prev [1xy,0zw]       # vec4(uv.xy, prev.zw)
+```
+
 ## FBM into a cosine palette
 
 This is the basic creative-coding move: distort coordinates, make a scalar field, then color it.
@@ -327,7 +334,7 @@ p length ]sh20q4 # top-of-stack as scalar driver, amount is 1
 
 Wave modifiers are `c`, `s`, `sq`, `saw`, `tri`, and `pulse`; pulse also supports duty with `d`, as in `0.5pulse3d0.2`. Sample-and-hold is `sh`: it hashes `floor(driver * frequency + phase)` and stays stable inside each bucket. Spatial/noisy modifiers are `sh`, `n`, `j`, `x`, `y`, `cx`, `cy`, `hash`, `rad`, `ang`, `wx`, `wy`, `wr`, `wa`, `grain`, `noise`, and `fbm`. Suffixes can be stacked left-to-right; each later suffix uses the previous suffix result as its driver. The `q` suffix quantizes that result, so `q8` gives eight levels.
 
-Reducers collapse a `vec4` to a scalar splatted back to `vec4`: `average`, `vmin`, `vmax`, and `median`. Bare `min`/`max` become reducers when there is only one explicit stack value; otherwise they remain binary GLSL min/max.
+Reducers collapse a `vec4` to a scalar splatted back to `vec4`: `average`, `vmin`, `vmax`, and `median`. Bare `min`/`max` are binary GLSL min/max; use `min.1`, `max.1`, `vmin`, or `vmax` when you want an RGBA channel reducer.
 
 ```diffstatic {data-lang=stacksl}
 prev

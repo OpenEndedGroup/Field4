@@ -111,6 +111,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         .concat(registerArityVariants("softplus", 1, 2, false))
         .concat(registerArityVariants("threshold", 1, 2, false))
         .concat(registerArityVariants("posterize", 1, 2, false))
+        .concat(registerArityVariants("clamp", 1, 3, false))
         .concat(registerArityVariants("bias", 1, 2, false))
         .concat(registerArityVariants("gain", 1, 2, false))
         .concat(registerArityVariants("band", 1, 3, false))
@@ -161,11 +162,13 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
     var numberSuffixRegex = new RegExp("^" + numberSource + "[trgba]$", "i");
     var numberRangeRegex = new RegExp("^" + numberSource + "_" + numberSource + "$", "i");
     var vecLiteralRegex = new RegExp("^\\[\\s*" + numberSource + "(?:\\s*,\\s*" + numberSource + "){0,3}\\s*\\]$", "i");
+    var stackSelectorLiteralRegex = /^\[\s*\d+[xyzwrgba]{1,4}(?:\s*,\s*\d+[xyzwrgba]{1,4}){0,3}\s*\]$/i;
     var numberModifierRegex = new RegExp("^" + numberSource + "(?:" + modifierUnitSource + ")+$", "i");
     var topModifierRegex = new RegExp("^[\\|\\]](?:" + modifierUnitSource + ")+$", "i");
     var swizzleRegex = /^\.?[xyzwrgba]{1,4}$/i;
     var numberRangeTokenRegex = new RegExp("(" + numberSource + ")(_)" + "(" + numberSource + ")");
     var vecLiteralTokenRegex = new RegExp("\\[\\s*" + numberSource + "(?:\\s*,\\s*" + numberSource + "){0,3}\\s*\\]", "i");
+    var stackSelectorLiteralTokenRegex = /\[\s*\d+[xyzwrgba]{1,4}(?:\s*,\s*\d+[xyzwrgba]{1,4}){0,3}\s*\]/i;
     var topModifierTokenRegex = new RegExp("([\\|\\]])(" + modifierSource + ")(" + numberSource + ")?(?:(p)(" + numberSource + "))?(?:(d)(" + numberSource + "))?(?=$|[\\s()#;])", "i");
     var numberModifierTokenRegex = new RegExp("(" + numberSource + ")(" + modifierSource + ")(" + numberSource + ")?(?:(p)(" + numberSource + "))?(?:(d)(" + numberSource + "))?(?=$|[\\s()#;])", "i");
     var stackedTopModifierTokenRegex = new RegExp("[\\|\\]](?:" + modifierUnitSource + "){2,}(?=$|[\\s()#;])", "i");
@@ -187,6 +190,19 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
     var localMarkMoveTokenRegex = new RegExp("(>)(?!(?:x|y|z|w)\\b)(" + localMarkNameSource + ")", "i");
     var localMarkReadTokenRegex = new RegExp("(<)(" + localMarkNameSource + ")");
 
+    function stackSelectorLiteralDepth(word) {
+        var text = String(word || "");
+        var body = text.slice(1, -1);
+        var parts = body.split(",");
+        var maxIndex = -1;
+        for (var i = 0; i < parts.length; i++) {
+            var match = /^\s*(\d+)[xyzwrgba]{1,4}\s*$/i.exec(parts[i]);
+            if (!match) return 0;
+            maxIndex = Math.max(maxIndex, parseInt(match[1], 10));
+        }
+        return maxIndex + 1;
+    }
+
     function wordSet(words) {
         var out = Object.create(null);
         words.forEach(function (word) { out[String(word).toLowerCase()] = true; });
@@ -200,7 +216,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         "len", "length", "len2", "length2", "len3", "length3", "len4", "length4",
         "luma", "sum", "prod", "product", "any", "all", "x+y", "xplusy", "xylen", "rgbnorm", "rgb-normalize",
         "average", "avg", "mean", "median", "med", "vmin", "minimum", "vmax", "maximum",
-        "sat", "saturate", "clamp", "mirror", "smooth", "repeat", "polar", "cart", "cartesian", "tonemap",
+        "sat", "saturate", "mirror", "smooth", "repeat", "polar", "cart", "cartesian", "tonemap",
         "ryb", "ryb2rgb", "from-ryb", "rgb2ryb", "to-ryb",
         "oklab", "oklab2rgb", "from-oklab", "rgb2oklab", "to-oklab",
         "noise", "perlin", "fbm", "not",
@@ -217,6 +233,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         return !!pushWordSet[word] ||
             externalReadRegex.test(word) ||
             vecLiteralRegex.test(word) ||
+            stackSelectorLiteralRegex.test(word) ||
             numberRegex.test(word) ||
             numberSuffixRegex.test(word) ||
             numberRangeRegex.test(word) ||
@@ -257,6 +274,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         var requestedAll = variant ? variant.all : false;
         if (!word || word === ":" || word === ";" || word === "|" || word === "]") return effect(0, 0);
         if (topModifierRegex.test(word)) return effect(1, 1);
+        if (stackSelectorLiteralRegex.test(word)) return effect(stackSelectorLiteralDepth(word), 1);
         if (isPushToken(word)) return effect(0, 1);
         if (swizzleRegex.test(word)) return effect(1, 1);
 
@@ -293,16 +311,19 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
         if (binaryWordSet[word]) return effect(2, 1);
         if (word === "min" || word === "max") {
             if (requestedAll || (requestedArity || 0) >= 3) return effect(blastCount(depth, requestedArity, requestedAll), 1);
-            return effect(requestedArity || (depth <= 2 ? 1 : 2), 1);
+            return effect(requestedArity || 2, 1);
         }
         if (word === "mix" || word === "lerp" || word === "mix.c" || word === "lerp.c" ||
             word === "mix.sc" || word === "lerp.sc" || word === "select" || word === "if") return effect(3, 1);
         if (word === "alpha" || word === "alpha.c" || word === "alpha.sc") return effect(3, 1);
         if (word === "step") return effect(2, 1);
         if (word === "smoothstep") return effect(3, 1);
-        if (word === "sigmoid" || word === "softplus" || word === "threshold" || word === "posterize" ||
+        if (word === "sigmoid" || word === "softplus" || word === "threshold" || word === "posterize" || word === "clamp" ||
             word === "bias" || word === "gain" || word === "tile" || word === "twist" ||
-            word === "spiral" || word === "kaleido" || word === "kaleidoscope") return requestedArity ? effect(requestedArity, 1) : dynamicEffect(depth, 2);
+            word === "spiral" || word === "kaleido" || word === "kaleidoscope") {
+            var fullArity = word === "clamp" ? 3 : 2;
+            return requestedArity ? effect(requestedArity, 1) : dynamicEffect(depth, fullArity);
+        }
         if (word === "band" || word === "ramp") return requestedArity ? effect(requestedArity, 1) : dynamicEffect(depth, 3);
         if (word === "pulse" || word === "fm" ||
             word === "ema" || word === "ema.c" || word === "ema.sc" ||
@@ -546,6 +567,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
     const STACKSL_NUMBER_SUFFIX_RE = new RegExp(`^${STACKSL_NUMBER_SOURCE}[trgba]$`, "i")
     const STACKSL_NUMBER_RANGE_RE = new RegExp(`^${STACKSL_NUMBER_SOURCE}_${STACKSL_NUMBER_SOURCE}$`, "i")
     const STACKSL_VEC_LITERAL_RE = new RegExp(`^\\[\\s*${STACKSL_NUMBER_SOURCE}(?:\\s*,\\s*${STACKSL_NUMBER_SOURCE}){0,3}\\s*\\]$`, "i")
+    const STACKSL_STACK_SELECTOR_LITERAL_RE = /^\[\s*\d+[xyzwrgba]{1,4}(?:\s*,\s*\d+[xyzwrgba]{1,4}){0,3}\s*\]$/i
     const STACKSL_NUMBER_MODIFIER_RE = new RegExp(`^${STACKSL_NUMBER_SOURCE}(?:${STACKSL_MODIFIER_UNIT_SOURCE})+$`, "i")
     const STACKSL_TOP_MODIFIER_RE = new RegExp(`^[\\|\\]](?:${STACKSL_MODIFIER_UNIT_SOURCE})+$`, "i")
     const STACKSL_SWIZZLE_RE = /^\.?[xyzwrgba]{1,4}$/i
@@ -577,7 +599,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             "len", "length", "len2", "length2", "len3", "length3", "len4", "length4",
             "luma", "sum", "prod", "product", "any", "all", "x+y", "xplusy", "xylen", "rgbnorm", "rgb-normalize",
             "average", "avg", "mean", "median", "med", "vmin", "minimum", "vmax", "maximum",
-            "sat", "saturate", "clamp", "mirror", "smooth", "repeat", "polar", "cart", "cartesian", "tonemap",
+            "sat", "saturate", "mirror", "smooth", "repeat", "polar", "cart", "cartesian", "tonemap",
             "ryb", "ryb2rgb", "from-ryb", "rgb2ryb", "to-ryb",
             "ryb.c", "ryb2rgb.c", "from-ryb.c", "rgb2ryb.c", "to-ryb.c",
             "oklab", "oklab2rgb", "from-oklab", "rgb2oklab", "to-oklab",
@@ -620,7 +642,6 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             ["xplusy", "x+y"],
             ["rgb-normalize", "rgbnorm"],
             ["saturate", "sat"],
-            ["clamp", "sat"],
             ["cartesian", "cart"],
             ["kaleidoscope", "kaleido"],
             ["perlin", "noise"],
@@ -736,6 +757,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             ["vmin", stackslDoc("vec -- scalar", "Minimum RGBA channel, splatted.")],
             ["vmax", stackslDoc("vec -- scalar", "Maximum RGBA channel, splatted.")],
             ["sat", stackslDoc("color -- color", "Clamp all channels to 0..1.")],
+            ["clamp", stackslDoc("value low high -- out", "GLSL clamp; short form clamps value to 0..1.")],
             ["mirror", stackslDoc("a -- out", "Triangle-wrap values into 0..1.")],
             ["smooth", stackslDoc("a -- out", "Apply smoothstep(0, 1, a).")],
             ["repeat", stackslDoc("a -- out", "Fractional repeat with fract(a).")],
@@ -851,6 +873,9 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             }
             if (STACKSL_VEC_LITERAL_RE.test(raw)) {
                     return stackslDoc("-- vec", "Push a numeric vec4 literal; one to four slots use vec word fill rules.")
+            }
+            if (STACKSL_STACK_SELECTOR_LITERAL_RE.test(raw)) {
+                    return stackslDoc("values -- vec", "Build a vec4 from stack-indexed swizzles; 0 is the top stack value.")
             }
             if (STACKSL_NUMBER_SUFFIX_RE.test(raw)) {
                     return stackslDoc("-- value", "Push a time-scaled or channel-weighted number.")
@@ -1224,6 +1249,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             return STACKSL_PUSH_WORDS.has(word) ||
                     STACKSL_EXTERNAL_READ_RE.test(word) ||
                     STACKSL_VEC_LITERAL_RE.test(word) ||
+                    STACKSL_STACK_SELECTOR_LITERAL_RE.test(word) ||
                     STACKSL_NUMBER_RE.test(word) ||
                     STACKSL_NUMBER_SUFFIX_RE.test(word) ||
                     STACKSL_NUMBER_RANGE_RE.test(word) ||
@@ -1245,6 +1271,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             if (word === ":" || word === ";") return stackslEffect(0, 0, "definition marker")
             if (word === "|" || word === "]") return stackslEffect(0, 0, "modifier prefix")
             if (STACKSL_TOP_MODIFIER_RE.test(raw)) return stackslEffect(1, 1, raw.startsWith("]") ? "driven modifier" : "top modifier")
+            if (STACKSL_STACK_SELECTOR_LITERAL_RE.test(raw)) return stackslEffect(stackSelectorLiteralDepth(raw), 1, "stack selector")
             if (isStackSLPushToken(raw)) return stackslEffect(0, 1, "push")
             if (STACKSL_SWIZZLE_RE.test(raw)) return stackslEffect(1, 1, "swizzle")
             if (STACKSL_EXTERNAL_WRITE_RE.test(rawWord || "")) return stackslEffect(1, 0, "host write")
@@ -1286,7 +1313,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
                     if (requestedAll || (requestedArity || 0) >= 3) return stackslEffect(blastCount(depth, requestedArity, requestedAll), 1, "stack blast")
                     return requestedArity
                             ? stackslEffect(requestedArity, 1, requestedArity === 1 ? "reduce top" : "")
-                            : depth <= 2 ? stackslEffect(1, 1, "reduce top") : stackslEffect(2, 1)
+                            : stackslEffect(2, 1)
             }
             if (word === "mix" || word === "lerp" || word === "mix.c" || word === "lerp.c" ||
             word === "mix.sc" || word === "lerp.sc" || word === "select" || word === "if") return stackslEffect(3, 1)
@@ -1297,6 +1324,9 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
                     word === "bias" || word === "gain" || word === "tile" || word === "twist" ||
                     word === "spiral" || word === "kaleido" || word === "kaleidoscope") {
                     return requestedArity ? stackslEffect(requestedArity, 1, requestedArity < 2 ? "trailing defaults" : "") : dynamicStackSLEffect(depth, 2, "short form")
+            }
+            if (word === "clamp") {
+                    return requestedArity ? stackslEffect(requestedArity, 1, requestedArity < 3 ? "trailing defaults" : "") : dynamicStackSLEffect(depth, 3, "short form")
             }
             if (word === "band" || word === "ramp") {
                     return requestedArity ? stackslEffect(requestedArity, 1, requestedArity < 3 ? "trailing defaults" : "") : dynamicStackSLEffect(depth, 3, "short form")
@@ -1613,10 +1643,20 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             if (typeof editor.addAction === "function") editor.addAction(action)
 
             const schedule = () => setTimeout(() => updateStackSLFlowLens(editor), 0)
+            const scheduleDiagnostics = () => setTimeout(() => updateStackSLDiagnostics(editor), 0)
             editor.onDidChangeCursorPosition(schedule)
-            editor.onDidChangeModelContent(schedule)
-            if (typeof editor.onDidChangeModel === "function") editor.onDidChangeModel(schedule)
+            editor.onDidChangeModelContent(() => {
+                    schedule()
+                    scheduleDiagnostics()
+            })
+            if (typeof editor.onDidChangeModel === "function") {
+                    editor.onDidChangeModel(() => {
+                            schedule()
+                            scheduleDiagnostics()
+                    })
+            }
             if (typeof editor.onDidFocusEditorText === "function") editor.onDidFocusEditorText(schedule)
+            scheduleDiagnostics()
     }
 
     window.installStackSLFlowLens = installStackSLFlowLens
@@ -1638,6 +1678,109 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
                     underflows += applied.missing
             }
             return { depth, underflows, localMarks }
+    }
+
+    const analyzeStackSLWarnings = (tokens, initialDepth, definitionWords, label) => {
+            let depth = initialDepth
+            const localMarks = new Set()
+            const warnings = []
+            for (const token of tokens) {
+                    const effect = stackSLEffectForWord(token.text, depth, definitionWords, localMarks)
+                    const applied = applyStackSLEffectToDepth(depth, effect)
+                    if (applied.missing > 0) {
+                            warnings.push({
+                                    token,
+                                    message: `StackSL ${label}: '${token.text}' needs ${effect.consume} value${effect.consume === 1 ? "" : "s"} but stack has ${depth}; Field will fill or wrap defaults.`,
+                            })
+                    }
+                    const raw = String(token.text || "").toLowerCase()
+                    const copyName = stackSLLocalMarkName(raw, STACKSL_LOCAL_MARK_COPY_RE)
+                    const moveName = STACKSL_LOCAL_MARK_MOVE_RESERVED_RE.test(raw) ? null : stackSLLocalMarkName(raw, STACKSL_LOCAL_MARK_MOVE_RE)
+                    if (copyName) localMarks.add(copyName)
+                    if (moveName) localMarks.add(moveName)
+                    depth = applied.depth
+            }
+
+            const explicitValues = depth - initialDepth
+            if (explicitValues >= 2) {
+                    warnings.push({
+                            token: tokens[tokens.length - 1] || null,
+                            message: `StackSL ${label}: leaves ${explicitValues} explicit values on the stack; only the top value is returned.`,
+                    })
+            }
+            return warnings
+    }
+
+    const stackSLMarkerRange = (model, token) => {
+            if (token) {
+                    const start = model.getPositionAt(token.start)
+                    const end = model.getPositionAt(Math.max(token.start + 1, token.end))
+                    return {
+                            startLineNumber: start.lineNumber,
+                            startColumn: start.column,
+                            endLineNumber: end.lineNumber,
+                            endColumn: end.column,
+                    }
+            }
+            const line = Math.max(1, model.getLineCount ? model.getLineCount() : 1)
+            const maxColumn = model.getLineMaxColumn ? model.getLineMaxColumn(line) : 1
+            return {
+                    startLineNumber: line,
+                    startColumn: Math.max(1, maxColumn - 1),
+                    endLineNumber: line,
+                    endColumn: maxColumn,
+            }
+    }
+
+    const stackSLWarningsForSource = (source, baseOffset, basePosition, labelPrefix) => {
+            const tokens = tokenizeStackSLForContext(source, baseOffset, basePosition)
+            const parsed = parseStackSLDefinitionsForContext(tokens)
+            const warnings = []
+            for (const definition of parsed.definitions) {
+                    warnings.push(...analyzeStackSLWarnings(definition.body, 1, parsed.definitionWords, `${labelPrefix}:${definition.name.text}`))
+            }
+            warnings.push(...analyzeStackSLWarnings(parsed.root, 1, parsed.definitionWords, `${labelPrefix}:root`))
+            return warnings
+    }
+
+    const updateStackSLDiagnostics = (editor) => {
+            const monacoApi = window.globalMonaco || window.monaco || monaco
+            const model = editor && editor.getModel && editor.getModel()
+            if (!monacoApi || !monacoApi.editor || !model) return
+
+            const markers = []
+            const language = model.getLanguageId && model.getLanguageId()
+            if (language === "stacksl") {
+                    const base = model.getPositionAt(0)
+                    const warnings = stackSLWarningsForSource(model.getValue(), 0, { lineNumber: base.lineNumber, column: base.column }, "model")
+                    for (const warning of warnings) {
+                            markers.push({
+                                    severity: monacoApi.MarkerSeverity.Warning,
+                                    message: warning.message,
+                                    source: "StackSL",
+                                    ...stackSLMarkerRange(model, warning.token),
+                            })
+                    }
+            } else if (language === "kotlin") {
+                    for (const region of findStackSLEmbeddedRegions(model)) {
+                            const base = model.getPositionAt(region.bodyStart)
+                            const warnings = stackSLWarningsForSource(
+                                    region.source,
+                                    region.bodyStart,
+                                    { lineNumber: base.lineNumber, column: base.column },
+                                    "embedded"
+                            )
+                            for (const warning of warnings) {
+                                    markers.push({
+                                            severity: monacoApi.MarkerSeverity.Warning,
+                                            message: warning.message,
+                                            source: "StackSL",
+                                            ...stackSLMarkerRange(model, warning.token),
+                                    })
+                            }
+                    }
+            }
+            monacoApi.editor.setModelMarkers(model, "stacksl-diagnostics", markers)
     }
 
     const formatStackSLRelativeDepth = (depth, initialDepth) => {
@@ -1806,6 +1949,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             if (STACKSL_LOCAL_MARK_COPY_RE.test(word) || STACKSL_LOCAL_MARK_READ_RE.test(word) ||
                     (STACKSL_LOCAL_MARK_MOVE_RE.test(word) && !STACKSL_LOCAL_MARK_MOVE_RESERVED_RE.test(word))) return "afield-stacksl-token-keyword"
             if (STACKSL_NUMBER_RANGE_RE.test(word)) return "afield-stacksl-token-number"
+            if (STACKSL_STACK_SELECTOR_LITERAL_RE.test(word)) return "afield-stacksl-token-variable"
             if (STACKSL_TOP_MODIFIER_RE.test(word) || STACKSL_NUMBER_MODIFIER_RE.test(word)) return "afield-stacksl-token-modifier"
             if (STACKSL_NUMBER_SUFFIX_RE.test(word) || STACKSL_NUMBER_RE.test(word)) return "afield-stacksl-token-number"
             if (word === "|" || word === "]") return "afield-stacksl-token-operator"
@@ -1884,20 +2028,34 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             ensureStackSLEmbeddedHighlight(editor)
 
             const schedule = () => setTimeout(() => updateStackSLEmbeddedHighlight(editor), 0)
-            editor.onDidChangeModelContent(schedule)
-            if (typeof editor.onDidChangeModel === "function") editor.onDidChangeModel(schedule)
+            const scheduleDiagnostics = () => setTimeout(() => updateStackSLDiagnostics(editor), 0)
+            editor.onDidChangeModelContent(() => {
+                    schedule()
+                    scheduleDiagnostics()
+            })
+            if (typeof editor.onDidChangeModel === "function") {
+                    editor.onDidChangeModel(() => {
+                            schedule()
+                            scheduleDiagnostics()
+                    })
+            }
             const monacoApi = window.globalMonaco || window.monaco || monaco
             if (monacoApi && monacoApi.editor && typeof monacoApi.editor.onDidChangeModelLanguage === "function") {
                     monacoApi.editor.onDidChangeModelLanguage((event) => {
                             const model = editor.getModel && editor.getModel()
-                            if (model && event && event.model === model) schedule()
+                            if (model && event && event.model === model) {
+                                    schedule()
+                                    scheduleDiagnostics()
+                            }
                     })
             }
             schedule()
+            scheduleDiagnostics()
     }
 
     window.installStackSLEmbeddedHighlight = installStackSLEmbeddedHighlight
     window.updateStackSLEmbeddedHighlight = updateStackSLEmbeddedHighlight
+    window.updateStackSLDiagnostics = updateStackSLDiagnostics
 
     monaco.languages.setMonarchTokensProvider(languageId, {
         tokenPostfix: ".stacksl",
@@ -1923,6 +2081,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
                 [localMarkMoveTokenRegex, ["keyword", "variable.predefined"]],
                 [/1-/, "operator"],
                 [vecLiteralTokenRegex, "number"],
+                [stackSelectorLiteralTokenRegex, "variable.predefined"],
                 [numberRangeTokenRegex, ["number", "operator.stacksl.range", "number"]],
                 [stackedTopModifierTokenRegex, "number.stacksl.modifier"],
                 [stackedNumberModifierTokenRegex, "number.stacksl.modifier"],

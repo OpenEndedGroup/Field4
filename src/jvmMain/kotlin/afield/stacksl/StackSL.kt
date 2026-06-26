@@ -405,6 +405,11 @@ private data class StackValue(
     val note: String
 )
 
+private data class StackSelectorComponent(
+    val stackIndex: Int,
+    val channel: Char
+)
+
 private data class StackSLWordReference(
     val word: String,
     val token: Token?
@@ -564,6 +569,11 @@ private class FunctionCompiler(
             return
         }
 
+        parseStackSelectorLiteral(raw)?.let {
+            push(stackSelectorLiteral(it, token))
+            return
+        }
+
         parseVecLiteral(raw)?.let {
             push(vecLiteral(it, token))
             return
@@ -679,8 +689,22 @@ private class FunctionCompiler(
                     push(expr("((${ref(a)} + ${ref(b)}) * vec4(0.5))", listOf(a, b), token, "$raw midpoint $index"))
                 }
             }
-            "sat", "saturate", "clamp" -> unary(token, "saturate") {
+            "sat", "saturate" -> unary(token, "saturate") {
                 "clamp(${ref(it)}, vec4(0.0), vec4(1.0))"
+            }
+            "clamp" -> {
+                val args = consumeArityArgs(
+                    token,
+                    raw,
+                    listOf(
+                        StackSLArg("value", "input"),
+                        StackSLArg("low", "vec4(0.0)"),
+                        StackSLArg("high", "vec4(1.0)")
+                    ),
+                    requestedArity ?: creativeArity(3)
+                ) ?: return
+                val (value, low, high) = args
+                push(expr("clamp(${ref(value)}, ${ref(low)}, ${ref(high)})", args, token, "clamp"))
             }
             "mirror" -> unary(token, "mirror") {
                 "(vec4(1.0) - abs(fract(${ref(it)} * 0.5) * 2.0 - vec4(1.0)))"
@@ -800,7 +824,7 @@ private class FunctionCompiler(
                     push(expr(blastReduceExpression(args, "min"), args, token, "$raw blast min"))
                     return
                 }
-                when (requestedArity ?: if (shouldReduceTop()) 1 else 2) {
+                when (requestedArity ?: 2) {
                     1 -> {
                         requiredHelpers += "reduce"
                         unary(token, "component min") { "vec4(${options.prefix}_min4(${ref(it)}))" }
@@ -819,7 +843,7 @@ private class FunctionCompiler(
                     push(expr(blastReduceExpression(args, "max"), args, token, "$raw blast max"))
                     return
                 }
-                when (requestedArity ?: if (shouldReduceTop()) 1 else 2) {
+                when (requestedArity ?: 2) {
                     1 -> {
                         requiredHelpers += "reduce"
                         unary(token, "component max") { "vec4(${options.prefix}_max4(${ref(it)}))" }
@@ -1829,6 +1853,25 @@ private class FunctionCompiler(
         return leaf(expression, token, "vec${values.size} literal")
     }
 
+    private fun stackSelectorLiteral(components: List<StackSelectorComponent>, token: Token): Int {
+        val maxIndex = components.maxOf { it.stackIndex }
+        val operands = popOperands(
+            token = token,
+            roles = (0..maxIndex).map { "stack selector $it" },
+            defaults = (0..maxIndex).map { "vec4(0.0)" }
+        )
+        val channels = components.map { selector ->
+            "${ref(operands[selector.stackIndex])}.${selector.channel}"
+        }
+        val expression = when (channels.size) {
+            1 -> "vec4(${channels[0]})"
+            2 -> "vec4(${channels[0]}, ${channels[1]}, 0.0, 1.0)"
+            3 -> "vec4(${channels[0]}, ${channels[1]}, ${channels[2]}, 1.0)"
+            else -> "vec4(${channels.joinToString(", ")})"
+        }
+        return expr(expression, operands.distinct(), token, "stack selector literal")
+    }
+
     private fun constructVec(token: Token, size: Int) {
         val parts = popOperands(
             token = token,
@@ -2319,6 +2362,7 @@ private val modifierNames = modifierAlternatives.split("|").sortedByDescending {
 private val leadingNumberRegex = Regex(numberPattern)
 private val numberRangeRegex = Regex("^($numberPattern)_($numberPattern)$", RegexOption.IGNORE_CASE)
 private val vecLiteralRegex = Regex("""^\[\s*($numberPattern)(?:\s*,\s*($numberPattern))?(?:\s*,\s*($numberPattern))?(?:\s*,\s*($numberPattern))?\s*]$""")
+private val stackSelectorLiteralPartRegex = Regex("""(\d+)([xyzwrgba]{1,4})""", RegexOption.IGNORE_CASE)
 private val defaultNumberRegex = Regex("""(?<![A-Za-z_])($numberPattern)(?![A-Za-z_])""")
 private val definitionNameRegex = Regex("""^[A-Za-z_][A-Za-z0-9_-]*$""")
 private val localMarkCopyRegex = Regex("""^=([A-Za-z_][A-Za-z0-9_-]*)$""")
@@ -2349,6 +2393,7 @@ private val stackSLArityVariantArities = mapOf(
     "softplus" to (1..2).toSet(),
     "threshold" to (1..2).toSet(),
     "posterize" to (1..2).toSet(),
+    "clamp" to (1..3).toSet(),
     "bias" to (1..2).toSet(),
     "gain" to (1..2).toSet(),
     "band" to (1..3).toSet(),
@@ -2411,6 +2456,23 @@ private fun parseVecLiteral(text: String): List<String>? {
         .drop(1)
         .filter { it.isNotEmpty() }
         .map(::normalizeFloat)
+}
+
+private fun parseStackSelectorLiteral(text: String): List<StackSelectorComponent>? {
+    if (!text.startsWith("[") || !text.endsWith("]")) return null
+    val body = text.drop(1).dropLast(1).trim()
+    if (body.isEmpty()) return null
+    val components = mutableListOf<StackSelectorComponent>()
+    for (part in body.split(",")) {
+        val trimmed = part.trim()
+        val match = stackSelectorLiteralPartRegex.matchEntire(trimmed) ?: return null
+        val stackIndex = match.groupValues[1].toIntOrNull() ?: return null
+        val swizzle = parseSwizzle(match.groupValues[2]) ?: return null
+        swizzle.forEach { channel ->
+            components += StackSelectorComponent(stackIndex, channel)
+        }
+    }
+    return components.takeIf { it.size in 1..4 }
 }
 
 private fun parseStackSLArityVariant(text: String): StackSLArityVariant? {

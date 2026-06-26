@@ -47,6 +47,7 @@ object StackSLSmokeTest {
             compilesFMChirpOperator()
             compilesBitGlitchOperators()
             compilesOneMinusOperator()
+            compilesGlslStyleMinMaxClampAndStackSelectors()
             compilesGeometryOperatorsAndVecLiterals()
             compilesShapingDomainAndVectorUtilityOperators()
             compilesNeighborhoodFieldOperators()
@@ -487,6 +488,27 @@ object StackSLSmokeTest {
 
         require(result.ok) { result.diagnostics.joinToString("\n") }
         require("(vec4(1.0) - " in result.glsl) { result.glsl }
+    }
+
+    private fun compilesGlslStyleMinMaxClampAndStackSelectors() {
+        val result = StackSLCompiler.compile(
+            """
+            1 2 max
+            3 min.1
+            +
+            0 0.25 1 clamp
+            +
+            10 20 30 40 [3x,2x,1x,0x]
+            +
+            """.trimIndent(),
+            StackSLCompileOptions(prefix = "glsl_edges")
+        )
+
+        require(result.ok) { result.diagnostics.joinToString("\n") }
+        require("max(vec4(1.0), vec4(2.0))" in result.glsl) { result.glsl }
+        require("glsl_edges_min4(vec4(3.0))" in result.glsl) { result.glsl }
+        require("clamp(vec4(0.0), vec4(0.25), vec4(1.0))" in result.glsl) { result.glsl }
+        require("vec4(vec4(10.0).x, vec4(20.0).x, vec4(30.0).x, vec4(40.0).x)" in result.glsl) { result.glsl }
     }
 
     private fun compilesGeometryOperatorsAndVecLiterals() {

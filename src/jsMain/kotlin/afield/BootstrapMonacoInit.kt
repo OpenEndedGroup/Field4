@@ -232,6 +232,9 @@ internal fun monacoApplyPropertySelection(monaco: dynamic, editor: dynamic, inde
         try {
             w.updateStackSLEmbeddedHighlight?.invoke(globalEditor)
         } catch (_: dynamic) {}
+        try {
+            w.updateStackSLDiagnostics?.invoke(globalEditor)
+        } catch (_: dynamic) {}
         globalEditor._domElement
             .querySelectorAll(".hoverlay")[0]
             .innerHTML = "$property <i>($lang)</i>"

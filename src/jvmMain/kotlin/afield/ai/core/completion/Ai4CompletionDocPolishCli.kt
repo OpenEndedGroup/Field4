@@ -1,6 +1,7 @@
 package afield.ai.core.completion
 
 import afield.ai.KotlinSourceIndex
+import afield.ai.OpenAiFileStoreCache
 import afield.ai.searchWorkspaceSymbols
 import afield.ai.core.AttachmentResponse
 import afield.ai.core.AgentMemoryState
@@ -64,6 +65,12 @@ data class ReplaceInFileResponse(
     val newContentChars: Int = 0
 )
 
+private data class CompletionDocCacheStatus(
+    val hasWork: Boolean,
+    val message: String,
+    val shouldRemoveIfNonDryRun: Boolean = false
+)
+
 fun main(args: Array<String>) {
     val options = parseOptions(args.toList()) ?: return
     val workspaceRoot = Paths.get("").toAbsolutePath().normalize()
@@ -78,6 +85,19 @@ fun main(args: Array<String>) {
         println("Dry run: patch/edit requests update an in-memory overlay only.")
         println("Dry-run patch: ${diffFile.absolutePathString()}")
     }
+
+    val cacheStatus = completionDocCacheStatus(cacheFile)
+    if (!cacheStatus.hasWork) {
+        println("No generated completion docs to polish: ${cacheStatus.message}")
+        if (options.dryRun) {
+            Files.deleteIfExists(diffFile)
+            println("Dry-run patch: no changes proposed.")
+        } else if (cacheStatus.shouldRemoveIfNonDryRun) {
+            removeConsumedCache(cacheFile)
+        }
+        exitProcess(0)
+    }
+
     val dryRunOverlay = ConcurrentHashMap<Path, String>()
     val dryRunDiffs = mutableListOf<String>()
 
@@ -307,6 +327,30 @@ private fun workspaceSymbolSearchFromIndex(): (WorkspaceSymbolSearch) -> Workspa
             )
         }
     }
+}
+
+private fun completionDocCacheStatus(cacheFile: Path): CompletionDocCacheStatus {
+    if (!Files.exists(cacheFile)) {
+        return CompletionDocCacheStatus(false, "cache file does not exist.")
+    }
+    val text = readTextIfExists(cacheFile)
+    if (text.isBlank()) {
+        return CompletionDocCacheStatus(false, "cache file is blank.", shouldRemoveIfNonDryRun = true)
+    }
+    val node = runCatching { OpenAiFileStoreCache.defaultMapper().readTree(text) }
+        .getOrElse { error ->
+            return CompletionDocCacheStatus(
+                false,
+                "cache file is not valid JSON (${error.message}).",
+                shouldRemoveIfNonDryRun = false
+            )
+        }
+    val records = node.get("records")
+    val recordCount = if (records != null && records.isObject) records.size() else 0
+    if (recordCount <= 0) {
+        return CompletionDocCacheStatus(false, "cache has no records.", shouldRemoveIfNonDryRun = true)
+    }
+    return CompletionDocCacheStatus(true, "cache has $recordCount record(s).")
 }
 
 private fun resolveAttachment(

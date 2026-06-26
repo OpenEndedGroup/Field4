@@ -26,6 +26,7 @@ nav:
         - Forth Examples: forth_examples.md
         - StackSL Cheatsheet: stacksl_cheatsheet.md
         - StackSL Examples: stacksl_examples.md
+        - Abstract Animation Forth: abstract_animation_language.md
         - Nano Examples: nano_examples.md
       - Drawing From Data:
         - Functions Examples: functions_examples.md

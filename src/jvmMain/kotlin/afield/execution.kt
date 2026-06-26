@@ -2522,13 +2522,13 @@ private fun renderErrorSuggestionName(name: String): String =
     "<code style='font-weight:700;font-style:normal;color:#f2f2f2;'>`${escapeNotifyHtml(name)}`</code>"
 
 private fun highlightErrorSuggestionDetail(detail: String): String {
-    val keywords = setOf("private", "protected", "internal", "public", "fun", "val", "var", "for", "keyword")
+    val keywords = setOf("private", "protected", "internal", "public", "import", "fun", "val", "var", "for", "keyword")
     val types = setOf(
         "Unit", "Nothing", "Any", "String", "Boolean", "Byte", "Short", "Int", "Long", "Float", "Double", "Char",
         "Pair", "Triple", "List", "MutableList", "Set", "MutableSet", "Map", "MutableMap", "Array"
     )
     val token = Regex(
-        """\b(?:private|protected|internal|public|fun|val|var|for|keyword|Unit|Nothing|Any|String|Boolean|Byte|Short|Int|Long|Float|Double|Char|Pair|Triple|List|MutableList|Set|MutableSet|Map|MutableMap|Array)\b|(?<![A-Za-z0-9_])\d+(?:\.\d+)?[fFlL]?(?![A-Za-z0-9_])"""
+        """\b(?:private|protected|internal|public|import|fun|val|var|for|keyword|Unit|Nothing|Any|String|Boolean|Byte|Short|Int|Long|Float|Double|Char|Pair|Triple|List|MutableList|Set|MutableSet|Map|MutableMap|Array)\b|(?<![A-Za-z0-9_])\d+(?:\.\d+)?[fFlL]?(?![A-Za-z0-9_])"""
     )
 
     return buildString {
@@ -2566,7 +2566,8 @@ private fun appendErrorHints(errorMessage: String, hints: List<String>): String 
 private data class ErrorMessageSymbol(
     val name: String,
     val detail: String = "",
-    val sourceRank: Int = 10
+    val sourceRank: Int = 10,
+    val allowExactName: Boolean = false
 )
 
 private fun unresolvedReferenceName(errorMessage: String): String? {
@@ -2609,16 +2610,26 @@ private fun suggestResolvableSymbols(
     val candidates = LinkedHashMap<String, ErrorMessageSymbol>()
     fun add(symbol: ErrorMessageSymbol) {
         val name = symbol.name.substringBefore('<').substringBefore('(').substringAfterLast('.').trim()
-        if (name.isBlank() || name == missing) return
-        val key = name.lowercase()
+        if (name.isBlank() || (name == missing && !symbol.allowExactName)) return
+        val key = if (symbol.allowExactName && symbol.detail.contains("import ")) {
+            "${name.lowercase()}|${symbol.detail.lowercase()}"
+        } else {
+            name.lowercase()
+        }
         val existing = candidates[key]
-        if (existing == null || symbol.sourceRank < existing.sourceRank || symbol.detail.length > existing.detail.length) {
+        if (
+            existing == null ||
+            symbol.sourceRank < existing.sourceRank ||
+            (symbol.sourceRank == existing.sourceRank && symbol.detail.length > existing.detail.length)
+        ) {
             candidates[key] = symbol.copy(name = name)
         }
     }
 
     collectDefinedSymbols(box).forEach(::add)
+    collectLocalCodeSymbols(missing, code, diagnostic).forEach(::add)
     collectAmbientCompletionSymbols(box, missing, code, diagnostic).forEach(::add)
+    collectImportHelpSymbols(missing).forEach(::add)
     collectIndexedSymbols(missing).forEach(::add)
 
     val maxDistance = maxTypoDistance(missing)
@@ -2696,6 +2707,84 @@ private fun collectAmbientCompletionSymbols(
     }
 }
 
+private fun collectLocalCodeSymbols(
+    missing: String,
+    code: String?,
+    diagnostic: ScriptDiagnostic?
+): List<ErrorMessageSymbol> {
+    if (code.isNullOrBlank()) return emptyList()
+    val symbols = LinkedHashMap<String, ErrorMessageSymbol>()
+    val diagnosticLine = diagnostic?.location?.start?.line
+
+    fun add(name: String, kind: String, line: Int) {
+        val unwrapped = name.removePrefix("`").removeSuffix("`").trim()
+        if (unwrapped.isBlank() || unwrapped == missing) return
+        val distance = diagnosticLine?.let { kotlin.math.abs(it - line) } ?: 0
+        val sourceRank = if (distance <= 6) 0 else 1
+        symbols.putIfAbsent(unwrapped.lowercase(), ErrorMessageSymbol(unwrapped, "local $kind at line $line", sourceRank))
+    }
+
+    val funRegex = Regex("""\bfun\s+(?:[A-Za-z_][A-Za-z0-9_<>, ?]*\.)?(`[^`]+`|[A-Za-z_][A-Za-z0-9_]*)\s*\(""")
+    val valRegex = Regex("""\b(val|var)\s+(`[^`]+`|[A-Za-z_][A-Za-z0-9_]*)\b""")
+    val typeRegex = Regex("""\b(class|interface|object)\s+(`[^`]+`|[A-Za-z_][A-Za-z0-9_]*)\b""")
+
+    code.lines().forEachIndexed { index, rawLine ->
+        val line = rawLine.substringBefore("//")
+        val lineNumber = index + 1
+        funRegex.findAll(line).forEach { add(it.groupValues[1], "fun", lineNumber) }
+        valRegex.findAll(line).forEach { add(it.groupValues[2], it.groupValues[1], lineNumber) }
+        typeRegex.findAll(line).forEach { add(it.groupValues[2], it.groupValues[1], lineNumber) }
+    }
+
+    return symbols.values.toList()
+}
+
+private fun collectImportHelpSymbols(missing: String): List<ErrorMessageSymbol> {
+    if (missing.length < 3 || missing.firstOrNull()?.isUpperCase() != true) return emptyList()
+    val maxDistance = maxTypoDistance(missing)
+    return runCatching {
+        val exact = findClassesNamed(missing).orEmpty()
+            .filter { isUsefulImportCandidate(it) }
+            .map {
+                ErrorMessageSymbol(
+                    name = missing,
+                    detail = importSuggestionDetail(it),
+                    sourceRank = 1,
+                    allowExactName = true
+                )
+            }
+
+        val fuzzy = cache.asSequence()
+            .filter { (simpleName, fqNames) ->
+                simpleName != missing &&
+                    simpleName.firstOrNull()?.isUpperCase() == true &&
+                    !simpleName.contains("$") &&
+                    !simpleName.lowercase().contains("clojure") &&
+                    fqNames.any(::isUsefulImportCandidate)
+            }
+            .mapNotNull { (simpleName, fqNames) ->
+                val distance = typoDistance(missing, simpleName)
+                val usefulPrefix = simpleName.startsWith(missing, ignoreCase = true) && simpleName.length > missing.length
+                if (!usefulPrefix && distance > maxDistance) return@mapNotNull null
+                val fqName = fqNames.firstOrNull(::isUsefulImportCandidate) ?: return@mapNotNull null
+                val rank = if (usefulPrefix) 3 else 4 + distance
+                rank to ErrorMessageSymbol(simpleName, importSuggestionDetail(fqName), sourceRank = rank)
+            }
+            .sortedWith(compareBy<Pair<Int, ErrorMessageSymbol>> { it.first }.thenBy { it.second.name.length })
+            .take(20)
+            .map { it.second }
+            .toList()
+
+        exact + fuzzy
+    }.getOrDefault(emptyList())
+}
+
+private fun isUsefulImportCandidate(fqName: String): Boolean =
+    fqName.contains(".") && !fqName.contains("$") && !fqName.lowercase().contains("clojure")
+
+private fun importSuggestionDetail(fqName: String): String =
+    "add import ${fqName.replace("$", ".")}"
+
 private fun collectIndexedSymbols(missing: String): List<ErrorMessageSymbol> {
     val index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex() ?: return emptyList()
     val maxDistance = maxTypoDistance(missing)
@@ -2706,7 +2795,14 @@ private fun collectIndexedSymbols(missing: String): List<ErrorMessageSymbol> {
             val caseOnly = name.equals(missing, ignoreCase = true)
             val usefulPrefix = name.startsWith(missing, ignoreCase = true) && name.length > missing.length
             if (!caseOnly && !usefulPrefix && distance > maxDistance) return@mapNotNull null
-            ErrorMessageSymbol(name, indexedSymbolDetail(def), sourceRank = 2)
+            val importName = indexedImportQualifiedName(def)
+            val detail = importName?.let(::importSuggestionDetail) ?: indexedSymbolDetail(def)
+            ErrorMessageSymbol(
+                name = name,
+                detail = detail,
+                sourceRank = if (importName != null) 2 else 3,
+                allowExactName = importName != null && name.equals(missing, ignoreCase = true)
+            )
         }
         .take(40)
         .toList()
@@ -2742,11 +2838,7 @@ private fun shortenCompletionInfo(variant: SourceCodeCompletionVariant): String 
 }
 
 private fun indexedSymbolDetail(def: afield.ai.KotlinDefinitionRecord): String {
-    val sourceLine = runCatching {
-        File(def.filePath).takeIf { it.exists() }
-            ?: File(System.getProperty("user.dir"), def.filePath).takeIf { it.exists() }
-    }.getOrNull()
-        ?.useLines { lines -> lines.drop(def.line - 1).firstOrNull()?.trim() }
+    val sourceLine = indexedDefinitionSourceLine(def)
         ?.substringBefore(" {")
         ?.replace(Regex("\\s+"), " ")
         ?.let(::shortenType)
@@ -2756,11 +2848,42 @@ private fun indexedSymbolDetail(def: afield.ai.KotlinDefinitionRecord): String {
     return sourceLine ?: "${def.kind} ${def.filePath}:${def.line}"
 }
 
+private fun indexedDefinitionFile(def: afield.ai.KotlinDefinitionRecord): File? =
+    runCatching {
+        File(def.filePath).takeIf { it.exists() }
+            ?: File(System.getProperty("user.dir"), def.filePath).takeIf { it.exists() }
+    }.getOrNull()
+
+private fun indexedDefinitionSourceLine(def: afield.ai.KotlinDefinitionRecord): String? =
+    indexedDefinitionFile(def)
+        ?.useLines { lines -> lines.drop(def.line - 1).firstOrNull()?.trim() }
+
+private fun indexedImportQualifiedName(def: afield.ai.KotlinDefinitionRecord): String? {
+    val file = indexedDefinitionFile(def) ?: return null
+    val packageName = file.useLines { lines ->
+        lines.map { it.trim() }
+            .firstOrNull { it.startsWith("package ") }
+            ?.removePrefix("package ")
+            ?.trim()
+            ?.takeIf { it.matches(Regex("""[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*""")) }
+    } ?: return null
+    val importableName = when (def.kind) {
+        "fun", "val", "var" -> def.name.substringAfterLast('.')
+        else -> def.name
+    }.trim('.')
+    if (importableName.isBlank()) return null
+    return "$packageName.$importableName"
+}
+
 private fun formatErrorSuggestionDetail(raw: String, name: String): String {
     if (raw.isBlank()) return ""
-    var text = shortenType(raw)
-        .replace(Regex("\\s+"), " ")
-        .trim()
+    var text = if (raw.startsWith("add import ")) {
+        raw.replace(Regex("\\s+"), " ").trim()
+    } else {
+        shortenType(raw)
+            .replace(Regex("\\s+"), " ")
+            .trim()
+    }
 
     text = text
         .replace(Regex(""",\s*(?=\))"""), "")
