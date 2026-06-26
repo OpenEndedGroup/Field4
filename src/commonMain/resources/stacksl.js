@@ -2057,6 +2057,28 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
     window.updateStackSLEmbeddedHighlight = updateStackSLEmbeddedHighlight
     window.updateStackSLDiagnostics = updateStackSLDiagnostics
 
+    const stackSLLanguageExtension = {
+            id: "stacksl",
+            label: "StackSL",
+            languageIds: ["stacksl", "kotlin"],
+            markerOwner: "stacksl-diagnostics",
+            findEmbeddedRegions: findStackSLEmbeddedRegions,
+            install: (editor, monacoApi) => {
+                    installStackSLFlowLens(editor, monacoApi)
+                    installStackSLEmbeddedHighlight(editor, monacoApi)
+            },
+            updateFlowLens: updateStackSLFlowLens,
+            updateEmbeddedHighlight: updateStackSLEmbeddedHighlight,
+            updateDiagnostics: updateStackSLDiagnostics,
+            buildContextPayload: buildStackSLContextPayload,
+    }
+    if (window.FieldLanguageExtensions && typeof window.FieldLanguageExtensions.register === "function") {
+            window.FieldLanguageExtensions.register(stackSLLanguageExtension)
+    } else {
+            window.__fieldLanguageExtensionQueue = window.__fieldLanguageExtensionQueue || []
+            window.__fieldLanguageExtensionQueue.push(stackSLLanguageExtension)
+    }
+
     monaco.languages.setMonarchTokensProvider(languageId, {
         tokenPostfix: ".stacksl",
         ignoreCase: true,

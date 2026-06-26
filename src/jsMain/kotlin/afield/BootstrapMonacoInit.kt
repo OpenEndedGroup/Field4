@@ -112,6 +112,27 @@ private fun propertyIndexOf(name: String?): Int {
 
 private fun isTruthy(value: dynamic): Boolean = js("Boolean(value)") as Boolean
 
+internal fun monacoUpdateLanguageExtensionSurfaces(editor: dynamic) {
+    if (editor == null) return
+    val w = js("window")
+    val hasGeneric = js("typeof window.updateLanguageExtensions === 'function'") as Boolean
+    if (hasGeneric) {
+        try {
+            w.updateLanguageExtensions(editor)
+            return
+        } catch (_: dynamic) {}
+    }
+    try {
+        w.updateStackSLFlowLens?.invoke(editor)
+    } catch (_: dynamic) {}
+    try {
+        w.updateStackSLEmbeddedHighlight?.invoke(editor)
+    } catch (_: dynamic) {}
+    try {
+        w.updateStackSLDiagnostics?.invoke(editor)
+    } catch (_: dynamic) {}
+}
+
 private fun computePropertyActionLabel(w: dynamic, baseLabel: String, propName: String): String {
     val currentCode = w.currentSelectedCode
     val len = (currentCode?.length as? Number)?.toInt() ?: 0
@@ -226,15 +247,7 @@ internal fun monacoApplyPropertySelection(monaco: dynamic, editor: dynamic, inde
     val globalEditor = w.globalEditor ?: editor
     if (globalEditor != null) {
         monaco.editor.setModelLanguage(globalEditor.getModel(), lang)
-        try {
-            w.updateStackSLFlowLens?.invoke(globalEditor)
-        } catch (_: dynamic) {}
-        try {
-            w.updateStackSLEmbeddedHighlight?.invoke(globalEditor)
-        } catch (_: dynamic) {}
-        try {
-            w.updateStackSLDiagnostics?.invoke(globalEditor)
-        } catch (_: dynamic) {}
+        monacoUpdateLanguageExtensionSurfaces(globalEditor)
         globalEditor._domElement
             .querySelectorAll(".hoverlay")[0]
             .innerHTML = "$property <i>($lang)</i>"

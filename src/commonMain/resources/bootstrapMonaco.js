@@ -37,7 +37,7 @@ require(["vs/editor/editor.main"], function (e, is) {
         });
         require(["vs/basic-languages/markdown/markdown"], function (e, is) {
         });
-        require(["bithero/glsl", "bithero/slang", "bithero/forth", "bithero/stacksl", "bithero/nano"], function () {
+        require(["bithero/glsl", "bithero/slang", "bithero/forth", "bithero/languageExtensions", "bithero/stacksl", "bithero/nano"], function () {
                 initMonaco()
                 require(["vs/platform/quickinput/common/quickInput"], function (is) {
                         initQuickPick(is)
@@ -216,6 +216,20 @@ const buildStackSLContextPayload = (editor, resolveContext, options = {}) => {
         return typeof window.buildStackSLContextPayload === "function"
                 ? window.buildStackSLContextPayload(editor, resolveContext, options)
                 : null
+}
+
+const buildLanguageContextPayload = (editor, resolveContext, options = {}) => {
+        if (typeof window.buildLanguageContextPayload === "function") {
+                const payload = window.buildLanguageContextPayload(editor, resolveContext, options)
+                if (payload) return payload
+        }
+        return buildStackSLContextPayload(editor, resolveContext, options)
+}
+
+const installLanguageExtensions = (editor, monacoApi) => {
+        if (typeof window.installLanguageExtensions === "function") {
+                window.installLanguageExtensions(editor, monacoApi)
+        }
 }
 
 const installStackSLFlowLens = (editor, monacoApi) => {
@@ -629,7 +643,7 @@ const installSymbolContextMonitor = (editor, resolveContext) => {
                 if (debounceTimer !== null) clearTimeout(debounceTimer)
                 debounceTimer = setTimeout(() => {
                         debounceTimer = null
-                        const localPayload = buildStackSLContextPayload(editor, resolveContext)
+                        const localPayload = buildLanguageContextPayload(editor, resolveContext)
                         if (localPayload) {
                                 const state = ensureSymbolContextState()
                                 state.latestDesiredKey = localPayload.key
@@ -733,6 +747,16 @@ const initMonaco = () => {
 
 // Resolve uid/property: check embedded editor first, fall back to main editor globals
 				const embEntry = window.embeddedEditors && window.embeddedEditors.getByModel(model);
+                        if (typeof window.fieldLanguageCompletionItems === "function") {
+                                const completionEditor = embEntry ? embEntry.editor : globalEditor
+                                const localSuggestions = window.fieldLanguageCompletionItems(completionEditor, model, position, context)
+                                if (localSuggestions && localSuggestions.length > 0) {
+                                        return {
+                                                suggestions: localSuggestions,
+                                                incomplete: false
+                                        }
+                                }
+                        }
 				const completionUid = embEntry ? embEntry.uid : (window.currentSelectedCode && window.currentSelectedCode[0] ? window.currentSelectedCode[0].uid : null);
 				const completionProperty = embEntry ? embEntry.property : window.currentSelectedProperty;
 				if (!completionUid) return { suggestions: [] };
@@ -972,6 +996,7 @@ const initMonaco = () => {
                         property: window.currentSelectedProperty || "code",
                 }
         })
+        installLanguageExtensions(ed, monaco)
         installStackSLFlowLens(ed, monaco)
         installStackSLEmbeddedHighlight(ed, monaco)
         installDebugProbeDoubleClick(ed, () => {
