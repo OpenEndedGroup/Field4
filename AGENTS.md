@@ -17,6 +17,8 @@ This repository builds **Field·4**, a Kotlin-based live-coding environment for 
 - Ports and HTTPS:
   - `PORT` env var overrides default `9092`
   - Server uses HTTPS by default (self-signed dev cert)
+  - For local automation, Field also exposes a loopback-only HTTP mirror at `AFIELD_HTTP_PORT` if set, otherwise `PORT + 10000` when that fits in the valid port range. Example: `PORT=9477` gives `http://localhost:19477/...`.
+  - Set `AFIELD_HTTP_PORT=off` to disable the HTTP mirror, or set `AFIELD_HTTP_PORT=<port>` to choose an explicit loopback HTTP port.
   - Keystore env vars: `AFIELD_KEYSTORE_PATH`, `AFIELD_KEYSTORE_PASS`, `AFIELD_KEYSTORE_ALIAS`
   - Generate dev keystore: `./gradlew generateLocalKeystore` (writes `config/field4-local.p12`)
 
@@ -52,6 +54,7 @@ Mac OS X
 - The backdoor attaches to an existing Field at `https://localhost:9092` or starts Field itself using the Gradle wrapper command above, opens a scratch document by default, and lets you create boxes, set code/shaders, run or launch them, stop them, and capture outputs/errors as JSON.
 - For agent automation, do not rely on the default port. Pass a custom high port such as `--port 9477` so the backdoor starts or reuses an isolated agent-owned Field instead of silently attaching to a stale dev server on `9092`.
 - Reuse the same custom port for one verification session, and pick a new custom port when you want a guaranteed fresh Field JVM. This avoids burning time and tokens debugging old code loaded in some unrelated existing server.
+- When using an external browser or Playwright connector directly, prefer Field's loopback HTTP mirror instead of the self-signed HTTPS URL. For a backdoor session on `--port 9477`, navigate external tools to `http://localhost:19477/index.html?file=<document>`. The backdoor's own HTTP/WebSocket client and server-owned Playwright already handle the self-signed HTTPS certificate.
 - Use `--json` for agent automation. The result object includes `ok`, `data`, `events`, and `timedOut`.
 - Use scratch sessions for disposable experiments. Use `--document <name>` when you need to attach to a real saved document.
 - Every run writes a unique log file under `.field-backdoor/logs/`. `status` reports both the session log and the managed server log path.
