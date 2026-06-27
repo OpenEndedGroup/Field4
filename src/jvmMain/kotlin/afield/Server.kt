@@ -789,6 +789,7 @@ var globalPlaywrightBrowser: Browser? = null
 var globalPlaywrightBrowserContext: BrowserContext? = null
 var globalPlaywriteContext: Page? = null
 var globalServerPort: Int = 9092
+var globalLoopbackHttpPort: Int? = null
 private const val PLAYWRIGHT_NAVIGATION_TIMEOUT_MS = 12_000.0
 private const val PLAYWRIGHT_READY_TIMEOUT_MS = 45_000.0
 private const val PLAYWRIGHT_ATTACH_ATTEMPTS = 3
@@ -843,6 +844,18 @@ internal fun buildPlaywrightDocumentUrl(info: SessionInformation, port: Int = gl
         params += "sessionKey=${URLEncoder.encode(info.filename, "UTF-8")}"
     }
     return "https://localhost:${port}/index.html?${params.joinToString("&")}"
+}
+
+private fun loopbackHttpPortFor(httpsPort: Int): Int? {
+    val raw = System.getenv("AFIELD_HTTP_PORT")?.trim()
+    if (raw != null && raw.lowercase() in setOf("", "0", "off", "false", "none", "disabled")) {
+        return null
+    }
+    if (raw != null) {
+        return raw.toIntOrNull()?.takeIf { it in 1..65535 }
+            ?: error("AFIELD_HTTP_PORT must be a port number or one of off,false,none,disabled; got '$raw'")
+    }
+    return (httpsPort + 10_000).takeIf { it <= 65535 }
 }
 
 private fun ensurePlaywrightPageOnce(targetUrl: String): PlaywrightPageHandle {
@@ -2142,6 +2155,12 @@ class Server {
 
             fun createServer(bindPort: Int): EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration> {
                 return embeddedServer(Netty, configure = {
+                    loopbackHttpPortFor(bindPort)?.let { localHttpPort ->
+                        connector {
+                            this.host = "127.0.0.1"
+                            this.port = localHttpPort
+                        }
+                    }
                     sslConnector(
                         keyStore = keyStore,
                         keyAlias = keystoreAlias,
@@ -2195,11 +2214,14 @@ class Server {
 
                         get("/app-url") {
                             val preferences = currentFieldPreferences().also(::applyFieldPreferences)
+                            val requestScheme = call.request.local.scheme
+                            val requestPort = call.request.local.serverPort
+                            val baseUrl = "$requestScheme://localhost:$requestPort"
                             val url = if (preferences.autoOpenLastDocumentInDesktop) {
                                 val target = URLEncoder.encode(lastFn ?: "welcome", "UTF-8")
-                                "https://localhost:${port}/index.html?file=$target"
+                                "$baseUrl/index.html?file=$target"
                             } else {
-                                "https://localhost:${port}/welcome"
+                                "$baseUrl/welcome"
                             }
                             call.respondText(url, ContentType.Text.Plain)
                         }
@@ -3050,11 +3072,15 @@ class Server {
             }
 
             globalServerPort = port
+            globalLoopbackHttpPort = loopbackHttpPortFor(port)
             val initialURL = "https://localhost:${port}/index.html?file=${lastFn}"
             lprintln("info,server", asciiWelcome)
             lprintln("info,server", "welcome to Field, ß-033")
             lprintln("info,server", "last document: $initialURL")
             lprintln("info,server", "welcome page: https://localhost:${port}/welcome.html")
+            globalLoopbackHttpPort?.let { httpPort ->
+                lprintln("info,server", "local automation page: http://localhost:${httpPort}/index.html?file=${lastFn}")
+            }
             lprintln("info,server", "---")
 
             if (preferSystemBrowser) {
