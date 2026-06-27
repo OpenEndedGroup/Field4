@@ -12,6 +12,10 @@ import {
         aiChatMarkdownToHtml
 } from "./afield.mjs"
 
+if (!window.require || typeof window.require.config !== "function") {
+        throw new Error("Monaco AMD loader is missing; expected /min/vs/loader.js to define window.require before bootstrapMonaco.js")
+}
+
 window.require.config({
         paths: {
                 'vs':  document.location.protocol + "//"+document.location.host+'/min/vs', 'bithero': './',

@@ -2892,6 +2892,28 @@ class Server {
                             }
                         }
 
+                        route("/min") {
+                            get("{...}") {
+                                val relativeUri = URI(call.request.uri).path.removePrefix("/min/")
+                                val roots = listOf(
+                                    File("./src/jsMain/resources/monaco/min").canonicalFile,
+                                    File("./public/min").canonicalFile
+                                )
+                                val file = roots.asSequence()
+                                    .map { root -> root to File(root, relativeUri).canonicalFile }
+                                    .firstOrNull { (root, candidate) ->
+                                        candidate.isFile &&
+                                                (candidate == root || candidate.path.startsWith(root.path + File.separator))
+                                    }
+                                    ?.second
+
+                                if (file != null) {
+                                    call.respondFile(file)
+                                } else {
+                                    call.respond(HttpStatusCode.NotFound, "Monaco asset not found")
+                                }
+                            }
+                        }
                         staticFiles(remotePath = "", dir = File("./build/js/packages/afield/kotlin"))
                         staticFiles(remotePath = "", dir = File("./src/jsChatMain/resources/static/"))
                         staticFiles(remotePath = "", dir = File("./src/jsMain/kotlin/resources/"))
