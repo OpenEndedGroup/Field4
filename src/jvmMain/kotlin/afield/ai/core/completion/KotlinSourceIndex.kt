@@ -30,7 +30,8 @@ data class KotlinDefinitionRecord(
     val line: Int,
     val fileId: String?,
     val contentHash: String,
-    val kdoc: String? = null
+    val kdoc: String? = null,
+    val completionCategory: String? = null
 )
 
 data class KotlinSourceIndexDb(
@@ -155,7 +156,8 @@ object KotlinSourceIndex {
                     line = def.line,
                     fileId = fileId,
                     contentHash = contentHash,
-                    kdoc = def.kdoc
+                    kdoc = def.kdoc,
+                    completionCategory = def.completionCategory
                 )
             }
         }
@@ -238,6 +240,35 @@ object KotlinSourceIndex {
             it.name == symbolName || it.name.endsWith(".$symbolName") 
         }
         return partialMatch?.kdoc
+    }
+
+    fun getCompletionCategoryForSymbol(
+        symbolName: String,
+        sourceName: String? = null,
+        sourcePath: String? = null
+    ): String? {
+        val index = latestIndex ?: loadIndex() ?: return null
+        val simpleName = symbolName.substringAfterLast('.').trim()
+        if (simpleName.isBlank()) return null
+
+        fun KotlinDefinitionRecord.categoryOrNull(): String? =
+            completionCategory?.trim()?.takeIf { it.isNotEmpty() }
+
+        if (!sourceName.isNullOrBlank()) {
+            index.definitions.firstOrNull { it.name == sourceName }?.categoryOrNull()?.let { return it }
+        }
+
+        val matches = index.definitions.filter {
+            it.name.substringAfterLast('.') == simpleName ||
+                (!sourceName.isNullOrBlank() && it.name == sourceName)
+        }
+
+        if (!sourcePath.isNullOrBlank()) {
+            matches.firstOrNull { it.filePath == sourcePath }?.categoryOrNull()?.let { return it }
+        }
+
+        val categories = matches.mapNotNull { it.categoryOrNull() }.distinct()
+        return categories.singleOrNull() ?: categories.firstOrNull()
     }
 
     fun currentVectorStoreId(): String? =
@@ -383,7 +414,18 @@ object KotlinSourceIndex {
         return out
     }
 
-    private data class ParsedDefinition(val kind: String, val name: String, val line: Int, val kdoc: String? = null)
+    private data class ParsedDefinition(
+        val kind: String,
+        val name: String,
+        val line: Int,
+        val kdoc: String? = null,
+        val completionCategory: String? = null
+    )
+    private data class ParsedLineDefinition(
+        val kind: String,
+        val name: String,
+        val completionCategory: String? = null
+    )
     private data class ClassContext(val name: String, val depth: Int)
     private data class PendingClass(
         val name: String,
@@ -404,10 +446,12 @@ object KotlinSourceIndex {
         // Extract KDocs using the KDocExtractor
         val kdocs = KDocExtractor.extractKDocs(text)
         val kdocByLine = kdocs.associateBy { it.declarationLine }
+        val fileCategory = fileCompletionCategory(text)
 
         val state = KotlinParseState()
         val classStack = ArrayDeque<ClassContext>()
         var pendingClass: PendingClass? = null
+        var pendingCategory: String? = null
 
         val lines = text.split("\n")
         lines.forEachIndexed { index, rawLine ->
@@ -421,6 +465,9 @@ object KotlinSourceIndex {
 
             if (canParse) {
                 val def = parseDefinitionFromLine(rawLine)
+                if (def == null && rawLine.trimStart().startsWith("@")) {
+                    completionCategoryFromAnnotation(rawLine)?.let { pendingCategory = it }
+                }
                 if (pendingClass != null &&
                     pendingClass.lineNumber != lineNumber &&
                     pendingClass.headerParenDepth == 0 &&
@@ -429,8 +476,12 @@ object KotlinSourceIndex {
                     // A new declaration appeared before the pending class body opened.
                     pendingClass = null
                 }
-                def?.let { (kind, name) ->
+                def?.let { parsed ->
+                    val kind = parsed.kind
+                    val name = parsed.name
                     val kdoc = kdocByLine[lineNumber]?.text
+                    val category = parsed.completionCategory ?: pendingCategory ?: fileCategory
+                    pendingCategory = null
                     when (kind) {
                         "class", "interface", "object" -> {
                             val qualifiedName = if (currentClass != null) {
@@ -438,7 +489,7 @@ object KotlinSourceIndex {
                             } else {
                                 name
                             }
-                            out += ParsedDefinition(kind, qualifiedName, lineNumber, kdoc)
+                            out += ParsedDefinition(kind, qualifiedName, lineNumber, kdoc, category)
                             pendingClass = PendingClass(qualifiedName, lineNumber)
                         }
                         "fun", "val", "var" -> {
@@ -447,7 +498,7 @@ object KotlinSourceIndex {
                             } else {
                                 name
                             }
-                            out += ParsedDefinition(kind, qualifiedName, lineNumber, kdoc)
+                            out += ParsedDefinition(kind, qualifiedName, lineNumber, kdoc, category)
                         }
                     }
                 }
@@ -476,16 +527,18 @@ object KotlinSourceIndex {
         return out
     }
 
-    private fun parseDefinitionFromLine(line: String): Pair<String, String>? {
+    private fun parseDefinitionFromLine(line: String): ParsedLineDefinition? {
         var s = line.trimStart()
         if (s.isEmpty()) return null
         if (s.startsWith("package ") || s.startsWith("import ")) return null
         if (s.startsWith("//")) return null
 
         val annotationRegex = Regex("^@\\w[\\w\\.]*\\s*(\\([^)]*\\))?\\s*")
+        var category: String? = null
         while (true) {
             val match = annotationRegex.find(s)
             if (match != null && match.range.first == 0) {
+                completionCategoryFromAnnotation(match.value)?.let { category = it }
                 s = s.substring(match.range.last + 1).trimStart()
             } else {
                 break
@@ -527,10 +580,26 @@ object KotlinSourceIndex {
         val name = effectiveName
         if (name.isBlank()) return null
         if (keyword == "class" || keyword == "interface" || keyword == "object" || keyword == "fun" || keyword == "val" || keyword == "var") {
-            return keyword to name
+            return ParsedLineDefinition(keyword, name, category)
         }
         return null
     }
+
+    private fun fileCompletionCategory(text: String): String? =
+        Regex("""(?m)^\s*@file:(?:[\w.]+\.)?CompletionCategory\s*\(\s*"([^"]+)"""")
+            .find(text)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+
+    private fun completionCategoryFromAnnotation(text: String): String? =
+        Regex("""@(?:[\w.]+\.)?CompletionCategory\s*\(\s*"([^"]+)"""")
+            .find(text)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
 
     private fun parseQualifiedName(raw: String): String? {
         if (raw.isBlank()) return null

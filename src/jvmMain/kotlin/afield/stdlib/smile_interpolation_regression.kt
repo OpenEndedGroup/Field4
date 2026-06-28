@@ -1,3 +1,5 @@
+@file:afield.CompletionCategory("Math")
+
 package afield.stdlib
 
 import smile.interpolation.CubicSplineInterpolation1D

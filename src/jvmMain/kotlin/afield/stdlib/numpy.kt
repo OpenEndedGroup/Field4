@@ -1,4 +1,5 @@
 @file:OptIn(ExperimentalUnsignedTypes::class)
+@file:afield.CompletionCategory("Data")
 
 package afield.stdlib
 

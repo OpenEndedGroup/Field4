@@ -197,6 +197,7 @@ data class Metadata(
     val displayText: String,
     val documentation: String = "",
     val prefix: String = "",
+    val category: String = "",
     val generateDocumentation: Boolean = false,
     val documentationSourceName: String = "",
     val documentationSourcePath: String = "",

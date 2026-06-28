@@ -1,3 +1,5 @@
+@file:afield.CompletionCategory("Graphics")
+
 package afield.stdlib.ceres
 
 import org.joml.Vector3f

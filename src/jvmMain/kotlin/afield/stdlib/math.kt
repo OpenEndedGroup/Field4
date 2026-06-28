@@ -1,3 +1,5 @@
+@file:afield.CompletionCategory("Math")
+
 package afield.stdlib
 
 fun sin(n: Number): Double = kotlin.math.sin(n.toDouble())

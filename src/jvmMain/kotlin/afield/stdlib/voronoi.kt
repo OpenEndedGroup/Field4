@@ -1,3 +1,5 @@
+@file:afield.CompletionCategory("Graphics")
+
 package afield.stdlib
 
 import kotlin.collections.first

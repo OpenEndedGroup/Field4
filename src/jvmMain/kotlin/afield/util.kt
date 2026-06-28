@@ -18,6 +18,10 @@ import kotlin.reflect.KProperty
 @Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION)
 annotation class Doc(val value: String)
 
+@Retention(AnnotationRetention.RUNTIME)
+@Target(AnnotationTarget.FILE, AnnotationTarget.CLASS, AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY)
+annotation class CompletionCategory(val value: String)
+
 var timingInfo = ConcurrentHashMap<String, LinkedList<Long>>()
 var disableTiming = true
 var max_window = 100

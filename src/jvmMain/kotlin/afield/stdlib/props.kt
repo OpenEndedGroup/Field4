@@ -1,3 +1,5 @@
+@file:afield.CompletionCategory("Workspace")
+
 package afield.stdlib
 
 import afield.Box

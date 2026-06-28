@@ -322,6 +322,135 @@ internal object KotlinCompletionSupport {
         )
     }
 
+    fun classifyMetadata(
+        metadata: Metadata,
+        symbolName: String?,
+        extraInfo: Map<String, Any?> = emptyMap()
+    ): Metadata {
+        val name = symbolName
+            ?.substringBefore('<')
+            ?.substringBefore('(')
+            ?.substringAfterLast('.')
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+            ?: metadata.text.substringBefore('<').substringBefore('(').substringAfterLast('.').trim()
+
+        val category = normalizedCompletionCategory(metadata.category)
+            ?: normalizedCompletionCategory(extraInfo["completionCategory"]?.toString())
+            ?: normalizedCompletionCategory(extraInfo["category"]?.toString())
+            ?: KotlinSourceIndex.getCompletionCategoryForSymbol(
+                symbolName = name,
+                sourceName = metadata.documentationSourceName.takeIf { it.isNotBlank() },
+                sourcePath = metadata.documentationSourcePath.takeIf { it.isNotBlank() }
+            )?.let(::normalizedCompletionCategory)
+            ?: inferCompletionCategory(metadata, name, extraInfo)
+            ?: return metadata
+
+        return if (metadata.category == category) metadata else metadata.copy(category = category)
+    }
+
+    fun isHiddenCompletionCategory(category: String): Boolean =
+        normalizedCompletionCategory(category) == "Internal"
+
+    fun withCategoryDocumentationHeader(metadata: Metadata): Metadata {
+        val category = normalizedCompletionCategory(metadata.category) ?: return metadata
+        val existing = metadata.documentation.trim()
+        val header = "**Category** `$category`"
+        if (existing.startsWith(header)) return metadata
+        return metadata.copy(
+            documentation = if (existing.isBlank()) header else "$header\n\n$existing"
+        )
+    }
+
+    private fun inferCompletionCategory(
+        metadata: Metadata,
+        simpleName: String,
+        extraInfo: Map<String, Any?>
+    ): String? {
+        val sourcePath = metadata.documentationSourcePath.lowercase()
+        val sourceName = metadata.documentationSourceName.lowercase()
+        val tail = metadata.tail.lowercase()
+        val text = listOf(
+            simpleName,
+            metadata.text,
+            metadata.displayText,
+            metadata.tail,
+            metadata.documentationSourceName,
+            extraInfo["receiverQualifiedName"]?.toString().orEmpty(),
+            extraInfo["receiverType"]?.toString().orEmpty(),
+            extraInfo["original"]?.toString().orEmpty()
+        ).joinToString(" ").lowercase()
+
+        categoryFromPath(sourcePath)?.let { return it }
+        categoryFromQualifiedName(sourceName)?.let { return it }
+        categoryFromQualifiedName(tail)?.let { return it }
+        categoryFromQualifiedName(text)?.let { return it }
+
+        if (metadata.icon == "keyword") return "Kotlin"
+        if (sourcePath.startsWith("jar:")) return "External"
+        if (tail.startsWith("kotlin.") || text.contains(" defined in kotlin")) return "Kotlin"
+        if (tail.startsWith("java.") || tail.startsWith("javax.") || tail.startsWith("org.") || tail.startsWith("com.")) {
+            return "External"
+        }
+
+        return null
+    }
+
+    private fun normalizedCompletionCategory(raw: String?): String? {
+        val value = raw?.trim()?.removeSurrounding("\"")?.takeIf { it.isNotEmpty() } ?: return null
+        return when (value.lowercase().replace("_", " ").replace("-", " ")) {
+            "math", "maths", "numeric", "numbers", "linear algebra" -> "Math"
+            "visualization", "visualisation", "viz", "plot", "plotting" -> "Visualization"
+            "graphics", "drawing", "rendering", "shader", "shaders", "vulkan", "geometry" -> "Graphics"
+            "internal", "implementation", "system" -> "Internal"
+            "audio", "synth", "sound", "music" -> "Audio"
+            "data", "io", "files", "file", "json", "csv", "tables" -> "Data"
+            "workspace", "document", "documents", "persistence" -> "Workspace"
+            "kotlin", "language" -> "Kotlin"
+            "external", "library", "classpath" -> "External"
+            "ai", "assistant" -> "AI"
+            else -> value.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+        }
+    }
+
+    private fun categoryFromPath(path: String): String? = when {
+        path.isBlank() -> null
+        path.contains("/afield/math/") -> "Math"
+        path.contains("/afield/visualization/") || path.contains("plotly") || path.contains("visualizer") -> "Visualization"
+        path.contains("/afield/graphics/") || path.contains("/afield/four/") || path.contains("/afield/stacksl/") -> "Graphics"
+        path.contains("/afield/internal/") || path.contains("/afield/server/") || path.contains("/afield/ai/") -> "Internal"
+        path.contains("/afield/workspace/") || path.contains("/afield/docs/") -> "Workspace"
+        path.contains("/afield/stdlib/") && path.containsAny("math", "linalg", "stats", "random", "correlation", "interpolant") -> "Math"
+        path.contains("/afield/stdlib/") && path.containsAny("color", "shader", "drawing", "fline", "stacksl", "voronoi") -> "Graphics"
+        path.contains("/afield/stdlib/") && path.containsAny("json", "file", "saved", "graph", "cluster", "wfc", "table") -> "Data"
+        path.contains("/afield/stdlib/") && path.containsAny("osc", "audio", "synth") -> "Audio"
+        path.startsWith("jar:") && path.contains("kotlin-stdlib") -> "Kotlin"
+        path.startsWith("jar:") -> "External"
+        else -> null
+    }
+
+    private fun categoryFromQualifiedName(value: String): String? = when {
+        value.isBlank() -> null
+        value.startsWith("kotlin.") || value.contains(" defined in kotlin") -> "Kotlin"
+        value.startsWith("java.") || value.startsWith("javax.") || value.startsWith("org.") || value.startsWith("com.") -> {
+            when {
+                value.contains("org.joml") || value.contains("matrix") || value.contains("vector") || value.contains("quaternion") -> "Math"
+                else -> "External"
+            }
+        }
+        value.contains("afield.math") -> "Math"
+        value.contains("afield.visualization") || value.contains("plotly") || value.contains("visualizer") -> "Visualization"
+        value.contains("afield.graphics") || value.contains("afield.four") || value.contains("fline") ||
+            value.contains("shader") || value.contains("stacksl") || value.contains("color") -> "Graphics"
+        value.contains("afield.internal") || value.contains("afield.server") || value.contains("afield.ai") -> "Internal"
+        value.contains("afield.workspace") || value.contains("document") -> "Workspace"
+        value.containsAny(" sin ", " cos ", " tan ", " sqrt ", " pow ", " abs ", " floor ", " ceil ", " lerp ", " clamp ") -> "Math"
+        else -> null
+    }
+
+    private fun String.containsAny(vararg needles: String): Boolean =
+        needles.any { contains(it) }
+
     private fun resolveIndexedDocumentationTarget(
         simpleName: String,
         receiverOwnerHint: String?,

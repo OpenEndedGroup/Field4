@@ -1717,7 +1717,7 @@ class KotlinInterface2(
             // Try to load the class and get constructor info
             var fqName: String? = null
             for (n in fqNames) {
-                if (!n.contains("$")) {
+                if (!n.contains("$") && !isBlacklistedKotlinCompletionName(n)) {
                     fqName = n; break
                 }
             }

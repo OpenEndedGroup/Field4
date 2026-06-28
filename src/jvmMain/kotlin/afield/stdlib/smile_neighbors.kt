@@ -1,3 +1,5 @@
+@file:afield.CompletionCategory("Data")
+
 package afield.stdlib
 
 import smile.neighbor.KDTree

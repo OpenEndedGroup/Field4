@@ -2351,7 +2351,7 @@ class KotlinExecution : BoxExecution {
         fun completionFor(c: CompletionResult.Success): List<Metadata> {
             val activeToken = allCode.substring(c.bounds.start, c.bounds.end).trim()
             val argumentCallable = callableBeforeArgumentCursor(allCode, position)
-            return c.metadata.map {
+            return c.metadata.mapNotNull {
 //                println(it.extraInfo)
                 var extraDoc = ""
                 val descriptor: DeclarationDescriptor? = null // extraInfo not available in 2.4 scripting jars
@@ -2476,7 +2476,23 @@ class KotlinExecution : BoxExecution {
                     }
                     rawMetadata
                 }
-                enrichedMetadata
+                val categorizedMetadata = KotlinCompletionSupport.classifyMetadata(
+                    metadata = enrichedMetadata,
+                    symbolName = candidateName,
+                    extraInfo = it.extraInfo
+                )
+                if (completionTraceEnabled() && categorizedMetadata.category.isNotBlank() && candidateName.isNotBlank()) {
+                    completionTrace(
+                        "completion category candidate='$candidateName' category='${categorizedMetadata.category}' source='${categorizedMetadata.documentationSourcePath}:${categorizedMetadata.documentationSourceLine}' sourceName='${categorizedMetadata.documentationSourceName}'"
+                    )
+                }
+                if (KotlinCompletionSupport.isHiddenCompletionCategory(categorizedMetadata.category)) {
+                    if (completionTraceEnabled() && candidateName.isNotBlank()) {
+                        completionTrace("completion hide-internal candidate='$candidateName' category='${categorizedMetadata.category}'")
+                    }
+                    return@mapNotNull null
+                }
+                categorizedMetadata
             }
         }
 
@@ -2490,7 +2506,8 @@ class KotlinExecution : BoxExecution {
                         text = s + it.first,
                         displayText = "(import) ${it.second}",
                         documentation = "import ${it.second}",
-                        prefix = "import ${it.second}"
+                        prefix = "import ${it.second}",
+                        category = "External"
                     )
                 }
             else return emptyList()
@@ -2507,7 +2524,8 @@ class KotlinExecution : BoxExecution {
                         val completions = Completion(
                             boundsStart = boundsStart,
                             boundsEnd = boundsEnd,
-                            metadata = (synthetic?.metadata ?: emptyList()) + completionFor(c) + importHelpFor(c)
+                            metadata = ((synthetic?.metadata ?: emptyList()) + completionFor(c) + importHelpFor(c))
+                                .map(KotlinCompletionSupport::withCategoryDocumentationHeader)
                         )
 
                         reply(

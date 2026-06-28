@@ -203,26 +203,30 @@ function createTabStripMarkup() {
       min-width: 128px;
       max-width: 240px;
       padding: 0 10px 0 14px;
-      border-radius: 5px 5px var(--tab-bottom-corner) var(--tab-bottom-corner);
-      corner-shape: round round superellipse(-2) superellipse(-2);
       border: 0;
-      background: var(--tab-bg);
+      border-bottom: 8px solid transparent;
+      background: transparent;
       color: var(--text-soft);
       cursor: pointer;
       height: 100%;
       margin: 0;
+      opacity:0.5;
+      font: "Iosevka Web";
     }
 
     .tab.active {
-      background: var(--tab-active-bg);
+      border-bottom-color: var(--tab-active-bg);
+      border-top-color: transparent;
+      color: var(--text);
+      opacity:1;
     }
 
     .tab:hover {
-      background: var(--tab-hover-bg);
+      color: var(--text);
     }
 
     .tab.active:hover {
-      background: var(--tab-active-bg);
+      border-bottom-color: var(--tab-active-bg);
     }
 
     .tab-label {
@@ -252,18 +256,38 @@ function createTabStripMarkup() {
       line-height: 1;
     }
 
-    .tab-close:hover,
-    .tab-add:hover {
+    .tab-close {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.12s ease, color 0.12s ease;
+    }
+
+    .tab:hover .tab-close,
+    .tab:focus-within .tab-close {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .tab-close:hover {
       background: rgba(255, 255, 255, 0.1);
     }
 
     .tab-add {
       flex: 0 0 auto;
-      margin-left: 6px;
+      width: 34px;
+      height: 30px;
+      margin-left: 8px;
       border-radius: 5px 5px 0 0;
       color: var(--text-soft);
-      background: var(--control-bg);
+      background: transparent;
+      font-size: 24px;
+      line-height: 1;
       -webkit-app-region: no-drag;
+    }
+
+    .tab-add:hover {
+      background: transparent;
+      color: var(--text);
     }
 
     .tab-spacer {
@@ -281,10 +305,13 @@ function createTabStripMarkup() {
   <script>
     const tabsNode = document.getElementById('tabs');
     const addButton = document.getElementById('tab-add');
+    let welcomeOpen = false;
 
     function render(state) {
       const tabs = Array.isArray(state?.tabs) ? state.tabs : [];
-      addButton.hidden = tabs.some((tab) => tab.welcome);
+      welcomeOpen = tabs.some((tab) => tab.welcome);
+      addButton.hidden = welcomeOpen;
+      addButton.disabled = welcomeOpen;
       tabsNode.innerHTML = tabs.map((tab) => {
         const title = String(tab.title || 'welcome')
           .replace(/&/g, '&amp;')
@@ -318,7 +345,10 @@ function createTabStripMarkup() {
       });
     }
 
-    addButton.addEventListener('click', () => window.fieldTabs.openWelcomeTab());
+    addButton.addEventListener('click', () => {
+      if (welcomeOpen) return;
+      window.fieldTabs.openWelcomeTab();
+    });
     document.body.addEventListener('mouseenter', () => window.fieldTabs.revealTabs());
     document.body.addEventListener('mouseleave', () => window.fieldTabs.hideTabs());
     window.fieldTabs.onState(render);
@@ -796,9 +826,10 @@ function createMainWindow() {
   const onTabsReady = onlyFromStrip(() => sendTabState());
   const onTabActivate = onlyFromStrip((tabId) => activateTab(tabId));
   const onTabClose = onlyFromStrip((tabId) => closeTab(tabId));
-  const onOpenWelcomeTab = onlyFromStrip(() =>
-    openTab(welcomeUrl, { activate: true }),
-  );
+  const onOpenWelcomeTab = onlyFromStrip(() => {
+    if (tabs.some((tab) => isWelcomeUrl(tab.url))) return;
+    openTab(welcomeUrl, { activate: true });
+  });
   const onRevealTabs = onlyFromChrome(() => revealTabs());
   const onHideTabs = onlyFromChrome(() => hideTabs());
   const screenshotPayload = (image) => {
@@ -824,8 +855,9 @@ function createMainWindow() {
     const tab = activeTab();
     if (!tab || event.sender !== tab.view.webContents) return null;
     return (
-      (await captureScreenshotPayload(() => tab.view.webContents.capturePage())) ||
-      (await captureScreenshotPayload(() => win.capturePage()))
+      (await captureScreenshotPayload(() =>
+        tab.view.webContents.capturePage(),
+      )) || (await captureScreenshotPayload(() => win.capturePage()))
     );
   };
 

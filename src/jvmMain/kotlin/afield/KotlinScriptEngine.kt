@@ -501,10 +501,49 @@ fun getTokenBounds(buf: String, cursor: Int): CompletionTokenBounds {
     return CompletionTokenBounds(start, cursor)
 }
 
+val kotlinCompletionBlacklistPatterns = listOf("com.sun", "com.sun.*", "sun.*", "*clojure*")
+
+private fun kotlinCompletionBlacklistPatternMatches(pattern: String, candidate: String): Boolean {
+    val normalizedPattern = pattern.lowercase(Locale.ROOT)
+    return when {
+        normalizedPattern.startsWith("*") && normalizedPattern.endsWith("*") && normalizedPattern.length > 2 ->
+            candidate.contains(normalizedPattern.trim('*'))
+        normalizedPattern.endsWith(".*") ->
+            candidate.startsWith(normalizedPattern.removeSuffix("*"))
+        else ->
+            candidate == normalizedPattern
+    }
+}
+
+fun isBlacklistedKotlinCompletionName(name: String): Boolean {
+    val normalized = name.trim()
+        .removePrefix("import ")
+        .replace('$', '.')
+        .lowercase(Locale.ROOT)
+    if (normalized.isBlank()) return false
+
+    return normalized.split(Regex("\\s+")).any { token ->
+        val candidate = token.trim('`', '"', '\'', '(', ')', '[', ']', '{', '}', ',', ';', ':')
+        kotlinCompletionBlacklistPatterns.any { pattern ->
+            kotlinCompletionBlacklistPatternMatches(pattern, candidate)
+        }
+    }
+}
+
+fun isBlacklistedKotlinCompletionCandidate(variant: SourceCodeCompletionVariant): Boolean {
+    return sequenceOf(
+        variant.text,
+        variant.displayText,
+        variant.tail
+    ).plus(
+        variant.extraInfo.values.asSequence().mapNotNull { it as? String }
+    ).any(::isBlacklistedKotlinCompletionName)
+}
+
 fun getCompletionResult(
     code: String, cursor: Int, completions: List<SourceCodeCompletionVariant>
 ): CompletionResult.Success {
-    val filteredCompletions = completions.filter { !it.text.contains("clojure", ignoreCase = true) }
+    val filteredCompletions = completions.filterNot(::isBlacklistedKotlinCompletionCandidate)
         .filter { !it.text.contains("$", ignoreCase = true) }
     val bounds = getTokenBounds(code, cursor)
     return CompletionResult.Success(

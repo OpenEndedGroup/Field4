@@ -1,3 +1,5 @@
+@file:afield.CompletionCategory("Data")
+
 package afield.stdlib
 import afield.stdlib.WfcNeighborhood.Companion.VonNeumann
 import java.awt.image.BufferedImage

@@ -1,4 +1,5 @@
 @file:Suppress("unused")
+@file:afield.CompletionCategory("Math")
 
 package afield.stdlib
 

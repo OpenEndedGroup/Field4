@@ -1,3 +1,5 @@
+@file:afield.CompletionCategory("Graphics")
+
 package afield.stdlib.ceres
 
 import java.nio.ByteBuffer

@@ -1,3 +1,5 @@
+@file:afield.CompletionCategory("Internal")
+
 package afield.stdlib.ceres
 
 import java.lang.foreign.Arena

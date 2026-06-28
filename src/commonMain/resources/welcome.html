@@ -608,6 +608,37 @@
             accent-color: var(--field-cyan);
         }
 
+        .completion-blacklist {
+            display: grid;
+            gap: 6px;
+            padding-top: 2px;
+        }
+
+        .completion-blacklist-label {
+            color: var(--field-text-soft);
+            font-size: 11px;
+        }
+
+        .completion-blacklist-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            min-width: 0;
+        }
+
+        .completion-blacklist-token {
+            min-width: 0;
+            max-width: 100%;
+            padding: 4px 6px;
+            border: 1px solid rgba(72, 201, 255, 0.18);
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.36);
+            color: var(--field-cyan);
+            font-size: 10px;
+            line-height: 1;
+            overflow-wrap: anywhere;
+        }
+
         .preferences-controls {
             display: grid;
             gap: 6px;
@@ -1392,6 +1423,10 @@
                                 <button class="segmented-button stickiness-segment" type="button" data-stickiness-value="global" aria-pressed="false">globally</button>
                             </div>
                         </div>
+                        <div class="completion-blacklist">
+                            <span class="completion-blacklist-label">completion blacklist</span>
+                            <div id="completion-blacklist-list" class="completion-blacklist-list" aria-live="polite"></div>
+                        </div>
                         <div id="preferences-status" aria-live="polite"></div>
                     </div>
                 </details>
@@ -1513,6 +1548,7 @@
             oscEditorMaxExecutionMs: 750,
             oscEditorDeltaMode: false
         },
+        completionBlacklist: [],
         savingPreferences: false,
         learningOscField: ""
     };
@@ -1729,6 +1765,7 @@
     function renderPreferences() {
         const prefs = state.preferences || {};
         const summary = document.getElementById("preferences-summary");
+        const blacklistNode = document.getElementById("completion-blacklist-list");
         const stickiness = prefs.editorPropertyStickiness || "none";
         const enabledCount = [
             prefs.profiling,
@@ -1762,6 +1799,12 @@
             button.setAttribute("aria-pressed", active ? "true" : "false");
         });
         if (summary) summary.textContent = `${enabledCount} enabled`;
+        if (blacklistNode) {
+            const blacklist = Array.isArray(state.completionBlacklist) ? state.completionBlacklist : [];
+            blacklistNode.innerHTML = blacklist.length
+                ? blacklist.map((entry) => `<code class="completion-blacklist-token">${escapeHtml(entry)}</code>`).join("")
+                : `<span class="empty-state">none</span>`;
+        }
     }
 
     function setPreferencesStatus(text, isError = false) {
@@ -2680,6 +2723,7 @@
             state.defaultWorkspace = payload.defaultWorkspace || state.defaultWorkspace || "";
             state.aiSettings = payload.aiSettings || state.aiSettings;
             state.preferences = payload.preferences || state.preferences;
+            state.completionBlacklist = Array.isArray(payload.completionBlacklist) ? payload.completionBlacklist : [];
             try {
                 window.localStorage.setItem("field4.editorPropertyStickiness", state.preferences.editorPropertyStickiness || "none");
             } catch (_) {

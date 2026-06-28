@@ -1,3 +1,5 @@
+@file:afield.CompletionCategory("Internal")
+
 package afield.stdlib
 
 private const val PRETTY_LIMIT = 4

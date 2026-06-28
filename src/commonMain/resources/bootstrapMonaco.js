@@ -63,6 +63,157 @@ const kindForIcon = monacoKindForIcon
 const SYMBOL_CONTEXT_DEBOUNCE_MS = 180
 const SYMBOL_CONTEXT_CACHE_MAX = 200
 const SYMBOL_CONTEXT_POLL_MS = 250
+const COMPLETION_RECENT_STORAGE_KEY = "afield.kotlinCompletion.recent.v1"
+const COMPLETION_RECENT_MAX = 24
+const COMPLETION_CATEGORY_ORDER = [
+        "AI",
+        "Recent",
+        "Local",
+        "Math",
+        "Graphics",
+        "Visualization",
+        "Audio",
+        "Data",
+        "Workspace",
+        "Kotlin",
+        "External",
+        "Internal",
+        "Other",
+]
+
+const completionCategoryLabel = (category) => String(category || "").trim()
+
+const completionCategoryRank = (category) => {
+        const label = completionCategoryLabel(category) || "Other"
+        const found = COMPLETION_CATEGORY_ORDER.indexOf(label)
+        return found >= 0 ? found : COMPLETION_CATEGORY_ORDER.length
+}
+
+const completionSortText = (sortPrefix, category, ordinal) => {
+        const rank = completionCategoryRank(category).toString(36).padStart(2, "0")
+        return sortPrefix + rank + ordinal.toString(36).padStart(6, "0")
+}
+
+const completionIsSectionHeader = (item) => !!(item && item.data && item.data.sectionHeader)
+
+const completionRecentKey = (displayText, insertText, detail) =>
+        [displayText || "", insertText || "", detail || ""].join("\u001f")
+
+const completionRecentEntries = () => {
+        try {
+                const raw = window.localStorage && window.localStorage.getItem(COMPLETION_RECENT_STORAGE_KEY)
+                const parsed = raw ? JSON.parse(raw) : []
+                return Array.isArray(parsed) ? parsed.filter(entry => entry && typeof entry.key === "string") : []
+        } catch (_) {
+                return []
+        }
+}
+
+const completionRememberRecent = (recent) => {
+        if (!recent || !recent.key) return
+        try {
+                const rest = completionRecentEntries().filter(entry => entry.key !== recent.key)
+                const next = [{key: recent.key, at: Date.now()}, ...rest].slice(0, COMPLETION_RECENT_MAX)
+                window.localStorage && window.localStorage.setItem(COMPLETION_RECENT_STORAGE_KEY, JSON.stringify(next))
+        } catch (_) {
+        }
+}
+
+const completionDebugState = () => {
+        window.afieldCompletionDebug = window.afieldCompletionDebug || {events: []}
+        if (!Array.isArray(window.afieldCompletionDebug.events)) window.afieldCompletionDebug.events = []
+        return window.afieldCompletionDebug
+}
+
+const completionDebugRecord = (type, payload = {}) => {
+        const state = completionDebugState()
+        const event = {
+                at: Date.now(),
+                type,
+                ...payload,
+        }
+        state.events.push(event)
+        if (state.events.length > 80) state.events.splice(0, state.events.length - 80)
+        state.last = event
+        state[type] = event
+        if (window.DEBUG_COMPLETION) console.info("[completion-debug]", event)
+        return event
+}
+
+const completionDebugSuggestionSummary = (suggestions) => {
+        const list = Array.isArray(suggestions) ? suggestions : []
+        return {
+                count: list.length,
+                headers: list.filter(completionIsSectionHeader).map(item => item.label),
+                ai: list.filter(item => item && item.data && item.data.ai).length,
+                categories: [...new Set(list.map(item => item && item.data && item.data.category).filter(Boolean))],
+                first: list.slice(0, 10).map(item => ({
+                        label: item && item.label,
+                        filterText: item && item.filterText,
+                        sortText: item && item.sortText,
+                        header: completionIsSectionHeader(item),
+                        category: item && item.data && item.data.category,
+                        ai: !!(item && item.data && item.data.ai),
+                })),
+        }
+}
+
+const completionRowLabel = (item) => {
+        if (!item) return ""
+        if (typeof item.label === "string") return item.label
+        if (item.label && typeof item.label.label === "string") return item.label.label
+        return String(item.label || "")
+}
+
+const completionRememberRenderSuggestions = (suggestions, key = "") => {
+        const list = Array.isArray(suggestions) ? suggestions : []
+        const byLabel = new Map()
+        list.forEach((item, index) => {
+                if (!item || !item.data) return
+                const category = completionCategoryLabel(item.data.category) || "Other"
+                const label = completionRowLabel(item)
+                if (!label) return
+                const entry = {
+                        category,
+                        index,
+                        label,
+                        ai: !!item.data.ai,
+                }
+                const previous = byLabel.get(label)
+                if (!previous || index < previous.index) {
+                        byLabel.set(label, entry)
+                }
+        })
+        window.afieldCompletionRenderState = {
+                key,
+                at: Date.now(),
+                byLabel,
+                count: byLabel.size,
+                labels: [...byLabel.keys()],
+        }
+}
+
+const completionDebugRows = () => {
+        const rows = [...document.querySelectorAll(".editor-widget.suggest-widget .monaco-list-row")]
+        const widget = document.querySelector(".editor-widget.suggest-widget")
+        return {
+                widget: widget ? {
+                        className: widget.className,
+                        text: (widget.textContent || "").slice(0, 400),
+                        display: getComputedStyle(widget).display,
+                        visibility: getComputedStyle(widget).visibility,
+                        opacity: getComputedStyle(widget).opacity,
+                } : null,
+                count: rows.length,
+                first: rows.slice(0, 12).map(row => ({
+                        aria: row.getAttribute("aria-label") || "",
+                        text: (row.textContent || "").trim(),
+                        className: row.className,
+                })),
+        }
+}
+
+window.afieldCompletionDebugRows = completionDebugRows
 
 const stopSymbolContextPolling = (editor) => {
         if (!editor || editor._afieldSymbolContextPollTimer == null) return
@@ -708,13 +859,16 @@ const initMonaco = () => {
         installEditorBottomOverlayFade(ed)
 
         installNumberCommands(ed)
-
-
         // register a no-keybinding command and get its ID
         const acceptCommandId = ed.addCommand(0, (ctx, ...args) => {
-                ed.getModel().applyEdits([{
-                        range: new monaco.Range(1, 1, 1, 1), text: args[0].trim() + "\n", forceMoveMarkers: true
-                }]);
+                const payload = (args[0] && typeof args[0] === "object") ? args[0] : {prefix: args[0]}
+                completionRememberRecent(payload.recent)
+                const prefix = String(payload.prefix || "").trim()
+                if (prefix) {
+                        ed.getModel().applyEdits([{
+                                range: new monaco.Range(1, 1, 1, 1), text: prefix + "\n", forceMoveMarkers: true
+                        }]);
+                }
         }, '');
 
         var completionProvider = {
@@ -723,12 +877,18 @@ const initMonaco = () => {
                         var word = model.getWordUntilPosition(position);
                         var languageId = model.getLanguageId()
                         const shouldRefreshAsPrefixChanges = languageId === "kotlin" && word.word.length === 0
-                        var range = {
-                                startLineNumber: position.lineNumber,
-                                endLineNumber: position.lineNumber,
-                                startColumn: word.startColumn,
-                                endColumn: word.endColumn,
-                        };
+	                        var range = {
+	                                startLineNumber: position.lineNumber,
+	                                endLineNumber: position.lineNumber,
+	                                startColumn: word.startColumn,
+	                                endColumn: word.endColumn,
+	                        };
+                                const emptyRange = {
+                                        startLineNumber: position.lineNumber,
+                                        endLineNumber: position.lineNumber,
+                                        startColumn: position.column,
+                                        endColumn: position.column,
+                                }
 
                         var completionInfo = {
                                 allCode: model.getValue(), at: [position.lineNumber, position.column], word: word,
@@ -743,6 +903,13 @@ const initMonaco = () => {
                         if (window.kotlinAiCompletion && window.kotlinAiCompletion.key === sessionKey && window.kotlinAiCompletion.useCacheOnce) {
                                 const cached = window.kotlinAiCompletion
                                 cached.useCacheOnce = false
+                                completionRememberRenderSuggestions(cached.merged || cached.base || [], sessionKey)
+                                completionDebugRecord("return-cache", {
+                                        key: sessionKey,
+                                        word: word.word,
+                                        rows: completionDebugRows(),
+                                        suggestions: completionDebugSuggestionSummary(cached.merged || cached.base || []),
+                                })
                                 return {
                                         suggestions: cached.merged || cached.base || [],
                                         incomplete: shouldRefreshAsPrefixChanges
@@ -752,18 +919,32 @@ const initMonaco = () => {
 // Resolve uid/property: check embedded editor first, fall back to main editor globals
 				const embEntry = window.embeddedEditors && window.embeddedEditors.getByModel(model);
                         if (typeof window.fieldLanguageCompletionItems === "function") {
-                                const completionEditor = embEntry ? embEntry.editor : globalEditor
+                                const completionEditor = embEntry ? embEntry.editor : (window.globalEditor || ed)
                                 const localSuggestions = window.fieldLanguageCompletionItems(completionEditor, model, position, context)
                                 if (localSuggestions && localSuggestions.length > 0) {
+                                        completionRememberRenderSuggestions(localSuggestions, sessionKey)
+                                        completionDebugRecord("return-local", {
+                                                key: sessionKey,
+                                                word: word.word,
+                                                suggestions: completionDebugSuggestionSummary(localSuggestions),
+                                        })
                                         return {
                                                 suggestions: localSuggestions,
                                                 incomplete: false
                                         }
                                 }
                         }
-				const completionUid = embEntry ? embEntry.uid : (window.currentSelectedCode && window.currentSelectedCode[0] ? window.currentSelectedCode[0].uid : null);
-				const completionProperty = embEntry ? embEntry.property : window.currentSelectedProperty;
-				if (!completionUid) return { suggestions: [] };
+					const completionUid = embEntry ? embEntry.uid : (window.currentSelectedCode && window.currentSelectedCode[0] ? window.currentSelectedCode[0].uid : null);
+					const completionProperty = embEntry ? embEntry.property : window.currentSelectedProperty;
+					if (!completionUid) {
+                                                completionDebugRecord("return-no-uid", {
+                                                        key: sessionKey,
+                                                        word: word.word,
+                                                        property: completionProperty || "",
+                                                })
+                                                return { suggestions: [] };
+                                        }
+                                const isKotlinCompletion = languageId === "kotlin" || completionProperty === "code"
 
 				const basePayload = {
 					uid: completionUid,
@@ -796,26 +977,39 @@ const initMonaco = () => {
                                 }
                         }
 
-                        const buildSuggestions = (payload, opts = {}) => {
+	                        const completionWithTypedStem = (stem, text) => {
+	                                const raw = String(text || "")
+	                                const typedStem = String(stem || "")
+	                                if (!typedStem || !raw) return raw
+	                                const trimmedRaw = raw.trimStart()
+	                                if (trimmedRaw.startsWith(typedStem)) return raw
+	                                return typedStem + raw
+	                        }
+
+	                        const buildSuggestions = (payload, opts = {}) => {
                                 let idx = opts.offset || 0
                                 const rangeObj = rangeForPayload(payload, opts.model || model)
-                                return payload.metadata.map(m => {
-                                        let command = null
-                                        if (m.prefix) {
-                                                command = {
-                                                        id: acceptCommandId,
-                                                        title: '__completionAccepted_prefix',
-                                                        arguments: [m.prefix],
-                                                }
+	                                const sortPrefix = "1000"
+	                                const items = payload.metadata.map(m => {
+	                                        const category = opts.ai ? "AI" : completionCategoryLabel(m.category)
+	                                        const sortText = completionSortText(sortPrefix, category, ++idx)
+                                        const insertText = opts.ai ? completionWithTypedStem(word.word, m.text) : m.text
+                                        const displayText = opts.ai ? completionWithTypedStem(word.word, m.displayText || m.text) : m.displayText
+                                        const filterText = opts.ai ? insertText : m.text
+                                        const recentKey = completionRecentKey(displayText, insertText, m.tail)
+                                        const command = {
+                                                id: acceptCommandId,
+                                                title: '__completionAccepted',
+                                                arguments: [{
+                                                        prefix: m.prefix || "",
+                                                        recent: isKotlinCompletion ? {key: recentKey} : null,
+                                                }],
                                         }
 
-                                        const sortPrefix = opts.ai ? "9000" : "1000"
-                                        const sortText = sortPrefix + (idx++).toString(36).padStart(6, "0")
-
                                         return {
-                                                label: m.displayText,
-                                                insertText: m.text,
-                                                filterText: m.text,
+                                                label: displayText,
+                                                insertText: insertText,
+                                                filterText: filterText,
                                                 range: rangeObj,
                                                 kind: kindForIcon(m.icon),
                                                 detail: m.tail,
@@ -829,8 +1023,8 @@ const initMonaco = () => {
                                                 },
                                                 data: {
                                                         source: languageId,
-                                                        displayText: m.displayText,
-                                                        insertText: m.text,
+                                                        displayText: displayText,
+                                                        insertText: insertText,
                                                         detail: m.tail,
                                                         aiDocPending: false,
                                                         aiDocResolved: !!opts.ai,
@@ -838,49 +1032,146 @@ const initMonaco = () => {
                                                         documentationSourceName: m.documentationSourceName || "",
                                                         documentationSourcePath: m.documentationSourcePath || "",
                                                         documentationSourceLine: m.documentationSourceLine || -1,
+                                                        category: category,
+                                                        recentKey: recentKey,
                                                         ai: !!opts.ai
                                                 },
-                                                command: command
-                                        }
+	                                                command: command
+	                                        }
+	                                })
+		                                if (opts.raw || !isKotlinCompletion) return items
+                                        return groupCompletionSuggestions(items, {
+                                                emptyRange,
+                                                replaceRange: rangeObj,
+                                                sessionKey,
+                                                sortPrefix,
+                                                word: word.word,
+                                        })
+		                        }
+
+		                        const groupCompletionSuggestions = (items, opts = {}) => {
+		                                if (!isKotlinCompletion) return items
+	                                const grouped = []
+	                                const seenCategories = new Set()
+	                                const recentRanks = new Map(completionRecentEntries().map((entry, index) => [entry.key, index]))
+	                                const sortedItems = items.filter(item => !completionIsSectionHeader(item)).slice().sort((a, b) => {
+                                        const aSort = a.sortText || ""
+                                        const bSort = b.sortText || ""
+                                        if (aSort < bSort) return -1
+                                        if (aSort > bSort) return 1
+                                        return String(a.label || "").localeCompare(String(b.label || ""))
                                 })
-                        }
+	                                const recentItems = sortedItems
+	                                        .filter(item => item.data && recentRanks.has(item.data.recentKey))
+	                                        .sort((a, b) => recentRanks.get(a.data.recentKey) - recentRanks.get(b.data.recentKey))
+	                                        .map((item, recentIndex) => ({
+	                                                ...item,
+	                                                sortText: completionSortText(opts.sortPrefix || "1000", "Recent", recentIndex + 1),
+                                                        data: {
+                                                                ...item.data,
+                                                                originalCategory: item.data.category || "",
+                                                                category: "Recent",
+                                                        },
+	                                        }))
+	                                const normalItems = sortedItems.filter(item => !(item.data && recentRanks.has(item.data.recentKey)))
+	                                const preselectFirstCompletion = () => {
+	                                        let selected = false
+	                                        grouped.forEach(item => {
+	                                                if (!item || completionIsSectionHeader(item)) return
+	                                                item.preselect = !selected
+	                                                selected = true
+	                                        })
+	                                }
+                                        const pushItem = (item) => {
+	                                        const category = item.data && item.data.category ? item.data.category : "Other"
+	                                        if (!seenCategories.has(category)) {
+	                                                seenCategories.add(category)
+	                                        }
+	                                        grouped.push(item)
+                                        }
+	                                recentItems.forEach(pushItem)
+		                        normalItems.forEach(pushItem)
+		                                preselectFirstCompletion()
+		                                        completionDebugRecord(opts.debugType || "build-grouped", {
+		                                                key: sessionKey,
+		                                                word: word.word,
+		                                                summary: completionDebugSuggestionSummary(grouped),
+                                        })
+		                                return grouped
+		                        }
 
                         window.kotlinAiCompletion = {
                                 key: sessionKey,
                                 gen: currentGen,
-                                base: [],
-                                ai: [],
-                                merged: [],
-                                useCacheOnce: false
+	                                base: [],
+	                                baseItems: [],
+	                                ai: [],
+	                                aiItems: [],
+	                                merged: [],
+	                                useCacheOnce: false
                         }
 
-                        if (languageId === "kotlin") {
+                        if (isKotlinCompletion) {
                                 sendWithReply("complete-kotlin-ai", basePayload, "complete-kotlin-ai", (message, payload) => {
                                         if (window.currentEditorGeneration !== currentGen) return true
                                         if (!window.kotlinAiCompletion || window.kotlinAiCompletion.key !== sessionKey) return true
-                                        const aiSuggestions = buildSuggestions(payload, {offset: 0, ai: true, model})
-                                        window.kotlinAiCompletion.ai = aiSuggestions
-                                        const baseExisting = window.kotlinAiCompletion.base || []
-                                        const hasBase = baseExisting.length > 0
-                                        window.kotlinAiCompletion.merged = hasBase ? baseExisting : aiSuggestions
-                                        if (!hasBase && aiSuggestions.length > 0) {
-                                                window.kotlinAiCompletion.useCacheOnce = true
-                                                if (isSuggestWidgetVisible()) {
-                                                        try {
-                                                                const activeEditor = embEntry ? embEntry.editor : globalEditor
-                                                                if (activeEditor && activeEditor.trigger) {
-                                                                        // Close then re-open to refresh items only if user still has the picker open.
+		                                        const aiItems = buildSuggestions(payload, {offset: 0, ai: true, model, raw: true})
+	                                                const aiSuggestions = groupCompletionSuggestions(aiItems, {
+	                                                        emptyRange,
+	                                                        replaceRange: range,
+	                                                        sessionKey,
+	                                                        sortPrefix: "1000",
+	                                                        word: word.word,
+	                                                        debugType: "build-ai",
+	                                                })
+		                                        window.kotlinAiCompletion.ai = aiSuggestions
+		                                        window.kotlinAiCompletion.aiItems = aiItems
+		                                        const baseExisting = window.kotlinAiCompletion.baseItems || []
+		                                        window.kotlinAiCompletion.merged = groupCompletionSuggestions([...baseExisting, ...aiItems], {
+	                                                        emptyRange,
+	                                                        replaceRange: range,
+	                                                        sessionKey,
+	                                                        sortPrefix: "1000",
+	                                                        word: word.word,
+	                                                        debugType: "build-merged",
+	                                                })
+		                                        if (aiItems.length > 0) {
+	                                                window.kotlinAiCompletion.useCacheOnce = true
+                                                        const activeEditor = embEntry ? embEntry.editor : (window.globalEditor || ed)
+                                                        const activeModel = activeEditor && activeEditor.getModel && activeEditor.getModel()
+                                                        const activePosition = activeEditor && activeEditor.getPosition && activeEditor.getPosition()
+                                                        const sameModel = activeModel === model
+                                                        const samePosition = !!(activePosition && activePosition.lineNumber === position.lineNumber && activePosition.column === position.column)
+                                                        const hasFocus = !!(activeEditor && activeEditor.hasTextFocus && activeEditor.hasTextFocus())
+                                                        const shouldRefresh = !!(activeEditor && activeEditor.trigger && sameModel && samePosition)
+                                                        completionDebugRecord("ai-arrived", {
+                                                                key: sessionKey,
+                                                                word: word.word,
+                                                                shouldRefresh,
+                                                                sameModel,
+                                                                samePosition,
+                                                                hasFocus,
+                                                                visible: isSuggestWidgetVisible(),
+                                                                ai: completionDebugSuggestionSummary(aiSuggestions),
+                                                                merged: completionDebugSuggestionSummary(window.kotlinAiCompletion.merged),
+                                                                rows: completionDebugRows(),
+                                                        })
+                                                        if (shouldRefresh) {
+                                                                try {
                                                                         activeEditor.trigger("afield-ai", "hideSuggestWidget", {})
                                                                         setTimeout(() => {
                                                                                 activeEditor.trigger("afield-ai", "editor.action.triggerSuggest", {})
                                                                         }, 0)
+                                                                } catch (error) {
+                                                                        completionDebugRecord("ai-refresh-error", {
+                                                                                key: sessionKey,
+                                                                                message: error && error.message ? error.message : String(error),
+                                                                        })
                                                                 }
-                                                        } catch (_) {
                                                         }
-                                                }
-                                        }
-                                        return true
-                                })
+	                                        }
+	                                        return true
+	                                })
                         }
 
                         var ret = new Promise(resolve => {
@@ -888,16 +1179,40 @@ const initMonaco = () => {
 
                                         if (window.currentEditorGeneration !== currentGen) return true
 
-                                        const baseSuggestions = buildSuggestions(payload, {offset: 0, model})
-                                        window.kotlinAiCompletion.base = baseSuggestions
-                                        const aiExisting = window.kotlinAiCompletion.ai || []
-                                        window.kotlinAiCompletion.merged = baseSuggestions.length > 0 ? baseSuggestions : aiExisting
+	                                        const baseItems = buildSuggestions(payload, {offset: 0, model, raw: true})
+	                                        const baseSuggestions = groupCompletionSuggestions(baseItems, {
+	                                                emptyRange,
+	                                                replaceRange: range,
+	                                                sessionKey,
+	                                                sortPrefix: "1000",
+	                                                word: word.word,
+	                                                debugType: "build-base",
+	                                        })
+		                                        window.kotlinAiCompletion.base = baseSuggestions
+		                                        window.kotlinAiCompletion.baseItems = baseItems
+		                                        const aiExisting = window.kotlinAiCompletion.aiItems || []
+		                                        window.kotlinAiCompletion.merged = groupCompletionSuggestions([...baseItems, ...aiExisting], {
+	                                                emptyRange,
+	                                                replaceRange: range,
+	                                                sessionKey,
+	                                                sortPrefix: "1000",
+	                                                word: word.word,
+	                                                debugType: "build-merged",
+	                                        })
+                                                const visibleSuggestions = aiExisting.length > 0 ? window.kotlinAiCompletion.merged : baseSuggestions
+                                                completionRememberRenderSuggestions(visibleSuggestions, sessionKey)
 
-                                        monacoLog("resolving. Answer is ", {suggestions: baseSuggestions})
-                                        resolve({
-                                                suggestions: baseSuggestions,
-                                                incomplete: shouldRefreshAsPrefixChanges
-                                        })
+		                                        monacoLog("resolving. Answer is ", {suggestions: visibleSuggestions})
+	                                                completionDebugRecord("return-base", {
+	                                                        key: sessionKey,
+	                                                        word: word.word,
+	                                                        base: completionDebugSuggestionSummary(baseSuggestions),
+	                                                        merged: completionDebugSuggestionSummary(window.kotlinAiCompletion.merged),
+	                                                })
+		                                        resolve({
+		                                                suggestions: visibleSuggestions,
+	                                                incomplete: shouldRefreshAsPrefixChanges
+	                                        })
 
                                         return true
                                 })
@@ -907,6 +1222,7 @@ const initMonaco = () => {
                 resolveCompletionItem: (item, cancellationToken) => {
                         try {
                                 if (!item || !item.data) return item
+                                if (item.data.sectionHeader) return item
                                 if (item.data.aiDocResolved || item.data.aiDocPending) return item
                                 if (item.data.source !== "kotlin") return item
                                 const existingDocValue = (item.documentation && item.documentation.value) ? item.documentation.value.trim() : ""

@@ -64,7 +64,8 @@ data class WelcomeDocsResponse(
     val defaultWorkspace: String = "",
     val aiSettings: AiSettingsStatus = AiSettingsStatus(),
     val preferences: FieldPreferences = FieldPreferences(),
-    val projects: List<ProjectEntry> = emptyList()
+    val projects: List<ProjectEntry> = emptyList(),
+    val completionBlacklist: List<String> = emptyList()
 )
 
 @Serializable

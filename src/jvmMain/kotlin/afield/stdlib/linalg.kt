@@ -1,3 +1,5 @@
+@file:afield.CompletionCategory("Math")
+
 package afield.stdlib
 
 import com.github.quickhull3d.QuickHull3D
@@ -661,6 +663,5 @@ class Cuboid(val x: Float, val y: Float, val z: Float, val w: Float, val h: Floa
         }
     }
 }
-
 
 

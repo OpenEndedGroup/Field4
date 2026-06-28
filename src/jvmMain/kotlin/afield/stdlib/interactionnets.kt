@@ -1,4 +1,5 @@
 @file:Suppress("MemberVisibilityCanBePrivate", "unused")
+@file:afield.CompletionCategory("Visualization")
 
 package afield.stdlib
 

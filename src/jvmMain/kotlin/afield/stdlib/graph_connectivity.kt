@@ -1,4 +1,5 @@
 @file:Suppress("MemberVisibilityCanBePrivate")
+@file:afield.CompletionCategory("Graphics")
 
 package afield.stdlib
 

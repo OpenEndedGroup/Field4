@@ -1,3 +1,5 @@
+@file:afield.CompletionCategory("Audio")
+
 package afield.stdlib
 
 import afield.Generator

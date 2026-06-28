@@ -1502,14 +1502,24 @@ class Server {
                             }
                         }
 
+                        val activeToken = exec.allCode.substring(
+                            bounds.start.coerceIn(0, exec.allCode.length),
+                            bounds.end.coerceIn(0, exec.allCode.length)
+                        )
+                        fun completionWithTypedStem(text: String): String {
+                            if (activeToken.isBlank() || text.isBlank()) return text
+                            return if (text.trimStart().startsWith(activeToken)) text else activeToken + text
+                        }
+
                         val metadata = candidates.take(3).mapIndexed { idx, candidate ->
-                            val display = candidate.text.lineSequence().firstOrNull()?.trim().orEmpty()
+                            val replacementText = completionWithTypedStem(candidate.text)
+                            val display = replacementText.lineSequence().firstOrNull()?.trim().orEmpty()
                             val doc = buildString {
                                 val notes = candidate.documentation.ifBlank { "GPT-5.1-codex-mini" }
                                 append(notes.trim())
-                                if (candidate.text.isNotBlank()) {
+                                if (replacementText.isNotBlank()) {
                                     append("\n\n```kotlin\n")
-                                    append(candidate.text.trimEnd())
+                                    append(replacementText.trimEnd())
                                     append("\n```")
                                 }
                             }.trimEnd()
@@ -1517,7 +1527,7 @@ class Server {
                             Metadata(
                                 icon = "keyword",
                                 tail = "AI ${idx + 1}",
-                                text = candidate.text,
+                                text = replacementText,
                                 displayText = if (display.isNotEmpty()) display else "AI completion ${idx + 1}",
                                 documentation = doc
                             )
@@ -2302,7 +2312,8 @@ class Server {
                                     defaultWorkspace,
                                     currentAiSettingsStatus(),
                                     preferences,
-                                    projects
+                                    projects,
+                                    kotlinCompletionBlacklistPatterns
                                 )
                             )
                         }

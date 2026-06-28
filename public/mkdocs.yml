@@ -27,7 +27,8 @@ nav:
         - StackSL Cheatsheet: stacksl_cheatsheet.md
         - StackSL Examples: stacksl_examples.md
         - Language Extensions: language_extensions.md
-        - Abstract Animation Forth: abstract_animation_language.md
+        - RectSL Cheatsheet: rectsl_cheatsheet.md
+        - RectSL Examples: rectsl_examples.md
         - Nano Examples: nano_examples.md
       - Drawing From Data:
         - Functions Examples: functions_examples.md
