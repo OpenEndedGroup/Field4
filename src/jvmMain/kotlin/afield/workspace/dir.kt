@@ -53,6 +53,16 @@ data class RunningDocumentEntry(
     val openUrl: String
 )
 
+val defaultImportClassBlacklist = listOf(
+    "com.sun.*",
+    "sun.*",
+    "jdk.*",
+    "*awt*",
+    "javax.swing.*",
+    "com.apple.eio.*",
+    "kotlin.reflect.jvm.internal.*"
+)
+
 @Serializable
 data class WelcomeDocsResponse(
     val documents: List<WelcomeEntry>,
@@ -86,7 +96,8 @@ data class FieldPreferences(
     val oscEditorStopAddress: String = "/field/stop",
     val oscEditorDebounceMs: Int = 200,
     val oscEditorMaxExecutionMs: Int = 750,
-    val oscEditorDeltaMode: Boolean = false
+    val oscEditorDeltaMode: Boolean = false,
+    val importClassBlacklist: List<String> = defaultImportClassBlacklist
 )
 
 @Serializable

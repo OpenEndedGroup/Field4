@@ -144,6 +144,28 @@
     font-style: italic;
 }
 
+.afield-suggest-loading {
+    display: flex;
+    align-items: center;
+    min-height: 42px;
+    font-style: normal;
+}
+
+.afield-suggest-spinner {
+    width: 13px;
+    height: 13px;
+    border: 1px solid var(--field-border-soft);
+    border-top-color: var(--field-accent);
+    border-radius: 50%;
+    animation: afield-suggest-spin 760ms linear infinite;
+}
+
+@keyframes afield-suggest-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 .afield-suggest-doc .ai-chat-markdown {
     font-size: 12px;
     line-height: 1.35;

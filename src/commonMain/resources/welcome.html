@@ -333,6 +333,7 @@
         #ai-flagship-model,
         #ai-fast-model,
         #ai-fallback-model,
+        #pref-import-class-blacklist,
         #osc-editor-port,
         #osc-editor-float-address,
         #osc-editor-launch-address,
@@ -357,6 +358,7 @@
         #ai-flagship-model::placeholder,
         #ai-fast-model::placeholder,
         #ai-fallback-model::placeholder,
+        #pref-import-class-blacklist::placeholder,
         #osc-editor-port::placeholder,
         #osc-editor-float-address::placeholder,
         #osc-editor-launch-address::placeholder,
@@ -375,6 +377,7 @@
         #ai-flagship-model:focus,
         #ai-fast-model:focus,
         #ai-fallback-model:focus,
+        #pref-import-class-blacklist:focus,
         #osc-editor-port:focus,
         #osc-editor-float-address:focus,
         #osc-editor-launch-address:focus,
@@ -642,6 +645,20 @@
         .preferences-controls {
             display: grid;
             gap: 6px;
+        }
+
+        .preference-textarea-field {
+            display: grid;
+            gap: 6px;
+            color: var(--field-text-soft);
+            font-size: 11px;
+        }
+
+        #pref-import-class-blacklist {
+            min-height: 94px;
+            line-height: 1.35;
+            resize: vertical;
+            font-family: "Iosevka", ui-monospace, monospace;
         }
 
         .preference-select-label {
@@ -1422,6 +1439,10 @@
                                 <button class="segmented-button stickiness-segment" type="button" data-stickiness-value="per-box" aria-pressed="false">per-box</button>
                                 <button class="segmented-button stickiness-segment" type="button" data-stickiness-value="global" aria-pressed="false">globally</button>
                             </div>
+                            <label class="preference-textarea-field" for="pref-import-class-blacklist">
+                                <span>import class blacklist</span>
+                                <textarea id="pref-import-class-blacklist" rows="5" spellcheck="false" autocomplete="off" placeholder="com.sun.*&#10;sun.*&#10;*awt*"></textarea>
+                            </label>
                         </div>
                         <div class="completion-blacklist">
                             <span class="completion-blacklist-label">completion blacklist</span>
@@ -1494,6 +1515,16 @@
 <div id="welcome-context-menu" aria-live="polite"></div>
 
 <script>
+    const DEFAULT_IMPORT_CLASS_BLACKLIST = [
+        "com.sun.*",
+        "sun.*",
+        "jdk.*",
+        "*awt*",
+        "javax.swing.*",
+        "com.apple.eio.*",
+        "kotlin.reflect.jvm.internal.*"
+    ];
+
     const state = {
         documents: [],
         projects: [],
@@ -1546,7 +1577,8 @@
             oscEditorStopAddress: "/field/stop",
             oscEditorDebounceMs: 200,
             oscEditorMaxExecutionMs: 750,
-            oscEditorDeltaMode: false
+            oscEditorDeltaMode: false,
+            importClassBlacklist: DEFAULT_IMPORT_CLASS_BLACKLIST.slice()
         },
         completionBlacklist: [],
         savingPreferences: false,
@@ -1556,6 +1588,7 @@
     let searchRequestSerial = 0;
     let searchDebounceTimer = null;
     let preferencesSaveSerial = 0;
+    let preferencesSaveTimer = null;
     let oscSettingsSaveTimer = null;
     let welcomeRefreshTimer = null;
     let welcomeEventSocket = null;
@@ -1767,6 +1800,9 @@
         const summary = document.getElementById("preferences-summary");
         const blacklistNode = document.getElementById("completion-blacklist-list");
         const stickiness = prefs.editorPropertyStickiness || "none";
+        const importClassBlacklist = Array.isArray(prefs.importClassBlacklist)
+            ? prefs.importClassBlacklist
+            : DEFAULT_IMPORT_CLASS_BLACKLIST;
         const enabledCount = [
             prefs.profiling,
             prefs.framePresentationLog,
@@ -1798,7 +1834,12 @@
             button.classList.toggle("active", active);
             button.setAttribute("aria-pressed", active ? "true" : "false");
         });
-        if (summary) summary.textContent = `${enabledCount} enabled`;
+        const importBlacklistInput = document.getElementById("pref-import-class-blacklist");
+        if (importBlacklistInput && document.activeElement !== importBlacklistInput) {
+            importBlacklistInput.value = importClassBlacklist.join("\n");
+        }
+        if (importBlacklistInput) importBlacklistInput.disabled = state.savingPreferences;
+        if (summary) summary.textContent = `${enabledCount} enabled · ${importClassBlacklist.length} blocked`;
         if (blacklistNode) {
             const blacklist = Array.isArray(state.completionBlacklist) ? state.completionBlacklist : [];
             blacklistNode.innerHTML = blacklist.length
@@ -1882,8 +1923,24 @@
             oscEditorStopAddress: String(document.getElementById("osc-editor-stop-address")?.value || "/field/stop").trim(),
             oscEditorDebounceMs: Number.isFinite(parsedDebounce) ? parsedDebounce : 200,
             oscEditorMaxExecutionMs: Number.isFinite(parsedMaxExecution) ? parsedMaxExecution : 750,
-            oscEditorDeltaMode: !!document.getElementById("osc-editor-delta-mode")?.checked
+            oscEditorDeltaMode: !!document.getElementById("osc-editor-delta-mode")?.checked,
+            importClassBlacklist: readImportClassBlacklist()
         };
+    }
+
+    function readImportClassBlacklist() {
+        const raw = String(document.getElementById("pref-import-class-blacklist")?.value || "");
+        const seen = new Set();
+        return raw
+            .split(/\r?\n|,/)
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .filter((line) => {
+                const key = line.toLowerCase();
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
     }
 
     function openDocument(name, options = {}) {
@@ -3260,6 +3317,14 @@
         }, delay);
     }
 
+    function queuePreferencesSave(delay = 450) {
+        clearTimeout(preferencesSaveTimer);
+        preferencesSaveTimer = setTimeout(() => {
+            preferencesSaveTimer = null;
+            savePreferences("preferences", { background: true });
+        }, delay);
+    }
+
     function installDisclosureAccordions() {
         document.querySelectorAll("[data-accordion]").forEach((accordion) => {
             accordion.querySelectorAll("details").forEach((details) => {
@@ -3380,6 +3445,7 @@
         const aiProviderButtons = document.querySelectorAll("[data-ai-provider]");
         const saveAiSettingsButton = document.getElementById("save-ai-settings");
         const stickinessButtons = document.querySelectorAll("[data-stickiness-value]");
+        const importClassBlacklistInput = document.getElementById("pref-import-class-blacklist");
         const oscInputs = [
             document.getElementById("osc-editor-enabled"),
             document.getElementById("osc-editor-port"),
@@ -3523,6 +3589,24 @@
                 }
                 savePreferences();
             });
+        });
+
+        importClassBlacklistInput?.addEventListener("input", () => {
+            setPreferencesStatus("");
+            queuePreferencesSave();
+        });
+
+        importClassBlacklistInput?.addEventListener("change", () => {
+            setPreferencesStatus("");
+            queuePreferencesSave(0);
+        });
+
+        importClassBlacklistInput?.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter" || !(event.metaKey || event.ctrlKey)) return;
+            event.preventDefault();
+            clearTimeout(preferencesSaveTimer);
+            preferencesSaveTimer = null;
+            savePreferences();
         });
 
         oscInputs.forEach((input) => {

@@ -387,6 +387,14 @@ private fun normalizeFieldPreferences(preferences: FieldPreferences): FieldPrefe
             else -> "/$trimmed"
         }
     }
+
+    val importClassBlacklist = preferences.importClassBlacklist
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
+        .distinctBy { it.lowercase(Locale.US) }
+        .take(200)
+        .ifEmpty { defaultImportClassBlacklist }
+
     return preferences.copy(
         editorPropertyStickiness = sticky,
         oscEditorPort = preferences.oscEditorPort.coerceIn(1, 65535),
@@ -394,7 +402,8 @@ private fun normalizeFieldPreferences(preferences: FieldPreferences): FieldPrefe
         oscEditorLaunchAddress = normalizeOscAddress(preferences.oscEditorLaunchAddress),
         oscEditorStopAddress = normalizeOscAddress(preferences.oscEditorStopAddress),
         oscEditorDebounceMs = preferences.oscEditorDebounceMs.coerceIn(0, 5_000),
-        oscEditorMaxExecutionMs = preferences.oscEditorMaxExecutionMs.coerceIn(0, 60_000)
+        oscEditorMaxExecutionMs = preferences.oscEditorMaxExecutionMs.coerceIn(0, 60_000),
+        importClassBlacklist = importClassBlacklist
     )
 }
 
@@ -729,20 +738,35 @@ var lastFn by PersistentString { "welcome" }
 var recentFns by PersistentString { "" }
 var fieldPreferencesJson by PersistentString { "" }
 
-private fun currentFieldPreferences(): FieldPreferences {
+@Volatile
+private var cachedFieldPreferencesRaw: String? = null
+
+@Volatile
+private var cachedFieldPreferences: FieldPreferences? = null
+
+internal fun currentFieldPreferences(): FieldPreferences {
     val raw = fieldPreferencesJson.orEmpty().trim()
+    val cached = cachedFieldPreferences
+    if (cached != null && cachedFieldPreferencesRaw == raw) return cached
+
     val decoded = if (raw.isBlank()) {
         defaultFieldPreferences()
     } else {
         runCatching { preferencesJson.decodeFromString<FieldPreferences>(raw) }
             .getOrElse { defaultFieldPreferences() }
     }
-    return normalizeFieldPreferences(decoded)
+    return normalizeFieldPreferences(decoded).also {
+        cachedFieldPreferencesRaw = raw
+        cachedFieldPreferences = it
+    }
 }
 
 private fun persistFieldPreferences(preferences: FieldPreferences) {
     val normalized = normalizeFieldPreferences(preferences)
-    fieldPreferencesJson = preferencesJson.encodeToString(normalized)
+    val encoded = preferencesJson.encodeToString(normalized)
+    fieldPreferencesJson = encoded
+    cachedFieldPreferencesRaw = encoded.trim()
+    cachedFieldPreferences = normalized
     applyFieldPreferences(normalized)
 }
 

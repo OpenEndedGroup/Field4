@@ -799,6 +799,9 @@ const installSymbolContextMonitor = (editor, resolveContext) => {
                 if (debounceTimer !== null) clearTimeout(debounceTimer)
                 debounceTimer = setTimeout(() => {
                         debounceTimer = null
+                        const suggestSignatureUntil = Number(editor._afieldSuggestSignatureUntil || 0)
+                        if (suggestSignatureUntil > Date.now()) return
+                        if (suggestSignatureUntil > 0) editor._afieldSuggestSignatureUntil = 0
                         const localPayload = buildLanguageContextPayload(editor, resolveContext)
                         if (localPayload) {
                                 const state = ensureSymbolContextState()

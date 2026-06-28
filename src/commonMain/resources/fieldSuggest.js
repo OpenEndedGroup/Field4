@@ -10,6 +10,7 @@ const RECENCY_STORAGE_KEY = "field.suggest.recency.v1"
 const RECENCY_LIMIT = 200
 const CATEGORY_WEIGHT = new Map([
     ["local", 28],
+    ["graphics", 26],
     ["functions", 22],
     ["values", 20],
     ["types", 18],
@@ -48,6 +49,9 @@ const escapeHtml = (value) => String(value ?? "")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;")
 
+const loadingMarkup = () =>
+    `<div class="afield-suggest-loading" aria-label="Completing"><span class="afield-suggest-spinner" aria-hidden="true"></span></div>`
+
 const titleForCategory = (category) => {
     const key = String(category || "").trim().toLowerCase()
     if (!key) return "Other"
@@ -65,6 +69,8 @@ const titleForCategory = (category) => {
         values: "Values",
         property: "Values",
         properties: "Values",
+        graphic: "Graphics",
+        graphics: "Graphics",
         local: "Local",
         snippets: "Snippets",
         snippet: "Snippets",
@@ -229,6 +235,50 @@ const completionNameFor = (item) => {
     const raw = String(item.displayText || item.label || item.insertText || "").trim()
         .replace(/^(fun|val|var)\s+/, "")
     return raw.split("(")[0].split(/\s+/)[0]
+}
+
+const callNameBeforeCursor = (model, position) => {
+    if (!model || !position || position.column <= 1) return ""
+    const beforeCursor = model.getLineContent(position.lineNumber).slice(0, Math.max(0, position.column - 2))
+    const match = /([A-Za-z_][A-Za-z0-9_]*)\s*$/.exec(beforeCursor)
+    return match ? match[1] : ""
+}
+
+const firstKotlinFenceLine = (documentation, preferredName = "") => {
+    const docs = String(documentation || "")
+    const fence = /```(?:kotlin)?\s*\n([\s\S]*?)```/i.exec(docs)
+    if (!fence) return ""
+    const preferred = String(preferredName || "")
+    const lines = fence[1].split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
+    return lines.find((line) => line.includes("(") && (!preferred || line.includes(preferred)))
+        || lines.find((line) => line.includes("("))
+        || ""
+}
+
+const normalizeSignatureLine = (line) => String(line || "")
+    .replace(/^\s*(?:(?:public|private|protected|internal|final|open|override|inline|suspend|operator|infix|external|tailrec)\s+)+/, "")
+    .trim()
+
+const itemSignatureFor = (item) => {
+    if (!item) return ""
+    const name = completionNameFor(item)
+    const display = String(item.displayText || item.label || "").trim()
+    const detail = String(item.detail || "").trim()
+    const documentationSignature = normalizeSignatureLine(firstKotlinFenceLine(item.documentation, name))
+    if (documentationSignature) return documentationSignature
+    if (display.includes("(")) {
+        const returnType = detail.startsWith(":") && !display.includes(":") ? ` ${detail}` : ""
+        return normalizeSignatureLine(`${display}${returnType}`)
+    }
+    if (String(item.insertText || "").includes("(")) return normalizeSignatureLine(String(item.insertText || ""))
+    return name ? `${name}(...)` : ""
+}
+
+const itemLooksCallable = (item) => {
+    if (!item) return false
+    const icon = String(item.icon || "").toLowerCase()
+    return itemSignatureFor(item).includes("(")
+        || /(method|function|fun|constructor)/.test(icon)
 }
 
 const readRecencyStore = () => {
@@ -475,6 +525,7 @@ class FieldSuggestController {
         this.refreshTimer = null
         this.lastQuery = ""
         this.openPosition = null
+        this.suppressOpenUntil = 0
         this.root = this.createRoot()
         this.install()
     }
@@ -528,6 +579,7 @@ class FieldSuggestController {
                 this.hide()
                 return
             }
+            if (this.handleCallTransition(event)) return
             if (this.isVisible()) this.scheduleOpen({ manual: false })
         })
         editor.onDidChangeCursorPosition(() => {
@@ -553,12 +605,14 @@ class FieldSuggestController {
     }
 
     scheduleOpen(options = {}) {
+        if (!options.manual && Date.now() < this.suppressOpenUntil) return
         clearTimeout(this.refreshTimer)
         this.refreshTimer = setTimeout(() => this.open(options), REFRESH_DELAY_MS)
     }
 
     async open(options = {}) {
         if (!this.isSupported()) return false
+        if (!options.manual && Date.now() < this.suppressOpenUntil) return false
         const editor = this.editor
         const model = editor.getModel()
         const position = editor.getPosition()
@@ -671,7 +725,7 @@ class FieldSuggestController {
 
     renderLoading() {
         this.root.style.display = "grid"
-        this.root.querySelector(".afield-suggest-list").innerHTML = `<div class="afield-suggest-loading">completing...</div>`
+        this.root.querySelector(".afield-suggest-list").innerHTML = loadingMarkup()
         this.root.querySelector(".afield-suggest-doc").innerHTML = `<div class="afield-suggest-doc-empty">Waiting for Field</div>`
     }
 
@@ -682,7 +736,7 @@ class FieldSuggestController {
             this.activeIndex = -1
             const waiting = !this.baseItemsLoaded || !this.aiItemsLoaded
             this.root.querySelector(".afield-suggest-list").innerHTML = waiting
-                ? `<div class="afield-suggest-loading">completing...</div>`
+                ? loadingMarkup()
                 : `<div class="afield-suggest-empty">No completions</div>`
             this.root.querySelector(".afield-suggest-doc").innerHTML = waiting
                 ? `<div class="afield-suggest-doc-empty">Waiting for Field</div>`
@@ -840,6 +894,48 @@ class FieldSuggestController {
         return true
     }
 
+    handleCallTransition(event) {
+        if (!this.isVisible()) return false
+        const typedOpenParen = event && Array.isArray(event.changes)
+            && event.changes.some((change) => String(change.text || "").includes("("))
+        if (!typedOpenParen) return false
+
+        const model = this.editor.getModel()
+        const position = this.editor.getPosition()
+        const item = this.signatureItemForCall(model, position)
+        this.suppressOpenUntil = Date.now() + 2500
+        this.hide()
+        if (item) this.showSignatureBadge(item)
+        return true
+    }
+
+    signatureItemForCall(model, position) {
+        const name = callNameBeforeCursor(model, position)
+        const pool = [...(this.items || []), ...(this.rawItems || [])]
+        const exact = name
+            ? pool.find((item) => completionNameFor(item) === name && itemLooksCallable(item))
+            : null
+        return exact || this.items[this.activeIndex] || pool.find(itemLooksCallable) || null
+    }
+
+    showSignatureBadge(item) {
+        const signature = itemSignatureFor(item)
+        if (!signature || typeof window.setEditorContextBadge !== "function") return false
+        const name = completionNameFor(item)
+        this.editor._afieldSuggestSignatureUntil = Date.now() + 2500
+        window.setEditorContextBadge(this.editor, {
+            key: `field-suggest-call:${signature}`,
+            isLiveValue: false,
+            html: `
+                <div class="afield-call-signature-context">
+                    <span class="afield-call-signature-name">${escapeHtml(name || "call")}</span>
+                    <code>${escapeHtml(signature)}</code>
+                </div>
+            `
+        })
+        return true
+    }
+
     accept() {
         const item = this.items[this.activeIndex]
         if (!item) return false
@@ -863,7 +959,13 @@ class FieldSuggestController {
             forceMoveMarkers: true,
         }])
         touchRecency(item)
+        const shouldShowSignature = itemLooksCallable(item)
+            && String(item.insertText || item.displayText || "").includes("(")
+        this.suppressOpenUntil = Date.now() + 2500
         this.hide()
+        if (shouldShowSignature) {
+            requestAnimationFrame(() => this.showSignatureBadge(item))
+        }
         this.editor.focus()
         return true
     }
@@ -927,8 +1029,9 @@ class FieldSuggestController {
         this.root.style.top = `${nextTop}px`
     }
 
-    hide() {
+    hide(options = {}) {
         clearTimeout(this.refreshTimer)
+        if (options.invalidate !== false) this.requestGeneration += 1
         this.root.style.display = "none"
         this.items = []
         this.rawItems = []
