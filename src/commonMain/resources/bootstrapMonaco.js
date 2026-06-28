@@ -11,6 +11,7 @@ import {
         monacoGetEnclosingScope,
         aiChatMarkdownToHtml
 } from "./afield.mjs"
+import { installFieldSuggest } from "./fieldSuggest.js"
 
 if (!window.require || typeof window.require.config !== "function") {
         throw new Error("Monaco AMD loader is missing; expected /min/vs/loader.js to define window.require before bootstrapMonaco.js")
@@ -857,6 +858,7 @@ const initMonaco = () => {
 
         monacoRegisterActions(ed, monaco)
         installEditorBottomOverlayFade(ed)
+        installFieldSuggest(ed, monaco)
 
         installNumberCommands(ed)
         // register a no-keybinding command and get its ID
@@ -871,9 +873,20 @@ const initMonaco = () => {
                 }
         }, '');
 
+        const fieldSuggestLanguages = window.FieldSuggestConfig && window.FieldSuggestConfig.languages
+                ? window.FieldSuggestConfig.languages
+                : new Set(["kotlin", "python", "clojure", "glsl", "slang", "forth", "nano", "yaml"])
+        const fieldSuggestLanguageSet = fieldSuggestLanguages instanceof Set
+                ? fieldSuggestLanguages
+                : new Set(fieldSuggestLanguages)
+        const fieldSuggestOwnsLanguage = (languageId) => !!(window.FieldSuggestConfig?.enabled && fieldSuggestLanguageSet.has(languageId))
+
         var completionProvider = {
-                triggerCharacters: ['.'],
+                triggerCharacters: window.FieldSuggestConfig?.enabled ? [] : ['.'],
                 provideCompletionItems: (model, position, context, cancellationToken) => {
+                        if (fieldSuggestOwnsLanguage(model.getLanguageId())) {
+                                return { suggestions: [], incomplete: false }
+                        }
                         var word = model.getWordUntilPosition(position);
                         var languageId = model.getLanguageId()
                         const shouldRefreshAsPrefixChanges = languageId === "kotlin" && word.word.length === 0

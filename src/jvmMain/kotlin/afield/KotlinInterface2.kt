@@ -554,6 +554,24 @@ class KotlinInterface2(
         return introImports + "\n" + patched
     }
 
+    private fun buildFirReceiverContextSource(s: String, cursor: Int): String {
+        val introImports = intro.lines()
+            .filter { it.trimStart().startsWith("import ") }
+            .joinToString("\n")
+
+        val prefix = extractPrefix(s, cursor)
+        val beforePrefix = cursor - prefix.length
+        val dotOffset = if (beforePrefix >= 2 && s[beforePrefix - 1] == '.' && s[beforePrefix - 2] == '?') {
+            beforePrefix - 2
+        } else if (beforePrefix >= 1 && s[beforePrefix - 1] == '.') {
+            beforePrefix - 1
+        } else {
+            cursor
+        }
+        val context = s.substring(0, dotOffset.coerceIn(0, s.length))
+        return introImports + "\n" + context
+    }
+
     private fun computeK2Completion(s: String, cursor: Int): List<SourceCodeCompletionVariant> {
         val results = mutableListOf<SourceCodeCompletionVariant>()
 
@@ -562,17 +580,22 @@ class KotlinInterface2(
 
         // Build FIR-friendly source text with imports and a dummy at cursor
         val firSource = buildFirSourceText(s, cursor)
+        val receiverFirSource by lazy { buildFirReceiverContextSource(s, cursor) }
 
         val nameFilter: (String) -> Boolean = { name ->
             completionSite.prefix.isEmpty() || name.startsWith(completionSite.prefix, ignoreCase = true)
         }
 
+        fun resolveCompletionReceiver(receiverText: String): KClass<*>? {
+            val simpleResolved = resolveReceiverType(receiverText, receiverFirSource)
+            if (simpleResolved != null && simpleResolved != Any::class) return simpleResolved
+            val probeResolved = resolveExpressionTypeViaFir(receiverText, s, cursor)
+            return probeResolved ?: simpleResolved
+        }
+
         when (completionSite) {
             is CompletionSite.DotCompletion -> {
-                var receiverType = resolveReceiverType(completionSite.receiverText, firSource)
-                if (receiverType == null) {
-                    receiverType = resolveExpressionTypeViaFir(completionSite.receiverText, s, cursor)
-                }
+                val receiverType = resolveCompletionReceiver(completionSite.receiverText)
                 if (receiverType != null) {
                     addMembersFromClass(receiverType, completionSite.prefix, results)
                 }
@@ -580,10 +603,7 @@ class KotlinInterface2(
             }
 
             is CompletionSite.SafeDotCompletion -> {
-                var receiverType = resolveReceiverType(completionSite.receiverText, firSource)
-                if (receiverType == null) {
-                    receiverType = resolveExpressionTypeViaFir(completionSite.receiverText, s, cursor)
-                }
+                val receiverType = resolveCompletionReceiver(completionSite.receiverText)
                 if (receiverType != null) {
                     addMembersFromClass(receiverType, completionSite.prefix, results)
                 }

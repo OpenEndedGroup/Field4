@@ -9,6 +9,9 @@ import java.awt.Stroke
 import kotlin.math.max
 import kotlin.math.min
 
+fun rect(x: Number, y: Number, w: Number, h: Number) =
+    Rect(x.toDouble(), y.toDouble(), w.toDouble(), h.toDouble())
+
 /**
  * Preferred builder for [FLine] geometry in sketches and examples.
  */

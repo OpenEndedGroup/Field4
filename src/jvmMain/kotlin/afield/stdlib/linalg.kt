@@ -7,8 +7,28 @@ import org.joml.*
 import kotlin.math.max
 import kotlin.math.min
 
+/**
+ * Field's 4D vector alias, backed by JOML's mutable [Vector4f].
+ *
+ * Use `vec(x, y, z, w)` to construct one. JOML methods generally mutate the receiver;
+ * copy first with `Vec4(existing)` when you want to preserve the original value.
+ */
 typealias Vec4 = Vector4f
+
+/**
+ * Field's 3D vector alias, backed by JOML's mutable [Vector3f].
+ *
+ * Use `vec(x, y, z)` to construct one. The public `x`, `y`, and `z` components are
+ * mutable floats, and most JOML operations mutate the receiver unless you pass a destination vector.
+ */
 typealias Vec3 = Vector3f
+
+/**
+ * Field's 2D vector alias, backed by JOML's mutable [Vector2f].
+ *
+ * Use `vec(x, y)` to construct one. The public `x` and `y` components are mutable floats;
+ * copy with `Vec2(existing)` when you want a non-mutating workflow.
+ */
 typealias Vec2 = Vector2f
 typealias Quat = Quaternionf
 

@@ -492,7 +492,7 @@ object KotlinSourceIndex {
                             out += ParsedDefinition(kind, qualifiedName, lineNumber, kdoc, category)
                             pendingClass = PendingClass(qualifiedName, lineNumber)
                         }
-                        "fun", "val", "var" -> {
+                        "fun", "val", "var", "typealias" -> {
                             val qualifiedName = if (currentClass != null && depthAtStart == currentClass.depth) {
                                 "${currentClass.name}.$name"
                             } else {
@@ -570,6 +570,10 @@ object KotlinSourceIndex {
                 val head = remainder.substringBefore(":").substringBefore("=").trim()
                 parseQualifiedName(head)
             }
+            "typealias" -> {
+                val head = remainder.substringBefore("=").trim()
+                parseQualifiedName(head)
+            }
             else -> null
         }
         val effectiveName = when {
@@ -579,7 +583,7 @@ object KotlinSourceIndex {
         }
         val name = effectiveName
         if (name.isBlank()) return null
-        if (keyword == "class" || keyword == "interface" || keyword == "object" || keyword == "fun" || keyword == "val" || keyword == "var") {
+        if (keyword == "class" || keyword == "interface" || keyword == "object" || keyword == "fun" || keyword == "val" || keyword == "var" || keyword == "typealias") {
             return ParsedLineDefinition(keyword, name, category)
         }
         return null

@@ -2474,7 +2474,14 @@ class KotlinExecution : BoxExecution {
                             "completion skip-enrich candidate='$candidateName' dot=$isDotCompletion active='$activeToken' argumentCallable='${argumentCallable.orEmpty()}' display='${it.displayText}' tail='${it.tail}' text='${it.text}' icon='${it.icon}' extra=${it.extraInfo}"
                         )
                     }
-                    rawMetadata
+                    KotlinCompletionSupport.enrichReceiverDocumentation(
+                        box = inside,
+                        allCode = allCode,
+                        metadata = rawMetadata,
+                        position = position,
+                        receiverTypeHint = receiverTypeHint,
+                        descriptorText = descriptorText
+                    )
                 }
                 val categorizedMetadata = KotlinCompletionSupport.classifyMetadata(
                     metadata = enrichedMetadata,

@@ -201,7 +201,12 @@ data class Metadata(
     val generateDocumentation: Boolean = false,
     val documentationSourceName: String = "",
     val documentationSourcePath: String = "",
-    val documentationSourceLine: Int = -1
+    val documentationSourceLine: Int = -1,
+    val receiverDisplayName: String = "",
+    val receiverDocumentation: String = "",
+    val receiverDocumentationSourceName: String = "",
+    val receiverDocumentationSourcePath: String = "",
+    val receiverDocumentationSourceLine: Int = -1
 )
 
 

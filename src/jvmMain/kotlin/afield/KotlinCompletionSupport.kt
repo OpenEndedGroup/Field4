@@ -18,6 +18,8 @@ internal object KotlinCompletionSupport {
     private val constructorInfoCache = HashMap<String, ConstructorInfo?>()
     private val callableInfoCache = HashMap<String, CallableInfo?>()
     private val classpathSourceCache = HashMap<String, List<SourceCallableInfo>>()
+    private val classpathClassDocCache = HashMap<String, ReceiverDocumentationInfo?>()
+    private val receiverTypealiasDocCache = HashMap<String, ReceiverDocumentationInfo?>()
 
     data class ReplacementBounds(val start: Int, val end: Int)
 
@@ -218,6 +220,14 @@ internal object KotlinCompletionSupport {
         val returnType: String? = null
     )
 
+    private data class ReceiverDocumentationInfo(
+        val displayName: String,
+        val documentation: String,
+        val sourceName: String = "",
+        val sourcePath: String = "",
+        val sourceLine: Int = -1
+    )
+
     private data class IndexedDocumentationTarget(
         val sourceName: String,
         val sourceFile: String,
@@ -256,6 +266,7 @@ internal object KotlinCompletionSupport {
 
         val receiverOwnerHint = inferReceiverOwnerName(box, allCode, position, receiverTypeHint)
             ?: descriptorOwnerName(descriptorText)
+        val receiverDocumentation = receiverDocumentationInfo(box, allCode, receiverOwnerHint)
 
         if (metadata.icon in setOf("property", "val", "var")) {
             val target = resolveIndexedDocumentationTarget(
@@ -263,7 +274,7 @@ internal object KotlinCompletionSupport {
                 receiverOwnerHint = receiverOwnerHint,
                 kinds = setOf("val", "var"),
                 requireReceiverOwnerMatch = requireReceiverOwnerMatch
-            ) ?: return metadata
+            ) ?: return metadata.withReceiverDocumentation(receiverDocumentation)
             return metadata.copy(
                 documentation = if (target.hasDocumentation) {
                     metadata.documentation
@@ -274,12 +285,12 @@ internal object KotlinCompletionSupport {
                 documentationSourceName = target.sourceName,
                 documentationSourcePath = target.sourceFile,
                 documentationSourceLine = target.sourceLine
-            )
+            ).withReceiverDocumentation(receiverDocumentation)
         }
 
         if (name.firstOrNull()?.isUpperCase() == true) {
             if (requireReceiverOwnerMatch) return metadata
-            val info = resolveConstructorInfo(box, allCode, name) ?: return metadata
+            val info = resolveConstructorInfo(box, allCode, name) ?: return metadata.withReceiverDocumentation(receiverDocumentation)
             val fallbackDocumentation = withoutLeadingFallbackSignature(metadata.documentation)
             val documentation = info.documentationMarkdown(
                 if (info.sourceFile == null) fallbackDocumentation else ""
@@ -291,7 +302,7 @@ internal object KotlinCompletionSupport {
                 documentationSourceName = info.fqName.orEmpty(),
                 documentationSourcePath = info.sourceFile.orEmpty(),
                 documentationSourceLine = info.sourceLine
-            )
+            ).withReceiverDocumentation(receiverDocumentation)
         }
 
         val callableInfo = resolveCallableInfo(
@@ -306,7 +317,7 @@ internal object KotlinCompletionSupport {
             descriptorText = descriptorText
         )
 
-        if (callableInfo == null) return metadata
+        if (callableInfo == null) return metadata.withReceiverDocumentation(receiverDocumentation)
 
         val hasSourceDocumentation = !callableInfo.documentation.isNullOrBlank() ||
             callableInfo.parameters.any { !it.documentation.isNullOrBlank() }
@@ -319,6 +330,30 @@ internal object KotlinCompletionSupport {
             documentationSourceName = callableInfo.sourceName.orEmpty(),
             documentationSourcePath = callableInfo.sourceFile.orEmpty(),
             documentationSourceLine = callableInfo.sourceLine
+        ).withReceiverDocumentation(receiverDocumentation)
+    }
+
+    fun enrichReceiverDocumentation(
+        box: Box,
+        allCode: String,
+        metadata: Metadata,
+        position: Int,
+        receiverTypeHint: String? = null,
+        descriptorText: String? = null
+    ): Metadata {
+        val receiverOwnerHint = inferReceiverOwnerName(box, allCode, position, receiverTypeHint)
+            ?: descriptorOwnerName(descriptorText)
+        return metadata.withReceiverDocumentation(receiverDocumentationInfo(box, allCode, receiverOwnerHint))
+    }
+
+    private fun Metadata.withReceiverDocumentation(info: ReceiverDocumentationInfo?): Metadata {
+        if (info == null || info.documentation.isBlank()) return this
+        return copy(
+            receiverDisplayName = info.displayName,
+            receiverDocumentation = info.documentation,
+            receiverDocumentationSourceName = info.sourceName,
+            receiverDocumentationSourcePath = info.sourcePath,
+            receiverDocumentationSourceLine = info.sourceLine
         )
     }
 
@@ -450,6 +485,122 @@ internal object KotlinCompletionSupport {
 
     private fun String.containsAny(vararg needles: String): Boolean =
         needles.any { contains(it) }
+
+    private fun receiverDocumentationInfo(
+        box: Box,
+        allCode: String,
+        receiverOwnerHint: String?
+    ): ReceiverDocumentationInfo? {
+        val raw = receiverOwnerHint
+            ?.trim()
+            ?.substringBefore('<')
+            ?.substringBefore('?')
+            ?.takeIf { it.isNotBlank() }
+            ?: return null
+
+        sourceTypealiasReceiverDocumentation(raw)?.let { return it }
+
+        val classNames = LinkedHashSet<String>()
+        resolveReceiverClassNames(allCode, raw).forEach { classNames.add(it) }
+        if (classNames.isEmpty()) return null
+
+        val classLoader = box.ki.classLoader ?: Thread.currentThread().contextClassLoader
+        return classNames.asSequence()
+            .mapNotNull { className ->
+                runCatching { Class.forName(className, false, classLoader) }
+                    .recoverCatching { classLoader.loadClass(className) }
+                    .getOrNull()
+            }
+            .mapNotNull { classpathSourceClassDoc(it) }
+            .firstOrNull()
+    }
+
+    private fun sourceTypealiasReceiverDocumentation(typeName: String): ReceiverDocumentationInfo? {
+        val raw = typeName.trim().substringBefore('<').substringBefore('?')
+        if (receiverTypealiasDocCache.containsKey(raw)) return receiverTypealiasDocCache[raw]
+        val resolved = indexedTypealiasReceiverDocumentation(raw) ?: scanSourceTypealiasReceiverDocumentation(raw)
+        receiverTypealiasDocCache[raw] = resolved
+        return resolved
+    }
+
+    private fun scanSourceTypealiasReceiverDocumentation(raw: String): ReceiverDocumentationInfo? {
+        val root = Paths.get(System.getProperty("user.dir")).normalize()
+        val rawSimple = raw.substringAfterLast('.')
+        val candidates = mutableListOf<ReceiverDocumentationInfo>()
+
+        defaultSourceRoots(root).forEach { sourceRoot ->
+            if (!Files.exists(sourceRoot)) return@forEach
+            Files.walk(sourceRoot).use { paths ->
+                paths
+                    .filter { Files.isRegularFile(it) && it.fileName.toString().endsWith(".kt") }
+                    .forEach pathLoop@{ path ->
+                        val text = runCatching { Files.readString(path) }.getOrNull() ?: return@pathLoop
+                        val packageName = packageName(text)
+                        typealiasRegex.findAll(text).forEach aliasLoop@{ match ->
+                            val alias = match.groupValues[1]
+                            val target = match.groupValues[2].trim()
+                            val targetSimple = target.substringAfterLast('.')
+                            if (alias != rawSimple && target != raw && targetSimple != rawSimple) return@aliasLoop
+                            val doc = leadingKDoc(text, match.range.first)?.takeIf { it.isNotBlank() } ?: return@aliasLoop
+                            val relativePath = runCatching { root.relativize(path).toString().replace("\\", "/") }
+                                .getOrDefault(path.toString())
+                            candidates += ReceiverDocumentationInfo(
+                                displayName = alias,
+                                documentation = doc,
+                                sourceName = if (packageName.isBlank()) alias else "$packageName.$alias",
+                                sourcePath = relativePath,
+                                sourceLine = text.substring(0, match.range.first).count { it == '\n' } + 1
+                            )
+                        }
+                    }
+            }
+        }
+
+        return candidates.sortedWith(
+            compareByDescending<ReceiverDocumentationInfo> { it.sourceName.startsWith("afield.stdlib.") }
+                .thenBy { it.sourcePath }
+                .thenBy { it.sourceLine }
+        ).firstOrNull()
+    }
+
+    private fun indexedTypealiasReceiverDocumentation(typeName: String): ReceiverDocumentationInfo? {
+        val index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex() ?: return null
+        val raw = typeName.trim().substringBefore('<').substringBefore('?')
+        val rawSimple = raw.substringAfterLast('.')
+        val definition = index.definitions
+            .asSequence()
+            .filter { it.kind == "typealias" && !it.kdoc.isNullOrBlank() }
+            .firstOrNull {
+                val alias = it.name.substringAfterLast('.')
+                alias == rawSimple || indexedTypealiasTargetMatches(it, raw, rawSimple)
+            } ?: return null
+        return ReceiverDocumentationInfo(
+            displayName = definition.name.substringAfterLast('.'),
+            documentation = definition.kdoc.orEmpty(),
+            sourceName = definition.name,
+            sourcePath = definition.filePath,
+            sourceLine = definition.line
+        )
+    }
+
+    private fun indexedTypealiasTargetMatches(
+        definition: afield.ai.KotlinDefinitionRecord,
+        raw: String,
+        rawSimple: String
+    ): Boolean {
+        val root = Paths.get(System.getProperty("user.dir")).normalize()
+        val path = root.resolve(definition.filePath).normalize()
+        val text = runCatching { Files.readString(path) }.getOrNull() ?: return false
+        val lineStart = lineStartOffsets(text).getOrNull((definition.line - 1).coerceAtLeast(0)) ?: return false
+        val lineEnd = text.indexOf('\n', lineStart).takeIf { it >= 0 } ?: text.length
+        val line = text.substring(lineStart, lineEnd)
+        val match = typealiasRegex.find(line) ?: return false
+        val target = match.groupValues[2].trim()
+        return target == raw || target.substringAfterLast('.') == rawSimple
+    }
+
+    private val typealiasRegex =
+        Regex("""\btypealias\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([A-Za-z_][A-Za-z0-9_.]*)""")
 
     private fun resolveIndexedDocumentationTarget(
         simpleName: String,
@@ -943,6 +1094,14 @@ internal object KotlinCompletionSupport {
         return loaded
     }
 
+    private fun classpathSourceClassDoc(clazz: Class<*>): ReceiverDocumentationInfo? {
+        val key = clazz.name
+        if (classpathClassDocCache.containsKey(key)) return classpathClassDocCache[key]
+        val loaded = loadClasspathSourceClassDoc(clazz)
+        classpathClassDocCache[key] = loaded
+        return loaded
+    }
+
     private fun loadClasspathSourceMethods(clazz: Class<*>, simpleName: String): List<SourceCallableInfo> {
         val source = classpathSourceFor(clazz) ?: return emptyList()
         return source.use { (zip, entryName, sourcePath) ->
@@ -952,6 +1111,19 @@ internal object KotlinCompletionSupport {
                 text = text,
                 ownerName = clazz.name,
                 simpleName = simpleName,
+                sourcePath = sourcePath
+            )
+        }
+    }
+
+    private fun loadClasspathSourceClassDoc(clazz: Class<*>): ReceiverDocumentationInfo? {
+        val source = classpathSourceFor(clazz) ?: return null
+        return source.use { (zip, entryName, sourcePath) ->
+            val entry = zip.getEntry(entryName) ?: return@use null
+            val text = zip.getInputStream(entry).bufferedReader().use { it.readText() }
+            parseJavaSourceClassDoc(
+                text = text,
+                ownerName = clazz.name,
                 sourcePath = sourcePath
             )
         }
@@ -1050,6 +1222,59 @@ internal object KotlinCompletionSupport {
             i++
         }
         return out
+    }
+
+    private fun parseJavaSourceClassDoc(
+        text: String,
+        ownerName: String,
+        sourcePath: String
+    ): ReceiverDocumentationInfo? {
+        val simpleName = ownerName.substringAfterLast('.').substringBefore('$')
+        val lines = text.split('\n')
+        var pendingDoc: ParsedKDoc? = null
+        var i = 0
+        while (i < lines.size) {
+            val trimmed = lines[i].trim()
+            if (trimmed.startsWith("/**")) {
+                val docLines = mutableListOf<String>()
+                var done = false
+                while (i < lines.size) {
+                    val line = lines[i].trim()
+                    docLines += line
+                    if (line.contains("*/")) {
+                        done = true
+                        break
+                    }
+                    i++
+                }
+                pendingDoc = if (done) parseJavaDoc(docLines.joinToString("\n")) else null
+                i++
+                continue
+            }
+
+            if (trimmed.isBlank() || trimmed.startsWith("@")) {
+                i++
+                continue
+            }
+
+            val isClassDeclaration = Regex("""\b(class|interface|enum)\s+${Regex.escape(simpleName)}\b""")
+                .containsMatchIn(trimmed)
+            if (isClassDeclaration) {
+                val doc = pendingDoc?.body?.trim().orEmpty()
+                if (doc.isBlank()) return null
+                return ReceiverDocumentationInfo(
+                    displayName = simpleName,
+                    documentation = doc,
+                    sourceName = ownerName,
+                    sourcePath = sourcePath,
+                    sourceLine = i + 1
+                )
+            }
+
+            pendingDoc = null
+            i++
+        }
+        return null
     }
 
     private data class ParsedJavaMethod(
@@ -1210,6 +1435,9 @@ internal object KotlinCompletionSupport {
             cursor++
             val end = findFunctionHeaderEnd(rawText, cursor)
             returnType = rawText.substring(cursor, end).trim().ifBlank { null }
+        } else if (cursor < rawText.length && rawText[cursor] == '=') {
+            val expressionStart = skipWhitespace(rawText, cursor + 1)
+            returnType = inferExpressionBodyReturnType(rawText, expressionStart)
         }
 
         val relativePath = runCatching { root.relativize(path).toString().replace("\\", "/") }
@@ -1228,6 +1456,17 @@ internal object KotlinCompletionSupport {
             parameters = parameters,
             returnType = returnType
         )
+    }
+
+    private fun inferExpressionBodyReturnType(rawText: String, expressionStart: Int): String? {
+        if (expressionStart !in rawText.indices) return null
+        val snippet = rawText.substring(expressionStart, rawText.length.coerceAtMost(expressionStart + 240))
+        val constructorLike = Regex("""^([A-Za-z_][A-Za-z0-9_.]*)\s*(?:<[^(){}=\n]*>)?\s*\(""")
+            .find(snippet)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.takeIf { it.substringAfterLast('.').firstOrNull()?.isUpperCase() == true }
+        return constructorLike
     }
 
     private fun parseKDoc(kdoc: String?): ParsedKDoc {
@@ -1499,10 +1738,45 @@ internal object KotlinCompletionSupport {
     private fun constructedTypeForLocal(allCode: String, identifier: String): String? {
         val regex = Regex("\\b(?:val|var)\\s+${Regex.escape(identifier)}\\s*=\\s*([A-Za-z_][A-Za-z0-9_.]*)\\s*(?:<[^\\n=(){}]*>)?\\s*\\(")
         val match = regex.find(allCode) ?: return null
-        return match.groupValues[1]
+        val callee = match.groupValues[1]
             .substringBefore('<')
             .trim()
             .takeIf { it.isNotBlank() }
+            ?: return null
+
+        if (callee.substringAfterLast('.').firstOrNull()?.isUpperCase() == true) return callee
+
+        val openParen = allCode.indexOf('(', match.range.first).takeIf { it >= 0 } ?: return callee
+        val closeParen = matchingDelimiter(allCode, openParen, '(', ')')
+        val argumentCount = if (closeParen > openParen) {
+            splitTopLevelConstructorParameters(allCode.substring(openParen + 1, closeParen)).size
+        } else {
+            null
+        }
+
+        return sourceFunctionReturnTypeForCall(allCode, callee, argumentCount) ?: callee
+    }
+
+    private fun sourceFunctionReturnTypeForCall(
+        allCode: String,
+        calleeName: String,
+        argumentCount: Int?
+    ): String? {
+        val simpleName = calleeName.substringAfterLast('.')
+        val index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex() ?: return null
+        val root = Paths.get(System.getProperty("user.dir")).normalize()
+        return index.definitions.asSequence()
+            .filter { it.kind == "fun" && it.name.substringAfterLast('.') == simpleName }
+            .mapNotNull { parseSourceCallableInfo(it, root, simpleName) }
+            .filter { info -> argumentCount == null || info.parameters.size == argumentCount }
+            .sortedWith(
+                compareByDescending<SourceCallableInfo> { it.sourceName.startsWith("afield.stdlib.") }
+                    .thenByDescending { it.sourceName in allCode }
+                    .thenBy { it.sourceFile }
+                    .thenBy { it.sourceLine }
+            )
+            .mapNotNull { it.returnType?.takeIf { returnType -> returnType.isNotBlank() } }
+            .firstOrNull()
     }
 
     private fun indexedOwnerName(definitionName: String): String? =

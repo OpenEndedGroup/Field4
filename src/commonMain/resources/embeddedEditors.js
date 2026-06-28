@@ -171,6 +171,9 @@ function createEmbeddedEditor(container, uid, property, language, initialValue) 
 		language: lang,
 		value: value,
 	});
+	if (typeof window.installFieldSuggest === "function") {
+		window.installFieldSuggest(editor, monacoApi);
+	}
 
 	const model = editor.getModel();
 

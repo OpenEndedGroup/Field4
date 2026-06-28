@@ -1444,6 +1444,17 @@ class Server {
                 val bounds = runCatching {
                     getTokenBounds(exec.allCode, exec.position)
                 }.getOrElse { CompletionTokenBounds(exec.position, exec.position) }
+                val activeToken = exec.allCode
+                    .substring(bounds.start.coerceIn(0, exec.allCode.length), bounds.end.coerceIn(0, exec.allCode.length))
+                    .trim()
+
+                fun normalizeAiInsertion(raw: String): String {
+                    if (activeToken.isBlank() || raw.isBlank()) return raw
+                    if (raw.trimStart().startsWith(activeToken)) return raw
+                    val identifierToken = activeToken.all { it.isLetterOrDigit() || it == '_' }
+                    val startsLikeIdentifier = raw.firstOrNull()?.let { it.isLetterOrDigit() || it == '_' } == true
+                    return if (identifierToken && startsLikeIdentifier) activeToken + raw else raw
+                }
 
                 if (box.ke !is KotlinExecution) {
                     lprintln("info,ai_completions", "kotlin-ai skip: box is not KotlinExecution (uid=${exec.uid})")
@@ -1502,24 +1513,15 @@ class Server {
                             }
                         }
 
-                        val activeToken = exec.allCode.substring(
-                            bounds.start.coerceIn(0, exec.allCode.length),
-                            bounds.end.coerceIn(0, exec.allCode.length)
-                        )
-                        fun completionWithTypedStem(text: String): String {
-                            if (activeToken.isBlank() || text.isBlank()) return text
-                            return if (text.trimStart().startsWith(activeToken)) text else activeToken + text
-                        }
-
                         val metadata = candidates.take(3).mapIndexed { idx, candidate ->
-                            val replacementText = completionWithTypedStem(candidate.text)
-                            val display = replacementText.lineSequence().firstOrNull()?.trim().orEmpty()
+                            val insertion = normalizeAiInsertion(candidate.text)
+                            val display = insertion.lineSequence().firstOrNull()?.trim().orEmpty()
                             val doc = buildString {
                                 val notes = candidate.documentation.ifBlank { "GPT-5.1-codex-mini" }
                                 append(notes.trim())
-                                if (replacementText.isNotBlank()) {
+                                if (insertion.isNotBlank()) {
                                     append("\n\n```kotlin\n")
-                                    append(replacementText.trimEnd())
+                                    append(insertion.trimEnd())
                                     append("\n```")
                                 }
                             }.trimEnd()
@@ -1527,9 +1529,10 @@ class Server {
                             Metadata(
                                 icon = "keyword",
                                 tail = "AI ${idx + 1}",
-                                text = replacementText,
+                                text = insertion,
                                 displayText = if (display.isNotEmpty()) display else "AI completion ${idx + 1}",
-                                documentation = doc
+                                documentation = doc,
+                                category = "ai"
                             )
                         }
 
