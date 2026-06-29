@@ -2339,8 +2339,7 @@ class Server {
                                     defaultWorkspace,
                                     currentAiSettingsStatus(),
                                     preferences,
-                                    projects,
-                                    kotlinCompletionBlacklistPatterns
+                                    projects
                                 )
                             )
                         }

@@ -398,10 +398,12 @@ function disclosureInterface(container) {
                                 if (!current || current.inline || !state.open || state.autoSizeToken !== token) return;
 
                                 const natural = contentSizeForDisclosure(current);
+                                const currentWidth = Number(state.width) || DEFAULT_W;
+                                const currentHeight = Number(state.height) || DEFAULT_H;
                                 const clamped = clampSizeForId(
                                         id,
-                                        Math.max(natural.width, headerWidth(current)),
-                                        Math.max(natural.height, 20)
+                                        Math.max(natural.width, headerWidth(current), currentWidth),
+                                        Math.max(natural.height, 20, currentHeight)
                                 );
 
                                 state.width = clamped.width;
@@ -653,6 +655,51 @@ function disclosureInterface(container) {
                 d.wrap.style.width = `${w}px`;
         }
 
+        function primeAutoSizeForOpen(id, d) {
+                if (!d || d.inline || !usesContentAutoSize(d)) return;
+                const st = ensureState(id);
+                if (st.userSized || st.lastAutoSizedContentVersion === (st.contentVersion || 0)) return;
+
+                const previous = {
+                        display: d.cw.style.display,
+                        visibility: d.cw.style.visibility,
+                        padding: d.cw.style.padding,
+                        width: d.cw.style.width,
+                        height: d.cw.style.height,
+                        overflow: d.cw.style.overflow,
+                        wrapWidth: d.wrap.style.width
+                };
+
+                applySizeBoundsForId(id, d);
+                d.wrap.classList.add("open");
+                d.cw.style.display = "block";
+                d.cw.style.visibility = "hidden";
+                d.cw.style.padding = d.cw.dataset.origPadding || "0px";
+                d.cw.style.width = `${st.width || DEFAULT_W}px`;
+                d.cw.style.height = "auto";
+                d.cw.style.overflow = "visible";
+                d.wrap.style.width = `${st.width || DEFAULT_W}px`;
+
+                const natural = contentSizeForDisclosure(d);
+                const clamped = clampSizeForId(
+                        id,
+                        Math.max(natural.width, headerWidth(d)),
+                        Math.max(natural.height, 20)
+                );
+                st.width = clamped.width;
+                st.height = clamped.height;
+                states.set(id, st);
+
+                d.cw.style.display = previous.display;
+                d.cw.style.visibility = previous.visibility;
+                d.cw.style.padding = previous.padding;
+                d.cw.style.width = previous.width;
+                d.cw.style.height = previous.height;
+                d.cw.style.overflow = previous.overflow;
+                d.wrap.style.width = previous.wrapWidth;
+                d.wrap.classList.remove("open");
+        }
+
         function ensureBehaviors(id, d) {
                 if (d.inline) return;
                 d.cw.style.overflow = "auto";
@@ -721,6 +768,7 @@ function disclosureInterface(container) {
                 const st = ensureState(id);
                 if (!st.width) st.width = DEFAULT_W;
                 if (!st.height) st.height = DEFAULT_H;
+                primeAutoSizeForOpen(id, d);
                 applyOpen(id, d);
                 st.open = true;
                 states.set(id, st);

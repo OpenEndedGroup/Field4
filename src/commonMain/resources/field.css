@@ -434,7 +434,7 @@
     display: none;
     padding: 4px 4px;
     font-size: 10px;
-    background: var(--field-panel-soft);
+    background: rgba(var(--field-black-rgb), 0.72);
     resize: none;
     box-sizing: border-box;
     width: auto;
@@ -491,6 +491,7 @@
     padding: 0;
     min-width: 550px;
     min-height: 0;
+    background: rgba(var(--field-black-rgb), 0.82);
 }
 
 .ai-chat-markdown {
@@ -1137,7 +1138,7 @@ body {
 
 .field-control {
     font-family: var(--field-font);
-    background: var(--field-panel);
+    background: rgba(var(--field-black-rgb), 0.78);
     border: 1px solid var(--field-accent-border-faint);
     border-radius: 10px;
     padding: 8px 10px;
@@ -1289,25 +1290,52 @@ body {
 }
 
 .afield-call-signature-context {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
+    display: block;
     max-width: 100%;
     font-family: "Iosevka", var(--field-font), monospace;
     line-height: 1.35;
 }
 
-.afield-call-signature-name {
-    color: var(--field-fg-muted);
-}
-
 .afield-call-signature-context code {
+    display: block;
     color: var(--field-fg-strong);
     background: rgba(255, 255, 255, 0.08);
     border: 0.5px solid rgba(255, 255, 255, 0.12);
     border-radius: 3px;
-    padding: 0 4px;
-    white-space: normal;
+    padding: 3px 5px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.afield-call-signature-token {
+    font-weight: 600;
+}
+
+.afield-call-signature-kw {
+    color: color-mix(in srgb, rgb(var(--field-danger-rgb)) 40%, rgb(var(--field-white-rgb)));
+}
+
+.afield-call-signature-function {
+    color: color-mix(in srgb, rgb(var(--field-accent-rgb)) 38%, rgb(var(--field-white-rgb)));
+}
+
+.afield-call-signature-param {
+    color: color-mix(in srgb, rgb(var(--field-warning-rgb)) 26%, rgb(var(--field-white-rgb)));
+}
+
+.afield-call-signature-type {
+    color: color-mix(in srgb, rgb(var(--field-danger-rgb)) 24%, rgb(var(--field-white-rgb)));
+    font-weight: 100;
+    opacity: 0.82;
+}
+
+.afield-call-signature-number {
+    color: var(--field-syntax-float);
+}
+
+.afield-call-signature-punct,
+.afield-call-signature-operator {
+    color: color-mix(in srgb, rgb(var(--field-info-rgb)) 22%, rgb(var(--field-white-rgb)));
 }
 
 .afield-glsl-context {

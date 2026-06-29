@@ -22,31 +22,7 @@ fun findClassesNamed(name: String): List<String>? {
 
 fun isImportableClassName(name: String): Boolean {
     if ('$' in name) return false
-    if (isBlacklistedKotlinCompletionName(name)) return false
-    return currentFieldPreferences().importClassBlacklist.none { pattern ->
-        importClassBlacklistPatternMatches(pattern, name)
-    }
-}
-
-private fun importClassBlacklistPatternMatches(pattern: String, className: String): Boolean {
-    val p = pattern.trim().lowercase()
-    val candidate = className.lowercase()
-    if (p.isBlank()) return false
-    if ('*' !in p) return candidate == p
-    val parts = p.split('*')
-    var at = 0
-    if (parts.first().isNotEmpty()) {
-        if (!candidate.startsWith(parts.first())) return false
-        at = parts.first().length
-    }
-    for (part in parts.drop(1).dropLast(1)) {
-        if (part.isEmpty()) continue
-        val next = candidate.indexOf(part, at)
-        if (next < 0) return false
-        at = next + part.length
-    }
-    val last = parts.last()
-    return last.isEmpty() || candidate.indexOf(last, at).let { it >= 0 && candidate.endsWith(last) }
+    return !isBlacklistedKotlinCompletionName(name)
 }
 
 fun classesWithPrefix(name: String, hideDollarSignClasses : Boolean = true): List<Pair<String, String>> {

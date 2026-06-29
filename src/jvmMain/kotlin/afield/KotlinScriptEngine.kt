@@ -501,21 +501,38 @@ fun getTokenBounds(buf: String, cursor: Int): CompletionTokenBounds {
     return CompletionTokenBounds(start, cursor)
 }
 
-val kotlinCompletionBlacklistPatterns = listOf("com.sun", "com.sun.*", "sun.*", "*clojure*")
+val kotlinCompletionBlacklistPatterns: List<String>
+    get() = currentFieldPreferences().importClassBlacklist
 
-private fun kotlinCompletionBlacklistPatternMatches(pattern: String, candidate: String): Boolean {
-    val normalizedPattern = pattern.lowercase(Locale.ROOT)
-    return when {
-        normalizedPattern.startsWith("*") && normalizedPattern.endsWith("*") && normalizedPattern.length > 2 ->
-            candidate.contains(normalizedPattern.trim('*'))
-        normalizedPattern.endsWith(".*") ->
-            candidate.startsWith(normalizedPattern.removeSuffix("*"))
-        else ->
-            candidate == normalizedPattern
+fun kotlinCompletionBlacklistPatternMatches(pattern: String, candidate: String): Boolean {
+    val normalizedPattern = pattern.trim().lowercase(Locale.ROOT)
+    val normalizedCandidate = candidate.trim().lowercase(Locale.ROOT)
+    if (normalizedPattern.isBlank() || normalizedCandidate.isBlank()) return false
+    if ('*' !in normalizedPattern) return normalizedCandidate == normalizedPattern
+
+    val parts = normalizedPattern.split('*')
+    var offset = 0
+    val first = parts.first()
+    if (first.isNotEmpty()) {
+        if (!normalizedCandidate.startsWith(first)) return false
+        offset = first.length
     }
+    for (part in parts.drop(1).dropLast(1)) {
+        if (part.isEmpty()) continue
+        val next = normalizedCandidate.indexOf(part, offset)
+        if (next < 0) return false
+        offset = next + part.length
+    }
+    val last = parts.last()
+    if (last.isEmpty()) return true
+    val next = normalizedCandidate.indexOf(last, offset)
+    return next >= 0 && normalizedCandidate.endsWith(last)
 }
 
-fun isBlacklistedKotlinCompletionName(name: String): Boolean {
+fun isBlacklistedKotlinCompletionName(
+    name: String,
+    blacklistPatterns: List<String> = kotlinCompletionBlacklistPatterns
+): Boolean {
     val normalized = name.trim()
         .removePrefix("import ")
         .replace('$', '.')
@@ -524,26 +541,30 @@ fun isBlacklistedKotlinCompletionName(name: String): Boolean {
 
     return normalized.split(Regex("\\s+")).any { token ->
         val candidate = token.trim('`', '"', '\'', '(', ')', '[', ']', '{', '}', ',', ';', ':')
-        kotlinCompletionBlacklistPatterns.any { pattern ->
+        blacklistPatterns.any { pattern ->
             kotlinCompletionBlacklistPatternMatches(pattern, candidate)
         }
     }
 }
 
-fun isBlacklistedKotlinCompletionCandidate(variant: SourceCodeCompletionVariant): Boolean {
+fun isBlacklistedKotlinCompletionCandidate(
+    variant: SourceCodeCompletionVariant,
+    blacklistPatterns: List<String> = kotlinCompletionBlacklistPatterns
+): Boolean {
     return sequenceOf(
         variant.text,
         variant.displayText,
         variant.tail
     ).plus(
         variant.extraInfo.values.asSequence().mapNotNull { it as? String }
-    ).any(::isBlacklistedKotlinCompletionName)
+    ).any { isBlacklistedKotlinCompletionName(it, blacklistPatterns) }
 }
 
 fun getCompletionResult(
     code: String, cursor: Int, completions: List<SourceCodeCompletionVariant>
 ): CompletionResult.Success {
-    val filteredCompletions = completions.filterNot(::isBlacklistedKotlinCompletionCandidate)
+    val blacklistPatterns = kotlinCompletionBlacklistPatterns
+    val filteredCompletions = completions.filterNot { isBlacklistedKotlinCompletionCandidate(it, blacklistPatterns) }
         .filter { !it.text.contains("$", ignoreCase = true) }
     val bounds = getTokenBounds(code, cursor)
     return CompletionResult.Success(

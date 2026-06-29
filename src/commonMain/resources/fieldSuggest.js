@@ -244,33 +244,87 @@ const callNameBeforeCursor = (model, position) => {
     return match ? match[1] : ""
 }
 
-const firstKotlinFenceLine = (documentation, preferredName = "") => {
+const kotlinFenceSignature = (documentation, preferredName = "") => {
     const docs = String(documentation || "")
-    const fence = /```(?:kotlin)?\s*\n([\s\S]*?)```/i.exec(docs)
-    if (!fence) return ""
+    const fences = Array.from(docs.matchAll(/```(?:kotlin|kt)?[^\S\r\n]*\r?\n([\s\S]*?)```/gi))
+    if (fences.length === 0) return ""
     const preferred = String(preferredName || "")
-    const lines = fence[1].split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
-    return lines.find((line) => line.includes("(") && (!preferred || line.includes(preferred)))
-        || lines.find((line) => line.includes("("))
+    const blocks = fences
+        .map((fence) => {
+            const lines = String(fence[1] || "").replace(/\r\n?/g, "\n").split("\n")
+            let start = 0
+            let end = lines.length
+            while (start < end && !lines[start].trim()) start++
+            while (end > start && !lines[end - 1].trim()) end--
+            return lines.slice(start, end).join("\n")
+        })
+        .filter((block) => block.includes("("))
+
+    return blocks.find((block) => preferred && block.includes(preferred))
+        || blocks[0]
         || ""
 }
 
-const normalizeSignatureLine = (line) => String(line || "")
+const normalizeSignatureText = (signature) => String(signature || "")
+    .replace(/\r\n?/g, "\n")
     .replace(/^\s*(?:(?:public|private|protected|internal|final|open|override|inline|suspend|operator|infix|external|tailrec)\s+)+/, "")
     .trim()
+
+const KOTLIN_SIGNATURE_KEYWORDS = new Set([
+    "fun", "val", "var", "suspend", "inline", "operator", "infix", "override"
+])
+
+const renderSignatureToken = (token, syntax = "") => {
+    const classes = syntax ? ` class="afield-call-signature-token afield-call-signature-${syntax}"` : ""
+    return `<span${classes}>${escapeHtml(token)}</span>`
+}
+
+const renderKotlinSignatureHtml = (signature) => {
+    const text = String(signature || "")
+    const tokens = text.match(/[A-Za-z_][A-Za-z0-9_]*|[0-9]+(?:\.[0-9]+)?[A-Za-z]*|::|->|[():,<>.?=]|\s+|./g) || []
+    const isSpace = (token) => /^\s+$/.test(token)
+    const isIdentifier = (token) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(token)
+    const previousNonSpace = (index) => {
+        for (let i = index - 1; i >= 0; i--) {
+            if (!isSpace(tokens[i])) return tokens[i]
+        }
+        return ""
+    }
+    const nextNonSpace = (index) => {
+        for (let i = index + 1; i < tokens.length; i++) {
+            if (!isSpace(tokens[i])) return tokens[i]
+        }
+        return ""
+    }
+
+    return tokens.map((token, index) => {
+        if (isSpace(token)) return escapeHtml(token)
+        if (/^[0-9]/.test(token)) return renderSignatureToken(token, "number")
+        if (/^[():,<>.?]$/.test(token)) return renderSignatureToken(token, "punct")
+        if (token === "=" || token === "->" || token === "::") return renderSignatureToken(token, "operator")
+        if (!isIdentifier(token)) return escapeHtml(token)
+        if (KOTLIN_SIGNATURE_KEYWORDS.has(token)) return renderSignatureToken(token, "kw")
+        if (previousNonSpace(index) === "fun") return renderSignatureToken(token, "function")
+        if (nextNonSpace(index) === ":") return renderSignatureToken(token, "param")
+        if (/^[A-Z]/.test(token) || previousNonSpace(index) === ":" || previousNonSpace(index) === "<") {
+            return renderSignatureToken(token, "type")
+        }
+        return renderSignatureToken(token, "identifier")
+    }).join("")
+}
 
 const itemSignatureFor = (item) => {
     if (!item) return ""
     const name = completionNameFor(item)
     const display = String(item.displayText || item.label || "").trim()
     const detail = String(item.detail || "").trim()
-    const documentationSignature = normalizeSignatureLine(firstKotlinFenceLine(item.documentation, name))
+    const documentationSignature = normalizeSignatureText(kotlinFenceSignature(item.documentation, name))
     if (documentationSignature) return documentationSignature
     if (display.includes("(")) {
         const returnType = detail.startsWith(":") && !display.includes(":") ? ` ${detail}` : ""
-        return normalizeSignatureLine(`${display}${returnType}`)
+        return normalizeSignatureText(`${display}${returnType}`)
     }
-    if (String(item.insertText || "").includes("(")) return normalizeSignatureLine(String(item.insertText || ""))
+    if (String(item.insertText || "").includes("(")) return normalizeSignatureText(String(item.insertText || ""))
     return name ? `${name}(...)` : ""
 }
 
@@ -921,15 +975,13 @@ class FieldSuggestController {
     showSignatureBadge(item) {
         const signature = itemSignatureFor(item)
         if (!signature || typeof window.setEditorContextBadge !== "function") return false
-        const name = completionNameFor(item)
         this.editor._afieldSuggestSignatureUntil = Date.now() + 2500
         window.setEditorContextBadge(this.editor, {
             key: `field-suggest-call:${signature}`,
             isLiveValue: false,
             html: `
                 <div class="afield-call-signature-context">
-                    <span class="afield-call-signature-name">${escapeHtml(name || "call")}</span>
-                    <code>${escapeHtml(signature)}</code>
+                    <code>${renderKotlinSignatureHtml(signature)}</code>
                 </div>
             `
         })
