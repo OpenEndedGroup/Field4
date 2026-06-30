@@ -637,7 +637,7 @@ fun doResync() {
                         if (Box.ioSeparateProperties.containsKey(name) && box.isInsideInitialized() && !box.inside.ephemeral) {
                             box.inside.markSidecarPending(box.id, name)
                         }
-                        Message("set-string").payload(Set_string(box.id, name, value))
+                        Message("set-string").payload(box.inside.nextSetStringSync(box.id, name, value))
                     }
 
                     is Number -> Message("set-number").payload(Set_number(box.id, name, value.toDouble()))
@@ -662,7 +662,7 @@ fun doResync() {
                                         MapSerializer(String.serializer(), Rect.serializer()),
                                         mapValue
                                     )
-                                    Message("set-string").payload(Set_string(box.id, name, jsonString))
+                                    Message("set-string").payload(box.inside.nextSetStringSync(box.id, name, jsonString))
                                 }
                             } catch (e: Exception) {
                                 lprintln("warning,boxes", "failed to serialize map for property $name: ${e.message}")

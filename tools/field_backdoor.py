@@ -587,7 +587,22 @@ class FieldBackdoor:
         self.logger.log("open_editor_complete", payload=payload)
         return payload
 
-    async def playwright_input(self, *, action: str, timeout: float, key: str | None = None, uid: str | None = None, dx: float = 0.0, dy: float = 0.0, hold: bool = False, steps: int = 12, filename: str | None = None, wait_ms: float = 0.0) -> dict[str, Any]:
+    async def playwright_input(
+        self,
+        *,
+        action: str,
+        timeout: float,
+        key: str | None = None,
+        uid: str | None = None,
+        dx: float = 0.0,
+        dy: float = 0.0,
+        hold: bool = False,
+        steps: int = 12,
+        filename: str | None = None,
+        script: str | None = None,
+        script_mode: str = "expression",
+        wait_ms: float = 0.0,
+    ) -> dict[str, Any]:
         resolved_uid = self.resolve_uid(uid) if uid is not None else None
         self.logger.log(
             "playwright_input_start",
@@ -599,6 +614,8 @@ class FieldBackdoor:
             hold=hold,
             steps=steps,
             filename=filename,
+            scriptLength=len(script) if script is not None else None,
+            scriptMode=script_mode,
             waitMs=wait_ms,
             timeout=timeout,
         )
@@ -613,6 +630,8 @@ class FieldBackdoor:
                 "hold": hold,
                 "steps": steps,
                 "filename": filename,
+                "script": script,
+                "scriptMode": script_mode,
                 "waitMs": wait_ms,
             },
             timeout=timeout,
@@ -1578,6 +1597,13 @@ def build_command_parser() -> argparse.ArgumentParser:
     input_key.add_argument("--wait-ms", type=float, default=0.0)
     input_key.add_argument("--timeout", type=float)
 
+    page_eval = subparsers.add_parser("page-eval", add_help=False)
+    page_eval.add_argument("script", nargs="?")
+    page_eval.add_argument("--file")
+    page_eval.add_argument("--body", action="store_true")
+    page_eval.add_argument("--wait-ms", type=float, default=0.0)
+    page_eval.add_argument("--timeout", type=float)
+
     click_box = subparsers.add_parser("click-box", add_help=False)
     click_box.add_argument("uid")
     click_box.add_argument("--wait-ms", type=float, default=0.0)
@@ -2069,6 +2095,26 @@ async def dispatch_command(
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
         return result
 
+    if args.command == "page-eval":
+        if (args.script is None) == (args.file is None):
+            raise BackdoorError("page-eval requires exactly one of a literal script or --file")
+        if args.file:
+            script = client.read_text_source(args.file, command_line=command_line)
+        else:
+            script = args.script
+        timeout = args.timeout or client.default_timeout
+        data = await client.playwright_input(
+            action="pageEval",
+            script=script,
+            script_mode="body" if args.body else "expression",
+            timeout=timeout,
+            wait_ms=args.wait_ms,
+        )
+        ok = bool(data.get("ok"))
+        result = command_result(command_line, ok, data=data, events=[])
+        client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
+        return result
+
     if args.command == "click-box":
         timeout = args.timeout or client.default_timeout
         data = await client.playwright_input(action="clickBox", uid=args.uid, timeout=timeout, wait_ms=args.wait_ms)
@@ -2200,7 +2246,7 @@ async def repl(
             return 0
         if line == "help":
             client.logger.log("repl_help")
-            print("Commands: open, status, snapshot, boxes, sleep, playwright-open, editor-open, screenshot-window, screenshot-editor, screenshot-box, native-screenshot, record-window, record-editor, record-box, new-box, connect, disconnect, set, run, launch, continue, stop, wait-file, output, raw-send, run-jvm-main, exit")
+            print("Commands: open, status, snapshot, boxes, sleep, playwright-open, editor-open, page-eval, screenshot-window, screenshot-editor, screenshot-box, native-screenshot, record-window, record-editor, record-box, new-box, connect, disconnect, set, run, launch, continue, stop, wait-file, output, raw-send, run-jvm-main, exit")
             continue
         try:
             parsed = parse_command(line)

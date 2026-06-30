@@ -28,15 +28,20 @@ val `joml-primitivesVersion` = "1.10.0"
 val osName = System.getProperty("os.name")!!
 val osArch = System.getProperty("os.arch")!!
 println("$osName, $osArch")
+val normalizedOsArch = osArch.lowercase()
 val lwjglNatives = when {
     arrayOf("Mac OS X", "Darwin").any { osName.startsWith(it) } ->
-        if (osArch == "aarch64") "natives-macos-arm64" else "natives-macos"
+        if (normalizedOsArch == "aarch64" || normalizedOsArch == "arm64") "natives-macos-arm64" else "natives-macos"
 
     arrayOf("Windows").any { osName.startsWith(it) } ->
         "natives-windows"
 
     arrayOf("Linux").any { osName.startsWith(it) } ->
-        "natives-linux"
+        when (normalizedOsArch) {
+            "aarch64", "arm64" -> "natives-linux-arm64"
+            "x86_64", "amd64" -> "natives-linux"
+            else -> throw Error("Unsupported Linux architecture for LWJGL natives: $osArch")
+        }
 
     else ->
         throw Error("Unrecognized or unsupported platform. Please set \"lwjglNatives\" manually")
@@ -529,7 +534,15 @@ kotlin {
 //                implementation("org.jetbrains.kotlin:kotlin-scripting-jvm:$customKotlinVersion")
                 implementation(files("libs/kotlin-scripting-dependencies-$customKotlinVersion.jar"))
                 implementation(files("libs/kotlin-scripting-dependencies-maven-$customKotlinVersion.jar"))
-                implementation("org.apache.maven.resolver:maven-resolver-api:2.0.7")
+                implementation("org.apache.maven:maven-core:3.8.8")
+                implementation("org.apache.maven.resolver:maven-resolver-api:1.9.22")
+                implementation("org.apache.maven.resolver:maven-resolver-connector-basic:1.9.22")
+                implementation("org.apache.maven.resolver:maven-resolver-impl:1.9.22")
+                implementation("org.apache.maven.resolver:maven-resolver-transport-file:1.9.22")
+                implementation("org.apache.maven.resolver:maven-resolver-transport-wagon:1.9.22")
+                implementation("org.apache.maven.resolver:maven-resolver-util:1.9.22")
+                implementation("org.apache.maven.wagon:wagon-http:3.5.3")
+                implementation("commons-io:commons-io:2.18.0")
 
                 implementation("org.joml:joml-experimental:1.10.7")
 

@@ -254,6 +254,7 @@
 
         .workspace-header,
         .project-management-header,
+        .maven-header,
         .ai-settings-header,
         .preferences-header,
         .osc-settings-header {
@@ -266,6 +267,7 @@
 
         .workspace-label,
         .project-management-label,
+        .maven-label,
         .ai-settings-label,
         .preferences-label,
         .osc-settings-label {
@@ -274,6 +276,7 @@
 
         #current-workspace,
         #project-management-state,
+        #maven-state,
         #ai-settings-state,
         #preferences-state,
         #osc-settings-state {
@@ -286,6 +289,7 @@
 
         .workspace-controls,
         .project-management-controls,
+        .maven-controls,
         .ai-settings-controls,
         .osc-settings-controls {
             display: grid;
@@ -327,6 +331,9 @@
 
         #workspace-path,
         #new-project-name,
+        #maven-search,
+        #maven-coordinate,
+        #maven-repository,
         #openai-platform-key,
         #openrouter-api-key,
         #openrouter-base-url,
@@ -352,6 +359,9 @@
 
         #workspace-path::placeholder,
         #new-project-name::placeholder,
+        #maven-search::placeholder,
+        #maven-coordinate::placeholder,
+        #maven-repository::placeholder,
         #openai-platform-key::placeholder,
         #openrouter-api-key::placeholder,
         #openrouter-base-url::placeholder,
@@ -371,6 +381,9 @@
 
         #workspace-path:focus,
         #new-project-name:focus,
+        #maven-search:focus,
+        #maven-coordinate:focus,
+        #maven-repository:focus,
         #openai-platform-key:focus,
         #openrouter-api-key:focus,
         #openrouter-base-url:focus,
@@ -389,6 +402,7 @@
 
         #workspace-status,
         #project-management-status,
+        #maven-status,
         #ai-settings-status,
         #preferences-status,
         #osc-settings-status {
@@ -399,6 +413,7 @@
 
         #workspace-status.error,
         #project-management-status.error,
+        #maven-status.error,
         #ai-settings-status.error,
         #preferences-status.error,
         #osc-settings-status.error {
@@ -461,6 +476,7 @@
 
         .workspace-details-body,
         .project-management-body,
+        .maven-body,
         .ai-settings-body,
         .preferences-body,
         .osc-settings-body {
@@ -471,6 +487,85 @@
 
         .project-management-controls {
             grid-template-columns: 1fr auto;
+        }
+
+        .maven-body {
+            gap: 9px;
+        }
+
+        .maven-controls {
+            grid-template-columns: 1fr auto;
+        }
+
+        .maven-button-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .maven-search-results,
+        .maven-dependencies,
+        .maven-repositories {
+            display: grid;
+            gap: 5px;
+            max-height: 148px;
+            overflow: auto;
+        }
+
+        .maven-entry {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 8px;
+            align-items: center;
+            padding: 5px 0;
+            border-top: 1px solid rgba(0, 0, 0, 0.62);
+            font-size: 11px;
+        }
+
+        .maven-entry-main {
+            min-width: 0;
+            display: grid;
+            gap: 2px;
+        }
+
+        .maven-entry-actions {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .maven-coordinate {
+            color: var(--field-cyan);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .maven-meta,
+        .maven-repository-url {
+            color: var(--field-text-soft);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .maven-action {
+            padding: 5px 6px;
+            border-radius: 5px;
+            font-size: 10px;
+            white-space: nowrap;
+        }
+
+        #maven-annotations {
+            width: 100%;
+            min-height: 74px;
+            background: rgba(0, 0, 0, 0.82);
+            color: var(--field-text);
+            border: 1px solid rgba(72, 201, 255, 0.22);
+            border-radius: 7px;
+            padding: 7px 8px;
+            font: 11px/1.35 "Iosevka Web", ui-monospace, monospace;
+            resize: vertical;
         }
 
         #project-management-list {
@@ -1173,6 +1268,8 @@
             .project-management-header,
             .workspace-controls,
             .project-management-controls,
+            .maven-header,
+            .maven-controls,
             .ai-settings-header,
             .ai-settings-controls,
             .ai-settings-field,
@@ -1186,6 +1283,7 @@
 
             #current-workspace,
             #project-management-state,
+            #maven-state,
             #ai-settings-state,
             #preferences-state,
             #osc-settings-state {
@@ -1334,6 +1432,39 @@
                         </div>
                         <div id="project-management-status" aria-live="polite"></div>
                         <div id="project-management-list"></div>
+                    </div>
+                </details>
+                <details id="maven-details">
+                    <summary>
+                        <span>Maven</span>
+                        <span id="maven-summary" class="changelog-count">loading</span>
+                    </summary>
+                    <div class="maven-body">
+                        <div class="maven-header">
+                            <span class="maven-label">Classpath</span>
+                            <span id="maven-state">checking</span>
+                        </div>
+                        <div class="maven-controls">
+                            <input id="maven-search" type="text" autocomplete="off" placeholder="search Maven Central or group:artifact">
+                            <div id="maven-search-results" class="maven-search-results"></div>
+                        </div>
+                        <div class="maven-controls">
+                            <input id="maven-coordinate" type="text" autocomplete="off" placeholder="group:artifact:version">
+                            <button id="maven-add-dependency" type="button">Add</button>
+                        </div>
+                        <div class="maven-controls">
+                            <input id="maven-repository" type="text" autocomplete="off" placeholder="https://repo.maven.apache.org/maven2">
+                            <button id="maven-add-repository" type="button">Repo</button>
+                        </div>
+                        <div class="maven-button-row">
+                            <button id="maven-resolve" type="button">Resolve</button>
+                            <button id="maven-upgrade" type="button">Upgrade</button>
+                        </div>
+                        <div id="maven-status" aria-live="polite"></div>
+                        <div id="maven-dependencies" class="maven-dependencies"></div>
+                        <div id="maven-repositories" class="maven-repositories"></div>
+                        <textarea id="maven-annotations" readonly spellcheck="false" autocomplete="off"></textarea>
+                        <button id="maven-copy-annotations" type="button">Copy annotations</button>
                     </div>
                 </details>
                 <details id="workspace-details">
@@ -1512,6 +1643,17 @@
         defaultWorkspace: "",
         recentWorkspaces: [],
         workspaceSwitching: false,
+        maven: {
+            repositories: [],
+            dependencies: [],
+            resolvedJars: [],
+            attachedJarCount: 0,
+            annotationSnippet: "",
+            message: ""
+        },
+        mavenSearchResults: [],
+        mavenSearching: false,
+        mavenBusy: false,
         aiSettings: {
             hasOpenAiPlatformKey: false,
             hasOpenRouterApiKey: false,
@@ -1529,7 +1671,7 @@
             profiling: false,
             framePresentationLog: false,
             logShadercSource: true,
-            enableVR: true,
+            enableVR: false,
             enableHDR: false,
             openXRDebugInput: true,
             validate: true,
@@ -1551,6 +1693,9 @@
     let searchController = null;
     let searchRequestSerial = 0;
     let searchDebounceTimer = null;
+    let mavenSearchController = null;
+    let mavenSearchSerial = 0;
+    let mavenSearchTimer = null;
     let preferencesSaveSerial = 0;
     let preferencesSaveTimer = null;
     let oscSettingsSaveTimer = null;
@@ -1710,6 +1855,315 @@
                 deleteProject(button.getAttribute("data-project-delete") || "", { statusTarget: "project-management" });
             });
         });
+    }
+
+    function setMavenStatus(text, isError = false) {
+        const node = document.getElementById("maven-status");
+        if (!node) return;
+        node.textContent = text || "";
+        node.classList.toggle("error", !!isError);
+    }
+
+    function setMavenBusy(busy) {
+        state.mavenBusy = !!busy;
+        [
+            "maven-add-dependency",
+            "maven-add-repository",
+            "maven-resolve",
+            "maven-upgrade",
+            "maven-copy-annotations"
+        ].forEach((id) => {
+            const node = document.getElementById(id);
+            if (node) node.disabled = state.mavenBusy;
+        });
+    }
+
+    function renderMavenSearchResults() {
+        const node = document.getElementById("maven-search-results");
+        if (!node) return;
+        if (state.mavenSearching) {
+            node.innerHTML = `<div class="empty-state">Searching Maven Central...</div>`;
+            return;
+        }
+        const results = state.mavenSearchResults || [];
+        if (!results.length) {
+            node.innerHTML = "";
+            return;
+        }
+        node.innerHTML = results.map((result) => {
+            const meta = [
+                result.packaging || "",
+                result.versionCount ? `${result.versionCount} versions` : "",
+                result.timestampEpochMs ? formatDuration(Date.now() - Number(result.timestampEpochMs)) : ""
+            ].filter(Boolean).join(" · ");
+            return `
+                <div class="maven-entry">
+                    <span class="maven-entry-main">
+                        <span class="maven-coordinate">${escapeHtml(result.coordinate)}</span>
+                        <span class="maven-meta">${escapeHtml(meta)}</span>
+                    </span>
+                    <button type="button" class="maven-action" data-maven-use="${escapeHtml(result.coordinate)}">Use</button>
+                </div>
+            `;
+        }).join("");
+        node.querySelectorAll("[data-maven-use]").forEach((button) => {
+            button.addEventListener("click", () => {
+                const coordinate = button.getAttribute("data-maven-use") || "";
+                const input = document.getElementById("maven-coordinate");
+                if (input) {
+                    input.value = coordinate;
+                    input.focus({ preventScroll: true });
+                }
+                setMavenStatus("");
+            });
+        });
+    }
+
+    function renderMavenClasspath() {
+        const summary = document.getElementById("maven-summary");
+        const stateNode = document.getElementById("maven-state");
+        const dependencyNode = document.getElementById("maven-dependencies");
+        const repositoryNode = document.getElementById("maven-repositories");
+        const annotations = document.getElementById("maven-annotations");
+        const classpath = state.maven || {};
+        const dependencies = Array.isArray(classpath.dependencies) ? classpath.dependencies : [];
+        const repositories = Array.isArray(classpath.repositories) ? classpath.repositories : [];
+        const resolvedJars = Array.isArray(classpath.resolvedJars) ? classpath.resolvedJars : [];
+
+        if (summary) summary.textContent = dependencies.length ? `${dependencies.length} deps` : "empty";
+        if (stateNode) stateNode.textContent = `${resolvedJars.length} jars · ${classpath.attachedJarCount || 0} attached`;
+        if (annotations) {
+            annotations.value = classpath.annotationSnippet || "";
+            annotations.placeholder = "@file:DependsOn(\"org.example:library:1.0.0\")";
+        }
+
+        if (dependencyNode) {
+            dependencyNode.innerHTML = dependencies.length ? dependencies.map((dependency) => {
+                const latest = dependency.latestVersion && !dependency.coordinate.endsWith(`:${dependency.latestVersion}`)
+                    ? `latest ${dependency.latestVersion}`
+                    : "";
+                const meta = [
+                    dependency.status || (dependency.resolved ? "resolved" : "pending"),
+                    dependency.jarCount ? `${dependency.jarCount} jars` : "",
+                    latest
+                ].filter(Boolean).join(" · ");
+                return `
+                    <div class="maven-entry">
+                        <span class="maven-entry-main">
+                            <span class="maven-coordinate">${escapeHtml(dependency.coordinate || "")}</span>
+                            <span class="maven-meta">${escapeHtml(meta)}</span>
+                        </span>
+                        <span class="maven-entry-actions">
+                            <button type="button" class="maven-action" data-maven-resolve-one="${escapeHtml(dependency.coordinate || "")}">Resolve</button>
+                            <button type="button" class="maven-action button-danger" data-maven-remove-dep="${escapeHtml(dependency.coordinate || "")}">Remove</button>
+                        </span>
+                    </div>
+                `;
+            }).join("") : `<div class="empty-state">No Maven dependencies on the live classpath.</div>`;
+            dependencyNode.querySelectorAll("[data-maven-resolve-one]").forEach((button) => {
+                button.addEventListener("click", () => resolveMaven([button.getAttribute("data-maven-resolve-one") || ""]));
+            });
+            dependencyNode.querySelectorAll("[data-maven-remove-dep]").forEach((button) => {
+                button.addEventListener("click", () => removeMavenDependency(button.getAttribute("data-maven-remove-dep") || ""));
+            });
+        }
+
+        if (repositoryNode) {
+            repositoryNode.innerHTML = repositories.map((url) => {
+                const removable = url !== "https://repo.maven.apache.org/maven2";
+                return `
+                    <div class="maven-entry">
+                        <span class="maven-repository-url">${escapeHtml(url)}</span>
+                        ${removable ? `<button type="button" class="maven-action button-danger" data-maven-remove-repo="${escapeHtml(url)}">Remove</button>` : `<span class="maven-meta">default</span>`}
+                    </div>
+                `;
+            }).join("");
+            repositoryNode.querySelectorAll("[data-maven-remove-repo]").forEach((button) => {
+                button.addEventListener("click", () => removeMavenRepository(button.getAttribute("data-maven-remove-repo") || ""));
+            });
+        }
+    }
+
+    async function loadMavenClasspath() {
+        try {
+            const response = await fetch("/api/maven-classpath", { cache: "no-store" });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            state.maven = await response.json();
+            renderMavenClasspath();
+            if (state.maven.message) setMavenStatus(state.maven.message);
+        } catch (error) {
+            console.error("Failed to load Maven classpath", error);
+            setMavenStatus("Could not load Maven classpath.", true);
+        }
+    }
+
+    async function searchMaven(query) {
+        const clean = String(query || "").trim();
+        if (mavenSearchController) mavenSearchController.abort();
+        if (clean.length < 2) {
+            state.mavenSearchResults = [];
+            state.mavenSearching = false;
+            renderMavenSearchResults();
+            return;
+        }
+        const serial = ++mavenSearchSerial;
+        mavenSearchController = new AbortController();
+        state.mavenSearching = true;
+        renderMavenSearchResults();
+        try {
+            const params = new URLSearchParams({ q: clean, rows: "12" });
+            const response = await fetch(`/api/maven-search?${params.toString()}`, {
+                cache: "no-store",
+                signal: mavenSearchController.signal
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+            if (serial !== mavenSearchSerial) return;
+            state.mavenSearchResults = Array.isArray(payload.results) ? payload.results : [];
+            state.mavenSearching = false;
+            renderMavenSearchResults();
+            setMavenStatus(payload.message || "");
+        } catch (error) {
+            if (error?.name === "AbortError") return;
+            if (serial !== mavenSearchSerial) return;
+            state.mavenSearchResults = [];
+            state.mavenSearching = false;
+            renderMavenSearchResults();
+            setMavenStatus(error?.message || "Maven search failed.", true);
+        }
+    }
+
+    function queueMavenSearch(query) {
+        clearTimeout(mavenSearchTimer);
+        mavenSearchTimer = setTimeout(() => searchMaven(query), 220);
+    }
+
+    async function postMavenJson(url, body, statusText) {
+        setMavenBusy(true);
+        setMavenStatus(statusText || "Working...");
+        try {
+            const response = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                body: JSON.stringify(body || {})
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+            state.maven = payload.status || payload;
+            renderMavenClasspath();
+            setMavenStatus((payload.status && payload.status.message) || payload.message || "Done.");
+            return payload;
+        } catch (error) {
+            console.error("Maven operation failed", error);
+            setMavenStatus(error?.message || "Maven operation failed.", true);
+            return null;
+        } finally {
+            setMavenBusy(false);
+        }
+    }
+
+    function readMavenCoordinate() {
+        return String(document.getElementById("maven-coordinate")?.value || "").trim();
+    }
+
+    async function addMavenDependency() {
+        const coordinate = readMavenCoordinate();
+        if (!coordinate) {
+            setMavenStatus("Enter group:artifact:version.", true);
+            return;
+        }
+        const payload = await postMavenJson("/api/maven-dependencies", { coordinate }, "Resolving dependency...");
+        if (payload) {
+            const input = document.getElementById("maven-coordinate");
+            if (input) input.value = "";
+        }
+    }
+
+    async function addMavenRepository() {
+        const input = document.getElementById("maven-repository");
+        const url = String(input?.value || "").trim();
+        if (!url) {
+            setMavenStatus("Enter a Maven repository URL.", true);
+            return;
+        }
+        const payload = await postMavenJson("/api/maven-repositories", { url }, "Adding repository...");
+        if (payload && input) input.value = "";
+    }
+
+    async function removeMavenRepository(url) {
+        if (!url) return;
+        setMavenBusy(true);
+        setMavenStatus("Removing repository...");
+        try {
+            const params = new URLSearchParams({ url });
+            const response = await fetch(`/api/maven-repositories?${params.toString()}`, {
+                method: "DELETE",
+                cache: "no-store"
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+            state.maven = payload;
+            renderMavenClasspath();
+            setMavenStatus(payload.message || "Repository removed.");
+        } catch (error) {
+            setMavenStatus(error?.message || "Could not remove repository.", true);
+        } finally {
+            setMavenBusy(false);
+        }
+    }
+
+    async function removeMavenDependency(coordinate) {
+        if (!coordinate) return;
+        setMavenBusy(true);
+        setMavenStatus("Removing dependency...");
+        try {
+            const params = new URLSearchParams({ coordinate });
+            const response = await fetch(`/api/maven-dependencies?${params.toString()}`, {
+                method: "DELETE",
+                cache: "no-store"
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+            state.maven = payload;
+            renderMavenClasspath();
+            setMavenStatus(payload.message || "Dependency removed.");
+        } catch (error) {
+            setMavenStatus(error?.message || "Could not remove dependency.", true);
+        } finally {
+            setMavenBusy(false);
+        }
+    }
+
+    async function resolveMaven(coordinates = null) {
+        const explicit = Array.isArray(coordinates) ? coordinates.filter(Boolean) : [];
+        const coordinate = readMavenCoordinate();
+        const payloadCoordinates = explicit.length ? explicit : (coordinate ? [coordinate] : []);
+        await postMavenJson("/api/maven-resolve", { coordinates: payloadCoordinates }, "Resolving Maven classpath...");
+    }
+
+    async function upgradeMaven() {
+        const payload = await postMavenJson("/api/maven-upgrade", {}, "Checking latest versions...");
+        if (payload?.upgraded?.length) {
+            setMavenStatus(`Upgraded ${payload.upgraded.length} dependencies.`);
+        }
+    }
+
+    async function copyMavenAnnotations() {
+        const text = state.maven?.annotationSnippet || "";
+        if (!text) {
+            setMavenStatus("No Maven annotations to copy.", true);
+            return;
+        }
+        try {
+            await navigator.clipboard.writeText(text);
+            setMavenStatus("Annotations copied.");
+        } catch (_) {
+            const textarea = document.getElementById("maven-annotations");
+            textarea?.focus({ preventScroll: true });
+            textarea?.select();
+            setMavenStatus("Annotations selected.");
+        }
     }
 
     function renderAiSettings() {
@@ -3396,6 +3850,14 @@
         const defaultWorkspaceButton = document.getElementById("default-workspace");
         const chooseWorkspaceButton = document.getElementById("choose-workspace");
         const openWorkspaceButton = document.getElementById("open-workspace");
+        const mavenSearchInput = document.getElementById("maven-search");
+        const mavenCoordinateInput = document.getElementById("maven-coordinate");
+        const mavenRepositoryInput = document.getElementById("maven-repository");
+        const mavenAddDependencyButton = document.getElementById("maven-add-dependency");
+        const mavenAddRepositoryButton = document.getElementById("maven-add-repository");
+        const mavenResolveButton = document.getElementById("maven-resolve");
+        const mavenUpgradeButton = document.getElementById("maven-upgrade");
+        const mavenCopyAnnotationsButton = document.getElementById("maven-copy-annotations");
         const openAiKeyInput = document.getElementById("openai-platform-key");
         const openRouterKeyInput = document.getElementById("openrouter-api-key");
         const aiProviderButtons = document.querySelectorAll("[data-ai-provider]");
@@ -3489,6 +3951,44 @@
         workspaceInput?.addEventListener("input", () => {
             if (!state.workspaceSwitching) setWorkspaceStatus("");
         });
+
+        mavenSearchInput?.addEventListener("input", () => {
+            queueMavenSearch(mavenSearchInput.value);
+        });
+
+        mavenSearchInput?.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            const first = state.mavenSearchResults?.[0]?.coordinate;
+            if (first && mavenCoordinateInput) {
+                mavenCoordinateInput.value = first;
+                mavenCoordinateInput.focus({ preventScroll: true });
+            } else {
+                searchMaven(mavenSearchInput.value);
+            }
+        });
+
+        mavenCoordinateInput?.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            addMavenDependency();
+        });
+
+        mavenCoordinateInput?.addEventListener("input", () => setMavenStatus(""));
+
+        mavenRepositoryInput?.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            addMavenRepository();
+        });
+
+        mavenRepositoryInput?.addEventListener("input", () => setMavenStatus(""));
+
+        mavenAddDependencyButton?.addEventListener("click", addMavenDependency);
+        mavenAddRepositoryButton?.addEventListener("click", addMavenRepository);
+        mavenResolveButton?.addEventListener("click", () => resolveMaven());
+        mavenUpgradeButton?.addEventListener("click", upgradeMaven);
+        mavenCopyAnnotationsButton?.addEventListener("click", copyMavenAnnotations);
 
         aiProviderButtons.forEach((button) => {
             button.addEventListener("click", () => {
@@ -3800,10 +4300,12 @@
 
     state.recentWorkspaces = getStoredWorkspaces();
     renderWorkspaceControls();
+    renderMavenClasspath();
     renderOscSettings();
     installHandlers();
     loadWelcomeDocs();
     loadWelcomeChangelog();
+    loadMavenClasspath();
     connectWelcomeEvents();
     startWelcomePolling();
     runSplashAnimation();

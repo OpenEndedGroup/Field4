@@ -6,6 +6,7 @@ import com.microsoft.playwright.options.Clip
 import com.microsoft.playwright.options.ScreenshotType
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.JsonElement
 import java.awt.image.Raster
 import java.nio.file.Files
 import java.nio.file.Path
@@ -197,7 +198,58 @@ private fun postProcessScreenshot(path: Path) {
     )
   }
 
-  private fun performWindowAction(page: Page, request: AgentPlaywrightInputRequest) {
+  private fun evaluatePageScript(page: Page, request: AgentPlaywrightInputRequest): Pair<JsonElement, String> {
+    val source = request.script ?: error("pageEval requires script")
+    val mode = request.scriptMode.ifBlank { "expression" }
+    if (mode !in setOf("expression", "body")) {
+      error("pageEval scriptMode must be 'expression' or 'body'")
+    }
+
+    val raw = page.evaluate(
+      """
+      async ({ source, mode }) => {
+        const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+        const replacer = (_key, value) => {
+          if (typeof value === "bigint") return value.toString();
+          if (typeof value === "function") return `[Function ${'$'}{value.name || "anonymous"}]`;
+          if (value instanceof Element) {
+            return {
+              tagName: value.tagName,
+              id: value.id || "",
+              className: typeof value.className === "string" ? value.className : "",
+              textContent: value.textContent || ""
+            };
+          }
+          return value;
+        };
+
+        const value = mode === "body"
+          ? await new AsyncFunction(source).call(window)
+          : await (0, eval)(source);
+
+        if (value === undefined) {
+          return { ok: true, json: "null", message: "Evaluation returned undefined" };
+        }
+
+        const json = JSON.stringify(value, replacer);
+        if (json === undefined) {
+          return { ok: true, json: "null", message: `Evaluation returned ${'$'}{typeof value}` };
+        }
+        return { ok: true, json, message: "" };
+      }
+      """.trimIndent(),
+      mapOf("source" to source, "mode" to mode)
+    )
+    val result = raw as? Map<*, *> ?: error("pageEval returned an invalid response")
+    if (result["ok"] != true) {
+      error(responseString(result["message"]).ifBlank { "pageEval failed" })
+    }
+    val json = responseString(result["json"]).ifBlank { "null" }
+    val message = responseString(result["message"])
+    return Json.parseToJsonElement(json) to message
+  }
+
+  private fun performWindowAction(page: Page, request: AgentPlaywrightInputRequest): Pair<JsonElement?, String> {
     when (request.action) {
       "keyPress" -> {
         val key = request.key ?: error("keyPress requires a key")
@@ -252,12 +304,20 @@ private fun postProcessScreenshot(path: Path) {
           error(responseString(result["message"]).ifBlank { "showHistory failed" })
         }
       }
+      "pageEval" -> {
+        val result = evaluatePageScript(page, request)
+        if (request.waitMs > 0.0) {
+          page.waitForTimeout(request.waitMs)
+        }
+        return result
+      }
       else -> error("Unsupported Playwright action '${request.action}'")
     }
 
     if (request.waitMs > 0.0) {
       page.waitForTimeout(request.waitMs)
     }
+    return null to ""
   }
 
   fun performPlaywrightInput(info: SessionInformation, request: AgentPlaywrightInputRequest): AgentPlaywrightInputResponse {
@@ -273,7 +333,7 @@ private fun postProcessScreenshot(path: Path) {
     )
 
     return runCatching {
-      performWindowAction(page, request)
+      val (result, actionMessage) = performWindowAction(page, request)
       AgentPlaywrightInputResponse(
         ok = true,
         action = request.action,
@@ -281,7 +341,9 @@ private fun postProcessScreenshot(path: Path) {
         uid = request.uid,
         documentName = info.documentName,
         scratch = info.ephemeral,
-        sessionKey = info.filename
+        sessionKey = info.filename,
+        result = result,
+        message = actionMessage
       )
     }.getOrElse {
       AgentPlaywrightInputResponse(

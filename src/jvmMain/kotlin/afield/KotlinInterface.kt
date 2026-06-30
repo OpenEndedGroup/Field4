@@ -92,6 +92,7 @@ class KotlinInterface(
         }
 
         classLoader = sharedClassLoader
+        MavenClasspathManager.attachResolvedTo(classLoader)
 
         val myHostConfiguration = defaultJvmScriptingHostConfiguration.with {
             jvm {

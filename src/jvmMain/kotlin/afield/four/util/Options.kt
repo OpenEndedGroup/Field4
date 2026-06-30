@@ -53,7 +53,7 @@ object Options {
         "afield.four.computeOncePerFrame",
         System.getenv("AFIELD_FOUR_COMPUTE_ONCE_PER_FRAME") ?: "true"
     ).toBoolean()
-    var enableVR = true && !isMac
+    var enableVR = false
 
     fun doVulkanSDK() {
         if (useVulkanSDK && isMac && File(vulkan_library_name).exists()) Configuration.VULKAN_LIBRARY_NAME.set(vulkan_library_name)

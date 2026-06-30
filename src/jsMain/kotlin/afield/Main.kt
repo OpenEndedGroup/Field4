@@ -4300,6 +4300,7 @@ suspend fun main() {
 
     handlers.put("set-string") { message, _ ->
         val set = Json.decodeFromJsonElement<Set_string>(message.payload!!)
+        if (!acceptSetStringSync(set)) return@put Handled.yes
         val u = set.uid
 
         var found = defaultCreate(u)

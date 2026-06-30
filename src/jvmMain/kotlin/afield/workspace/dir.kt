@@ -78,11 +78,70 @@ data class WelcomeDocsResponse(
 )
 
 @Serializable
+data class MavenDependencyEntry(
+    val coordinate: String,
+    val resolved: Boolean = false,
+    val jarCount: Int = 0,
+    val latestVersion: String = "",
+    val status: String = "",
+    val resolvedAtEpochMs: Long = 0
+)
+
+@Serializable
+data class MavenClasspathStatus(
+    val repositories: List<String> = emptyList(),
+    val dependencies: List<MavenDependencyEntry> = emptyList(),
+    val resolvedJars: List<String> = emptyList(),
+    val attachedJarCount: Int = 0,
+    val annotationSnippet: String = "",
+    val message: String = ""
+)
+
+@Serializable
+data class MavenRepositoryRequest(
+    val url: String
+)
+
+@Serializable
+data class MavenDependencyRequest(
+    val coordinate: String
+)
+
+@Serializable
+data class MavenResolveRequest(
+    val coordinates: List<String> = emptyList()
+)
+
+@Serializable
+data class MavenUpgradeResponse(
+    val upgraded: List<String> = emptyList(),
+    val status: MavenClasspathStatus
+)
+
+@Serializable
+data class MavenSearchResult(
+    val groupId: String,
+    val artifactId: String,
+    val latestVersion: String,
+    val packaging: String = "",
+    val versionCount: Int = 0,
+    val timestampEpochMs: Long = 0,
+    val coordinate: String
+)
+
+@Serializable
+data class MavenSearchResponse(
+    val query: String,
+    val results: List<MavenSearchResult>,
+    val message: String = ""
+)
+
+@Serializable
 data class FieldPreferences(
     val profiling: Boolean = false,
     val framePresentationLog: Boolean = false,
     val logShadercSource: Boolean = true,
-    val enableVR: Boolean = true,
+    val enableVR: Boolean = false,
     val enableHDR: Boolean = false,
     val openXRDebugInput: Boolean = true,
     val validate: Boolean = true,

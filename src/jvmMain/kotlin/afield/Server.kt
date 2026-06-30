@@ -90,6 +90,8 @@ class SessionInformation(
     // Track sidecar-bearing properties that need to be written to disk on next save.
     val pendingSidecarSaves = ConcurrentHashMap.newKeySet<Pair<String, String>>()
     private val pendingSidecarSaveVersions = ConcurrentHashMap<Pair<String, String>, Long>()
+    private val propertySyncSequences = ConcurrentHashMap<Pair<String, String>, AtomicLong>()
+    private val pendingPropertySyncOrigins = ConcurrentHashMap<Pair<String, String>, PropertySyncOrigin>()
 
     // Layers system state
     var visibleLayers: MutableSet<String> = mutableSetOf("default")
@@ -128,11 +130,40 @@ class SessionInformation(
         }
     }
 
+    fun recordPropertySyncOrigin(uid: String, property: String, value: String, clientId: String?, clientSequence: Long?) {
+        if (clientId == null || clientSequence == null) return
+        pendingPropertySyncOrigins[uid to property] = PropertySyncOrigin(value, clientId, clientSequence)
+    }
+
+    fun nextSetStringSync(uid: String, property: String, value: String): Set_string {
+        val key = uid to property
+        val sequence = propertySyncSequences
+            .computeIfAbsent(key) { AtomicLong(0L) }
+            .incrementAndGet()
+        val origin = pendingPropertySyncOrigins[key]
+            ?.takeIf { it.value == value }
+            ?.also { pendingPropertySyncOrigins.remove(key, it) }
+        return Set_string(
+            uid = uid,
+            property = property,
+            value = value,
+            syncSequence = sequence,
+            clientId = origin?.clientId,
+            clientSequence = origin?.clientSequence
+        )
+    }
+
     fun cleanup() {
         _fileWatchManager?.stop()
         _fileWatchManager = null
     }
 }
+
+private data class PropertySyncOrigin(
+    val value: String,
+    val clientId: String,
+    val clientSequence: Long
+)
 
 private fun readWelcomeChangelog(limit: Int = 30): WelcomeChangelogResponse {
     return try {
@@ -1266,6 +1297,13 @@ class Server {
                 val set = Json.decodeFromJsonElement<Set_string>(message.payload!!)
                 val isEditorStateProperty = set.property.endsWith("_editorState")
                 val targetBox = box(set.uid)
+                thisSessionInfo.get().recordPropertySyncOrigin(
+                    set.uid,
+                    set.property,
+                    set.value,
+                    set.clientId,
+                    set.clientSequence
+                )
 
                 if (set.property == "name") {
                     lprintln("debug,server", "got set-string for name ${set.value}")
@@ -2350,6 +2388,101 @@ class Server {
                                 readWelcomeChangelog(limit)
                             }
                             call.respond(response)
+                        }
+
+                        get("/api/maven-classpath") {
+                            call.respond(MavenClasspathManager.status())
+                        }
+
+                        get("/api/maven-search") {
+                            try {
+                                val query = call.request.queryParameters["q"].orEmpty()
+                                val rows = call.request.queryParameters["rows"]?.toIntOrNull() ?: 12
+                                call.respond(MavenClasspathManager.search(query, rows))
+                            } catch (e: IllegalArgumentException) {
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf("error" to (e.message ?: "invalid Maven search"))
+                                )
+                            } catch (e: Exception) {
+                                lprintln("error,server", "Maven search failed: ${e.message}")
+                                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Maven search failed"))
+                            }
+                        }
+
+                        post("/api/maven-repositories") {
+                            try {
+                                val request = call.receive<MavenRepositoryRequest>()
+                                call.respond(MavenClasspathManager.addRepository(request.url))
+                            } catch (e: IllegalArgumentException) {
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf("error" to (e.message ?: "invalid Maven repository"))
+                                )
+                            }
+                        }
+
+                        delete("/api/maven-repositories") {
+                            try {
+                                val url = call.request.queryParameters["url"].orEmpty()
+                                call.respond(MavenClasspathManager.removeRepository(url))
+                            } catch (e: IllegalArgumentException) {
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf("error" to (e.message ?: "invalid Maven repository"))
+                                )
+                            }
+                        }
+
+                        post("/api/maven-dependencies") {
+                            try {
+                                val request = call.receive<MavenDependencyRequest>()
+                                call.respond(MavenClasspathManager.addDependency(request.coordinate))
+                            } catch (e: IllegalArgumentException) {
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf("error" to (e.message ?: "invalid Maven coordinate"))
+                                )
+                            } catch (e: Exception) {
+                                lprintln("error,server", "Maven dependency add failed: ${e.message}")
+                                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Maven dependency add failed"))
+                            }
+                        }
+
+                        delete("/api/maven-dependencies") {
+                            try {
+                                val coordinate = call.request.queryParameters["coordinate"].orEmpty()
+                                call.respond(MavenClasspathManager.removeDependency(coordinate))
+                            } catch (e: IllegalArgumentException) {
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf("error" to (e.message ?: "invalid Maven coordinate"))
+                                )
+                            }
+                        }
+
+                        post("/api/maven-resolve") {
+                            try {
+                                val request = call.receive<MavenResolveRequest>()
+                                call.respond(MavenClasspathManager.resolve(request.coordinates))
+                            } catch (e: IllegalArgumentException) {
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf("error" to (e.message ?: "invalid Maven resolve request"))
+                                )
+                            } catch (e: Exception) {
+                                lprintln("error,server", "Maven resolve failed: ${e.message}")
+                                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Maven resolve failed"))
+                            }
+                        }
+
+                        post("/api/maven-upgrade") {
+                            try {
+                                call.respond(MavenClasspathManager.upgradeDependencies())
+                            } catch (e: Exception) {
+                                lprintln("error,server", "Maven upgrade failed: ${e.message}")
+                                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Maven upgrade failed"))
+                            }
                         }
 
                         post("/api/ai-settings") {

@@ -932,7 +932,7 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         addAction(action)
     }
 
-    editor.addCommand(keybinding(monaco.KeyMod.CtrlCmd, monaco.KeyCode.KeyP)) {
+    editor.addCommand(keybinding(monaco.KeyMod.CtrlCmd, monaco.KeyMod.Shift, monaco.KeyCode.KeyP)) {
         editor.trigger("", "editor.action.quickCommand", null)
     }
 

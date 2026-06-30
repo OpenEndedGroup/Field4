@@ -1898,6 +1898,18 @@ const openQuickCommandPalette = () => {
 
 window.openQuickCommandPalette = openQuickCommandPalette
 
+const openAnywhereFromShortcut = () => {
+        if (isDocsIframeVisible()) {
+                hideDocsIframe()
+        }
+
+        if (typeof window.openAnywherePalette === "function") {
+                window.openAnywherePalette()
+        } else {
+                openQuickCommandPalette()
+        }
+}
+
 const syncDocsIframeBoundsToMonaco = () => {
         const monacoContainer = document.querySelector('.monaco-editor-container')
         const docsContainer = document.querySelector('.docs-iframe-container')
@@ -1916,16 +1928,24 @@ const syncDocsIframeBoundsToMonaco = () => {
 window.addEventListener("resize", syncDocsIframeBoundsToMonaco)
 
 window.addEventListener("keydown", (e) => {
-            const isCtrlOrCmdP = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p';
-            if (e.key === "F1" || isCtrlOrCmdP) {
-                    // If an embedded editor has focus, let it handle F1 itself
+            const key = (e.key || "").toLowerCase();
+            const isCtrlOrCmdP = (e.ctrlKey || e.metaKey) && !e.altKey && key === 'p';
+            const isCommandPaletteShortcut = e.key === "F1" || (isCtrlOrCmdP && e.shiftKey);
+            const isOpenAnythingShortcut = isCtrlOrCmdP && !e.shiftKey;
+
+            if (isCommandPaletteShortcut || isOpenAnythingShortcut) {
+                    // If an embedded editor has focus, let it handle its own command palette shortcut
                     // (it has its own command palette action registered)
-                    if (window.embeddedEditors && window.embeddedEditors.getFocused()) {
+                    if (isCommandPaletteShortcut && window.embeddedEditors && window.embeddedEditors.getFocused()) {
                             return;
                     }
                     e.preventDefault();
                     e.stopImmediatePropagation();
-                    openQuickCommandPalette()
+                    if (isOpenAnythingShortcut) {
+                            openAnywhereFromShortcut()
+                    } else {
+                            openQuickCommandPalette()
+                    }
             }
     }, {capture: true}  // run before the browser’s own handlers
 )
@@ -1992,13 +2012,20 @@ const isDocsIframeVisible = () => {
 }
 
 const docsIframeKeydownHandler = (e) => {
-        const isCtrlOrCmdP = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p'
-        if (e.key !== "F1" && !isCtrlOrCmdP) return
+        const key = (e.key || "").toLowerCase()
+        const isCtrlOrCmdP = (e.ctrlKey || e.metaKey) && !e.altKey && key === 'p'
+        const isCommandPaletteShortcut = e.key === "F1" || (isCtrlOrCmdP && e.shiftKey)
+        const isOpenAnythingShortcut = isCtrlOrCmdP && !e.shiftKey
+        if (!isCommandPaletteShortcut && !isOpenAnythingShortcut) return
 
         e.preventDefault()
         e.stopPropagation()
         if (typeof hideDocsIframe === "function") hideDocsIframe()
-        openQuickCommandPalette()
+        if (isOpenAnythingShortcut) {
+                openAnywhereFromShortcut()
+        } else {
+                openQuickCommandPalette()
+        }
 }
 
 const wireDocsIframeKeyForwarding = () => {

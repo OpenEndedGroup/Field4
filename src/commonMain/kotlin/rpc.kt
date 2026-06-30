@@ -455,6 +455,8 @@ data class AgentPlaywrightInputRequest(
     val hold: Boolean = false,
     val steps: Int = 12,
     val filename: String? = null,
+    val script: String? = null,
+    val scriptMode: String = "expression",
     val waitMs: Double = 0.0
 )
 
@@ -467,6 +469,7 @@ data class AgentPlaywrightInputResponse(
     val documentName: String,
     val scratch: Boolean,
     val sessionKey: String,
+    val result: kotlinx.serialization.json.JsonElement? = null,
     val message: String = ""
 )
 
@@ -492,7 +495,14 @@ data class AgentRunJvmMainResponse(
 )
 
 @Serializable
-data class Set_string(val uid: String, val property: String, val value: String)
+data class Set_string(
+    val uid: String,
+    val property: String,
+    val value: String,
+    val syncSequence: Long? = null,
+    val clientId: String? = null,
+    val clientSequence: Long? = null
+)
 
 @Serializable
 data class Set_output(val uid: String, val property: String, val channel: String, val value: String)

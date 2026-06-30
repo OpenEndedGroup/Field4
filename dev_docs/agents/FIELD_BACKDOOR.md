@@ -273,6 +273,28 @@ The screenshot commands now wait for the Playwright page to be connected and for
 
 The JSON result from `playwright-open` includes the effective `url`, whether it created or reused the browser/page, and the `sessionKey`.
 
+Use `page-eval` when you need DOM state from the current Playwright page without relying on screenshots:
+
+```bash
+python3 tools/field_backdoor.py --json --with-playwright \
+  --command 'page-eval "document.title"'
+```
+
+The expression runs in the page and returns JSON-serializable data under `data.result`. For multi-line code, pass `--body --file -` and use `return`:
+
+```bash
+cat <<'EOF' | python3 tools/field_backdoor.py --json --with-playwright \
+  --command 'page-eval --body --file -'
+const widgets = [...document.querySelectorAll(".quick-input-widget")];
+return widgets.map(w => ({
+  text: w.innerText,
+  visible: getComputedStyle(w).visibility !== "hidden"
+}));
+EOF
+```
+
+Return plain JSON-friendly values. DOM nodes are summarized, `undefined` returns `null`, and cyclic objects fail with a serialization error.
+
 ### Wait Between Commands
 
 Use `sleep` when the current scratch session needs a beat before the next command:

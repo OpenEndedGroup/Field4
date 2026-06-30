@@ -154,11 +154,16 @@ if (window.parent !== window) {
     // We're in an iframe
     window.FieldAPI = FieldAPI;
     const forwardCommandPaletteShortcut = (event) => {
-        const isCtrlOrCmdP = (event.ctrlKey || event.metaKey) && event.key && event.key.toLowerCase() === 'p';
-        if (event.key === 'F1' || isCtrlOrCmdP) {
+        const key = event.key && event.key.toLowerCase();
+        const isCtrlOrCmdP = (event.ctrlKey || event.metaKey) && !event.altKey && key === 'p';
+        const isCommandPaletteShortcut = event.key === 'F1' || (isCtrlOrCmdP && event.shiftKey);
+        const isOpenAnythingShortcut = isCtrlOrCmdP && !event.shiftKey;
+        if (isCommandPaletteShortcut || isOpenAnythingShortcut) {
             event.preventDefault();
             event.stopPropagation();
-            window.parent.postMessage({ type: 'field-open-command-palette' }, '*');
+            window.parent.postMessage({
+                type: isOpenAnythingShortcut ? 'field-open-anywhere-palette' : 'field-open-command-palette'
+            }, '*');
         }
     };
 
@@ -404,6 +409,17 @@ if (typeof window.handleDocsIframeMessage === 'undefined') {
                         window.openQuickCommandPalette();
                     } else if (typeof globalPickMenu === 'function') {
                         globalPickMenu();
+                    }
+                    break;
+
+                case 'field-open-anywhere-palette':
+                    if (typeof window.hideDocsIframe === 'function') {
+                        window.hideDocsIframe();
+                    }
+                    if (typeof window.openAnywherePalette === 'function') {
+                        window.openAnywherePalette();
+                    } else if (typeof window.openQuickCommandPalette === 'function') {
+                        window.openQuickCommandPalette();
                     }
                     break;
 

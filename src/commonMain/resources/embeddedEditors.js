@@ -371,20 +371,25 @@ function registerEmbeddedActions(editor, uid, property) {
 		return r;
 	}
 
-	// ── F1 → open Monaco's own command palette for this editor ─────────
+	// ── F1 / Cmd/Ctrl+Shift+P → open Monaco's own command palette for this editor ─────────
 	editor.addAction({
 		id: "embedded-command-palette",
 		label: "Command Palette",
-		keybindings: [monacoApi.KeyCode.F1],
+		keybindings: [
+			monacoApi.KeyCode.F1,
+			keybinding(monacoApi.KeyMod.CtrlCmd, monacoApi.KeyMod.Shift, monacoApi.KeyCode.KeyP),
+		],
 		run: (ed) => {
 			ed.focus();
 			ed.trigger("keyboard", "editor.action.quickCommand", null);
 		},
 	});
 
-	// ── Cmd/Ctrl+P → quick command (same as F1) ──────────────────────
+	// ── Cmd/Ctrl+P → open anything ───────────────────────────────────
 	editor.addCommand(keybinding(monacoApi.KeyMod.CtrlCmd, monacoApi.KeyCode.KeyP), () => {
-		editor.trigger("", "editor.action.quickCommand", null);
+		if (typeof window.openAnywherePalette === "function") {
+			window.openAnywherePalette();
+		}
 	});
 
 	// ── Alt+Enter: execute fragment or reload shader ─────────────────
