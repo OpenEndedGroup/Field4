@@ -151,6 +151,19 @@ private fun bufferUsageFlags(usage: Int): String {
     return if (flags.isEmpty()) hex(usage.toLong()) else flags.joinToString("+")
 }
 
+private fun memoryPropertyFlags(flags: Int, cpuOnly: Boolean = false): String {
+    if (cpuOnly) return badge("#af6", "CPU_ONLY")
+    if (flags == 0) return dim("auto")
+    val names = mutableListOf<String>()
+    if (flags and VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT != 0) names += "device"
+    if (flags and VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT != 0) names += "host"
+    if (flags and VK_MEMORY_PROPERTY_HOST_COHERENT_BIT != 0) names += "coherent"
+    if (flags and VK_MEMORY_PROPERTY_HOST_CACHED_BIT != 0) names += "cached"
+    if (flags and VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT != 0) names += "lazy"
+    if (flags and VK_MEMORY_PROPERTY_PROTECTED_BIT != 0) names += "protected"
+    return if (names.isEmpty()) hex(flags.toLong()) else names.joinToString("+")
+}
+
 private fun primitiveTopologyName(topo: Int): String = when (topo) {
     VK_PRIMITIVE_TOPOLOGY_POINT_LIST -> "points"
     VK_PRIMITIVE_TOPOLOGY_LINE_LIST -> "lines"
@@ -596,9 +609,13 @@ fun registerFourVisualizers() {
     // ── VulkanBuffer ─────────────────────────────────────────────────
     registerValuePrinter<VulkanBuffer> { vb ->
         val usageStr = bufferUsageFlags(vb.usage)
+        val requestedMemory = memoryPropertyFlags(vb.reqMask, vb.cpuOnly)
+        val actualMemory = memoryPropertyFlags(vb.allocationMemoryFlags, vb.cpuOnly)
+        val memoryType = if (vb.allocationMemoryType >= 0) " " + dim("#${vb.allocationMemoryType}") else ""
         table(
             row("VulkanBuffer", cls("VulkanBuffer") + " " + badge("#6cf", formatBytes(vb.requestedSize))),
             row("usage", usageStr),
+            row("memory", "$requestedMemory ${punct("→")} $actualMemory$memoryType"),
             row("watermark", "${formatBytes(vb.watermark)} " + dim("/ ${formatBytes(vb.requestedSize)}")),
             if (vb.readWatermark >= 0 || vb.writeWatermark >= 0)
                 row("rw marks", "r=${formatBytes(vb.readWatermark)}  w=${formatBytes(vb.writeWatermark)}")
@@ -616,11 +633,17 @@ fun registerFourVisualizers() {
 
     registerValuePrinter<FrameBufferGroup> { fb ->
         val sizes = fb.buffers.map { formatBytes(it.requestedSize) }
+        val memories = fb.buffers.map { memoryPropertyFlags(it.allocationMemoryFlags, it.cpuOnly) }.distinct()
+        val mode = fb.accessPattern.name.lowercase() +
+                (if (fb.usesStagedUploads) " " + badge("#6cf", "staged write") else "") +
+                (if (fb.usesReadbackStaging) " " + badge("#fc8", "readback") else "")
         table(
             row("FrameBufferGroup", cls("FrameBufferGroup") + " " + dim("n=${fb.n}")),
+            row("mode", mode),
             row("lastWritten", if (fb.lastWritten < 0) dim("none") else num(fb.lastWritten)),
             row("buffers", if (fb.buffers.isEmpty()) dim("empty")
-                    else sizes.joinToString(punct(", ")))
+                    else sizes.joinToString(punct(", "))),
+            row("memory", if (memories.isEmpty()) dim("none") else memories.joinToString(punct(", ")))
         )
     }
 

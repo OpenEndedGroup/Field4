@@ -573,7 +573,7 @@ private fun applyFieldPreferences(preferences: FieldPreferences) {
     Options.enableVR = preferences.enableVR
     Options.enableHDR = preferences.enableHDR
     Options.openXRDebugInput = preferences.openXRDebugInput
-    Options.validate = preferences.validate
+    Options.validate = Options.validateOverride ?: preferences.validate
     if (preferences.framePresentationLog && !framePresentationLogWasEnabled) {
         FramePresentationLog.start(
             outputPath = Options.framePresentationLogPath,

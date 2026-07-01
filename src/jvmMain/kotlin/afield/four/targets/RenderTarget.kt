@@ -7,6 +7,7 @@ import afield.four.buffers.MissingRefException
 import afield.four.device.CommandBuffer
 import afield.four.modules.*
 import afield.four.texture.image_layout_transition
+import afield.four.util.Options
 import org.joml.primitives.Rectanglef
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
@@ -87,11 +88,16 @@ class RenderTarget(
                 .layerCount(VK_REMAINING_ARRAY_LAYERS)
 
             val depthRange = VkImageSubresourceRange.calloc(stack)
-                .aspectMask(VK_IMAGE_ASPECT_DEPTH_BIT or VK_IMAGE_ASPECT_STENCIL_BIT)
+                .aspectMask(Options.depthAspectMask(ctx.depthAttachments[index].image.format))
                 .baseMipLevel(0)
                 .levelCount(VK_REMAINING_MIP_LEVELS)
                 .baseArrayLayer(0)
                 .layerCount(VK_REMAINING_ARRAY_LAYERS)
+            val depthLayout =
+                if (Options.depthHasStencil(ctx.depthAttachments[index].image.format))
+                    VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+                else
+                    VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
 
             // Initial layout transition for the swapchain image to COLOR_ATTACHMENT_OPTIMAL.
             // If we've presented this image before, oldLayout is PRESENT; otherwise UNDEFINED.
@@ -122,11 +128,11 @@ class RenderTarget(
                 command.vkCommandBuffer,
                 ctx.depthAttachments[index].image,
                 VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
-                VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT,
+                VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT or VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
                 0,
-                VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT or VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
                 VK_IMAGE_LAYOUT_UNDEFINED,
-                VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                depthLayout,
                 depthRange
             )
             seenBefore.add(index)
@@ -154,7 +160,7 @@ class RenderTarget(
                 VkRenderingAttachmentInfoKHR.calloc(1, stack)
                     .sType(VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR)
                     .imageView(ctx.depthAttachments[index].imageView.vkImageView)
-                    .imageLayout(VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL)
+                    .imageLayout(depthLayout)
                     .resolveMode(VK_RESOLVE_MODE_NONE)
                     .loadOp(VK_ATTACHMENT_LOAD_OP_CLEAR)
                     .storeOp(VK_ATTACHMENT_STORE_OP_DONT_CARE)
@@ -223,7 +229,6 @@ class RenderTarget(
                 }
             }
 
-            // Begin/End dynamic rendering (KHR)
             command.inRenderPassInstance = true
             KHRDynamicRendering.vkCmdBeginRenderingKHR(command.vkCommandBuffer, renderInfo)
 

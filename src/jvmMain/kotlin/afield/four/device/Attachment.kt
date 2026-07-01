@@ -14,7 +14,7 @@ class Attachment(device: Device, width: Int, height: Int, format: Int, usage: In
 
     init {
         val imageData =
-            ImageData().width(width).height(height).usage(usage or VK10.VK_IMAGE_USAGE_SAMPLED_BIT).format(format)
+            ImageData().width(width).height(height).usage(usage).format(format)
         image = Image(device, imageData)
 
         var aspectMask = 0

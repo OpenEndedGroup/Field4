@@ -9,7 +9,6 @@ import afield.four.device.*
 import afield.four.device.DescriptorSetLayout.SimpleDescriptorSetLayout
 import afield.four.util.AutoDisposer
 import afield.four.util.FIELD_PROBE_BUFFER_NAME
-import afield.four.util.Options
 import afield.four.util.vkCheck
 import afield.logger.lprintln
 import afield.stdlib.f
@@ -471,8 +470,8 @@ class MeshModule(val parameters: Parameters) : Renderable {
                     ds = VkPipelineDepthStencilStateCreateInfo.calloc(stack)
                         .sType(VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO)
                         .depthTestEnable(true)
-                        .depthWriteEnable(true)
-                        .depthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL)
+                        .depthWriteEnable(parameters.depthWrite)
+                        .depthCompareOp(parameters.depthCompareOp)
                         .depthBoundsTestEnable(false)
                         .stencilTestEnable(false)
                 }
@@ -576,7 +575,7 @@ class MeshModule(val parameters: Parameters) : Renderable {
                 renderInfo
                     .colorAttachmentCount(colorCount)
                     .pColorAttachmentFormats(colorAttachmentFormats)
-                    .depthAttachmentFormat(if (parameters.depth > 0) Options.defaultDepthFormat else VK_FORMAT_UNDEFINED)
+                    .depthAttachmentFormat(if (parameters.depth > 0) parameters.depthFormat else VK_FORMAT_UNDEFINED)
                     .stencilAttachmentFormat(0)
                     .viewMask(parameters.viewMask)
 
@@ -674,12 +673,13 @@ class MeshModule(val parameters: Parameters) : Renderable {
                 val target = (uniforms[name] as Module.Uniform).buffer
                 structure.proxying = target
                 if (structure.dirty || structure.bindings.size>0) {
-                    target.get().mapAndWrite_bytes {
+                    target.mapAndWrite_bytes {
                         structure.writeToBuffer(this, command) {
                             throw MissingRefException("risk of GPU null ref `$it`")
                         }
                     }
                 }
+                target.clean(false, command)
             }
 
             // Dispatch per-mesh work

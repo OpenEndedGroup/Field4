@@ -113,6 +113,10 @@ class VulkanBuffer(
 
     /** VMA-managed */
     private var allocationSize: Long = 0
+    var allocationMemoryType: Int = -1
+        private set
+    var allocationMemoryFlags: Int = 0
+        private set
     var buffer: Long = 0L
         @JvmName("_getBuffer")
         get() = field
@@ -151,6 +155,8 @@ class VulkanBuffer(
             val size = requestedSize.coerceAtLeast(1L).toInt()
             hostBuffer = MemoryUtil.memAlloc(size)
             allocationSize = size.toLong()
+            allocationMemoryType = -1
+            allocationMemoryFlags = 0
             mappedMemory = MemoryUtil.memAddress(hostBuffer!!)
             buffer = 0L
             allocation = 0L
@@ -204,6 +210,12 @@ class VulkanBuffer(
             val info = VmaAllocationInfo.calloc(stack)
             Vma.vmaGetAllocationInfo(allocator, allocation, info)
             allocationSize = info.size()
+            allocationMemoryType = info.memoryType()
+            allocationMemoryFlags = if (allocationMemoryType >= 0) {
+                renderer.physicalDevice.vkMemoryProperties.memoryTypes()[allocationMemoryType].propertyFlags()
+            } else {
+                0
+            }
             mappedMemory   = info.pMappedData()
 
             // Optional: device address
@@ -439,6 +451,8 @@ class VulkanBuffer(
 
         buffer = 0L
         allocation = 0L
+        allocationMemoryType = -1
+        allocationMemoryFlags = 0
         mappedMemory = 0L
         hostBuffer = null
 
@@ -455,6 +469,8 @@ class VulkanBuffer(
         allocation = 0L
         mappedMemory = 0L
         allocationSize = 0L
+        allocationMemoryType = -1
+        allocationMemoryFlags = 0
         gpuAddress = 0L
         hostBuffer = null
     }
@@ -487,7 +503,20 @@ class VulkanBuffer(
     }
 
     override fun toString(): String {
-        return "VulkanBuffer(requestedSize=$requestedSize${if (mappedMemory != MemoryUtil.NULL) " MAPPED" else ""})"
+        return "VulkanBuffer(requestedSize=$requestedSize, memory=${memoryFlagsForString(allocationMemoryFlags)}${if (mappedMemory != MemoryUtil.NULL) " MAPPED" else ""})"
+    }
+
+    private fun memoryFlagsForString(flags: Int): String {
+        if (cpuOnly) return "CPU_ONLY"
+        if (flags == 0) return "auto"
+        val names = mutableListOf<String>()
+        if (flags and VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT != 0) names += "DEVICE_LOCAL"
+        if (flags and VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT != 0) names += "HOST_VISIBLE"
+        if (flags and VK_MEMORY_PROPERTY_HOST_COHERENT_BIT != 0) names += "HOST_COHERENT"
+        if (flags and VK_MEMORY_PROPERTY_HOST_CACHED_BIT != 0) names += "HOST_CACHED"
+        if (flags and VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT != 0) names += "LAZY"
+        if (flags and VK_MEMORY_PROPERTY_PROTECTED_BIT != 0) names += "PROTECTED"
+        return names.joinToString("|").ifEmpty { "0x${flags.toString(16)}" }
     }
 
     override fun getBuffer(): Long = buffer

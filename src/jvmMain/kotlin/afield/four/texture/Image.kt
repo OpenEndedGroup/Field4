@@ -59,7 +59,8 @@ class Image(private val device: Device, val imageData: ImageData) {
                 .memoryTypeIndex(
                     memoryTypeFromProperties(
                         device.physicalDevice,
-                        memReqs.memoryTypeBits(), 0
+                        memReqs.memoryTypeBits(),
+                        imageData.memoryPropertyFlags
                     )
                 )
 
@@ -107,6 +108,7 @@ class Image(private val device: Device, val imageData: ImageData) {
         internal var format: Int
         var height: Int = 0
         var mipLevels: Int = 1
+        var memoryPropertyFlags: Int = VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
         var sampleCount: Int = 1
         var usage: Int = 0
         var width: Int = 0
@@ -132,6 +134,11 @@ class Image(private val device: Device, val imageData: ImageData) {
 
         fun mipLevels(mipLevels: Int): ImageData {
             this.mipLevels = mipLevels
+            return this
+        }
+
+        fun memoryPropertyFlags(memoryPropertyFlags: Int): ImageData {
+            this.memoryPropertyFlags = memoryPropertyFlags
             return this
         }
 

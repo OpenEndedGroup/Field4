@@ -65,6 +65,9 @@ class BufferParameters(
     var usage: Int = 0
     var memory: Int = 0
     var needsDeviceAddress = false
+    var accessPattern: BufferAccessPattern = BufferAccessPattern.HOST_VISIBLE
+    var stagedUploads = false
+    var readbackStaging = false
 
     var postAdaptation = mutableListOf<(VulkanBuffer) -> Unit>();
     var result: FrameBufferGroup? = null
@@ -88,6 +91,9 @@ class BufferParameters(
     }
 
     fun hosted() {
+        accessPattern = BufferAccessPattern.HOST_VISIBLE
+        stagedUploads = false
+        readbackStaging = false
         memory = memory// or VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
         memory = memory or VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
     }
@@ -96,6 +102,51 @@ class BufferParameters(
         memory = memory and VK_MEMORY_PROPERTY_HOST_COHERENT_BIT.inv()
         memory = memory and VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT.inv()
     }
+
+    fun writeOnce() {
+        accessPattern = BufferAccessPattern.STAGED_WRITE_ONCE
+        stagedUploads = true
+        usage = usage or VK_BUFFER_USAGE_TRANSFER_DST_BIT
+        memory = (memory and hostMemoryBits.inv()) or VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+        perFrame = false
+    }
+
+    fun stagedOnce() = writeOnce()
+
+    fun streamWrites() {
+        accessPattern = BufferAccessPattern.STAGED_STREAM_WRITE
+        stagedUploads = true
+        usage = usage or VK_BUFFER_USAGE_TRANSFER_DST_BIT
+        memory = (memory and hostMemoryBits.inv()) or VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+        perFrame = true
+    }
+
+    fun stagedStream() = streamWrites()
+
+    fun readOccasionallyForDebugging() {
+        if (!stagedUploads) accessPattern = BufferAccessPattern.DEVICE_LOCAL_DEBUG_READ
+        readbackStaging = true
+        usage = usage or VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+        memory = (memory and hostMemoryBits.inv()) or VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+    }
+
+    fun debugReads() = readOccasionallyForDebugging()
+    fun occasionalReads() = readOccasionallyForDebugging()
+
+    fun streamReads() {
+        accessPattern = BufferAccessPattern.HOST_VISIBLE_STREAM_READ
+        stagedUploads = false
+        readbackStaging = false
+        memory = memory or VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_CACHED_BIT
+    }
+
+    fun zeroInitialized() {
+        accessPattern = BufferAccessPattern.DEVICE_LOCAL_ZERO
+        stagedUploads = false
+        memory = (memory and hostMemoryBits.inv()) or VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+    }
+
+    fun zeroInit() = zeroInitialized()
 
     fun indirect() {
         usage = usage or VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT
@@ -126,7 +177,13 @@ class BufferParameters(
         result.customize.forEach { result.it() }
 
         //TODO — zeroed? binding?
-        return result.usage == usage && result.memory == memory && result.size == size && result.inlined == inlined
+        return result.usage == usage &&
+                result.memory == memory &&
+                result.size == size &&
+                result.inlined == inlined &&
+                result.accessPattern == accessPattern &&
+                result.stagedUploads == stagedUploads &&
+                result.readbackStaging == readbackStaging
     }
 
     fun store(): BufferParameters {
@@ -137,6 +194,9 @@ class BufferParameters(
         stored.name = name
         stored.source = source
         stored.needsDeviceAddress = needsDeviceAddress
+        stored.accessPattern = accessPattern
+        stored.stagedUploads = stagedUploads
+        stored.readbackStaging = readbackStaging
         stored.result = result
         //TODO — zeroed? binding?
         return stored
@@ -161,11 +221,37 @@ class BufferParameters(
             it()
         }
 
-        val buffer = FrameBufferGroup(renderer, n = if (perFrame) renderer.numImages else 1)
+        val buffer = FrameBufferGroup(
+            renderer,
+            n = if (perFrame) renderer.numImages else 1,
+            accessPattern = accessPattern,
+            stagedUploads = stagedUploads,
+            readbackStaging = readbackStaging
+        )
         buffer.build {
             val buffer = VulkanBuffer(renderer, size, usage, memory, needsDeviceAddress = needsDeviceAddress, cpuOnly = inlined)
             postAdaptation.forEach { it(buffer) }
             buffer
+        }
+        if (buffer.usesStagedUploads) {
+            buffer.buildStaging {
+                VulkanBuffer(
+                    renderer,
+                    size,
+                    usage or VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+                )
+            }
+        }
+        if (buffer.usesReadbackStaging) {
+            buffer.buildReadback {
+                VulkanBuffer(
+                    renderer,
+                    size,
+                    VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_CACHED_BIT
+                )
+            }
         }
 
         result = buffer
@@ -184,6 +270,12 @@ class BufferParameters(
         return buffer
     }
 
+    companion object {
+        private const val hostMemoryBits =
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or
+                    VK_MEMORY_PROPERTY_HOST_COHERENT_BIT or
+                    VK_MEMORY_PROPERTY_HOST_CACHED_BIT
+    }
 }
 
 fun linkBuffer(name: String, initialSettings: BufferParameters): Pair<Boolean, BufferParameters> {

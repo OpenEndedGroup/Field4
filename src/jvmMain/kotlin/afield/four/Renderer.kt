@@ -702,6 +702,7 @@ class Renderer(
         instance = Instance(Options.validate)
         physicalDevice = PhysicalDevice.createPhysicalDevice(instance, Options.preferredDevice)
         device = Device(physicalDevice, instance)
+        Options.chooseDefaultDepthFormat(physicalDevice.vkPhysicalDevice)
         instance.dumpToolingInfo(instance.vkInstance, physicalDevice.vkPhysicalDevice)
         graphQueue = GraphicsQueue(device, 0)
         val primarySurface = Surface(physicalDevice, window.windowHandle)

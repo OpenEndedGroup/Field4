@@ -123,6 +123,8 @@ data class Parameters(
     var dstAlpha: Int = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
     var alphaBlendOp: Int = VK_BLEND_OP_ADD,
     var depthTest: Boolean = true,
+    var depthWrite: Boolean = true,
+    var depthCompareOp: Int = VK_COMPARE_OP_LESS_OR_EQUAL,
     var viewport: Rect? = null,
     var viewportCount: Int = 1,
     var viewMask: Int = 0,
@@ -140,6 +142,14 @@ data class Parameters(
     val line_strip = VK_PRIMITIVE_TOPOLOGY_LINE_STRIP
     val filled = VK_POLYGON_MODE_FILL
     val wireframe = VK_POLYGON_MODE_LINE
+    val depth_never = VK_COMPARE_OP_NEVER
+    val depth_less = VK_COMPARE_OP_LESS
+    val depth_equal = VK_COMPARE_OP_EQUAL
+    val depth_less_or_equal = VK_COMPARE_OP_LESS_OR_EQUAL
+    val depth_greater = VK_COMPARE_OP_GREATER
+    val depth_not_equal = VK_COMPARE_OP_NOT_EQUAL
+    val depth_greater_or_equal = VK_COMPARE_OP_GREATER_OR_EQUAL
+    val depth_always = VK_COMPARE_OP_ALWAYS
 
 
     fun RenderToTexture.apply() {
@@ -353,6 +363,7 @@ class Module(val parameters: Parameters) : Renderable {
         override fun pushDescriptorSet(
             command: CommandBuffer, pipelineLayout: Long, bindPoint: Int
         ) {
+            buffer.clean(false, command)
             MemoryStack.stackPush().use { stack ->
                 val targetBuffer = buffer.get()
                 val bufferInfo = VkDescriptorBufferInfo.calloc(1, stack).buffer(targetBuffer.buffer).offset(0)
@@ -762,7 +773,7 @@ class Module(val parameters: Parameters) : Renderable {
                 if (parameters.depth > 0) {
                     ds = VkPipelineDepthStencilStateCreateInfo.calloc(stack)
                         .sType(VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO).depthTestEnable(true)
-                        .depthWriteEnable(true).depthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL).depthBoundsTestEnable(false)
+                        .depthWriteEnable(parameters.depthWrite).depthCompareOp(parameters.depthCompareOp).depthBoundsTestEnable(false)
                         .stencilTestEnable(false)
                 }
 
@@ -947,7 +958,7 @@ class Module(val parameters: Parameters) : Renderable {
                 if (parameters.depth > 0) {
                     ds = VkPipelineDepthStencilStateCreateInfo.calloc(stack)
                         .sType(VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO).depthTestEnable(true)
-                        .depthWriteEnable(true).depthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL).depthBoundsTestEnable(false)
+                        .depthWriteEnable(parameters.depthWrite).depthCompareOp(parameters.depthCompareOp).depthBoundsTestEnable(false)
                         .stencilTestEnable(false)
                 }
 
@@ -1112,12 +1123,13 @@ class Module(val parameters: Parameters) : Renderable {
                     val target = (uniforms[name] as Uniform).buffer
                     structure.proxying = target
                     if (structure.dirty || structure.bindings.size>0) {
-                        target.get().mapAndWrite_bytes {
+                        target.mapAndWrite_bytes {
                             structure.writeToBuffer(this, command) {
                                 throw MissingRefException("risk of GPU null ref `$it`")
                             }
                         }
                     }
+                    target.clean(false, command)
                 }
 
                 meshes.forEach { (_, mesh) ->

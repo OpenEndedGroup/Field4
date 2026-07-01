@@ -150,7 +150,7 @@ open class Structure(
     override fun mapAndWrite(builder: FloatBuffer.() -> Unit): Structure {
         val target = rootStructure().proxyBuffer
         when (target) {
-            is FrameBufferGroup -> target.get(write = true).mapAndWrite(builder)
+            is FrameBufferGroup -> target.mapAndWrite(builder)
             is VulkanBuffer -> target.mapAndWrite(builder)
             is BufferWriteable -> target.mapAndWrite(builder)
             else -> null
@@ -165,7 +165,7 @@ open class Structure(
         rootStructure().proxying?.let {
             val m = offsets[name]
                 ?: throw IllegalArgumentException("Can't find '$name' in this Structure, options are ${offsets.keys}")
-            it.get().mapAndWrite {
+            it.mapAndWrite {
                 this.position(m)
                 builder()
             }
@@ -175,7 +175,7 @@ open class Structure(
     override fun mapAndWrite_bytes(builder: ByteBuffer.() -> Unit): Structure {
         val target = rootStructure().proxyBuffer
         when (target) {
-            is FrameBufferGroup -> target.get(write = true).mapAndWrite_bytes(builder)
+            is FrameBufferGroup -> target.mapAndWrite_bytes(builder)
             is VulkanBuffer -> target.mapAndWrite_bytes(builder)
             is BufferWriteable -> target.mapAndWrite_bytes(builder)
             else -> null
@@ -186,7 +186,7 @@ open class Structure(
     override fun mapAndWrite_ints(builder: IntBuffer.() -> Unit): Structure {
         val target = rootStructure().proxyBuffer
         when (target) {
-            is FrameBufferGroup -> target.get(write = true).mapAndWrite_ints(builder)
+            is FrameBufferGroup -> target.mapAndWrite_ints(builder)
             is VulkanBuffer -> target.mapAndWrite_ints(builder)
             is BufferWriteable -> target.mapAndWrite_ints(builder)
             else -> null
@@ -350,7 +350,7 @@ open class Structure(
     override fun mapAndRead(builder: FloatBuffer.() -> Unit): Structure {
         val target = rootStructure().proxyBuffer
         when (target) {
-            is FrameBufferGroup -> target.get(write = false).mapAndRead(builder)
+            is FrameBufferGroup -> target.mapAndRead(builder)
             is VulkanBuffer -> target.mapAndRead(builder)
             is BufferReadable -> target.mapAndRead(builder)
             else -> null
@@ -361,7 +361,7 @@ open class Structure(
     override fun mapAndRead_bytes(builder: ByteBuffer.() -> Unit): Structure {
         val target = rootStructure().proxyBuffer
         when (target) {
-            is FrameBufferGroup -> target.get(write = false).mapAndRead_bytes(builder)
+            is FrameBufferGroup -> target.mapAndRead_bytes(builder)
             is VulkanBuffer -> target.mapAndRead_bytes(builder)
             is BufferReadable -> target.mapAndRead_bytes(builder)
             else -> null
@@ -372,7 +372,7 @@ open class Structure(
     override fun mapAndRead_ints(builder: IntBuffer.() -> Unit): Structure {
         val target = rootStructure().proxyBuffer
         when (target) {
-            is FrameBufferGroup -> target.get(write = false).mapAndRead_ints(builder)
+            is FrameBufferGroup -> target.mapAndRead_ints(builder)
             is VulkanBuffer -> target.mapAndRead_ints(builder)
             is BufferReadable -> target.mapAndRead_ints(builder)
             else -> null
