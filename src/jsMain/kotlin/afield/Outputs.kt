@@ -39,6 +39,7 @@ private val debounceTimers = mutableMapOf<String, Int>()
 private var orderCounter = 0
 private var addPromptBoxUid = 0
 
+private const val executionMarkerGutterInsetPx = -12
 private const val outputHeightFudgePx = 5.0
 private var outputMaxHeightPx = 500.0
 private var outputScrollTailExistingPx = 40.0
@@ -941,7 +942,7 @@ fun addExecutionMarker(editor: dynamic, startLine: Int, endLine: Int): String {
     val className = "execution-marker-$n"
 
     val sheet = document.styleSheets.asDynamic()[0]
-    val rule = ".$className { background: black; width: 5px !important; margin-left:-15px;}"
+    val rule = ".$className { background: black; width: 5px !important; margin-left:${executionMarkerGutterInsetPx}px;}"
     sheet.insertRule(rule, sheet.cssRules.length)
 
     val range = newRange(startLine, 1, endLine, 1)

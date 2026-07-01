@@ -53,6 +53,68 @@ data class RunningDocumentEntry(
     val openUrl: String
 )
 
+@Serializable
+data class GcPauseStats(
+    val monitoring: Boolean = false,
+    val collectorCount: Int = 0,
+    val observedCount: Long = 0,
+    val sampleCount: Int = 0,
+    val sampleCapacity: Int = 0,
+    val medianPauseMs: Double = 0.0,
+    val p95PauseMs: Double = 0.0,
+    val maxPauseMs: Long = 0,
+    val latestPauseMs: Long = 0
+)
+
+@Serializable
+data class RunloopTimingStats(
+    val running: Boolean = false,
+    val frame: Long = 0,
+    val totalSamples: Long = 0,
+    val sampleCount: Int = 0,
+    val sampleCapacity: Int = 0,
+    val ticksPerSecond: Double = 0.0,
+    val latestIntervalMs: Double = 0.0,
+    val intervalMedianMs: Double = 0.0,
+    val intervalP95Ms: Double = 0.0,
+    val intervalP99Ms: Double = 0.0,
+    val intervalMaxMs: Double = 0.0,
+    val latestWorkMs: Double = 0.0,
+    val workMedianMs: Double = 0.0,
+    val workP95Ms: Double = 0.0,
+    val workP99Ms: Double = 0.0,
+    val workMaxMs: Double = 0.0,
+    val intervalsOver1Ms: Int = 0,
+    val intervalsOver4Ms: Int = 0,
+    val intervalsOver8Ms: Int = 0,
+    val intervalsOver16Ms: Int = 0
+)
+
+@Serializable
+data class RuntimeInfo(
+    val javaVersion: String = "",
+    val javaRuntimeName: String = "",
+    val javaRuntimeVersion: String = "",
+    val javaVmName: String = "",
+    val javaVmVendor: String = "",
+    val javaVmVersion: String = "",
+    val javaVendor: String = "",
+    val javaHome: String = "",
+    val runtimeVersion: String = "",
+    val osName: String = "",
+    val osVersion: String = "",
+    val osArch: String = "",
+    val processId: Long = -1,
+    val uptimeMs: Long = 0,
+    val inputArguments: List<String> = emptyList(),
+    val availableProcessors: Int = 0,
+    val maxMemoryBytes: Long = 0,
+    val totalMemoryBytes: Long = 0,
+    val freeMemoryBytes: Long = 0,
+    val gcPauseStats: GcPauseStats = GcPauseStats(),
+    val runloopTimingStats: RunloopTimingStats = RunloopTimingStats()
+)
+
 val defaultImportClassBlacklist = listOf(
     "com.sun.*",
     "sun.*",
@@ -74,7 +136,8 @@ data class WelcomeDocsResponse(
     val defaultWorkspace: String = "",
     val aiSettings: AiSettingsStatus = AiSettingsStatus(),
     val preferences: FieldPreferences = FieldPreferences(),
-    val projects: List<ProjectEntry> = emptyList()
+    val projects: List<ProjectEntry> = emptyList(),
+    val runtimeInfo: RuntimeInfo = RuntimeInfo()
 )
 
 @Serializable

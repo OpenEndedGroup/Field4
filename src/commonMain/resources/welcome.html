@@ -422,11 +422,13 @@
 
         .changelog-panel {
             padding: 0;
-            overflow: hidden;
+            overflow-x: hidden;
+            overflow-y: auto;
             display: grid;
             grid-template-columns: minmax(0, 1fr);
             align-content: start;
             min-height: 0;
+            scrollbar-gutter: stable;
         }
 
         .changelog-panel details {
@@ -479,6 +481,7 @@
         .maven-body,
         .ai-settings-body,
         .preferences-body,
+        .runtime-info-body,
         .osc-settings-body {
             padding: 0 12px 12px;
             display: grid;
@@ -493,8 +496,66 @@
             gap: 9px;
         }
 
+        .runtime-info-body {
+            gap: 6px;
+        }
+
+        .runtime-info-grid {
+            display: grid;
+            grid-template-columns: minmax(82px, auto) minmax(0, 1fr);
+            gap: 5px 10px;
+            align-items: baseline;
+            min-width: 0;
+            font-size: 11px;
+            line-height: 1.3;
+        }
+
+        .runtime-info-label {
+            color: var(--field-text-soft);
+            white-space: nowrap;
+        }
+
+        .runtime-info-value {
+            min-width: 0;
+            color: var(--field-text);
+            overflow-wrap: anywhere;
+        }
+
+        .runtime-info-label.runtime-info-compact,
+        .runtime-info-value.runtime-info-compact {
+            font-size: 10px;
+            line-height: 1.25;
+        }
+
+        .runtime-info-value.runtime-info-compact {
+            color: rgba(238, 246, 251, 0.98);
+            font-weight: 600;
+        }
+
+        .runtime-info-args {
+            max-height: 120px;
+            overflow: auto;
+            padding: 7px 8px;
+            border: 1px solid rgba(72, 201, 255, 0.14);
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.28);
+            color: var(--field-text-soft);
+            font-size: 10px;
+            line-height: 1.35;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .maven-search-block {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 6px;
+            min-width: 0;
+        }
+
         .maven-controls {
             grid-template-columns: 1fr auto;
+            min-width: 0;
         }
 
         .maven-button-row {
@@ -508,18 +569,20 @@
         .maven-repositories {
             display: grid;
             gap: 5px;
-            max-height: 148px;
+            max-height: 164px;
             overflow: auto;
+            min-width: 0;
         }
 
         .maven-entry {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
+            grid-template-columns: minmax(0, 1fr) max-content;
             gap: 8px;
             align-items: center;
             padding: 5px 0;
             border-top: 1px solid rgba(0, 0, 0, 0.62);
             font-size: 11px;
+            min-width: 0;
         }
 
         .maven-entry-main {
@@ -554,6 +617,7 @@
             border-radius: 5px;
             font-size: 10px;
             white-space: nowrap;
+            min-width: 56px;
         }
 
         #maven-annotations {
@@ -1270,6 +1334,7 @@
             .project-management-controls,
             .maven-header,
             .maven-controls,
+            .runtime-info-grid,
             .ai-settings-header,
             .ai-settings-controls,
             .ai-settings-field,
@@ -1444,7 +1509,7 @@
                             <span class="maven-label">Classpath</span>
                             <span id="maven-state">checking</span>
                         </div>
-                        <div class="maven-controls">
+                        <div class="maven-search-block">
                             <input id="maven-search" type="text" autocomplete="off" placeholder="search Maven Central or group:artifact">
                             <div id="maven-search-results" class="maven-search-results"></div>
                         </div>
@@ -1484,6 +1549,16 @@
                             </div>
                         </div>
                         <div id="workspace-status" aria-live="polite"></div>
+                    </div>
+                </details>
+                <details id="runtime-info-details">
+                    <summary>
+                        <span>Runtime</span>
+                        <span id="runtime-info-summary" class="changelog-count">checking</span>
+                    </summary>
+                    <div class="runtime-info-body">
+                        <div id="runtime-info-grid" class="runtime-info-grid"></div>
+                        <pre id="runtime-info-args" class="runtime-info-args" hidden></pre>
                     </div>
                 </details>
                 <details id="ai-settings-details">
@@ -1687,6 +1762,7 @@
             oscEditorDeltaMode: false,
             importClassBlacklist: DEFAULT_IMPORT_CLASS_BLACKLIST.slice()
         },
+        runtimeInfo: {},
         savingPreferences: false,
         learningOscField: ""
     };
@@ -2204,6 +2280,102 @@
             input.disabled = state.savingAiSettings;
         });
         if (button) button.disabled = state.savingAiSettings;
+    }
+
+    function formatMs(value) {
+        const ms = Number(value);
+        if (!Number.isFinite(ms) || ms < 0) return "unknown";
+        if (ms < 10) return `${ms.toFixed(1)}ms`;
+        if (ms < 1000) return `${ms.toFixed(0)}ms`;
+        return `${(ms / 1000).toFixed(2)}s`;
+    }
+
+    function renderRuntimeInfo() {
+        const summary = document.getElementById("runtime-info-summary");
+        const grid = document.getElementById("runtime-info-grid");
+        const argsNode = document.getElementById("runtime-info-args");
+        if (!grid) return;
+
+        const info = state.runtimeInfo || {};
+        const javaLabel = info.javaVmVendor || info.javaVendor || "JVM";
+        const versionLabel = info.javaVersion || info.runtimeVersion || "";
+        if (summary) summary.textContent = versionLabel ? `${javaLabel} ${versionLabel}` : "unknown";
+
+        const memory = [
+            `max ${formatBytes(info.maxMemoryBytes)}`,
+            `total ${formatBytes(info.totalMemoryBytes)}`,
+            `free ${formatBytes(info.freeMemoryBytes)}`
+        ].join(" · ");
+        const gc = info.gcPauseStats || {};
+        const gcPauses = gc.sampleCount > 0
+            ? [
+                `p50 ${formatMs(gc.medianPauseMs)}`,
+                `p95 ${formatMs(gc.p95PauseMs)}`,
+                `latest ${formatMs(gc.latestPauseMs)}`,
+                `n=${gc.sampleCount}`
+            ].join(" · ")
+            : (gc.monitoring
+                ? `waiting for GC samples · ${gc.collectorCount || 0} collectors`
+                : "GC notifications unavailable");
+        const runloop = info.runloopTimingStats || {};
+        const runloopSpeed = runloop.sampleCount > 0
+            ? `${Number(runloop.ticksPerSecond || 0).toFixed(0)} ticks/s · frame ${runloop.frame || 0}`
+            : (runloop.running ? "collecting samples" : "not started");
+        const runloopInterval = runloop.sampleCount > 0
+            ? [
+                `p50 ${formatMs(runloop.intervalMedianMs)}`,
+                `p95 ${formatMs(runloop.intervalP95Ms)}`,
+                `p99 ${formatMs(runloop.intervalP99Ms)}`,
+                `max ${formatMs(runloop.intervalMaxMs)}`
+            ].join(" · ")
+            : "";
+        const runloopWork = runloop.sampleCount > 0
+            ? [
+                `p50 ${formatMs(runloop.workMedianMs)}`,
+                `p95 ${formatMs(runloop.workP95Ms)}`,
+                `p99 ${formatMs(runloop.workP99Ms)}`,
+                `max ${formatMs(runloop.workMaxMs)}`
+            ].join(" · ")
+            : "";
+        const runloopMicropauses = runloop.sampleCount > 0
+            ? [
+                `>1ms ${runloop.intervalsOver1Ms || 0}`,
+                `>4ms ${runloop.intervalsOver4Ms || 0}`,
+                `>8ms ${runloop.intervalsOver8Ms || 0}`,
+                `>16ms ${runloop.intervalsOver16Ms || 0}`,
+                `n=${runloop.sampleCount || 0}`
+            ].join(" · ")
+            : "";
+        const rows = [
+            ["Java", [info.javaRuntimeName, info.javaRuntimeVersion || info.javaVersion].filter(Boolean).join(" ")],
+            ["VM", [info.javaVmName, info.javaVmVersion].filter(Boolean).join(" ")],
+            ["Vendor", info.javaVmVendor || info.javaVendor || ""],
+            ["Home", info.javaHome || ""],
+            ["OS", [info.osName, info.osVersion, info.osArch].filter(Boolean).join(" ")],
+            ["Process", info.processId > 0 ? `pid ${info.processId}` : ""],
+            ["Uptime", formatDuration(info.uptimeMs || 0)],
+            ["CPU", info.availableProcessors ? `${info.availableProcessors} processors` : ""],
+            ["Memory", memory],
+            ["RunLoop", runloopSpeed],
+            ["RunLoop interval", runloopInterval, "runtime-info-compact"],
+            ["RunLoop work", runloopWork, "runtime-info-compact"],
+            ["RunLoop pauses", runloopMicropauses, "runtime-info-compact"],
+            ["GC pauses", gcPauses, "runtime-info-compact"]
+        ].filter(([, value]) => value);
+
+        grid.innerHTML = rows.map(([label, value, className]) => {
+            const compactClass = className ? ` ${className}` : "";
+            return `
+            <span class="runtime-info-label${compactClass}">${escapeHtml(label)}</span>
+            <span class="runtime-info-value${compactClass}">${escapeHtml(value)}</span>
+        `;
+        }).join("");
+
+        const args = Array.isArray(info.inputArguments) ? info.inputArguments : [];
+        if (argsNode) {
+            argsNode.hidden = args.length === 0;
+            argsNode.textContent = args.join("\n");
+        }
     }
 
     function setAiSettingsStatus(text, isError = false) {
@@ -3191,6 +3363,7 @@
             state.defaultWorkspace = payload.defaultWorkspace || state.defaultWorkspace || "";
             state.aiSettings = payload.aiSettings || state.aiSettings;
             state.preferences = payload.preferences || state.preferences;
+            state.runtimeInfo = payload.runtimeInfo || state.runtimeInfo || {};
             try {
                 window.localStorage.setItem("field4.editorPropertyStickiness", state.preferences.editorPropertyStickiness || "none");
             } catch (_) {
@@ -3198,6 +3371,7 @@
             rememberWorkspace(state.currentWorkspace);
             renderWorkspaceControls();
             renderProjectManagement();
+            renderRuntimeInfo();
             renderAiSettings();
             renderPreferences();
             renderOscSettings();
@@ -3209,6 +3383,7 @@
             state.runningDocuments = [];
             renderWorkspaceControls();
             renderProjectManagement();
+            renderRuntimeInfo();
             renderAiSettings();
             renderPreferences();
             renderOscSettings();

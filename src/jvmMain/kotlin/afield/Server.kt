@@ -23,6 +23,7 @@ import afield.server.recordControllerSelection
 import afield.server.writeFileProxyContents
 import afield.stdlib.FLineIntersection
 import afield.stdlib.begin
+import com.sun.management.GarbageCollectionNotificationInfo
 import com.aallam.openai.api.BetaOpenAI
 import com.microsoft.playwright.*
 import com.microsoft.playwright.options.LoadState
@@ -54,6 +55,7 @@ import org.joml.Vector3f
 import org.joml.Vector4f
 import java.awt.Desktop
 import java.io.File
+import java.lang.management.ManagementFactory
 import java.net.BindException
 import java.net.URI
 import java.net.URLEncoder
@@ -65,6 +67,9 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
+import javax.management.Notification
+import javax.management.NotificationEmitter
+import javax.management.openmbean.CompositeData
 import kotlin.concurrent.thread
 import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.minutes
@@ -73,6 +78,128 @@ import kotlin.time.Duration.Companion.seconds
 
 /***
  */
+
+private val serverStartedAtEpochMs = System.currentTimeMillis()
+
+private object GcPauseMonitor {
+    private const val sampleCapacity = 2048
+    private val lock = Any()
+    private val pauseDurationsMs = ArrayDeque<Long>()
+    private val observedCount = AtomicLong(0)
+    private val latestPauseMs = AtomicLong(0)
+
+    @Volatile
+    private var collectorCount = 0
+
+    @Volatile
+    private var monitoring = false
+
+    init {
+        start()
+    }
+
+    private fun start() {
+        val collectors = ManagementFactory.getGarbageCollectorMXBeans()
+        collectorCount = collectors.size
+        collectors.forEach { collector ->
+            val emitter = collector as? NotificationEmitter ?: return@forEach
+            emitter.addNotificationListener(
+                { notification: Notification, _ ->
+                    if (notification.type != GarbageCollectionNotificationInfo.GARBAGE_COLLECTION_NOTIFICATION) {
+                        return@addNotificationListener
+                    }
+                    val userData = notification.userData as? CompositeData ?: return@addNotificationListener
+                    val info = GarbageCollectionNotificationInfo.from(userData)
+                    record(info.gcInfo.duration)
+                },
+                null,
+                null
+            )
+        }
+        monitoring = collectors.any { it is NotificationEmitter }
+    }
+
+    private fun record(durationMs: Long) {
+        latestPauseMs.set(durationMs)
+        observedCount.incrementAndGet()
+        synchronized(lock) {
+            pauseDurationsMs.addLast(durationMs)
+            while (pauseDurationsMs.size > sampleCapacity) {
+                pauseDurationsMs.removeFirst()
+            }
+        }
+    }
+
+    fun stats(): GcPauseStats {
+        val snapshot = synchronized(lock) { pauseDurationsMs.toList() }
+        if (snapshot.isEmpty()) {
+            return GcPauseStats(
+                monitoring = monitoring,
+                collectorCount = collectorCount,
+                observedCount = observedCount.get(),
+                sampleCapacity = sampleCapacity,
+                latestPauseMs = latestPauseMs.get()
+            )
+        }
+
+        val sorted = snapshot.sorted()
+        fun percentile(percent: Double): Double {
+            val index = kotlin.math.ceil(percent * sorted.size).toInt().coerceIn(1, sorted.size) - 1
+            return sorted[index].toDouble()
+        }
+
+        val median = if (sorted.size % 2 == 0) {
+            val upper = sorted.size / 2
+            (sorted[upper - 1] + sorted[upper]) / 2.0
+        } else {
+            sorted[sorted.size / 2].toDouble()
+        }
+
+        return GcPauseStats(
+            monitoring = monitoring,
+            collectorCount = collectorCount,
+            observedCount = observedCount.get(),
+            sampleCount = snapshot.size,
+            sampleCapacity = sampleCapacity,
+            medianPauseMs = median,
+            p95PauseMs = percentile(0.95),
+            maxPauseMs = sorted.last(),
+            latestPauseMs = latestPauseMs.get()
+        )
+    }
+}
+
+private val gcPauseMonitor = GcPauseMonitor
+
+private fun systemProperty(name: String): String = System.getProperty(name).orEmpty()
+
+private fun currentRuntimeInfo(): RuntimeInfo {
+    val runtime = Runtime.getRuntime()
+    val runtimeMxBean = ManagementFactory.getRuntimeMXBean()
+    return RuntimeInfo(
+        javaVersion = systemProperty("java.version"),
+        javaRuntimeName = systemProperty("java.runtime.name"),
+        javaRuntimeVersion = systemProperty("java.runtime.version"),
+        javaVmName = systemProperty("java.vm.name"),
+        javaVmVendor = systemProperty("java.vm.vendor"),
+        javaVmVersion = systemProperty("java.vm.version"),
+        javaVendor = systemProperty("java.vendor"),
+        javaHome = systemProperty("java.home"),
+        runtimeVersion = Runtime.version().toString(),
+        osName = systemProperty("os.name"),
+        osVersion = systemProperty("os.version"),
+        osArch = systemProperty("os.arch"),
+        processId = ProcessHandle.current().pid(),
+        uptimeMs = System.currentTimeMillis() - serverStartedAtEpochMs,
+        inputArguments = runtimeMxBean.inputArguments,
+        availableProcessors = runtime.availableProcessors(),
+        maxMemoryBytes = runtime.maxMemory(),
+        totalMemoryBytes = runtime.totalMemory(),
+        freeMemoryBytes = runtime.freeMemory(),
+        gcPauseStats = gcPauseMonitor.stats(),
+        runloopTimingStats = Runloop.runLoop.timingStats()
+    )
+}
 
 class SessionInformation(
     val filename: String,
@@ -2377,7 +2504,8 @@ class Server {
                                     defaultWorkspace,
                                     currentAiSettingsStatus(),
                                     preferences,
-                                    projects
+                                    projects,
+                                    currentRuntimeInfo()
                                 )
                             )
                         }

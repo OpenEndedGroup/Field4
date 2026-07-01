@@ -6,7 +6,9 @@ import afield.four.util.MapOfSequences
 import afield.logger.lprintln
 import kotlinx.coroutines.*
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import kotlin.math.ceil
 import kotlin.math.max
 
 
@@ -47,15 +49,22 @@ class Runloop {
 
     var limiter = RateLimiter(10.0, 0.2)
 
+    private val timingMonitor = RunloopTimingMonitor()
+
+    fun timingStats(): RunloopTimingStats = timingMonitor.snapshot(frame)
+
     fun start() {
         if (mainThread == null) {
             mainThread = Thread.currentThread()
         }
         while (true) {
+            val frameStartNs = System.nanoTime()
             preRun.update()
             main.frame()
             postRun.update()
+            val workNs = System.nanoTime() - frameStartNs
             frame++
+            timingMonitor.record(frame, frameStartNs, workNs)
 
             if (shouldSleep) {
 //                lprintln("debug,runloop", "framer has run out of work thread is ${Thread.currentThread().name}")
@@ -63,6 +72,103 @@ class Runloop {
             }
             shouldSleep = true
         }
+    }
+}
+
+private class RunloopTimingMonitor(private val sampleCapacity: Int = 8192) {
+    private val intervalSamplesNs = LongArray(sampleCapacity)
+    private val workSamplesNs = LongArray(sampleCapacity)
+    private val totalSamples = AtomicLong(0)
+
+    @Volatile
+    private var lastStartNs = 0L
+
+    @Volatile
+    private var latestIntervalNs = 0L
+
+    @Volatile
+    private var latestWorkNs = 0L
+
+    fun record(frame: Long, startNs: Long, workNs: Long) {
+        val previousStartNs = lastStartNs
+        lastStartNs = startNs
+        latestWorkNs = workNs
+        if (previousStartNs == 0L) return
+
+        val intervalNs = (startNs - previousStartNs).coerceAtLeast(0L)
+        latestIntervalNs = intervalNs
+        val index = (totalSamples.getAndIncrement() % sampleCapacity).toInt()
+        intervalSamplesNs[index] = intervalNs
+        workSamplesNs[index] = workNs
+    }
+
+    fun snapshot(frame: Long): RunloopTimingStats {
+        val total = totalSamples.get()
+        val count = minOf(total, sampleCapacity.toLong()).toInt()
+        if (count == 0) {
+            return RunloopTimingStats(
+                running = lastStartNs != 0L,
+                frame = frame,
+                totalSamples = total,
+                sampleCapacity = sampleCapacity
+            )
+        }
+
+        val intervals = LongArray(count)
+        val work = LongArray(count)
+        val start = (total - count).coerceAtLeast(0L)
+        for (offset in 0 until count) {
+            val source = ((start + offset) % sampleCapacity).toInt()
+            intervals[offset] = intervalSamplesNs[source]
+            work[offset] = workSamplesNs[source]
+        }
+
+        intervals.sort()
+        work.sort()
+
+        fun Long.nsToMs(): Double = this / 1_000_000.0
+        fun percentile(sorted: LongArray, percent: Double): Double {
+            val index = ceil(percent * sorted.size).toInt().coerceIn(1, sorted.size) - 1
+            return sorted[index].nsToMs()
+        }
+        fun median(sorted: LongArray): Double {
+            val middle = sorted.size / 2
+            return if (sorted.size % 2 == 0) {
+                (sorted[middle - 1].nsToMs() + sorted[middle].nsToMs()) / 2.0
+            } else {
+                sorted[middle].nsToMs()
+            }
+        }
+
+        val intervalSumNs = intervals.sum()
+        val ticksPerSecond = if (intervalSumNs > 0L) {
+            count * 1_000_000_000.0 / intervalSumNs.toDouble()
+        } else {
+            0.0
+        }
+
+        return RunloopTimingStats(
+            running = true,
+            frame = frame,
+            totalSamples = total,
+            sampleCount = count,
+            sampleCapacity = sampleCapacity,
+            ticksPerSecond = ticksPerSecond,
+            latestIntervalMs = latestIntervalNs.nsToMs(),
+            intervalMedianMs = median(intervals),
+            intervalP95Ms = percentile(intervals, 0.95),
+            intervalP99Ms = percentile(intervals, 0.99),
+            intervalMaxMs = intervals.last().nsToMs(),
+            latestWorkMs = latestWorkNs.nsToMs(),
+            workMedianMs = median(work),
+            workP95Ms = percentile(work, 0.95),
+            workP99Ms = percentile(work, 0.99),
+            workMaxMs = work.last().nsToMs(),
+            intervalsOver1Ms = intervals.count { it > 1_000_000L },
+            intervalsOver4Ms = intervals.count { it > 4_000_000L },
+            intervalsOver8Ms = intervals.count { it > 8_000_000L },
+            intervalsOver16Ms = intervals.count { it > 16_000_000L }
+        )
     }
 }
 

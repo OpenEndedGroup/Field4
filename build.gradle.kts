@@ -5,14 +5,18 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinJsCompile
 import org.jetbrains.kotlin.gradle.targets.js.dsl.ExperimentalDistributionDsl
 import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpack
+import org.gradle.api.file.FileCollection
+import org.gradle.api.tasks.PathSensitivity
+import org.gradle.jvm.tasks.Jar
 import java.io.InputStream
 import java.io.PrintStream
 import java.io.ByteArrayOutputStream
 import java.awt.RenderingHints
 import java.awt.image.BufferedImage
+import java.net.HttpURLConnection
+import java.net.URI
 import java.net.InetSocketAddress
 import java.net.Socket
-import java.net.URL
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.security.SecureRandom
@@ -85,6 +89,18 @@ val ceresNative = layout.projectDirectory.file("libs/libken_ceres_jvm.dylib")
 val printRunJvmClasspath = providers.gradleProperty("printRunJvmClasspath")
     .map(String::toBoolean)
     .orElse(true)
+val fieldAotCacheFile = layout.buildDirectory.file("aot/field.aot")
+val fieldAotCacheStampFile = layout.buildDirectory.file("aot/field.aot.stamp")
+val fieldAotTrainingWorkspace = layout.buildDirectory.dir("aot/workspace")
+val fieldAotTrainingPort = providers.gradleProperty("fieldAotPort")
+    .orElse(providers.environmentVariable("AFIELD_AOT_PORT"))
+    .orElse("9478")
+val fieldAotTrainingHttpPort = providers.gradleProperty("fieldAotHttpPort")
+    .orElse(providers.environmentVariable("AFIELD_AOT_HTTP_PORT"))
+val fieldAotTrainingTimeoutSeconds = providers.gradleProperty("fieldAotTrainingTimeoutSeconds")
+    .orElse(providers.environmentVariable("AFIELD_AOT_TRAINING_TIMEOUT_SECONDS"))
+    .map { it.toLongOrNull() ?: 90L }
+    .orElse(90L)
 val kotlinRuntimeModulesShadowedByLocalJars = listOf(
     "kotlin-compiler-embeddable",
     "kotlin-daemon-embeddable",
@@ -94,6 +110,105 @@ val kotlinRuntimeModulesShadowedByLocalJars = listOf(
     "kotlin-scripting-common",
     "kotlin-script-runtime",
 )
+
+fun firstNonBlank(vararg values: String?): String? =
+    values.firstOrNull { !it.isNullOrBlank() }?.trim()
+
+fun booleanSetting(value: String?): Boolean? = when (value?.trim()?.lowercase()) {
+    "1", "true", "yes", "on", "enabled" -> true
+    "0", "false", "no", "off", "disabled" -> false
+    else -> null
+}
+
+fun fieldAotCacheSetting(): String? = firstNonBlank(
+    providers.gradleProperty("fieldAotCache").orNull,
+    System.getProperty("afield.aot.cache"),
+    System.getenv("AFIELD_AOT_CACHE")
+)
+
+fun requestedFieldAotCacheFile(defaultWhenDisabled: Boolean = false): File? {
+    val defaultCache = fieldAotCacheFile.get().asFile
+    val configured = fieldAotCacheSetting()
+
+    return when (booleanSetting(configured)) {
+        true -> defaultCache
+        false -> defaultCache.takeIf { defaultWhenDisabled }
+        null -> configured?.let(::File) ?: defaultCache
+    }
+}
+
+fun fieldAotAutoGenerateEnabled(): Boolean {
+    val configured = firstNonBlank(
+        providers.gradleProperty("fieldAotAutoGenerate").orNull,
+        System.getProperty("afield.aot.autoGenerate"),
+        System.getenv("AFIELD_AOT_AUTO_GENERATE")
+    )
+    booleanSetting(configured)?.let { return it }
+    if (booleanSetting(fieldAotCacheSetting()) == false) return false
+
+    val requested = requestedFieldAotCacheFile() ?: return false
+    val cacheSetting = fieldAotCacheSetting()
+    return requested.exists() || cacheSetting != null
+}
+
+fun configuredFieldAotCacheFile(): File? {
+    val candidate = requestedFieldAotCacheFile() ?: return null
+    val cacheSetting = fieldAotCacheSetting()
+
+    if (!candidate.exists()) {
+        if (cacheSetting == null && !fieldAotAutoGenerateEnabled()) return null
+        throw GradleException(
+            "Requested Field AOT cache ${candidate.absolutePath} does not exist. " +
+                "Run ./gradlew generateFieldAotCache first, enable -PfieldAotAutoGenerate=true, " +
+                "or disable it with -PfieldAotCache=false."
+        )
+    }
+
+    return candidate
+}
+
+fun fieldAotRuntimeJvmArgs(): List<String> =
+    configuredFieldAotCacheFile()?.let { listOf("-XX:AOTCache=${it.absolutePath}") } ?: emptyList()
+
+fun MutableList<String>.addOrReplaceFieldAotCacheArgs(args: List<String>) {
+    removeAll { it.startsWith("-XX:AOTCache=") }
+    addAll(args)
+}
+
+fun fieldAotRuntimeClasspathFiles(classpath: FileCollection): List<File> {
+    val jvmJarFile = tasks.named<Jar>("jvmJar").get().archiveFile.get().asFile
+    val files = mutableListOf(jvmJarFile)
+    classpath.asPath
+        .split(File.pathSeparator)
+        .filter { it.isNotBlank() }
+        .map(::File)
+        .filter { it.isFile && it.absoluteFile != jvmJarFile.absoluteFile }
+        .forEach { file ->
+            if (files.none { it.absoluteFile == file.absoluteFile }) files += file
+        }
+    return files
+}
+
+fun fieldAotRuntimeClasspath(classpath: FileCollection): String =
+    fieldAotRuntimeClasspathFiles(classpath).joinToString(File.pathSeparator) { it.absolutePath }
+
+fun fieldAotClasspathFingerprint(classpath: FileCollection): String =
+    fieldAotRuntimeClasspathFiles(classpath).joinToString("\n") { file ->
+        "${file.absolutePath}:${file.length()}:${file.lastModified()}"
+    }
+
+fun fieldAotBuildFingerprint(
+    classpath: FileCollection,
+    javaLauncher: org.gradle.jvm.toolchain.JavaLauncher,
+    cacheFile: File,
+    streamableObjectArgs: List<String>,
+): String = listOf(
+    "cache=${cacheFile.absolutePath}",
+    "java=${javaLauncher.metadata.languageVersion}:${javaLauncher.executablePath.asFile.absolutePath}",
+    "jvmArgs=${requiredRunJvmArgs().joinToString("\u0000")}",
+    "streamableObjectArgs=${streamableObjectArgs.joinToString("\u0000")}",
+    "classpath=${fieldAotClasspathFingerprint(classpath)}",
+).joinToString("\n")
 
 fun requiredRunJvmArgs(): List<String> {
     val os = System.getProperty("os.name").lowercase()
@@ -119,14 +234,11 @@ fun requiredRunJvmArgs(): List<String> {
             add("-Dorg.lwjgl.util.DebugLoader=true")
         }
         add("--add-modules")
-        add("jdk.incubator.vector")
+        add("jdk.incubator.vector,jdk.internal.vm.ci")
     }
 }
 
 fun configuredAi4TraceJvmArgs(): List<String> {
-    fun firstNonBlank(vararg values: String?): String? =
-        values.firstOrNull { !it.isNullOrBlank() }?.trim()
-
     val trace = firstNonBlank(
         providers.gradleProperty("ai4Trace").orNull,
         providers.gradleProperty("ai4TracePath").orNull,
@@ -686,6 +798,11 @@ tasks.named<JavaExec>("runJvm").configure {
             }
         }
         merged.addOrReplaceSystemProperties(configuredAi4TraceJvmArgs())
+        val aotJvmArgs = fieldAotRuntimeJvmArgs()
+        if (aotJvmArgs.isNotEmpty()) {
+            classpath = files(fieldAotRuntimeClasspathFiles(classpath))
+        }
+        merged.addOrReplaceFieldAotCacheArgs(aotJvmArgs)
         setJvmArgs(merged)
 
         if (printRunJvmClasspath.get()) {
@@ -716,6 +833,213 @@ tasks.named<JavaExec>("runJvm").configure {
     }
 
     dependsOn(tasks.named("jvmJar"))
+    if (fieldAotAutoGenerateEnabled()) {
+        dependsOn("generateFieldAotCache")
+    }
+}
+
+fun urlStatus(url: String, method: String = "GET", timeoutMs: Int = 1000): Int? =
+    runCatching {
+        (URI(url).toURL().openConnection() as HttpURLConnection).run {
+            requestMethod = method
+            connectTimeout = timeoutMs
+            readTimeout = timeoutMs
+            if (method == "POST") {
+                doOutput = true
+                outputStream.use { }
+            }
+            try {
+                responseCode
+            } finally {
+                disconnect()
+            }
+        }
+    }.getOrNull()
+
+fun aotStreamableObjectJvmArgs(javaMajorVersion: Int, logger: org.gradle.api.logging.Logger): List<String> {
+    val configured = firstNonBlank(
+        providers.gradleProperty("fieldAotStreamableObjects").orNull,
+        System.getProperty("afield.aot.streamableObjects"),
+        System.getenv("AFIELD_AOT_STREAMABLE_OBJECTS")
+    )
+    val requested = booleanSetting(configured) ?: (javaMajorVersion >= 26)
+    if (!requested) return emptyList()
+    if (javaMajorVersion < 26) {
+        logger.lifecycle(
+            "Skipping -XX:+AOTStreamableObjects: JEP 516 requires JDK 26+, " +
+                "but the Field toolchain is JDK $javaMajorVersion."
+        )
+        return emptyList()
+    }
+    return listOf("-XX:+AOTStreamableObjects")
+}
+
+tasks.register("cleanFieldAotCache") {
+    group = "application"
+    description = "Deletes Field's generated JVM AOT cache."
+
+    doLast {
+        val cacheFile = fieldAotCacheFile.get().asFile
+        val stampFile = fieldAotCacheStampFile.get().asFile
+        if (cacheFile.exists()) {
+            cacheFile.delete()
+            logger.lifecycle("Deleted Field AOT cache at ${cacheFile.absolutePath}")
+        }
+        if (stampFile.exists()) {
+            stampFile.delete()
+            logger.lifecycle("Deleted Field AOT cache stamp at ${stampFile.absolutePath}")
+        }
+    }
+}
+
+tasks.register("generateFieldAotCache") {
+    group = "application"
+    description = "Starts Field briefly with -XX:AOTCacheOutput to generate the JVM AOT cache used by runJvm/runDesktop."
+
+    dependsOn(tasks.named("jvmJar"))
+    dependsOn(tasks.named("generateLocalKeystore"))
+    inputs.files(providers.provider {
+        val runJvmTask = tasks.named<JavaExec>("runJvm").get()
+        fieldAotRuntimeClasspathFiles(runJvmTask.classpath)
+    })
+        .withPropertyName("fieldAotRuntimeClasspath")
+        .withPathSensitivity(PathSensitivity.ABSOLUTE)
+    inputs.property("fieldAotClasspathFingerprint", providers.provider {
+        val runJvmTask = tasks.named<JavaExec>("runJvm").get()
+        fieldAotClasspathFingerprint(runJvmTask.classpath)
+    })
+    inputs.property("fieldAotJvmArgs", providers.provider {
+        requiredRunJvmArgs().joinToString("\u0000")
+    })
+    inputs.property("fieldAotJavaLauncher", providers.provider {
+        val javaLauncher = tasks.named<JavaExec>("runJvm").get().javaLauncher.get()
+        "${javaLauncher.metadata.languageVersion}:${javaLauncher.executablePath.asFile.absolutePath}"
+    })
+    outputs.file(providers.provider {
+        requestedFieldAotCacheFile(defaultWhenDisabled = true) ?: fieldAotCacheFile.get().asFile
+    })
+    outputs.file(fieldAotCacheStampFile)
+
+    doLast {
+        val runJvmTask = tasks.named<JavaExec>("runJvm").get()
+        val javaLauncher = runJvmTask.javaLauncher.get()
+        val javaMajorVersion = javaLauncher.metadata.languageVersion.asInt()
+        if (javaMajorVersion < 25) {
+            throw GradleException("Field AOT cache generation requires JDK 25+; selected toolchain is JDK $javaMajorVersion.")
+        }
+
+        val cacheFile = requestedFieldAotCacheFile(defaultWhenDisabled = true) ?: fieldAotCacheFile.get().asFile
+        val stampFile = fieldAotCacheStampFile.get().asFile
+        val streamableObjectArgs = aotStreamableObjectJvmArgs(javaMajorVersion, logger)
+        val fingerprint = fieldAotBuildFingerprint(
+            runJvmTask.classpath,
+            javaLauncher,
+            cacheFile,
+            streamableObjectArgs,
+        )
+        if (cacheFile.exists() && stampFile.exists() && stampFile.readText() == fingerprint) {
+            logger.lifecycle("Field AOT cache is current at ${cacheFile.absolutePath}")
+            return@doLast
+        }
+
+        cacheFile.parentFile.mkdirs()
+        stampFile.parentFile.mkdirs()
+        if (cacheFile.exists()) cacheFile.delete()
+        if (stampFile.exists()) stampFile.delete()
+
+        val workspaceDir = fieldAotTrainingWorkspace.get().asFile
+        workspaceDir.mkdirs()
+
+        val port = fieldAotTrainingPort.get().toIntOrNull()
+            ?: throw GradleException("fieldAotPort/AFIELD_AOT_PORT must be an integer.")
+        val httpPort = fieldAotTrainingHttpPort.orNull?.toIntOrNull() ?: (port + 10000)
+        if (httpPort !in 1..65535) {
+            throw GradleException("Field AOT HTTP port $httpPort is outside the valid port range.")
+        }
+
+        val backendMain = runJvmTask.mainClass.orNull
+            ?: throw GradleException("runJvm has no mainClass configured")
+        val javaExecutable = javaLauncher.executablePath.asFile.absolutePath
+        val backendJvmArgs = requiredRunJvmArgs().toMutableList()
+        backendJvmArgs.addOrReplaceSystemProperties(configuredAi4TraceJvmArgs())
+        backendJvmArgs += streamableObjectArgs
+        backendJvmArgs += "-XX:AOTCacheOutput=${cacheFile.absolutePath}"
+
+        val os = System.getProperty("os.name").lowercase()
+        val isWindows = os.contains("windows")
+        val backendCommand = mutableListOf<String>()
+        backendCommand += javaExecutable
+        backendCommand += backendJvmArgs
+
+        if (isWindows) {
+            val argFile = File(project.layout.buildDirectory.asFile.get(), "tmp/aot-classpath-argfile.txt")
+            argFile.parentFile.mkdirs()
+            argFile.writeText("-cp\n${fieldAotRuntimeClasspath(runJvmTask.classpath)}\n")
+            backendCommand += "@${argFile.absolutePath}"
+        } else {
+            backendCommand += "-cp"
+            backendCommand += fieldAotRuntimeClasspath(runJvmTask.classpath)
+        }
+
+        backendCommand += backendMain
+        backendCommand += listOf("--workspace", workspaceDir.absolutePath)
+
+        logger.lifecycle("Generating Field AOT cache at ${cacheFile.absolutePath}")
+        logger.lifecycle("Starting Field AOT training server on http://localhost:$httpPort/health")
+        val process = ProcessBuilder(backendCommand)
+            .directory(project.projectDir)
+            .redirectErrorStream(true)
+            .apply {
+                environment()["PORT"] = port.toString()
+                environment()["AFIELD_HTTP_PORT"] = httpPort.toString()
+                environment()["AFIELD_PORT_FALLBACK_COUNT"] = "1"
+                environment()["AFIELD_SYSTEM_BROWSER"] = "true"
+            }
+            .start()
+
+        val outputThread = Thread {
+            process.inputStream.bufferedReader().useLines { lines ->
+                lines.forEach { line -> logger.lifecycle("[field-aot] $line") }
+            }
+        }.apply {
+            isDaemon = true
+            start()
+        }
+
+        val healthUrl = "http://localhost:$httpPort/health"
+        val deadline = System.currentTimeMillis() + fieldAotTrainingTimeoutSeconds.get() * 1000L
+        var ready = false
+        while (System.currentTimeMillis() < deadline && process.isAlive) {
+            if (urlStatus(healthUrl) == 200) {
+                ready = true
+                break
+            }
+            Thread.sleep(250)
+        }
+
+        if (!ready) {
+            process.destroyForcibly()
+            throw GradleException("Field AOT training server did not become healthy at $healthUrl.")
+        }
+
+        urlStatus("http://localhost:$httpPort/api/shutdown-instance", method = "POST", timeoutMs = 5000)
+        if (!process.waitFor(30, TimeUnit.SECONDS)) {
+            process.destroyForcibly()
+            throw GradleException("Field AOT training server did not exit after shutdown.")
+        }
+        outputThread.join(1000)
+
+        val exitCode = process.exitValue()
+        if (exitCode != 0) {
+            throw GradleException("Field AOT training server exited with code $exitCode.")
+        }
+        if (!cacheFile.exists()) {
+            throw GradleException("Field AOT cache was not written at ${cacheFile.absolutePath}.")
+        }
+
+        stampFile.writeText(fingerprint)
+        logger.lifecycle("Generated Field AOT cache at ${cacheFile.absolutePath} (${cacheFile.length()} bytes)")
+    }
 }
 
 tasks.named("npmInstall") {
@@ -840,6 +1164,9 @@ tasks.register("runDesktop") {
     dependsOn(electronInstall)
     dependsOn(tasks.named("jvmJar"))
     dependsOn(tasks.named("generateLocalKeystore"))
+    if (fieldAotAutoGenerateEnabled()) {
+        dependsOn("generateFieldAotCache")
+    }
     outputs.upToDateWhen { false }
 
     doLast {
@@ -949,6 +1276,13 @@ tasks.register("runDesktop") {
             if (!backendJvmArgs.contains(arg)) backendJvmArgs += arg
         }
         backendJvmArgs.addOrReplaceSystemProperties(configuredAi4TraceJvmArgs())
+        val aotJvmArgs = fieldAotRuntimeJvmArgs()
+        backendJvmArgs.addOrReplaceFieldAotCacheArgs(aotJvmArgs)
+        val backendClasspath = if (aotJvmArgs.isNotEmpty()) {
+            fieldAotRuntimeClasspath(runJvmTask.classpath)
+        } else {
+            runJvmTask.classpath.asPath
+        }
 
         val os = System.getProperty("os.name").lowercase()
         val isWindows = os.contains("windows")
@@ -962,11 +1296,11 @@ tasks.register("runDesktop") {
         if (isWindows) {
             val argFile = File(project.layout.buildDirectory.asFile.get(), "tmp/classpath-argfile.txt")
             argFile.parentFile.mkdirs()
-            argFile.writeText("-cp\n${runJvmTask.classpath.asPath}\n")
+            argFile.writeText("-cp\n${backendClasspath}\n")
             backendCommand += "@${argFile.absolutePath}"
         } else {
             backendCommand += "-cp"
-            backendCommand += runJvmTask.classpath.asPath
+            backendCommand += backendClasspath
         }
 
         backendCommand += backendMain
@@ -1010,7 +1344,7 @@ tasks.register("runDesktop") {
         val hostnameVerifier = HostnameVerifier { _, _ -> true }
 
         fun getHttps(url: String): Pair<Int, String> {
-            val connection = (URL(url).openConnection() as HttpsURLConnection).apply {
+            val connection = (URI(url).toURL().openConnection() as HttpsURLConnection).apply {
                 sslSocketFactory = socketFactory
                 this.hostnameVerifier = hostnameVerifier
                 requestMethod = "GET"

@@ -5,6 +5,7 @@ const LineHeatmap = (() => {
     let requestSerial = 0;
 
     const LEVELS = 12;
+    const HEATMAP_INSET_PX = 3;
     const STORAGE_KEYS = {
         churn: "afield.lineHeatmap.historyChurn.visible",
         exec: "afield.lineHeatmap.executionHistory.visible"
@@ -88,16 +89,29 @@ const LineHeatmap = (() => {
         const rules = [];
         rules.push(`
 .monaco-editor .line-numbers.afield-line-heat {
+    --afield-line-heatmap-inset: ${HEATMAP_INSET_PX}px;
+    --afield-line-heat-color: transparent;
     position: relative;
     width: 25px !important;
     padding-right: 10px;
     overflow: hidden;
     border-radius: 0;
+    background: transparent;
+}
+.monaco-editor .line-numbers.afield-line-heat::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: var(--afield-line-heatmap-inset);
+    background: var(--afield-line-heat-color);
+    pointer-events: none;
 }
 .monaco-editor .line-numbers.afield-line-heat-exec::after {
     content: "";
     position: absolute;
-    left: 2px;
+    left: calc(var(--afield-line-heatmap-inset) + 2px);
     bottom: 1px;
     height: 2px;
     width: var(--afield-exec-bar-width, 0%);
@@ -111,7 +125,7 @@ const LineHeatmap = (() => {
             const execWidth = Math.max(12, Math.round((i / LEVELS) * 100));
             rules.push(`
 .monaco-editor .line-numbers.afield-line-heat-churn-${i} {
-    background: ${color};
+    --afield-line-heat-color: ${color};
 }
 .monaco-editor .line-numbers.afield-line-heat-exec-${i} {
     --afield-exec-bar-width: ${execWidth}%;
