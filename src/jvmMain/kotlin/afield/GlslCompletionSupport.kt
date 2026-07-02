@@ -51,6 +51,7 @@ object GlslCompletionSupport {
         val templateContext = templateContextAt(code, position)
         val tokenBounds = findIdentifierBoundsAt(code, position) ?: GlslBounds(position, position, "")
         val inventory = buildInventory(box, request.property, code)
+        val activePrefix = findReceiverAccess(code, tokenBounds)?.prefix ?: tokenBounds.text
 
         val candidates = when (templateContext) {
             GlslTemplateContext.TAG -> templateTagCompletions()
@@ -69,10 +70,10 @@ object GlslCompletionSupport {
             }
         }
 
-        val metadata = candidates
+        val metadata = filterCompletionCandidates(candidates, activePrefix)
             .distinctBy { it.text }
             .sortedWith(compareBy<Metadata>({ completionSortGroup(it) }, { it.displayText.lowercase() }))
-            .take(180)
+            .take(360)
 
         val bounds = findReceiverAccess(code, tokenBounds)?.bounds ?: tokenBounds
         return Completion(
@@ -148,6 +149,23 @@ object GlslCompletionSupport {
         item.icon == "keyword" -> 4
         else -> 3
     }
+}
+
+private fun filterCompletionCandidates(candidates: List<Metadata>, prefix: String): List<Metadata> {
+    val normalized = prefix.trim()
+    if (normalized.isBlank()) return candidates
+
+    val prefixMatches = candidates.filter {
+        it.text.startsWith(normalized, ignoreCase = true) ||
+            it.displayText.startsWith(normalized, ignoreCase = true)
+    }
+    if (prefixMatches.isNotEmpty()) return prefixMatches
+
+    val containsMatches = candidates.filter {
+        it.text.contains(normalized, ignoreCase = true) ||
+            it.displayText.contains(normalized, ignoreCase = true)
+    }
+    return containsMatches.ifEmpty { candidates }
 }
 
 private enum class GlslTemplateContext {
@@ -448,6 +466,9 @@ private val localFieldRegex = Regex(
 private val localVariableRegex = Regex(
     """(?m)(?:^|[;{(,])\s*(?:layout\s*\([^)]*\)\s*)?(?:(?:const|in|out|inout|uniform|buffer|shared|flat|smooth|centroid|sample|patch|readonly|writeonly|coherent|volatile|restrict|highp|mediump|lowp)\s+)*([A-Za-z_][A-Za-z0-9_]*(?:\s*<[^;>()]+>)?)\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s*\[[^]]*])?\s*(?=[=;,)])"""
 )
+private val localFunctionRegex = Regex(
+    """(?m)(?:^|[;}])\s*(?:(?:const|precise|highp|mediump|lowp)\s+)*([A-Za-z_][A-Za-z0-9_]*(?:\s*<[^;>()]+>)?)\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^;{}()]*)\)\s*(?=[{;])"""
+)
 
 private fun parseLocalGlslSymbols(code: String): List<GlslSymbolInfo> {
     val clean = code
@@ -508,6 +529,24 @@ private fun parseLocalGlslSymbols(code: String): List<GlslSymbolInfo> {
         )
     }
 
+    localFunctionRegex.findAll(clean).forEach { match ->
+        val returnType = compactGlslWhitespace(match.groupValues[1])
+        val name = match.groupValues[2].trim()
+        val parameters = compactGlslWhitespace(match.groupValues[3])
+        if (returnType in glslControlWords || name in glslControlWords || name == "main") return@forEach
+
+        symbols.putIfAbsent(
+            name,
+            GlslSymbolInfo(
+                name = name,
+                type = returnType,
+                kind = "GLSL function",
+                tail = "local function(${glslParameterTypeSummary(parameters)})",
+                documentation = "$returnType $name($parameters)"
+            )
+        )
+    }
+
     localVariableRegex.findAll(clean).forEach { match ->
         val type = match.groupValues[1].trim()
         val name = match.groupValues[2].trim()
@@ -525,6 +564,36 @@ private fun parseLocalGlslSymbols(code: String): List<GlslSymbolInfo> {
     }
 
     return symbols.values.toList()
+}
+
+private fun compactGlslWhitespace(value: String): String =
+    value.trim().replace(Regex("""\s+"""), " ")
+
+private fun glslParameterTypeSummary(parameters: String): String {
+    if (parameters.isBlank()) return ""
+    val qualifiers = setOf(
+        "const", "in", "out", "inout", "highp", "mediump", "lowp", "precise",
+        "readonly", "writeonly", "coherent", "volatile", "restrict"
+    )
+    return parameters
+        .split(",")
+        .map { parameter ->
+            parameter
+                .replace(Regex("""layout\s*\([^)]*\)"""), " ")
+                .replace(Regex("""\[[^]]*]"""), "[]")
+                .trim()
+                .split(Regex("""\s+"""))
+                .filter { it.isNotBlank() && it !in qualifiers }
+                .let { words ->
+                    when {
+                        words.isEmpty() -> ""
+                        words.size == 1 -> words.single()
+                        else -> words.dropLast(1).joinToString(" ")
+                    }
+                }
+        }
+        .filter { it.isNotBlank() }
+        .joinToString(", ")
 }
 
 private fun rootCompletions(property: String, inventory: GlslCompletionInventory): List<Metadata> =
@@ -621,7 +690,9 @@ private val glslKeywordSymbols = (
         setOf(
             "layout", "uniform", "buffer", "push_constant", "in", "out", "inout", "const", "shared",
             "flat", "smooth", "centroid", "sample", "patch", "readonly", "writeonly", "coherent",
-            "volatile", "restrict", "precision", "highp", "mediump", "lowp", "struct"
+            "volatile", "restrict", "precision", "highp", "mediump", "lowp", "struct", "precise",
+            "nonuniformEXT", "pervertexEXT", "perprimitiveEXT", "taskPayloadSharedEXT", "rayPayloadEXT",
+            "rayPayloadInEXT", "hitAttributeEXT", "callableDataEXT", "callableDataInEXT"
         )
     ).map {
     GlslSymbolInfo(it, "", "GLSL keyword", "keyword")
@@ -630,8 +701,38 @@ private val glslKeywordSymbols = (
 private val glslTypeSymbols = listOf(
     "void", "bool", "int", "uint", "float", "double",
     "vec2", "vec3", "vec4", "ivec2", "ivec3", "ivec4", "uvec2", "uvec3", "uvec4", "bvec2", "bvec3", "bvec4",
-    "mat2", "mat3", "mat4", "sampler2D", "sampler2DArray", "samplerCube", "image2D", "image3D",
-    "accelerationStructureEXT"
+    "dvec2", "dvec3", "dvec4",
+    "mat2", "mat3", "mat4", "mat2x2", "mat2x3", "mat2x4", "mat3x2", "mat3x3", "mat3x4",
+    "mat4x2", "mat4x3", "mat4x4", "dmat2", "dmat3", "dmat4", "dmat2x2", "dmat2x3", "dmat2x4",
+    "dmat3x2", "dmat3x3", "dmat3x4", "dmat4x2", "dmat4x3", "dmat4x4",
+    "float16_t", "f16vec2", "f16vec3", "f16vec4", "int8_t", "i8vec2", "i8vec3", "i8vec4",
+    "uint8_t", "u8vec2", "u8vec3", "u8vec4", "int16_t", "i16vec2", "i16vec3", "i16vec4",
+    "uint16_t", "u16vec2", "u16vec3", "u16vec4", "int64_t", "i64vec2", "i64vec3", "i64vec4",
+    "uint64_t", "u64vec2", "u64vec3", "u64vec4",
+    "sampler1D", "sampler1DArray", "sampler1DArrayShadow", "sampler1DShadow",
+    "sampler2D", "sampler2DArray", "sampler2DArrayShadow", "sampler2DMS", "sampler2DMSArray",
+    "sampler2DRect", "sampler2DRectShadow", "sampler2DShadow", "sampler3D", "samplerBuffer",
+    "samplerCube", "samplerCubeArray", "samplerCubeArrayShadow", "samplerCubeShadow",
+    "isampler1D", "isampler1DArray", "isampler2D", "isampler2DArray", "isampler2DMS",
+    "isampler2DMSArray", "isampler2DRect", "isampler3D", "isamplerBuffer", "isamplerCube",
+    "isamplerCubeArray", "usampler1D", "usampler1DArray", "usampler2D", "usampler2DArray",
+    "usampler2DMS", "usampler2DMSArray", "usampler2DRect", "usampler3D", "usamplerBuffer",
+    "usamplerCube", "usamplerCubeArray",
+    "texture1D", "texture1DArray", "texture2D", "texture2DArray", "texture2DMS", "texture2DMSArray",
+    "texture2DRect", "texture3D", "textureBuffer", "textureCube", "textureCubeArray",
+    "itexture1D", "itexture1DArray", "itexture2D", "itexture2DArray", "itexture2DMS",
+    "itexture2DMSArray", "itexture2DRect", "itexture3D", "itextureBuffer", "itextureCube",
+    "itextureCubeArray", "utexture1D", "utexture1DArray", "utexture2D", "utexture2DArray",
+    "utexture2DMS", "utexture2DMSArray", "utexture2DRect", "utexture3D", "utextureBuffer",
+    "utextureCube", "utextureCubeArray",
+    "image1D", "image1DArray", "image2D", "image2DArray", "image2DMS", "image2DMSArray",
+    "image2DRect", "image3D", "imageBuffer", "imageCube", "imageCubeArray",
+    "iimage1D", "iimage1DArray", "iimage2D", "iimage2DArray", "iimage2DMS", "iimage2DMSArray",
+    "iimage2DRect", "iimage3D", "iimageBuffer", "iimageCube", "iimageCubeArray",
+    "uimage1D", "uimage1DArray", "uimage2D", "uimage2DArray", "uimage2DMS", "uimage2DMSArray",
+    "uimage2DRect", "uimage3D", "uimageBuffer", "uimageCube", "uimageCubeArray",
+    "subpassInput", "subpassInputMS", "isubpassInput", "isubpassInputMS", "usubpassInput", "usubpassInputMS",
+    "sampler", "samplerShadow", "atomic_uint", "accelerationStructureEXT", "rayQueryEXT"
 ).map {
     GlslSymbolInfo(it, "type", "GLSL type", "type")
 }
@@ -640,8 +741,50 @@ private val glslFunctionSymbols = listOf(
     "abs", "sign", "floor", "ceil", "fract", "mod", "min", "max", "clamp", "mix", "step", "smoothstep",
     "sin", "cos", "tan", "asin", "acos", "atan", "pow", "exp", "log", "sqrt", "inversesqrt",
     "length", "distance", "dot", "cross", "normalize", "reflect", "refract", "faceforward",
-    "texture", "textureLod", "textureGrad", "texelFetch", "dFdx", "dFdy", "fwidth",
-    "imageLoad", "imageStore", "atomicAdd", "barrier", "memoryBarrier", "groupMemoryBarrier"
+    "radians", "degrees", "sinh", "cosh", "tanh", "asinh", "acosh", "atanh",
+    "isnan", "isinf", "fma", "frexp", "ldexp",
+    "matrixCompMult", "outerProduct", "transpose", "determinant", "inverse",
+    "lessThan", "lessThanEqual", "greaterThan", "greaterThanEqual", "equal", "notEqual", "any", "all", "not",
+    "uaddCarry", "usubBorrow", "umulExtended", "imulExtended", "bitfieldExtract", "bitfieldInsert",
+    "bitfieldReverse", "bitCount", "findLSB", "findMSB", "floatBitsToInt", "floatBitsToUint",
+    "intBitsToFloat", "uintBitsToFloat", "packSnorm2x16", "unpackSnorm2x16", "packUnorm2x16",
+    "unpackUnorm2x16", "packHalf2x16", "unpackHalf2x16", "packDouble2x32", "unpackDouble2x32",
+    "texture", "textureProj", "textureLod", "textureOffset", "texelFetch", "texelFetchOffset",
+    "textureProjOffset", "textureLodOffset", "textureProjLod", "textureProjLodOffset",
+    "textureGrad", "textureGradOffset", "textureProjGrad", "textureProjGradOffset",
+    "textureGather", "textureGatherOffset", "textureGatherOffsets", "textureSize",
+    "textureQueryLod", "textureQueryLevels", "textureSamples", "textureQuerySamples",
+    "dFdx", "dFdy", "fwidth", "dFdxFine", "dFdyFine", "fwidthFine", "dFdxCoarse", "dFdyCoarse", "fwidthCoarse",
+    "imageLoad", "imageStore", "imageSize", "imageSamples", "imageAtomicAdd", "imageAtomicMin",
+    "imageAtomicMax", "imageAtomicAnd", "imageAtomicOr", "imageAtomicXor", "imageAtomicExchange",
+    "imageAtomicCompSwap",
+    "atomicAdd", "atomicMin", "atomicMax", "atomicAnd", "atomicOr", "atomicXor", "atomicExchange",
+    "atomicCompSwap", "atomicCounter", "atomicCounterIncrement", "atomicCounterDecrement",
+    "barrier", "memoryBarrier", "memoryBarrierAtomicCounter", "memoryBarrierBuffer", "memoryBarrierImage",
+    "memoryBarrierShared", "groupMemoryBarrier", "subgroupBarrier", "subgroupMemoryBarrier",
+    "subgroupMemoryBarrierBuffer", "subgroupMemoryBarrierShared", "subgroupMemoryBarrierImage",
+    "subgroupElect", "subgroupAll", "subgroupAny", "subgroupAllEqual", "subgroupBroadcast",
+    "subgroupBroadcastFirst", "subgroupBallot", "subgroupInverseBallot", "subgroupBallotBitExtract",
+    "subgroupBallotBitCount", "subgroupBallotInclusiveBitCount", "subgroupBallotExclusiveBitCount",
+    "subgroupBallotFindLSB", "subgroupBallotFindMSB", "subgroupShuffle", "subgroupShuffleXor",
+    "subgroupShuffleUp", "subgroupShuffleDown", "subgroupAdd", "subgroupMul", "subgroupMin",
+    "subgroupMax", "subgroupAnd", "subgroupOr", "subgroupXor", "subgroupInclusiveAdd",
+    "subgroupInclusiveMul", "subgroupInclusiveMin", "subgroupInclusiveMax", "subgroupInclusiveAnd",
+    "subgroupInclusiveOr", "subgroupInclusiveXor", "subgroupExclusiveAdd", "subgroupExclusiveMul",
+    "subgroupExclusiveMin", "subgroupExclusiveMax", "subgroupExclusiveAnd", "subgroupExclusiveOr",
+    "subgroupExclusiveXor",
+    "EmitMeshTasksEXT", "SetMeshOutputsEXT", "traceRayEXT", "reportIntersectionEXT",
+    "ignoreIntersectionEXT", "terminateRayEXT", "executeCallableEXT", "rayQueryInitializeEXT",
+    "rayQueryProceedEXT", "rayQueryTerminateEXT", "rayQueryGenerateIntersectionEXT",
+    "rayQueryConfirmIntersectionEXT", "rayQueryGetIntersectionTypeEXT", "rayQueryGetRayTMinEXT",
+    "rayQueryGetRayFlagsEXT", "rayQueryGetWorldRayOriginEXT", "rayQueryGetWorldRayDirectionEXT",
+    "rayQueryGetIntersectionTEXT", "rayQueryGetIntersectionInstanceCustomIndexEXT",
+    "rayQueryGetIntersectionInstanceIdEXT", "rayQueryGetIntersectionInstanceShaderBindingTableRecordOffsetEXT",
+    "rayQueryGetIntersectionGeometryIndexEXT", "rayQueryGetIntersectionPrimitiveIndexEXT",
+    "rayQueryGetIntersectionBarycentricsEXT", "rayQueryGetIntersectionFrontFaceEXT",
+    "rayQueryGetIntersectionCandidateAABBOpaqueEXT", "rayQueryGetIntersectionObjectRayOriginEXT",
+    "rayQueryGetIntersectionObjectRayDirectionEXT", "rayQueryGetIntersectionObjectToWorldEXT",
+    "rayQueryGetIntersectionWorldToObjectEXT"
 ).map {
     GlslSymbolInfo(it, "fn", "GLSL function", "builtin function")
 }
@@ -652,32 +795,64 @@ private fun builtinSymbolsForProperty(property: String): List<GlslSymbolInfo> {
             GlslSymbolInfo("gl_Position", "vec4", "GLSL vertex builtin", "builtin output"),
             GlslSymbolInfo("gl_PointSize", "float", "GLSL vertex builtin", "builtin output"),
             GlslSymbolInfo("gl_VertexIndex", "int", "GLSL vertex builtin", "builtin input"),
-            GlslSymbolInfo("gl_InstanceIndex", "int", "GLSL vertex builtin", "builtin input")
+            GlslSymbolInfo("gl_InstanceIndex", "int", "GLSL vertex builtin", "builtin input"),
+            GlslSymbolInfo("gl_DrawID", "int", "GLSL vertex builtin", "builtin input"),
+            GlslSymbolInfo("gl_BaseVertex", "int", "GLSL vertex builtin", "builtin input"),
+            GlslSymbolInfo("gl_BaseInstance", "int", "GLSL vertex builtin", "builtin input")
         )
         "fragment" -> listOf(
             GlslSymbolInfo("gl_FragCoord", "vec4", "GLSL fragment builtin", "builtin input"),
             GlslSymbolInfo("gl_FrontFacing", "bool", "GLSL fragment builtin", "builtin input"),
             GlslSymbolInfo("gl_PointCoord", "vec2", "GLSL fragment builtin", "builtin input"),
-            GlslSymbolInfo("gl_FragDepth", "float", "GLSL fragment builtin", "builtin output")
+            GlslSymbolInfo("gl_FragDepth", "float", "GLSL fragment builtin", "builtin output"),
+            GlslSymbolInfo("gl_HelperInvocation", "bool", "GLSL fragment builtin", "builtin input"),
+            GlslSymbolInfo("gl_SampleID", "int", "GLSL fragment builtin", "builtin input"),
+            GlslSymbolInfo("gl_SamplePosition", "vec2", "GLSL fragment builtin", "builtin input"),
+            GlslSymbolInfo("gl_SampleMask", "array", "GLSL fragment builtin", "builtin output"),
+            GlslSymbolInfo("gl_SampleMaskIn", "array", "GLSL fragment builtin", "builtin input"),
+            GlslSymbolInfo("gl_PrimitiveID", "int", "GLSL fragment builtin", "builtin input")
         )
         "compute" -> listOf(
             GlslSymbolInfo("gl_GlobalInvocationID", "uvec3", "GLSL compute builtin", "builtin input"),
             GlslSymbolInfo("gl_LocalInvocationID", "uvec3", "GLSL compute builtin", "builtin input"),
             GlslSymbolInfo("gl_WorkGroupID", "uvec3", "GLSL compute builtin", "builtin input"),
-            GlslSymbolInfo("gl_NumWorkGroups", "uvec3", "GLSL compute builtin", "builtin input")
+            GlslSymbolInfo("gl_NumWorkGroups", "uvec3", "GLSL compute builtin", "builtin input"),
+            GlslSymbolInfo("gl_WorkGroupSize", "uvec3", "GLSL compute builtin", "builtin input"),
+            GlslSymbolInfo("gl_LocalInvocationIndex", "uint", "GLSL compute builtin", "builtin input")
         )
         "mesh" -> listOf(
+            GlslSymbolInfo("gl_WorkGroupID", "uvec3", "GLSL mesh builtin", "builtin input"),
+            GlslSymbolInfo("gl_LocalInvocationID", "uvec3", "GLSL mesh builtin", "builtin input"),
+            GlslSymbolInfo("gl_LocalInvocationIndex", "uint", "GLSL mesh builtin", "builtin input"),
             GlslSymbolInfo("gl_MeshVerticesEXT", "array", "GLSL mesh builtin", "builtin output"),
             GlslSymbolInfo("gl_PrimitiveTriangleIndicesEXT", "array", "GLSL mesh builtin", "builtin output"),
+            GlslSymbolInfo("gl_PrimitiveLineIndicesEXT", "array", "GLSL mesh builtin", "builtin output"),
+            GlslSymbolInfo("gl_PrimitivePointIndicesEXT", "array", "GLSL mesh builtin", "builtin output"),
+            GlslSymbolInfo("gl_PrimitiveCountEXT", "uint", "GLSL mesh builtin", "builtin output"),
             GlslSymbolInfo("SetMeshOutputsEXT", "fn", "GLSL mesh function", "builtin function")
         )
         "task" -> listOf(
             GlslSymbolInfo("EmitMeshTasksEXT", "fn", "GLSL task function", "builtin function"),
-            GlslSymbolInfo("gl_WorkGroupID", "uvec3", "GLSL task builtin", "builtin input")
+            GlslSymbolInfo("gl_WorkGroupID", "uvec3", "GLSL task builtin", "builtin input"),
+            GlslSymbolInfo("gl_LocalInvocationID", "uvec3", "GLSL task builtin", "builtin input"),
+            GlslSymbolInfo("gl_LocalInvocationIndex", "uint", "GLSL task builtin", "builtin input")
         )
         "raygen", "miss", "closesthit", "anyhit", "intersection", "callable" -> listOf(
             GlslSymbolInfo("gl_LaunchIDEXT", "uvec3", "GLSL ray tracing builtin", "builtin input"),
             GlslSymbolInfo("gl_LaunchSizeEXT", "uvec3", "GLSL ray tracing builtin", "builtin input"),
+            GlslSymbolInfo("gl_WorldRayOriginEXT", "vec3", "GLSL ray tracing builtin", "builtin input"),
+            GlslSymbolInfo("gl_WorldRayDirectionEXT", "vec3", "GLSL ray tracing builtin", "builtin input"),
+            GlslSymbolInfo("gl_ObjectRayOriginEXT", "vec3", "GLSL ray tracing builtin", "builtin input"),
+            GlslSymbolInfo("gl_ObjectRayDirectionEXT", "vec3", "GLSL ray tracing builtin", "builtin input"),
+            GlslSymbolInfo("gl_RayTminEXT", "float", "GLSL ray tracing builtin", "builtin input"),
+            GlslSymbolInfo("gl_RayTmaxEXT", "float", "GLSL ray tracing builtin", "builtin input"),
+            GlslSymbolInfo("gl_InstanceCustomIndexEXT", "int", "GLSL ray tracing builtin", "builtin input"),
+            GlslSymbolInfo("gl_InstanceID", "int", "GLSL ray tracing builtin", "builtin input"),
+            GlslSymbolInfo("gl_PrimitiveID", "int", "GLSL ray tracing builtin", "builtin input"),
+            GlslSymbolInfo("gl_GeometryIndexEXT", "int", "GLSL ray tracing builtin", "builtin input"),
+            GlslSymbolInfo("gl_HitKindEXT", "int", "GLSL ray tracing builtin", "builtin input"),
+            GlslSymbolInfo("gl_ObjectToWorldEXT", "mat4x3", "GLSL ray tracing builtin", "builtin input"),
+            GlslSymbolInfo("gl_WorldToObjectEXT", "mat4x3", "GLSL ray tracing builtin", "builtin input"),
             GlslSymbolInfo("traceRayEXT", "fn", "GLSL ray tracing function", "builtin function")
         )
         else -> emptyList()
