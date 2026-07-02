@@ -16,10 +16,13 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 
 /**
- * printing inside a for loop just gives the last output?
+ * Receives text, display, and error output for a box or runtime.
  */
 interface HasOutput {
+    /** Emits [message] without appending a newline. */
     fun print(message: Any?)
+
+    /** Emits [message] followed by a newline. */
     fun println(message: Any?)
     fun display(message: Any?)
     fun display(channel: String, message: Any?)

@@ -93,7 +93,7 @@ fun main(args: Array<String>) {
             Files.deleteIfExists(diffFile)
             println("Dry-run patch: no changes proposed.")
         } else if (cacheStatus.shouldRemoveIfNonDryRun) {
-            removeConsumedCache(cacheFile)
+            removeEmptyCache(cacheFile)
         }
         exitProcess(0)
     }
@@ -214,7 +214,7 @@ fun main(args: Array<String>) {
     }
 
     if (!options.dryRun) {
-        removeConsumedCache(cacheFile)
+        preserveCacheForLaterPasses(cacheFile)
     } else {
         writeDryRunPatch(diffFile, dryRunDiffs)
     }
@@ -308,10 +308,10 @@ Task:
 4. Avoid duplicated parameter lists. Do not restate obvious names or types unless the description adds meaning.
 5. Preserve behavior, signatures, defaults, imports, and formatting style.
 6. Use ReplaceInFileRequest for small, exact KDoc/documentation patches. Use EditFile only when a small exact replacement cannot work.
-7. Clean the cache file if entries are clearly obsolete, low quality, or superseded by KDoc you moved into source.
-8. Stop after a coherent first pass; summarize the files changed and any declarations you intentionally left for later.
+7. If you integrate an entry into source KDoc, remove or rewrite only that corresponding cache entry. Do not delete unrelated cache entries.
+8. Stop after a coherent first pass; summarize the files changed and any declarations you intentionally left for later. Entries left for later must remain in the cache.
 
-After a successful non-dry-run, this CLI deletes the generated completion-doc cache file so consumed fast-model work is not applied twice.
+After a successful non-dry-run, this CLI preserves the generated completion-doc cache. Only cache edits explicitly requested through tools are applied.
 """.trimIndent()
 
 private fun workspaceSymbolSearchFromIndex(): (WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult {
@@ -610,15 +610,24 @@ private fun deleteRecursively(root: Path) {
     }
 }
 
-private fun removeConsumedCache(cacheFile: Path) {
+private fun preserveCacheForLaterPasses(cacheFile: Path) {
+    if (Files.exists(cacheFile)) {
+        println("Preserved generated completion doc cache for later passes: ${cacheFile.absolutePathString()}")
+        println("Only cache entries explicitly edited by the polish task were changed.")
+    } else {
+        println("Generated completion doc cache is absent: ${cacheFile.absolutePathString()}")
+    }
+}
+
+private fun removeEmptyCache(cacheFile: Path) {
     runCatching {
         if (Files.deleteIfExists(cacheFile)) {
-            println("Removed consumed completion doc cache: ${cacheFile.absolutePathString()}")
+            println("Removed empty completion doc cache: ${cacheFile.absolutePathString()}")
         } else {
             println("Completion doc cache already absent: ${cacheFile.absolutePathString()}")
         }
     }.onFailure {
-        println("Warning: failed to remove consumed completion doc cache ${cacheFile.absolutePathString()}: ${it.message}")
+        println("Warning: failed to remove empty completion doc cache ${cacheFile.absolutePathString()}: ${it.message}")
     }
 }
 

@@ -506,6 +506,9 @@ class VulkanBuffer(
         return "VulkanBuffer(requestedSize=$requestedSize, memory=${memoryFlagsForString(allocationMemoryFlags)}${if (mappedMemory != MemoryUtil.NULL) " MAPPED" else ""})"
     }
 
+    val descriptorRange: Long
+        get() = if (requestedSize > 0L) requestedSize else VK_WHOLE_SIZE
+
     private fun memoryFlagsForString(flags: Int): String {
         if (cpuOnly) return "CPU_ONLY"
         if (flags == 0) return "auto"

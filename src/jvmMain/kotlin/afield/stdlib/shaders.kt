@@ -773,6 +773,11 @@ private fun shaderFieldAutoSummaryHtml(
 // ------------------------------
 // Public macro placeholders (expanded by MacroRegistry)
 // ------------------------------
+/**
+ * Macro placeholder expanded to a graphics [ModulePointer] for the current box.
+ *
+ * This should only appear at macro expansion sites; calling it directly throws.
+ */
 fun Box.moduleHere(p: Parameters): ModulePointer {
     throw MacroRegistry.MacroNotExpandedException("moduleHere should not be callable directly, but should be expanded as a macro")
 }

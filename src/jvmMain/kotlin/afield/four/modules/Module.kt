@@ -367,7 +367,7 @@ class Module(val parameters: Parameters) : Renderable {
             MemoryStack.stackPush().use { stack ->
                 val targetBuffer = buffer.get()
                 val bufferInfo = VkDescriptorBufferInfo.calloc(1, stack).buffer(targetBuffer.buffer).offset(0)
-                    .range(targetBuffer.requestedSize)
+                    .range(targetBuffer.descriptorRange)
 
                 val write = VkWriteDescriptorSet.calloc(1, stack).sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
                     .dstBinding(binding.binding).dstArrayElement(0).descriptorType(kind).descriptorCount(1)

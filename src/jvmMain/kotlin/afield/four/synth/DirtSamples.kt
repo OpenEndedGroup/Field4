@@ -22,15 +22,26 @@ import kotlin.math.min
 
 var Box.dirtSamples by Inheritance<DirtSampleLibrary>()
 
+/**
+ * Loads or reuses a shared Dirt sample library and stores it on the current root box.
+ */
 fun dirt(path: String, preload: Boolean = true): DirtSampleLibrary {
     val library = DirtSampleLibrary.shared(path, preload = preload)
     Box.context.get()?.root?.dirtSamples = library
     return library
 }
 
+/**
+ * Returns the Dirt sample library installed in the current box context.
+ *
+ * Call `dirt("/path/to/Dirt-Samples")` first to initialize this context value.
+ */
 fun dirt(): DirtSampleLibrary =
     Box.context.get()?.dirtSamples ?: error("No DirtSampleLibrary in box context. Call dirt(\"/path/to/Dirt-Samples\") first.")
 
+/**
+ * Creates a polyphonic sample player for a Dirt sample library.
+ */
 fun dirtPlayer(
     voices: Int = 32,
     library: DirtSampleLibrary = dirt(),

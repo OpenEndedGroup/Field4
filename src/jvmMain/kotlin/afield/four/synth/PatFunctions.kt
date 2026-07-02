@@ -386,9 +386,15 @@ fun tentAtom(
     }
 }
 
+/** Creates a constant-valued box kernel atom with finite [radius] and optional [weight]. */
 fun boxAtom(value: Number, radius: Number, weight: Number = 1.0): PatFunctionAtomSpec =
     boxAtom(radius = radius, weight = weight) { value.toDouble() }
 
+/**
+ * Creates a box kernel atom whose value is computed from the local event scope.
+ *
+ * The radius is clamped to a positive extent and capped by the evaluator's look-ahead.
+ */
 fun boxAtom(
     radius: Number,
     weight: Number = 1.0,
@@ -534,9 +540,13 @@ fun adsrAtom(
     }
 }
 
+/** Decodes a scheduled string event into a pattern-function atom, or `null` for unsupported shapes. */
 fun decodePatFunctionAtom(event: PatScheduledEvent<String>, maxThreeSigma: Double): PatFunctionAtom? =
     decodePatFunctionAtomCore(event, maxThreeSigma, null)
 
+/**
+ * Decodes a scheduled string event, resolving `%name` placeholders through [bindingResolver].
+ */
 fun decodePatFunctionAtomWithBindings(
     event: PatScheduledEvent<String>,
     maxThreeSigma: Double,
@@ -565,6 +575,7 @@ private fun decodePatFunctionAtomCore(
     }
 }
 
+/** Decodes only Gaussian string atoms whose trimmed event text starts with `g:(`. */
 fun decodeGaussianPatFunctionAtom(event: PatScheduledEvent<String>, maxThreeSigma: Double): PatFunctionAtom? {
     return decodePatFunctionAtom(event, maxThreeSigma)?.takeIf { event.value.trim().startsWith("g:(") }
 }

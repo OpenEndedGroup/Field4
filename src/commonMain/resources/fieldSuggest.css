@@ -194,6 +194,34 @@
     font-family: var(--field-font-code);
 }
 
+.afield-suggest-runtime-doc {
+    margin-bottom: 12px;
+    padding: 10px;
+    background: rgb(var(--field-black-rgb));
+    border: 1px solid var(--field-border-soft);
+    color: var(--field-fg-soft);
+}
+
+.afield-suggest-runtime-doc details.afield-symbol-context-disclosure > summary,
+.afield-suggest-runtime-doc details.afield-symbol-context-disclosure > summary:focus,
+.afield-suggest-runtime-doc details.afield-symbol-context-disclosure > summary:focus-visible {
+    outline: none;
+    box-shadow: none;
+}
+
+.afield-suggest-runtime-doc .afield-symbol-context-disclosure-body {
+    max-height: 220px;
+    overflow: auto;
+}
+
+.afield-suggest-runtime-doc .value-viz,
+.afield-suggest-runtime-doc .value-viz-h2,
+.afield-suggest-runtime-doc svg,
+.afield-suggest-runtime-doc img,
+.afield-suggest-runtime-doc iframe {
+    max-width: 100%;
+}
+
 .afield-suggest-doc-source {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);

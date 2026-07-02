@@ -126,6 +126,37 @@ data class RuntimeInfo(
     val runloopTimingStats: RunloopTimingStats = RunloopTimingStats()
 )
 
+@Serializable
+data class CompletionDocPolishCacheSummary(
+    val cachePath: String = "",
+    val exists: Boolean = false,
+    val pendingDocCount: Int = 0,
+    val pendingSourceFileCount: Int = 0,
+    val sizeBytes: Long = 0,
+    val lastModifiedEpochMs: Long = 0,
+    val message: String = ""
+)
+
+@Serializable
+data class CompletionDocPolishStatus(
+    val cache: CompletionDocPolishCacheSummary = CompletionDocPolishCacheSummary(),
+    val running: Boolean = false,
+    val status: String = "idle",
+    val runId: String = "",
+    val taskName: String = "",
+    val dryRun: Boolean = false,
+    val startedAtEpochMs: Long = 0,
+    val finishedAtEpochMs: Long = 0,
+    val exitCode: Int? = null,
+    val message: String = "",
+    val logTail: String = ""
+)
+
+@Serializable
+data class CompletionDocPolishRunRequest(
+    val dryRun: Boolean = false
+)
+
 val defaultImportClassBlacklist = listOf(
     "com.sun.*",
     "sun.*",
@@ -148,7 +179,8 @@ data class WelcomeDocsResponse(
     val aiSettings: AiSettingsStatus = AiSettingsStatus(),
     val preferences: FieldPreferences = FieldPreferences(),
     val projects: List<ProjectEntry> = emptyList(),
-    val runtimeInfo: RuntimeInfo = RuntimeInfo()
+    val runtimeInfo: RuntimeInfo = RuntimeInfo(),
+    val completionDocPolish: CompletionDocPolishStatus = CompletionDocPolishStatus()
 )
 
 @Serializable
@@ -346,6 +378,18 @@ data class DuplicateDocumentResponse(
     val numBoxes: Int,
     val sizeBytes: Long,
     val tags: List<String> = emptyList()
+)
+
+@Serializable
+data class RevealDocumentRequest(
+    val filename: String
+)
+
+@Serializable
+data class RevealDocumentResponse(
+    val filename: String,
+    val path: String,
+    val message: String
 )
 
 @Serializable
@@ -1105,6 +1149,15 @@ private fun workspaceDocumentDir(base: String, filename: String): File {
     val baseDir = File(base).canonicalFile
     val documentDir = File(baseDir, cleanName).canonicalFile
     require(documentDir.toPath().startsWith(baseDir.toPath())) { "document is outside workspace" }
+    return documentDir
+}
+
+fun resolveWorkspaceDocumentDir(base: String, filename: String): File {
+    val documentDir = workspaceDocumentDir(base, filename)
+    require(documentDir.isDirectory) { "document not found" }
+    require(File(documentDir, SavingContext.METADATA_EDN).isFile || File(documentDir, SavingContext.METADATA_JSON).isFile) {
+        "document has no metadata"
+    }
     return documentDir
 }
 

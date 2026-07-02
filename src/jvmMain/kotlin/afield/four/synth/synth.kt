@@ -906,12 +906,14 @@ fun lpf(cutoff: Param, resonance: Param = Param(0.2f)): MoogLadder =
 fun hpf(cutoff: Number = 1000, resonance: Number = 0.5): SVF =
     SVF(mode = SVFMode.HP, cutoff = Param(cutoff.toFloat()), resonance = Param(resonance.toFloat()))
 
+/** Creates a band-pass SVF filter centered on [cutoff], with [resonance] shaping the band width. */
 fun bpf(cutoff: Number = 1000, resonance: Number = 0.5): SVF =
     SVF(mode = SVFMode.BP, cutoff = Param(cutoff.toFloat()), resonance = Param(resonance.toFloat()))
 
 // ─── Effect factories (compose with /) ──────────────────────────
 //   saw(110) / lpf(800) / reverb()   — chain naturally
 
+/** Creates a FreeVerb reverb with room size, damping, and dry/wet mix controls. */
 fun reverb(roomSize: Number = 0.8, damping: Number = 0.5, mix: Number = 0.33): FreeVerb =
     FreeVerb(roomSize = Param(roomSize.toFloat()), damping = Param(damping.toFloat()), mix = Param(mix.toFloat()))
 
@@ -956,6 +958,7 @@ fun reverbImpulse(
         seed = seed
     )
 
+/** Creates a delay effect with controllable delay time, feedback, and dry/wet mix. */
 fun delay(time: Number = 0.3, feedback: Number = 0.5, mix: Number = 0.5): Delay =
     Delay(delayTime = Param(time.toFloat()), feedback = Param(feedback.toFloat()), mix = Param(mix.toFloat()))
 

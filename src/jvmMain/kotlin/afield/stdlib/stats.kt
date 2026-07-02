@@ -786,6 +786,12 @@ class Vec4SummaryStatsBuffer(
     }
 }
 
+/**
+ * Builds descriptive summary statistics from the finite values in [rawValues].
+ *
+ * Non-finite inputs are excluded, added to [droppedCount], and reported via [onDrop]
+ * when any values are dropped. Returns an empty summary if no finite values remain.
+ */
 fun buildSummaryStats(
     rawValues: Iterable<Double>,
     droppedCount: Int = 0,
@@ -867,6 +873,12 @@ fun buildSummaryStats(
     )
 }
 
+/**
+ * Summarizes finite 2D vectors by component, length, angle, and X/Y correlation.
+ *
+ * Non-finite vectors are excluded, added to [droppedCount], and reported via [onDrop]
+ * when any values are dropped. Empty input yields empty component stats and `NaN` correlation.
+ */
 fun buildVec2SummaryStats(
     rawValues: Iterable<Vec2>,
     droppedCount: Int = 0,
@@ -910,6 +922,12 @@ fun buildVec2SummaryStats(
     )
 }
 
+/**
+ * Summarizes finite 3D vectors by component, length, and pairwise correlations.
+ *
+ * Non-finite vectors are excluded, added to [droppedCount], and reported via [onDrop]
+ * when any values are dropped. Empty input yields empty component stats and `NaN` correlations.
+ */
 fun buildVec3SummaryStats(
     rawValues: Iterable<Vec3>,
     droppedCount: Int = 0,
@@ -957,6 +975,12 @@ fun buildVec3SummaryStats(
     )
 }
 
+/**
+ * Summarizes finite 4D vectors by component, length, and pairwise component correlations.
+ *
+ * Non-finite vectors are excluded, added to [droppedCount], and reported via [onDrop]
+ * when any values are dropped. Empty input yields empty component stats and `NaN` correlations.
+ */
 fun buildVec4SummaryStats(
     rawValues: Iterable<Vec4>,
     droppedCount: Int = 0,

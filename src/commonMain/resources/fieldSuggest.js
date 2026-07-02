@@ -120,6 +120,22 @@ const titleForCategory = (category) => {
   );
 };
 
+const orderItemsForGroupedDisplay = (items) => {
+  const groups = [];
+  const byTitle = new Map();
+  for (const item of items || []) {
+    const title = titleForCategory(item.category);
+    let group = byTitle.get(title);
+    if (!group) {
+      group = [];
+      byTitle.set(title, group);
+      groups.push(group);
+    }
+    group.push(item);
+  }
+  return groups.flat();
+};
+
 const categoryFor = (metadata, languageId, source) => {
   if (source === "ai") return "ai";
   if (metadata.category) return metadata.category;
@@ -286,6 +302,7 @@ const normalizeRpcCompletion = (
     insertText: m.text || m.displayText || "",
     detail: m.tail || "",
     documentation: m.documentation || "",
+    runtimeDocumentationHtml: m.runtimeDocumentationHtml || "",
     icon: m.icon || "",
     category: categoryFor(m, languageId, source),
     range,
@@ -691,23 +708,30 @@ const renderSyntaxLabel = (label, query) => {
 
 const renderDocumentation = (item) => {
   const chunks = [];
+  const hasRuntimeDocumentation =
+    item.runtimeDocumentationHtml && item.runtimeDocumentationHtml.trim();
   const hasItemDocumentation = item.documentation && item.documentation.trim();
   const hasReceiverDocumentation =
     item.receiverDocumentation && item.receiverDocumentation.trim();
-  if (hasItemDocumentation) {
+  if (hasRuntimeDocumentation) {
+    chunks.push(
+      `<div class="afield-suggest-runtime-doc">${item.runtimeDocumentationHtml}</div>`,
+    );
+  }
+  if (hasItemDocumentation && !hasRuntimeDocumentation) {
     try {
       chunks.push(aiChatMarkdownToHtml(item.documentation));
     } catch (_) {
       chunks.push(`<pre>${escapeHtml(item.documentation)}</pre>`);
     }
-  } else if (!hasReceiverDocumentation) {
+  } else if (!hasReceiverDocumentation && !hasRuntimeDocumentation) {
     chunks.push(
       `<div class="afield-suggest-doc-empty">No documentation available</div>`,
     );
   }
   const sourceName = item.documentationSourceName || "";
   const sourcePath = item.documentationSourcePath || "";
-  if (sourceName || sourcePath) {
+  if (!hasRuntimeDocumentation && (sourceName || sourcePath)) {
     const line =
       item.documentationSourceLine > 0
         ? `:${item.documentationSourceLine}`
@@ -753,6 +777,17 @@ const renderDocumentation = (item) => {
     );
   }
   return chunks.join("");
+};
+
+const prepareRuntimeDocumentation = (root) => {
+  if (!root) return;
+  root
+    .querySelectorAll(
+      ".afield-suggest-runtime-doc details.afield-symbol-context-disclosure",
+    )
+    .forEach((details) => {
+      details.open = true;
+    });
 };
 
 const highlightCodeBlocks = (root) => {
@@ -1083,12 +1118,12 @@ class FieldSuggestController {
 
   filterAndLimit(items) {
     const query = String(this.lastQuery || "").toLowerCase();
-    return rankItems(
+    return orderItemsForGroupedDisplay(rankItems(
       this.dedupeItems(items),
       query,
       readRecencyStore(),
       this.memberContext,
-    ).slice(0, MAX_VISIBLE_ITEMS);
+    ).slice(0, MAX_VISIBLE_ITEMS));
   }
 
   groupedItems() {
@@ -1161,6 +1196,7 @@ class FieldSuggestController {
       return;
     }
     doc.innerHTML = renderDocumentation(item);
+    prepareRuntimeDocumentation(doc);
     highlightCodeBlocks(doc);
     this.resolveDocumentation(item);
   }

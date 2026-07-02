@@ -177,11 +177,26 @@ private fun buildCompletionDocumentation(
     return sections.joinToString("\n\n").trim()
 }
 
-private fun renderCompletionFallbackSignature(displayText: String, tail: String): String {
+private fun completionIconLooksLikeValue(icon: String): Boolean {
+    val key = icon.lowercase()
+    return key in setOf("property", "field", "variable", "value", "constant", "local", "val", "var") ||
+            key.contains("variable") ||
+            key.contains("property")
+}
+
+private fun renderCompletionFallbackSignature(displayText: String, tail: String, icon: String = ""): String {
     val display = displayText.trimEnd()
     val suffix = tail.trim()
     if (suffix.isBlank()) return display
     if (display.isBlank()) return suffix
+    if (
+        completionIconLooksLikeValue(icon) &&
+        ':' !in display &&
+        !display.contains('(') &&
+        suffix.firstOrNull() !in setOf(':', ')', ',', '.', '[', '<')
+    ) {
+        return "$display: $suffix"
+    }
     val separator = if (suffix.firstOrNull() in setOf(':', ')', ',', '.', '[', '<')) "" else " "
     return display + separator + suffix
 }
@@ -408,6 +423,43 @@ private fun renderVariableValueDisclosure(value: Any?): String {
     return "<div class='afield-symbol-context-disclosure-body' style='margin-top:4px; overflow:auto;'>$rendered</div>"
 }
 
+private fun renderVariablePlainValue(value: Any?): String {
+    val raw = when (value) {
+        null -> "null"
+        is CharSequence -> value.toString()
+        is Char -> value.toString()
+        else -> runCatching { value.toString() }.getOrNull().orEmpty()
+    }.trim()
+    if (raw.isBlank() || raw.contains('@')) return ""
+    val clipped = if (raw.length > 1000) raw.take(1000).trimEnd() + "..." else raw
+    return buildString {
+        append("<div class='afield-symbol-context-plain-value' style='margin-top:6px; color:#bbb;'>")
+        append("<span style='color:#777;'>value </span>")
+        append("<code>")
+        append(escapeNotifyHtml(clipped))
+        append("</code>")
+        append("</div>")
+    }
+}
+
+private fun runtimeCompletionDocumentationHtml(
+    box: Box,
+    candidateName: String,
+    icon: String,
+    isDotCompletion: Boolean
+): String {
+    if (isDotCompletion || candidateName.isBlank()) return ""
+    if (!completionIconLooksLikeValue(icon)) return ""
+    val info = box.ki.context.vars[candidateName] ?: return ""
+    return buildRuntimeVariableSymbolContextHtml(
+        box = box,
+        info = info,
+        declarationOverride = runCatching { shortenType(info.descriptor.toString()) }
+            .getOrDefault(info.toString(true)),
+        locationLabel = "defined in"
+    )
+}
+
 private fun renderDisplayContent(content: Any?): String {
     return when (content) {
         is String -> content
@@ -491,7 +543,7 @@ private fun renderVariableLocationSection(
     val locationHtml = "<span style='color:#777;'>$label ${container.html}</span>"
     val disclosure = renderVariableValueDisclosure(value)
     if (disclosure.isBlank()) {
-        return "<div>$locationHtml</div>"
+        return "<div>$locationHtml</div>${renderVariablePlainValue(value)}"
     }
     return buildString {
         append("<details class='afield-symbol-context-disclosure' style='margin-top:2px;'>")
@@ -2428,7 +2480,7 @@ class KotlinExecution : BoxExecution {
                     // Build signature-based documentation for all K2 items
                     buildString {
                         append("```kotlin\n")
-                        append(renderCompletionFallbackSignature(it.displayText, it.tail))
+                        append(renderCompletionFallbackSignature(it.displayText, it.tail, it.icon))
                         append("\n```")
                         if (extraDoc.isNotBlank()) {
                             append("\n\n")
@@ -2439,12 +2491,20 @@ class KotlinExecution : BoxExecution {
                     extraDoc.trim()
                 }
 
+                val runtimeDocumentationHtml = runtimeCompletionDocumentationHtml(
+                    box = inside,
+                    candidateName = candidateName,
+                    icon = it.icon,
+                    isDotCompletion = isDotCompletion
+                )
+
                 val rawMetadata = Metadata(
                     icon = it.icon,
                     tail = it.tail,
                     text = it.text,
                     displayText = mainText.trim(),
-                    documentation = documentation
+                    documentation = documentation,
+                    runtimeDocumentationHtml = runtimeDocumentationHtml
                 )
 
                 val receiverTypeHint = it.extraInfo.get("receiverQualifiedName") as? String
@@ -2926,7 +2986,7 @@ private fun shortenFunctionInfo(info: KotlinFunctionInfo): String =
         .take(100)
 
 private fun shortenCompletionInfo(variant: SourceCodeCompletionVariant): String {
-    val signature = renderCompletionFallbackSignature(variant.displayText, variant.tail)
+    val signature = renderCompletionFallbackSignature(variant.displayText, variant.tail, variant.icon)
         .replace(Regex("\\s+"), " ")
         .let(::shortenType)
         .trim()

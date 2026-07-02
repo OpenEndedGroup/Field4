@@ -1421,6 +1421,41 @@ class Server {
             }
         }
 
+        private fun revealInSystemFileManager(target: File) {
+            val file = target.canonicalFile
+            val commands = when {
+                Options.isMac -> listOf(listOf("open", "-R", file.absolutePath))
+                Options.isWindows -> listOf(listOf("explorer.exe", "/select,${file.absolutePath}"))
+                else -> listOf(
+                    listOf("xdg-open", file.absolutePath),
+                    listOf("gio", "open", file.absolutePath)
+                )
+            }
+
+            for (command in commands) {
+                try {
+                    ProcessBuilder(command).start()
+                    return
+                } catch (t: Throwable) {
+                    lprintln("warning,server", "File manager launch failed (${command.joinToString(" ")}): ${t.message}")
+                }
+            }
+
+            try {
+                if (Desktop.isDesktopSupported()) {
+                    val d = Desktop.getDesktop()
+                    if (d.isSupported(Desktop.Action.OPEN)) {
+                        d.open(file)
+                        return
+                    }
+                }
+            } catch (t: Throwable) {
+                lprintln("warning,server", "Desktop open failed for ${file.absolutePath}: ${t.message}")
+            }
+
+            throw IllegalStateException("could not launch file manager")
+        }
+
         private fun ensureLocalKeystore(target: File, password: String, alias: String): File {
             if (target.exists()) return target
 
@@ -2638,9 +2673,28 @@ class Server {
                                     currentAiSettingsStatus(),
                                     preferences,
                                     projects,
-                                    currentRuntimeInfo()
+                                    currentRuntimeInfo(),
+                                    CompletionDocPolishMonitor.status()
                                 )
                             )
+                        }
+
+                        get("/api/completion-doc-polish") {
+                            call.respond(CompletionDocPolishMonitor.status())
+                        }
+
+                        post("/api/completion-doc-polish") {
+                            try {
+                                val request = runCatching { call.receive<CompletionDocPolishRunRequest>() }
+                                    .getOrElse { CompletionDocPolishRunRequest() }
+                                call.respond(CompletionDocPolishMonitor.start(request.dryRun))
+                            } catch (e: Exception) {
+                                lprintln("error,server", "completion-doc polish launch failed: ${e.message}")
+                                call.respond(
+                                    HttpStatusCode.InternalServerError,
+                                    mapOf("error" to "completion-doc polish launch failed")
+                                )
+                            }
                         }
 
                         get("/api/welcome-changelog") {
@@ -2953,6 +3007,34 @@ class Server {
                                 call.respond(
                                     HttpStatusCode.BadRequest,
                                     mapOf("error" to (e.message ?: "invalid duplicate request"))
+                                )
+                            }
+                        }
+
+                        post("/api/reveal-document") {
+                            try {
+                                val request = call.receive<RevealDocumentRequest>()
+                                val documentDir = withContext(workspaceSearchDispatcher) {
+                                    resolveWorkspaceDocumentDir(home, request.filename)
+                                }
+                                revealInSystemFileManager(documentDir)
+                                call.respond(
+                                    RevealDocumentResponse(
+                                        filename = documentDir.name,
+                                        path = documentDir.absolutePath,
+                                        message = "Revealed ${documentDir.name}."
+                                    )
+                                )
+                            } catch (e: IllegalArgumentException) {
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf("error" to (e.message ?: "invalid reveal request"))
+                                )
+                            } catch (e: Exception) {
+                                lprintln("error,server", "document reveal failed: ${e.message}")
+                                call.respond(
+                                    HttpStatusCode.InternalServerError,
+                                    mapOf("error" to "could not reveal this document")
                                 )
                             }
                         }

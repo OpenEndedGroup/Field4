@@ -4,29 +4,54 @@ import afield.Generator
 
 class MapOfSequences<T> {
 
+    private val lock = Any()
     val starts = mutableMapOf<T, Sequence<Any?>>()
     var ongoings = mutableMapOf<T, Iterator<Any?>>()
 
     fun update() {
-        ongoings.values.retainAll {
-            if (it.hasNext()) {
-                it.next()
+        val current = synchronized(lock) {
+            ongoings.entries.map { it.key to it.value }
+        }
+
+        current.forEach { (key, iterator) ->
+            val stillCurrent = synchronized(lock) {
+                ongoings[key] === iterator
             }
-            it.hasNext()
+            if (!stillCurrent) return@forEach
+
+            val keep = if (iterator.hasNext()) {
+                iterator.next()
+                iterator.hasNext()
+            } else {
+                false
+            }
+
+            synchronized(lock) {
+                if (ongoings[key] === iterator && !keep) {
+                    ongoings.remove(key)
+                }
+            }
         }
-        starts.forEach { (t, u) ->
-            ongoings[t] = u.iterator()
+
+        synchronized(lock) {
+            starts.forEach { (t, u) ->
+                ongoings[t] = u.iterator()
+            }
+            starts.clear()
         }
-        starts.clear()
     }
 
     operator fun set(t: T, sequence: Sequence<Any?>) {
-        starts[t] = sequence
+        synchronized(lock) {
+            starts[t] = sequence
+        }
     }
 
     fun remove(t: T) {
-        starts.remove(t)
-        ongoings.remove(t)
+        synchronized(lock) {
+            starts.remove(t)
+            ongoings.remove(t)
+        }
     }
 }
 
