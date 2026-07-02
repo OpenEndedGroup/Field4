@@ -5,8 +5,8 @@ import afield.Generator
 class MapOfSequences<T> {
 
     private val lock = Any()
-    val starts = mutableMapOf<T, Sequence<Any?>>()
-    var ongoings = mutableMapOf<T, Iterator<Any?>>()
+    private val starts = mutableMapOf<T, Sequence<Any?>>()
+    private var ongoings = mutableMapOf<T, Iterator<Any?>>()
 
     fun update() {
         val current = synchronized(lock) {
