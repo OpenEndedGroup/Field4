@@ -152,9 +152,10 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 }
 
             }
+            val dedupedExtNames = extNames.distinct()
 
-            val requiredExtensions = stack.mallocPointer(extNames.size).apply {
-                extNames.forEach { put(ascii(it)) }
+            val requiredExtensions = stack.mallocPointer(dedupedExtNames.size).apply {
+                dedupedExtNames.forEach { put(ascii(it)) }
                 flip()
             }
 

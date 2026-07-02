@@ -86,9 +86,10 @@ class Instance(validate: Boolean) {
                 // VK_EXT_swapchain_colorspace enables HDR surface format enumeration (scRGB, HDR10, etc.)
                 if (Options.enableHDR && SWAPCHAIN_COLORSPACE_EXTENSION in supportedExts) add(SWAPCHAIN_COLORSPACE_EXTENSION)
             }
+            val dedupedExtNames = extNames.distinct()
 
-            val requiredExtensions = stack.mallocPointer(extNames.size).apply {
-                extNames.forEach { put(stack.ASCII(it)) }
+            val requiredExtensions = stack.mallocPointer(dedupedExtNames.size).apply {
+                dedupedExtNames.forEach { put(stack.ASCII(it)) }
                 flip()
             }
 
@@ -236,6 +237,16 @@ class Instance(validate: Boolean) {
 
         var globalAsyncDebugHandler: ((String) -> Unit)? = null
 
+        private val openXRVulkanExtensions = listOf(
+            KHRVulkanEnable.XR_KHR_VULKAN_ENABLE_EXTENSION_NAME,
+            KHRVulkanEnable2.XR_KHR_VULKAN_ENABLE2_EXTENSION_NAME
+        )
+
+        private val openXRValidationLayerCandidates = listOf(
+            "XR_APILAYER_LUNARG_core_validation",
+            "XR_APILAYER_KHRONOS_validation"
+        )
+
         fun getOpenXRRequiredInstanceExts(): List<String> {
             if (!Options.enableVR) return emptyList()
             ensureOpenXRExtensions()
@@ -253,6 +264,8 @@ class Instance(validate: Boolean) {
             if (!Options.enableVR) return
             if (xrBootstrap != null) return
             MemoryStack.stackPush().use { stack ->
+                val extNames = requiredOpenXRExtensions() ?: return
+                val apiLayers = enabledOpenXRApiLayers()
                 val appInfo = XrApplicationInfo.calloc(stack)
                 appInfo.applicationName(stack.UTF8("afield"))
                 appInfo.applicationVersion(1)
@@ -260,15 +273,11 @@ class Instance(validate: Boolean) {
                 appInfo.engineVersion(1)
                 appInfo.apiVersion(XR10.XR_API_VERSION_1_0)
 
-                val extNames = stack.pointers(
-                    stack.UTF8(KHRVulkanEnable.XR_KHR_VULKAN_ENABLE_EXTENSION_NAME),
-                    stack.UTF8(KHRVulkanEnable2.XR_KHR_VULKAN_ENABLE2_EXTENSION_NAME)
-                )
-
                 val createInfo = XrInstanceCreateInfo.calloc(stack)
                     .type(XR10.XR_TYPE_INSTANCE_CREATE_INFO)
                     .applicationInfo(appInfo)
-                    .enabledExtensionNames(extNames)
+                    .enabledExtensionNames(pointerBuffer(stack, extNames))
+                    .enabledApiLayerNames(pointerBuffer(stack, apiLayers))
 
                 val pInstance = stack.mallocPointer(1)
                 val createdRes = XR10.xrCreateInstance(createInfo, pInstance)
@@ -413,6 +422,8 @@ class Instance(validate: Boolean) {
             if (!Options.enableVR) return null
             peekOpenXRBootstrapPhys()?.let { return it }
             MemoryStack.stackPush().use { stack ->
+                val extNames = requiredOpenXRExtensions() ?: return null
+                val apiLayers = enabledOpenXRApiLayers()
                 val appInfo = XrApplicationInfo.calloc(stack)
                 appInfo.applicationName(stack.UTF8("afield"))
                 appInfo.applicationVersion(1)
@@ -420,15 +431,11 @@ class Instance(validate: Boolean) {
                 appInfo.engineVersion(1)
                 appInfo.apiVersion(XR10.XR_API_VERSION_1_0)
 
-                val extNames = stack.pointers(
-                    stack.UTF8(KHRVulkanEnable.XR_KHR_VULKAN_ENABLE_EXTENSION_NAME),
-                    stack.UTF8(KHRVulkanEnable2.XR_KHR_VULKAN_ENABLE2_EXTENSION_NAME)
-                )
-
                 val createInfo = XrInstanceCreateInfo.calloc(stack)
                     .type(XR10.XR_TYPE_INSTANCE_CREATE_INFO)
                     .applicationInfo(appInfo)
-                    .enabledExtensionNames(extNames)
+                    .enabledExtensionNames(pointerBuffer(stack, extNames))
+                    .enabledApiLayerNames(pointerBuffer(stack, apiLayers))
 
                 val pInstance = stack.mallocPointer(1)
                 val createdRes = XR10.xrCreateInstance(createInfo, pInstance)
@@ -472,10 +479,96 @@ class Instance(validate: Boolean) {
         private var xrInitialized = false
         private var xrBootstrap: OpenXRBootstrap? = null
 
+        private fun pointerBuffer(stack: MemoryStack, names: List<String>): PointerBuffer? {
+            if (names.isEmpty()) return null
+            return stack.mallocPointer(names.size).apply {
+                names.forEach { put(stack.UTF8(it)) }
+                flip()
+            }
+        }
+
+        private fun requiredOpenXRExtensions(): List<String>? {
+            val supported = enumerateOpenXRInstanceExtensions()
+            val missing = openXRVulkanExtensions.filter { it !in supported }
+            if (missing.isNotEmpty()) {
+                lprint("error,openxr", "missing required OpenXR extensions: $missing; supported=$supported")
+                return null
+            }
+            return openXRVulkanExtensions.distinct()
+        }
+
+        private fun enabledOpenXRApiLayers(): List<String> {
+            if (!Options.validate) return emptyList()
+            val supported = enumerateOpenXRApiLayers()
+            val selected = openXRValidationLayerCandidates.firstOrNull { it in supported }
+            if (selected == null) {
+                lprintln(
+                    "warning,openxr",
+                    "OpenXR validation requested but no known validation layer was found; supported layers=$supported"
+                )
+                return emptyList()
+            }
+            lprintln("info,openxr", "OpenXR validation layer enabled: $selected")
+            return listOf(selected)
+        }
+
+        private fun enumerateOpenXRInstanceExtensions(): Set<String> {
+            val out = linkedSetOf<String>()
+            MemoryStack.stackPush().use { stack ->
+                val count = stack.callocInt(1)
+                val countRes = XR10.xrEnumerateInstanceExtensionProperties(null as String?, count, null)
+                if (countRes != XR10.XR_SUCCESS) {
+                    lprint("error,openxr", "xrEnumerateInstanceExtensionProperties(count) returned $countRes")
+                    return emptySet()
+                }
+                val props = XrExtensionProperties.calloc(count[0], stack)
+                for (i in 0 until props.capacity()) {
+                    props[i].type(XR10.XR_TYPE_EXTENSION_PROPERTIES)
+                }
+                val propsRes = XR10.xrEnumerateInstanceExtensionProperties(null as String?, count, props)
+                if (propsRes != XR10.XR_SUCCESS) {
+                    lprint("error,openxr", "xrEnumerateInstanceExtensionProperties returned $propsRes")
+                    return emptySet()
+                }
+                repeat(props.capacity()) { i -> out += props[i].extensionNameString() }
+            }
+            return out
+        }
+
+        private fun enumerateOpenXRApiLayers(): Set<String> {
+            val out = linkedSetOf<String>()
+            MemoryStack.stackPush().use { stack ->
+                val count = stack.callocInt(1)
+                val countRes = XR10.xrEnumerateApiLayerProperties(count, null)
+                if (countRes != XR10.XR_SUCCESS) {
+                    lprint("error,openxr", "xrEnumerateApiLayerProperties(count) returned $countRes")
+                    return emptySet()
+                }
+                val props = XrApiLayerProperties.calloc(count[0], stack)
+                for (i in 0 until props.capacity()) {
+                    props[i].type(XR10.XR_TYPE_API_LAYER_PROPERTIES)
+                }
+                val propsRes = XR10.xrEnumerateApiLayerProperties(count, props)
+                if (propsRes != XR10.XR_SUCCESS) {
+                    lprint("error,openxr", "xrEnumerateApiLayerProperties returned $propsRes")
+                    return emptySet()
+                }
+                repeat(props.capacity()) { i -> out += props[i].layerNameString() }
+            }
+            return out
+        }
+
         private fun ensureOpenXRExtensions() {
             if (xrInitialized) return
             xrInitialized = true
             MemoryStack.stackPush().use { stack ->
+                val extNames = requiredOpenXRExtensions()
+                if (extNames == null) {
+                    xrCachedInstanceExts = emptyList()
+                    xrCachedDeviceExts = emptyList()
+                    return
+                }
+                val apiLayers = enabledOpenXRApiLayers()
                 // Build minimal OpenXR instance with Vulkan enable2 so we can query required Vulkan extensions
                 val appInfo = XrApplicationInfo.calloc(stack)
                 appInfo.applicationName(stack.UTF8("afield"))
@@ -484,15 +577,11 @@ class Instance(validate: Boolean) {
                 appInfo.engineVersion(1)
                 appInfo.apiVersion(XR10.XR_API_VERSION_1_0)
 
-                val extNames = stack.pointers(
-                    stack.UTF8(org.lwjgl.openxr.KHRVulkanEnable.XR_KHR_VULKAN_ENABLE_EXTENSION_NAME),
-                    stack.UTF8(org.lwjgl.openxr.KHRVulkanEnable2.XR_KHR_VULKAN_ENABLE2_EXTENSION_NAME)
-                )
-
                 val createInfo = XrInstanceCreateInfo.calloc(stack)
                     .type(XR10.XR_TYPE_INSTANCE_CREATE_INFO)
                     .applicationInfo(appInfo)
-                    .enabledExtensionNames(extNames)
+                    .enabledExtensionNames(pointerBuffer(stack, extNames))
+                    .enabledApiLayerNames(pointerBuffer(stack, apiLayers))
 
                 val pInstance = stack.mallocPointer(1)
                 val createdError = XR10.xrCreateInstance(createInfo, pInstance)
