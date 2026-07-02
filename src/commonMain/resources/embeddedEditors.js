@@ -370,9 +370,14 @@ function registerEmbeddedActions(editor, uid, property) {
 		for (const v of values) r |= keycode(v);
 		return r;
 	}
+	function addAction(action) {
+		editor.afieldActionMetadata = editor.afieldActionMetadata || {};
+		editor.afieldActionMetadata[action.id] = action;
+		return editor.addAction(action);
+	}
 
 	// ── F1 / Cmd/Ctrl+Shift+P → open Monaco's own command palette for this editor ─────────
-	editor.addAction({
+	addAction({
 		id: "embedded-command-palette",
 		label: "Command Palette",
 		keybindings: [
@@ -381,7 +386,13 @@ function registerEmbeddedActions(editor, uid, property) {
 		],
 		run: (ed) => {
 			ed.focus();
-			ed.trigger("keyboard", "editor.action.quickCommand", null);
+			if (typeof window.openFieldCommandPalette === "function") {
+				window.openFieldCommandPalette({ includeEditor: true, editor: ed });
+			} else if (typeof window.openQuickCommandPalette === "function") {
+				window.openQuickCommandPalette();
+			} else {
+				ed.trigger("keyboard", "editor.action.quickCommand", null);
+			}
 		},
 	});
 
@@ -393,7 +404,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	});
 
 	// ── Alt+Enter: execute fragment or reload shader ─────────────────
-	editor.addAction({
+	addAction({
 		id: "execute-fragment",
 		label: "Run Line / Selection",
 		keybindings: [keybinding(monacoApi.KeyMod.Alt, monacoApi.KeyCode.Enter)],
@@ -416,7 +427,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	});
 
 	// Alt+Shift+Enter: update shader when the reflected ABI is unchanged
-	editor.addAction({
+	addAction({
 		id: "update-shader",
 		label: "Update Shader",
 		keybindings: [keybinding(monacoApi.KeyMod.Alt, monacoApi.KeyMod.Shift, monacoApi.KeyCode.Enter)],
@@ -432,7 +443,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	});
 
 	// ── Alt+0: execute all ────────────────────────────────────────────
-	editor.addAction({
+	addAction({
 		id: "execute-all",
 		label: "Run Box",
 		keybindings: [keybinding(monacoApi.KeyMod.Alt, monacoApi.KeyCode.Digit0)],
@@ -453,7 +464,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	});
 
 	// ── Alt+1: launch fragment ───────────────────────────────────────
-	editor.addAction({
+	addAction({
 		id: "launch-fragment",
 		label: "Launch Line / Selection",
 		keybindings: [keybinding(monacoApi.KeyMod.Alt, monacoApi.KeyCode.Digit1)],
@@ -476,7 +487,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	});
 
 	// ── Alt+Up: launch all ───────────────────────────────────────────
-	editor.addAction({
+	addAction({
 		id: "launch-all",
 		label: "Launch Box",
 		keybindings: [keybinding(monacoApi.KeyMod.Alt, monacoApi.KeyCode.UpArrow)],
@@ -497,7 +508,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	});
 
 	// ── Alt+Shift+Up: continue all ───────────────────────────────────
-	editor.addAction({
+	addAction({
 		id: "continue-all",
 		label: "Continue Box",
 		keybindings: [keybinding(monacoApi.KeyMod.Alt, monacoApi.KeyMod.Shift, monacoApi.KeyCode.UpArrow)],
@@ -512,7 +523,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	});
 
 	// ── Alt+Down / Alt+Shift+Down: stop all ──────────────────────────
-	editor.addAction({
+	addAction({
 		id: "stop-all",
 		label: "Stop Box",
 		keybindings: [
@@ -530,7 +541,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	});
 
 	// ── Alt+Shift+P: send selection to preamble ──────────────────────
-	editor.addAction({
+	addAction({
 		id: "send-to-preamble",
 		label: "Move code to preamble",
 		keybindings: [keybinding(monacoApi.KeyMod.Alt, monacoApi.KeyMod.Shift, monacoApi.KeyCode.KeyP)],
@@ -550,7 +561,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	});
 
 	// ── Alt+O: AI assist ─────────────────────────────────────────────
-	editor.addAction({
+	addAction({
 		id: "ai-assist",
 		label: "Apply Intelligence",
 		keybindings: [keybinding(monacoApi.KeyMod.Alt, monacoApi.KeyCode.KeyO)],
@@ -581,7 +592,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	});
 
 	// ── Alt+Shift+O: AI assist on error ──────────────────────────────
-	editor.addAction({
+	addAction({
 		id: "ai-assist-error",
 		label: "Apply Intelligence to Error message",
 		keybindings: [keybinding(monacoApi.KeyMod.Alt, monacoApi.KeyMod.Shift, monacoApi.KeyCode.KeyO)],
@@ -606,7 +617,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	});
 
 	// ── Cmd+3: AI chat inline ────────────────────────────────────────
-	editor.addAction({
+	addAction({
 		id: "ai-chat",
 		label: "AI Chat in editor",
 		keybindings: [keybinding(monacoApi.KeyMod.CtrlCmd, monacoApi.KeyCode.Digit3)],
@@ -623,7 +634,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	});
 
 	// ── Cmd+4: AI chat panel ─────────────────────────────────────────
-	editor.addAction({
+	addAction({
 		id: "ai-chat-panel",
 		label: "AI Chat (panel)",
 		keybindings: [keybinding(monacoApi.KeyMod.CtrlCmd, monacoApi.KeyCode.Digit4)],
@@ -635,7 +646,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	});
 
 	// ── Provisional accept/reject ────────────────────────────────────
-	editor.addAction({
+	addAction({
 		id: "provisional-accept-current",
 		label: "Accept All Provisional (This Editor)",
 		keybindings: [],
@@ -643,7 +654,7 @@ function registerEmbeddedActions(editor, uid, property) {
 		contextMenuOrder: 1.6,
 		run: () => { send("provisional-accept", { uid, property }); },
 	});
-	editor.addAction({
+	addAction({
 		id: "provisional-reject-current",
 		label: "Reject All Provisional (This Editor)",
 		keybindings: [],
@@ -651,7 +662,7 @@ function registerEmbeddedActions(editor, uid, property) {
 		contextMenuOrder: 1.61,
 		run: () => { send("provisional-reject", { uid, property }); },
 	});
-	editor.addAction({
+	addAction({
 		id: "provisional-accept-all",
 		label: "Accept All Provisional (Everywhere)",
 		keybindings: [],
@@ -659,7 +670,7 @@ function registerEmbeddedActions(editor, uid, property) {
 		contextMenuOrder: 1.62,
 		run: () => { send("provisional-accept-all", {}); },
 	});
-	editor.addAction({
+	addAction({
 		id: "provisional-reject-all",
 		label: "Reject All Provisional (Everywhere)",
 		keybindings: [],
@@ -669,7 +680,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	});
 
 	// ── Cmd+': toggle fold ───────────────────────────────────────────
-	editor.addAction({
+	addAction({
 		id: "toggle-fold-current-line",
 		label: "Toggle Fold on Current Line",
 		keybindings: [keybinding(monacoApi.KeyMod.CtrlCmd, monacoApi.KeyCode.Quote)],
@@ -679,7 +690,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	// ── Cmd+. / Cmd+, : next/prev property ──────────────────────────
 	// For embedded editors, these switch the *main* editor's property
 	// via the global selectedProperty variable that the selection monitor reads.
-	editor.addAction({
+	addAction({
 		id: "forward-next-property",
 		label: "Next Property",
 		keybindings: [keybinding(monacoApi.KeyMod.CtrlCmd, monacoApi.KeyCode.Period)],
@@ -692,7 +703,7 @@ function registerEmbeddedActions(editor, uid, property) {
 			}
 		},
 	});
-	editor.addAction({
+	addAction({
 		id: "back-next-property",
 		label: "Previous Property",
 		keybindings: [keybinding(monacoApi.KeyMod.CtrlCmd, monacoApi.KeyCode.Comma)],

@@ -838,6 +838,7 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
             .replace("\n", "\\n")
             .replace("\r", "")
     }
+    fun jsStringLiteral(value: String): String = JSON.stringify(value)
 
     selection.flatMap { it }.associateBy { it.id }.toMap().entries.forEach {
         val fullDesc = it.value.description
@@ -847,6 +848,8 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
         val kbSpec = if (pipeIndex >= 0) fullDesc.substring(pipeIndex + 1) else ""
         val detail = it.value.detail.ifBlank { "" }
         val detailEscaped = escapeJsString(detail)
+        val docHtml = jsStringLiteral(it.value.docHtml)
+        val docJs = jsStringLiteral(it.value.docJs)
 
         val usesContextualShaderUpdateShortcut =
             it.key == "moduleHere_update" || it.key == "computeModuleHere_update"
@@ -857,6 +860,8 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
             ({
                 id:'${it.key}', label:'$label', 
                 detail:'$detailEscaped',
+                docHtml:$docHtml,
+                docJs:$docJs,
                 $kbLine
                 canvasKeybinding: (event) => false, 
                 run: () => { 
@@ -926,8 +931,6 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
             all.push(a)
         }
     }
-    fun jsStringLiteral(value: String): String = JSON.stringify(value)
-
     if (boxes.size >= 2) {
         val sourceName = (boxes.first().unsafeCast<dynamic>().name as? String)?.trim().orEmpty()
         val targetNames = boxes.drop(1).map { (it.unsafeCast<dynamic>().name as? String)?.trim().orEmpty() }

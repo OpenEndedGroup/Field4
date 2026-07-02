@@ -1799,6 +1799,11 @@ window.isNotesMarkdownPreviewActive = isNotesMarkdownPreviewActive
 window.focusNotesMarkdownPreview = focusNotesMarkdownPreview
 
 const quickInputIsVisible = () => {
+        const fieldPalette = document.querySelector(".afield-palette")
+        if (fieldPalette) {
+                const style = window.getComputedStyle(fieldPalette)
+                if (style.display !== "none" && style.visibility !== "hidden" && style.opacity !== "0") return true
+        }
         const quickInput = document.querySelector(".quick-input-widget")
         if (!quickInput) return false
         const style = window.getComputedStyle(quickInput)
@@ -1846,36 +1851,18 @@ window.addEventListener("keydown", (e) => {
 }, {capture: true})
 
 const showActionMenu = () => {
-        if (window.triggerQuickInput) {
-                triggerQuickInput(() => {
-                        globalEditor.getAction("editor.action.quickCommand").run()
-                })
-        } else {
-                globalEditor.getAction("editor.action.quickCommand").run()
-        }
+        openQuickCommandPalette()
 }
 
 const showPickMenu_custom = (options) => {
-        if (window.triggerQuickInput) {
-                triggerQuickInput(() => {
-                        globalPickMenu_custom(options)
-                })
-        } else {
-                globalPickMenu_custom(options)
-        }
+        globalPickMenu_custom(options)
 }
 
 // Expose for Kotlin/JS callers (e.g., insertFromWorkspace in commands.kt)
 window.showPickMenu_custom = showPickMenu_custom
 
 const showPickMenu = () => {
-        if (window.triggerQuickInput) {
-                triggerQuickInput(() => {
-                        globalPickMenu()
-                })
-        } else {
-                globalPickMenu()
-        }
+        globalPickMenu()
 }
 
 const openQuickCommandPalette = () => {
@@ -1886,8 +1873,10 @@ const openQuickCommandPalette = () => {
                 hideDocsIframe()
         }
 
-        if (isEditorFocused && window.globalEditor) {
-                window.globalEditor.trigger("", "editor.action.quickCommand", null);
+        if (isEditorFocused && window.globalEditor && typeof window.openFieldCommandPalette === "function") {
+                window.openFieldCommandPalette({ includeEditor: true, editor: window.globalEditor })
+        } else if (isEditorFocused && window.globalEditor) {
+                showPickMenu()
         } else {
                 if (typeof updateActions === "function") {
                         updateActions()

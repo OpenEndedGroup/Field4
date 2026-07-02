@@ -1138,6 +1138,7 @@ class FieldSuggestController {
   }
 
   scrollActiveRowIntoView(list, active) {
+    active.scrollIntoView({ block: "nearest" });
     const header = list.querySelector(".afield-suggest-section");
     const headerHeight = header ? header.getBoundingClientRect().height : 0;
     const listRect = list.getBoundingClientRect();

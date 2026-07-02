@@ -750,6 +750,10 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
 
     val disposables = mutableListOf<dynamic>()
     fun addAction(action: dynamic) {
+        if (editor.afieldActionMetadata == null || editor.afieldActionMetadata == undefined) {
+            editor.afieldActionMetadata = js("{}")
+        }
+        editor.afieldActionMetadata[action.id] = action
         val handle = editor.addAction(action)
         disposables.add(handle)
     }
@@ -933,7 +937,16 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
     }
 
     editor.addCommand(keybinding(monaco.KeyMod.CtrlCmd, monaco.KeyMod.Shift, monaco.KeyCode.KeyP)) {
-        editor.trigger("", "editor.action.quickCommand", null)
+        val w = js("window")
+        val fn = w.openFieldCommandPalette ?: w.openQuickCommandPalette
+        if (fn != null && fn != undefined) {
+            val options = js("{}")
+            options.includeEditor = true
+            options.editor = editor
+            fn(options)
+        } else {
+            editor.trigger("", "editor.action.quickCommand", null)
+        }
     }
 
     run {

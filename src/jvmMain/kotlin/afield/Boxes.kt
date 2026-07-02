@@ -624,7 +624,7 @@ fun doResync() {
                             actionTable[name] = { sel ->
                                 action.target(sel)
                             }
-                            Action_Desc(name, action.desc, action.detail)
+                            Action_Desc(name, action.desc, action.detail, action.docHtml, action.docJs)
                         })
                 )
             }
