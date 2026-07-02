@@ -91,7 +91,6 @@ val printRunJvmClasspath = providers.gradleProperty("printRunJvmClasspath")
     .orElse(true)
 val fieldAotCacheFile = layout.buildDirectory.file("aot/field.aot")
 val fieldAotCacheStampFile = layout.buildDirectory.file("aot/field.aot.stamp")
-val fieldAotTrainingWorkspace = layout.buildDirectory.dir("aot/workspace")
 val fieldAotTrainingPort = providers.gradleProperty("fieldAotPort")
     .orElse(providers.environmentVariable("AFIELD_AOT_PORT"))
     .orElse("9478")
@@ -151,24 +150,49 @@ fun fieldAotAutoGenerateEnabled(): Boolean {
     return requested.exists() || cacheSetting != null
 }
 
-fun configuredFieldAotCacheFile(): File? {
-    val candidate = requestedFieldAotCacheFile() ?: return null
+fun fieldAotCacheIsCurrent(
+    classpath: FileCollection,
+    javaLauncher: org.gradle.jvm.toolchain.JavaLauncher,
+    cacheFile: File,
+    streamableObjectArgs: List<String>,
+): Boolean {
+    val stampFile = fieldAotCacheStampFile.get().asFile
+    return cacheFile.exists() &&
+        stampFile.exists() &&
+        stampFile.readText() == fieldAotBuildFingerprint(
+            classpath,
+            javaLauncher,
+            cacheFile,
+            streamableObjectArgs,
+        )
+}
+
+fun fieldAotRuntimeJvmArgs(
+    classpath: FileCollection,
+    javaLauncher: org.gradle.jvm.toolchain.JavaLauncher,
+    logger: org.gradle.api.logging.Logger,
+): List<String> {
+    val candidate = requestedFieldAotCacheFile() ?: return emptyList()
     val cacheSetting = fieldAotCacheSetting()
 
     if (!candidate.exists()) {
-        if (cacheSetting == null && !fieldAotAutoGenerateEnabled()) return null
-        throw GradleException(
-            "Requested Field AOT cache ${candidate.absolutePath} does not exist. " +
-                "Run ./gradlew generateFieldAotCache first, enable -PfieldAotAutoGenerate=true, " +
-                "or disable it with -PfieldAotCache=false."
-        )
+        if (cacheSetting != null) {
+            logger.lifecycle("Field AOT cache ${candidate.absolutePath} does not exist; launching without AOT.")
+        }
+        return emptyList()
     }
 
-    return candidate
-}
+    val streamableObjectArgs = aotStreamableObjectJvmArgs(javaLauncher.metadata.languageVersion.asInt(), logger)
+    if (!fieldAotCacheIsCurrent(classpath, javaLauncher, candidate, streamableObjectArgs)) {
+        logger.lifecycle(
+            "Field AOT cache ${candidate.absolutePath} is stale for the current Field jar/classpath; " +
+                "launching without AOT. Run ./gradlew generateFieldAotCache to rebuild it."
+        )
+        return emptyList()
+    }
 
-fun fieldAotRuntimeJvmArgs(): List<String> =
-    configuredFieldAotCacheFile()?.let { listOf("-XX:AOTCache=${it.absolutePath}") } ?: emptyList()
+    return listOf("-XX:AOTCache=${candidate.absolutePath}")
+}
 
 fun MutableList<String>.addOrReplaceFieldAotCacheArgs(args: List<String>) {
     removeAll { it.startsWith("-XX:AOTCache=") }
@@ -798,7 +822,7 @@ tasks.named<JavaExec>("runJvm").configure {
             }
         }
         merged.addOrReplaceSystemProperties(configuredAi4TraceJvmArgs())
-        val aotJvmArgs = fieldAotRuntimeJvmArgs()
+        val aotJvmArgs = fieldAotRuntimeJvmArgs(classpath, javaLauncher.get(), logger)
         if (aotJvmArgs.isNotEmpty()) {
             classpath = files(fieldAotRuntimeClasspathFiles(classpath))
         }
@@ -947,9 +971,6 @@ tasks.register("generateFieldAotCache") {
         if (cacheFile.exists()) cacheFile.delete()
         if (stampFile.exists()) stampFile.delete()
 
-        val workspaceDir = fieldAotTrainingWorkspace.get().asFile
-        workspaceDir.mkdirs()
-
         val port = fieldAotTrainingPort.get().toIntOrNull()
             ?: throw GradleException("fieldAotPort/AFIELD_AOT_PORT must be an integer.")
         val httpPort = fieldAotTrainingHttpPort.orNull?.toIntOrNull() ?: (port + 10000)
@@ -982,7 +1003,6 @@ tasks.register("generateFieldAotCache") {
         }
 
         backendCommand += backendMain
-        backendCommand += listOf("--workspace", workspaceDir.absolutePath)
 
         logger.lifecycle("Generating Field AOT cache at ${cacheFile.absolutePath}")
         logger.lifecycle("Starting Field AOT training server on http://localhost:$httpPort/health")
@@ -994,6 +1014,7 @@ tasks.register("generateFieldAotCache") {
                 environment()["AFIELD_HTTP_PORT"] = httpPort.toString()
                 environment()["AFIELD_PORT_FALLBACK_COUNT"] = "1"
                 environment()["AFIELD_SYSTEM_BROWSER"] = "true"
+                environment()["AFIELD_SKIP_WORKSPACE_PERSIST"] = "true"
             }
             .start()
 
@@ -1276,7 +1297,7 @@ tasks.register("runDesktop") {
             if (!backendJvmArgs.contains(arg)) backendJvmArgs += arg
         }
         backendJvmArgs.addOrReplaceSystemProperties(configuredAi4TraceJvmArgs())
-        val aotJvmArgs = fieldAotRuntimeJvmArgs()
+        val aotJvmArgs = fieldAotRuntimeJvmArgs(runJvmTask.classpath, runJvmTask.javaLauncher.get(), logger)
         backendJvmArgs.addOrReplaceFieldAotCacheArgs(aotJvmArgs)
         val backendClasspath = if (aotJvmArgs.isNotEmpty()) {
             fieldAotRuntimeClasspath(runJvmTask.classpath)

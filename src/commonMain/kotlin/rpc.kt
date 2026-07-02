@@ -162,7 +162,10 @@ data class LocalEval(val uid: String, val prompt: String, val kind: String)
 data class Stop_box(val uid: String)
 
 @Serializable
-data class Expected_box_count(val count: Int)
+data class InitialBoxFrame(val uid: String, val frame: Rect)
+
+@Serializable
+data class Expected_box_count(val count: Int, val frames: List<InitialBoxFrame> = emptyList())
 
 @Serializable
 data class DocumentLoadStatus(

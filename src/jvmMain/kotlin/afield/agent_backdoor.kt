@@ -7,6 +7,7 @@ import afield.four.util.Window
 import afield.four.util.lastWindowToOpen
 import afield.logger.lprintln
 import afield.server.refreshFileProxyBoxes
+import io.ktor.websocket.Frame
 import io.ktor.websocket.WebSocketSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -15,6 +16,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
@@ -49,6 +51,7 @@ private data class CapturedProcessResult(
 private val agentBackdoorScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
 private const val AGENT_GRAPHICS_CONTEXT_NAME = "renderer"
+private const val INITIAL_FRAME_PREVIEW_PAINT_PAUSE_MS = 100L
 
 private fun String.isHttpUrl(): Boolean =
     startsWith("http://", ignoreCase = true) || startsWith("https://", ignoreCase = true)
@@ -154,13 +157,13 @@ internal fun attachDocumentSession(
     if (found != null) {
         attachRootToMetaroot(found.root)
         registerDocumentSession(session, found)
+        sendExpectedBoxCount(session, found)
         sendDocumentLoadStatus(
             session,
             phase = "attached",
             message = "attached to live document",
             count = countLoadableBoxes(found)
         )
-        sendExpectedBoxCount(session, found)
         sendDocumentLoadStatus(
             session,
             phase = "resync-started",
@@ -190,11 +193,16 @@ internal fun attachDocumentSession(
 
     if (!target.scratch) {
         try {
-            sendDocumentLoadStatus(
-                session,
-                phase = "metadata-loading",
-                message = "reading metadata"
-            )
+            val initialFrames = previewInitialBoxFrames(target.sessionKey)
+            if (initialFrames.isNotEmpty()) {
+                sendExpectedBoxFrames(session, initialFrames, flushNow = true)
+                lprintln(
+                    "info,agent_backdoor",
+                    "sent ${initialFrames.size} initial box frame previews for ${target.sessionKey}"
+                )
+                Thread.sleep(INITIAL_FRAME_PREVIEW_PAINT_PAUSE_MS)
+            }
+
             // Phase 1: Load boxes without triggering KotlinInterface init.
             // Box creation and property deserialization is fast; the heavy
             // synchronous KotlinInterface2 construction is deferred so we can
@@ -213,6 +221,7 @@ internal fun attachDocumentSession(
             // Phase 2: Tell the frontend how many boxes to expect BEFORE the
             // slow initialization work begins.
             val count = countLoadableBoxes(info)
+            sendExpectedBoxCount(session, info)
             sendDocumentLoadStatus(
                 session,
                 phase = "metadata-loaded",
@@ -220,7 +229,6 @@ internal fun attachDocumentSession(
                 count = count,
                 completed = 0
             )
-            sendExpectedBoxCount(session, info)
             sendDocumentLoadStatus(
                 session,
                 phase = "stdlib-started",
@@ -306,7 +314,7 @@ internal fun attachDocumentSession(
     return info
 }
 
-private fun countLoadableBoxes(info: SessionInformation): Int {
+private fun loadableBoxes(info: SessionInformation): List<Box> {
     val seen = linkedSetOf<Box>()
     val visited = linkedSetOf<Box>()
 
@@ -326,12 +334,44 @@ private fun countLoadableBoxes(info: SessionInformation): Int {
 
     visit(info.root)
     info.boxes.values.forEach(::include)
-    return seen.size
+    return seen.toList()
 }
 
+private fun countLoadableBoxes(info: SessionInformation): Int = loadableBoxes(info).size
+
+private fun previewInitialBoxFrames(sessionKey: String): List<InitialBoxFrame> =
+    try {
+        SavingContext().readInitialBoxFrames(sessionKey)
+    } catch (fnf: FileNotFoundException) {
+        emptyList()
+    } catch (t: Throwable) {
+        lprintln("warning,agent_backdoor", "unable to read initial box frame preview for $sessionKey: ${t.message}")
+        emptyList()
+    }
+
 private fun sendExpectedBoxCount(session: WebSocketSession, info: SessionInformation) {
-    val count = countLoadableBoxes(info)
-    _send(session, Message("expected-box-count").payload(Expected_box_count(count)))
+    val boxes = loadableBoxes(info)
+    sendExpectedBoxFrames(
+        session,
+        boxes.map { InitialBoxFrame(it.id, it.frame) }
+    )
+}
+
+private fun sendExpectedBoxFrames(session: WebSocketSession, frames: List<InitialBoxFrame>, flushNow: Boolean = false) {
+    val message = Message("expected-box-count").payload(
+        Expected_box_count(
+            count = frames.size,
+            frames = frames
+        )
+    )
+    if (flushNow) {
+        val encoded = Json.encodeToString(message)
+        runBlocking {
+            session.send(Frame.Text(encoded))
+        }
+    } else {
+        _send(session, message)
+    }
 }
 
 private fun sendDocumentLoadStatus(

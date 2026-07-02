@@ -48,6 +48,7 @@ import io.ktor.websocket.Frame
 import kotlinx.coroutines.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import org.joml.Vector2f
@@ -501,6 +502,13 @@ private fun readPersistedWorkspacePath(): String? =
         workspacePreferenceFile().takeIf { it.exists() }?.readText(Charsets.UTF_8)?.trim()?.takeIf { it.isNotBlank() }
     }.getOrNull()
 
+private fun shouldPersistWorkspacePath(): Boolean {
+    val setting = System.getenv("AFIELD_SKIP_WORKSPACE_PERSIST")?.trim()?.lowercase(Locale.US)
+        ?: System.getProperty("afield.skipWorkspacePersist")?.trim()?.lowercase(Locale.US)
+        ?: return true
+    return setting !in setOf("1", "true", "yes", "on", "enabled")
+}
+
 private fun currentAiSettingsStatus(): AiSettingsStatus {
     val status = aiProviderStatus()
     return AiSettingsStatus(
@@ -587,6 +595,7 @@ private fun applyFieldPreferences(preferences: FieldPreferences) {
 }
 
 private fun persistWorkspacePath(path: String) {
+    if (!shouldPersistWorkspacePath()) return
     runCatching {
         val workspace = displayWorkspacePath(path)
         val file = workspacePreferenceFile()
@@ -1001,6 +1010,75 @@ private data class PlaywrightPageHandle(
 )
 
 private fun jsonStringLiteral(value: String?): String = if (value == null) "null" else Json.encodeToString(value)
+
+private fun initialFramePreviewSessionKey(file: String?, scratch: Boolean, sessionKey: String?): String? {
+    val explicitSessionKey = sessionKey?.trim().takeIf { !it.isNullOrEmpty() }
+    if (explicitSessionKey != null) return explicitSessionKey
+    if (scratch) return null
+    val documentName = file?.trim().takeIf { !it.isNullOrEmpty() } ?: "default"
+    if (documentName.startsWith("http://", ignoreCase = true) ||
+        documentName.startsWith("https://", ignoreCase = true)
+    ) return null
+    return File(home, documentName).path
+}
+
+private fun indexInitialFramePreviewScript(file: String?, scratch: Boolean, sessionKey: String?): String {
+    val target = initialFramePreviewSessionKey(file, scratch, sessionKey) ?: return ""
+    val frames = runCatching { SavingContext().readInitialBoxFrames(target) }
+        .onFailure { lprintln("warning,server", "could not read initial frame preview for index $target: ${it.message}") }
+        .getOrDefault(emptyList())
+    if (frames.isEmpty()) return ""
+
+    val framesJson = Json.encodeToString(frames)
+    return """
+<script id="field-initial-frame-preview">
+(() => {
+  const frames = $framesJson;
+  if (!Array.isArray(frames) || frames.length === 0) return;
+  window.__fieldInitialFrameCount = frames.length;
+  window.__fieldInitialPlaceholderCount = frames.length;
+  const splash = document.getElementById("splash-screen");
+  if (splash) {
+    splash.classList.add("hidden");
+    splash.style.display = "none";
+  }
+  const layer = document.createElement("div");
+  layer.className = "box-placeholder-layer";
+  layer.setAttribute("aria-hidden", "true");
+  layer.setAttribute("data-origin", "html");
+  for (const initial of frames) {
+    if (!initial || initial.uid === "root" || !initial.frame) continue;
+    const frame = initial.frame;
+    const node = document.createElement("div");
+    node.className = "box-placeholder";
+    node.setAttribute("aria-hidden", "true");
+    node.dataset.uid = initial.uid;
+    node.uid = initial.uid;
+    node.style.transform = `translate(${'$'}{frame.x || 0}px, ${'$'}{frame.y || 0}px)`;
+    node.style.width = `${'$'}{frame.w || 0}px`;
+    node.style.height = `${'$'}{frame.h || 0}px`;
+    if (!frame.w && !frame.h) node.style.display = "none";
+    layer.appendChild(node);
+  }
+  document.body.appendChild(layer);
+})();
+</script>
+""".trim()
+}
+
+private fun injectInitialFramePreview(html: String, call: ApplicationCall): String {
+    val file = call.request.queryParameters["file"]
+    val scratch = call.request.queryParameters["scratch"]?.trim()?.lowercase(Locale.US) in setOf("1", "true", "yes")
+    val sessionKey = call.request.queryParameters["sessionKey"]
+    val script = indexInitialFramePreviewScript(file, scratch, sessionKey)
+    if (script.isBlank()) return html
+    val marker = "<div class=\"centered-container cheatsheet-hidden\" id=\"cheatsheet\">"
+    return if (html.contains(marker)) {
+        html.replace(marker, "$script\n\n$marker")
+    } else {
+        html.replace("<body>", "<body>\n$script")
+    }
+}
 
 private fun closeGlobalPlaywrightPageState() {
     runCatching { globalPlaywrightBrowserContext?.close() }
@@ -3234,6 +3312,27 @@ class Server {
                                 }
                             }
                         }
+                        get("/index.html") {
+                            val directories = listOf(
+                                File("./build/kotlin-webpack/js/productionExecutable/"),
+                                File("./build/kotlin-webpack/jsChat/productionExecutable/"),
+                                File("./src/jsChatMain/resources/"),
+                                File("./src/jsMain/resources/"),
+                                File("./src/commonMain/resources/"),
+                            )
+                            val indexFile = directories
+                                .map { File(it, "index.html") }
+                                .firstOrNull { it.exists() }
+
+                            if (indexFile != null) {
+                                val originalContent = indexFile.readText(Charsets.UTF_8)
+                                lprintln("info,server", "serving index file from ${indexFile.absolutePath}")
+                                val modifiedContent = injectInitialFramePreview(filter(originalContent), call)
+                                call.respondText(modifiedContent, ContentType.Text.Html)
+                            } else {
+                                call.respond(HttpStatusCode.NotFound, "index.html not found")
+                            }
+                        }
                         staticFiles(remotePath = "", dir = File("./build/js/packages/afield/kotlin"))
                         staticFiles(remotePath = "", dir = File("./src/jsChatMain/resources/static/"))
                         staticFiles(remotePath = "", dir = File("./src/jsMain/kotlin/resources/"))
@@ -3271,7 +3370,7 @@ class Server {
 
                                         lprintln("info,server", "serving index file from ${indexFile.absolutePath}")
 
-                                        val modifiedContent = filter(originalContent)
+                                        val modifiedContent = injectInitialFramePreview(filter(originalContent), call)
                                         call.respondText(modifiedContent, ContentType.Text.Html)
                                     }
                                 }

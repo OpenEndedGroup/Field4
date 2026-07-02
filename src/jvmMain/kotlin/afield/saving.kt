@@ -986,6 +986,30 @@ class SavingContext {
         return resolveValue(value, directory, { it }, createBoxes = false, preferInlineFiles = preferInlineFiles)
     }
 
+    fun readInitialBoxFrames(fn: String, filterId: (String) -> String = { it }): List<InitialBoxFrame> {
+        val file = File(fn)
+        val transfers = when {
+            file.isFile && file.name.endsWith(".edn") -> readEdnTransfersFromString(file.readText())
+            else -> {
+                val root = File(fn)
+                val ednFile = File(root, METADATA_EDN)
+                if (!ednFile.isFile) {
+                    throw FileNotFoundException("missing $METADATA_EDN in ${root.path}")
+                }
+                readEdnTransfers(root.path)
+            }
+        }
+
+        return transfers.mapNotNull { transfer ->
+            if (transfer.id == "root") return@mapNotNull null
+            if (transfer.properties["_tombstone"].isTrue()) return@mapNotNull null
+            val frame = transfer.properties["frame"] as? Rect
+                ?: coerceRect(transfer.properties["frame"])
+                ?: return@mapNotNull null
+            InitialBoxFrame(filterId(transfer.id), frame)
+        }
+    }
+
     fun updateRootMetadata(directory: String, metadata: String): Boolean {
         val rootFile = File(directory, METADATA_EDN)
         if (!rootFile.isFile) {
@@ -1222,7 +1246,8 @@ class SavingContext {
         createBoxes: Boolean,
         allowedRefIds: Set<String>? = null,
         root: SessionInformation? = null,
-        preferInlineFiles: Boolean = false
+        preferInlineFiles: Boolean = false,
+        initIfCreated: Boolean = true
     ): Any? = when (value) {
         null -> null
         is FileRef -> File(directory, value.path).readText()
@@ -1247,7 +1272,7 @@ class SavingContext {
                     )
                     SkipRef
                 } else {
-                    val v = box(id, createIfMissing = true, root = resolvedRoot)
+                    val v = box(id, createIfMissing = true, initIfCreated = initIfCreated, root = resolvedRoot)
                     if (id != sourceId) {
                         v.setPropertyRaw("source_id", sourceId)
                     }
@@ -1260,7 +1285,7 @@ class SavingContext {
             val resolved = mutableListOf<Any?>()
             value.forEach { item ->
                 val result =
-                    resolveValue(item, directory, filterId, createBoxes, allowedRefIds, root, preferInlineFiles)
+                    resolveValue(item, directory, filterId, createBoxes, allowedRefIds, root, preferInlineFiles, initIfCreated)
                 if (result !== SkipRef) {
                     resolved.add(result)
                 }
@@ -1272,7 +1297,7 @@ class SavingContext {
             val resolved = LinkedHashSet<Any?>()
             value.forEach { item ->
                 val result =
-                    resolveValue(item, directory, filterId, createBoxes, allowedRefIds, root, preferInlineFiles)
+                    resolveValue(item, directory, filterId, createBoxes, allowedRefIds, root, preferInlineFiles, initIfCreated)
                 if (result !== SkipRef) {
                     resolved.add(result)
                 }
@@ -1284,10 +1309,10 @@ class SavingContext {
             val mapped = LinkedHashMap<Any?, Any?>()
             for ((k, v) in value) {
                 val keyResolved =
-                    resolveValue(k, directory, filterId, createBoxes, allowedRefIds, root, preferInlineFiles)
+                    resolveValue(k, directory, filterId, createBoxes, allowedRefIds, root, preferInlineFiles, initIfCreated)
                 if (keyResolved === SkipRef) continue
                 val valueResolved =
-                    resolveValue(v, directory, filterId, createBoxes, allowedRefIds, root, preferInlineFiles)
+                    resolveValue(v, directory, filterId, createBoxes, allowedRefIds, root, preferInlineFiles, initIfCreated)
                 if (valueResolved === SkipRef) continue
                 mapped[keyResolved] = valueResolved
             }
@@ -1326,7 +1351,8 @@ class SavingContext {
                     filterId,
                     createBoxes = createBoxes,
                     allowedRefIds = allowedRefIds,
-                    preferInlineFiles = preferInlineFiles
+                    preferInlineFiles = preferInlineFiles,
+                    initIfCreated = initIfCreated
                 )
                 if (v != null) {
                     b.setPropertyRaw(name, v)
@@ -1408,7 +1434,7 @@ class SavingContext {
             val id = filterId(it.id)
             val b = box(id, createIfMissing = true, initIfCreated = initIfCreated)
             it.properties.forEach { (name, element) ->
-                val v = fromTypedPair(element, root, filterId)
+                val v = fromTypedPair(element, root, filterId, initIfCreated = initIfCreated)
                 if (v != null) {
                     b.setPropertyRaw(name, v)
                 }
@@ -1425,7 +1451,8 @@ class SavingContext {
         element: Pair<String, JsonElement>,
         directory: String,
         filterId: (String) -> String = { it },
-        createBoxes: Boolean = true
+        createBoxes: Boolean = true,
+        initIfCreated: Boolean = true
     ): Any? = when (element.first) {
         "__file__" -> File(directory, format.decodeFromJsonElement<String>(element.second)).readText()
         "Rect" -> format.decodeFromJsonElement<Rect>(element.second) as Any
@@ -1439,7 +1466,7 @@ class SavingContext {
                 BoxRef(sourceId)
             } else {
                 val id = filterId(sourceId)
-                val v = box(id, createIfMissing = true)
+                val v = box(id, createIfMissing = true, initIfCreated = initIfCreated)
                 if (id != sourceId) {
                     v.setPropertyRaw("source_id", sourceId)
                 }
@@ -1448,11 +1475,11 @@ class SavingContext {
         }
 
         "List" -> format.decodeFromJsonElement<List<Pair<String, JsonElement>>>(element.second).map {
-            fromTypedPair(it, directory, filterId, createBoxes)
+            fromTypedPair(it, directory, filterId, createBoxes, initIfCreated)
         }.toMutableList() as Any
 
         "Set" -> format.decodeFromJsonElement<List<Pair<String, JsonElement>>>(element.second).map {
-            fromTypedPair(it, directory, filterId, createBoxes)
+            fromTypedPair(it, directory, filterId, createBoxes, initIfCreated)
         }.toMutableSet() as Any
 
         else -> {

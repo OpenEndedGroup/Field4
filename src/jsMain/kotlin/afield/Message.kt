@@ -16,7 +16,7 @@ private fun wsUrl(): String {
     return "$proto://" + document.location?.host + "/ws"
 }
 
-var client = WebSocket(wsUrl())
+lateinit var client: WebSocket
 
 val pileup = mutableListOf<String>()
 val onOpen = mutableListOf<Message>()
@@ -26,6 +26,7 @@ var reopen_backoff = 100L
 private val reopen_backoff_min = 100L
 private val reopen_backoff_max = 30_000L
 private var reconnectTimeoutHandle: Int? = null
+private var splashFadeStarted = false
 
 private fun clearReconnectTimeout() {
     reconnectTimeoutHandle?.let { window.clearTimeout(it) }
@@ -51,6 +52,9 @@ fun reopen() {
 var isReconnect = false
 
 fun initializeClient() {
+    if (!::client.isInitialized) {
+        client = WebSocket(wsUrl())
+    }
     window.asDynamic().fieldClientOpen = clientOpen
     window.asDynamic().fieldBackdoorDisconnectedOverlayActive = !clientOpen
     client.onopen = {
@@ -60,11 +64,6 @@ fun initializeClient() {
             if (isReconnect) {
                 (document.getElementById("overlaycanvas") as HTMLElement).style.unsafeCast<dynamic>().backdropFilter = ""
             }
-        }
-        
-        // Hide splash screen on first connection
-        if (!isReconnect) {
-            hideSplashScreenAfterFontLoad()
         }
         
         clientOpen = true
@@ -110,13 +109,25 @@ fun initializeClient() {
     }
 }
 
-private fun hideSplashScreenAfterFontLoad() {
+fun hideSplashScreenImmediately() {
     val splashScreen = document.getElementById("splash-screen") as? HTMLElement ?: return
 
-    var fadeStarted = false
     fun startFade() {
-        if (fadeStarted) return
-        fadeStarted = true
+        if (splashFadeStarted) return
+        splashFadeStarted = true
+        splashScreen.classList.add("hidden")
+        splashScreen.style.display = "none"
+    }
+
+    startFade()
+}
+
+fun hideSplashScreenAfterFontLoad() {
+    val splashScreen = document.getElementById("splash-screen") as? HTMLElement ?: return
+
+    fun startFade() {
+        if (splashFadeStarted) return
+        splashFadeStarted = true
         splashScreen.classList.add("hidden")
         setTimeout(1000.toDuration(DurationUnit.MILLISECONDS)) {
             splashScreen.style.display = "none"

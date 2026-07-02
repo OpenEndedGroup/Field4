@@ -2647,12 +2647,135 @@ fun getAllLayers(): Set<String> {
 }
 
 private const val FRAME_VISIBILITY_EPSILON = 1e-6
+private const val OFFLINE_BOX_VISIBLE_OPACITY = 0.4
+private const val OFFLINE_BOX_ARRIVAL_DURATION_MS = 500
 
 fun hasRenderableFrame(box: HTMLElement): Boolean {
     val d = box.unsafeCast<dynamic>()
     val w = (d.data_w as? Number)?.toDouble() ?: 0.0
     val h = (d.data_h as? Number)?.toDouble() ?: 0.0
     return w > FRAME_VISIBILITY_EPSILON || h > FRAME_VISIBILITY_EPSILON
+}
+
+private fun boxVisibleOpacity(box: HTMLElement): String =
+    if (box.classList.contains("offline") || box.asDynamic().offline == true) {
+        OFFLINE_BOX_VISIBLE_OPACITY.toString()
+    } else {
+        "1"
+    }
+
+private fun animateOfflineBoxArrival(box: HTMLElement) {
+    if (!box.classList.contains("offline") && box.asDynamic().offline != true) return
+    if (!isBoxVisible(box) || !hasRenderableFrame(box)) return
+
+    box.style.transition = "opacity ${OFFLINE_BOX_ARRIVAL_DURATION_MS}ms ease-out, filter 0.2s"
+    box.style.opacity = "0"
+    window.setTimeout({
+        box.style.opacity = boxVisibleOpacity(box)
+    }, 0)
+    window.setTimeout({
+        box.style.transition = ""
+        if (isBoxVisible(box)) {
+            box.style.opacity = boxVisibleOpacity(box)
+        }
+    }, OFFLINE_BOX_ARRIVAL_DURATION_MS)
+}
+
+private val initialBoxPlaceholders = mutableMapOf<String, HTMLElement>()
+private var initialBoxPlaceholderLayer: HTMLElement? = null
+
+private fun publishInitialPlaceholderCount(lastFrameCount: Int? = null) {
+    val w = window.asDynamic()
+    if (lastFrameCount != null) {
+        w.__fieldInitialFrameCount = lastFrameCount
+    }
+    w.__fieldInitialPlaceholderCount = initialBoxPlaceholders.size
+}
+
+private fun removeBoxPlaceholder(uid: String) {
+    val fromMap = initialBoxPlaceholders.remove(uid)
+    val fromHtml = if (fromMap == null) {
+        initialBoxPlaceholderLayer
+            ?.getElementsByClassName("box-placeholder")
+            ?.asList()
+            ?.firstOrNull {
+                val element = it as? HTMLElement
+                element?.asDynamic()?.uid == uid || element?.getAttribute("data-uid") == uid
+            } as? HTMLElement
+    } else null
+    (fromMap ?: fromHtml)?.remove()
+    publishInitialPlaceholderCount()
+}
+
+private fun initialPlaceholderLayer(): HTMLElement {
+    val existing = initialBoxPlaceholderLayer
+    if (existing != null) return existing
+
+    val layer = (document.querySelector(".box-placeholder-layer") as? HTMLElement)
+        ?: (document.createElement("div") as HTMLElement).also {
+            it.classList.add("box-placeholder-layer")
+            it.setAttribute("aria-hidden", "true")
+            document.body?.appendChild(it)
+        }
+    initialBoxPlaceholderLayer = layer
+    layer.getElementsByClassName("box-placeholder").asList().forEach {
+        val element = it as? HTMLElement ?: return@forEach
+        val uid = (element.asDynamic().uid as? String)
+            ?: element.getAttribute("data-uid")
+            ?: return@forEach
+        element.asDynamic().uid = uid
+        initialBoxPlaceholders[uid] = element
+    }
+    syncInitialPlaceholderLayerTransform()
+    return layer
+}
+
+private fun syncInitialPlaceholderLayerTransform() {
+    val layer = initialBoxPlaceholderLayer ?: return
+    val canvas = if (::mainCanvas.isInitialized) mainCanvas.asDynamic() else null
+    val x = (canvas?.data_x as? Number)?.toDouble() ?: 0.0
+    val y = (canvas?.data_y as? Number)?.toDouble() ?: 0.0
+    layer.style.transform = "translate(${x}px, ${y}px)"
+}
+
+private fun renderInitialBoxPlaceholders(frames: List<InitialBoxFrame>) {
+    publishInitialPlaceholderCount(frames.size)
+    if (frames.isNotEmpty()) {
+        hideSplashScreenImmediately()
+    }
+    val layer = initialPlaceholderLayer()
+    frames.forEach { initial ->
+        val uid = initial.uid
+        if (uid == "root") return@forEach
+        val existingBox = document.body?.getElementsByClassName("box")?.asList()
+            ?.firstOrNull { it.unsafeCast<dynamic>().uid == uid } as? HTMLElement
+        if (existingBox != null && !existingBox.classList.contains("offline") && existingBox.asDynamic().offline != true) {
+            removeBoxPlaceholder(uid)
+            return@forEach
+        }
+
+        val frame = initial.frame
+        var placeholder = initialBoxPlaceholders[uid]
+            ?: layer.getElementsByClassName("box-placeholder").asList().firstOrNull {
+                val element = it as? HTMLElement
+                element?.asDynamic()?.uid == uid || element?.getAttribute("data-uid") == uid
+            } as? HTMLElement
+        if (placeholder == null) {
+            placeholder = document.createElement("div") as HTMLElement
+            placeholder.classList.add("box-placeholder")
+            placeholder.setAttribute("aria-hidden", "true")
+            placeholder.asDynamic().uid = uid
+            placeholder.setAttribute("data-uid", uid)
+            layer.appendChild(placeholder)
+        }
+        initialBoxPlaceholders[uid] = placeholder
+        placeholder.style.transform = "translate(${frame.x}px, ${frame.y}px)"
+        placeholder.style.width = "${frame.w}px"
+        placeholder.style.height = "${frame.h}px"
+        placeholder.style.display =
+            if (frame.w > FRAME_VISIBILITY_EPSILON || frame.h > FRAME_VISIBILITY_EPSILON) "block" else "none"
+    }
+    publishInitialPlaceholderCount(frames.size)
 }
 
 private fun applyFrameToBox(box: HTMLElement, frame: Rect) {
@@ -2690,7 +2813,7 @@ private fun applyBoxVisibilityImmediate(box: HTMLElement, includeOutputArea: Boo
     )
 
     box.style.visibility = if (visible) "visible" else "hidden"
-    box.style.opacity = if (visible) "1" else "0"
+    box.style.opacity = if (visible) boxVisibleOpacity(box) else "0"
     box.style.asDynamic().pointerEvents = if (visible) "auto" else "none"
     if (visible) box.style.display = "flex" else box.style.display = "none"
 
@@ -3709,9 +3832,7 @@ suspend fun main() {
     boxSnappingSystem.initialize()
 
     document.title = filename.substringAfterLast("/")
-    registerOnOpen(Message("hello").payload(Hello(filename, username, sessionKey = sessionKey, scratch = scratch)))
 
-    initializeClient()
     registerDoubleTap()
     installSpatialNavigationShortcut()
 
@@ -3764,21 +3885,30 @@ suspend fun main() {
             LoadingTracker.boxAdded(u)
         } else {
             val box = found as HTMLElement
+            val wasRenderable = hasRenderableFrame(box)
             applyFrameToBox(box, set.value)
             applyBoxVisibilityImmediate(box)
+            if (!wasRenderable && hasRenderableFrame(box)) {
+                animateOfflineBoxArrival(box)
+            }
         }
+        hideSplashScreenAfterFontLoad()
         return true
     }
 
     handlers.put("expected-box-count") { message, _ ->
         val ebc = Json.decodeFromJsonElement<Expected_box_count>(message.payload!!)
         LoadingTracker.setExpectedCount(ebc.count)
+        renderInitialBoxPlaceholders(ebc.frames)
         Handled.yes
     }
 
     handlers.put("document-load-status") { message, _ ->
         val status = Json.decodeFromJsonElement<DocumentLoadStatus>(message.payload!!)
         LoadingTracker.documentLoadStatus(status)
+        if (status.terminal && status.count == 0) {
+            hideSplashScreenAfterFontLoad()
+        }
         Handled.yes
     }
 
@@ -3943,11 +4073,14 @@ suspend fun main() {
                     if (set.number) {
                         found.unsafeCast<HTMLElement>().classList.add("offline")
                         found.asDynamic().offline = true
+                        applyBoxVisibilityImmediate(found.unsafeCast<HTMLElement>())
                         canvasGestures.rebuildConnectionGroup()
                     }
                     else {
                         found.unsafeCast<HTMLElement>().classList.remove("offline")
                         found.asDynamic().offline = false
+                        applyBoxVisibilityImmediate(found.unsafeCast<HTMLElement>())
+                        removeBoxPlaceholder(u)
                         canvasGestures.rebuildConnectionGroup()
                         LoadingTracker.boxOnline(u)
                     }
@@ -4757,6 +4890,9 @@ suspend fun main() {
 
     }.first()
 
+    registerOnOpen(Message("hello").payload(Hello(filename, username, sessionKey = sessionKey, scratch = scratch)))
+    initializeClient()
+
     overlaySVGLayer = document.getElementById("overlaysvglayer") as SVGSVGElement
     ensureAnnotationLayer()
 
@@ -4806,6 +4942,7 @@ suspend fun main() {
 
             mc.data_x = x
             mc.data_y = y
+            syncInitialPlaceholderLayerTransform()
 
             updateBackgroundGrid(x.toDouble(), y.toDouble(), panning = true)
 
@@ -4848,6 +4985,7 @@ suspend fun main() {
 
             mc.data_x = x
             mc.data_y = y
+            syncInitialPlaceholderLayerTransform()
 
             updateBackgroundGrid(x.toDouble(), y.toDouble(), panning = true)
 
@@ -4866,6 +5004,7 @@ suspend fun main() {
 
     mainCanvas.unsafeCast<dynamic>().data_x = 0
     mainCanvas.unsafeCast<dynamic>().data_y = 0
+    syncInitialPlaceholderLayerTransform()
     updateBackgroundGrid(0.0, 0.0, panning = false)
 
     // File drop handler: metadata.edn imports boxes; other files open a file-proxy marking menu.
@@ -5439,9 +5578,7 @@ suspend fun main() {
         )
     ).on("resizemove") { event: dynamic ->
 
-        val originalTarget = event._interaction.downEvent.target
-        val isBox = originalTarget?.unsafeCast<HTMLElement>()?.classList?.contains("box") ?: false
-        if (!isBox) {
+        if (resizeStartBoxTarget(event._interaction.downEvent.target) == null) {
             return@on
         }
 
@@ -5635,6 +5772,9 @@ fun TagConsumer<HTMLElement>.createBox(
 
     oa = d1.getElementsByClassName("outputArea").asList()[0] as HTMLElement
     applyBoxVisibilityImmediate(d1)
+    if (!sendInitialSync) {
+        animateOfflineBoxArrival(d1)
+    }
 
     if (sendInitialSync) {
         send(
@@ -5675,6 +5815,14 @@ fun reorient(it: dynamic): dynamic {
     return it.unsafeCast<HTMLElement>().parentElement?.let { parent ->
         reorient(parent)
     }
+}
+
+private fun resizeStartBoxTarget(it: dynamic): HTMLElement? {
+    val target = it as? HTMLElement ?: return null
+    val box = target.closest(".box") as? HTMLElement ?: return null
+    val outputArea = target.closest(".outputArea") as? HTMLElement
+    if (outputArea != null && !outputArea.contains(box)) return null
+    return box
 }
 
 
