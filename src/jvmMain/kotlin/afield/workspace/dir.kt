@@ -91,6 +91,16 @@ data class RunloopTimingStats(
 )
 
 @Serializable
+data class RuntimeAotCacheStatus(
+    val state: String = "unknown",
+    val summary: String = "unknown",
+    val cachePath: String = "",
+    val autoGenerate: Boolean = false,
+    val attempted: Boolean = false,
+    val detail: String = ""
+)
+
+@Serializable
 data class RuntimeInfo(
     val javaVersion: String = "",
     val javaRuntimeName: String = "",
@@ -111,6 +121,7 @@ data class RuntimeInfo(
     val maxMemoryBytes: Long = 0,
     val totalMemoryBytes: Long = 0,
     val freeMemoryBytes: Long = 0,
+    val aotCacheStatus: RuntimeAotCacheStatus = RuntimeAotCacheStatus(),
     val gcPauseStats: GcPauseStats = GcPauseStats(),
     val runloopTimingStats: RunloopTimingStats = RunloopTimingStats()
 )

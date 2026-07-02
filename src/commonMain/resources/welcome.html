@@ -529,6 +529,14 @@
 
         .runtime-info-value.runtime-info-compact {
             color: rgba(238, 246, 251, 0.98);
+        }
+
+        .runtime-metric-label {
+            color: var(--field-text-soft);
+            font-weight: 400;
+        }
+
+        .runtime-metric-number {
             font-weight: 600;
         }
 
@@ -2290,6 +2298,15 @@
         return `${(ms / 1000).toFixed(2)}s`;
     }
 
+    function runtimeMetricHtml(label, value) {
+        const separator = String(label).endsWith("=") ? "" : " ";
+        return `<span class="runtime-metric-label">${escapeHtml(label)}</span>${separator}<span class="runtime-metric-number">${escapeHtml(value)}</span>`;
+    }
+
+    function runtimeMetricListHtml(entries) {
+        return entries.map(([label, value]) => runtimeMetricHtml(label, value)).join(" · ");
+    }
+
     function renderRuntimeInfo() {
         const summary = document.getElementById("runtime-info-summary");
         const grid = document.getElementById("runtime-info-grid");
@@ -2300,6 +2317,15 @@
         const javaLabel = info.javaVmVendor || info.javaVendor || "JVM";
         const versionLabel = info.javaVersion || info.runtimeVersion || "";
         if (summary) summary.textContent = versionLabel ? `${javaLabel} ${versionLabel}` : "unknown";
+        const aotStatus = info.aotCacheStatus || {};
+        const aotParts = [];
+        if (aotStatus.summary) aotParts.push(aotStatus.summary);
+        if (aotStatus.cachePath) aotParts.push(aotStatus.cachePath);
+        if (aotStatus.detail) aotParts.push(aotStatus.detail);
+        if (aotStatus.autoGenerate && aotStatus.state !== "working" && aotStatus.state !== "rebuilding") {
+            aotParts.push("auto-rebuild enabled");
+        }
+        const aotCache = aotParts.join(" · ");
 
         const memory = [
             `max ${formatBytes(info.maxMemoryBytes)}`,
@@ -2308,12 +2334,12 @@
         ].join(" · ");
         const gc = info.gcPauseStats || {};
         const gcPauses = gc.sampleCount > 0
-            ? [
-                `p50 ${formatMs(gc.medianPauseMs)}`,
-                `p95 ${formatMs(gc.p95PauseMs)}`,
-                `latest ${formatMs(gc.latestPauseMs)}`,
-                `n=${gc.sampleCount}`
-            ].join(" · ")
+            ? runtimeMetricListHtml([
+                ["p50", formatMs(gc.medianPauseMs)],
+                ["p95", formatMs(gc.p95PauseMs)],
+                ["latest", formatMs(gc.latestPauseMs)],
+                ["n=", gc.sampleCount]
+            ])
             : (gc.monitoring
                 ? `waiting for GC samples · ${gc.collectorCount || 0} collectors`
                 : "GC notifications unavailable");
@@ -2322,33 +2348,34 @@
             ? `${Number(runloop.ticksPerSecond || 0).toFixed(0)} ticks/s · frame ${runloop.frame || 0}`
             : (runloop.running ? "collecting samples" : "not started");
         const runloopInterval = runloop.sampleCount > 0
-            ? [
-                `p50 ${formatMs(runloop.intervalMedianMs)}`,
-                `p95 ${formatMs(runloop.intervalP95Ms)}`,
-                `p99 ${formatMs(runloop.intervalP99Ms)}`,
-                `max ${formatMs(runloop.intervalMaxMs)}`
-            ].join(" · ")
+            ? runtimeMetricListHtml([
+                ["p50", formatMs(runloop.intervalMedianMs)],
+                ["p95", formatMs(runloop.intervalP95Ms)],
+                ["p99", formatMs(runloop.intervalP99Ms)],
+                ["max", formatMs(runloop.intervalMaxMs)]
+            ])
             : "";
         const runloopWork = runloop.sampleCount > 0
-            ? [
-                `p50 ${formatMs(runloop.workMedianMs)}`,
-                `p95 ${formatMs(runloop.workP95Ms)}`,
-                `p99 ${formatMs(runloop.workP99Ms)}`,
-                `max ${formatMs(runloop.workMaxMs)}`
-            ].join(" · ")
+            ? runtimeMetricListHtml([
+                ["p50", formatMs(runloop.workMedianMs)],
+                ["p95", formatMs(runloop.workP95Ms)],
+                ["p99", formatMs(runloop.workP99Ms)],
+                ["max", formatMs(runloop.workMaxMs)]
+            ])
             : "";
         const runloopMicropauses = runloop.sampleCount > 0
-            ? [
-                `>1ms ${runloop.intervalsOver1Ms || 0}`,
-                `>4ms ${runloop.intervalsOver4Ms || 0}`,
-                `>8ms ${runloop.intervalsOver8Ms || 0}`,
-                `>16ms ${runloop.intervalsOver16Ms || 0}`,
-                `n=${runloop.sampleCount || 0}`
-            ].join(" · ")
+            ? runtimeMetricListHtml([
+                [">1ms", runloop.intervalsOver1Ms || 0],
+                [">4ms", runloop.intervalsOver4Ms || 0],
+                [">8ms", runloop.intervalsOver8Ms || 0],
+                [">16ms", runloop.intervalsOver16Ms || 0],
+                ["n=", runloop.sampleCount || 0]
+            ])
             : "";
         const rows = [
             ["Java", [info.javaRuntimeName, info.javaRuntimeVersion || info.javaVersion].filter(Boolean).join(" ")],
             ["VM", [info.javaVmName, info.javaVmVersion].filter(Boolean).join(" ")],
+            ["AOT cache", aotCache, "runtime-info-compact"],
             ["Vendor", info.javaVmVendor || info.javaVendor || ""],
             ["Home", info.javaHome || ""],
             ["OS", [info.osName, info.osVersion, info.osArch].filter(Boolean).join(" ")],
@@ -2357,17 +2384,17 @@
             ["CPU", info.availableProcessors ? `${info.availableProcessors} processors` : ""],
             ["Memory", memory],
             ["RunLoop", runloopSpeed],
-            ["RunLoop interval", runloopInterval, "runtime-info-compact"],
-            ["RunLoop work", runloopWork, "runtime-info-compact"],
-            ["RunLoop pauses", runloopMicropauses, "runtime-info-compact"],
-            ["GC pauses", gcPauses, "runtime-info-compact"]
+            ["RunLoop interval", runloopInterval, "runtime-info-compact", true],
+            ["RunLoop work", runloopWork, "runtime-info-compact", true],
+            ["RunLoop pauses", runloopMicropauses, "runtime-info-compact", true],
+            ["GC pauses", gcPauses, "runtime-info-compact", gc.sampleCount > 0]
         ].filter(([, value]) => value);
 
-        grid.innerHTML = rows.map(([label, value, className]) => {
+        grid.innerHTML = rows.map(([label, value, className, valueIsHtml]) => {
             const compactClass = className ? ` ${className}` : "";
             return `
             <span class="runtime-info-label${compactClass}">${escapeHtml(label)}</span>
-            <span class="runtime-info-value${compactClass}">${escapeHtml(value)}</span>
+            <span class="runtime-info-value${compactClass}">${valueIsHtml ? value : escapeHtml(value)}</span>
         `;
         }).join("");
 

@@ -167,19 +167,66 @@ fun fieldAotCacheIsCurrent(
         )
 }
 
-fun fieldAotRuntimeJvmArgs(
+data class FieldAotRuntimeLaunch(
+    val cacheJvmArgs: List<String>,
+    val statusJvmArgs: List<String>,
+)
+
+fun fieldAotStatusJvmArgs(
+    state: String,
+    summary: String,
+    cacheFile: File?,
+    autoGenerate: Boolean,
+    attempted: Boolean,
+    detail: String,
+): List<String> = listOf(
+    "-Dafield.aot.state=$state",
+    "-Dafield.aot.summary=$summary",
+    "-Dafield.aot.cache.path=${cacheFile?.absolutePath.orEmpty()}",
+    "-Dafield.aot.autoGenerate=$autoGenerate",
+    "-Dafield.aot.attempted=$attempted",
+    "-Dafield.aot.detail=$detail",
+)
+
+fun fieldAotRuntimeLaunch(
     classpath: FileCollection,
     javaLauncher: org.gradle.jvm.toolchain.JavaLauncher,
     logger: org.gradle.api.logging.Logger,
-): List<String> {
-    val candidate = requestedFieldAotCacheFile() ?: return emptyList()
+): FieldAotRuntimeLaunch {
+    val autoGenerate = fieldAotAutoGenerateEnabled()
+    val candidate = requestedFieldAotCacheFile() ?: return FieldAotRuntimeLaunch(
+        cacheJvmArgs = emptyList(),
+        statusJvmArgs = fieldAotStatusJvmArgs(
+            state = "disabled",
+            summary = "not attempted",
+            cacheFile = null,
+            autoGenerate = autoGenerate,
+            attempted = false,
+            detail = "AOT cache is disabled by fieldAotCache/AFIELD_AOT_CACHE."
+        )
+    )
     val cacheSetting = fieldAotCacheSetting()
 
     if (!candidate.exists()) {
         if (cacheSetting != null) {
             logger.lifecycle("Field AOT cache ${candidate.absolutePath} does not exist; launching without AOT.")
         }
-        return emptyList()
+        val notAttempted = cacheSetting == null && !autoGenerate
+        return FieldAotRuntimeLaunch(
+            cacheJvmArgs = emptyList(),
+            statusJvmArgs = fieldAotStatusJvmArgs(
+                state = if (notAttempted) "not-attempted" else "missing",
+                summary = if (notAttempted) "not attempted" else "missing",
+                cacheFile = candidate,
+                autoGenerate = autoGenerate,
+                attempted = !notAttempted,
+                detail = if (notAttempted) {
+                    "No AOT cache was requested. Start with ./gradlew runDesktop -PfieldAotCache=true to generate and use it."
+                } else {
+                    "Configured AOT cache file does not exist; launching without AOT."
+                }
+            )
+        )
     }
 
     val streamableObjectArgs = aotStreamableObjectJvmArgs(javaLauncher.metadata.languageVersion.asInt(), logger)
@@ -188,10 +235,30 @@ fun fieldAotRuntimeJvmArgs(
             "Field AOT cache ${candidate.absolutePath} is stale for the current Field jar/classpath; " +
                 "launching without AOT. Run ./gradlew generateFieldAotCache to rebuild it."
         )
-        return emptyList()
+        return FieldAotRuntimeLaunch(
+            cacheJvmArgs = emptyList(),
+            statusJvmArgs = fieldAotStatusJvmArgs(
+                state = "stale",
+                summary = "stale",
+                cacheFile = candidate,
+                autoGenerate = autoGenerate,
+                attempted = true,
+                detail = "AOT cache fingerprint does not match the current Field jar/classpath; launching without AOT."
+            )
+        )
     }
 
-    return listOf("-XX:AOTCache=${candidate.absolutePath}")
+    return FieldAotRuntimeLaunch(
+        cacheJvmArgs = listOf("-XX:AOTCache=${candidate.absolutePath}"),
+        statusJvmArgs = fieldAotStatusJvmArgs(
+            state = "working",
+            summary = "working",
+            cacheFile = candidate,
+            autoGenerate = autoGenerate,
+            attempted = true,
+            detail = "AOT cache fingerprint matches the current Field jar/classpath."
+        )
+    )
 }
 
 fun MutableList<String>.addOrReplaceFieldAotCacheArgs(args: List<String>) {
@@ -657,7 +724,7 @@ kotlin {
                 implementation(files("libs/kotlin-compiler-embeddable-$customKotlinVersion.jar"))
                 implementation(files("libs/kotlin-scripting-compiler-impl-embeddable-$customKotlinVersion.jar"))
                 implementation(files("libs/kotlin-scripting-compiler-embeddable-$customKotlinVersion.jar"))
-                implementation("com.facebook:ktfmt:0.54")
+                implementation("com.facebook:ktfmt:0.64")
 
                 implementation(files("libs/kotlin-scripting-ide-services-$customKotlinVersion.jar"))
                 implementation(files("libs/kotlin-scripting-common-$customKotlinVersion.jar"))
@@ -822,11 +889,12 @@ tasks.named<JavaExec>("runJvm").configure {
             }
         }
         merged.addOrReplaceSystemProperties(configuredAi4TraceJvmArgs())
-        val aotJvmArgs = fieldAotRuntimeJvmArgs(classpath, javaLauncher.get(), logger)
-        if (aotJvmArgs.isNotEmpty()) {
+        val aotLaunch = fieldAotRuntimeLaunch(classpath, javaLauncher.get(), logger)
+        if (aotLaunch.cacheJvmArgs.isNotEmpty()) {
             classpath = files(fieldAotRuntimeClasspathFiles(classpath))
         }
-        merged.addOrReplaceFieldAotCacheArgs(aotJvmArgs)
+        merged.addOrReplaceSystemProperties(aotLaunch.statusJvmArgs)
+        merged.addOrReplaceFieldAotCacheArgs(aotLaunch.cacheJvmArgs)
         setJvmArgs(merged)
 
         if (printRunJvmClasspath.get()) {
@@ -1297,9 +1365,10 @@ tasks.register("runDesktop") {
             if (!backendJvmArgs.contains(arg)) backendJvmArgs += arg
         }
         backendJvmArgs.addOrReplaceSystemProperties(configuredAi4TraceJvmArgs())
-        val aotJvmArgs = fieldAotRuntimeJvmArgs(runJvmTask.classpath, runJvmTask.javaLauncher.get(), logger)
-        backendJvmArgs.addOrReplaceFieldAotCacheArgs(aotJvmArgs)
-        val backendClasspath = if (aotJvmArgs.isNotEmpty()) {
+        val aotLaunch = fieldAotRuntimeLaunch(runJvmTask.classpath, runJvmTask.javaLauncher.get(), logger)
+        backendJvmArgs.addOrReplaceSystemProperties(aotLaunch.statusJvmArgs)
+        backendJvmArgs.addOrReplaceFieldAotCacheArgs(aotLaunch.cacheJvmArgs)
+        val backendClasspath = if (aotLaunch.cacheJvmArgs.isNotEmpty()) {
             fieldAotRuntimeClasspath(runJvmTask.classpath)
         } else {
             runJvmTask.classpath.asPath

@@ -174,9 +174,63 @@ private val gcPauseMonitor = GcPauseMonitor
 
 private fun systemProperty(name: String): String = System.getProperty(name).orEmpty()
 
+private fun booleanSystemProperty(name: String): Boolean =
+    systemProperty(name).trim().lowercase() in setOf("1", "true", "yes", "on", "enabled")
+
+private fun firstRuntimeArgValue(inputArguments: List<String>, prefix: String): String =
+    inputArguments.firstOrNull { it.startsWith(prefix) }?.removePrefix(prefix).orEmpty()
+
+private fun currentAotCacheStatus(inputArguments: List<String>): RuntimeAotCacheStatus {
+    val activeCache = firstRuntimeArgValue(inputArguments, "-XX:AOTCache=")
+    if (activeCache.isNotBlank()) {
+        return RuntimeAotCacheStatus(
+            state = "working",
+            summary = "working",
+            cachePath = activeCache,
+            autoGenerate = booleanSystemProperty("afield.aot.autoGenerate"),
+            attempted = true,
+            detail = "JVM launched with -XX:AOTCache."
+        )
+    }
+
+    val outputCache = firstRuntimeArgValue(inputArguments, "-XX:AOTCacheOutput=")
+    if (outputCache.isNotBlank()) {
+        return RuntimeAotCacheStatus(
+            state = "rebuilding",
+            summary = "rebuilding",
+            cachePath = outputCache,
+            autoGenerate = true,
+            attempted = true,
+            detail = "Training JVM is writing -XX:AOTCacheOutput."
+        )
+    }
+
+    val state = systemProperty("afield.aot.state").ifBlank { "not-attempted" }
+    val cachePath = systemProperty("afield.aot.cache.path")
+    val summary = systemProperty("afield.aot.summary").ifBlank {
+        when (state) {
+            "disabled" -> "not attempted"
+            "missing" -> "missing"
+            "stale" -> "stale"
+            else -> "not attempted"
+        }
+    }
+    val detail = systemProperty("afield.aot.detail")
+
+    return RuntimeAotCacheStatus(
+        state = state,
+        summary = summary,
+        cachePath = cachePath,
+        autoGenerate = booleanSystemProperty("afield.aot.autoGenerate"),
+        attempted = booleanSystemProperty("afield.aot.attempted"),
+        detail = detail
+    )
+}
+
 private fun currentRuntimeInfo(): RuntimeInfo {
     val runtime = Runtime.getRuntime()
     val runtimeMxBean = ManagementFactory.getRuntimeMXBean()
+    val inputArguments = runtimeMxBean.inputArguments
     return RuntimeInfo(
         javaVersion = systemProperty("java.version"),
         javaRuntimeName = systemProperty("java.runtime.name"),
@@ -192,11 +246,12 @@ private fun currentRuntimeInfo(): RuntimeInfo {
         osArch = systemProperty("os.arch"),
         processId = ProcessHandle.current().pid(),
         uptimeMs = System.currentTimeMillis() - serverStartedAtEpochMs,
-        inputArguments = runtimeMxBean.inputArguments,
+        inputArguments = inputArguments,
         availableProcessors = runtime.availableProcessors(),
         maxMemoryBytes = runtime.maxMemory(),
         totalMemoryBytes = runtime.totalMemory(),
         freeMemoryBytes = runtime.freeMemory(),
+        aotCacheStatus = currentAotCacheStatus(inputArguments),
         gcPauseStats = gcPauseMonitor.stats(),
         runloopTimingStats = Runloop.runLoop.timingStats()
     )
