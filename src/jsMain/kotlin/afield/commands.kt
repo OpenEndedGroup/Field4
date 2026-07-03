@@ -884,6 +884,24 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
         run {
             val e = """
             ({
+                id:'fmt-property', label:'Format', 
+                detail:'Format the current property with the backend formatter',
+                canvasKeybinding: (event) => false, 
+                run: () => { 
+                    import("./afield.mjs").then( (afield) => {afield.send("perform-action", {
+                                uid_action: '-format-property',
+                                uid_currentSelection: [${selId}],
+                                uid_property: window.currentSelectedProperty || window.selectedProperty || 'code'
+                        })})}
+            })
+        """.trimIndent()
+            val a = eval(e)
+            all.push(a)
+        }
+
+        run {
+            val e = """
+            ({
                 id:'fmt-kotlin', label:'Format Kotlin', 
                 detail:'Fix the formatting of your code',
                 canvasKeybinding: (event) => false, 

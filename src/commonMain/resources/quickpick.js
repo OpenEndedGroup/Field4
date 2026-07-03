@@ -1094,17 +1094,29 @@ class FieldPaletteController {
                         ? await Promise.resolve(this.options.getItems(query))
                         : (this.options.items || [])
                 if (generation !== this.generation) return
-                this.items = this.rankItems(source || [], query)
+                this.items = this.groupOrderItems(this.rankItems(source || [], query))
                 this.activeIndex = this.items.length ? 0 : -1
                 this.render(query)
         }
 
         rankItems(items, query) {
                 const q = String(query || "").trim()
+                const tokens = q.toLowerCase().split(/\s+/).filter(Boolean)
+                const substringMatch = (haystack) => {
+                        if (!tokens.length) return 0
+                        const lower = String(haystack || "").toLowerCase()
+                        if (!tokens.every((token) => lower.includes(token))) return -Infinity
+                        return tokens.reduce((score, token) => {
+                                const index = lower.indexOf(token)
+                                return score + (index === 0 ? 10 : 5) - Math.min(index, 40) * 0.05
+                        }, 0)
+                }
                 return items
                         .map((item, index) => {
                                 const haystack = [item.label, item.description, item.detail, item.id, item.category].filter(Boolean).join(" ")
-                                const fuzzy = paletteFuzzyScore(q, haystack)
+                                const fuzzy = this.options.matchMode === "substring"
+                                        ? substringMatch(haystack)
+                                        : paletteFuzzyScore(q, haystack)
                                 const score = (item.score || 0) + fuzzy - index * 0.001
                                 return { item, score, fuzzy, index }
                         })
@@ -1113,10 +1125,18 @@ class FieldPaletteController {
                         .map((entry) => entry.item)
         }
 
-        groupedItems() {
+        groupOrderItems(items) {
+                const ordered = []
+                this.groupedItemsFor(items).forEach((group) => {
+                        group.entries.forEach(({ item }) => ordered.push(item))
+                })
+                return ordered
+        }
+
+        groupedItemsFor(items) {
                 const groups = []
                 const byTitle = new Map()
-                this.items.forEach((item, index) => {
+                ;(items || []).forEach((item, index) => {
                         const title = item.category || paletteProviderTitle(item.provider)
                         let group = byTitle.get(title)
                         if (!group) {
@@ -1127,6 +1147,10 @@ class FieldPaletteController {
                         group.entries.push({ item, index })
                 })
                 return groups
+        }
+
+        groupedItems() {
+                return this.groupedItemsFor(this.items)
         }
 
         render(query) {
@@ -1520,6 +1544,7 @@ function openFieldCommandPalette(options = {}) {
                 placeholder: includeEditor ? "Run an editor or Field command..." : "Run a document command...",
                 hint: includeEditor ? `Press ${shortcut} again for document-level commands.` : "",
                 items,
+                matchMode: "substring",
         })
 }
 window.openFieldCommandPalette = openFieldCommandPalette

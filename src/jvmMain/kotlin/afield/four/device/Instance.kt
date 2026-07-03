@@ -47,9 +47,11 @@ class Instance(validate: Boolean) {
 
             // --- Layers
             val validationLayers = supportedValidationLayers
-            var supportsValidation = validate && validationLayers.isNotEmpty()
-            if (validate && !supportsValidation) {
-                lprintln("warning,vulkan", "Requested validation, but no supported layers found")
+            val wantsValidationLayer = validate || Options.shaderDebugPrintf
+            val wantsDebugPrintf = validate || Options.shaderDebugPrintf
+            val supportsValidation = wantsValidationLayer && validationLayers.isNotEmpty()
+            if (wantsValidationLayer && !supportsValidation) {
+                lprintln("warning,vulkan", "Requested validation layer features, but no supported layers found")
             }
 
             var requiredLayers: PointerBuffer? = null
@@ -102,12 +104,23 @@ class Instance(validate: Boolean) {
                 pNextHead = debugUtilsCreateInfo!!.address()
             }
 
-            // Validation features (enable shader printf)
+            // Validation features. Shader printf is implemented by the validation layer; when
+            // full validation is off, keep the layer loaded but disable core checks.
             if (supportsValidation && hasValidationFeatures) {
-                val enables = stack.ints(EXTValidationFeatures.VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT)
+                val enables = if (wantsDebugPrintf) {
+                    stack.ints(EXTValidationFeatures.VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT)
+                } else {
+                    null
+                }
+                val disables = if (!validate && wantsDebugPrintf) {
+                    stack.ints(EXTValidationFeatures.VK_VALIDATION_FEATURE_DISABLE_CORE_CHECKS_EXT)
+                } else {
+                    null
+                }
                 val vfeat = VkValidationFeaturesEXT.calloc(stack)
                     .sType(EXTValidationFeatures.VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT)
                     .pEnabledValidationFeatures(enables)
+                    .pDisabledValidationFeatures(disables)
                     .pNext(pNextHead)
                 pNextHead = vfeat.address()
             }

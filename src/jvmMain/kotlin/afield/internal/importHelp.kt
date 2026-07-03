@@ -38,13 +38,67 @@ fun classesWithPrefix(name: String, hideDollarSignClasses : Boolean = true): Lis
     }
 }
 
+private val kotlinDefaultImportedTypeNames = setOf(
+    "Any",
+    "Annotation",
+    "Array",
+    "Boolean",
+    "BooleanArray",
+    "Byte",
+    "ByteArray",
+    "Char",
+    "CharArray",
+    "CharSequence",
+    "Comparable",
+    "Double",
+    "DoubleArray",
+    "Enum",
+    "Float",
+    "FloatArray",
+    "Int",
+    "IntArray",
+    "Long",
+    "LongArray",
+    "Nothing",
+    "Number",
+    "Short",
+    "ShortArray",
+    "String",
+    "Throwable",
+    "Unit"
+)
+
+private val defaultImportedPackages = setOf(
+    "kotlin",
+    "kotlin.annotation",
+    "kotlin.collections",
+    "kotlin.comparisons",
+    "kotlin.io",
+    "kotlin.ranges",
+    "kotlin.sequences",
+    "kotlin.text",
+    "java.lang"
+)
+
+private fun isDefaultImportedTypeName(name: String): Boolean {
+    val trimmed = name.trim().removeSurrounding("`")
+    if (trimmed.isBlank()) return false
+    if (trimmed in kotlinDefaultImportedTypeNames) return true
+    val packageName = trimmed.substringBeforeLast('.', missingDelimiterValue = "")
+    return packageName in defaultImportedPackages
+}
+
 fun kotlinImportStatementFor(name: String): String? {
+    if (isDefaultImportedTypeName(name)) return null
+
     val n = findClassesNamed(name)
     if (n == null) return null;
     if (n.size > 1) {
         lprintln("warning,import", "multiple classes called ${name} = ${cache[name]}")
         return null
     }
+
+    if (isDefaultImportedTypeName(n[0])) return null
 
     return "import ${n[0].replace("$", ".")}"
 }

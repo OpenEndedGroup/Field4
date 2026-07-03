@@ -1950,7 +1950,13 @@ class Server {
                     if (action == null) {
                         lprintln("warning,server", "no such action '$action'")
                     } else {
-                        action.invoke(exec.uid_currentSelection.mapNotNull { box(it, createIfMissing = false) })
+                        val previousProperty = currentActionProperty.get()
+                        currentActionProperty.set(exec.uid_property.ifBlank { "code" })
+                        try {
+                            action.invoke(exec.uid_currentSelection.mapNotNull { box(it, createIfMissing = false) })
+                        } finally {
+                            currentActionProperty.set(previousProperty)
+                        }
                     }
                     Handled.yes
                 })

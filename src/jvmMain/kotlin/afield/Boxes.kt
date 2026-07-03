@@ -426,11 +426,39 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                 notify("Un-nested $count box${if (count == 1) "" else "es"}")
             }
 
+            actionTable["-format-property"] = { boxes ->
+                val property = currentActionProperty.get().ifBlank { "code" }
+                var formatted = 0
+                var unsupported = 0
+                boxes.forEach { box ->
+                    val current = box.getPropertyRaw(property) as? String
+                    if (current == null) {
+                        unsupported++
+                    } else {
+                        val next = formatCodeProperty(property, current)
+                        if (next == null) {
+                            unsupported++
+                        } else {
+                            box.setPropertyRaw(property, next)
+                            formatted++
+                        }
+                    }
+                }
+                if (formatted > 0) {
+                    notify("Formatted '$property' on $formatted box${if (formatted == 1) "" else "es"}")
+                } else {
+                    notify("No formatter for '$property'")
+                }
+                if (unsupported > 0 && formatted > 0) {
+                    lprintln("info,boxes", "format skipped $unsupported box/property values for '$property'")
+                }
+            }
+
             actionTable["-format-kotlin"] = { boxes ->
                 boxes.forEach {
                     it.code = formatKotlinCode(it.code)
                 }
-                notify("Formated 'code' as Kotlin on ${boxes.size}")
+                notify("Formatted 'code' as Kotlin on ${boxes.size}")
             }
 
             actionTable["-delete-box"] = { boxes ->
@@ -544,6 +572,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
 }
 
 var actionTable = mutableMapOf<String, (List<Box>) -> Unit>()
+val currentActionProperty: ThreadLocal<String> = ThreadLocal.withInitial { "code" }
 
 fun doResync() {
     needsResync.removeAll { (box, name) ->

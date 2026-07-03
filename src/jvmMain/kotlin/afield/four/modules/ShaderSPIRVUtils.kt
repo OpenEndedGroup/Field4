@@ -142,7 +142,7 @@ object ShaderSPIRVUtils {
         val opts = Shaderc.shaderc_compile_options_initialize()
 //        Shaderc.shaderc_compile_options_set_target_env(opts, Shaderc.shaderc_target_env_webgpu, Shaderc.shaderc_env_version_webgpu)
 
-        if (Options.validate) {
+        if (Options.validate || Options.shaderDebugPrintf) {
             Shaderc.shaderc_compile_options_set_generate_debug_info(opts)
         }
 

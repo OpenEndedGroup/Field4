@@ -138,6 +138,10 @@ object Options {
     )?.trim()?.takeIf { it.isNotEmpty() }?.toBooleanStrictOrNull()
 
     var validate = validateOverride ?: true
+    var shaderDebugPrintf = System.getProperty(
+        "afield.four.shaderDebugPrintf",
+        System.getenv("AFIELD_FOUR_SHADER_DEBUG_PRINTF") ?: "false"
+    ).toBoolean()
     var preferredDevice: String? = null
     var enableRayTracing: Boolean = !isMac
     var requestedImages = 3

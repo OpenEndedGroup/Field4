@@ -306,7 +306,7 @@ fun requiredRunJvmArgs(): List<String> {
     val onWindowsOrLinux = os.contains("windows") || os.contains("linux")
 
     return buildList {
-        add("-Xmx4g")
+        add("-Xmx8g")
         add("--add-opens=java.base/java.net=ALL-UNNAMED")
         add("-Dorg.lwjgl.system.stackSize=256")
         add("-Xlog:gc*,safepoint:file=build/gc-safepoint.log:time,uptime,level,tags")

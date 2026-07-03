@@ -48,9 +48,13 @@ fun target(a: (CommandBuffer, Int) -> Unit) = object : Target {
     override fun render(command: CommandBuffer, index: Int) = a(command, index)
 }
 
+private const val PERF_LOG_INTERVAL_NS = 5_000_000_000L
+
 /** Lightweight CPU span stats. */
 object CPUSpan {
     private const val WINDOW = 500
+    private var lastSnapshotLogNs = 0L
+
     data class Stat(val samples: ArrayDeque<Long> = ArrayDeque()) {
         fun add(dtNs: Long) {
             samples.addLast(dtNs)
@@ -123,7 +127,9 @@ object CPUSpan {
     }
 
     fun snapshotAndMaybePrint(everyNFrames: Int, frame: Long, header: String = "CPU") {
-        if (frame % everyNFrames != 0L) return
+        val now = System.nanoTime()
+        if (lastSnapshotLogNs != 0L && now - lastSnapshotLogNs < PERF_LOG_INTERVAL_NS) return
+        lastSnapshotLogNs = now
         val snaps = snapshot()
         if (snaps.isEmpty()) return
         val line = buildString {
@@ -773,6 +779,9 @@ class Renderer(
     }
 
     var frameCounter = 0L
+    private var lastVertexUploadStatsLogNs = 0L
+    private var lastRunFpsLogNs = 0L
+    private var lastRunFpsFrame = 0
 
     private fun beginFrameUploadStats() {
         synchronized(uploadStatsLock) {
@@ -805,7 +814,9 @@ class Renderer(
     }
 
     private fun maybeLogVertexUploadStats(frame: Long, stats: VertexUploadFrameStats, everyNFrames: Int = 120) {
-        if (frame % everyNFrames != 0L) return
+        val now = System.nanoTime()
+        if (lastVertexUploadStatsLogNs != 0L && now - lastVertexUploadStatsLogNs < PERF_LOG_INTERVAL_NS) return
+        lastVertexUploadStatsLogNs = now
         fun mib(bytes: Long): Double = bytes.toDouble() / (1024.0 * 1024.0)
         lprintln(
             "info,perf",
@@ -1810,7 +1821,7 @@ class Renderer(
 
     fun runForever(update: () -> Unit) {
         running = true
-        var initialTime = System.currentTimeMillis()
+        var initialTime = System.nanoTime()
         var frame = 0
         while (running && windows.any { !it.shouldClose() }) {
             print(".")
@@ -1818,9 +1829,11 @@ class Renderer(
             update()
             render()
             frame++
-            if (frame % 200 == 0) {
-                print(" fps=${1000.0 * 200 / (System.currentTimeMillis() - initialTime)} ")
-                initialTime = System.currentTimeMillis()
+            val now = System.nanoTime()
+            if (now - initialTime >= PERF_LOG_INTERVAL_NS) {
+                print(" fps=${1_000_000_000.0 * frame / (now - initialTime)} ")
+                initialTime = now
+                frame = 0
             }
         }
         cleanup()
@@ -1828,15 +1841,20 @@ class Renderer(
 
     suspend fun run() {
         running = true
-        var initialTime = System.currentTimeMillis()
         var frame = 0
         while (running && windows.any { !it.shouldClose() }) {
             logTime("pollEvents") { windows.forEach { it.pollEvents() } }
             logTime("render") { render() }
             frame++
-            if (frame % 100 == 0) {
-                lprintln("info,perf", "fps=${1000.0 * 100 / (System.currentTimeMillis() - initialTime)} Thread = ${Thread.currentThread().name} = ${System.identityHashCode(Thread.currentThread().name)} ${isMainThread}")
-                initialTime = System.currentTimeMillis()
+            val now = System.nanoTime()
+            if (lastRunFpsLogNs == 0L) {
+                lastRunFpsLogNs = now
+                lastRunFpsFrame = frame
+            } else if (now - lastRunFpsLogNs >= PERF_LOG_INTERVAL_NS) {
+                val framesSinceLastLog = frame - lastRunFpsFrame
+                lprintln("info,perf", "fps=${1_000_000_000.0 * framesSinceLastLog / (now - lastRunFpsLogNs)} Thread = ${Thread.currentThread().name} = ${System.identityHashCode(Thread.currentThread().name)} ${isMainThread}")
+                lastRunFpsLogNs = now
+                lastRunFpsFrame = frame
             }
             logTime_("compute") { yield() }
             if (coroutineContext[Job]!!.isCancelled) break

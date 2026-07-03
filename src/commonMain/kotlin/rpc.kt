@@ -586,7 +586,11 @@ class RequestHashtags(val boxes: List<String>, val getOrSet: Boolean, val value:
 
 
 @Serializable
-data class Perform_action(val uid_currentSelection: List<String>, val uid_action: String)
+data class Perform_action(
+    val uid_currentSelection: List<String>,
+    val uid_action: String,
+    val uid_property: String = "code"
+)
 
 @Serializable
 data class CopyBoxes(val uids: List<String>)

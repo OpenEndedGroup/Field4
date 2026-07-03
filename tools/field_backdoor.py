@@ -42,7 +42,7 @@ LOG_COLLECTION_PREVIEW = 32
 GRAPHICS_CONTEXT_WAIT_SEC = 0.5
 GRAPHICS_CONTEXT_BOX_NAME = "renderer"
 GRADLE_WRAPPER_JAR = REPO_ROOT / "gradle" / "wrapper" / "gradle-wrapper.jar"
-GRADLE_JVMARGS = "-Xmx4g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
+GRADLE_JVMARGS = "-Xmx8g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
 
 
 class BackdoorError(RuntimeError):
