@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="color-scheme" content="dark">
     <title>Field | 4</title>
-    <link rel="preload" href="/iosevka-regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/woff2/iosevka-regular.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/iosevka.css" as="style">
     <link rel="stylesheet" href="/iosevka.css">
     <link rel="stylesheet" href="/field.css">
@@ -46,37 +46,62 @@
 
 <div class="centered-container cheatsheet-hidden" id="cheatsheet">
     <div class="centered-container-div">
-        <span class="leftKey"></span> <span class="rightKey">use the url to open a document, e.g. <b>http://localhost:9092/index.html?file=helloWorld</b></span><br><br>
-        <span class="leftKey"><kbd>N</kbd></span> <span class="rightKey">creates a <b>new box</b></span><br>
-        <span class="leftKey">(select)</span> <span class="rightKey">selecting a box shows an <b>editor</b> for the code inside it</span><br><br>
-        <span class="leftKey"><kbd>?</kbd></span> <span class="rightKey">shows this <b>help card</b></span><br>
-        <span class="leftKey"><kbd>⌃</kbd>/<kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>P</kbd></span> <span class="rightKey">opens the searchable <b>command palette</b></span><br>
-        <span class="leftKey"><kbd>⌃</kbd>/<kbd>⌘</kbd> <kbd>P</kbd></span> <span class="rightKey">opens <b>anything</b>: boxes, properties, commands, and document text</span><br>
-        <span class="leftKey"><kbd>⇧</kbd> <kbd>⇧</kbd></span> <span class="rightKey">double tap <b>opens anything</b> from the canvas</span><br>
-        <span class="leftKey"><kbd>⌃</kbd>/<kbd>⌘</kbd> <kbd>⌃</kbd>/<kbd>⌘</kbd></span> <span class="rightKey">double tap and hold for <b>spatial navigation</b>; use arrow keys to move between boxes</span><br><br>
-        <span class="leftKey"><kbd>⌥</kbd> <kbd>0</kbd></span> <span class="rightKey"><b>executes all code</b> in a box</span><br>
-        <span class="leftKey"><kbd>⌥</kbd> click</span> <span class="rightKey"><b>launches</b> a box</span><br>
-        <span class="leftKey"><kbd>⌥</kbd> <kbd>↑</kbd></span> <span
-            class="rightKey">also <b>launches</b> a box</span><br>
-        <span class="leftKey"><kbd>⌥</kbd> <kbd>⇧</kbd> <kbd>↑</kbd></span> <span class="rightKey"><b>continues</b> a launched box</span><br>
-        <span class="leftKey"><kbd>⌥</kbd> <kbd>↓</kbd></span> <span class="rightKey"><b>stops</b> a launched box</span><br>
-        <span class="leftKey"><kbd>⌥</kbd> <kbd>⇧</kbd> <kbd>↓</kbd></span> <span class="rightKey">also <b>stops</b> a launched box</span><br>
-        <span class="leftKey"><kbd>⌥</kbd> <kbd>↩</kbd></span> <span class="rightKey">executes the <b>current line</b> / block of code</span><br>
-        <span class="leftKey"><kbd>⌥</kbd> drag</span> <span class="rightKey">executes <b>multiple boxes</b> in a "strum"</span><br><br>
-        <span class="leftKey"><kbd>⎋</kbd> <kbd>⎋</kbd></span> <span class="rightKey"><b>clear newest output</b> annotation from the current editor</span><br>
-        <span class="leftKey"><kbd>⎋</kbd> <kbd>⎋</kbd> <kbd>⎋</kbd></span> <span class="rightKey"><b>clear all outputs</b> from the current editor</span><br><br>
-        <span class="leftKey"><kbd>⌘</kbd> <kbd>␣</kbd></span> <span
-            class="rightKey">opens <b>autocomplete</b></span><br><br>
-        <span class="leftKey"><kbd>⌃</kbd>/<kbd>⌘</kbd> <kbd>T</kbd></span> <span class="rightKey"><b>insert from workspace</b> (templates)</span><br><br>
-        <span class="leftKey"><kbd>⌃</kbd>/<kbd>⌘</kbd> <kbd>/</kbd></span> <span class="rightKey"><b>toggle docs iframe</b> (docs & editor)</span><br><br>
-        <span class="leftKey"><kbd>G</kbd></span> <span class="rightKey"><b>groups</b> two selected boxes</span><br>
-        <span class="leftKey"><kbd>U</kbd></span> <span class="rightKey"><b>ungroups</b> boxes</span><br><br>
-        <span class="leftKey"><kbd>⇧</kbd> <kbd>⌃</kbd>/<kbd>⌘</kbd> <kbd>F1</kbd>-<kbd>F9</kbd></span> <span
-            class="rightKey"><b>save bookmark</b> 1-9</span><br>
-        <span class="leftKey"><kbd>⇧</kbd> <kbd>F1</kbd>-<kbd>F9</kbd></span> <span
-            class="rightKey"><b>restore bookmark</b> 1-9</span><br>
+        <div class="cheatsheet-section">Basics</div>
+        <div class="cheatsheet-row"><span class="leftKey"><kbd>N</kbd></span> <span class="rightKey">creates a <b>new box</b></span></div>
+        <div class="cheatsheet-row"><span class="leftKey">(select)</span> <span class="rightKey">selecting a box shows an <b>editor</b> for the code inside it</span></div>
+
+        <div class="cheatsheet-section">Search and Help</div>
+        <div class="cheatsheet-row"><span class="leftKey"><kbd>?</kbd></span> <span class="rightKey">shows this <b>help card</b></span></div>
+        <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="mod"></kbd> <kbd data-key="shift"></kbd> <kbd>P</kbd></span> <span class="rightKey">opens the searchable <b>command palette</b></span></div>
+        <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="mod"></kbd> <kbd>P</kbd></span> <span class="rightKey">opens <b>anything</b>: boxes, properties, commands, and document text</span></div>
+        <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="shift"></kbd> <kbd data-key="shift"></kbd></span> <span class="rightKey">double tap <b>opens anything</b> from the canvas</span></div>
+        <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="mod"></kbd> <kbd data-key="mod"></kbd></span> <span class="rightKey">double tap and hold for <b>spatial navigation</b>; use arrow keys to move between boxes</span></div>
+
+        <div class="cheatsheet-section">Run</div>
+        <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="alt"></kbd> <kbd>0</kbd></span> <span class="rightKey"><b>executes all code</b> in a box</span></div>
+        <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="alt"></kbd> click</span> <span class="rightKey"><b>launches</b> a box</span></div>
+        <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="alt"></kbd> <kbd>Up</kbd></span> <span class="rightKey">also <b>launches</b> a box</span></div>
+        <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="alt"></kbd> <kbd data-key="shift"></kbd> <kbd>Up</kbd></span> <span class="rightKey"><b>continues</b> a launched box</span></div>
+        <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="alt"></kbd> <kbd>Down</kbd></span> <span class="rightKey"><b>stops</b> a launched box</span></div>
+        <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="alt"></kbd> <kbd data-key="shift"></kbd> <kbd>Down</kbd></span> <span class="rightKey">also <b>stops</b> a launched box</span></div>
+        <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="alt"></kbd> <kbd>Enter</kbd></span> <span class="rightKey">executes the <b>current line</b> / block of code</span></div>
+        <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="alt"></kbd> drag</span> <span class="rightKey">executes <b>multiple boxes</b> in a "strum"</span></div>
+
+        <div class="cheatsheet-section">Editor</div>
+        <div class="cheatsheet-row"><span class="leftKey"><kbd>Esc</kbd> <kbd>Esc</kbd></span> <span class="rightKey"><b>clear newest output</b> annotation from the current editor</span></div>
+        <div class="cheatsheet-row"><span class="leftKey"><kbd>Esc</kbd> <kbd>Esc</kbd> <kbd>Esc</kbd></span> <span class="rightKey"><b>clear all outputs</b> from the current editor</span></div>
+        <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="mod"></kbd> <kbd>Space</kbd></span> <span class="rightKey">opens <b>autocomplete</b></span></div>
+        <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="mod"></kbd> <kbd>T</kbd></span> <span class="rightKey"><b>insert from workspace</b> (templates)</span></div>
+        <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="mod"></kbd> <kbd>/</kbd></span> <span class="rightKey"><b>toggle docs iframe</b> (docs & editor)</span></div>
+
+        <div class="cheatsheet-section">Graph</div>
+        <div class="cheatsheet-row"><span class="leftKey"><kbd>G</kbd></span> <span class="rightKey"><b>groups</b> two selected boxes</span></div>
+        <div class="cheatsheet-row"><span class="leftKey"><kbd>U</kbd></span> <span class="rightKey"><b>ungroups</b> boxes</span></div>
+        <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="shift"></kbd> <kbd data-key="mod"></kbd> <kbd>F1-F9</kbd></span> <span class="rightKey"><b>save bookmark</b> 1-9</span></div>
+        <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="shift"></kbd> <kbd>F1-F9</kbd></span> <span class="rightKey"><b>restore bookmark</b> 1-9</span></div>
+
+        <div class="cheatsheet-url">Browser URL form: <b>http://localhost:9092/index.html?file=helloWorld</b></div>
     </div>
 </div>
+
+<script>
+    (() => {
+        const platform = String(navigator.userAgentData?.platform || navigator.platform || "").toLowerCase();
+        const isMac = platform.includes("mac");
+        const labels = {
+            mod: isMac ? "Command" : "Ctrl",
+            alt: isMac ? "Option" : "Alt",
+            shift: "Shift"
+        };
+        const apply = () => {
+            document.querySelectorAll("#cheatsheet kbd[data-key]").forEach((key) => {
+                key.textContent = labels[key.dataset.key] || key.dataset.key || "";
+            });
+        };
+        if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", apply, { once: true });
+        else apply();
+    })();
+</script>
 
 
 <canvas id="overlaycanvas" class="overlay-canvas"></canvas>
