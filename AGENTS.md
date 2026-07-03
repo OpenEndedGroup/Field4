@@ -419,7 +419,7 @@ Deeper structure is documented in:
 
 Practical notes:
 - On macOS you may need to point LWJGL at a Vulkan loader; `Options.doVulkanSDK()` sets `Configuration.VULKAN_LIBRARY_NAME` when configured.
-- Shader introspection uses a platform-specific `spirv-cross` binary (`bin/spirv-cross-<target>`).
+- Shader introspection uses the LWJGL SPIRV-Cross (`spvc`) bindings; the old checked-in `bin/spirv-cross-*` binaries are no longer required.
 
 ---
 

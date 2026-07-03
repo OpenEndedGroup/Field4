@@ -81,7 +81,6 @@ Temporary Items
 /.idea/*
 
 # Exclude non-user-specific stuff
-!.idea/.name
 !.idea/codeInsightSettings.xml
 !.idea/codeStyles/
 !.idea/copyright/
@@ -160,12 +159,14 @@ server/__pycache__/
 .DS_Store
 
 ### Local editor/tool state
+.codex/
 .clj-kondo/
 .field/
 .field_aside/
 .lsp/
 .playwright-mcp/
 .vscode/
+**/.vscode/
 public/.clj-kondo/
 public/.lsp/
 public/.vscode/
