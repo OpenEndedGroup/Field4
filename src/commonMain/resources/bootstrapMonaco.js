@@ -2005,10 +2005,20 @@ const docsIframeKeydownHandler = (e) => {
         const isCtrlOrCmdP = (e.ctrlKey || e.metaKey) && !e.altKey && key === 'p'
         const isCommandPaletteShortcut = e.key === "F1" || (isCtrlOrCmdP && e.shiftKey)
         const isOpenAnythingShortcut = isCtrlOrCmdP && !e.shiftKey
-        if (!isCommandPaletteShortcut && !isOpenAnythingShortcut) return
+        const isHelpShortcut = e.key === "?" && !e.ctrlKey && !e.metaKey && !e.altKey
+        if (!isCommandPaletteShortcut && !isOpenAnythingShortcut && !isHelpShortcut) return
+        if (isHelpShortcut) {
+                const target = e.target
+                const tag = target && target.tagName ? target.tagName.toLowerCase() : ""
+                if (tag === "input" || tag === "textarea" || tag === "select" || target?.isContentEditable) return
+        }
 
         e.preventDefault()
         e.stopPropagation()
+        if (isHelpShortcut) {
+                if (typeof window.showCheatsheet === "function") window.showCheatsheet()
+                return
+        }
         if (typeof hideDocsIframe === "function") hideDocsIframe()
         if (isOpenAnythingShortcut) {
                 openAnywhereFromShortcut()

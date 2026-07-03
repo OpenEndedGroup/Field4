@@ -98,6 +98,7 @@ object LoadingTracker {
     private var backendCompleted = -1
     private var sawBackendStatus = false
     private var statusText = "loading document"
+    private var progressElement: HTMLElement? = null
 
     /**
      * The server tells us how many non-tombstoned boxes to expect.
@@ -186,11 +187,38 @@ object LoadingTracker {
         val received = arrivedBoxIds.size
         val online = maxOf(onlineBoxIds.size, backendCompleted)
         val detail = if (total > 0) "$statusText; $received/$total received, $online/$total online" else statusText
+        updateStartupProgress(total, received, online, detail)
         if (detail == "loading document") {
             notify("loading document <<spinner>>", "setup")
         } else {
             notify("loading document \u2014 $detail <<spinner>>", "setup")
         }
+    }
+
+    private fun ensureStartupProgress(): HTMLElement {
+        progressElement?.let { return it }
+        document.body?.classList?.add("field-loading")
+        val root = document.createElement("div") as HTMLElement
+        root.classList.add("field-startup-progress")
+        root.innerHTML = """
+            <div class="field-startup-progress-title">Loading document</div>
+            <div class="field-startup-progress-detail"></div>
+            <div class="field-startup-progress-track"><div class="field-startup-progress-bar"></div></div>
+        """.trimIndent()
+        document.body?.appendChild(root)
+        progressElement = root
+        return root
+    }
+
+    private fun updateStartupProgress(total: Int, received: Int, online: Int, detail: String) {
+        val root = ensureStartupProgress()
+        val title = root.querySelector(".field-startup-progress-title") as? HTMLElement
+        val detailNode = root.querySelector(".field-startup-progress-detail") as? HTMLElement
+        val bar = root.querySelector(".field-startup-progress-bar") as? HTMLElement
+        title?.textContent = statusText.replaceFirstChar { it.uppercase() }
+        detailNode?.textContent = if (total > 0) "$received/$total received, $online/$total online" else detail
+        val done = if (total > 0) maxOf(received, online).coerceAtMost(total).toDouble() / total.toDouble() else 0.0
+        bar?.style?.width = "${(done * 100.0).roundToInt()}%"
     }
 
     private fun resetTimeout() {
@@ -227,8 +255,19 @@ object LoadingTracker {
         finished = true
         timeoutHandle?.let { kotlinx.browser.window.clearTimeout(it) }
         timeoutHandle = null
+        progressElement?.let { element ->
+            element.classList.add("field-startup-progress-done")
+            window.setTimeout({
+                element.remove()
+                if (progressElement == element) progressElement = null
+                document.body?.classList?.remove("field-loading")
+            }, 450)
+        }
         notify("finished loading \u2014 press <b>?</b> for help", "setup")
+        updateEmptyDocumentWelcome()
     }
+
+    fun isFinished(): Boolean = finished
 }
 
 lateinit var mainViewport: HTMLElement
@@ -274,6 +313,72 @@ private const val editorOpacityPanning = 0.5
 private const val editorOpacityIdle = 1.0
 private var navigationPanAnimationHandle: Int? = null
 private var navigationPanAnimationGeneration = 0
+private var emptyDocumentWelcome: HTMLElement? = null
+
+private fun liveDocumentBoxCount(): Int {
+    val boxes = document.body?.getElementsByClassName("box")?.asList().orEmpty()
+    return boxes.count { element ->
+        val box = element as? HTMLElement ?: return@count false
+        val uid = (box.asDynamic().uid as? String)
+            ?: box.getAttribute("uid")
+            ?: box.getAttribute("data-uid")
+        uid != "root" && !box.classList.contains("tombstoned") && box.asDynamic().tombstoned != true
+    }
+}
+
+private fun ensureEmptyDocumentWelcome(): HTMLElement? {
+    emptyDocumentWelcome?.let { return it }
+    if (!::mainViewport.isInitialized) return null
+
+    val root = document.createElement("div") as HTMLElement
+    root.classList.add("field-empty-document-welcome")
+    root.style.cssText = """
+        position: fixed;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 8;
+        pointer-events: none;
+        text-align: center;
+        color: rgba(255, 255, 255, 0.88);
+        padding: 24px 28px;
+        border-radius: 8px;
+        background: rgba(18, 20, 24, 0.42);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 18px 55px rgba(0, 0, 0, 0.24);
+        opacity: 0;
+        transition: opacity 180ms ease, transform 180ms ease;
+        user-select: none;
+        display: none;
+    """.trimIndent()
+    root.innerHTML = """
+        <div style="font-size:28px;font-weight:650;line-height:1.15;margin-bottom:8px;">Welcome to Field</div>
+        <div style="font-size:15px;line-height:1.45;color:rgba(255,255,255,0.72);">Press <b style="color:rgba(255,255,255,0.94);">n</b> to make a new box</div>
+    """.trimIndent()
+    mainViewport.appendChild(root)
+    emptyDocumentWelcome = root
+    return root
+}
+
+private fun updateEmptyDocumentWelcome() {
+    val welcome = ensureEmptyDocumentWelcome() ?: return
+    val show = LoadingTracker.isFinished() && liveDocumentBoxCount() == 0
+    if (show) {
+        welcome.style.display = "block"
+        window.requestAnimationFrame {
+            welcome.style.opacity = "1"
+            welcome.style.transform = "translate(-50%, -50%)"
+        }
+    } else {
+        welcome.style.opacity = "0"
+        welcome.style.transform = "translate(-50%, calc(-50% + 6px))"
+        window.setTimeout({
+            if (!LoadingTracker.isFinished() || liveDocumentBoxCount() != 0) {
+                welcome.style.display = "none"
+            }
+        }, 200)
+    }
+}
 
 @Serializable
 private data class EditorOverlayLayoutRecord(
@@ -2663,8 +2768,8 @@ fun getAllLayers(): Set<String> {
 }
 
 private const val FRAME_VISIBILITY_EPSILON = 1e-6
-private const val OFFLINE_BOX_VISIBLE_OPACITY = 0.4
-private const val OFFLINE_BOX_ARRIVAL_DURATION_MS = 500
+private const val OFFLINE_BOX_VISIBLE_OPACITY = 0.72
+private const val OFFLINE_BOX_ARRIVAL_DURATION_MS = 180
 
 fun hasRenderableFrame(box: HTMLElement): Boolean {
     val d = box.unsafeCast<dynamic>()
@@ -2684,8 +2789,8 @@ private fun animateOfflineBoxArrival(box: HTMLElement) {
     if (!box.classList.contains("offline") && box.asDynamic().offline != true) return
     if (!isBoxVisible(box) || !hasRenderableFrame(box)) return
 
-    box.style.transition = "opacity ${OFFLINE_BOX_ARRIVAL_DURATION_MS}ms ease-out, filter 0.2s"
-    box.style.opacity = "0"
+    box.style.transition = "opacity ${OFFLINE_BOX_ARRIVAL_DURATION_MS}ms ease-out, filter 0.16s"
+    box.style.opacity = "0.35"
     window.setTimeout({
         box.style.opacity = boxVisibleOpacity(box)
     }, 0)
@@ -3982,6 +4087,7 @@ suspend fun main() {
             }
         }
         hideSplashScreenAfterFontLoad()
+        updateEmptyDocumentWelcome()
         return true
     }
 
@@ -4202,6 +4308,7 @@ suspend fun main() {
                         box.asDynamic().tombstoned = false
                         applyBoxVisibilityImmediate(box)
                     }
+                    updateEmptyDocumentWelcome()
                     requestConnectionGroupRebuild()
                 }
             }
@@ -5889,6 +5996,7 @@ fun TagConsumer<HTMLElement>.createBox(
             )
         )
     }
+    updateEmptyDocumentWelcome()
     return d1
 }
 

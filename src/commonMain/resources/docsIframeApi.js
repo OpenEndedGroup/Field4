@@ -153,11 +153,25 @@ const FieldAPI = {
 if (window.parent !== window) {
     // We're in an iframe
     window.FieldAPI = FieldAPI;
+    const fieldApiEditableTarget = (target) => {
+        const el = target && target.nodeType === 1 ? target : document.activeElement;
+        if (!el) return false;
+        const tag = (el.tagName || '').toLowerCase();
+        return tag === 'input' || tag === 'textarea' || tag === 'select' || !!el.isContentEditable;
+    };
+
     const forwardCommandPaletteShortcut = (event) => {
         const key = event.key && event.key.toLowerCase();
         const isCtrlOrCmdP = (event.ctrlKey || event.metaKey) && !event.altKey && key === 'p';
         const isCommandPaletteShortcut = event.key === 'F1' || (isCtrlOrCmdP && event.shiftKey);
         const isOpenAnythingShortcut = isCtrlOrCmdP && !event.shiftKey;
+        const isHelpShortcut = event.key === '?' && !event.ctrlKey && !event.metaKey && !event.altKey && !fieldApiEditableTarget(event.target);
+        if (isHelpShortcut) {
+            event.preventDefault();
+            event.stopPropagation();
+            window.parent.postMessage({ type: 'field-show-help' }, '*');
+            return;
+        }
         if (isCommandPaletteShortcut || isOpenAnythingShortcut) {
             event.preventDefault();
             event.stopPropagation();
@@ -420,6 +434,12 @@ if (typeof window.handleDocsIframeMessage === 'undefined') {
                         window.openAnywherePalette();
                     } else if (typeof window.openQuickCommandPalette === 'function') {
                         window.openQuickCommandPalette();
+                    }
+                    break;
+
+                case 'field-show-help':
+                    if (typeof window.showCheatsheet === 'function') {
+                        window.showCheatsheet();
                     }
                     break;
 

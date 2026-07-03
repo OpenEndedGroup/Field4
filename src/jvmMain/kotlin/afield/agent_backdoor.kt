@@ -185,6 +185,7 @@ internal fun attachDocumentSession(
         )
         queueStartupDeferredDocumentResync(found)
         doResync()
+        scheduleStartupActionDocumentResync(found)
         found.topologyGeneration++
         found.scheduleAutorunBoxes()
         return found
@@ -331,6 +332,7 @@ internal fun attachDocumentSession(
                     info.loading = false
                     queueStartupDeferredDocumentResync(info, startupBoxes)
                     doResync()
+                    scheduleStartupActionDocumentResync(info, startupBoxes)
                     info.topologyGeneration++
                     info.fileWatchManager
                     info.scheduleAutorunBoxes()
@@ -414,6 +416,7 @@ private val startupPriorityResyncProperties = listOf(
 )
 
 private val startupPriorityResyncPropertySet = startupPriorityResyncProperties.toSet()
+private val startupDeferredResyncPropertySet = startupPriorityResyncPropertySet + "actions"
 
 private fun queueStartupPriorityDocumentResync(info: SessionInformation, boxes: List<Box> = loadableBoxes(info)) {
     discardStartupResync(info, boxes)
@@ -423,8 +426,18 @@ private fun queueStartupPriorityDocumentResync(info: SessionInformation, boxes: 
 }
 
 private fun queueStartupDeferredDocumentResync(info: SessionInformation, boxes: List<Box> = loadableBoxes(info)) {
-    info.root.resyncAllExcept(startupPriorityResyncPropertySet)
-    boxes.forEach { it.resyncAllExcept(startupPriorityResyncPropertySet) }
+    info.root.resyncAllExcept(startupDeferredResyncPropertySet)
+    boxes.forEach { it.resyncAllExcept(startupDeferredResyncPropertySet) }
+}
+
+private fun scheduleStartupActionDocumentResync(info: SessionInformation, boxes: List<Box> = loadableBoxes(info)) {
+    agentBackdoorScope.launch {
+        delay(15_000)
+        if (info.sessions.isEmpty()) return@launch
+        info.root.resyncOnly(listOf("actions"))
+        boxes.forEach { it.resyncOnly(listOf("actions")) }
+        doResync()
+    }
 }
 
 private fun discardStartupResync(info: SessionInformation, boxes: List<Box> = loadableBoxes(info)) {

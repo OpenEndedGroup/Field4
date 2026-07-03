@@ -4,6 +4,19 @@ const qpLog = (...args) => {
         if (DEBUG_QUICKPICK) console.info(...args);
 };
 
+const quickpickIsEditableTarget = (target) => {
+        const el = target && target.nodeType === 1 ? target : document.activeElement
+        if (!el) return false
+        const tag = (el.tagName || "").toLowerCase()
+        if (tag === "input" || tag === "textarea" || tag === "select") return true
+        if (el.isContentEditable) return true
+        if (el.closest && el.closest(".monaco-editor, .afield-palette, .quick-input-widget")) return true
+        return false
+}
+
+const quickpickIsHelpShortcut = (e) =>
+        e.key === "?" && !e.ctrlKey && !e.metaKey && !e.altKey
+
 const initQuickPick = (is) => {
         globalIS = is.IQuickInputService
 
@@ -11,10 +24,15 @@ const initQuickPick = (is) => {
         window.globalIS = is
 
         window.addEventListener("keydown", (e) => {
+                if (quickpickIsHelpShortcut(e) && !quickpickIsEditableTarget(e.target)) {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        if (typeof showCheatsheet === "function") showCheatsheet()
+                        return
+                }
+
                 if (document.activeElement == document.body) {
                         qpLog(e.key)
-                        if (e.key == "?")
-                                showCheatsheet()
 
                         let k = e.key
                         let found = lastActions.find(x => {

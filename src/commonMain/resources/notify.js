@@ -70,19 +70,16 @@ var notify = (text, cat = "") => {
         function restackBubbles() {
                 const bubbles = Array.from(document.getElementsByClassName("bubble"));
                 if (bubbles.length === 0) return;
-                const items = bubbles.map(node => {
-                        const style = window.getComputedStyle(node);
-                        const raw = node.style.bottom || style.bottom || "0px";
-                        const bottom = parseFloat(raw) || 0;
-                        return {node, bottom};
-                });
-                items.sort((a, b) => a.bottom - b.bottom);
-                let base = 5;
-                for (let item of items) {
-                        const rect = item.node.getBoundingClientRect();
-                        item.node.style.left = "5px";
-                        item.node.style.bottom = `${base}px`;
-                        base += rect.height + 1;
+                let base = 18;
+                const startup = document.querySelector(".field-startup-progress:not(.field-startup-progress-done)");
+                if (startup) {
+                        base += startup.getBoundingClientRect().height + 8;
+                }
+                for (const node of bubbles) {
+                        if (!document.body.contains(node)) continue;
+                        const rect = node.getBoundingClientRect();
+                        node.style.bottom = `${base}px`;
+                        base += rect.height + 8;
                 }
         }
 
@@ -111,82 +108,52 @@ var notify = (text, cat = "") => {
         }
 
         let newDiv;
-        let noScroll = false;
+        let updatingExisting = false;
         if (categoryDiv) {
                 newDiv = categoryDiv;
                 lastDiv = newDiv;
                 newDiv.cat = cat;
                 if (newDiv.innerHTML === htmlText) return;
-                noScroll = true;
+                updatingExisting = true;
         } else {
                 newDiv = document.createElement("div");
                 lastDiv = newDiv;
                 lastDiv.cat = cat;
-                noScroll = false;
         }
 
-        newDiv.style.position = "absolute";
-        newDiv.style.zIndex = 100;
-        if (!noScroll) newDiv.style.opacity = 0;
-        else {
-                newDiv.innerHTML = htmlText;
-                updateNotifyTimeAgo(newDiv);
-                ensureNotifyTimeAgoTimer();
-                newDiv.style.opacity = 1;
-                newDiv.style.color = "var(--field-cyan)";
-                stopNotifySpinnersForCategory(cat, newDiv);
-                restackBubbles();
-                setTimeout(function () {
-                        newDiv.style.opacity = "0.5";
-                        newDiv.style.color = "rgba(255, 255, 255, 1)";
-                }, 1000);
-                return;
-        }
-
-        newDiv.style.maxWidth = "400px";
-        newDiv.style.visibility = "hidden";
-        newDiv.style.transition = "all 0.5s";
-        newDiv.style.left = "5px";
-        newDiv.classList = "bubble";
-        newDiv.style.bottom = "5px";
-        newDiv.style.color = "var(--field-cyan)";
+        newDiv.className = "bubble field-toast";
         newDiv.innerHTML = htmlText;
         updateNotifyTimeAgo(newDiv);
         ensureNotifyTimeAgoTimer();
-        newDiv.style.border = "1px solid black";
-        document.body.appendChild(newDiv);
+        if (!document.body.contains(newDiv)) {
+                document.body.appendChild(newDiv);
+        }
         stopNotifySpinnersForCategory(cat, newDiv);
 
-        const rect = newDiv.getBoundingClientRect();
-
-        const n = 0;
         let q = document.getElementsByClassName("bubble").length;
         for (let a of document.getElementsByClassName("bubble")) {
-                if (!noScroll)
-                        if (a !== newDiv) {
-                                a.style.bottom =
-                                    parseInt(a.style.bottom.replace("px", "")) + rect.height + 1 + "px";
-                                a.style.border = "none";
-                                a.style.opacity = 0.3;
-                        }
+                if (a !== newDiv) {
+                        a.classList.add("field-toast-stale");
+                }
 
                 if (q >= 5) {
-                        a.style.visibility = "hidden";
+                        a.classList.add("field-toast-exit");
                         setTimeout(function () {
                                 if (a.parentNode)
                                         a.parentNode.removeChild(a)
-                        }, 1000)
+                        }, 220)
                         q--;
                 }
         }
 
-        newDiv.style.visibility = "visible";
+        newDiv.classList.remove("field-toast-stale", "field-toast-exit");
         restackBubbles();
         setTimeout(function () {
-                newDiv.style.opacity = "1";
+                newDiv.classList.add("field-toast-visible");
         }, 20);
         setTimeout(function () {
-                newDiv.style.opacity = "0.5";
-                newDiv.style.color = "rgba(255, 255, 255, 1)";
+                if (updatingExisting) {
+                        newDiv.classList.add("field-toast-stale");
+                }
         }, 1000);
 };
