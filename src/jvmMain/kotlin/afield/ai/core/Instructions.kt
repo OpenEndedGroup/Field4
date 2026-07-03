@@ -89,10 +89,10 @@ fun buildDynamicInstructions(
     val isKotlin = lang.name.equals("Kotlin", ignoreCase = true)
     if (isKotlin && ctx.listDefinitions != null) toolAds += "- ListDefinitions: list visible definitions (including shaders associated with Kotlin)."
     if (isKotlin && ctx.listKotlinContextVariables != null) {
-        toolAds += "- ListKotlinContextVariablesRequest: list retained Kotlin runtime variables for the current or target box without evaluating code."
+        toolAds += "- ListKotlinContextVariablesRequest: list retained Kotlin runtime variables for the current or target box without evaluating code. This lists script variables such as `foo`, not Field box properties."
     }
     if (isKotlin && ctx.evaluateKotlinExpression != null) {
-        toolAds += "- EvaluateKotlinExpressionRequest: evaluate a read-oriented Kotlin expression in the current or target box's live Kotlin context; returns primitive values, toString, and optional `.h` HTML visualization."
+        toolAds += "- EvaluateKotlinExpressionRequest: evaluate a read-oriented Kotlin expression in the current or target box's live Kotlin context; returns primitive values, toString, and optional `.h` HTML visualization. The current/target box is `thisBox`; do not use `_`, `_.foo`, or bare `box` as current-box syntax."
     }
     if (ctx.listFileContents != null) {
         toolAds += "- ListContents: get full contents of available text properties for the current box and graph-relevant boxes (code/shaders), with file refs, languages, box names, relation labels, and preamble hints."
@@ -107,6 +107,11 @@ fun buildDynamicInstructions(
     if (ctx.workspaceSymbolSearch != null) {
         toolAds += "- WorkspaceSymbolSearch: search workspace symbols by query."
         toolAds += "  Results include filePath, fileId, line, definitionLine, definitionBody (for fun), and may suggest relatedGuides / relatedExamples."
+    }
+    if (ctx.listMacros != null || ctx.readMacro != null || ctx.runMacro != null || ctx.writeMacro != null) {
+        toolAds += "- MacroListRequest / MacroReadRequest: discover and read saved YAML operation-transcript macros before running or editing them."
+        toolAds += "- MacroRunRequest: run or undo a saved macro. Empty targetBoxes replays recorded box ids literally; targetBoxes remaps the macro's first recorded source box to each named/uid target."
+        toolAds += "- MacroWriteRequest: create or replace a macro YAML file only when the user asked for a new/edited macro or a failed run shows the existing macro needs adaptation."
     }
 
     val hasGlslIncludeManifest = ctx.attachments.any { it.fileName == "afield://glsl-includes/manifest" }
@@ -152,7 +157,12 @@ fun buildDynamicInstructions(
 - If verification succeeds, say what you verified briefly in the final answer.
 - If an exact match fails, try softer queries (short name, receiver+name, suffix, drop generics).
 - Do not keep reformulating the same WorkspaceSymbolSearch indefinitely. After one or two misses, switch to ListContents, AttachmentRequest, or answer with the grounded context you already have.
+- Kotlin live-context rule: the current/target Field box is `thisBox`. Do not use `_`, `_.foo`, or bare `box` to mean the current box; those are not Field 4 property access forms. For box properties use `thisBox.getPropertyRaw("name")` / `thisBox.setPropertyRaw("name", value)` when you need raw access, or use generated/delegated properties only when the visible code/preamble actually declares them.
+- When creating or resolving a box from evaluated Kotlin, prefer `box("uid", root = thisBox.inside)` so the lookup uses the current document/session. Calling `box("uid")` without a root can fail in AI tool contexts.
 - When the user asks about current runtime state, call ListKotlinContextVariablesRequest first. Use EvaluateKotlinExpressionRequest for specific read-only probes such as variable fields, sizes, summaries, or `.h` visualizations; avoid side-effecting expressions unless explicitly requested.
+- Macro workflow: if the user asks to run an existing macro, list/read it first when needed, then call MacroRunRequest once with the intended targetBoxes. Do not rewrite the macro before trying it unless the user explicitly asks for an edited macro.
+- Macro targeting: pass targetBoxes for "do it to this/current/selected box" tasks. Empty targetBoxes means "use the recorded uids exactly". If a MacroRunResult has applied=0, skipped operations, or errors, inspect the result and change strategy; do not repeat the same MacroRunRequest unchanged.
+- If a macro run reports errors, Field may have attempted automatic undo. Explain the error and undo result, then ask what to change before retrying.
 - If you call a tool, wait for its output before continuing.
 $verificationChecklist
 $includeGuidance
@@ -170,7 +180,12 @@ $includeGuidance
 - If you make multiple edits across Kotlin and shaders, verify each affected surface before returning code.
 - If a verification tool reports failure, use the diagnostics to edit again, then rerun the same verification.
 - If verification succeeds but setupChanges reports preamble, intro, or attic changed, note that in Commentary.
+- Kotlin live-context rule: the current/target Field box is `thisBox`. Do not use `_`, `_.foo`, or bare `box` to mean the current box; those are not Field 4 property access forms. For box properties use `thisBox.getPropertyRaw("name")` / `thisBox.setPropertyRaw("name", value)` when you need raw access, or use generated/delegated properties only when the visible code/preamble actually declares them.
+- When creating or resolving a box from evaluated Kotlin, prefer `box("uid", root = thisBox.inside)` so the lookup uses the current document/session. Calling `box("uid")` without a root can fail in AI tool contexts.
 - When the user asks about current runtime state, call ListKotlinContextVariablesRequest first. Use EvaluateKotlinExpressionRequest for specific read-only probes such as variable fields, sizes, summaries, or `.h` visualizations; avoid side-effecting expressions unless explicitly requested.
+- Macro workflow: if the user asks to run an existing macro, list/read it first when needed, then call MacroRunRequest once with the intended targetBoxes. Do not rewrite the macro before trying it unless the user explicitly asks for an edited macro.
+- Macro targeting: pass targetBoxes for "do it to this/current/selected box" tasks. Empty targetBoxes means "use the recorded uids exactly". If a MacroRunResult has applied=0, skipped operations, or errors, inspect the result and change strategy; do not repeat the same MacroRunRequest unchanged.
+- If a macro run reports errors, Field may have attempted automatic undo. Explain the error and undo result, then ask what to change before retrying.
 - If you call a tool, wait for its output before continuing.
 $verificationChecklist
 $includeGuidance

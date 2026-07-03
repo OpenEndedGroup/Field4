@@ -6,6 +6,9 @@ import afield.logger.lprintln
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 
+private fun clearEditorOutputsForLaunch(uid: String) {
+    send(Message("clear-editor-outputs").payload(ClearEditorOutputs(uid)))
+}
 
 @RunsAt(installHandlers)
 fun executing() {
@@ -16,6 +19,7 @@ fun executing() {
             val exec = Json.decodeFromJsonElement<Stop_box>(message.payload!!)
             val box = box(exec.uid)
 
+            OperationTranscript.recordStop(box)
             stop(box, entrypoint = "stop-box")
 
             Handled.yes
@@ -26,6 +30,7 @@ fun executing() {
             val exec = Json.decodeFromJsonElement<Execute>(message.payload!!)
             val box = box(exec.uid)
             FlightRecorder.recordExecuteEntrypoint("execute-fragment", box, exec)
+            OperationTranscript.recordExecuteFragment(box, exec)
             box.ke.executeFragment(box, exec, reply)
             Handled.yes
         })
@@ -66,7 +71,9 @@ fun executing() {
             val exec = Json.decodeFromJsonElement<Execute>(message.payload!!)
             val box = box(exec.uid)
 
+            clearEditorOutputsForLaunch(exec.uid)
             FlightRecorder.recordLaunchEntrypoint("launch-all", box, exec, strand = "default")
+            OperationTranscript.recordLaunch(box, exec, strand = "default")
             box.ke.launchAll(box, exec, exec.code, "default", reply)
 
 
@@ -80,8 +87,10 @@ fun executing() {
             val requests = batch.executions.map { exec ->
                 val box = box(exec.uid)
                 FlightRecorder.recordLaunchEntrypoint("launch-batch", box, exec, strand = exec.strand)
+                OperationTranscript.recordLaunch(box, exec, strand = exec.strand)
                 box to exec
             }
+            requests.map { it.second.uid }.distinct().forEach(::clearEditorOutputsForLaunch)
 
             val kotlinRequests = requests.filter { it.first.ke is KotlinExecution }
             if (kotlinRequests.size == requests.size) {
@@ -114,7 +123,9 @@ fun executing() {
             val exec = Json.decodeFromJsonElement<Execute>(message.payload!!)
             val box = box(exec.uid)
 
+            clearEditorOutputsForLaunch(exec.uid)
             FlightRecorder.recordLaunchEntrypoint("launch-fragment", box, exec, strand = exec.strand)
+            OperationTranscript.recordLaunch(box, exec, strand = exec.strand)
             box.ke.launchAll(box, exec, exec.code, strand = exec.strand, reply)
 
             Handled.yes
@@ -128,6 +139,7 @@ fun executing() {
 
             lprintln("info,execution", "stop all has been called")
 
+            OperationTranscript.recordStop(box)
             stop(box, entrypoint = "stop-all")
 
             Handled.yes

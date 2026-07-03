@@ -1974,6 +1974,7 @@ class KotlinExecution : BoxExecution {
         inside.runGeneration.incrementAndGet("default")
         val jobsToCancel = inside.jobs.toList()
         inside.jobs.clear()
+        inside.clearRunningStates()
         jobsToCancel.forEach { it.cancel() }
     }
 

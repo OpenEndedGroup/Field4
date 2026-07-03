@@ -13,6 +13,7 @@ import kotlinx.coroutines.*
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
+import java.util.IdentityHashMap
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.script.experimental.api.KotlinType
 
@@ -28,6 +29,8 @@ var Box.layerFrames by Delegation<MutableMap<String, Rect>>(defaultValue = { mut
 var Box.templateId by Delegation<String?>(defaultValue = { null }) // tracks which template this box was created from
 
 const val METAROOT_ID = "metaroot"
+private const val JOBS_RUNNING_STRAND = "__jobs__"
+private const val JOBS_RUNNING_MODE = "job"
 
 val metaroot: Box by lazy {
     val root = Box(METAROOT_ID)
@@ -115,7 +118,10 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
 
     var runGeneration = mutableMapOf("default" to -1)
     var fragmentGeneration: Int = -1
-    var jobs = mutableListOf<Job>()
+    var jobs: MutableList<Job> = BoxJobList(this)
+        set(value) {
+            field = BoxJobList(this).also { it.addAll(value) }
+        }
     val cachedLaunchReturns = mutableMapOf<String, CachedLaunchReturn>()
     val currentRunningStates = mutableMapOf<String, RunningState>()
 
@@ -725,6 +731,115 @@ fun doResync() {
     }
 }
 
+private class BoxJobList(private val box: Box) : AbstractMutableList<Job>() {
+    private val delegate = mutableListOf<Job>()
+    private val completionHandles = IdentityHashMap<Job, DisposableHandle>()
+    private val lock = Any()
+
+    override val size: Int
+        get() = synchronized(lock) { delegate.size }
+
+    override fun get(index: Int): Job = synchronized(lock) {
+        delegate[index]
+    }
+
+    override fun add(index: Int, element: Job) {
+        synchronized(lock) {
+            delegate.add(index, element)
+            modCount++
+            track(element)
+        }
+        box.syncJobRunningState()
+    }
+
+    override fun set(index: Int, element: Job): Job {
+        val previous = synchronized(lock) {
+            val old = delegate.set(index, element)
+            if (old !in delegate) untrack(old)
+            track(element)
+            old
+        }
+        box.syncJobRunningState()
+        return previous
+    }
+
+    override fun removeAt(index: Int): Job {
+        val removed = synchronized(lock) {
+            val old = delegate.removeAt(index)
+            if (old !in delegate) untrack(old)
+            modCount++
+            old
+        }
+        box.syncJobRunningState()
+        return removed
+    }
+
+    override fun clear() {
+        val changed = synchronized(lock) {
+            if (delegate.isEmpty()) {
+                false
+            } else {
+                completionHandles.values.forEach { it.dispose() }
+                completionHandles.clear()
+                delegate.clear()
+                modCount++
+                true
+            }
+        }
+        if (changed) box.syncJobRunningState()
+    }
+
+    private fun track(job: Job) {
+        if (completionHandles.containsKey(job)) return
+        completionHandles[job] = job.invokeOnCompletion {
+            removeCompleted(job)
+        }
+    }
+
+    private fun untrack(job: Job) {
+        completionHandles.remove(job)?.dispose()
+    }
+
+    private fun removeCompleted(job: Job) {
+        val changed = synchronized(lock) {
+            val removed = delegate.removeAll { it === job || it == job }
+            if (removed) {
+                completionHandles.remove(job)
+                modCount++
+            }
+            removed
+        }
+        if (changed) box.syncJobRunningState()
+    }
+}
+
+private fun Box.syncJobRunningState() {
+    val hasActiveJobs = jobs.any { it.isActive && !it.isCancelled }
+    val state = currentRunningStates[JOBS_RUNNING_STRAND]
+    if (hasActiveJobs && state == null) {
+        val generation = (runGeneration[JOBS_RUNNING_STRAND] ?: -1) + 1
+        runGeneration[JOBS_RUNNING_STRAND] = generation
+        currentRunningStates[JOBS_RUNNING_STRAND] = RunningState(generation, JOBS_RUNNING_MODE)
+        if (isInsideInitialized()) {
+            send(Message("is-running").payload(IsRunning(id, true, generation, JOBS_RUNNING_STRAND, JOBS_RUNNING_MODE)))
+        }
+    } else if (!hasActiveJobs && state != null) {
+        currentRunningStates.remove(JOBS_RUNNING_STRAND)
+        if (isInsideInitialized()) {
+            send(Message("is-running").payload(IsRunning(id, false, state.watermark, JOBS_RUNNING_STRAND, JOBS_RUNNING_MODE)))
+        }
+    }
+}
+
+internal fun Box.clearRunningStates() {
+    val states = currentRunningStates.toMap()
+    currentRunningStates.clear()
+    if (!isInsideInitialized()) return
+    states.forEach { (strand, state) ->
+        send(Message("is-running").payload(IsRunning(id, false, state.watermark, strand, state.mode)))
+    }
+}
+
 fun syncExecutionStatus() {
     // Periodically sync execution status for all boxes that are currently running
     // This ensures the frontend stays in sync even after reconnections or state issues
@@ -732,33 +847,19 @@ fun syncExecutionStatus() {
         sessionInfo.boxes.values.forEach { box ->
             if (box.properties.get("_tombstone").isTrue()) return@forEach
 
-            // Check if the box has any active jobs
-            val hasActiveJobs = box.jobs.any { !it.isCancelled && it.isActive }
-
-            if (hasActiveJobs) {
-                val activeStates = box.currentRunningStates.toMap()
-                val strandsToSync = if (activeStates.isNotEmpty()) {
-                    activeStates.keys
-                } else {
-                    box.runGeneration.keys
-                }
-
-                strandsToSync.forEach { strand ->
-                    val state = activeStates[strand]
-                    val generation = state?.watermark ?: box.runGeneration[strand] ?: return@forEach
-                    if (generation < 0) return@forEach
-
-                    val message = Message("is-running").payload(
-                        IsRunning(
-                            box.id,
-                            true,
-                            generation,
-                            strand,
-                            state?.mode ?: "launch"
-                        )
+            box.syncJobRunningState()
+            val activeStates = box.currentRunningStates.toMap()
+            activeStates.forEach { (strand, state) ->
+                val message = Message("is-running").payload(
+                    IsRunning(
+                        box.id,
+                        true,
+                        state.watermark,
+                        strand,
+                        state.mode
                     )
-                    sessionInfo.sessions.forEach { _send(it, message) }
-                }
+                )
+                sessionInfo.sessions.forEach { _send(it, message) }
             }
         }
     }

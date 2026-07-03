@@ -342,12 +342,17 @@
             grid-template-columns: 1fr;
         }
 
+        .ai-docs-actions.two {
+            grid-template-columns: 1fr 1fr;
+        }
+
         .ai-docs-label,
         .ai-docs-note {
             color: var(--field-text-soft);
         }
 
-        #completion-doc-polish-state {
+        #completion-doc-polish-state,
+        #ai-tool-use-improvement-state {
             color: var(--field-cyan);
             text-align: right;
             overflow-wrap: anywhere;
@@ -435,6 +440,7 @@
         #maven-status,
         #ai-settings-status,
         #completion-doc-polish-status,
+        #ai-tool-use-improvement-status,
         #preferences-status,
         #osc-settings-status {
             min-height: 1.2em;
@@ -447,6 +453,7 @@
         #maven-status.error,
         #ai-settings-status.error,
         #completion-doc-polish-status.error,
+        #ai-tool-use-improvement-status.error,
         #preferences-status.error,
         #osc-settings-status.error {
             color: var(--field-danger);
@@ -1386,6 +1393,7 @@
             #maven-state,
             #ai-settings-state,
             #completion-doc-polish-state,
+            #ai-tool-use-improvement-state,
             #preferences-state,
             #osc-settings-state {
                 white-space: normal;
@@ -1634,6 +1642,17 @@
                             </div>
                             <div id="completion-doc-polish-status" aria-live="polite"></div>
                         </div>
+                        <div class="ai-docs-panel">
+                            <div class="ai-docs-header">
+                                <span class="ai-docs-label">Agent tool use</span>
+                                <span id="ai-tool-use-improvement-state">checking</span>
+                            </div>
+                            <div class="ai-docs-actions two">
+                                <button id="run-ai-tool-use-review" type="button">Review logs</button>
+                                <button id="run-ai-tool-use-apply" type="button">Apply polish</button>
+                            </div>
+                            <div id="ai-tool-use-improvement-status" aria-live="polite"></div>
+                        </div>
                         <div id="ai-settings-status" aria-live="polite"></div>
                     </div>
                 </details>
@@ -1799,6 +1818,24 @@
             },
             running: false,
             status: "idle",
+            message: "",
+            logTail: ""
+        },
+        aiToolUseImprovement: {
+            logs: {
+                logDir: "",
+                exists: false,
+                logCount: 0,
+                recentLogCount: 0,
+                sizeBytes: 0,
+                lastModifiedEpochMs: 0,
+                reportPath: "",
+                dryRunPatchPath: "",
+                message: ""
+            },
+            running: false,
+            status: "idle",
+            dryRun: true,
             message: "",
             logTail: ""
         },
@@ -2342,6 +2379,7 @@
         });
         if (button) button.disabled = state.savingAiSettings;
         renderCompletionDocPolish();
+        renderAiToolUseImprovement();
     }
 
     function formatCount(value, singular, plural = `${singular}s`) {
@@ -2378,6 +2416,40 @@
             ? (polish.message || cache.message || "")
             : "";
         setCompletionDocPolishStatus(message, polish.status === "failed");
+    }
+
+    function setAiToolUseImprovementStatus(text, isError = false) {
+        const node = document.getElementById("ai-tool-use-improvement-status");
+        if (!node) return;
+        node.textContent = text || "";
+        node.classList.toggle("error", !!isError);
+    }
+
+    function renderAiToolUseImprovement() {
+        const task = state.aiToolUseImprovement || {};
+        const logs = task.logs || {};
+        const recent = Number(logs.recentLogCount) || 0;
+        const total = Number(logs.logCount) || 0;
+        const stateNode = document.getElementById("ai-tool-use-improvement-state");
+        const reviewButton = document.getElementById("run-ai-tool-use-review");
+        const applyButton = document.getElementById("run-ai-tool-use-apply");
+
+        if (stateNode) {
+            stateNode.textContent = task.running
+                ? "running"
+                : (recent > 0 ? `${recent} recent / ${formatCount(total, "log")}` : (logs.exists ? "empty" : "no logs"));
+        }
+        [reviewButton, applyButton].forEach((button) => {
+            if (!button) return;
+            button.disabled = !!task.running || recent <= 0;
+        });
+        if (reviewButton) reviewButton.textContent = task.running && task.dryRun ? "Reviewing..." : "Review logs";
+        if (applyButton) applyButton.textContent = task.running && !task.dryRun ? "Applying..." : "Apply polish";
+
+        const message = task.running || task.status === "failed" || recent <= 0
+            ? (task.message || logs.message || "")
+            : (task.status === "succeeded" ? (logs.reportPath ? `report: ${logs.reportPath}` : task.message || "") : "");
+        setAiToolUseImprovementStatus(message, task.status === "failed");
     }
 
     function formatMs(value) {
@@ -3516,6 +3588,7 @@
             state.defaultWorkspace = payload.defaultWorkspace || state.defaultWorkspace || "";
             state.aiSettings = payload.aiSettings || state.aiSettings;
             state.completionDocPolish = payload.completionDocPolish || state.completionDocPolish;
+            state.aiToolUseImprovement = payload.aiToolUseImprovement || state.aiToolUseImprovement;
             state.preferences = payload.preferences || state.preferences;
             state.runtimeInfo = payload.runtimeInfo || state.runtimeInfo || {};
             try {
@@ -3540,6 +3613,13 @@
                 cache: {
                     ...((state.completionDocPolish || {}).cache || {}),
                     message: "Could not load completion-doc polish state."
+                }
+            };
+            state.aiToolUseImprovement = {
+                ...(state.aiToolUseImprovement || {}),
+                logs: {
+                    ...((state.aiToolUseImprovement || {}).logs || {}),
+                    message: "Could not load AI tool-use improvement state."
                 }
             };
             renderWorkspaceControls();
@@ -3979,6 +4059,29 @@
         }
     }
 
+    async function runAiToolUseImprovement(dryRun = true) {
+        window.open("/ai-tool-use-improvement.html", "_blank", "noopener");
+        setAiToolUseImprovementStatus(dryRun ? "Starting tool-use review..." : "Starting tool-use polish...");
+
+        try {
+            const response = await fetch("/api/ai-tool-use-improvement", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                body: JSON.stringify({ dryRun: !!dryRun })
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(payload.error || `HTTP ${response.status}`);
+            }
+            state.aiToolUseImprovement = payload || state.aiToolUseImprovement;
+            renderAiToolUseImprovement();
+        } catch (error) {
+            console.error("Failed to start AI tool-use improvement", error);
+            setAiToolUseImprovementStatus(error?.message || "Could not start AI tool-use improvement.", true);
+        }
+    }
+
     async function learnOscAddress(targetId) {
         const target = document.getElementById(targetId);
         const port = Number.parseInt(document.getElementById("osc-editor-port")?.value || "9000", 10) || 9000;
@@ -4222,6 +4325,8 @@
         const aiProviderButtons = document.querySelectorAll("[data-ai-provider]");
         const saveAiSettingsButton = document.getElementById("save-ai-settings");
         const runCompletionDocPolishButton = document.getElementById("run-completion-doc-polish");
+        const runAiToolUseReviewButton = document.getElementById("run-ai-tool-use-review");
+        const runAiToolUseApplyButton = document.getElementById("run-ai-tool-use-apply");
         const stickinessButtons = document.querySelectorAll("[data-stickiness-value]");
         const importClassBlacklistInput = document.getElementById("pref-import-class-blacklist");
         const oscInputs = [
@@ -4363,6 +4468,8 @@
 
         saveAiSettingsButton?.addEventListener("click", saveAiSettings);
         runCompletionDocPolishButton?.addEventListener("click", runCompletionDocPolish);
+        runAiToolUseReviewButton?.addEventListener("click", () => runAiToolUseImprovement(true));
+        runAiToolUseApplyButton?.addEventListener("click", () => runAiToolUseImprovement(false));
 
         openAiKeyInput?.addEventListener("keydown", (event) => {
             if (event.key !== "Enter") return;

@@ -76,6 +76,1052 @@ private fun sendWindowVideo(request: AgentWindowVideo) {
     }
 }
 
+private var macroPanelElement: HTMLElement? = null
+private var macroPanelLastState: MacroTranscriptCommandResponse? = null
+private var macroPanelRefreshTimer: Int? = null
+private var macroPanelContentDirty = false
+private var macroTranscriptOffset = 0
+private var macroTranscriptFollowTail = true
+private var macroTranscriptLastTotal = 0
+private var macroTranscriptHideWaits = false
+private var macroTranscriptSelectionAnchor: Int? = null
+private var macroTranscriptRenderedIndices = emptySet<Int>()
+private const val MACRO_TRANSCRIPT_PAGE_SIZE = 80
+private val macroTranscriptSelected = mutableSetOf<Int>()
+private val macroTranscriptOpenDetails = mutableSetOf<Int>()
+private val macroTranscriptYamlScrollTop = mutableMapOf<Int, Double>()
+
+private data class MacroPreviewOperation(
+    val verb: String,
+    val fields: Map<String, String>
+)
+
+private fun sendMacroTranscriptCommand(
+    request: MacroTranscriptCommandRequest,
+    announce: Boolean = true,
+    after: ((MacroTranscriptCommandResponse) -> Unit)? = null
+) {
+    val callbackName = "macro-transcript-${Date.now().toLong()}"
+    sendWithReply(Message("macro-transcript-command").payload(request), callbackName) { message, _ ->
+        val response = Json.decodeFromJsonElement<MacroTranscriptCommandResponse>(message.payload!!)
+        if (announce) notify(response.message, if (response.success) "macro" else "error")
+        after?.invoke(response)
+        Handled.yes_remove
+    }
+}
+
+private fun htmlEscape(text: String): String =
+    text.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+
+private fun macroYamlQuote(text: String): String =
+    "\"" + text.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
+private fun macroContentWithName(content: String, name: String): String {
+    if (content.isBlank()) return content
+    val lines = content.lines().toMutableList()
+    val firstName = lines.indexOfFirst { it.trimStart().startsWith("name:") }
+    if (firstName >= 0) {
+        lines[firstName] = "name: ${macroYamlQuote(name)}"
+    } else {
+        lines.add(0, "name: ${macroYamlQuote(name)}")
+    }
+    return lines.joinToString("\n").trimEnd() + "\n"
+}
+
+private fun macroYamlUnquote(text: String): String {
+    val trimmed = text.trim()
+    if (trimmed == "\"\"") return ""
+    if (trimmed.length >= 2 && trimmed.first() == '"' && trimmed.last() == '"') {
+        return trimmed.substring(1, trimmed.length - 1)
+            .replace("\\\"", "\"")
+            .replace("\\\\", "\\")
+    }
+    return trimmed
+}
+
+private fun parseMacroPreview(content: String): List<MacroPreviewOperation> {
+    val operations = mutableListOf<MacroPreviewOperation>()
+    var verb: String? = null
+    var fields = linkedMapOf<String, String>()
+    var blockKey: String? = null
+    var blockIndent = 0
+    var nestedKey: String? = null
+    var nestedIndent = 0
+    val opRegex = Regex("^\\s*-\\s+([A-Za-z0-9_.-]+):\\s*$")
+    val fieldRegex = Regex("^\\s{4,}([A-Za-z0-9_.-]+):(?:\\s*(.*))?$")
+
+    fun finishOperation() {
+        val currentVerb = verb ?: return
+        operations += MacroPreviewOperation(currentVerb, fields.toMap())
+        verb = null
+        fields = linkedMapOf()
+        blockKey = null
+        nestedKey = null
+    }
+
+    content.lines().forEach { line ->
+        val leading = line.takeWhile { it == ' ' }.length
+        val activeBlock = blockKey
+        if (activeBlock != null && leading >= blockIndent) {
+            val old = fields[activeBlock].orEmpty()
+            fields[activeBlock] = if (old.isEmpty()) line.drop(blockIndent) else old + "\n" + line.drop(blockIndent)
+            return@forEach
+        } else {
+            blockKey = null
+        }
+
+        val activeNested = nestedKey
+        if (activeNested != null && leading >= nestedIndent) {
+            val nestedMatch = fieldRegex.matchEntire(line)
+            if (nestedMatch != null) {
+                val key = nestedMatch.groupValues[1]
+                val raw = nestedMatch.groupValues.getOrNull(2).orEmpty()
+                fields["$activeNested.$key"] = macroYamlUnquote(raw)
+            }
+            return@forEach
+        } else {
+            nestedKey = null
+        }
+
+        val opMatch = opRegex.matchEntire(line)
+        if (opMatch != null) {
+            finishOperation()
+            verb = opMatch.groupValues[1]
+            fields = linkedMapOf()
+            nestedKey = null
+            return@forEach
+        }
+
+        if (verb != null) {
+            val fieldMatch = fieldRegex.matchEntire(line) ?: return@forEach
+            val key = fieldMatch.groupValues[1]
+            val raw = fieldMatch.groupValues.getOrNull(2).orEmpty()
+            if (raw.trim() == "|") {
+                fields[key] = ""
+                blockKey = key
+                blockIndent = leading + 2
+            } else if (raw.isBlank()) {
+                fields[key] = ""
+                nestedKey = key
+                nestedIndent = leading + 2
+            } else {
+                fields[key] = macroYamlUnquote(raw)
+            }
+        }
+    }
+    finishOperation()
+    return operations
+}
+
+private fun macroBoxDisplayName(uid: String): String {
+    val box = findBoxByUid(uid)
+    val dynamicName = box?.asDynamic()?.name as? String
+    if (!dynamicName.isNullOrBlank()) return dynamicName
+    val inlineTitle = box?.getElementsByClassName("doubleClickToEdit")?.asList()?.firstOrNull()?.textContent
+    if (!inlineTitle.isNullOrBlank()) return inlineTitle
+    return "box"
+}
+
+private fun macroBoxLinkHtml(uid: String): String {
+    if (uid.isBlank()) return ""
+    val label = macroBoxDisplayName(uid)
+    val escapedUid = htmlEscape(uid)
+    val escapedLabel = htmlEscape(label)
+    return "<a class=\"macro-recorder-box-link\" href=\"#box:$escapedUid\" data-box-uid=\"$escapedUid\" title=\"Select $escapedLabel\"><span class=\"macro-recorder-box-symbol\">□</span><span class=\"macro-recorder-box-name\">$escapedLabel</span></a>"
+}
+
+private fun macroTemplateHtml(text: String): String =
+    "<span class=\"macro-recorder-template\">${htmlEscape(text)}</span>"
+
+private fun macroVariableHtml(text: String): String =
+    "<span class=\"macro-recorder-variable\">${htmlEscape(text)}</span>"
+
+private fun macroNumberHtml(text: String): String =
+    "<span class=\"macro-recorder-number\">${htmlEscape(text)}</span>"
+
+private fun macroNotationHtml(text: String): String =
+    "<span class=\"macro-recorder-notation\">${htmlEscape(text)}</span>"
+
+private fun macroPropertyHtml(property: String): String =
+    if (property.isBlank()) "" else macroVariableHtml(property)
+
+private fun macroValueHtml(value: String): String {
+    val compact = value
+        .lineSequence()
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+        .joinToString(" ")
+        .ifBlank { "empty" }
+    val trimmed = if (compact.length > 48) compact.take(45).trimEnd() + "..." else compact
+    return macroVariableHtml(trimmed)
+}
+
+private fun macroToClauseHtml(value: String, present: Boolean): String =
+    if (!present) "" else " ${macroTemplateHtml("to")} ${macroValueHtml(value)}"
+
+private fun macroPlural(countText: String, singular: String, plural: String = "${singular}s"): String =
+    if (countText.toLongOrNull() == 1L) singular else plural
+
+private fun macroInlineTokenHtml(text: String): String {
+    if (text.isBlank()) return ""
+    val out = StringBuilder()
+    var cursor = 0
+    while (cursor < text.length) {
+        val start = cursor
+        val isNumber = text[cursor].isDigit()
+        if (isNumber) {
+            while (cursor < text.length && text[cursor].isDigit()) cursor++
+            out.append(macroNumberHtml(text.substring(start, cursor)))
+        } else {
+            while (cursor < text.length && !text[cursor].isDigit()) cursor++
+            out.append(macroNotationHtml(text.substring(start, cursor)))
+        }
+    }
+    return out.toString()
+}
+
+private fun macroTranscriptSummaryHtml(entry: TranscriptEntry): String {
+    val box = macroBoxLinkHtml(entry.box)
+    val prop = macroPropertyHtml(entry.property)
+    return when (entry.verb.lowercase()) {
+        "edit", "set", "set-string" -> buildString {
+            append(macroTemplateHtml("edit"))
+            if (prop.isNotBlank()) append(" ").append(prop)
+            if (box.isNotBlank()) append(" ").append(macroTemplateHtml("of")).append(" ").append(box)
+            append(macroToClauseHtml(entry.to, present = true))
+        }
+        "move", "frame", "set-rect" -> if (box.isBlank()) macroTemplateHtml("move") else "${macroTemplateHtml("move")} $box"
+        "execute", "execute-fragment" -> buildString {
+            append(macroTemplateHtml("execute"))
+            val type = entry.summary.substringAfter("execute", "").trim().substringBefore(" ").trim()
+            if (type.isNotBlank() && type != entry.summary) append(" ").append(macroVariableHtml(type))
+            if (prop.isNotBlank()) append(" ").append(prop)
+            if (box.isNotBlank()) append(" ").append(macroTemplateHtml("of")).append(" ").append(box)
+        }
+        "launch", "launch-all", "launch-fragment" -> buildString {
+            append(macroTemplateHtml("launch"))
+            if (prop.isNotBlank()) append(" ").append(prop)
+            if (box.isNotBlank()) append(" ").append(macroTemplateHtml("of")).append(" ").append(box)
+        }
+        "stop", "stop-all", "stop-box" -> if (box.isBlank()) macroTemplateHtml("stop") else "${macroTemplateHtml("stop")} $box"
+        "connect" -> if (box.isBlank()) macroTemplateHtml("connect") else "${macroTemplateHtml("connect")} $box"
+        "disconnect" -> if (box.isBlank()) macroTemplateHtml("disconnect") else "${macroTemplateHtml("disconnect")} $box"
+        "wait" -> {
+            val frames = entry.frame.ifBlank { entry.summary.substringAfter("wait", "").substringBefore("frame").trim() }.ifBlank { "?" }
+            "${macroTemplateHtml("wait")} ${macroNumberHtml(frames)} ${macroTemplateHtml(macroPlural(frames, "frame"))}"
+        }
+        else -> htmlEscape(entry.summary)
+    }
+}
+
+private fun macroOperationSummary(index: Int, op: MacroPreviewOperation): String {
+    val uid = op.fields["box"] ?: op.fields["uid"] ?: op.fields["target"] ?: ""
+    val box = macroBoxLinkHtml(uid)
+    val property = op.fields["property"] ?: op.fields["prop"] ?: ""
+    if (op.verb == "move") {
+        return "${macroNumberHtml((index + 1).toString())}${macroNotationHtml(".")} ${compactMoveSummary(op, box)}"
+    }
+    if (op.verb.lowercase() in setOf("edit", "set", "set-string")) {
+        val target = if (box.isBlank()) "" else " ${macroTemplateHtml("of")} $box"
+        val prop = macroPropertyHtml(property).let { if (it.isBlank()) "" else " $it" }
+        return "${macroNumberHtml((index + 1).toString())}${macroNotationHtml(".")} ${macroTemplateHtml(op.verb)}$prop$target${macroToClauseHtml(op.fields["to"].orEmpty(), present = op.fields.containsKey("to"))}"
+    }
+    if (op.verb.lowercase() in setOf("execute", "execute-fragment", "launch", "launch-all", "launch-fragment")) {
+        val target = if (box.isBlank()) "" else " ${macroTemplateHtml("of")} $box"
+        val prop = macroPropertyHtml(property).let { if (it.isBlank()) "" else " $it" }
+        val type = op.fields["type"].orEmpty().let { if (it.isBlank() || it == "launch" || it == property) "" else " ${macroVariableHtml(it)}" }
+        return "${macroNumberHtml((index + 1).toString())}${macroNotationHtml(".")} ${macroTemplateHtml(op.verb.substringBefore("-"))}$type$prop$target"
+    }
+    if (op.verb.lowercase() in setOf("stop", "stop-all", "stop-box")) {
+        val target = if (box.isBlank()) "" else " $box"
+        return "${macroNumberHtml((index + 1).toString())}${macroNotationHtml(".")} ${macroTemplateHtml("stop")}$target"
+    }
+    val target = if (box.isBlank()) "" else " ${macroTemplateHtml("in")} $box"
+    val prop = macroPropertyHtml(property).let { if (it.isBlank()) "" else " $it" }
+    return "${macroNumberHtml((index + 1).toString())}${macroNotationHtml(".")} ${macroTemplateHtml(op.verb)}$prop$target"
+}
+
+private fun compactMoveSummary(op: MacroPreviewOperation, box: String): String {
+    val from = rectFromFields(op.fields, "from") ?: return if (box.isBlank()) macroTemplateHtml("move") else "${macroTemplateHtml("move")} $box"
+    val to = rectFromFields(op.fields, "to") ?: return if (box.isBlank()) macroTemplateHtml("move") else "${macroTemplateHtml("move")} $box"
+    val target = if (box.isBlank()) "" else " $box"
+    return "${macroTemplateHtml("move")}$target ${rectCompactHtml(from)} ${macroNotationHtml("->")} ${rectCompactHtml(to, omitSizeIfSameAs = from)}"
+}
+
+private data class MacroRect(val x: String, val y: String, val w: String, val h: String)
+
+private fun rectFromFields(fields: Map<String, String>, prefix: String): MacroRect? {
+    val x = fields["$prefix.x"] ?: return null
+    val y = fields["$prefix.y"] ?: return null
+    val w = fields["$prefix.w"] ?: return null
+    val h = fields["$prefix.h"] ?: return null
+    return MacroRect(x, y, w, h)
+}
+
+private fun rectCompactHtml(rect: MacroRect, omitSizeIfSameAs: MacroRect? = null): String {
+    val x = compactNumber(rect.x)
+    val y = compactNumber(rect.y)
+    val w = compactNumber(rect.w)
+    val h = compactNumber(rect.h)
+    val sameSize = omitSizeIfSameAs != null &&
+        w == compactNumber(omitSizeIfSameAs.w) &&
+        h == compactNumber(omitSizeIfSameAs.h)
+    val xy = "${macroNumberHtml(x)}${macroNotationHtml(",")}${macroNumberHtml(y)}"
+    if (sameSize) return xy
+    return "$xy${macroNotationHtml("+")}${macroNumberHtml(w)}${macroNotationHtml("x")}${macroNumberHtml(h)}"
+}
+
+private fun compactNumber(value: String): String {
+    val numeric = value.toDoubleOrNull() ?: return value
+    val rounded = kotlin.math.round(numeric)
+    return if (kotlin.math.abs(numeric - rounded) < 0.0001) rounded.toInt().toString() else {
+        val text = numeric.toString()
+        if (text.length > 8) text.take(8).trimEnd('.') else text
+    }
+}
+
+private fun macroDetailsHtml(label: String, value: String, open: Boolean = false): String {
+    val openAttr = if (open) " open" else ""
+    val body = if (value.isBlank()) "<span class=\"macro-recorder-empty\">empty</span>" else "<pre>${htmlEscape(value)}</pre>"
+    return "<details class=\"macro-recorder-detail\"$openAttr><summary>${htmlEscape(label)}</summary>$body</details>"
+}
+
+private fun macroPanelSetFeedback(text: String, kind: String = "ok") {
+    val feedback = macroPanelQuery("[data-role='feedback']") ?: return
+    feedback.classList.remove("macro-recorder-feedback-pulse")
+    feedback.classList.remove("has-errors")
+    feedback.innerHTML = "<div class=\"macro-recorder-feedback-$kind\">${htmlEscape(text)}</div>"
+    feedback.asDynamic().offsetWidth
+    feedback.classList.add("macro-recorder-feedback-pulse")
+}
+
+private fun renderMacroPreview(content: String) {
+    val preview = macroPanelQuery("[data-role='preview']") ?: return
+    val operations = parseMacroPreview(content)
+    if (operations.isEmpty()) {
+        preview.innerHTML = "<div class=\"macro-recorder-empty\">No operations recognized yet.</div>"
+        return
+    }
+    preview.innerHTML = operations.mapIndexed { index, op ->
+        val priority = listOf("from", "to", "value", "text", "frame")
+        val hiddenKeys = setOf("box", "uid", "target", "property", "prop") +
+            if (op.verb == "move") setOf("from", "to", "from.x", "from.y", "from.w", "from.h", "to.x", "to.y", "to.w", "to.h") else emptySet()
+        val detailKeys = (priority + op.fields.keys.filterNot { it in priority || it in hiddenKeys })
+            .distinct()
+            .filter { op.fields.containsKey(it) }
+        val details = detailKeys.joinToString("") { key ->
+            macroDetailsHtml(key, op.fields[key].orEmpty(), open = key == "to")
+        }
+        """
+        <div class="macro-recorder-op">
+            <div class="macro-recorder-op-head">${macroOperationSummary(index, op)}</div>
+            <div class="macro-recorder-op-details">$details</div>
+        </div>
+        """.trimIndent()
+    }.joinToString("")
+}
+
+private fun renderMacroTranscriptPage(response: MacroTranscriptCommandResponse) {
+    macroPanelCaptureTranscriptDetailState()
+    val page = macroPanelQuery("[data-role='transcript-page']")
+    val list = macroPanelQuery("[data-role='transcript-list']") ?: return
+    val wasAtBottom = macroTranscriptFollowTail || macroPanelTranscriptIsAtBottom(list)
+    val previousIndices = macroTranscriptRenderedIndices
+    val previousMax = previousIndices.maxOrNull() ?: -1
+    val start = if (response.entries.isEmpty()) 0 else response.offset + 1
+    val end = response.offset + response.entries.size
+    page?.innerHTML = "${macroTemplateHtml("entries")} ${macroNumberHtml(start.toString())}${macroNotationHtml("-")}${macroNumberHtml(end.toString())} ${macroTemplateHtml("of")} ${macroNumberHtml(response.total.toString())}"
+    macroTranscriptLastTotal = response.total
+
+    if (response.entries.isEmpty()) {
+        list.innerHTML = "<div class=\"macro-recorder-empty\">No transcript entries yet.</div>"
+        macroTranscriptRenderedIndices = emptySet()
+        return
+    }
+
+    list.innerHTML = response.entries.joinToString("") { entry ->
+        val checked = if (macroTranscriptSelected.contains(entry.index)) " checked" else ""
+        val disabled = if (entry.selectable) "" else " disabled"
+        val open = if (macroTranscriptOpenDetails.contains(entry.index)) " open" else ""
+        val arriving = previousIndices.isNotEmpty() && wasAtBottom && entry.index !in previousIndices && entry.index > previousMax
+        val rowClasses = buildList {
+            add("macro-recorder-transcript-row")
+            if (!entry.selectable) add("is-muted")
+            if (arriving) add("is-new-arrival")
+        }.joinToString(" ")
+        val isWait = entry.verb.equals("wait", ignoreCase = true)
+        val meta = buildList {
+            if (!isWait && entry.frame.isNotBlank()) add("${macroTemplateHtml("frame")} ${macroNumberHtml(entry.frame)}")
+            if (entry.at.isNotBlank()) add(macroInlineTokenHtml(entry.at))
+        }.joinToString(" ${macroNotationHtml("·")} ")
+        val metaHtml = if (meta.isBlank()) "" else "<span class=\"macro-recorder-transcript-meta\">$meta</span>"
+        """
+        <div class="$rowClasses">
+            <label>
+                <input type="checkbox" data-transcript-index="${entry.index}"$checked$disabled>
+                <span class="macro-recorder-transcript-index">${macroNotationHtml("#")}${macroNumberHtml(entry.index.toString())}</span>
+                <span class="macro-recorder-transcript-summary">${macroTranscriptSummaryHtml(entry)}</span>
+                $metaHtml
+            </label>
+            <details class="macro-recorder-detail macro-recorder-transcript-detail" data-transcript-detail-index="${entry.index}"$open>
+                <summary title="Show transcript YAML"></summary>
+                <pre>${htmlEscape(entry.yaml)}</pre>
+            </details>
+        </div>
+        """.trimIndent()
+    }
+    macroTranscriptRenderedIndices = response.entries.map { it.index }.toSet()
+    if (wasAtBottom) {
+        macroTranscriptFollowTail = true
+        window.setTimeout({
+            list.scrollTop = list.scrollHeight.toDouble()
+        }, 0)
+    }
+    macroPanelRestoreTranscriptYamlScrollState()
+
+    list.querySelectorAll("input[data-transcript-index]").asList().forEach { node ->
+        val input = node as? HTMLElement ?: return@forEach
+        input.addEventListener("click", { event ->
+            val index = input.getAttribute("data-transcript-index")?.toIntOrNull() ?: return@addEventListener
+            val checked = input.asDynamic().checked as? Boolean ?: false
+            val anchor = macroTranscriptSelectionAnchor
+            if (checked) {
+                if (event.asDynamic().shiftKey as? Boolean == true && anchor != null) {
+                    val visibleIndices = macroPanelVisibleTranscriptCheckboxIndices()
+                    val anchorPosition = visibleIndices.indexOf(anchor)
+                    val indexPosition = visibleIndices.indexOf(index)
+                    if (anchorPosition >= 0 && indexPosition >= 0) {
+                        val first = minOf(anchorPosition, indexPosition)
+                        val last = maxOf(anchorPosition, indexPosition)
+                        visibleIndices.subList(first, last + 1).forEach { macroTranscriptSelected.add(it) }
+                        macroPanelApplyVisibleTranscriptSelection()
+                    } else {
+                        macroTranscriptSelected.add(index)
+                    }
+                } else {
+                    macroTranscriptSelected.add(index)
+                }
+            } else {
+                macroTranscriptSelected.remove(index)
+            }
+            macroTranscriptSelectionAnchor = index
+            macroPanelUpdateSelectionStatus()
+        })
+    }
+    list.querySelectorAll("details[data-transcript-detail-index]").asList().forEach { node ->
+        val details = node as? HTMLElement ?: return@forEach
+        details.addEventListener("toggle", {
+            val index = details.getAttribute("data-transcript-detail-index")?.toIntOrNull() ?: return@addEventListener
+            val open = details.asDynamic().open as? Boolean ?: false
+            if (open) macroTranscriptOpenDetails.add(index) else macroTranscriptOpenDetails.remove(index)
+        })
+    }
+    macroPanelUpdateSelectionStatus()
+}
+
+private fun macroPanelTranscriptIsAtBottom(list: HTMLElement): Boolean {
+    val scrollTop = (list.asDynamic().scrollTop as? Number)?.toDouble() ?: 0.0
+    val scrollHeight = (list.asDynamic().scrollHeight as? Number)?.toDouble() ?: 0.0
+    val clientHeight = (list.asDynamic().clientHeight as? Number)?.toDouble() ?: 0.0
+    return scrollHeight - (scrollTop + clientHeight) <= 8.0
+}
+
+private fun macroPanelCaptureTranscriptDetailState() {
+    val list = macroPanelQuery("[data-role='transcript-list']") ?: return
+    list.querySelectorAll("details[data-transcript-detail-index]").asList().forEach { node ->
+        val details = node as? HTMLElement ?: return@forEach
+        val index = details.getAttribute("data-transcript-detail-index")?.toIntOrNull() ?: return@forEach
+        val open = details.asDynamic().open as? Boolean ?: false
+        if (open) macroTranscriptOpenDetails.add(index) else macroTranscriptOpenDetails.remove(index)
+        val pre = details.querySelector("pre") as? HTMLElement
+        val scrollTop = (pre?.asDynamic()?.scrollTop as? Number)?.toDouble() ?: 0.0
+        if (scrollTop > 0.0) {
+            macroTranscriptYamlScrollTop[index] = scrollTop
+        } else {
+            macroTranscriptYamlScrollTop.remove(index)
+        }
+    }
+}
+
+private fun macroPanelRestoreTranscriptYamlScrollState() {
+    val list = macroPanelQuery("[data-role='transcript-list']") ?: return
+    list.querySelectorAll("details[data-transcript-detail-index]").asList().forEach { node ->
+        val details = node as? HTMLElement ?: return@forEach
+        val index = details.getAttribute("data-transcript-detail-index")?.toIntOrNull() ?: return@forEach
+        val scrollTop = macroTranscriptYamlScrollTop[index] ?: return@forEach
+        val pre = details.querySelector("pre") as? HTMLElement ?: return@forEach
+        val maxScroll = ((pre.asDynamic().scrollHeight as? Number)?.toDouble() ?: 0.0) -
+            ((pre.asDynamic().clientHeight as? Number)?.toDouble() ?: 0.0)
+        pre.asDynamic().scrollTop = scrollTop.coerceIn(0.0, maxScroll.coerceAtLeast(0.0))
+    }
+}
+
+private fun macroPanelVisibleTranscriptCheckboxIndices(): List<Int> {
+    val list = macroPanelQuery("[data-role='transcript-list']") ?: return emptyList()
+    return list.querySelectorAll("input[data-transcript-index]").asList().mapNotNull { node ->
+        val input = node as? HTMLElement ?: return@mapNotNull null
+        val disabled = input.asDynamic().disabled as? Boolean ?: false
+        if (disabled) null else input.getAttribute("data-transcript-index")?.toIntOrNull()
+    }
+}
+
+private fun macroPanelApplyVisibleTranscriptSelection() {
+    val list = macroPanelQuery("[data-role='transcript-list']") ?: return
+    list.querySelectorAll("input[data-transcript-index]").asList().forEach { node ->
+        val input = node as? HTMLElement ?: return@forEach
+        val index = input.getAttribute("data-transcript-index")?.toIntOrNull() ?: return@forEach
+        input.asDynamic().checked = macroTranscriptSelected.contains(index)
+    }
+}
+
+private fun macroPanelUpdateSelectionStatus() {
+    val status = macroPanelQuery("[data-role='transcript-selection']") ?: return
+    val count = macroTranscriptSelected.size
+    status.textContent = if (count == 0) "nothing selected" else "$count selected"
+}
+
+private fun macroPanelLoadTranscript(offset: Int = macroTranscriptOffset, followTail: Boolean = macroTranscriptFollowTail) {
+    macroTranscriptFollowTail = followTail
+    macroPanelRequest(
+        "transcript-page",
+        offset = if (followTail) -1 else offset.coerceAtLeast(0),
+        limit = MACRO_TRANSCRIPT_PAGE_SIZE,
+        mode = if (macroTranscriptHideWaits) "hide-wait" else "",
+        announce = false
+    ) { response ->
+        macroTranscriptOffset = response.offset
+        macroTranscriptLastTotal = response.total
+        renderMacroTranscriptPage(response)
+    }
+}
+
+private fun macroPanelSelectedTranscriptIndices(): List<Int> =
+    macroTranscriptSelected.toList().sorted()
+
+private fun macroPanelLaunchAiUndo(prompt: String) {
+    val uid = getSelectedIds().firstOrNull()
+    if (uid == null) {
+        notify("Select a box to host the AI4 undo conversation", "error")
+        return
+    }
+    val w = window.asDynamic()
+    val opener = w.openAiChatForBox
+    if (opener != null) {
+        opener(uid, selectedProperty)
+    }
+    val payload = js("{}")
+    payload.uid = uid
+    payload.prompt = "Macro transcript undo request"
+    payload.extraPrompt = prompt
+    payload.startLine = 0
+    payload.property = selectedProperty
+    payload.kind = "general"
+    send("ai-assist", payload)
+}
+
+private fun macroPanelQuery(selector: String): HTMLElement? =
+    macroPanelElement?.querySelector(selector) as? HTMLElement
+
+private fun macroPanelValue(selector: String): String =
+    macroPanelElement?.querySelector(selector).asDynamic()?.value as? String ?: ""
+
+private fun macroPanelSetValue(selector: String, value: String) {
+    macroPanelElement?.querySelector(selector).asDynamic().value = value
+}
+
+private fun macroPanelOpenEditor() {
+    (macroPanelElement?.querySelector("[data-role='macro-editor']") as? HTMLElement)?.asDynamic().open = true
+}
+
+private fun macroPanelSetContent(content: String, dirty: Boolean = false) {
+    macroPanelSetValue("[data-role='content']", content)
+    renderMacroPreview(content)
+    macroPanelContentDirty = dirty
+}
+
+private fun macroPanelScope(): String =
+    macroPanelValue("[data-role='scope']").ifBlank { "document" }
+
+private fun macroPanelProjectName(): String =
+    macroPanelLastState?.projectName.orEmpty()
+
+private fun macroPanelName(): String =
+    macroPanelValue("[data-role='name']").trim()
+
+private fun macroRevealLabel(): String {
+    val platform = (window.asDynamic().navigator.userAgentData?.platform as? String)
+        ?: (window.navigator.asDynamic().platform as? String)
+        ?: ""
+    val lower = platform.lowercase()
+    return when {
+        lower.contains("mac") -> "Reveal in Finder"
+        lower.contains("win") -> "Reveal in Explorer"
+        lower.contains("linux") -> "Reveal in Files"
+        else -> "Reveal"
+    }
+}
+
+private fun macroFileBaseName(name: String): String =
+    name.substringAfterLast('/').substringAfterLast('\\').replace(Regex("\\.(ya?ml)$", RegexOption.IGNORE_CASE), "")
+
+private fun macroPanelImportYamlFile(file: dynamic) {
+    val fileName = (file.name as? String).orEmpty()
+    if (!fileName.lowercase().endsWith(".yaml") && !fileName.lowercase().endsWith(".yml")) {
+        macroPanelSetFeedback("Drop .yaml macro files here", "error")
+        return
+    }
+    val name = macroFileBaseName(fileName).ifBlank { "macro" }
+    val reader = js("new FileReader()")
+    reader.onload = { _: dynamic ->
+        val content = (reader.result as? String).orEmpty()
+        macroPanelSetValue("[data-role='scope']", "document")
+        macroPanelSetValue("[data-role='name']", name)
+        val rewritten = macroContentWithName(content, name)
+        macroPanelRequest("write", name = name, content = rewritten, announce = false) { response ->
+            if (response.success) {
+                macroPanelSetContent(response.content.ifBlank { rewritten }, dirty = false)
+                macroPanelOpenEditor()
+                macroPanelSetFeedback("Imported ${response.name.ifBlank { name }} into document macros.")
+            } else {
+                macroPanelSetFeedback(response.message.ifBlank { "Could not import $fileName" }, "error")
+            }
+            macroPanelRefresh()
+        }
+    }
+    reader.onerror = { _: dynamic ->
+        macroPanelSetFeedback("Could not read $fileName", "error")
+    }
+    reader.readAsText(file)
+}
+
+private fun macroPanelRequest(
+    command: String,
+    name: String = macroPanelName(),
+    content: String = "",
+    offset: Int = 0,
+    limit: Int = MACRO_TRANSCRIPT_PAGE_SIZE,
+    indices: List<Int> = emptyList(),
+    mode: String = "",
+    announce: Boolean = true,
+    after: ((MacroTranscriptCommandResponse) -> Unit)? = null
+) {
+    val scope = macroPanelScope()
+    sendMacroTranscriptCommand(
+        MacroTranscriptCommandRequest(
+            command = command,
+            name = name,
+            label = name,
+            selection = getSelectedIds(),
+            scope = scope,
+            projectName = if (scope == "project") macroPanelProjectName() else "",
+            content = content,
+            offset = offset,
+            limit = limit,
+            indices = indices,
+            mode = mode
+        ),
+        announce = announce,
+        after = after
+    )
+}
+
+private fun ensureMacroPanel(): HTMLElement {
+    macroPanelElement?.let { return it }
+    val panel = document.createElement("div") as HTMLElement
+    panel.id = "macro-recorder-panel"
+    panel.className = "macro-recorder-panel"
+    panel.innerHTML = """
+        <div class="macro-recorder-head">
+            <div>
+                <div class="macro-recorder-title">Macro Recorder</div>
+                <div class="macro-recorder-status" data-role="status">idle</div>
+            </div>
+            <button type="button" class="macro-recorder-icon" data-action="close" title="Close">×</button>
+        </div>
+        <div class="macro-recorder-controls">
+            <input data-role="name" autocomplete="off" placeholder="macro name">
+            <select data-role="scope" title="Macro scope">
+                <option value="document">document</option>
+                <option value="project">project</option>
+                <option value="workspace">workspace</option>
+            </select>
+            <button type="button" data-action="start">Start</button>
+            <button type="button" data-action="save">Save</button>
+            <button type="button" data-action="run">Run</button>
+            <button type="button" data-action="reveal"></button>
+        </div>
+        <div class="macro-recorder-meta" data-role="meta"></div>
+        <div class="macro-recorder-feedback" data-role="feedback"></div>
+        <div class="macro-recorder-transcript-head">
+            <div>
+                <div class="macro-recorder-list-title">transcript</div>
+                <div class="macro-recorder-transcript-meta-line">
+                    <span class="macro-recorder-meta" data-role="transcript-page">entries 0-0 of 0</span>
+                    <span class="macro-recorder-notation">·</span>
+                    <span class="macro-recorder-meta" data-role="transcript-selection">nothing selected</span>
+                </div>
+            </div>
+            <div class="macro-recorder-transcript-actions">
+                <label class="macro-recorder-transcript-toggle">
+                    <input type="checkbox" data-role="hide-waits">
+                    <span>hide wait</span>
+                </label>
+                <button type="button" data-action="transcript-newer">Newer</button>
+                <button type="button" data-action="transcript-older">Older</button>
+                <button type="button" data-action="save-selected">Save selected</button>
+                <button type="button" data-action="undo-selected">Undo selected</button>
+                <button type="button" data-action="ai-undo-selected">AI Undo</button>
+            </div>
+        </div>
+        <div class="macro-recorder-transcript" data-role="transcript-list"></div>
+        <details class="macro-recorder-editor" data-role="macro-editor">
+            <summary>macro yaml</summary>
+            <div class="macro-recorder-editor-body">
+                <textarea data-role="content" spellcheck="false"></textarea>
+                <div class="macro-recorder-preview" data-role="preview"></div>
+            </div>
+        </details>
+        <div class="macro-recorder-browser">
+            <div>
+                <div class="macro-recorder-list-title">document</div>
+                <div class="macro-recorder-list" data-role="document-list"></div>
+            </div>
+            <div>
+                <div class="macro-recorder-list-title" data-role="project-title">project</div>
+                <div class="macro-recorder-list" data-role="project-list"></div>
+            </div>
+            <div>
+                <div class="macro-recorder-list-title">workspace</div>
+                <div class="macro-recorder-list" data-role="workspace-list"></div>
+            </div>
+        </div>
+    """.trimIndent()
+    document.body!!.appendChild(panel)
+    macroPanelElement = panel
+    panel.querySelector("[data-action='reveal']")?.textContent = macroRevealLabel()
+
+    panel.querySelector("[data-action='close']")?.addEventListener("click", {
+        panel.classList.remove("is-visible")
+        macroPanelStopAutoRefresh()
+    })
+    panel.addEventListener("dragover", { event ->
+        event.preventDefault()
+        panel.classList.add("is-dragging-file")
+    })
+    panel.addEventListener("dragleave", {
+        panel.classList.remove("is-dragging-file")
+    })
+    panel.addEventListener("drop", { event ->
+        event.preventDefault()
+        panel.classList.remove("is-dragging-file")
+        val files = event.asDynamic().dataTransfer?.files ?: return@addEventListener
+        val length = (files.length as? Number)?.toInt() ?: 0
+        if (length == 0) return@addEventListener
+        (0 until length).forEach { index ->
+            macroPanelImportYamlFile(files[index])
+        }
+    })
+    panel.querySelector("[data-role='transcript-list']")?.addEventListener("scroll", { event ->
+        val list = event.target as? HTMLElement ?: return@addEventListener
+        macroTranscriptFollowTail = macroPanelTranscriptIsAtBottom(list)
+    })
+    panel.querySelector("[data-action='transcript-newer']")?.addEventListener("click", {
+        val nextOffset = macroTranscriptOffset + MACRO_TRANSCRIPT_PAGE_SIZE
+        if (nextOffset + MACRO_TRANSCRIPT_PAGE_SIZE >= macroTranscriptLastTotal) {
+            macroPanelLoadTranscript(followTail = true)
+        } else {
+            macroPanelLoadTranscript(nextOffset, followTail = false)
+        }
+    })
+    panel.querySelector("[data-action='transcript-older']")?.addEventListener("click", {
+        macroPanelLoadTranscript((macroTranscriptOffset - MACRO_TRANSCRIPT_PAGE_SIZE).coerceAtLeast(0), followTail = false)
+    })
+    panel.querySelector("[data-role='hide-waits']")?.addEventListener("change", {
+        val input = it.target as? HTMLElement ?: return@addEventListener
+        macroTranscriptHideWaits = input.asDynamic().checked as? Boolean ?: false
+        macroTranscriptFollowTail = true
+        macroPanelLoadTranscript(followTail = true)
+    })
+    panel.querySelector("[data-action='save-selected']")?.addEventListener("click", {
+        val indices = macroPanelSelectedTranscriptIndices()
+        if (indices.isEmpty()) {
+            notify("Select transcript entries to save", "error")
+            return@addEventListener
+        }
+        val name = macroPanelName()
+        if (name.isBlank()) {
+            notify("Name the macro before saving", "error")
+            return@addEventListener
+        }
+        macroPanelRequest("save-transcript-selection", name = name, indices = indices) { response ->
+            if (response.success) {
+                macroPanelSetContent(response.content, dirty = false)
+                macroPanelOpenEditor()
+                macroPanelSetFeedback(response.message.ifBlank { "saved ${response.name.ifBlank { name }}" })
+            } else {
+                macroPanelSetFeedback(response.message.ifBlank { "Could not save selected transcript entries" }, "error")
+            }
+            macroPanelRefresh()
+        }
+    })
+    panel.querySelector("[data-action='undo-selected']")?.addEventListener("click", {
+        val indices = macroPanelSelectedTranscriptIndices()
+        if (indices.isEmpty()) {
+            notify("Select transcript entries to undo", "error")
+            return@addEventListener
+        }
+        macroPanelRequest("undo-transcript-selection", indices = indices) { response ->
+            macroPanelShowRunFeedback(response)
+            macroPanelRefresh()
+        }
+    })
+    panel.querySelector("[data-action='ai-undo-selected']")?.addEventListener("click", {
+        val indices = macroPanelSelectedTranscriptIndices()
+        if (indices.isEmpty()) {
+            notify("Select transcript entries for AI4 undo", "error")
+            return@addEventListener
+        }
+        macroPanelRequest("ai-undo-prompt", indices = indices) { response ->
+            if (response.success && response.prompt.isNotBlank()) {
+                macroPanelSetFeedback("${response.message} Launching AI4 general conversation.")
+                macroPanelLaunchAiUndo(response.prompt)
+            } else {
+                macroPanelShowRunFeedback(response)
+            }
+        }
+    })
+    panel.querySelector("[data-action='start']")?.addEventListener("click", {
+        macroTranscriptFollowTail = true
+        macroPanelRequest("start") {
+            macroPanelRefresh()
+        }
+    })
+    panel.querySelector("[data-action='save']")?.addEventListener("click", {
+        val name = macroPanelName()
+        if (name.isBlank()) {
+            notify("Name the macro before saving", "error")
+            return@addEventListener
+        }
+        if (macroPanelLastState?.recording == true) {
+            macroPanelRequest("end-and-save", name = name) { endResponse ->
+                if (endResponse.success) {
+                    val savedName = endResponse.name.ifBlank { name }
+                    macroPanelRequest("read", name = savedName, announce = false) { readResponse ->
+                        if (readResponse.success) {
+                            macroPanelSetContent(readResponse.content, dirty = false)
+                            macroPanelOpenEditor()
+                            macroPanelSetFeedback("saved $savedName")
+                        } else {
+                            macroPanelSetFeedback(readResponse.message.ifBlank { "saved $savedName, but could not reload it" }, "error")
+                        }
+                        macroPanelRefresh()
+                    }
+                } else {
+                    macroPanelSetFeedback(endResponse.message.ifBlank { "Could not save macro" }, "error")
+                    macroPanelRefresh()
+                }
+            }
+        } else {
+            val content = macroContentWithName(macroPanelValue("[data-role='content']"), name)
+            macroPanelRequest("write", name = name, content = content) { response ->
+                if (response.success) {
+                    macroPanelSetContent(response.content.ifBlank { content }, dirty = false)
+                }
+                macroPanelRefresh()
+            }
+        }
+    })
+    panel.querySelector("[data-action='run']")?.addEventListener("click", {
+        val name = macroPanelName()
+        if (name.isBlank()) {
+            notify("Choose a macro to run", "error")
+            return@addEventListener
+        }
+        macroPanelRequest("run", name = name) { response ->
+            macroPanelShowRunFeedback(response)
+            macroPanelRefresh()
+        }
+    })
+    panel.querySelector("[data-action='reveal']")?.addEventListener("click", {
+        macroPanelRequest("reveal", announce = false) { response ->
+            macroPanelSetFeedback(response.message, if (response.success) "ok" else "error")
+        }
+    })
+    panel.querySelector("[data-role='scope']")?.addEventListener("change", {
+        macroPanelRefresh()
+    })
+    panel.querySelector("[data-role='content']")?.addEventListener("input", {
+        macroPanelContentDirty = true
+        renderMacroPreview(macroPanelValue("[data-role='content']"))
+    })
+    return panel
+}
+
+private fun renderMacroList(selector: String, names: List<String>, scope: String) {
+    val list = macroPanelQuery(selector) ?: return
+    if (names.isEmpty()) {
+        list.innerHTML = "<span class=\"macro-recorder-empty\">none</span>"
+        return
+    }
+    list.innerHTML = names.joinToString("") { name ->
+        "<button type=\"button\" data-macro-scope=\"${htmlEscape(scope)}\" data-macro-name=\"${htmlEscape(name)}\">${htmlEscape(name)}</button>"
+    }
+    list.querySelectorAll("button").asList().forEach { item ->
+        val button = item as? HTMLElement ?: return@forEach
+        button.addEventListener("click", {
+            val name = button.getAttribute("data-macro-name").orEmpty()
+            val selectedScope = button.getAttribute("data-macro-scope").orEmpty().ifBlank { "document" }
+            macroPanelSetValue("[data-role='name']", name)
+            macroPanelSetValue("[data-role='scope']", selectedScope)
+            macroPanelRequest("read", name = name, announce = false) { response ->
+                if (response.success) {
+                    macroPanelSetContent(response.content, dirty = false)
+                    macroPanelOpenEditor()
+                    macroPanelLastState = response.copy(
+                        documentMacros = macroPanelLastState?.documentMacros.orEmpty(),
+                        projectMacros = macroPanelLastState?.projectMacros.orEmpty(),
+                        workspaceMacros = macroPanelLastState?.workspaceMacros.orEmpty(),
+                        projectName = macroPanelLastState?.projectName.orEmpty()
+                    )
+                    macroPanelQuery("[data-role='status']")?.textContent = "loaded ${response.name}"
+                } else {
+                    notify(response.message, "error")
+                }
+            }
+        })
+    }
+}
+
+private fun macroPanelShowRunFeedback(response: MacroTranscriptCommandResponse) {
+    val summary = buildString {
+        if (response.direction.isNotBlank()) append(response.direction).append(": ")
+        append(response.applied).append(" applied, ")
+        append(response.skipped).append(" skipped")
+        if (response.errors.isNotEmpty()) append(", ").append(response.errors.size).append(" error(s)")
+    }
+    val errors = if (response.errors.isEmpty()) {
+        ""
+    } else {
+        "<details open><summary>errors</summary><pre>${htmlEscape(response.errors.joinToString("\n"))}</pre></details>"
+    }
+    val kind = if (response.success) "ok" else "error"
+    val feedback = macroPanelQuery("[data-role='feedback']") ?: return
+    feedback.classList.remove("macro-recorder-feedback-pulse")
+    feedback.classList.toggle("has-errors", response.errors.isNotEmpty())
+    val text = response.message.ifBlank { summary }
+    feedback.innerHTML = "<div class=\"macro-recorder-feedback-$kind\">${htmlEscape(text)}</div>$errors"
+    feedback.asDynamic().offsetWidth
+    feedback.classList.add("macro-recorder-feedback-pulse")
+}
+
+private fun updateMacroPanel(response: MacroTranscriptCommandResponse) {
+    val panel = ensureMacroPanel()
+    macroPanelLastState = response
+    val status = macroPanelQuery("[data-role='status']")
+    status?.textContent = response.message
+    status?.asDynamic()?.classList?.toggle("is-recording", response.recording)
+    val projectOption = panel.querySelector("[data-role='scope'] option[value='project']") as? HTMLElement
+    projectOption?.textContent = if (response.projectName.isBlank()) "project" else "project: ${response.projectName}"
+    projectOption?.asDynamic()?.disabled = response.projectName.isBlank()
+    if (response.projectName.isBlank() && macroPanelScope() == "project") {
+        macroPanelSetValue("[data-role='scope']", "document")
+    }
+    val selectionText = if (response.selection.isEmpty()) {
+        "source selection: none"
+    } else {
+        "source selection: " + response.selection.joinToString(", ")
+    }
+    val scopeText = when (macroPanelScope()) {
+        "workspace" -> "workspace macros"
+        "project" -> if (response.projectName.isBlank()) "project macros" else "project ${response.projectName} macros"
+        else -> "document macros"
+    }
+    macroPanelQuery("[data-role='meta']")?.textContent = "$scopeText · $selectionText · ${response.operationCount} operation(s)"
+    val textArea = panel.querySelector("[data-role='content']")
+    val activeElement = document.asDynamic().activeElement
+    if (response.content.isNotBlank() || response.draft.isNotBlank()) {
+        val nextContent = response.content.ifBlank { response.draft }
+        if (activeElement != textArea && !macroPanelContentDirty) {
+            macroPanelSetContent(nextContent, dirty = false)
+        } else {
+            renderMacroPreview(macroPanelValue("[data-role='content']"))
+        }
+    } else {
+        renderMacroPreview(macroPanelValue("[data-role='content']"))
+    }
+    renderMacroList("[data-role='document-list']", response.documentMacros.ifEmpty { response.macros }, "document")
+    renderMacroList("[data-role='project-list']", response.projectMacros, "project")
+    renderMacroList("[data-role='workspace-list']", response.workspaceMacros, "workspace")
+    macroPanelQuery("[data-role='project-title']")?.textContent =
+        if (response.projectName.isBlank()) "project" else "project · ${response.projectName}"
+}
+
+private fun macroPanelStartAutoRefresh() {
+    if (macroPanelRefreshTimer != null) return
+    macroPanelRefreshTimer = window.setInterval({
+        val visible = macroPanelElement?.classList?.contains("is-visible") == true
+        if (visible) {
+            macroPanelRefresh()
+        } else {
+            macroPanelStopAutoRefresh()
+        }
+    }, 1250)
+}
+
+private fun macroPanelStopAutoRefresh() {
+    val timer = macroPanelRefreshTimer ?: return
+    window.clearInterval(timer)
+    macroPanelRefreshTimer = null
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun macroTranscriptPanel() {
+    val panel = ensureMacroPanel()
+    panel.classList.add("is-visible")
+    macroTranscriptFollowTail = true
+    macroPanelStartAutoRefresh()
+    macroPanelRefresh()
+}
+
+fun macroPanelRefresh() {
+    macroPanelRequest("state", announce = false) { response ->
+        updateMacroPanel(response)
+        macroPanelLoadTranscript(macroTranscriptOffset)
+    }
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun macroTranscriptMarkStart() {
+    val label = browserPrompt("Macro start label", "")?.trim().orEmpty()
+    sendMacroTranscriptCommand(MacroTranscriptCommandRequest(command = "start", label = label, selection = getSelectedIds()))
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun macroTranscriptMarkEndAndSave() {
+    val name = browserPrompt("Save macro as", "macro")?.trim()?.takeIf { it.isNotEmpty() } ?: return
+    sendMacroTranscriptCommand(MacroTranscriptCommandRequest(command = "end-and-save", name = name))
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun macroTranscriptRunOnSelection() {
+    val name = browserPrompt("Run macro", "")?.trim()?.takeIf { it.isNotEmpty() } ?: return
+    sendMacroTranscriptCommand(MacroTranscriptCommandRequest(command = "run", name = name, selection = getSelectedIds()))
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun macroTranscriptUndoOnSelection() {
+    val name = browserPrompt("Undo macro", "")?.trim()?.takeIf { it.isNotEmpty() } ?: return
+    sendMacroTranscriptCommand(MacroTranscriptCommandRequest(command = "undo", name = name, selection = getSelectedIds()))
+}
+
 fun recordSelectedBoxMp4() {
     val box = requireSingleSelectedBox() ?: return
     val uid = box.uid as? String ?: return
@@ -1151,6 +2197,11 @@ fun registerBuiltinCommands() {
     w.soloPreviousLayer = ::soloPreviousLayer
     w.refreshLayerShortcutActions = ::refreshLayerShortcutActions
     w.openUserThemeProxyBox = ::openUserThemeProxyBox
+    w.macroTranscriptMarkStart = ::macroTranscriptMarkStart
+    w.macroTranscriptMarkEndAndSave = ::macroTranscriptMarkEndAndSave
+    w.macroTranscriptRunOnSelection = ::macroTranscriptRunOnSelection
+    w.macroTranscriptUndoOnSelection = ::macroTranscriptUndoOnSelection
+    w.macroTranscriptPanel = ::macroTranscriptPanel
 
     allActions.builtin = eval(
         """
@@ -1165,6 +2216,46 @@ fun registerBuiltinCommands() {
             },
             run: () => {
                 newBox()
+            }
+        },{
+            id:'macro-transcript-panel',
+            label:"Macro: Recorder Panel",
+            detail:"Open the macro recorder and browser",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                macroTranscriptPanel()
+            }
+        },{
+            id:'macro-transcript-start',
+            label:"Macro: Mark Start",
+            detail:"Insert a start marker into the operation transcript",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                macroTranscriptMarkStart()
+            }
+        },{
+            id:'macro-transcript-save',
+            label:"Macro: Mark End & Save",
+            detail:"Save transcript operations since the last start marker as a macro",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                macroTranscriptMarkEndAndSave()
+            }
+        },{
+            id:'macro-transcript-run',
+            label:"Macro: Run on Selection",
+            detail:"Run a saved macro against the selected boxes",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                macroTranscriptRunOnSelection()
+            }
+        },{
+            id:'macro-transcript-undo',
+            label:"Macro: Undo on Selection",
+            detail:"Run a saved macro backwards against the selected boxes",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                macroTranscriptUndoOnSelection()
             }
         },{
             id:'delete-box',

@@ -2145,11 +2145,535 @@ body {
     background: var(--field-surface);
 }
 
+.macro-recorder-panel {
+    left: 10px;
+    bottom: 10px;
+    width: min(960px, calc(100vw - 20px));
+    height: min(520px, calc(100vh - 20px));
+    min-width: min(760px, calc(100vw - 20px));
+    min-height: 300px;
+    position: fixed;
+    border: 5px solid var(--field-border);
+    border-radius: 5px;
+    background: #000000;
+    color: #d8d8d8;
+    z-index: 12060;
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    box-sizing: border-box;
+    font-family: var(--field-font);
+    overflow: hidden;
+}
+
+.macro-recorder-panel *:focus,
+.macro-recorder-panel *:focus-visible {
+    outline: none !important;
+}
+
+.macro-recorder-panel.is-visible {
+    display: flex;
+}
+
+.macro-recorder-panel.is-dragging-file {
+    border-color: #555555;
+    background: #050505;
+}
+
+.macro-recorder-panel textarea,
+.macro-recorder-panel pre,
+.macro-recorder-transcript,
+.macro-recorder-preview,
+.macro-recorder-list {
+    scrollbar-width: none;
+    scrollbar-gutter: auto;
+}
+
+.macro-recorder-panel textarea::-webkit-scrollbar,
+.macro-recorder-panel pre::-webkit-scrollbar,
+.macro-recorder-transcript::-webkit-scrollbar,
+.macro-recorder-preview::-webkit-scrollbar,
+.macro-recorder-list::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+}
+
+.macro-recorder-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 28px;
+}
+
+.macro-recorder-title {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0;
+    line-height: 1;
+}
+
+.macro-recorder-status,
+.macro-recorder-meta,
+.macro-recorder-list-title,
+.macro-recorder-empty,
+.macro-recorder-feedback {
+    color: #8a8a8a;
+    font-size: 10.2px;
+}
+
+.macro-recorder-status.is-recording {
+    color: rgb(var(--field-accent-rgb));
+}
+
+.macro-recorder-list-title {
+    text-transform: uppercase;
+    margin-bottom: 2px;
+}
+
+.macro-recorder-controls {
+    display: grid;
+    grid-template-columns: minmax(160px, 1fr) 120px repeat(4, auto);
+    gap: 6px;
+    align-items: center;
+}
+
+.macro-recorder-controls input,
+.macro-recorder-controls select,
+.macro-recorder-panel textarea {
+    border: 1px solid #2b2b2b;
+    background: #050505;
+    color: #d8d8d8;
+    border-radius: 6px;
+    font-family: var(--field-font);
+    font-size: 10.2px;
+    outline: none;
+    box-shadow: none;
+}
+
+.macro-recorder-controls input,
+.macro-recorder-controls select {
+    height: 28px;
+    padding: 0 7px;
+}
+
+.macro-recorder-controls input:focus,
+.macro-recorder-controls select:focus,
+.macro-recorder-panel textarea:focus {
+    border-color: #464646;
+}
+
+.macro-recorder-controls button,
+.macro-recorder-transcript-actions button,
+.macro-recorder-list button,
+.macro-recorder-icon {
+    border: 1px solid #2b2b2b;
+    background: #050505;
+    color: #8a8a8a;
+    border-radius: 6px;
+    font-family: var(--field-font);
+    font-size: 10.2px;
+    min-height: 28px;
+    padding: 0 8px;
+    cursor: pointer;
+    box-shadow: none;
+}
+
+.macro-recorder-controls button:hover,
+.macro-recorder-transcript-actions button:hover,
+.macro-recorder-list button:hover,
+.macro-recorder-icon:hover {
+    border-color: #464646;
+    background: #101010;
+    color: #f0f0f0;
+}
+
+.macro-recorder-icon {
+    width: 26px;
+    height: 26px;
+    min-height: 26px;
+    padding: 0;
+    font-size: 17px;
+    line-height: 1;
+}
+
+.macro-recorder-panel textarea {
+    flex: 0 0 96px;
+    min-height: 74px;
+    padding: 8px;
+    resize: none;
+    font-family: var(--field-font-code);
+    line-height: 1.35;
+}
+
+.macro-recorder-feedback {
+    min-height: 18px;
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.macro-recorder-feedback.has-errors {
+    overflow: visible;
+    white-space: normal;
+}
+
+.macro-recorder-feedback-ok {
+    color: #8a8a8a;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.macro-recorder-feedback-error {
+    color: #ff8585;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.macro-recorder-feedback-pulse {
+    animation: macro-recorder-feedback-attack 420ms ease-out;
+}
+
+@keyframes macro-recorder-feedback-attack {
+    0% {
+        opacity: 0.25;
+    }
+    18% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0.72;
+    }
+}
+
+.macro-recorder-feedback details {
+    margin-top: 4px;
+}
+
+.macro-recorder-feedback pre,
+.macro-recorder-detail pre {
+    margin: 5px 0 0;
+    padding: 6px;
+    max-height: 120px;
+    overflow: auto;
+    background: #181818;
+    border: 1px solid #2b2b2b;
+    border-radius: 5px;
+    color: #d8d8d8;
+    font-family: var(--field-font-code);
+    font-size: 10.2px;
+    line-height: 1.35;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.macro-recorder-preview {
+    flex: 1;
+    min-height: 70px;
+    overflow: auto;
+    border: 0;
+    border-radius: 8px;
+    background: #1f1f1f;
+    padding: 6px;
+}
+
+.macro-recorder-editor {
+    flex: 0 0 auto;
+    border-top: 1px solid #111111;
+    padding-top: 3px;
+}
+
+.macro-recorder-editor summary {
+    cursor: pointer;
+    color: #8a8a8a;
+    font-size: 10.2px;
+    text-transform: uppercase;
+    list-style-position: inside;
+}
+
+.macro-recorder-editor-body {
+    display: flex;
+    gap: 6px;
+    min-height: 84px;
+    max-height: 150px;
+    margin-top: 5px;
+}
+
+.macro-recorder-editor-body textarea,
+.macro-recorder-editor-body .macro-recorder-preview {
+    min-width: 0;
+}
+
+.macro-recorder-editor-body textarea {
+    flex: 1 1 46%;
+}
+
+.macro-recorder-editor-body .macro-recorder-preview {
+    flex: 1 1 54%;
+}
+
+.macro-recorder-transcript-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 2px;
+}
+
+.macro-recorder-transcript-meta-line {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+    min-width: 0;
+    white-space: nowrap;
+}
+
+.macro-recorder-transcript-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.macro-recorder-transcript-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: #8a8a8a;
+    font-size: 10.2px;
+    white-space: nowrap;
+}
+
+.macro-recorder-transcript-toggle input {
+    width: 11px;
+    height: 11px;
+    margin: 0;
+    accent-color: rgb(var(--field-accent-rgb));
+}
+
+.macro-recorder-transcript-actions button {
+    min-height: 25px;
+    padding: 0 7px;
+}
+
+.macro-recorder-transcript {
+    flex: 1 1 92px;
+    min-height: 58px;
+    overflow: auto;
+    background: #1f1f1f;
+    border-radius: 8px;
+    padding: 6px;
+}
+
+.macro-recorder-transcript-row {
+    position: relative;
+    border: 1px solid #050505;
+    border-radius: 6px;
+    background: #242424;
+    margin-bottom: 5px;
+    padding: 5px 24px 5px 6px;
+}
+
+.macro-recorder-transcript-row.is-muted {
+    opacity: 0.58;
+}
+
+.macro-recorder-transcript-row.is-new-arrival {
+    animation: macro-recorder-transcript-arrival 620ms ease-out;
+}
+
+@keyframes macro-recorder-transcript-arrival {
+    0% {
+        background: #303030;
+        border-color: rgba(var(--field-accent-rgb), 0.42);
+    }
+    35% {
+        background: #292929;
+        border-color: rgba(var(--field-accent-rgb), 0.22);
+    }
+    100% {
+        background: #242424;
+        border-color: #050505;
+    }
+}
+
+.macro-recorder-transcript-row label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #d8d8d8;
+    font-size: 10.2px;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.macro-recorder-transcript-row input {
+    width: 12px;
+    height: 12px;
+    margin: 0;
+    accent-color: rgb(var(--field-accent-rgb));
+}
+
+.macro-recorder-transcript-index {
+    color: #8a8a8a;
+    min-width: 42px;
+}
+
+.macro-recorder-transcript-summary {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.macro-recorder-transcript-meta {
+    color: #777777;
+    font-size: 9.8px;
+    flex: 0 0 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.macro-recorder-transcript-detail summary {
+    position: absolute;
+    top: 5px;
+    right: 6px;
+    width: 12px;
+    height: 14px;
+    overflow: hidden;
+    color: #8a8a8a;
+}
+
+.macro-recorder-transcript-detail summary::marker {
+    font-size: 10px;
+}
+
+.macro-recorder-transcript-detail pre {
+    margin-top: 7px;
+}
+
+.macro-recorder-op {
+    border: 1px solid #050505;
+    border-radius: 6px;
+    background: #242424;
+    margin-bottom: 6px;
+    padding: 6px;
+}
+
+.macro-recorder-op-head {
+    color: #d8d8d8;
+    font-size: 10.2px;
+}
+
+.macro-recorder-op-head code {
+    font-family: var(--field-font-code);
+    color: #d8d8d8;
+}
+
+.macro-recorder-template {
+    color: #aaaaaa;
+    font-weight: 360;
+}
+
+.macro-recorder-variable {
+    color: #e4e4e4;
+    font-weight: 560;
+}
+
+.macro-recorder-number {
+    color: #cccccc;
+    font-weight: 500;
+}
+
+.macro-recorder-notation {
+    color: #737373;
+    font-weight: 360;
+}
+
+.macro-recorder-box-link {
+    color: #e4e4e4;
+    text-decoration: none;
+    cursor: pointer;
+    font-weight: 560;
+    white-space: nowrap;
+}
+
+.macro-recorder-box-link:hover {
+    color: #ffffff;
+}
+
+.macro-recorder-box-symbol {
+    color: #9a9a9a;
+    font-weight: 360;
+    margin-right: 2px;
+}
+
+.macro-recorder-box-name {
+    color: inherit;
+    font-style: italic;
+    font-weight: 300;
+}
+
+.macro-recorder-op-details {
+    display: grid;
+    gap: 4px;
+    margin-top: 5px;
+}
+
+.macro-recorder-detail summary,
+.macro-recorder-feedback summary {
+    cursor: pointer;
+    color: #8a8a8a;
+    font-size: 10.2px;
+}
+
+.macro-recorder-browser {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    flex: 0 0 auto;
+    min-height: 0;
+    max-height: 82px;
+    overflow: hidden;
+}
+
+.macro-recorder-list {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 5px;
+    min-height: 31px;
+    max-height: 54px;
+    overflow: auto;
+    padding-top: 4px;
+}
+
 @media (max-width: 1120px) {
     .history-iframe-container {
         right: auto;
         width: calc(100vw - 20px);
         max-width: none;
+    }
+
+    .macro-recorder-panel {
+        min-width: 0;
+        width: calc(100vw - 20px);
+    }
+
+    .macro-recorder-controls {
+        grid-template-columns: minmax(0, 1fr) 108px repeat(4, auto);
+    }
+
+    .macro-recorder-controls button:nth-of-type(n + 4) {
+        display: none;
     }
 }
 

@@ -4375,6 +4375,12 @@ suspend fun main() {
         Handled.yes
     }
 
+    handlers.put("clear-editor-outputs") { message, _ ->
+        val clear = Json.decodeFromJsonElement<ClearEditorOutputs>(message.payload!!)
+        clearEditorOutputsForBoxFromServer(clear.uid)
+        Handled.yes
+    }
+
     handlers.put("control-value-update") { message, _ ->
         val payload = message.payload ?: return@put Handled.no
         val fn = window.asDynamic().applyFieldControlUpdate

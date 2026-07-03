@@ -87,7 +87,7 @@ data class ListContentEntry(
     val relation: String = "current"
 )
 
-@JsonClassDescription("List Kotlin REPL context variables currently retained by a Field box's KotlinInterface/KotlinInterface2 without evaluating code. Target may be blank for the current box, a box uid/name, or an afield://... ref.")
+@JsonClassDescription("List Kotlin REPL context variables currently retained by a Field box's KotlinInterface/KotlinInterface2 without evaluating code. Target may be blank for the current box, a box uid/name, or an afield://... ref. This lists retained script variables, not Field box properties. In later EvaluateKotlinExpression calls, refer to these variables by their names; refer to the current/target box as thisBox, never as _ or _.foo.")
 data class ListKotlinContextVariablesRequest(
     val target: String = "",
     val maxValueChars: Int = 300
@@ -114,7 +114,7 @@ data class ListKotlinContextVariablesResult(
     val variables: List<KotlinContextVariableInfo> = emptyList()
 )
 
-@JsonClassDescription("Evaluate a Kotlin expression in a Field box's existing KotlinInterface/KotlinInterface2 context. Target may be blank for the current box, a box uid/name, or an afield://... ref. Prefer read-only expressions; this runs against live runtime objects.")
+@JsonClassDescription("Evaluate a Kotlin expression in a Field box's existing KotlinInterface/KotlinInterface2 context. Target may be blank for the current box, a box uid/name, or an afield://... ref. Prefer read-only expressions; this runs against live runtime objects. The current/target Field box is thisBox. Do not use _, _.foo, or bare box as current-box syntax. Use thisBox.getPropertyRaw(\"name\") / thisBox.setPropertyRaw(\"name\", value) for raw box properties, and use box(\"uid\", root = thisBox.inside) when intentionally resolving or creating another box in the same document.")
 data class EvaluateKotlinExpressionRequest(
     val target: String = "",
     val expression: String,
@@ -204,6 +204,60 @@ data class ReloadShadersResult(
     val visualCheckMessage: String = "",
     @get:JsonIgnore
     val visualDataUrl: String = ""
+)
+
+/** Macro transcript tools --------------------------------------------------- */
+
+@JsonClassDescription("List saved operation-transcript macros available to the current Field document. Use this before running a macro when the user names one imprecisely or asks what macros exist.")
+data class MacroListRequest(val unused: Int = 0)
+
+data class MacroListResult(
+    val success: Boolean,
+    val message: String,
+    val macros: List<String> = emptyList()
+)
+
+@JsonClassDescription("Read a saved operation-transcript macro YAML file by name. Read before editing a macro, and usually read before running when target mapping or expected effects matter.")
+data class MacroReadRequest(val name: String)
+
+data class MacroReadResult(
+    val success: Boolean,
+    val message: String,
+    val name: String,
+    val content: String = "",
+    val operationCount: Int = 0
+)
+
+@JsonClassDescription("Create or replace a saved operation-transcript macro YAML file in the current Field document. Content should be YAML with an operations list. Use this to save a user-requested new/edited macro; do not rewrite an existing macro just to run it.")
+data class MacroWriteRequest(
+    val name: String,
+    val content: String
+)
+
+data class MacroWriteResult(
+    val success: Boolean,
+    val message: String,
+    val name: String,
+    val operationCount: Int = 0
+)
+
+@JsonClassDescription("Run or undo a saved operation-transcript macro. Use direction=do to replay it and direction=undo to run it backwards. targetBoxes may contain box uids or names; when set, the macro's first recorded source box is remapped to each target box, which is the normal way to do a recorded macro to the current/selected box. Empty targetBoxes replays the recorded uids literally. Inspect applied/skipped/errors; if applied=0 or errors are returned, do not repeat the identical request. If a normal run reports operation errors in chat, Field will attempt an automatic undo and return the undo result; inspect that result and ask before retrying.")
+data class MacroRunRequest(
+    val name: String,
+    val direction: String = "do",
+    val targetBoxes: List<String> = emptyList(),
+    val strict: Boolean = false
+)
+
+data class MacroRunResult(
+    val success: Boolean,
+    val message: String,
+    val name: String,
+    val direction: String,
+    val targetBoxes: List<String> = emptyList(),
+    val applied: Int = 0,
+    val skipped: Int = 0,
+    val errors: List<String> = emptyList()
 )
 
 /** Long-running task tools -------------------------------------------------- */
@@ -458,6 +512,10 @@ data class ToolExecutionContext(
     val editOtherFile: ((EditFileRequest) -> EditFileResponse)? = null,
     val compileKotlin: ((CompileKotlinRequest) -> CompileKotlinResult)? = null,
     val reloadShaders: ((ReloadShadersRequest) -> ReloadShadersResult)? = null,
+    val listMacros: ((MacroListRequest) -> MacroListResult)? = null,
+    val readMacro: ((MacroReadRequest) -> MacroReadResult)? = null,
+    val writeMacro: ((MacroWriteRequest) -> MacroWriteResult)? = null,
+    val runMacro: ((MacroRunRequest) -> MacroRunResult)? = null,
 
     val agentMemory: AgentMemoryState? = null,
 

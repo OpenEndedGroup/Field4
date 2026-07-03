@@ -489,6 +489,7 @@ fun monacoLaunchAll(uid: String, code: String) {
     payload.singleLine = false
     payload.property = property
 
+    clearEditorOutputsForBoxBeforeLaunch(uid)
     sendWithReply("launch-all", payload, "exec_$uid") { message : dynamic, response: dynamic ->
         monacoHandleOutput(response, message, uid)
         Handled.yes
@@ -504,6 +505,11 @@ fun monacoLaunchBatch(items: Array<dynamic>) {
     payload.executions = items
     val callbackName = "exec_batch_" + js("Date.now()").toString()
 
+    val cleared = mutableSetOf<String>()
+    items.forEach { item ->
+        val uid = item.uid as? String ?: return@forEach
+        if (cleared.add(uid)) clearEditorOutputsForBoxBeforeLaunch(uid)
+    }
     sendWithReply("launch-batch", payload, callbackName) { message: dynamic, response: dynamic ->
         val outputUid = response.uid as? String ?: message.uid as? String ?: ""
         monacoHandleOutput(response, message, outputUid)

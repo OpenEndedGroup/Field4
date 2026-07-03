@@ -1572,6 +1572,149 @@ class Server {
                 Handled.yes
             })
 
+            handlers["macro-transcript-command"] = mutableSetOf({ message, reply ->
+                val request = Json.decodeFromJsonElement<MacroTranscriptCommandRequest>(message.payload!!)
+                val documentPath = thisSessionInfo.get().filename
+                val result = when (request.command.trim().lowercase()) {
+                    "state", "status" -> OperationTranscript.macroState(documentPath, request.scope, request.projectName)
+                    "start", "mark-start" -> OperationTranscript.markStart(request.label, request.selection)
+                    "end", "save", "mark-end", "end-and-save" ->
+                        OperationTranscript.markEndAndSave(request.name, request.label, request.scope, request.projectName)
+                    "list" -> OperationTranscript.listMacros(documentPath, request.scope, request.projectName)
+                    "read", "load" -> OperationTranscript.readMacro(documentPath, request.name, request.scope, request.projectName)
+                    "reveal", "reveal-scope", "reveal-macros" -> {
+                        val dir = OperationTranscript.macroDirectory(documentPath, request.scope, request.projectName)
+                        if (dir.success && dir.path.isNotBlank()) {
+                            runCatching {
+                                revealInSystemFileManager(File(dir.path))
+                                dir.copy(message = "Revealed ${dir.scope} macro folder.")
+                            }.getOrElse {
+                                OperationTranscript.MacroResult(false, "Could not reveal ${dir.scope} macro folder: ${it.message ?: "unknown error"}.")
+                            }
+                        } else {
+                            dir
+                        }
+                    }
+                    "transcript-page", "page", "entries" -> {
+                        val hideWaits = request.mode.split(",", " ", ";").any {
+                            it.equals("hide-wait", ignoreCase = true) ||
+                                it.equals("hide-waits", ignoreCase = true) ||
+                                it.equals("no-wait", ignoreCase = true) ||
+                                it.equals("no-waits", ignoreCase = true)
+                        }
+                        OperationTranscript.transcriptPage(
+                            documentPath,
+                            request.offset,
+                            request.limit,
+                            includeWaits = !hideWaits
+                        )
+                    }
+                    "undo-transcript-selection", "undo-selection" ->
+                        OperationTranscript.undoTranscriptSelection(
+                            documentPath = documentPath,
+                            indices = request.indices,
+                            strict = !request.mode.equals("generous", ignoreCase = true)
+                        )
+                    "ai-undo-prompt", "prompt-undo-selection" ->
+                        OperationTranscript.aiUndoPrompt(documentPath, request.indices, request.selection)
+                    "write" -> OperationTranscript.writeMacro(
+                        documentPath,
+                        request.name,
+                        request.content,
+                        request.scope,
+                        request.projectName
+                    )
+                    "save-transcript-selection", "save-selection", "save-selected" ->
+                        OperationTranscript.saveTranscriptSelectionAsMacro(
+                            documentPath = documentPath,
+                            name = request.name,
+                            indices = request.indices,
+                            selection = request.selection,
+                            scope = request.scope,
+                            projectName = request.projectName
+                        )
+                    "run" -> {
+                        val run = OperationTranscript.runMacro(
+                            documentPath = documentPath,
+                            name = request.name,
+                            targetBoxes = request.selection,
+                            direction = "do",
+                            scope = request.scope,
+                            projectName = request.projectName
+                        )
+                        OperationTranscript.MacroResult(
+                            success = run.success,
+                            message = run.message,
+                            name = run.name,
+                            operationCount = run.applied,
+                            scope = request.scope,
+                            projectName = request.projectName,
+                            direction = run.direction,
+                            applied = run.applied,
+                            skipped = run.skipped,
+                            errors = run.errors
+                        )
+                    }
+                    "undo" -> {
+                        val run = OperationTranscript.runMacro(
+                            documentPath = documentPath,
+                            name = request.name,
+                            targetBoxes = request.selection,
+                            direction = "undo",
+                            scope = request.scope,
+                            projectName = request.projectName
+                        )
+                        OperationTranscript.MacroResult(
+                            success = run.success,
+                            message = run.message,
+                            name = run.name,
+                            operationCount = run.applied,
+                            scope = request.scope,
+                            projectName = request.projectName,
+                            direction = run.direction,
+                            applied = run.applied,
+                            skipped = run.skipped,
+                            errors = run.errors
+                        )
+                    }
+                    else -> OperationTranscript.MacroResult(false, "Unknown macro command '${request.command}'.")
+                }
+                val detail = result.errors.firstOrNull()?.let { " First error: $it" }.orEmpty()
+                notify(result.message + detail, if (result.success) "macro" else "error")
+                reply(
+                    Message("macro-transcript-command").payload(
+                        MacroTranscriptCommandResponse(
+                            success = result.success,
+                            message = result.message,
+                            name = result.name,
+                            path = result.path,
+                            operationCount = result.operationCount,
+                            macros = result.macros,
+                            content = result.content,
+                            recording = result.recording,
+                            draft = result.draft,
+                            selection = result.selection,
+                            documentMacros = result.documentMacros,
+                            projectMacros = result.projectMacros,
+                            workspaceMacros = result.workspaceMacros,
+                            projectName = result.projectName,
+                            scope = result.scope,
+                            direction = result.direction,
+                            applied = result.applied,
+                            skipped = result.skipped,
+                            errors = result.errors,
+                            entries = result.entries,
+                            offset = result.offset,
+                            limit = result.limit,
+                            total = result.total,
+                            hasMore = result.hasMore,
+                            prompt = result.prompt
+                        )
+                    )
+                )
+                Handled.yes
+            })
+
 
             handlers["hello"] = mutableSetOf({ message, reply ->
                 val hello = Json.decodeFromJsonElement<Hello>(message.payload!!)
@@ -1600,9 +1743,16 @@ class Server {
                     set.clientSequence
                 )
 
+                val oldValue = if (set.property == "name") {
+                    targetBox.name
+                } else {
+                    targetBox.getPropertyRaw(set.property)?.toString().orEmpty()
+                }
+
                 if (set.property == "name") {
                     lprintln("debug,server", "got set-string for name ${set.value}")
                     targetBox.name = set.value
+                    OperationTranscript.recordEdit(targetBox, set.property, oldValue, targetBox.name)
                     if (targetBox.getPropertyRaw(AI4_AUTO_NAME_PROPERTY).isTrue()) {
                         targetBox.setPropertyRaw(AI4_AUTO_NAME_PROPERTY, false)
                     }
@@ -1618,6 +1768,12 @@ class Server {
                     // Monaco view/cursor state should persist with the document, but live rebroadcast
                     // makes multiple clients on the same box fight over their local editor position.
                     targetBox.setPropertyRaw(set.property, set.value, doResync = !isEditorStateProperty)
+                    OperationTranscript.recordEdit(
+                        targetBox,
+                        set.property,
+                        oldValue,
+                        targetBox.getPropertyRaw(set.property)?.toString().orEmpty()
+                    )
                 }
 
                 // If this is a sidecar-backed property, mark it for persistence.
@@ -1676,12 +1832,22 @@ class Server {
                 // Updates box frame or property; resyncs on main thread
                 if (set.property == "frame") {
                     val b = box(set.uid)
+                    val oldFrame = b.frame
                     b.frame = set.value
+                    OperationTranscript.recordMove(b, oldFrame, b.frame)
                     inMain {
                         doResync() // subsequent calls do nothing, so this effectively combines multiple moves to the same update
                     }
                 } else {
-                    box(set.uid).setPropertyRaw(set.property, set.value, doResync = true)
+                    val b = box(set.uid)
+                    val oldValue = b.getPropertyRaw(set.property)?.toString().orEmpty()
+                    b.setPropertyRaw(set.property, set.value, doResync = true)
+                    OperationTranscript.recordEdit(
+                        b,
+                        set.property,
+                        oldValue,
+                        b.getPropertyRaw(set.property)?.toString().orEmpty()
+                    )
                     inMain {
                         doResync()
                     }
@@ -1701,12 +1867,22 @@ class Server {
                 set.values.forEach { update ->
                     if (update.property == "frame") {
                         val b = box(update.uid)
+                        val oldFrame = b.frame
                         b.frame = update.value
+                        OperationTranscript.recordMove(b, oldFrame, b.frame)
                         needsResync.remove(b to "frame")
                         frameUpdates += Set_rect(uid = update.uid, property = "frame", value = b.frame)
                     } else {
                         hasNonFrameUpdates = true
-                        box(update.uid).setPropertyRaw(update.property, update.value, doResync = true)
+                        val b = box(update.uid)
+                        val oldValue = b.getPropertyRaw(update.property)?.toString().orEmpty()
+                        b.setPropertyRaw(update.property, update.value, doResync = true)
+                        OperationTranscript.recordEdit(
+                            b,
+                            update.property,
+                            oldValue,
+                            b.getPropertyRaw(update.property)?.toString().orEmpty()
+                        )
                     }
                 }
 
@@ -2680,7 +2856,8 @@ class Server {
                                     preferences,
                                     projects,
                                     currentRuntimeInfo(),
-                                    CompletionDocPolishMonitor.status()
+                                    CompletionDocPolishMonitor.status(),
+                                    AiToolUseImprovementMonitor.status()
                                 )
                             )
                         }
@@ -2699,6 +2876,24 @@ class Server {
                                 call.respond(
                                     HttpStatusCode.InternalServerError,
                                     mapOf("error" to "completion-doc polish launch failed")
+                                )
+                            }
+                        }
+
+                        get("/api/ai-tool-use-improvement") {
+                            call.respond(AiToolUseImprovementMonitor.status())
+                        }
+
+                        post("/api/ai-tool-use-improvement") {
+                            try {
+                                val request = runCatching { call.receive<AiToolUseImprovementRunRequest>() }
+                                    .getOrElse { AiToolUseImprovementRunRequest() }
+                                call.respond(AiToolUseImprovementMonitor.start(request.dryRun))
+                            } catch (e: Exception) {
+                                lprintln("error,server", "AI tool-use improvement launch failed: ${e.message}")
+                                call.respond(
+                                    HttpStatusCode.InternalServerError,
+                                    mapOf("error" to "AI tool-use improvement launch failed")
                                 )
                             }
                         }

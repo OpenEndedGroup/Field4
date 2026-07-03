@@ -2194,6 +2194,7 @@ fun monacoRunLaunchFragment(editor: dynamic) {
     if (w.LineHeatmap != null && w.LineHeatmap != undefined) {
         w.LineHeatmap.recordExecutionRange(uid, property, selection.topLine, selection.bottomLine)
     }
+    clearEditorOutputsForBoxBeforeLaunch(uid)
     sendWithReply("launch-fragment", payload, "exec_$uid", callback.asDynamic())
 }
 

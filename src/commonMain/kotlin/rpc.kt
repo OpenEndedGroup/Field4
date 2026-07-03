@@ -311,6 +311,65 @@ data class Hello(
 )
 
 @Serializable
+data class MacroTranscriptCommandRequest(
+    val command: String,
+    val name: String = "",
+    val label: String = "",
+    val selection: List<String> = emptyList(),
+    val scope: String = "document",
+    val projectName: String = "",
+    val content: String = "",
+    val offset: Int = 0,
+    val limit: Int = 80,
+    val indices: List<Int> = emptyList(),
+    val mode: String = ""
+)
+
+@Serializable
+data class TranscriptEntry(
+    val index: Int,
+    val verb: String,
+    val summary: String,
+    val yaml: String,
+    val box: String = "",
+    val property: String = "",
+    val from: String = "",
+    val to: String = "",
+    val frame: String = "",
+    val at: String = "",
+    val selectable: Boolean = true
+)
+
+@Serializable
+data class MacroTranscriptCommandResponse(
+    val success: Boolean,
+    val message: String,
+    val name: String = "",
+    val path: String = "",
+    val operationCount: Int = 0,
+    val macros: List<String> = emptyList(),
+    val content: String = "",
+    val recording: Boolean = false,
+    val draft: String = "",
+    val selection: List<String> = emptyList(),
+    val documentMacros: List<String> = emptyList(),
+    val projectMacros: List<String> = emptyList(),
+    val workspaceMacros: List<String> = emptyList(),
+    val projectName: String = "",
+    val scope: String = "document",
+    val direction: String = "",
+    val applied: Int = 0,
+    val skipped: Int = 0,
+    val errors: List<String> = emptyList(),
+    val entries: List<TranscriptEntry> = emptyList(),
+    val offset: Int = 0,
+    val limit: Int = 0,
+    val total: Int = 0,
+    val hasMore: Boolean = false,
+    val prompt: String = ""
+)
+
+@Serializable
 data class AgentOpenDocument(
     val documentName: String? = null,
     val scratch: Boolean = false,
@@ -402,6 +461,23 @@ data class AgentCreateBoxResponse(
     val documentName: String,
     val scratch: Boolean,
     val box: AgentBoxSnapshot
+)
+
+@Serializable
+data class AgentWaitFramesRequest(
+    val frames: Long = 0,
+    val timeoutSec: Double = 20.0
+)
+
+@Serializable
+data class AgentWaitFramesResponse(
+    val ok: Boolean,
+    val requestedFrames: Long,
+    val startFrame: Long,
+    val endFrame: Long,
+    val elapsedFrames: Long,
+    val timedOut: Boolean = false,
+    val message: String = ""
 )
 
 @Serializable
@@ -513,6 +589,9 @@ data class Set_output(val uid: String, val property: String, val channel: String
 
 @Serializable
 data class OutputControl(val uid: String, val action: String, val channel: String? = null)
+
+@Serializable
+data class ClearEditorOutputs(val uid: String)
 
 @Serializable
 data class ProvisionalEntry(val uid: String, val property: String, val contents: String)

@@ -7,6 +7,7 @@ import asyncio
 import datetime
 import json
 import os
+import re
 import shlex
 import signal
 import ssl
@@ -29,6 +30,11 @@ except ImportError as exc:  # pragma: no cover - runtime dependency guard
         "Install it with: python3 -m pip install websockets"
     ) from exc
 
+try:
+    import yaml
+except ImportError:  # pragma: no cover - optional dependency guard
+    yaml = None
+
 
 TOOLS_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = TOOLS_ROOT.parent
@@ -38,6 +44,10 @@ DEFAULT_TIMEOUT = 20.0
 PLAYWRIGHT_TIMEOUT_FLOOR = 180.0
 MAX_EVENTS = 4000
 LOG_STRING_PREVIEW = 512
+EXACT_REPLAY_VARIABLE = re.compile(
+    r"^\$([A-Za-z_][A-Za-z0-9_.-]*)$|^\$\{([A-Za-z_][A-Za-z0-9_.-]*)\}$|^\{\{\s*([A-Za-z_][A-Za-z0-9_.-]*)\s*\}\}$"
+)
+MUSTACHE_REPLAY_VARIABLE = re.compile(r"\{\{\s*([A-Za-z_][A-Za-z0-9_.-]*)\s*\}\}")
 LOG_COLLECTION_PREVIEW = 32
 GRAPHICS_CONTEXT_WAIT_SEC = 0.5
 GRAPHICS_CONTEXT_BOX_NAME = "renderer"
@@ -110,6 +120,234 @@ def command_timeout(timeout: float | None, default_timeout: float) -> float:
     if timeout is None:
         return default_timeout
     return timeout
+
+
+def load_operation_entries(path: str) -> list[Any]:
+    operation_path = Path(path)
+    text = operation_path.read_text(encoding="utf-8")
+    if yaml is None:
+        try:
+            loaded = json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise BackdoorError(
+                "replay-operations requires PyYAML for YAML files; JSON input also failed to parse"
+            ) from exc
+        return operation_entries_from_loaded(loaded)
+
+    try:
+        docs = list(yaml.safe_load_all(text))
+    except Exception as exc:
+        raise BackdoorError(f"Could not parse operation file {path}: {exc}") from exc
+
+    entries: list[Any] = []
+    for doc in docs:
+        entries.extend(operation_entries_from_loaded(doc))
+    return entries
+
+
+def operation_entries_from_loaded(loaded: Any) -> list[Any]:
+    if loaded is None:
+        return []
+    if isinstance(loaded, list):
+        return loaded
+    if isinstance(loaded, dict):
+        variables = loaded.get("vars")
+        if variables is None:
+            variables = loaded.get("variables")
+        for key in ("operations", "ops", "entries"):
+            value = loaded.get(key)
+            if isinstance(value, list):
+                prefix = [{"let": variables}] if isinstance(variables, dict) and variables else []
+                return prefix + value
+        return [loaded]
+    raise BackdoorError(f"Operation file root must be a list or map, got {type(loaded).__name__}")
+
+
+def normalize_operation_entry(entry: Any) -> tuple[str, Any]:
+    if not isinstance(entry, dict):
+        raise BackdoorError(f"Operation entry must be a map, got {type(entry).__name__}: {entry!r}")
+
+    if "op" in entry or "verb" in entry or "type" in entry:
+        verb = str(entry.get("op") or entry.get("verb") or entry.get("type")).strip()
+        payload = entry.get("payload")
+        if payload is None:
+            payload = {k: v for k, v in entry.items() if k not in {"op", "verb", "type"}}
+        return canonical_operation_verb(verb), payload
+
+    known = [key for key in entry.keys() if canonical_operation_verb(str(key)) != "unknown"]
+    if len(entry) == 1:
+        key, value = next(iter(entry.items()))
+        return canonical_operation_verb(str(key)), value
+    if len(known) == 1:
+        key = known[0]
+        return canonical_operation_verb(str(key)), entry[key]
+    if {"box", "property"} & set(entry.keys()) and ({"to", "from", "value"} & set(entry.keys())):
+        return "edit", entry
+    if {"box", "to", "from"} <= set(entry.keys()):
+        return "move", entry
+    return "unknown", entry
+
+
+def canonical_operation_verb(verb: str) -> str:
+    normalized = verb.strip().replace("_", "-").lower()
+    aliases = {
+        "edit": "edit",
+        "set": "edit",
+        "set-string": "edit",
+        "setstring": "edit",
+        "property": "edit",
+        "move": "move",
+        "frame": "move",
+        "set-rect": "move",
+        "setrect": "move",
+        "wait": "wait",
+        "sleep": "wait",
+        "pause": "wait",
+        "connect": "connect",
+        "disconnect": "disconnect",
+        "run": "run",
+        "execute": "run",
+        "execute-all": "run",
+        "launch": "launch",
+        "continue": "continue",
+        "stop": "stop",
+        "create": "create",
+        "new-box": "create",
+        "newbox": "create",
+        "delete": "delete",
+        "delete-box": "delete",
+        "deletebox": "delete",
+        "remove": "delete",
+        "destroy": "delete",
+        "let": "let",
+        "var": "let",
+        "vars": "let",
+        "assign": "let",
+        "set-var": "let",
+        "set-variable": "let",
+    }
+    return aliases.get(normalized, "unknown")
+
+
+def operation_map(payload: Any, verb: str) -> dict[str, Any]:
+    if isinstance(payload, dict):
+        return payload
+    if verb == "wait" and isinstance(payload, (int, float, str)):
+        return {"frames": payload}
+    raise BackdoorError(f"{verb} operation payload must be a map, got {type(payload).__name__}: {payload!r}")
+
+
+def first_present(mapping: dict[str, Any], *keys: str) -> Any:
+    for key in keys:
+        if key in mapping and mapping[key] is not None:
+            return mapping[key]
+    return None
+
+
+def parse_float_field(mapping: dict[str, Any], key: str, default: float | None = None) -> float:
+    value = mapping.get(key, default)
+    if value is None:
+        raise BackdoorError(f"missing numeric field {key}")
+    try:
+        return float(value)
+    except (TypeError, ValueError) as exc:
+        raise BackdoorError(f"field {key} must be numeric, got {value!r}") from exc
+
+
+def parse_frame_value(value: Any) -> dict[str, float]:
+    if isinstance(value, dict):
+        return {
+            "x": parse_float_field(value, "x"),
+            "y": parse_float_field(value, "y"),
+            "w": parse_float_field(value, "w"),
+            "h": parse_float_field(value, "h"),
+        }
+    if isinstance(value, (list, tuple)) and len(value) == 4:
+        return {"x": float(value[0]), "y": float(value[1]), "w": float(value[2]), "h": float(value[3])}
+    raise BackdoorError(f"frame value must be a map with x/y/w/h or a 4-item list, got {value!r}")
+
+
+def parse_replay_cli_variables(items: list[str]) -> dict[str, Any]:
+    variables: dict[str, Any] = {}
+    for item in items:
+        if "=" not in item:
+            raise BackdoorError(f"--var expects name=value, got {item!r}")
+        name, value_text = item.split("=", 1)
+        name = name.strip()
+        if not name:
+            raise BackdoorError(f"--var has an empty variable name: {item!r}")
+        variables[name] = parse_replay_scalar(value_text)
+    return variables
+
+
+def parse_replay_scalar(text: str) -> Any:
+    if yaml is not None:
+        try:
+            loaded = yaml.safe_load(text)
+            return "" if loaded is None and text.strip() == "" else loaded
+        except Exception:
+            return text
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        return text
+
+
+def variable_names_from_field(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        names: list[str] = []
+        for item in value:
+            names.extend(variable_names_from_field(item))
+        return names
+    text = str(value).strip()
+    if not text:
+        return []
+    exact = EXACT_REPLAY_VARIABLE.match(text)
+    if exact:
+        return [next(group for group in exact.groups() if group is not None)]
+    return [text.lstrip("$")]
+
+
+def set_replay_variable(variables: dict[str, Any], name: str, value: Any) -> str:
+    clean = name.strip().lstrip("$")
+    if clean.startswith("{") and clean.endswith("}"):
+        clean = clean[1:-1].strip()
+    if not clean:
+        raise BackdoorError("variable name cannot be empty")
+    variables[clean] = value
+    return clean
+
+
+def expand_replay_value(value: Any, variables: dict[str, Any], *, skip_keys: set[str] | None = None) -> Any:
+    if isinstance(value, str):
+        exact = EXACT_REPLAY_VARIABLE.match(value.strip())
+        if exact:
+            name = next(group for group in exact.groups() if group is not None)
+            if name not in variables:
+                raise BackdoorError(f"Unknown replay variable {name!r}")
+            return variables[name]
+
+        def replace(match: re.Match[str]) -> str:
+            name = match.group(1)
+            if name not in variables:
+                raise BackdoorError(f"Unknown replay variable {name!r}")
+            return str(variables[name])
+
+        return MUSTACHE_REPLAY_VARIABLE.sub(replace, value)
+
+    if isinstance(value, list):
+        return [expand_replay_value(item, variables, skip_keys=skip_keys) for item in value]
+
+    if isinstance(value, dict):
+        skipped = skip_keys or set()
+        return {
+            key: (entry_value if str(key) in skipped else expand_replay_value(entry_value, variables, skip_keys=skip_keys))
+            for key, entry_value in value.items()
+        }
+
+    return value
 
 
 def utc_timestamp() -> str:
@@ -199,6 +437,7 @@ class FieldBackdoor:
         self.boxes: dict[str, dict[str, Any]] = {}
         self.last_box_uid: str | None = None
         self.box_aliases: dict[str, str] = {}
+        self.replay_variables: dict[str, Any] = {}
         self.playwright_state: dict[str, Any] | None = None
         self.managed_process: subprocess.Popen[Any] | None = None
         self.managed_log_path: Path | None = None
@@ -458,6 +697,9 @@ class FieldBackdoor:
             box = self._ensure_box(uid)
             prop = payload.get("property")
             value = payload.get("value")
+            if prop == "_tombstone" and self._truthy(value):
+                self._drop_box(uid)
+                return
             if prop == "name":
                 box["name"] = value
             else:
@@ -477,7 +719,11 @@ class FieldBackdoor:
         elif name == "set-boolean":
             box = self._ensure_box(uid)
             prop = payload.get("property")
-            box[prop] = payload.get("number")
+            value = payload.get("number")
+            if prop == "_tombstone" and self._truthy(value):
+                self._drop_box(uid)
+                return
+            box[prop] = value
         elif name == "set-null":
             box = self._ensure_box(uid)
             prop = payload.get("property")
@@ -513,6 +759,11 @@ class FieldBackdoor:
         self.boxes = {}
         for box in snapshot.get("boxes", []):
             if isinstance(box, dict):
+                if self._truthy(box.get("_tombstone")):
+                    uid = box.get("uid")
+                    if isinstance(uid, str):
+                        self._drop_box(uid)
+                    continue
                 self._upsert_box_from_snapshot(box)
         if self.boxes:
             self.last_box_uid = next(reversed(self.boxes))
@@ -532,6 +783,32 @@ class FieldBackdoor:
             lastBoxUid=self.last_box_uid,
             aliases=self.box_aliases,
         )
+
+    def _truthy(self, value: Any) -> bool:
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return value != 0
+        if isinstance(value, str):
+            return value.strip().lower() in {"true", "yes", "1", "on"}
+        return bool(value)
+
+    def _drop_box(self, uid: str) -> None:
+        self.boxes.pop(uid, None)
+        self.box_aliases = {
+            alias: target
+            for alias, target in self.box_aliases.items()
+            if target != uid
+        }
+        for box in self.boxes.values():
+            for key in ("children", "parents", "nested"):
+                value = box.get(key)
+                if isinstance(value, list):
+                    box[key] = [item for item in value if item != uid]
+            if box.get("nestedIn") == uid:
+                box["nestedIn"] = None
+        if self.last_box_uid == uid:
+            self.last_box_uid = next(reversed(self.boxes), None)
 
     async def open_playwright(self, timeout: float) -> dict[str, Any]:
         self.logger.log("open_playwright_start", timeout=timeout, documentName=self.document_name, scratch=self.scratch, sessionKey=self.session_key)
@@ -982,6 +1259,7 @@ class FieldBackdoor:
         w: float,
         h: float,
         timeout: float,
+        properties: dict[str, Any] | None = None,
         auto_graphics_parent: bool = True,
     ) -> dict[str, Any]:
         self.logger.log("create_box_start", name=name, frame={"x": x, "y": y, "w": w, "h": h}, timeout=timeout)
@@ -990,7 +1268,7 @@ class FieldBackdoor:
             {
                 "name": name,
                 "frame": {"x": x, "y": y, "w": w, "h": h},
-                "properties": {},
+                "properties": properties or {},
             },
             timeout=timeout,
         )
@@ -1089,15 +1367,67 @@ class FieldBackdoor:
                 return self.box_aliases[alias]
         return token
 
+    def resolve_box_token(self, token: Any) -> str:
+        if token is None:
+            raise BackdoorError("operation is missing a box uid/name")
+        text = str(token).strip()
+        if not text:
+            raise BackdoorError("operation has an empty box uid/name")
+        resolved = self.resolve_uid(text)
+        if resolved in self.boxes:
+            return resolved
+        if text in self.box_aliases:
+            return self.box_aliases[text]
+
+        prefix_matches = [uid for uid in self.boxes if uid.startswith(text)]
+        if len(prefix_matches) == 1:
+            return prefix_matches[0]
+
+        name_matches = [
+            uid
+            for uid, box in self.boxes.items()
+            if str(box.get("name") or "") == text
+        ]
+        if len(name_matches) == 1:
+            return name_matches[0]
+        if len(name_matches) > 1:
+            raise BackdoorError(f"Box name {text!r} is ambiguous ({len(name_matches)} matches)")
+
+        lowered = text.lower()
+        folded_matches = [
+            uid
+            for uid, box in self.boxes.items()
+            if str(box.get("name") or "").lower() == lowered
+        ]
+        if len(folded_matches) == 1:
+            return folded_matches[0]
+        if len(folded_matches) > 1:
+            raise BackdoorError(f"Box name {text!r} is ambiguous ({len(folded_matches)} case-insensitive matches)")
+
+        return resolved
+
+    def resolve_replay_box(self, token: Any, *, dry_run: bool) -> str:
+        if dry_run:
+            try:
+                return self.resolve_box_token(token)
+            except BackdoorError:
+                if token is None:
+                    raise
+                text = str(token).strip()
+                if not text:
+                    raise
+                return text
+        return self.resolve_box_token(token)
+
     def get_box(self, uid: str) -> dict[str, Any]:
-        resolved = self.resolve_uid(uid)
+        resolved = self.resolve_box_token(uid)
         box = self.boxes.get(resolved)
         if box is None:
             raise BackdoorError(f"Unknown box uid: {resolved}")
         return box
 
     def validate_box_reference(self, token: str) -> str:
-        resolved = self.resolve_uid(token)
+        resolved = self.resolve_box_token(token)
         if resolved == "root":
             return resolved
         if resolved not in self.boxes:
@@ -1135,7 +1465,7 @@ class FieldBackdoor:
         return Path(source).read_text(encoding="utf-8")
 
     async def set_string(self, uid: str, property_name: str, value: str) -> dict[str, Any]:
-        resolved = self.resolve_uid(uid)
+        resolved = self.resolve_box_token(uid)
         self.logger.log("set_string_start", uid=resolved, property=property_name, valueLength=len(value))
         self._set_local_string(resolved, property_name, value)
         await self.send_message(
@@ -1144,6 +1474,292 @@ class FieldBackdoor:
         )
         self.logger.log("set_string_complete", uid=resolved, property=property_name, valueLength=len(value))
         return {"uid": resolved, "property": property_name, "value": value}
+
+    async def set_frame(self, uid: str, frame: dict[str, float]) -> dict[str, Any]:
+        resolved = self.resolve_box_token(uid)
+        self.logger.log("set_frame_start", uid=resolved, frame=frame)
+        self._ensure_box(resolved)["frame"] = dict(frame)
+        await self.send_message(
+            "set-rect",
+            {"uid": resolved, "property": "frame", "value": frame},
+        )
+        self.logger.log("set_frame_complete", uid=resolved, frame=frame)
+        return {"uid": resolved, "property": "frame", "value": frame}
+
+    async def wait_frames(self, frames: int, *, timeout: float) -> dict[str, Any]:
+        safe_frames = max(0, int(frames))
+        event = await self.call_for_single_reply(
+            "agent-wait-frames",
+            {"frames": safe_frames, "timeoutSec": timeout},
+            timeout=timeout + 2.0,
+        )
+        payload = event.get("payload")
+        if not isinstance(payload, dict):
+            raise BackdoorError("agent-wait-frames returned an invalid payload")
+        return payload
+
+    async def replay_operations(
+        self,
+        entries: list[Any],
+        *,
+        direction: str,
+        timeout: float,
+        dry_run: bool,
+        ignore_unknown: bool,
+        continue_on_error: bool,
+        initial_variables: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        applied: list[dict[str, Any]] = []
+        skipped: list[dict[str, Any]] = []
+        errors: list[dict[str, Any]] = []
+        variables: dict[str, Any] = dict(self.replay_variables)
+        variables.update(initial_variables or {})
+
+        indexed_entries = list(enumerate(entries))
+        if direction == "undo":
+            indexed_entries.reverse()
+
+        for index, entry in indexed_entries:
+            try:
+                verb, payload_any = normalize_operation_entry(entry)
+                payload = operation_map(payload_any, verb)
+                summary = await self.replay_one_operation(
+                    index=index,
+                    verb=verb,
+                    payload=payload,
+                    direction=direction,
+                    timeout=timeout,
+                    dry_run=dry_run,
+                    ignore_unknown=ignore_unknown,
+                    variables=variables,
+                )
+                if summary.get("skipped"):
+                    skipped.append(summary)
+                else:
+                    applied.append(summary)
+            except Exception as exc:
+                error = {"index": index, "error": str(exc), "entry": entry}
+                errors.append(error)
+                self.logger.exception("replay_operation_error", exc, index=index, entry=entry)
+                if not continue_on_error:
+                    raise BackdoorError(f"operation {index} failed: {exc}") from exc
+
+        self.replay_variables = dict(variables)
+
+        return {
+            "entryCount": len(entries),
+            "appliedCount": len(applied),
+            "skippedCount": len(skipped),
+            "errorCount": len(errors),
+            "direction": direction,
+            "dryRun": dry_run,
+            "variables": sorted(variables.keys()),
+            "applied": applied,
+            "skipped": skipped,
+            "errors": errors,
+        }
+
+    async def replay_one_operation(
+        self,
+        *,
+        index: int,
+        verb: str,
+        payload: dict[str, Any],
+        direction: str,
+        timeout: float,
+        dry_run: bool,
+        ignore_unknown: bool,
+        variables: dict[str, Any],
+    ) -> dict[str, Any]:
+        summary: dict[str, Any] = {"index": index, "verb": verb}
+
+        if verb == "unknown":
+            if ignore_unknown:
+                return {**summary, "skipped": True, "reason": "unknown operation", "payload": payload}
+            raise BackdoorError(f"unknown operation shape: {payload!r}")
+
+        if verb == "let":
+            assigned: list[str] = []
+            if "name" in payload or "value" in payload:
+                name = str(first_present(payload, "name", "var", "as", "assign"))
+                value = expand_replay_value(first_present(payload, "value", "to"), variables)
+                assigned.append(set_replay_variable(variables, name, value))
+            else:
+                for name, value in payload.items():
+                    assigned.append(set_replay_variable(variables, str(name), expand_replay_value(value, variables)))
+            return {**summary, "assigned": assigned}
+
+        payload = expand_replay_value(
+            payload,
+            variables,
+            skip_keys={"as", "var", "assign", "bind", "into"} if verb == "create" else None,
+        )
+
+        if verb == "wait":
+            frames_value = first_present(payload, "frames", "frame", "count", "n")
+            seconds_value = first_present(payload, "seconds", "sec", "s")
+            if frames_value is not None:
+                frames = int(float(frames_value))
+                summary.update({"frames": frames})
+                if not dry_run:
+                    summary["result"] = await self.wait_frames(frames, timeout=timeout)
+                return summary
+            if seconds_value is not None:
+                seconds = float(seconds_value)
+                summary.update({"seconds": seconds})
+                if not dry_run:
+                    await asyncio.sleep(max(0.0, seconds))
+                return summary
+            raise BackdoorError("wait operation needs frames or seconds")
+
+        if verb == "edit":
+            box = self.resolve_replay_box(first_present(payload, "box", "uid", "id", "target"), dry_run=dry_run)
+            prop = str(first_present(payload, "property", "prop", "name") or "code")
+            value = first_present(payload, "from" if direction == "undo" else "to", "value", "text", "contents")
+            if value is None:
+                raise BackdoorError("edit operation needs a to/from/value field")
+            text = str(value)
+            summary.update({"box": box, "property": prop, "valueLength": len(text)})
+            if not dry_run:
+                summary["result"] = await self.set_string(box, prop, text)
+            return summary
+
+        if verb == "move":
+            box = self.resolve_replay_box(first_present(payload, "box", "uid", "id", "target"), dry_run=dry_run)
+            frame_value = first_present(payload, "from" if direction == "undo" else "to", "frame", "value")
+            if frame_value is None and {"x", "y", "w", "h"} <= set(payload.keys()):
+                frame_value = payload
+            frame = parse_frame_value(frame_value)
+            summary.update({"box": box, "frame": frame})
+            if not dry_run:
+                summary["result"] = await self.set_frame(box, frame)
+            return summary
+
+        if verb == "create":
+            if direction == "undo":
+                target = first_present(payload, "as", "var", "assign", "bind", "into", "alias", "box", "uid", "id", "target", "name", "label")
+                if target is None:
+                    return {**summary, "skipped": True, "reason": "create undo needs an alias/box/uid/name"}
+                resolved = self.resolve_replay_box(target, dry_run=dry_run)
+                summary.update({"box": resolved, "reason": "undo create by deleting created box"})
+                if not dry_run:
+                    data, events, timed_out = await self.delete_boxes([resolved], timeout=timeout)
+                    summary["result"] = data
+                    summary["timedOut"] = timed_out
+                    summary["eventCount"] = len(events)
+                return summary
+
+            frame_value = first_present(payload, "frame", "to", "value")
+            if frame_value is None and {"x", "y", "w", "h"} <= set(payload.keys()):
+                frame_value = payload
+            frame = parse_frame_value(frame_value) if isinstance(frame_value, (dict, list, tuple)) else {
+                "x": 0.0,
+                "y": 0.0,
+                "w": 100.0,
+                "h": 100.0,
+            }
+            name = str(first_present(payload, "name", "label") or "Untitled")
+            alias = first_present(payload, "alias", "box", "uid", "id")
+            bind_names: list[str] = []
+            for key in ("as", "var", "assign", "bind", "into", "alias", "box", "uid", "id"):
+                bind_names.extend(variable_names_from_field(payload.get(key)))
+            properties = first_present(payload, "properties", "props")
+            if properties is not None and not isinstance(properties, dict):
+                raise BackdoorError("create properties/props must be a map")
+            summary.update({"name": name, "frame": frame, "alias": alias, "bind": bind_names, "propertyCount": len(properties or {})})
+            if not dry_run:
+                created = await self.create_box(
+                    name=name,
+                    x=frame["x"],
+                    y=frame["y"],
+                    w=frame["w"],
+                    h=frame["h"],
+                    timeout=timeout,
+                    properties=properties,
+                )
+                box = created.get("box")
+                uid = box.get("uid") if isinstance(box, dict) else None
+                if isinstance(uid, str) and uid:
+                    for bind_name in bind_names:
+                        assigned = set_replay_variable(variables, bind_name, uid)
+                        self.assign_box_alias(assigned, uid)
+                summary["result"] = created
+            else:
+                placeholder = f"${bind_names[0]}" if bind_names else f"$created_{index}"
+                for bind_name in bind_names:
+                    set_replay_variable(variables, bind_name, placeholder)
+            return summary
+
+        if verb == "delete":
+            if direction == "undo":
+                return {**summary, "skipped": True, "reason": "delete undo needs a future restore payload"}
+            target = first_present(payload, "boxes", "uids", "ids", "targets")
+            if target is None:
+                target = first_present(payload, "box", "uid", "id", "target")
+            targets = target if isinstance(target, list) else [target]
+            if not targets or targets == [None]:
+                raise BackdoorError("delete operation needs box/uid/id/target or boxes/uids/targets")
+            resolved = [self.resolve_replay_box(item, dry_run=dry_run) for item in targets]
+            summary.update({"boxes": resolved, "boxCount": len(resolved)})
+            if not dry_run:
+                data, events, timed_out = await self.delete_boxes(resolved, timeout=timeout)
+                summary["result"] = data
+                summary["timedOut"] = timed_out
+                summary["eventCount"] = len(events)
+            return summary
+
+        if verb in {"connect", "disconnect"}:
+            parent = first_present(payload, "parent", "from", "source", "box")
+            child_value = first_present(payload, "children", "child", "to", "target")
+            children = child_value if isinstance(child_value, list) else [child_value]
+            if parent is None or not children or children == [None]:
+                raise BackdoorError(f"{verb} operation needs parent/from and child/to")
+            action = verb
+            if direction == "undo":
+                action = "disconnect" if verb == "connect" else "connect"
+            parent_uid = self.resolve_replay_box(parent, dry_run=dry_run)
+            child_uids = [self.resolve_replay_box(child, dry_run=dry_run) for child in children]
+            summary.update({"parent": parent_uid, "children": child_uids, "action": action})
+            if not dry_run:
+                data, events, timed_out = await self.change_connections(
+                    action=action,
+                    parent_uid=parent_uid,
+                    child_uids=child_uids,
+                    timeout=timeout,
+                )
+                summary["result"] = data
+                summary["timedOut"] = timed_out
+                summary["eventCount"] = len(events)
+            return summary
+
+        if verb in {"run", "launch", "continue"}:
+            box = self.resolve_replay_box(first_present(payload, "box", "uid", "id", "target"), dry_run=dry_run)
+            prop = str(first_present(payload, "property", "prop") or "code")
+            value = first_present(payload, "code", "value", "text", "to")
+            summary.update({"box": box, "property": prop, "hasValue": value is not None})
+            if not dry_run:
+                if verb == "run":
+                    data, events, timed_out = await self.run_box(box, property_name=prop, value=None if value is None else str(value), timeout=timeout)
+                elif verb == "launch":
+                    data, events, timed_out = await self.launch_box(box, property_name=prop, value=None if value is None else str(value), timeout=timeout)
+                else:
+                    data, events, timed_out = await self.continue_box(box, property_name=prop, value=None if value is None else str(value), timeout=timeout)
+                summary["result"] = data
+                summary["timedOut"] = timed_out
+                summary["eventCount"] = len(events)
+            return summary
+
+        if verb == "stop":
+            box = self.resolve_replay_box(first_present(payload, "box", "uid", "id", "target"), dry_run=dry_run)
+            summary.update({"box": box})
+            if not dry_run:
+                data, events, timed_out = await self.stop_box(box, timeout=timeout)
+                summary["result"] = data
+                summary["timedOut"] = timed_out
+                summary["eventCount"] = len(events)
+            return summary
+
+        raise BackdoorError(f"unhandled operation verb {verb!r}")
 
     async def change_connections(
         self,
@@ -1221,22 +1837,91 @@ class FieldBackdoor:
         )
         return data, events, timed_out
 
+    async def delete_boxes(self, tokens: list[Any], *, timeout: float) -> tuple[dict[str, Any], list[dict[str, Any]], bool]:
+        uids: list[str] = []
+        seen: set[str] = set()
+        for token in tokens:
+            uid = self.validate_box_reference(str(token))
+            if uid == "root" or uid in seen:
+                continue
+            uids.append(uid)
+            seen.add(uid)
+        if not uids:
+            return {"action": "delete", "boxes": [], "boxCount": 0}, [], False
+
+        self.logger.log("delete_boxes_start", boxes=uids, timeout=timeout)
+        start_seq = self.event_seq
+        await self.send_message(
+            "perform-action",
+            {
+                "uid_currentSelection": uids,
+                "uid_action": "-delete-box",
+            },
+        )
+
+        def predicate():
+            remaining = [
+                uid
+                for uid in uids
+                if uid in self.boxes and not self._truthy(self.boxes[uid].get("_tombstone"))
+            ]
+            if not remaining:
+                return self.events_since(start_seq)
+            return None
+
+        timed_out = False
+        events: list[dict[str, Any]] = []
+        deadline = asyncio.get_running_loop().time() + timeout
+        while True:
+            current = predicate()
+            if current is not None:
+                events = current
+                break
+            remaining_time = deadline - asyncio.get_running_loop().time()
+            if remaining_time <= 0:
+                timed_out = True
+                events = self.events_since(start_seq)
+                break
+            try:
+                events = await self.wait_for(predicate, min(0.5, remaining_time), f"delete:{','.join(uids)}")
+                break
+            except asyncio.TimeoutError:
+                pass
+            remaining_time = deadline - asyncio.get_running_loop().time()
+            if remaining_time <= 0:
+                timed_out = True
+                events = self.events_since(start_seq)
+                break
+            try:
+                await self.refresh_snapshot(timeout=max(0.25, min(2.0, remaining_time)))
+            except Exception as exc:
+                self.logger.exception("delete_boxes_snapshot_poll_error", exc)
+
+        data = {
+            "action": "delete",
+            "boxes": uids,
+            "boxCount": len(uids),
+        }
+        self.logger.log("delete_boxes_complete", boxes=uids, timedOut=timed_out, eventCount=len(events))
+        return data, events, timed_out
+
     async def run_box(self, uid: str, *, property_name: str, value: str | None, timeout: float) -> tuple[dict[str, Any], list[dict[str, Any]], bool]:
-        resolved = self.resolve_uid(uid)
+        resolved = self.resolve_box_token(uid)
         self.logger.log("run_box_start", uid=resolved, property=property_name, timeout=timeout, hasInlineValue=value is not None)
         if value is not None:
             await self.set_string(resolved, property_name, value)
-        code = str(self._ensure_box(resolved).get("code") or "")
+        code = str(self._ensure_box(resolved).get(property_name) or "")
         reply_name = f"exec_{uuid.uuid4().hex}"
         start_seq = self.event_seq
         await self.send_message(
             "execute-all",
             {
                 "uid": resolved,
-                "type": "all",
+                "type": property_name,
                 "line": 0,
                 "code": code,
                 "singleLine": False,
+                "property": property_name,
             },
             reply_to=reply_name,
             reply_context={"uid": resolved, "command": "run"},
@@ -1271,21 +1956,22 @@ class FieldBackdoor:
         return data, events, timed_out
 
     async def launch_box(self, uid: str, *, property_name: str, value: str | None, timeout: float) -> tuple[dict[str, Any], list[dict[str, Any]], bool]:
-        resolved = self.resolve_uid(uid)
+        resolved = self.resolve_box_token(uid)
         self.logger.log("launch_box_start", uid=resolved, property=property_name, timeout=timeout, hasInlineValue=value is not None)
         if value is not None:
             await self.set_string(resolved, property_name, value)
-        code = str(self._ensure_box(resolved).get("code") or "")
+        code = str(self._ensure_box(resolved).get(property_name) or "")
         reply_name = f"launch_{uuid.uuid4().hex}"
         start_seq = self.event_seq
         await self.send_message(
             "launch-all",
             {
                 "uid": resolved,
-                "type": "launch",
+                "type": property_name,
                 "line": 0,
                 "code": code,
                 "singleLine": False,
+                "property": property_name,
             },
             reply_to=reply_name,
             reply_context={"uid": resolved, "command": "launch"},
@@ -1326,21 +2012,22 @@ class FieldBackdoor:
         return data, events, timed_out
 
     async def continue_box(self, uid: str, *, property_name: str, value: str | None, timeout: float) -> tuple[dict[str, Any], list[dict[str, Any]], bool]:
-        resolved = self.resolve_uid(uid)
+        resolved = self.resolve_box_token(uid)
         self.logger.log("continue_box_start", uid=resolved, property=property_name, timeout=timeout, hasInlineValue=value is not None)
         if value is not None:
             await self.set_string(resolved, property_name, value)
-        code = str(self._ensure_box(resolved).get("code") or "")
+        code = str(self._ensure_box(resolved).get(property_name) or "")
         reply_name = f"continue_{uuid.uuid4().hex}"
         start_seq = self.event_seq
         await self.send_message(
             "continue-all",
             {
                 "uid": resolved,
-                "type": "continue",
+                "type": property_name,
                 "line": 0,
                 "code": code,
                 "singleLine": False,
+                "property": property_name,
             },
             reply_to=reply_name,
             reply_context={"uid": resolved, "command": "continue"},
@@ -1381,7 +2068,7 @@ class FieldBackdoor:
         return data, events, timed_out
 
     async def stop_box(self, uid: str, timeout: float) -> tuple[dict[str, Any], list[dict[str, Any]], bool]:
-        resolved = self.resolve_uid(uid)
+        resolved = self.resolve_box_token(uid)
         self.logger.log("stop_box_start", uid=resolved, timeout=timeout)
         start_seq = self.event_seq
         await self.send_message("stop-box", {"uid": resolved})
@@ -1405,7 +2092,7 @@ class FieldBackdoor:
         return data, events, timed_out
 
     def collect_output(self, uid: str, *, channel: str | None, kind: str) -> list[dict[str, Any]]:
-        resolved = self.resolve_uid(uid)
+        resolved = self.resolve_box_token(uid)
         accepted_names = {
             "inline": {"output"},
             "display": {"set-output", "output-control"},
@@ -1647,6 +2334,16 @@ def build_command_parser() -> argparse.ArgumentParser:
     set_parser.add_argument("property")
     set_parser.add_argument("value", nargs="?")
     set_parser.add_argument("--file")
+
+    for command_name in ("replay-operations", "play-operations"):
+        replay_parser = subparsers.add_parser(command_name, add_help=False)
+        replay_parser.add_argument("path")
+        replay_parser.add_argument("--direction", choices=("do", "undo"), default="do")
+        replay_parser.add_argument("--timeout", type=float)
+        replay_parser.add_argument("--dry-run", action="store_true")
+        replay_parser.add_argument("--ignore-unknown", action="store_true")
+        replay_parser.add_argument("--continue-on-error", action="store_true")
+        replay_parser.add_argument("--var", action="append", default=[])
 
     for command_name in ("run", "launch", "continue"):
         exec_parser = subparsers.add_parser(command_name, add_help=False)
@@ -1998,6 +2695,31 @@ async def dispatch_command(
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
         return result
 
+    if args.command in {"replay-operations", "play-operations"}:
+        timeout = args.timeout or client.default_timeout
+        entries = load_operation_entries(args.path)
+        data = await client.replay_operations(
+            entries,
+            direction=args.direction,
+            timeout=timeout,
+            dry_run=args.dry_run,
+            ignore_unknown=args.ignore_unknown,
+            continue_on_error=args.continue_on_error,
+            initial_variables=parse_replay_cli_variables(args.var),
+        )
+        ok = data["errorCount"] == 0 or args.continue_on_error
+        result = command_result(command_line, ok, data=data, events=[])
+        client.logger.log(
+            "command_dispatch_complete",
+            commandLine=command_line,
+            ok=result["ok"],
+            entryCount=data["entryCount"],
+            appliedCount=data["appliedCount"],
+            skippedCount=data["skippedCount"],
+            errorCount=data["errorCount"],
+        )
+        return result
+
     if args.command in {"run", "launch", "continue"}:
         if auto_playwright:
             await ensure_playwright_attached(
@@ -2246,7 +2968,7 @@ async def repl(
             return 0
         if line == "help":
             client.logger.log("repl_help")
-            print("Commands: open, status, snapshot, boxes, sleep, playwright-open, editor-open, page-eval, screenshot-window, screenshot-editor, screenshot-box, native-screenshot, record-window, record-editor, record-box, new-box, connect, disconnect, set, run, launch, continue, stop, wait-file, output, raw-send, run-jvm-main, exit")
+            print("Commands: open, status, snapshot, boxes, sleep, playwright-open, editor-open, page-eval, screenshot-window, screenshot-editor, screenshot-box, native-screenshot, record-window, record-editor, record-box, new-box, connect, disconnect, set, replay-operations, play-operations, run, launch, continue, stop, wait-file, output, raw-send, run-jvm-main, exit")
             continue
         try:
             parsed = parse_command(line)

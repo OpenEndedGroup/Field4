@@ -9,7 +9,7 @@
  * here via a simple registry.
  */
 
-import { send, sendWithReply, monacoHandleOutput } from "./afield.mjs";
+import { send, sendWithReply, monacoHandleOutput, clearEditorOutputsForBoxBeforeLaunch } from "./afield.mjs";
 
 // ── Registry ──────────────────────────────────────────────────────────
 
@@ -482,6 +482,7 @@ function registerEmbeddedActions(editor, uid, property) {
 			if (!code || !code.trim()) return;
 			// addExecutionMarker is for main editor only; skip it for embedded
 			const payload = { uid, type: "fragment", line: belowLine, code, singleLine, property, strand: "default" };
+			clearEditorOutputsForBoxBeforeLaunch(uid);
 			sendWithReply("launch-fragment", payload, "exec_" + uid, makeOutputCallback(uid));
 		},
 	});
@@ -503,6 +504,7 @@ function registerEmbeddedActions(editor, uid, property) {
 				return;
 			}
 			const payload = { uid, type: "launch", line: 0, code, singleLine: false, property, strand: "default" };
+			clearEditorOutputsForBoxBeforeLaunch(uid);
 			sendWithReply("launch-all", payload, "exec_" + uid, makeOutputCallback(uid));
 		},
 	});

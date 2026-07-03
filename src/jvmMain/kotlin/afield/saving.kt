@@ -464,9 +464,12 @@ class SavingContext {
                     touchedCount = touched.size
                     changedCount = alteredFiles.size
 
-                    if (metadataChanged) {
+                    if (altered) {
                         val recorderStartedAt = System.nanoTime()
-                        FlightRecorder.checkpointOnMetadataChange(fn)
+                        if (metadataChanged) {
+                            FlightRecorder.checkpointOnMetadataChange(fn)
+                        }
+                        OperationTranscript.checkpoint(fn)
                         recorderMs = SaveReloadLog.elapsedMillis(recorderStartedAt)
                     }
 
@@ -1497,6 +1500,7 @@ class SavingContext {
         const val METADATA_JSON = "metadata.json"
         const val DOCUMENT_MARKDOWN = "document.md"
         const val TRANSCRIPT_EDN = "transcript.edn"
+        const val OPERATIONS_YAML = "operations.yaml"
 
         private val saveLocks = ConcurrentHashMap<String, Any>()
 

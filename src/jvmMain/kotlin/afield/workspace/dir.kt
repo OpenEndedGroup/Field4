@@ -157,6 +157,39 @@ data class CompletionDocPolishRunRequest(
     val dryRun: Boolean = false
 )
 
+@Serializable
+data class AiToolUseLogSummary(
+    val logDir: String = "",
+    val exists: Boolean = false,
+    val logCount: Int = 0,
+    val recentLogCount: Int = 0,
+    val sizeBytes: Long = 0,
+    val lastModifiedEpochMs: Long = 0,
+    val reportPath: String = "",
+    val dryRunPatchPath: String = "",
+    val message: String = ""
+)
+
+@Serializable
+data class AiToolUseImprovementStatus(
+    val logs: AiToolUseLogSummary = AiToolUseLogSummary(),
+    val running: Boolean = false,
+    val status: String = "idle",
+    val runId: String = "",
+    val taskName: String = "",
+    val dryRun: Boolean = true,
+    val startedAtEpochMs: Long = 0,
+    val finishedAtEpochMs: Long = 0,
+    val exitCode: Int? = null,
+    val message: String = "",
+    val logTail: String = ""
+)
+
+@Serializable
+data class AiToolUseImprovementRunRequest(
+    val dryRun: Boolean = true
+)
+
 val defaultImportClassBlacklist = listOf(
     "com.sun.*",
     "sun.*",
@@ -180,7 +213,8 @@ data class WelcomeDocsResponse(
     val preferences: FieldPreferences = FieldPreferences(),
     val projects: List<ProjectEntry> = emptyList(),
     val runtimeInfo: RuntimeInfo = RuntimeInfo(),
-    val completionDocPolish: CompletionDocPolishStatus = CompletionDocPolishStatus()
+    val completionDocPolish: CompletionDocPolishStatus = CompletionDocPolishStatus(),
+    val aiToolUseImprovement: AiToolUseImprovementStatus = AiToolUseImprovementStatus()
 )
 
 @Serializable

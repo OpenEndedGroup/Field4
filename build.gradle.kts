@@ -1665,6 +1665,33 @@ tasks.register<JavaExec>("polishCompletionDocsDryRun") {
     standardInput = System.`in`
 }
 
+tasks.register<JavaExec>("improveAiToolUse") {
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
+    })
+    group = "application"
+    description = "Runs AI4 tool-use log review and prompt/tool-description improvement CLI"
+
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+
+    mainClass.set("afield.ai.core.tooluse.AiToolUseImprovementCliKt")
+    standardInput = System.`in`
+}
+
+tasks.register<JavaExec>("improveAiToolUseDryRun") {
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
+    })
+    group = "application"
+    description = "Runs AI4 tool-use improvement CLI without writing source files"
+
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+
+    mainClass.set("afield.ai.core.tooluse.AiToolUseImprovementCliKt")
+    args("--dry-run")
+    standardInput = System.`in`
+}
+
 tasks.register("generateApiDocs") {
     group = "documentation"
     description = "Generates API documentation (HTML) with Dokka"

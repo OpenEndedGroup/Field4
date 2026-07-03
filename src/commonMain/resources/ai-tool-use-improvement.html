@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="color-scheme" content="dark">
+    <title>AI Tool Use Improvement</title>
+    <link rel="preload" href="/iosevka-regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/iosevka.css" as="style">
+    <link rel="stylesheet" href="/iosevka.css">
+    <style>
+        :root {
+            --bg: rgb(12, 12, 12);
+            --panel: rgb(25, 25, 25);
+            --panel-2: rgb(19, 19, 19);
+            --border: rgba(230, 240, 245, 0.14);
+            --border-strong: rgba(230, 240, 245, 0.32);
+            --text: rgba(235, 242, 246, 0.95);
+            --soft: rgba(168, 183, 192, 0.95);
+            --accent: rgb(224, 241, 249);
+            --danger: rgb(255, 120, 120);
+            --ok: rgb(174, 240, 198);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: "Iosevka Web", ui-monospace, monospace;
+            overflow: hidden;
+        }
+
+        body {
+            padding: 20px;
+        }
+
+        main {
+            width: min(1180px, calc(100vw - 40px));
+            height: calc(100vh - 40px);
+            min-height: 0;
+            margin: 0 auto;
+            display: grid;
+            grid-template-rows: auto auto auto minmax(0, 1fr);
+            gap: 12px;
+        }
+
+        header,
+        section {
+            border: 1px solid var(--border);
+            background: var(--panel);
+            border-radius: 8px;
+        }
+
+        header {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 12px;
+            align-items: center;
+            padding: 14px;
+        }
+
+        h1,
+        h2 {
+            margin: 0;
+            font-weight: 400;
+            letter-spacing: 0;
+        }
+
+        h1 {
+            font-size: 20px;
+        }
+
+        h2 {
+            color: var(--soft);
+            font-size: 12px;
+        }
+
+        button,
+        a.button {
+            font: inherit;
+            font-size: 12px;
+            color: var(--text);
+            background: var(--panel-2);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 7px 9px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        button:hover,
+        a.button:hover {
+            border-color: var(--border-strong);
+        }
+
+        button:disabled {
+            color: var(--soft);
+            cursor: default;
+            opacity: 0.55;
+        }
+
+        .header-actions,
+        .metrics {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .metrics,
+        .paths,
+        .activity {
+            padding: 12px;
+        }
+
+        .metric {
+            display: grid;
+            gap: 4px;
+            min-width: 136px;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            background: var(--panel-2);
+        }
+
+        .metric-label,
+        .path-label {
+            color: var(--soft);
+            font-size: 10px;
+            text-transform: lowercase;
+        }
+
+        .metric-value {
+            color: var(--accent);
+            font-size: 16px;
+        }
+
+        .metric-value.failed {
+            color: var(--danger);
+        }
+
+        .metric-value.succeeded {
+            color: var(--ok);
+        }
+
+        .paths {
+            display: grid;
+            gap: 8px;
+        }
+
+        .path-row {
+            display: grid;
+            grid-template-columns: 120px minmax(0, 1fr);
+            gap: 10px;
+            align-items: baseline;
+            min-width: 0;
+        }
+
+        .path-value {
+            color: var(--accent);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .activity {
+            min-height: 0;
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr);
+            gap: 8px;
+        }
+
+        #message {
+            color: var(--soft);
+        }
+
+        #transcript {
+            min-height: 0;
+            margin: 0;
+            padding: 12px;
+            overflow: auto;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: rgb(6, 6, 6);
+            color: var(--text);
+            white-space: pre-wrap;
+            font: inherit;
+            font-size: 12px;
+            line-height: 1.35;
+        }
+    </style>
+</head>
+<body>
+<main>
+    <header>
+        <div>
+            <h1>AI Tool Use Improvement</h1>
+            <h2 id="subtitle">checking logs</h2>
+        </div>
+        <div class="header-actions">
+            <button id="run-review" type="button">Review logs</button>
+            <button id="run-apply" type="button">Apply polish</button>
+            <a class="button" href="/welcome">Welcome</a>
+        </div>
+    </header>
+
+    <section class="metrics">
+        <div class="metric"><span class="metric-label">recent logs</span><span id="recent-logs" class="metric-value">0</span></div>
+        <div class="metric"><span class="metric-label">all logs</span><span id="all-logs" class="metric-value">0</span></div>
+        <div class="metric"><span class="metric-label">size</span><span id="log-size" class="metric-value">0 B</span></div>
+        <div class="metric"><span class="metric-label">state</span><span id="task-state" class="metric-value">idle</span></div>
+    </section>
+
+    <section class="paths">
+        <div class="path-row"><span class="path-label">log dir</span><span id="log-dir" class="path-value"></span></div>
+        <div class="path-row"><span class="path-label">report</span><span id="report-path" class="path-value"></span></div>
+        <div class="path-row"><span class="path-label">dry patch</span><span id="patch-path" class="path-value"></span></div>
+    </section>
+
+    <section class="activity">
+        <div id="message">Ready.</div>
+        <pre id="transcript">No task output yet.</pre>
+    </section>
+</main>
+
+<script>
+    const REFRESH_MS = 1200;
+    let latestStatus = null;
+    let socket = null;
+
+    function websocketUrl() {
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        return `${protocol}//${window.location.host}/welcome-events`;
+    }
+
+    function countLabel(value, singular, plural = `${singular}s`) {
+        const n = Number(value) || 0;
+        return n === 1 ? `1 ${singular}` : `${n} ${plural}`;
+    }
+
+    function bytesLabel(value) {
+        const n = Number(value) || 0;
+        if (n < 1024) return `${n} B`;
+        if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+        return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    function render(status) {
+        latestStatus = status || {};
+        const logs = latestStatus.logs || {};
+        const transcript = document.getElementById("transcript");
+        const wasNearBottom = transcript.scrollTop + transcript.clientHeight >= transcript.scrollHeight - 24;
+        const state = latestStatus.status || "idle";
+
+        document.getElementById("subtitle").textContent = logs.message || latestStatus.message || "ready";
+        document.getElementById("recent-logs").textContent = countLabel(logs.recentLogCount, "log");
+        document.getElementById("all-logs").textContent = countLabel(logs.logCount, "log");
+        document.getElementById("log-size").textContent = bytesLabel(logs.sizeBytes);
+        document.getElementById("task-state").textContent = state;
+        document.getElementById("task-state").className = `metric-value ${state}`;
+        document.getElementById("message").textContent = latestStatus.message || logs.message || "";
+        document.getElementById("log-dir").textContent = logs.logDir || "";
+        document.getElementById("report-path").textContent = logs.reportPath || "";
+        document.getElementById("patch-path").textContent = logs.dryRunPatchPath || "";
+
+        const recent = Number(logs.recentLogCount) || 0;
+        const reviewButton = document.getElementById("run-review");
+        const applyButton = document.getElementById("run-apply");
+        reviewButton.disabled = !!latestStatus.running || recent <= 0;
+        applyButton.disabled = !!latestStatus.running || recent <= 0;
+        reviewButton.textContent = latestStatus.running && latestStatus.dryRun ? "Reviewing..." : "Review logs";
+        applyButton.textContent = latestStatus.running && !latestStatus.dryRun ? "Applying..." : "Apply polish";
+
+        transcript.textContent = latestStatus.logTail || "No task output yet.";
+        if (wasNearBottom || latestStatus.running) {
+            transcript.scrollTop = transcript.scrollHeight;
+        }
+    }
+
+    async function refresh() {
+        try {
+            const response = await fetch("/api/ai-tool-use-improvement", { cache: "no-store" });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            render(await response.json());
+        } catch (error) {
+            render({
+                status: "failed",
+                message: error?.message || "Could not load AI tool-use improvement status.",
+                logs: latestStatus?.logs || {},
+                logTail: latestStatus?.logTail || ""
+            });
+        }
+    }
+
+    async function run(dryRun) {
+        const button = dryRun ? document.getElementById("run-review") : document.getElementById("run-apply");
+        button.disabled = true;
+        try {
+            const response = await fetch("/api/ai-tool-use-improvement", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                body: JSON.stringify({ dryRun: !!dryRun })
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+            render(payload);
+        } catch (error) {
+            render({
+                ...(latestStatus || {}),
+                status: "failed",
+                message: error?.message || "Could not start AI tool-use improvement."
+            });
+        }
+    }
+
+    function connectEvents() {
+        if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) return;
+        try {
+            socket = new WebSocket(websocketUrl());
+        } catch (_) {
+            setTimeout(connectEvents, 1500);
+            return;
+        }
+        socket.addEventListener("message", refresh);
+        socket.addEventListener("close", () => {
+            socket = null;
+            setTimeout(connectEvents, 1500);
+        });
+        socket.addEventListener("error", () => {
+            try { socket?.close(); } catch (_) {}
+        });
+    }
+
+    document.getElementById("run-review").addEventListener("click", () => run(true));
+    document.getElementById("run-apply").addEventListener("click", () => run(false));
+    refresh();
+    connectEvents();
+    setInterval(refresh, REFRESH_MS);
+</script>
+</body>
+</html>

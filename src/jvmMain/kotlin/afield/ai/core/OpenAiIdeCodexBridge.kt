@@ -28,6 +28,7 @@ class OpenAiIdeCodexBridge(
     private val mapper: ObjectMapper = ObjectMapper().registerModule(KotlinModule.Builder().build())
     private val tools = ToolRegistry()
     private val trace: TraceLogger? = TraceLogger.fromEnv()
+    private val toolIoLog: AiToolIoLogger? = AiToolIoLogger.fromEnvOrDefault(log)
     private val textConfig: ResponseTextConfig =
         ResponseTextConfig.builder().format(ResponseFormatText.builder().build()).build()
     private val reasoningConfig: Reasoning =
@@ -153,6 +154,40 @@ class OpenAiIdeCodexBridge(
                 "maxOutputTokens=$maxOutputTokens attachments=${ctx.attachments.size} images=${imageDataUrls.size}"
         )
 
+        val toolIoSession = runCatching {
+            toolIoLog?.begin(
+                mapOf(
+                    "model" to chatModel.toString(),
+                    "conversationId" to state.conversationId,
+                    "localThreadId" to state.localThreadId,
+                    "previousResponseId" to (state.previousResponseId ?: ""),
+                    "fileKey" to state.fileKey,
+                    "inputChars" to inputText.length,
+                    "attachmentCount" to ctx.attachments.size,
+                    "imageCount" to imageDataUrls.size,
+                    "vectorStoreIds" to vectorStoreIds,
+                    "maxOutputTokens" to maxOutputTokens,
+                    "maxToolRounds" to maxToolRounds,
+                    "prompt" to inputText
+                )
+            )
+        }.onFailure { throwable ->
+            warn("tool I/O log unavailable: ${throwable.message ?: throwable::class.java.simpleName}")
+        }.getOrNull()
+        var toolIoFailureReported = false
+        fun toolIo(event: String, fields: Map<String, Any?> = emptyMap()) {
+            val session = toolIoSession ?: return
+            val logger = toolIoLog ?: return
+            runCatching {
+                logger.event(session, event, fields)
+            }.onFailure { throwable ->
+                if (!toolIoFailureReported) {
+                    toolIoFailureReported = true
+                    warn("tool I/O log write failed: ${throwable.message ?: throwable::class.java.simpleName}")
+                }
+            }
+        }
+
         val promptItems = buildPromptItems(inputText, imageDataUrls)
 
         val paramsBuilder = ResponseCreateParams.builder()
@@ -188,6 +223,16 @@ class OpenAiIdeCodexBridge(
         state.previousResponseId = response.id()
         appendStatelessHistory(state, promptItems + inputItemsFromOutput(response))
         info("initial response id=${response.id()} outputItems=${response.output().size} <<spinner>>")
+        toolIo(
+            "response",
+            mapOf(
+                "phase" to "initial",
+                "responseId" to response.id(),
+                "outputItems" to response.output().size,
+                "messageCount" to response.output().count { it.isMessage() },
+                "functionCallCount" to response.output().count { it.isFunctionCall() }
+            )
+        )
 
         val commentaryMessages = mutableListOf<String>()
         val conversationAdditions = mutableListOf<String>()
@@ -233,6 +278,16 @@ class OpenAiIdeCodexBridge(
             for (call in calls) {
                 val argumentSummary = summarizeToolArguments(call.name(), call.arguments())
                 info("tool: name=${call.name()} callId=${call.callId()} $argumentSummary")
+                toolIo(
+                    "tool_call",
+                    mapOf(
+                        "round" to (rounds + 1),
+                        "toolName" to call.name(),
+                        "callId" to call.callId(),
+                        "arguments" to call.arguments(),
+                        "argumentSummary" to argumentSummary
+                    )
+                )
                 onProgress?.invoke(
                     ProgressUpdate(
                         title = "Using ${call.name()}",
@@ -248,6 +303,16 @@ class OpenAiIdeCodexBridge(
                     tools.execute(ctx, call)
                 } catch (e: Exception) {
                     error("tool: ERROR name=${call.name()} msg=${e.message}")
+                    toolIo(
+                        "tool_exception",
+                        mapOf(
+                            "round" to (rounds + 1),
+                            "toolName" to call.name(),
+                            "callId" to call.callId(),
+                            "exceptionType" to e::class.java.name,
+                            "message" to (e.message ?: "")
+                        )
+                    )
                     mapOf(
                         "error" to true,
                         "tool" to call.name(),
@@ -274,6 +339,16 @@ class OpenAiIdeCodexBridge(
                     }
                 )
                 info("tool: result name=${call.name()} $toolResultSummary")
+                toolIo(
+                    "tool_result",
+                    mapOf(
+                        "round" to (rounds + 1),
+                        "toolName" to call.name(),
+                        "callId" to call.callId(),
+                        "summary" to toolResultSummary,
+                        "result" to toolResultJson
+                    )
+                )
                 onProgress?.invoke(
                     ProgressUpdate(
                         title = "${call.name()} finished",
@@ -359,6 +434,17 @@ class OpenAiIdeCodexBridge(
             state.previousResponseId = response.id()
             appendStatelessHistory(state, toolOutputs + inputItemsFromOutput(response))
             info("follow-up response id=${response.id()} outputItems=${response.output().size}")
+            toolIo(
+                "response",
+                mapOf(
+                    "phase" to "followup",
+                    "round" to (rounds + 1),
+                    "responseId" to response.id(),
+                    "outputItems" to response.output().size,
+                    "messageCount" to response.output().count { it.isMessage() },
+                    "functionCallCount" to response.output().count { it.isFunctionCall() }
+                )
+            )
             logOutputShape(response)
             emitResponseProgress(response, onProgress)
 
@@ -373,6 +459,14 @@ class OpenAiIdeCodexBridge(
                 "maxToolRounds=$maxToolRounds reached with ${pendingCalls.size} pending tool call(s); " +
                     "requesting a final answer without further tools."
             )
+            toolIo(
+                "max_tool_rounds",
+                mapOf(
+                    "maxToolRounds" to maxToolRounds,
+                    "pendingToolCalls" to pendingCalls.map { it.name() },
+                    "pendingCallIds" to pendingCalls.map { it.callId() }
+                )
+            )
             response = createForcedFinalResponse(
                 state = state,
                 previousResponse = response,
@@ -385,6 +479,16 @@ class OpenAiIdeCodexBridge(
             }
             state.previousResponseId = response.id()
             info("forced-final response id=${response.id()} outputItems=${response.output().size}")
+            toolIo(
+                "response",
+                mapOf(
+                    "phase" to "forced_final",
+                    "responseId" to response.id(),
+                    "outputItems" to response.output().size,
+                    "messageCount" to response.output().count { it.isMessage() },
+                    "functionCallCount" to response.output().count { it.isFunctionCall() }
+                )
+            )
             logOutputShape(response)
         }
 
@@ -419,6 +523,16 @@ class OpenAiIdeCodexBridge(
         info(
             "done responseId=${response.id()} textChars=${text.length} " +
                 "commentaryCount=${commentaryMessages.size} (${ms}ms)"
+        )
+        toolIo(
+            "session_end",
+            mapOf(
+                "responseId" to response.id(),
+                "textChars" to text.length,
+                "commentaryCount" to commentaryMessages.size,
+                "toolCallCount" to toolTranscript.size,
+                "elapsedMs" to ms
+            )
         )
 
         return SendResult(
@@ -948,6 +1062,22 @@ class OpenAiIdeCodexBridge(
         tools.register(ReloadShadersRequest::class.java) { ctx, req ->
             ctx.reloadShaders?.invoke(req)
                 ?: throw IllegalStateException("ReloadShaders not available for this request.")
+        }
+        tools.register(MacroListRequest::class.java) { ctx, req ->
+            ctx.listMacros?.invoke(req)
+                ?: throw IllegalStateException("MacroList not available for this request.")
+        }
+        tools.register(MacroReadRequest::class.java) { ctx, req ->
+            ctx.readMacro?.invoke(req)
+                ?: throw IllegalStateException("MacroRead not available for this request.")
+        }
+        tools.register(MacroWriteRequest::class.java) { ctx, req ->
+            ctx.writeMacro?.invoke(req)
+                ?: throw IllegalStateException("MacroWrite not available for this request.")
+        }
+        tools.register(MacroRunRequest::class.java) { ctx, req ->
+            ctx.runMacro?.invoke(req)
+                ?: throw IllegalStateException("MacroRun not available for this request.")
         }
         tools.register(ScratchpadReadRequest::class.java) { ctx, _ ->
             ctx.agentMemory?.readScratchpad()

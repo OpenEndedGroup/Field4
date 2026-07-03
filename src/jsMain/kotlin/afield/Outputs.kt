@@ -38,9 +38,11 @@ private val debounceTimers = mutableMapOf<String, Int>()
 
 private var orderCounter = 0
 private var addPromptBoxUid = 0
+private val recentLocalLaunchOutputClears = mutableMapOf<String, Double>()
 
 private const val executionMarkerGutterInsetPx = -12
 private const val outputHeightFudgePx = 5.0
+private const val remoteClearSuppressionWindowMs = 2_000.0
 private var outputMaxHeightPx = 500.0
 private var outputScrollTailExistingPx = 40.0
 private var outputScrollTailNewPx = 46.0
@@ -476,6 +478,62 @@ private fun clearOutputsForEditor(editor: dynamic, clearInlineDecorations: Boole
         clearEditorDecorations(editor)
     }
     clearStackTraceHints(editor)
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun clearEditorOutputsForBox(uid: String) {
+    if (uid.isBlank()) return
+    val w = js("window")
+    val seenEditors = mutableSetOf<Double>()
+
+    fun clearOnce(editor: dynamic) {
+        if (editor == null || editor == undefined) return
+        val key = weakHash(editor)
+        if (!seenEditors.add(key)) return
+        clearOutputsForEditor(editor, clearInlineDecorations = true)
+    }
+
+    val selected = w.currentSelectedCode
+    val selectedUid = if (selected != null && (selected.length as? Number)?.toInt() == 1) {
+        selected[0].uid as? String
+    } else {
+        null
+    }
+    if (selectedUid == uid) {
+        clearOnce(w.globalMonacoEditor ?: w.globalEditor)
+    }
+
+    val registry = w.embeddedEditors
+    if (registry != null && registry != undefined && registry.getAll != null && registry.getAll != undefined) {
+        val entries = registry.getAll()
+        val length = (entries.length as? Number)?.toInt() ?: 0
+        for (i in 0 until length) {
+            val entry = entries[i] ?: continue
+            if ((entry.uid as? String) == uid) {
+                clearOnce(entry.editor)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun clearEditorOutputsForBoxBeforeLaunch(uid: String) {
+    if (uid.isBlank()) return
+    recentLocalLaunchOutputClears[uid] = window.performance.now()
+    clearEditorOutputsForBox(uid)
+}
+
+fun clearEditorOutputsForBoxFromServer(uid: String) {
+    if (uid.isBlank()) return
+    val now = window.performance.now()
+    val lastLocalClear = recentLocalLaunchOutputClears[uid]
+    if (lastLocalClear != null && now - lastLocalClear < remoteClearSuppressionWindowMs) {
+        return
+    }
+    recentLocalLaunchOutputClears.entries.removeAll { now - it.value > remoteClearSuppressionWindowMs }
+    clearEditorOutputsForBox(uid)
 }
 
 fun setStackTraceHints(editor: dynamic, locations: List<OutputStackLocation>) {

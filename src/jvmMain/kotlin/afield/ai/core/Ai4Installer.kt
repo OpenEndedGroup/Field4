@@ -38,6 +38,59 @@ import kotlin.script.experimental.api.ScriptDiagnostic
 
 private val ai4Scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+private fun macroRunToolResult(
+    documentPath: String,
+    req: MacroRunRequest,
+    targets: List<String>
+): MacroRunResult {
+    val result = OperationTranscript.runMacro(
+        documentPath = documentPath,
+        name = req.name,
+        targetBoxes = targets,
+        direction = req.direction,
+        strict = req.strict
+    )
+    if (req.direction.equals("undo", ignoreCase = true) || result.errors.isEmpty()) {
+        return MacroRunResult(
+            success = result.success,
+            message = result.message,
+            name = result.name,
+            direction = result.direction,
+            targetBoxes = result.targetBoxes,
+            applied = result.applied,
+            skipped = result.skipped,
+            errors = result.errors
+        )
+    }
+
+    val undo = OperationTranscript.runMacro(
+        documentPath = documentPath,
+        name = req.name,
+        targetBoxes = targets,
+        direction = "undo",
+        strict = false
+    )
+    val message = buildString {
+        append(result.message)
+        append(" Macro run produced errors, so Field automatically attempted undo. ")
+        append(undo.message)
+        append(" The agent should inspect the errors, explain what happened, and ask what to change before rerunning.")
+    }
+    notify(message, "AI4 macro")
+    return MacroRunResult(
+        success = false,
+        message = message,
+        name = result.name,
+        direction = result.direction,
+        targetBoxes = result.targetBoxes,
+        applied = result.applied,
+        skipped = result.skipped,
+        errors = result.errors +
+            undo.errors.map { "Undo error: $it" } +
+            "Automatic undo attempted: ${undo.applied} applied, ${undo.skipped} skipped, ${undo.errors.size} error(s)."
+    )
+}
+
 private const val AI4_CONNECTED_RENDER_EXAMPLE_REF = "afield://ai4-examples/connected-compute-render"
 
 private val AI4_CONNECTED_RENDER_EXAMPLE = """
@@ -1561,6 +1614,40 @@ fun installAi4() {
             )
         }
 
+        val listMacros: (MacroListRequest) -> MacroListResult = { _ ->
+            val result = OperationTranscript.listMacros(docPath)
+            MacroListResult(result.success, result.message, result.macros)
+        }
+
+        val readMacro: (MacroReadRequest) -> MacroReadResult = { req ->
+            val result = OperationTranscript.readMacro(docPath, req.name)
+            MacroReadResult(
+                success = result.success,
+                message = if (result.success) "Loaded macro '${result.name}'." else result.message,
+                name = result.name.ifBlank { req.name },
+                content = if (result.success) result.content else "",
+                operationCount = result.operationCount
+            )
+        }
+
+        val writeMacro: (MacroWriteRequest) -> MacroWriteResult = { req ->
+            val result = OperationTranscript.writeMacro(docPath, req.name, req.content)
+            MacroWriteResult(
+                success = result.success,
+                message = result.message,
+                name = result.name.ifBlank { req.name },
+                operationCount = result.operationCount
+            )
+        }
+
+        val runMacro: (MacroRunRequest) -> MacroRunResult = { req ->
+            val targets = req.targetBoxes.map { raw ->
+                val trimmed = raw.trim()
+                resolveBoxByChatName(trimmed)?.id ?: trimmed
+            }.filter { it.isNotBlank() }
+            macroRunToolResult(docPath, req, targets)
+        }
+
         val vectorStoreIds = buildList {
             KotlinSourceIndex.currentVectorStoreId()?.let { add(it) }
             addAll(GlslIncludeLibraryIndex.currentVectorStoreIdsFor(exec.property, expandedExtraPrompt + "\n" + exec.prompt))
@@ -1807,6 +1894,10 @@ fun installAi4() {
                             editOtherFile = editOtherFile,
                             compileKotlin = compileKotlin,
                             reloadShaders = reloadShaders,
+                            listMacros = listMacros,
+                            readMacro = readMacro,
+                            writeMacro = writeMacro,
+                            runMacro = runMacro,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             visualVerificationEnabled = visualVerificationAvailable(),
@@ -1865,6 +1956,10 @@ fun installAi4() {
                             editOtherFile = editOtherFile,
                             compileKotlin = compileKotlin,
                             reloadShaders = reloadShaders,
+                            listMacros = listMacros,
+                            readMacro = readMacro,
+                            writeMacro = writeMacro,
+                            runMacro = runMacro,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             visualVerificationEnabled = visualVerificationAvailable(),
@@ -1905,6 +2000,10 @@ fun installAi4() {
                             editOtherFile = editOtherFile,
                             compileKotlin = compileKotlin,
                             reloadShaders = reloadShaders,
+                            listMacros = listMacros,
+                            readMacro = readMacro,
+                            writeMacro = writeMacro,
+                            runMacro = runMacro,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             visualVerificationEnabled = visualVerificationAvailable(),
@@ -1929,6 +2028,10 @@ fun installAi4() {
                             editOtherFile = editOtherFile,
                             compileKotlin = compileKotlin,
                             reloadShaders = reloadShaders,
+                            listMacros = listMacros,
+                            readMacro = readMacro,
+                            writeMacro = writeMacro,
+                            runMacro = runMacro,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             visualVerificationEnabled = visualVerificationAvailable(),
@@ -1953,6 +2056,10 @@ fun installAi4() {
                             editOtherFile = editOtherFile,
                             compileKotlin = compileKotlin,
                             reloadShaders = reloadShaders,
+                            listMacros = listMacros,
+                            readMacro = readMacro,
+                            writeMacro = writeMacro,
+                            runMacro = runMacro,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             visualVerificationEnabled = visualVerificationAvailable(),
@@ -2134,12 +2241,28 @@ fun installAi4() {
                     wrap = { it.trimEnd() },
                     unwrap = { it.trimEnd() }
                 )
+                val chatDocPath = runCatching { thisSessionInfo.get().filename }.getOrDefault("")
                 val result = chatHelpers!!.chatGeneral(
                     state = state,
                     code = "",
                     lang = lang,
                     userPrompt = userMessage,
                     imageUrls = input.images,
+                    listMacros = { _ ->
+                        val macro = OperationTranscript.listMacros(chatDocPath)
+                        MacroListResult(macro.success, macro.message, macro.macros)
+                    },
+                    readMacro = { req ->
+                        val macro = OperationTranscript.readMacro(chatDocPath, req.name)
+                        MacroReadResult(macro.success, macro.message, macro.name.ifBlank { req.name }, if (macro.success) macro.content else "", macro.operationCount)
+                    },
+                    writeMacro = { req ->
+                        val macro = OperationTranscript.writeMacro(chatDocPath, req.name, req.content)
+                        MacroWriteResult(macro.success, macro.message, macro.name.ifBlank { req.name }, macro.operationCount)
+                    },
+                    runMacro = { req ->
+                        macroRunToolResult(chatDocPath, req, req.targetBoxes.filter { it.isNotBlank() })
+                    },
                     agentMemory = agentMemory
                 )
                 

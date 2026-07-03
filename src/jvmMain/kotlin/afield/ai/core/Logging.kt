@@ -9,6 +9,7 @@ import java.nio.file.StandardOpenOption
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.UUID
 
 data class LogEvent(
     val channel: String,
@@ -181,6 +182,129 @@ class TraceLogger private constructor(
                     }
                 )
             }
+        }
+    }
+}
+
+class AiToolIoLogger private constructor(
+    private val root: Path,
+    private val maxChars: Int,
+    private val log: LogSink
+) {
+    data class Session(
+        val id: String,
+        val path: Path
+    )
+
+    private val lock = Any()
+
+    fun begin(fields: Map<String, Any?>): Session {
+        val now = Instant.now()
+        val id = UUID.randomUUID().toString()
+        val fileStamp = now.toString()
+            .replace(":", "")
+            .replace(".", "-")
+        val path = root.resolve("$fileStamp-${id.take(8)}.jsonl")
+        val session = Session(id = id, path = path)
+        event(session, "session_start", fields + ("logPath" to path.toString()))
+        log.log("info,ai.toolio", "log=${path.toAbsolutePath()}")
+        return session
+    }
+
+    fun event(session: Session, event: String, fields: Map<String, Any?> = emptyMap()) {
+        val record = linkedMapOf<String, Any?>(
+            "timestamp" to Instant.now().toString(),
+            "sessionId" to session.id,
+            "event" to event
+        )
+        record.putAll(fields)
+        append(session.path, jsonValue(record) + "\n")
+    }
+
+    private fun append(path: Path, text: String) {
+        synchronized(lock) {
+            Files.createDirectories(path.parent)
+            Files.newBufferedWriter(
+                path,
+                StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.APPEND
+            ).use { it.write(text) }
+        }
+    }
+
+    private fun clipped(text: String): String =
+        if (text.length <= maxChars) text else text.take(maxChars) + "\n... [truncated ${text.length - maxChars} chars]"
+
+    private fun jsonValue(value: Any?): String = when (value) {
+        null -> "null"
+        is Boolean -> value.toString()
+        is Byte, is Short, is Int, is Long -> value.toString()
+        is Float -> if (value.isFinite()) value.toString() else jsonString(value.toString())
+        is Double -> if (value.isFinite()) value.toString() else jsonString(value.toString())
+        is String -> jsonString(clipped(value))
+        is Map<*, *> -> value.entries.joinToString(prefix = "{", postfix = "}") { (k, v) ->
+            "${jsonString(k?.toString() ?: "null")}:${jsonValue(v)}"
+        }
+        is Iterable<*> -> value.joinToString(prefix = "[", postfix = "]") { jsonValue(it) }
+        is Array<*> -> value.joinToString(prefix = "[", postfix = "]") { jsonValue(it) }
+        else -> jsonString(clipped(value.toString()))
+    }
+
+    private fun jsonString(value: String): String = buildString {
+        append('"')
+        value.forEach { ch ->
+            when (ch) {
+                '\\' -> append("\\\\")
+                '"' -> append("\\\"")
+                '\b' -> append("\\b")
+                '\u000C' -> append("\\f")
+                '\n' -> append("\\n")
+                '\r' -> append("\\r")
+                '\t' -> append("\\t")
+                else -> {
+                    if (ch.code < 0x20) {
+                        append("\\u")
+                        append(ch.code.toString(16).padStart(4, '0'))
+                    } else {
+                        append(ch)
+                    }
+                }
+            }
+        }
+        append('"')
+    }
+
+    companion object {
+        fun fromEnvOrDefault(log: LogSink): AiToolIoLogger? {
+            val enabledRaw = System.getProperty("afield.ai4.toolIoLog")
+                ?: System.getenv("AFIELD_AI4_TOOL_IO_LOG")
+            if (enabledRaw != null) {
+                val normalized = enabledRaw.trim()
+                if (normalized.equals("0", ignoreCase = true) ||
+                    normalized.equals("false", ignoreCase = true) ||
+                    normalized.equals("off", ignoreCase = true)
+                ) {
+                    return null
+                }
+            }
+
+            val rootRaw = System.getProperty("afield.ai4.toolIoLog.path")
+                ?: System.getenv("AFIELD_AI4_TOOL_IO_LOG_PATH")
+            val defaultRoot = Paths.get(System.getProperty("user.home"), ".afield", "logs", "ai4_tool_io")
+            val root = rootRaw
+                ?.trim()
+                ?.takeIf { it.isNotBlank() }
+                ?.let {
+                    val path = Paths.get(it)
+                    if (path.isAbsolute) path else Paths.get(System.getProperty("user.dir")).resolve(path)
+                }
+                ?: defaultRoot
+            val max = (
+                System.getProperty("afield.ai4.toolIoLog.max")
+                    ?: System.getenv("AFIELD_AI4_TOOL_IO_LOG_MAX")
+            )?.toIntOrNull()?.coerceAtLeast(1000) ?: 200_000
+            return AiToolIoLogger(root, max, log)
         }
     }
 }

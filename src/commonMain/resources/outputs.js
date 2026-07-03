@@ -1,6 +1,8 @@
 import {
         clear,
         clearErrors,
+        clearEditorOutputsForBox,
+        clearEditorOutputsForBoxBeforeLaunch,
         removeNewestOutput,
         removeArea,
         toggleArea,
@@ -20,6 +22,8 @@ import {
 
 window.clear = clear;
 window.clearErrors = clearErrors;
+window.clearEditorOutputsForBox = clearEditorOutputsForBox;
+window.clearEditorOutputsForBoxBeforeLaunch = clearEditorOutputsForBoxBeforeLaunch;
 window.removeNewestOutput = removeNewestOutput;
 window.removeArea = removeArea;
 window.toggleArea = toggleArea;

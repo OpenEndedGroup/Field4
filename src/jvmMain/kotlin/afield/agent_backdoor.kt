@@ -15,6 +15,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -720,6 +721,36 @@ fun installAgentBackdoorHandlers() {
                 )
             )
         )
+        Handled.yes
+    })
+
+    handlers["agent-wait-frames"] = mutableSetOf({ message, reply ->
+        val request = Json.decodeFromJsonElement<AgentWaitFramesRequest>(message.payload!!)
+        val frames = request.frames.coerceAtLeast(0L)
+        val startFrame = Runloop.runLoop.frame
+        val targetFrame = startFrame + frames
+        agentBackdoorScope.launch {
+            val timedOut = withTimeoutOrNull((request.timeoutSec * 1000.0).roundToLong().coerceAtLeast(1L)) {
+                while (Runloop.runLoop.frame < targetFrame) {
+                    delay(1)
+                }
+                false
+            } ?: true
+            val endFrame = Runloop.runLoop.frame
+            reply(
+                Message("agent-wait-frames").payload(
+                    AgentWaitFramesResponse(
+                        ok = !timedOut,
+                        requestedFrames = frames,
+                        startFrame = startFrame,
+                        endFrame = endFrame,
+                        elapsedFrames = (endFrame - startFrame).coerceAtLeast(0L),
+                        timedOut = timedOut,
+                        message = if (timedOut) "Timed out waiting for $frames Runloop frames" else ""
+                    )
+                )
+            )
+        }
         Handled.yes
     })
 
