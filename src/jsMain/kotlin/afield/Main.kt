@@ -22,7 +22,10 @@ import kotlinx.html.dom.append
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.encodeToString
 import org.w3c.dom.*
 import org.w3c.dom.events.KeyboardEvent
@@ -91,7 +94,8 @@ object LoadingTracker {
     private val onlineBoxIds = mutableSetOf<String>()
     private var timeoutHandle: Int? = null
     private var finished = false
-    private var backendLoading = false
+    private var backendLoading = true
+    private var backendCompleted = -1
     private var sawBackendStatus = false
     private var statusText = "loading document"
 
@@ -102,6 +106,17 @@ object LoadingTracker {
     fun setExpectedCount(count: Int) {
         if (finished) return
         expectedBoxes = count
+        if (isComplete()) {
+            finish()
+        } else {
+            updateNotification()
+            resetTimeout()
+        }
+    }
+
+    fun boxFramesPreviewed(uids: List<String>) {
+        if (finished) return
+        arrivedBoxIds.addAll(uids)
         if (isComplete()) {
             finish()
         } else {
@@ -124,6 +139,7 @@ object LoadingTracker {
         sawBackendStatus = true
         backendLoading = !status.terminal
         if (status.count >= 0) expectedBoxes = status.count
+        if (status.completed >= 0) backendCompleted = status.completed
         statusText = when {
             status.message.isNotBlank() -> status.message
             status.phase.isNotBlank() -> status.phase.replace("-", " ")
@@ -160,15 +176,15 @@ object LoadingTracker {
 
     private fun isComplete(): Boolean {
         if (expectedBoxes == 0) return true
-        if (expectedBoxes > 0 && onlineBoxIds.size >= expectedBoxes) return true
-        if (expectedBoxes > 0 && arrivedBoxIds.size >= expectedBoxes && !backendLoading) return true
+        if (expectedBoxes > 0 && maxOf(onlineBoxIds.size, backendCompleted) >= expectedBoxes) return true
+        if (expectedBoxes > 0 && arrivedBoxIds.size >= expectedBoxes && sawBackendStatus && !backendLoading) return true
         return false
     }
 
     private fun updateNotification() {
         val total = maxOf(if (expectedBoxes > 0) expectedBoxes else 0, arrivedBoxIds.size, onlineBoxIds.size)
         val received = arrivedBoxIds.size
-        val online = onlineBoxIds.size
+        val online = maxOf(onlineBoxIds.size, backendCompleted)
         val detail = if (total > 0) "$statusText; $received/$total received, $online/$total online" else statusText
         if (detail == "loading document") {
             notify("loading document <<spinner>>", "setup")
@@ -3843,6 +3859,16 @@ suspend fun main() {
         clearFocusedEditorOutputs()
     }
 
+    var connectionGroupRebuildScheduled = false
+    fun requestConnectionGroupRebuild() {
+        if (connectionGroupRebuildScheduled) return
+        connectionGroupRebuildScheduled = true
+        window.setTimeout({
+            connectionGroupRebuildScheduled = false
+            canvasGestures.rebuildConnectionGroup()
+        }, 0)
+    }
+
     doubleTap["Shift"] = {
         val w = window.unsafeCast<dynamic>()
         val fn = w.openAnywherePalette
@@ -3853,6 +3879,69 @@ suspend fun main() {
         }
     }
 
+
+    val batchedMessageDrain = object {
+        private val deferred = mutableListOf<Message>()
+        private var scheduled = false
+        private val chunkSize = 20
+        private val chunkMillis = 5.0
+
+        private fun property(message: Message): String? =
+            try {
+                message.payload?.jsonObject?.get("property")?.jsonPrimitive?.contentOrNull
+            } catch (_: Throwable) {
+                null
+            }
+
+        fun shouldDefer(message: Message): Boolean {
+            if (message.name == "message-batch") return true
+            if (message.name == "describe-action") return true
+            if (message.name == "set-string") {
+                return property(message) !in setOf("name", "layers", "layerFrames", AI4_AUTO_NAME_PROPERTY)
+            }
+            return false
+        }
+
+        fun enqueue(messages: List<Message>) {
+            if (messages.isEmpty()) return
+            deferred.addAll(messages.filter { it.name != "message-batch" })
+            schedule()
+        }
+
+        private fun schedule() {
+            if (scheduled) return
+            scheduled = true
+            window.setTimeout({ drain() }, 0)
+        }
+
+        private fun drain() {
+            scheduled = false
+            val started = window.performance.now()
+            var processed = 0
+            while (deferred.isNotEmpty() && processed < chunkSize && window.performance.now() - started < chunkMillis) {
+                val child = deferred.removeAt(0)
+                handle(child)
+                processed++
+            }
+            if (deferred.isNotEmpty()) {
+                schedule()
+            }
+        }
+    }
+
+    handlers.put("message-batch") { message, reply ->
+        val batch = Json.decodeFromJsonElement<MessageBatch>(message.payload!!)
+        val deferred = mutableListOf<Message>()
+        batch.messages.forEach { child ->
+            if (batchedMessageDrain.shouldDefer(child)) {
+                deferred.add(child)
+            } else {
+                handle(child, reply)
+            }
+        }
+        batchedMessageDrain.enqueue(deferred)
+        Handled.yes
+    }
 
     handlers.put("local-eval") { message, _ ->
         val le = Json.decodeFromJsonElement<LocalEval>(message.payload!!)
@@ -3899,6 +3988,7 @@ suspend fun main() {
     handlers.put("expected-box-count") { message, _ ->
         val ebc = Json.decodeFromJsonElement<Expected_box_count>(message.payload!!)
         LoadingTracker.setExpectedCount(ebc.count)
+        LoadingTracker.boxFramesPreviewed(ebc.frames.map { it.uid })
         renderInitialBoxPlaceholders(ebc.frames)
         Handled.yes
     }
@@ -3921,7 +4011,7 @@ suspend fun main() {
     handlers.put("set-rect") { message, _ ->
         val set = Json.decodeFromJsonElement<Set_rect>(message.payload!!)
         if (!applyIncomingRect(set)) return@put Handled.no
-        canvasGestures.rebuildConnectionGroup()
+        requestConnectionGroupRebuild()
         repositionSlideNoteOverlayIfVisible()
 
         Handled.yes
@@ -3934,7 +4024,7 @@ suspend fun main() {
             if (applyIncomingRect(entry)) changed = true
         }
         if (changed) {
-            canvasGestures.rebuildConnectionGroup()
+            requestConnectionGroupRebuild()
             repositionSlideNoteOverlayIfVisible()
             return@put Handled.yes
         }
@@ -3960,7 +4050,7 @@ suspend fun main() {
             // Remove transition after animation completes
             window.setTimeout({
                 found.style.transition = ""
-                canvasGestures.rebuildConnectionGroup()
+                requestConnectionGroupRebuild()
             }, set.duration.toInt())
         }
 
@@ -3989,7 +4079,7 @@ suspend fun main() {
 
             if (!hasRenderableFrame(found)) {
                 applyBoxVisibilityImmediate(found)
-                canvasGestures.rebuildConnectionGroup()
+                requestConnectionGroupRebuild()
                 return@put Handled.yes
             }
 
@@ -4026,7 +4116,7 @@ suspend fun main() {
 
             // Update connections after animation
             window.setTimeout({
-                canvasGestures.rebuildConnectionGroup()
+                requestConnectionGroupRebuild()
             }, duration.toInt())
         }
 
@@ -4065,7 +4155,7 @@ suspend fun main() {
                     )
                     box.asDynamic().server_visible = set.number
                     applyBoxVisibilityImmediate(box)
-                    canvasGestures.rebuildConnectionGroup()
+                    requestConnectionGroupRebuild()
                 }
             }
             "offline" -> {
@@ -4074,15 +4164,15 @@ suspend fun main() {
                         found.unsafeCast<HTMLElement>().classList.add("offline")
                         found.asDynamic().offline = true
                         applyBoxVisibilityImmediate(found.unsafeCast<HTMLElement>())
-                        canvasGestures.rebuildConnectionGroup()
+                        requestConnectionGroupRebuild()
                     }
                     else {
                         found.unsafeCast<HTMLElement>().classList.remove("offline")
                         found.asDynamic().offline = false
+                        LoadingTracker.boxOnline(u)
                         applyBoxVisibilityImmediate(found.unsafeCast<HTMLElement>())
                         removeBoxPlaceholder(u)
-                        canvasGestures.rebuildConnectionGroup()
-                        LoadingTracker.boxOnline(u)
+                        requestConnectionGroupRebuild()
                     }
                 }
             }
@@ -4112,7 +4202,7 @@ suspend fun main() {
                         box.asDynamic().tombstoned = false
                         applyBoxVisibilityImmediate(box)
                     }
-                    canvasGestures.rebuildConnectionGroup()
+                    requestConnectionGroupRebuild()
                 }
             }
          }
@@ -4299,7 +4389,7 @@ suspend fun main() {
             }
         }
 
-        canvasGestures.rebuildConnectionGroup()
+        requestConnectionGroupRebuild()
         Handled.yes
     }
 
@@ -4667,7 +4757,7 @@ suspend fun main() {
                 )
                 found.unsafeCast<dynamic>().box_layers = set.value
                 updateAllBoxVisibility()
-                canvasGestures.rebuildConnectionGroup()
+                requestConnectionGroupRebuild()
                 }
 
                 "layerFrames" -> {

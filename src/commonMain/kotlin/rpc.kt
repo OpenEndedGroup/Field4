@@ -69,6 +69,11 @@ data class Message(
     }
 }
 
+@Serializable
+data class MessageBatch(
+    val messages: List<Message>
+)
+
 
 @Serializable
 enum class OutputKind {

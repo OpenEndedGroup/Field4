@@ -329,6 +329,32 @@ fun requiredRunJvmArgs(): List<String> {
     }
 }
 
+fun desktopLowLatencyJvmArgs(): List<String> = listOf(
+    "-XX:+UseZGC",
+    "-Xms8g",
+    "-Xmx8g",
+    "-XX:+AlwaysPreTouch",
+    "-XX:-ZUncommit",
+    "-XX:+DisableExplicitGC",
+    "-XX:ReservedCodeCacheSize=512m",
+)
+
+fun MutableList<String>.addOrReplaceJvmOptions(args: List<String>) {
+    fun optionKey(arg: String): String = when {
+        arg.startsWith("-Xms") -> "-Xms"
+        arg.startsWith("-Xmx") -> "-Xmx"
+        arg.startsWith("-XX:+") || arg.startsWith("-XX:-") -> arg.substringAfter("-XX:").drop(1).substringBefore("=")
+        arg.startsWith("-XX:") -> arg.substringAfter("-XX:").substringBefore("=")
+        else -> arg.substringBefore("=")
+    }
+
+    args.forEach { arg ->
+        val key = optionKey(arg)
+        removeAll { optionKey(it) == key }
+        add(arg)
+    }
+}
+
 fun configuredAi4TraceJvmArgs(): List<String> {
     val trace = firstNonBlank(
         providers.gradleProperty("ai4Trace").orNull,
@@ -1364,6 +1390,7 @@ tasks.register("runDesktop") {
         requiredRunJvmArgs().forEach { arg ->
             if (!backendJvmArgs.contains(arg)) backendJvmArgs += arg
         }
+        backendJvmArgs.addOrReplaceJvmOptions(desktopLowLatencyJvmArgs())
         backendJvmArgs.addOrReplaceSystemProperties(configuredAi4TraceJvmArgs())
         val aotLaunch = fieldAotRuntimeLaunch(runJvmTask.classpath, runJvmTask.javaLauncher.get(), logger)
         backendJvmArgs.addOrReplaceSystemProperties(aotLaunch.statusJvmArgs)

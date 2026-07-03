@@ -1035,8 +1035,18 @@ class FieldPaletteController {
                         </div>
                 `
                 document.body.appendChild(root)
+                root.addEventListener("keydown", (event) => {
+                        if (event.key === "Escape") this.closeFromKeyboard(event)
+                }, true)
+                root.addEventListener("keyup", (event) => {
+                        if (event.key === "Escape") {
+                                event.preventDefault()
+                                event.stopPropagation()
+                                if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation()
+                        }
+                }, true)
                 root.addEventListener("mousedown", (event) => {
-                        if (event.target === root) this.hide()
+                        if (event.target === root) this.hide({ restoreFocus: true })
                         else event.preventDefault()
                 })
                 root.addEventListener("click", (event) => {
@@ -1073,13 +1083,29 @@ class FieldPaletteController {
                 })
         }
 
-        hide() {
+        hide(options = {}) {
                 if (this.root.style.display === "none") return
+                const input = this.input()
+                if (input) {
+                        try { input.blur() } catch (_) {}
+                }
                 this.root.style.display = "none"
                 this.items = []
                 this.activeIndex = -1
                 this.generation++
                 if (typeof this.options.onHide === "function") this.options.onHide()
+                if (options.restoreFocus) {
+                        requestAnimationFrame(() => {
+                                try { ensureEditor() } catch (_) {}
+                        })
+                }
+        }
+
+        closeFromKeyboard(event) {
+                event.preventDefault()
+                event.stopPropagation()
+                if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation()
+                this.hide({ restoreFocus: true })
         }
 
         renderLoading() {
@@ -1259,8 +1285,7 @@ class FieldPaletteController {
                         event.preventDefault()
                         this.accept()
                 } else if (event.key === "Escape") {
-                        event.preventDefault()
-                        this.hide()
+                        this.closeFromKeyboard(event)
                 }
         }
 }

@@ -9,6 +9,7 @@ import afield.stdlib.actions
 import afield.four.synth.musicClock
 import afield.four.synth.patClock
 import io.ktor.util.collections.*
+import io.ktor.websocket.WebSocketSession
 import kotlinx.coroutines.*
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
@@ -563,6 +564,23 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
         }
     }
 
+    fun resyncOnly(names: Collection<String>) {
+        names.forEach { name ->
+            val value = properties[name]
+            if (value != null && uiResyncProperties.any { it.matches(name) }) {
+                needsResync.add(this to name)
+            }
+        }
+    }
+
+    fun resyncAllExcept(names: Set<String>) {
+        properties.filter { (name, _) -> name !in names && uiResyncProperties.any { it.matches(name) } }
+            .forEach { (name, value) ->
+                if (value != null)
+                    needsResync.add(this to name)
+            }
+    }
+
     /**
      * Animates the frame change over the specified duration (in milliseconds)
      */
@@ -579,20 +597,74 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
 
 var actionTable = mutableMapOf<String, (List<Box>) -> Unit>()
 val currentActionProperty: ThreadLocal<String> = ThreadLocal.withInitial { "code" }
+private const val RESYNC_BATCH_MESSAGE_LIMIT = 40
+private const val RESYNC_BATCH_BYTE_LIMIT = 64 * 1024
+private val LOADING_PRIORITY_RESYNC_PROPERTIES = setOf(
+    "frame",
+    "name",
+    "_tombstone",
+    "visible",
+    "layers",
+    "layerFrames",
+    "children",
+    "parents",
+    "nested",
+    "nestedIn",
+    "offline",
+    "autorun",
+    "ai4_auto_name"
+)
+
+private fun estimatedResyncMessageBytes(message: Message): Int =
+    96 + message.name.length + message.uid.length + (message.payload?.toString()?.length ?: 0)
+
+private fun sendResyncMessages(session: WebSocketSession, messages: List<Message>) {
+    val chunk = mutableListOf<Message>()
+    var chunkBytes = 0
+
+    fun flush() {
+        when (chunk.size) {
+            0 -> {}
+            1 -> _send(session, chunk.single())
+            else -> _send(session, Message("message-batch").payload(MessageBatch(chunk.toList())))
+        }
+        chunk.clear()
+        chunkBytes = 0
+    }
+
+    messages.forEach { message ->
+        val messageBytes = estimatedResyncMessageBytes(message)
+        if (chunk.isNotEmpty() && (chunk.size >= RESYNC_BATCH_MESSAGE_LIMIT || chunkBytes + messageBytes > RESYNC_BATCH_BYTE_LIMIT)) {
+            flush()
+        }
+        chunk.add(message)
+        chunkBytes += messageBytes
+    }
+    flush()
+}
 
 fun doResync() {
+    val batches = mutableMapOf<WebSocketSession, MutableList<Message>>()
+    fun enqueue(box: Box, message: Message) {
+        if (!box.isInsideInitialized()) return
+        box.inside.sessions.forEach { session ->
+            batches.computeIfAbsent(session) { mutableListOf() }.add(message)
+        }
+    }
+
     needsResync.removeAll { (box, name) ->
         if (!box.isInsideInitialized()) {
             return@removeAll false
+        }
+        if (box.inside.loading && name !in LOADING_PRIORITY_RESYNC_PROPERTIES) {
+            return@removeAll true
         }
         if (box.getPropertyRaw("_tombstone").isTrue()) return@removeAll true
         val value = box.getPropertyRaw(name, null)
         if (value == null) {
             val message = Message("set-null").payload(Set_null(box.id, name))
             lprintln("info,boxes", "resync $name -> $message (x${sessions.size} sessions)")
-            if (box.isInsideInitialized()) {
-                box.inside.sessions.forEach { _send(it, message) }
-            }
+            enqueue(box, message)
             return@removeAll true
         }
 
@@ -722,13 +794,12 @@ fun doResync() {
 
         lprintln("info,boxes", "resync $name -> $message (x${sessions.size} sessions)")
         message?.let { message ->
-            if (box.isInsideInitialized()) {
-                box.inside.sessions.forEach { _send(it, message) }
-            }
+            enqueue(box, message)
         }
 
         true
     }
+    batches.forEach { (session, messages) -> sendResyncMessages(session, messages) }
 }
 
 private class BoxJobList(private val box: Box) : AbstractMutableList<Job>() {

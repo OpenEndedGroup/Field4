@@ -151,6 +151,7 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
+.venv/
 server/venv/
 server/__pycache__/
 *.egg-info/

@@ -1,6 +1,7 @@
 package afield
 
 import afield.four.Renderer
+import afield.ai.core.AI4_AUTO_NAME_PROPERTY
 import afield.four.synth.musicClock
 import afield.four.synth.patClock
 import afield.four.util.Window
@@ -172,7 +173,7 @@ internal fun attachDocumentSession(
             count = countLoadableBoxes(found),
             completed = 0
         )
-        found.boxes.values.forEach { it.resyncAll() }
+        queueStartupPriorityDocumentResync(found)
         refreshFileProxyBoxes(found, notifyMissing = true)
         sendDocumentLoadStatus(
             session,
@@ -182,6 +183,8 @@ internal fun attachDocumentSession(
             completed = countLoadableBoxes(found),
             terminal = true
         )
+        queueStartupDeferredDocumentResync(found)
+        doResync()
         found.topologyGeneration++
         found.scheduleAutorunBoxes()
         return found
@@ -191,6 +194,7 @@ internal fun attachDocumentSession(
     info.loading = !target.scratch
     documents[target.sessionKey] = info
     registerDocumentSession(session, info)
+    var finishLoadingInFinally = true
 
     if (!target.scratch) {
         try {
@@ -221,7 +225,8 @@ internal fun attachDocumentSession(
 
             // Phase 2: Tell the frontend how many boxes to expect BEFORE the
             // slow initialization work begins.
-            val count = countLoadableBoxes(info)
+            val startupBoxes = loadableBoxes(info)
+            val count = startupBoxes.size
             sendExpectedBoxCount(session, info)
             sendDocumentLoadStatus(
                 session,
@@ -238,33 +243,36 @@ internal fun attachDocumentSession(
                 completed = 0
             )
 
-            // Phase 3: Initialize KotlinInterface for every box.
-            // Progress messages are sent after each box; _send dispatches
-            // them via GlobalScope so they reach the frontend independently.
-            var initialized = 0
-            info.boxes.values.forEach {
-                if (it.id == "root" || it.getPropertyRaw("_tombstone").isTrue()) return@forEach
+            // Loading metadata sets many properties with normal resync flags.
+            // Clear those immediately and send only first-paint state before
+            // KotlinInterface startup gives the regular runloop a chance to
+            // drain a full code/editor-state sync.
+            queueStartupPriorityDocumentResync(info, startupBoxes)
+
+            // Phase 3: Queue KotlinInterface creation for every box. Accessing
+            // box.ki starts stdlib import work asynchronously; the box only
+            // becomes truly online when that import clears box.offline.
+            var queued = 0
+            startupBoxes.forEach {
                 it.ki
-                initialized++
-                if (initialized % 1 == 0 || initialized == count) {
+                queued++
+                if (queued == 1 || queued % 10 == 0 || queued == count) {
                     sendDocumentLoadStatus(
                         session,
                         phase = "stdlib-queued",
-                        message = "initializing box Kotlin runtimes",
+                        message = "queued box Kotlin runtimes",
                         count = count,
-                        completed = initialized,
-                        terminal = initialized == count
+                        completed = startupBoxes.count { !it.offline }
                     )
                 }
             }
-            if (count > 0 && initialized != count) {
+            if (count > 0 && queued != count) {
                 sendDocumentLoadStatus(
                     session,
                     phase = "stdlib-queued",
-                    message = "initializing box Kotlin runtimes",
+                    message = "queued box Kotlin runtimes",
                     count = count,
-                    completed = initialized,
-                    terminal = true
+                    completed = startupBoxes.count { !it.offline }
                 )
             }
             if (count == 0) {
@@ -278,13 +286,60 @@ internal fun attachDocumentSession(
                 )
             }
 
-            // Phase 4: Queue box property resyncs so the frontend receives
-            // frame/name/code for every loaded box.
-            info.boxes.values.forEach { it.resyncAll() }
-
-            info.topologyGeneration++
-            info.fileWatchManager
-            info.scheduleAutorunBoxes()
+            // Phase 5: Report real completion based on boxes leaving offline.
+            // This runs away from the websocket hello handler; large documents
+            // must not keep the open handshake occupied while compilers finish.
+            if (count > 0) {
+                finishLoadingInFinally = false
+                agentBackdoorScope.launch {
+                    var lastOnline = -1
+                    var attempts = 0
+                    while (attempts < 1200) {
+                        val online = startupBoxes.count { !it.offline }
+                        discardStartupDeferredResync(info, startupBoxes)
+                        if (online == count) {
+                            doResync()
+                        }
+                        if (online != lastOnline || attempts % 10 == 0 || online == count) {
+                            sendDocumentLoadStatus(
+                                session,
+                                phase = if (online == count) "stdlib-complete" else "stdlib-running",
+                                message = if (online == count) "box Kotlin runtimes ready" else "compiling box stdlib imports",
+                                count = count,
+                                completed = online,
+                                terminal = online == count
+                            )
+                            lastOnline = online
+                        }
+                        if (online != count) {
+                            doResync()
+                        }
+                        if (online == count) break
+                        Thread.sleep(100)
+                        attempts++
+                    }
+                    if (lastOnline < count) {
+                        sendDocumentLoadStatus(
+                            session,
+                            phase = "stdlib-timeout",
+                            message = "still waiting for box Kotlin runtimes",
+                            count = count,
+                            completed = lastOnline,
+                            terminal = true
+                        )
+                    }
+                    info.loading = false
+                    queueStartupDeferredDocumentResync(info, startupBoxes)
+                    doResync()
+                    info.topologyGeneration++
+                    info.fileWatchManager
+                    info.scheduleAutorunBoxes()
+                }
+            } else {
+                info.topologyGeneration++
+                info.fileWatchManager
+                info.scheduleAutorunBoxes()
+            }
         } catch (fnf: FileNotFoundException) {
             lprintln("warning,agent_backdoor", "file '${target.sessionKey}' not found; will be created on first save")
             sendExpectedBoxCount(session, info)
@@ -297,7 +352,9 @@ internal fun attachDocumentSession(
                 terminal = true
             )
         } finally {
-            info.loading = false
+            if (finishLoadingInFinally) {
+                info.loading = false
+            }
         }
     } else {
         info.loading = false
@@ -339,6 +396,46 @@ private fun loadableBoxes(info: SessionInformation): List<Box> {
 }
 
 private fun countLoadableBoxes(info: SessionInformation): Int = loadableBoxes(info).size
+
+private val startupPriorityResyncProperties = listOf(
+    "frame",
+    "name",
+    "_tombstone",
+    "visible",
+    "layers",
+    "layerFrames",
+    "children",
+    "parents",
+    "nested",
+    "nestedIn",
+    "offline",
+    "autorun",
+    AI4_AUTO_NAME_PROPERTY
+)
+
+private val startupPriorityResyncPropertySet = startupPriorityResyncProperties.toSet()
+
+private fun queueStartupPriorityDocumentResync(info: SessionInformation, boxes: List<Box> = loadableBoxes(info)) {
+    discardStartupResync(info, boxes)
+    info.root.resyncOnly(startupPriorityResyncProperties)
+    boxes.forEach { it.resyncOnly(startupPriorityResyncProperties) }
+    doResync()
+}
+
+private fun queueStartupDeferredDocumentResync(info: SessionInformation, boxes: List<Box> = loadableBoxes(info)) {
+    info.root.resyncAllExcept(startupPriorityResyncPropertySet)
+    boxes.forEach { it.resyncAllExcept(startupPriorityResyncPropertySet) }
+}
+
+private fun discardStartupResync(info: SessionInformation, boxes: List<Box> = loadableBoxes(info)) {
+    val startupSyncBoxes = (listOf(info.root) + boxes).toSet()
+    needsResync.removeAll { (box, _) -> box in startupSyncBoxes }
+}
+
+private fun discardStartupDeferredResync(info: SessionInformation, boxes: List<Box> = loadableBoxes(info)) {
+    val startupSyncBoxes = (listOf(info.root) + boxes).toSet()
+    needsResync.removeAll { (box, name) -> box in startupSyncBoxes && name !in startupPriorityResyncPropertySet }
+}
 
 private fun previewInitialBoxFrames(sessionKey: String): List<InitialBoxFrame> =
     try {

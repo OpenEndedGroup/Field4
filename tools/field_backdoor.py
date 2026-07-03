@@ -51,7 +51,7 @@ MUSTACHE_REPLAY_VARIABLE = re.compile(r"\{\{\s*([A-Za-z_][A-Za-z0-9_.-]*)\s*\}\}
 LOG_COLLECTION_PREVIEW = 32
 GRAPHICS_CONTEXT_WAIT_SEC = 0.5
 GRAPHICS_CONTEXT_BOX_NAME = "renderer"
-GRADLE_WRAPPER_JAR = REPO_ROOT / "gradle" / "wrapper" / "gradle-wrapper.jar"
+GRADLE_WRAPPER = REPO_ROOT / ("gradlew.bat" if os.name == "nt" else "gradlew")
 GRADLE_JVMARGS = "-Xmx8g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
 
 
@@ -91,11 +91,8 @@ def health_check(port: int, ssl_context: ssl.SSLContext, timeout: float = 1.5) -
 
 def gradle_command(*tasks_and_args: str) -> list[str]:
     return [
-        "java",
+        str(GRADLE_WRAPPER),
         f"-Dorg.gradle.jvmargs={GRADLE_JVMARGS}",
-        "-classpath",
-        str(GRADLE_WRAPPER_JAR),
-        "org.gradle.wrapper.GradleWrapperMain",
         *tasks_and_args,
     ]
 
