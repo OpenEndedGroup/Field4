@@ -292,6 +292,10 @@ raycaster.params.Points = { threshold: 1.5 };
 const pointer = new THREE.Vector2();
 const DRAG_THRESHOLD_PX = 4;
 const EDGE_SAMPLES = 24;
+const HANDLE_ANCHOR_SIZE_PX = 8;
+const HANDLE_CONTROL_SIZE_PX = 7;
+const HANDLE_SELECTED_BONUS_PX = 2;
+const HANDLE_HIT_RADIUS_PX = 9;
 
 const editorState = {
     mode: 'camera',
@@ -303,7 +307,6 @@ const editorState = {
     points: [],
     edges: [],
     faces: [],
-    handleRadius: 0.05,
     pointerDown: null,
     dragging: null,
     marquee: null
@@ -1311,15 +1314,6 @@ function buildFaceGeometry(boundary) {
     return geometry;
 }
 
-function computeHandleRadius(bounds) {
-    if (!bounds || !bounds.min || !bounds.max) return 0.04;
-    const dx = bounds.max[0] - bounds.min[0];
-    const dy = bounds.max[1] - bounds.min[1];
-    const dz = bounds.max[2] - bounds.min[2];
-    const span = Math.max(dx, dy, dz, 1);
-    return Math.max(span * 0.018, 0.024);
-}
-
 function renderPayloadGeometry(payload) {
     clearEditableGeometrySlots();
     clearGroup(editorOverlayRoot);
@@ -1489,17 +1483,86 @@ function renderEditableBaseGeometry() {
     editableGeometrySlots.faces.length = editorState.faces.length;
 }
 
-function createHandleMesh(point, radius, fill, stroke, selected) {
-    const geometry = new THREE.SphereGeometry(selected ? radius * 1.25 : radius, 10, 10);
-    const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: fill, transparent: true, opacity: 1.0 }));
-    mesh.position.set(point[0], point[1], point[2]);
-    const wire = new THREE.Mesh(
-        new THREE.SphereGeometry(selected ? radius * 1.35 : radius * 1.08, 10, 10),
-        new THREE.MeshBasicMaterial({ color: stroke, wireframe: true, transparent: true, opacity: 0.95 })
-    );
-    wire.position.copy(mesh.position);
-    editorOverlayRoot.add(mesh);
-    editorOverlayRoot.add(wire);
+function hexToRgbArray(hex) {
+    return [
+        ((hex >> 16) & 255) / 255,
+        ((hex >> 8) & 255) / 255,
+        (hex & 255) / 255
+    ];
+}
+
+function handleSpriteSizePx(item, selected) {
+    const base = item.role === 'control' ? HANDLE_CONTROL_SIZE_PX : HANDLE_ANCHOR_SIZE_PX;
+    return base + (selected ? HANDLE_SELECTED_BONUS_PX : 0);
+}
+
+function makeHandlePointMaterial() {
+    return new THREE.ShaderMaterial({
+        uniforms: {
+            uPixelRatio: { value: getDpr() }
+        },
+        vertexShader: `
+            attribute vec3 fillColor;
+            attribute vec3 strokeColor;
+            attribute float size;
+            varying vec3 vFillColor;
+            varying vec3 vStrokeColor;
+            uniform float uPixelRatio;
+            void main() {
+                vFillColor = fillColor;
+                vStrokeColor = strokeColor;
+                vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                gl_PointSize = max(size * uPixelRatio, 2.0);
+                gl_Position = projectionMatrix * mvPosition;
+            }
+        `,
+        fragmentShader: `
+            varying vec3 vFillColor;
+            varying vec3 vStrokeColor;
+            void main() {
+                vec2 uv = gl_PointCoord - vec2(0.5);
+                float radius = length(uv);
+                float alpha = 1.0 - smoothstep(0.43, 0.5, radius);
+                if (alpha <= 0.001) discard;
+                float ring = smoothstep(0.31, 0.40, radius);
+                vec3 color = mix(vFillColor, vStrokeColor, ring);
+                gl_FragColor = vec4(color, alpha);
+            }
+        `,
+        transparent: true,
+        depthTest: false,
+        depthWrite: false
+    });
+}
+
+function createHandleSprites(items, selectedRefKeys) {
+    if (!items.length) return;
+    const positions = [];
+    const fillColors = [];
+    const strokeColors = [];
+    const sizes = [];
+
+    items.forEach((item) => {
+        const refKey = pointRefKey(item.pointRefs[0]);
+        const selected = selectedRefKeys.has(refKey) || editorState.selection.has(item.key);
+        const fill = hexToRgbArray(item.role === 'control' ? 0x0f1a22 : 0x081117);
+        const stroke = hexToRgbArray(selected ? 0xffd35c : 0x62d7ff);
+        positions.push(item.x, item.y, item.z);
+        fillColors.push(fill[0], fill[1], fill[2]);
+        strokeColors.push(stroke[0], stroke[1], stroke[2]);
+        sizes.push(handleSpriteSizePx(item, selected));
+    });
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('fillColor', new THREE.Float32BufferAttribute(fillColors, 3));
+    geometry.setAttribute('strokeColor', new THREE.Float32BufferAttribute(strokeColors, 3));
+    geometry.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
+    geometry.computeBoundingSphere();
+
+    const points = new THREE.Points(geometry, makeHandlePointMaterial());
+    points.renderOrder = 30;
+    editorOverlayRoot.add(points);
 }
 
 function renderEditableOverlay() {
@@ -1586,21 +1649,10 @@ function renderEditableOverlay() {
     }
 
     if (visibleControls) {
+        createHandleSprites(editorState.points, selectedRefKeys);
         editorState.points.forEach((item) => {
-            const refKey = pointRefKey(item.pointRefs[0]);
-            const selected = selectedRefKeys.has(refKey) || editorState.selection.has(item.key);
-            const fill = item.role === 'control' ? 0x0f1a22 : 0x081117;
-            const stroke = selected ? 0xffd35c : 0x62d7ff;
-            createHandleMesh([item.x, item.y, item.z], item.role === 'control' ? editorState.handleRadius * 0.8 : editorState.handleRadius, fill, stroke, selected);
             if (editorState.mask.point) {
-                const hitMesh = new THREE.Mesh(
-                    new THREE.SphereGeometry(editorState.handleRadius * 2.2, 10, 10),
-                    new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.0, depthWrite: false })
-                );
-                hitMesh.position.set(item.x, item.y, item.z);
-                hitMesh.userData.itemKey = item.key;
-                editableHitObjects.push(hitMesh);
-                editorOverlayRoot.add(hitMesh);
+                editableHitObjects.push({ isScreenPointHandle: true, item });
             }
         });
     }
@@ -1680,7 +1732,6 @@ function applyGeometry(payload) {
     updateMeta(payload.meta);
     editorState.scene = payload.scene ? JSON.parse(JSON.stringify(payload.scene)) : null;
     editorState.selection = new Set();
-    editorState.handleRadius = computeHandleRadius(payload.bounds);
     if (!payload.editableEnabled) {
         editorState.mode = 'camera';
     }
@@ -1742,9 +1793,37 @@ function setPointerFromEvent(event) {
 
 function intersectEditableHit(event) {
     if (!editableHitObjects.length) return null;
+    const rect = renderer.domElement.getBoundingClientRect();
+    const canvasPoint = {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top
+    };
+    let bestPointHit = null;
+    editableHitObjects.forEach((entry) => {
+        if (!entry.isScreenPointHandle) return;
+        const item = entry.item;
+        const projected = worldToCanvas([item.x, item.y, item.z]);
+        if (!projected.visible) return;
+        const selected = editorState.selection.has(item.key);
+        const radius = Math.max(HANDLE_HIT_RADIUS_PX, handleSpriteSizePx(item, selected) * 0.65);
+        const dx = projected.x - canvasPoint.x;
+        const dy = projected.y - canvasPoint.y;
+        const distance = Math.hypot(dx, dy);
+        if (distance <= radius && (!bestPointHit || distance < bestPointHit.distance)) {
+            bestPointHit = {
+                distance,
+                object: { userData: { itemKey: item.key } },
+                point: new THREE.Vector3(item.x, item.y, item.z)
+            };
+        }
+    });
+    if (bestPointHit) return bestPointHit;
+
+    const raycastObjects = editableHitObjects.filter((entry) => !entry.isScreenPointHandle);
+    if (!raycastObjects.length) return null;
     setPointerFromEvent(event);
     raycaster.setFromCamera(pointer, camera);
-    const hits = raycaster.intersectObjects(editableHitObjects, false);
+    const hits = raycaster.intersectObjects(raycastObjects, false);
     return hits.length ? hits[0] : null;
 }
 

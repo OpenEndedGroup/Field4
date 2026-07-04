@@ -211,6 +211,7 @@ button {
   padding: 0.75rem max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
   background: var(--bg);
   touch-action: pan-y;
+  row-gap: 0.65rem;
 }
 
 .group-state {
@@ -219,7 +220,7 @@ button {
   font-size: 0.8125rem;
   text-transform: uppercase;
   min-height: 1.2rem;
-  padding: 0.25rem 0 0.75rem;
+  padding: 0.25rem 0 0.25rem;
 }
 
 .group-controls {
@@ -462,4 +463,14 @@ button {
   border: 1px solid var(--line);
   border-radius: var(--inner-radius);
   background: #050505;
+}
+
+.phone-output-lines {
+  overflow: hidden;
+}
+
+.phone-output-frame-lines {
+  display: block;
+  min-height: 10rem;
+  overflow: hidden;
 }

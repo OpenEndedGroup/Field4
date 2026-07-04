@@ -231,6 +231,77 @@ window.__flineHoverOut = function(groupEl) {
         };
     }
 
+    function sceneInitialView(scene) {
+        var x = Number(scene.viewX);
+        var y = Number(scene.viewY);
+        var w = Number(scene.viewWidth);
+        var h = Number(scene.viewHeight);
+        if (!Number.isFinite(x)) x = 0;
+        if (!Number.isFinite(y)) y = 0;
+        if (!Number.isFinite(w) || w <= 0) w = Number(scene.width) || 320;
+        if (!Number.isFinite(h) || h <= 0) h = Number(scene.height) || 240;
+        return { x: x, y: y, w: Math.max(w, 1e-6), h: Math.max(h, 1e-6) };
+    }
+
+    function cloneView(view) {
+        return { x: view.x, y: view.y, w: view.w, h: view.h };
+    }
+
+    function applyEditorView(state) {
+        var view = state.viewport;
+        state.svg.setAttribute('viewBox', [view.x, view.y, view.w, view.h].join(' '));
+    }
+
+    function zoomEditorViewAt(state, event, factor) {
+        if (!Number.isFinite(factor) || factor <= 0) return;
+        var point = getSvgPoint(state.svg, event);
+        var view = state.viewport;
+        var nextW = Math.max(1e-6, view.w * factor);
+        var nextH = Math.max(1e-6, view.h * factor);
+        var sx = nextW / view.w;
+        var sy = nextH / view.h;
+        state.viewport = {
+            x: point.x - (point.x - view.x) * sx,
+            y: point.y - (point.y - view.y) * sy,
+            w: nextW,
+            h: nextH
+        };
+        applyEditorView(state);
+    }
+
+    function panEditorViewByScreenDelta(state, dxScreen, dyScreen) {
+        var rect = state.svg.getBoundingClientRect();
+        var view = state.viewport;
+        var dx = rect.width === 0 ? 0 : dxScreen / rect.width * view.w;
+        var dy = rect.height === 0 ? 0 : dyScreen / rect.height * view.h;
+        state.viewport = {
+            x: view.x - dx,
+            y: view.y - dy,
+            w: view.w,
+            h: view.h
+        };
+        applyEditorView(state);
+    }
+
+    function resetEditorView(state) {
+        state.viewport = cloneView(state.baseViewport);
+        applyEditorView(state);
+    }
+
+    function svgUnitsPerCssPixel(state) {
+        var rect = state.svg.getBoundingClientRect();
+        var view = state.viewport || state.svg.viewBox.baseVal;
+        var viewW = Number(view.w || view.width) || 1;
+        var viewH = Number(view.h || view.height) || 1;
+        var declaredW = Number(state.svg.getAttribute('width')) || viewW;
+        var declaredH = Number(state.svg.getAttribute('height')) || viewH;
+        var pixelW = rect.width > 0 ? rect.width : declaredW;
+        var pixelH = rect.height > 0 ? rect.height : declaredH;
+        var sx = pixelW > 0 ? Math.abs(viewW / pixelW) : 1;
+        var sy = pixelH > 0 ? Math.abs(viewH / pixelH) : 1;
+        return Math.max(sx, sy, 1e-6);
+    }
+
     function buildLinePath(nodes) {
         var path = [];
         var first = true;
@@ -851,6 +922,11 @@ window.__flineHoverOut = function(groupEl) {
         var interactionLayer = svgEl('g', { 'data-layer': 'interaction' });
         var drawLayer = svgEl('g', { 'data-layer': 'draw' });
         var marqueeLayer = svgEl('g', { 'data-layer': 'marquee' });
+        var unitPx = svgUnitsPerCssPixel(state);
+        var pointGeometryMinRadius = 1.5 * unitPx;
+        var selectionStrokeWidth = 1.5 * unitPx;
+        var edgeSelectionStrokeWidth = 4 * unitPx;
+        var edgeHitStrokeWidth = 12 * unitPx;
 
         state.faces.forEach(function(face) {
             if (visibleSelections && state.selection.has(face.key)) {
@@ -858,7 +934,7 @@ window.__flineHoverOut = function(groupEl) {
                     d: face.path,
                     fill: 'var(--fline-editor-selection-soft)',
                     stroke: 'var(--fline-editor-selection)',
-                    'stroke-width': 1.5
+                    'stroke-width': selectionStrokeWidth
                 }));
             }
             if (state.mask.face) {
@@ -889,7 +965,7 @@ window.__flineHoverOut = function(groupEl) {
                     geometryLayer.appendChild(svgEl('circle', {
                         cx: node.to[0],
                         cy: node.to[1],
-                        r: Math.max(1.5, line.pointSize * 3.0),
+                        r: Math.max(pointGeometryMinRadius, (Number(line.pointSize) || 1) * 3.0 * unitPx),
                         fill: line.color
                     }));
                 });
@@ -902,7 +978,7 @@ window.__flineHoverOut = function(groupEl) {
                     d: edge.path,
                     fill: 'none',
                     stroke: 'var(--fline-editor-selection)',
-                    'stroke-width': 4,
+                    'stroke-width': edgeSelectionStrokeWidth,
                     'stroke-linecap': 'round',
                     'stroke-linejoin': 'round',
                     opacity: 0.95
@@ -913,7 +989,7 @@ window.__flineHoverOut = function(groupEl) {
                     d: edge.path,
                     fill: 'none',
                     stroke: 'rgba(0,0,0,0)',
-                    'stroke-width': 12,
+                    'stroke-width': edgeHitStrokeWidth,
                     'stroke-linecap': 'round',
                     'stroke-linejoin': 'round',
                     'pointer-events': 'stroke',
@@ -942,8 +1018,8 @@ window.__flineHoverOut = function(groupEl) {
                             x2: node.c1[0],
                             y2: node.c1[1],
                             stroke: 'rgba(136, 190, 214, 0.42)',
-                            'stroke-width': 1,
-                            'stroke-dasharray': '4 4'
+                            'stroke-width': 1 * unitPx,
+                            'stroke-dasharray': (4 * unitPx) + ' ' + (4 * unitPx)
                         }));
                         controlLayer.appendChild(svgEl('line', {
                             x1: node.to[0],
@@ -951,8 +1027,8 @@ window.__flineHoverOut = function(groupEl) {
                             x2: node.c2[0],
                             y2: node.c2[1],
                             stroke: 'rgba(136, 190, 214, 0.42)',
-                            'stroke-width': 1,
-                            'stroke-dasharray': '4 4'
+                            'stroke-width': 1 * unitPx,
+                            'stroke-dasharray': (4 * unitPx) + ' ' + (4 * unitPx)
                         }));
                         previousAnchor = node.to;
                     } else if (node.kind === 'cubic') {
@@ -968,23 +1044,24 @@ window.__flineHoverOut = function(groupEl) {
             state.points.forEach(function(item) {
                 var refKey = pointRefKey(item.pointRefs[0]);
                 var selected = selectedRefKeys.has(refKey) || state.selection.has(item.key);
-                var radius = item.role === 'control' ? 4.2 : 5.5;
+                var radiusPx = item.role === 'control' ? 4.2 : 5.5;
+                var radius = radiusPx * unitPx;
                 var fill = item.role === 'control' ? '#0f1a22' : '#081117';
                 var stroke = selected ? 'var(--fline-editor-selection)' : 'var(--fline-editor-accent)';
                 pointLayer.appendChild(svgEl('circle', {
                     cx: item.x,
                     cy: item.y,
-                    r: selected ? radius + 1.8 : radius,
+                    r: selected ? radius + 1.8 * unitPx : radius,
                     fill: fill,
                     stroke: stroke,
-                    'stroke-width': selected ? 2.2 : 1.6,
+                    'stroke-width': (selected ? 2.2 : 1.6) * unitPx,
                     opacity: selected || state.mask.point ? 1 : 0.0
                 }));
                 if (state.mode === 'edit' && state.mask.point) {
                     interactionLayer.appendChild(svgEl('circle', {
                         cx: item.x,
                         cy: item.y,
-                        r: radius + 5,
+                        r: radius + 5 * unitPx,
                         fill: 'rgba(0,0,0,0)',
                         'pointer-events': 'all',
                         'data-fline-hit-kind': 'point',
@@ -1084,6 +1161,7 @@ window.__flineHoverOut = function(groupEl) {
         root.tabIndex = 0;
 
         var scene = JSON.parse(sceneScript.textContent || '{}');
+        var initialView = sceneInitialView(scene);
         var state = {
             root: root,
             svg: svg,
@@ -1104,6 +1182,10 @@ window.__flineHoverOut = function(groupEl) {
             dragging: null,
             pointerDown: null,
             drawingStroke: null,
+            viewport: cloneView(initialView),
+            baseViewport: cloneView(initialView),
+            panning: null,
+            spacePanning: false,
             items: new Map(),
             points: [],
             edges: [],
@@ -1114,9 +1196,31 @@ window.__flineHoverOut = function(groupEl) {
         root.__fieldFLineEditorState = state;
 
         wireToolbar(root, state);
+        applyEditorView(state);
         renderFLineEditor(state);
+        if (typeof ResizeObserver === 'function') {
+            var lastSizeKey = '';
+            state.resizeObserver = new ResizeObserver(function(entries) {
+                var rect = entries && entries[0] ? entries[0].contentRect : svg.getBoundingClientRect();
+                var sizeKey = Math.round(rect.width) + 'x' + Math.round(rect.height);
+                if (sizeKey === lastSizeKey) return;
+                lastSizeKey = sizeKey;
+                renderFLineEditor(state);
+            });
+            state.resizeObserver.observe(svg);
+        }
 
         root.addEventListener('keydown', function(event) {
+            if (event.code === 'Space') {
+                var targetForSpace = event.target;
+                if (!targetForSpace || (targetForSpace.tagName !== 'INPUT' && targetForSpace.tagName !== 'TEXTAREA' && !targetForSpace.isContentEditable)) {
+                    state.spacePanning = true;
+                    svg.style.cursor = 'grab';
+                    event.preventDefault();
+                    event.stopPropagation();
+                    return;
+                }
+            }
             if (event.key !== 'e' && event.key !== 'E') return;
             var target = event.target;
             if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
@@ -1138,8 +1242,42 @@ window.__flineHoverOut = function(groupEl) {
             event.stopPropagation();
         });
 
+        root.addEventListener('keyup', function(event) {
+            if (event.code !== 'Space') return;
+            state.spacePanning = false;
+            if (!state.panning) svg.style.cursor = '';
+            event.preventDefault();
+            event.stopPropagation();
+        });
+
+        svg.addEventListener('wheel', function(event) {
+            zoomEditorViewAt(state, event, Math.exp(event.deltaY * 0.001));
+            renderFLineEditor(state);
+            event.preventDefault();
+            event.stopPropagation();
+        }, { passive: false });
+
+        svg.addEventListener('dblclick', function(event) {
+            resetEditorView(state);
+            renderFLineEditor(state);
+            event.preventDefault();
+            event.stopPropagation();
+        });
+
         svg.addEventListener('pointerdown', function(event) {
             root.focus();
+            if (event.button === 1 || event.altKey || state.spacePanning) {
+                state.panning = {
+                    pointerId: event.pointerId,
+                    lastClientX: event.clientX,
+                    lastClientY: event.clientY
+                };
+                try { svg.setPointerCapture(event.pointerId); } catch (_) {}
+                svg.style.cursor = 'grabbing';
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
             var pt = getSvgPoint(svg, event);
             if (state.mode === 'draw') {
                 if (state.liveDrawingEnabled) beginLiveDrawStroke(state, { x: pt.x, y: pt.y, z: 0 }, event.pointerId);
@@ -1167,6 +1305,19 @@ window.__flineHoverOut = function(groupEl) {
         });
 
         svg.addEventListener('pointermove', function(event) {
+            if (state.panning && state.panning.pointerId === event.pointerId) {
+                panEditorViewByScreenDelta(
+                    state,
+                    event.clientX - state.panning.lastClientX,
+                    event.clientY - state.panning.lastClientY
+                );
+                state.panning.lastClientX = event.clientX;
+                state.panning.lastClientY = event.clientY;
+                renderFLineEditor(state);
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
             var pt = getSvgPoint(svg, event);
 
             if (state.mode === 'draw') {
@@ -1249,6 +1400,14 @@ window.__flineHoverOut = function(groupEl) {
         });
 
         function finishPointer(event) {
+            if (state.panning && state.panning.pointerId === event.pointerId) {
+                state.panning = null;
+                svg.style.cursor = state.spacePanning ? 'grab' : '';
+                try { svg.releasePointerCapture(event.pointerId); } catch (_) {}
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
             if (state.mode === 'draw') {
                 if (state.drawingStroke && state.drawingStroke.pointerId === event.pointerId) {
                     var pt = getSvgPoint(svg, event);

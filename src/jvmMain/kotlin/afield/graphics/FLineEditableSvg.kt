@@ -21,6 +21,10 @@ private data class EditableSvgScene(
     val sessionId: String,
     val width: Double,
     val height: Double,
+    val viewX: Double,
+    val viewY: Double,
+    val viewWidth: Double,
+    val viewHeight: Double,
     val drawingEnabled: Boolean,
     val liveDrawingEnabled: Boolean,
     val drawStyle: FLineDrawStyle,
@@ -62,11 +66,15 @@ internal fun buildEditableSVGWidget(
 ): EditableSvgWidget {
     val scaledLines = pairs.map { it.second }
     val session = registerFLineEditSession(pairs.map { it.first }, fitTransform)
-    val (we, he) = resolveEditorSize(scaledLines, w, h)
+    val frame = resolveEditorFrame(scaledLines, w, h)
     val scene = EditableSvgScene(
         sessionId = session.sessionId,
-        width = we,
-        height = he,
+        width = frame.width,
+        height = frame.height,
+        viewX = frame.viewX,
+        viewY = frame.viewY,
+        viewWidth = frame.viewWidth,
+        viewHeight = frame.viewHeight,
         drawingEnabled = drawingEnabled,
         liveDrawingEnabled = drawingEnabled && liveDrawingEnabled,
         drawStyle = session.drawStyle(),
@@ -278,9 +286,10 @@ internal fun buildEditableSVGWidget(
 
                 <svg class="field-fline-editor-canvas"
                      xmlns="http://www.w3.org/2000/svg"
-                     width="$we"
-                     height="$he"
-                     viewBox="0 0 $we $he"></svg>
+                     width="${frame.width}"
+                     height="${frame.height}"
+                     viewBox="${frame.viewX} ${frame.viewY} ${frame.viewWidth} ${frame.viewHeight}"
+                     preserveAspectRatio="xMidYMid meet"></svg>
                 <script type="application/json" class="field-fline-editor-scene">$encodedScene</script>
                 <script>
                     window.initializeFLineEditors && window.initializeFLineEditors(document.currentScript.parentElement);
@@ -291,11 +300,44 @@ internal fun buildEditableSVGWidget(
     )
 }
 
-private fun resolveEditorSize(lines: List<FLine>, w: Double, h: Double): Pair<Double, Double> {
-    if (w > 0.0 && h > 0.0) return w to h
-    if (lines.isEmpty()) return 320.0 to 240.0
+private data class EditableSvgFrame(
+    val width: Double,
+    val height: Double,
+    val viewX: Double,
+    val viewY: Double,
+    val viewWidth: Double,
+    val viewHeight: Double
+)
+
+private fun resolveEditorFrame(lines: List<FLine>, w: Double, h: Double): EditableSvgFrame {
+    if (lines.isEmpty()) {
+        val width = if (w > 0.0) w else 320.0
+        val height = if (h > 0.0) h else 240.0
+        return EditableSvgFrame(width, height, 0.0, 0.0, width, height)
+    }
     val bounds = lines.map { it.fast2DBounds() }.reduce { a, b -> a.union(b) }
-    return (bounds.w + bounds.x).coerceAtLeast(1.0) to (bounds.h + bounds.y).coerceAtLeast(1.0)
+    val viewPad = maxOf(2.0, maxOf(bounds.w, bounds.h) * 0.04)
+    val viewWidth = (bounds.w + viewPad * 2.0).coerceAtLeast(1.0)
+    val viewHeight = (bounds.h + viewPad * 2.0).coerceAtLeast(1.0)
+    val aspect = (viewWidth / viewHeight).takeIf { it.isFinite() && it > 0.0 } ?: (4.0 / 3.0)
+    val width = when {
+        w > 0.0 -> w
+        h > 0.0 -> h * aspect
+        else -> viewWidth.coerceIn(320.0, 900.0)
+    }
+    val height = when {
+        h > 0.0 -> h
+        w > 0.0 -> w / aspect
+        else -> (width / aspect).coerceIn(180.0, 700.0)
+    }
+    return EditableSvgFrame(
+        width = width.coerceAtLeast(1.0),
+        height = height.coerceAtLeast(1.0),
+        viewX = bounds.x - viewPad,
+        viewY = bounds.y - viewPad,
+        viewWidth = viewWidth,
+        viewHeight = viewHeight
+    )
 }
 
 private fun afield.stdlib.Vec3.toSceneArray(): DoubleArray = doubleArrayOf(x.toDouble(), y.toDouble(), z.toDouble())

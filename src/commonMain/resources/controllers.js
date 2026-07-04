@@ -272,7 +272,8 @@
   function renderOutputs(info) {
     const outputs = Array.isArray(info.outputs) ? info.outputs : [];
     const controls = Array.isArray(info.controls) ? info.controls : [];
-    const signature = JSON.stringify({ uid: info.selectedUid || "", outputs, controls });
+    const visibleOutputs = outputs.filter((output) => !isNativeControlDuplicate(output, controls));
+    const signature = JSON.stringify({ uid: info.selectedUid || "", outputs: visibleOutputs, controls });
     if (signature === state.outputsSignature || state.activeControlId) return;
     state.outputsSignature = signature;
     outputsControls.replaceChildren();
@@ -281,32 +282,228 @@
       outputsState.textContent = "Select one box in Field";
       return;
     }
-    outputsState.textContent = `${info.selectedName || info.selectedUid} · ${outputs.length} output${outputs.length === 1 ? "" : "s"}`;
+    outputsState.textContent = `${info.selectedName || info.selectedUid} · ${visibleOutputs.length} output${visibleOutputs.length === 1 ? "" : "s"}`;
     controls.forEach((control) => outputsControls.appendChild(renderControl(control)));
-    outputs.forEach((output) => outputsList.appendChild(renderOutputArea(output)));
-    if (!controls.length && !outputs.length) outputsState.textContent = `${info.selectedName || "selected"} has no outputs yet`;
+    visibleOutputs.forEach((output) => outputsList.appendChild(renderOutputArea(output)));
+    if (!controls.length && !visibleOutputs.length) outputsState.textContent = `${info.selectedName || "selected"} has no outputs yet`;
+    if (controls.length && !visibleOutputs.length) outputsState.textContent = `${info.selectedName || "selected"} · controls only`;
+  }
+
+  function isNativeControlDuplicate(output, controls) {
+    if (!controls.length) return false;
+    const html = String(output && output.html || "");
+    return html.includes("class=\"control-group\"") ||
+      html.includes("class='control-group'") ||
+      html.includes("field-control field-slider") ||
+      html.includes("field-control field-vec2") ||
+      html.includes("field-control field-color");
+  }
+
+  function isLinesOutput(output) {
+    return String(output && output.html || "").includes("data-afield-lines-output=\"true\"");
+  }
+
+  function isFLineEditorOutput(output) {
+    return String(output && output.html || "").includes("data-field-fline-editor=\"true\"");
   }
 
   function renderOutputArea(output) {
+    const linesOutput = isLinesOutput(output);
+    const flineEditorOutput = isFLineEditorOutput(output);
     const shell = document.createElement("article");
     shell.className = "phone-output-card";
+    shell.classList.toggle("phone-output-lines", linesOutput || flineEditorOutput);
     const title = document.createElement("div");
     title.className = "phone-output-title";
     title.textContent = output.channel || "output";
     const frame = document.createElement("iframe");
     frame.className = "phone-output-frame";
+    if (linesOutput || flineEditorOutput) frame.classList.add("phone-output-frame-lines");
     frame.setAttribute("sandbox", "allow-scripts allow-forms allow-same-origin allow-popups");
-    frame.srcdoc = `<!doctype html><html><head><base target="_blank"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;background:#050505;color:#ddd;font-family:system-ui,sans-serif;overflow-wrap:anywhere;} img,svg,canvas,video,iframe{max-width:100%;height:auto;} table{max-width:100%;display:block;overflow:auto;}</style></head><body>${output.html || ""}</body></html>`;
-    frame.addEventListener("load", () => resizeOutputFrame(frame));
+    frame.srcdoc = outputFrameHtml(output, linesOutput, flineEditorOutput);
+    frame.addEventListener("load", () => resizeOutputFrame(frame, true));
     shell.append(title, frame);
     return shell;
   }
 
-  function resizeOutputFrame(frame) {
+  function outputFrameHtml(output, linesOutput, flineEditorOutput) {
+    const modeClass = [
+      linesOutput ? "field-controller-lines-frame" : "",
+      flineEditorOutput ? "field-controller-fline-editor-frame" : "",
+    ].filter(Boolean).join(" ");
+    const flineEditorRuntime = flineEditorOutput ? `<script src="/sliders.js"></script>` : "";
+    const linesScript = linesOutput ? `
+      <script>
+        (function () {
+          function number(value, fallback) {
+            var n = Number(value);
+            return Number.isFinite(n) ? n : fallback;
+          }
+
+          function fitLinesOutput() {
+            document.querySelectorAll(".afield-lines-output").forEach(function (container) {
+              var svg = container.querySelector("svg");
+              if (!svg) return;
+              if (container.__fieldControllerLinesState) return;
+
+              var x = number(container.dataset.afieldBoundsX, 0);
+              var y = number(container.dataset.afieldBoundsY, 0);
+              var w = number(container.dataset.afieldBoundsW, 0);
+              var h = number(container.dataset.afieldBoundsH, 0);
+
+              if (!(w > 0) || !(h > 0)) {
+                var existing = (svg.getAttribute("viewBox") || "").trim().split(/\\s+/).map(Number);
+                if (existing.length === 4 && existing.every(Number.isFinite)) {
+                  x = existing[0];
+                  y = existing[1];
+                  w = existing[2];
+                  h = existing[3];
+                } else {
+                  w = number(svg.getAttribute("width"), svg.clientWidth || 1);
+                  h = number(svg.getAttribute("height"), svg.clientHeight || 1);
+                }
+              }
+
+              w = Math.max(w, 1);
+              h = Math.max(h, 1);
+              var pad = Math.max(2, Math.max(w, h) * 0.04);
+              var viewX = x - pad;
+              var viewY = y - pad;
+              var viewW = w + pad * 2;
+              var viewH = h + pad * 2;
+              var state = {
+                base: { x: viewX, y: viewY, w: viewW, h: viewH },
+                view: { x: viewX, y: viewY, w: viewW, h: viewH },
+                dragging: false,
+                lastX: 0,
+                lastY: 0
+              };
+              container.__fieldControllerLinesState = state;
+
+              function applyView() {
+                svg.setAttribute("viewBox", [state.view.x, state.view.y, state.view.w, state.view.h].join(" "));
+                svg.style.aspectRatio = state.view.w + " / " + state.view.h;
+                container.style.aspectRatio = state.view.w + " / " + state.view.h;
+              }
+
+              function svgPoint(event) {
+                var rect = svg.getBoundingClientRect();
+                var px = rect.width ? (event.clientX - rect.left) / rect.width : 0.5;
+                var py = rect.height ? (event.clientY - rect.top) / rect.height : 0.5;
+                return {
+                  x: state.view.x + px * state.view.w,
+                  y: state.view.y + py * state.view.h
+                };
+              }
+
+              function zoomAt(event, factor) {
+                var point = svgPoint(event);
+                var nextW = Math.max(0.001, state.view.w * factor);
+                var nextH = Math.max(0.001, state.view.h * factor);
+                state.view.x = point.x - (point.x - state.view.x) * (nextW / state.view.w);
+                state.view.y = point.y - (point.y - state.view.y) * (nextH / state.view.h);
+                state.view.w = nextW;
+                state.view.h = nextH;
+                applyView();
+              }
+
+              svg.addEventListener("wheel", function (event) {
+                event.preventDefault();
+                zoomAt(event, Math.exp(event.deltaY * 0.001));
+              }, { passive: false });
+
+              svg.addEventListener("pointerdown", function (event) {
+                if (event.button != null && event.button !== 0) return;
+                state.dragging = true;
+                state.lastX = event.clientX;
+                state.lastY = event.clientY;
+                svg.setPointerCapture && svg.setPointerCapture(event.pointerId);
+                svg.style.cursor = "grabbing";
+                event.preventDefault();
+              });
+
+              svg.addEventListener("pointermove", function (event) {
+                if (!state.dragging) return;
+                var rect = svg.getBoundingClientRect();
+                var dx = rect.width ? (event.clientX - state.lastX) / rect.width * state.view.w : 0;
+                var dy = rect.height ? (event.clientY - state.lastY) / rect.height * state.view.h : 0;
+                state.view.x -= dx;
+                state.view.y -= dy;
+                state.lastX = event.clientX;
+                state.lastY = event.clientY;
+                applyView();
+                event.preventDefault();
+              });
+
+              function endDrag(event) {
+                state.dragging = false;
+                svg.style.cursor = "grab";
+                if (event && svg.releasePointerCapture) {
+                  try { svg.releasePointerCapture(event.pointerId); } catch (_error) {}
+                }
+              }
+
+              svg.addEventListener("pointerup", endDrag);
+              svg.addEventListener("pointercancel", endDrag);
+              svg.addEventListener("dblclick", function () {
+                state.view = { x: state.base.x, y: state.base.y, w: state.base.w, h: state.base.h };
+                applyView();
+              });
+
+              svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+              svg.removeAttribute("height");
+              svg.style.width = "100%";
+              svg.style.height = "auto";
+              svg.style.cursor = "grab";
+              svg.style.touchAction = "none";
+              applyView();
+            });
+          }
+
+          if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", fitLinesOutput);
+          } else {
+            fitLinesOutput();
+          }
+          window.addEventListener("load", fitLinesOutput);
+        })();
+      </script>
+    ` : "";
+    return `<!doctype html><html><head><base target="_blank"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+      html,body{margin:0;background:#050505;color:#ddd;font-family:system-ui,sans-serif;overflow-wrap:anywhere;}
+      body{width:100%;min-width:0;}
+      img,svg,canvas,video,iframe{max-width:100%;}
+      iframe{width:100%;}
+      table{max-width:100%;display:block;overflow:auto;}
+      .field-controller-lines-frame{overflow:hidden;}
+      .field-controller-lines-frame .afield-lines-output{display:block;width:100%;max-width:100%;overflow:hidden;}
+      .field-controller-lines-frame .afield-lines-output>svg,
+      .field-controller-lines-frame .afield-lines-output svg{display:block;width:100%!important;height:auto!important;max-width:100%;}
+      .field-controller-fline-editor-frame{overflow:hidden;}
+      .field-controller-fline-editor-frame .field-fline-editor-shell{width:100%!important;max-width:100%!important;overflow:hidden;}
+      .field-controller-fline-editor-frame .field-fline-editor-canvas{display:block!important;width:100%!important;height:auto!important;max-width:100%!important;}
+    </style>${flineEditorRuntime}</head><body class="${modeClass}">${output.html || ""}${linesScript}</body></html>`;
+  }
+
+  function resizeOutputFrame(frame, scheduleFollowup = false) {
     try {
       const doc = frame.contentDocument;
-      const height = Math.max(96, Math.min(900, doc.documentElement.scrollHeight, doc.body.scrollHeight));
+      const root = doc.documentElement;
+      const body = doc.body;
+      const rootRect = root ? root.getBoundingClientRect() : { height: 0 };
+      const bodyRect = body ? body.getBoundingClientRect() : { height: 0 };
+      const rawHeight = Math.max(
+        root ? root.scrollHeight : 0,
+        body ? body.scrollHeight : 0,
+        rootRect.height || 0,
+        bodyRect.height || 0
+      );
+      const height = Math.max(96, Math.min(900, Math.ceil(rawHeight)));
       frame.style.height = `${height + 8}px`;
+      if (scheduleFollowup) {
+        window.setTimeout(() => resizeOutputFrame(frame), 150);
+        window.setTimeout(() => resizeOutputFrame(frame), 500);
+      }
     } catch (_error) {
       frame.style.height = "220px";
     }

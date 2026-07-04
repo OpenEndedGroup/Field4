@@ -13,6 +13,7 @@ import afield.getSliderCallback
 import afield.getStringCallback
 import afield.getVec2Callback
 import afield._send
+import afield.documents
 import afield.filter
 import afield.logger.lprintln
 import afield.payload
@@ -44,12 +45,19 @@ import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.abs
 
 private val controllerJson = Json { ignoreUnknownKeys = true }
-private val controllerSelections = ConcurrentHashMap<String, ControllerSelectionState>()
+private data class ControllerSelectionRecord(
+    val selection: ControllerSelectionState,
+    val updatedAt: Long = System.currentTimeMillis()
+)
+
+private val controllerSelections = ConcurrentHashMap<String, ControllerSelectionRecord>()
 private val controllerOutputAreas = ConcurrentHashMap<String, ConcurrentHashMap<String, ConcurrentHashMap<String, ControllerOutputArea>>>()
 private val controllerCallbackScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+private val controllerClientCounts = ConcurrentHashMap<String, AtomicInteger>()
 
 @Serializable
 private data class ControllerInput(
@@ -96,7 +104,8 @@ private data class ControllerOutputsResponse(
 private data class ControllerStatus(
     val type: String = "status",
     val state: String,
-    val clients: Int
+    val clients: Int,
+    val fieldClients: Int = 0
 )
 
 fun Route.installControllerRoutes(preferences: () -> FieldPreferences) {
@@ -130,16 +139,28 @@ fun Route.installControllerRoutes(preferences: () -> FieldPreferences) {
             val targetDocument = call.request.queryParameters["file"]
                 ?: call.request.queryParameters["document"]
                 ?: ""
-            send(Frame.Text(controllerStatus(targetDocument, "connected")))
+            val clientKey = targetDocument.trim()
+            val clientCount = controllerClientCounts.computeIfAbsent(clientKey) { AtomicInteger(0) }
+            clientCount.incrementAndGet()
 
-            for (frame in incoming) {
-                if (frame !is Frame.Text) continue
-                val input = runCatching {
-                    controllerJson.decodeFromString<ControllerInput>(frame.readText())
-                }.getOrNull() ?: continue
+            try {
+                send(Frame.Text(controllerStatus(targetDocument, "connected")))
 
-                handleControllerInput(input, preferences(), targetDocument)
-                send(Frame.Text(controllerStatus(targetDocument, "sent")))
+                for (frame in incoming) {
+                    if (frame !is Frame.Text) continue
+                    val input = runCatching {
+                        controllerJson.decodeFromString<ControllerInput>(frame.readText())
+                    }.getOrNull() ?: continue
+
+                    handleControllerInput(input, preferences(), targetDocument)
+                    send(Frame.Text(controllerStatus(targetDocument, "sent")))
+                }
+            } finally {
+                if (clientCount.decrementAndGet() <= 0) {
+                    controllerClientCounts.computeIfPresent(clientKey) { _, count ->
+                        if (count.get() <= 0) null else count
+                    }
+                }
             }
         }
     }
@@ -303,8 +324,9 @@ private fun controllerOutputPayload(message: Message): Set_output? {
 
 fun recordControllerSelection(info: SessionInformation, selection: ControllerSelectionState) {
     val normalized = selection.copy(selectedUids = selection.selectedUids.filter { it.isNotBlank() })
+    val record = ControllerSelectionRecord(normalized)
     controllerSelectionKeys(info).forEach { key ->
-        controllerSelections[key] = normalized
+        controllerSelections[key] = record
     }
 }
 
@@ -362,21 +384,67 @@ private fun controllerOutputs(targetDocument: String): ControllerOutputsResponse
 private fun controllerSelectionFor(targetDocument: String, candidates: List<SessionInformation>): ControllerSelectionState? {
     val target = targetDocument.trim()
     if (target.isNotBlank()) {
-        controllerSelections[target]?.let { return it }
+        controllerSelections[target]?.selection?.let { return it }
     }
-    candidates.forEach { info ->
-        controllerSelectionKeys(info).forEach { key ->
-            controllerSelections[key]?.let { return it }
-        }
-    }
-    return controllerSelections.values.firstOrNull { it.selectedUids.isNotEmpty() }
+    candidates.asSequence()
+        .flatMap { info -> controllerSelectionKeys(info).asSequence() }
+        .mapNotNull { key -> controllerSelections[key] }
+        .maxByOrNull { it.updatedAt }
+        ?.selection
+        ?.let { return it }
+    return controllerSelections.values
+        .filter { it.selection.selectedUids.isNotEmpty() }
+        .maxByOrNull { it.updatedAt }
+        ?.selection
+}
+
+private fun controllerSessionSelectionTime(info: SessionInformation): Long =
+    controllerSelectionKeys(info).mapNotNull { key -> controllerSelections[key]?.updatedAt }.maxOrNull() ?: 0L
+
+private fun controllerDocumentCandidates(): List<SessionInformation> {
+    val all = ArrayList<SessionInformation>(sessions.size + documents.size)
+    all += sessions.values
+    all += documents.values
+    return all.distinctBy { it.filename }
 }
 
 private fun controllerSessions(targetDocument: String): List<SessionInformation> {
     val target = targetDocument.trim()
-    val all = sessions.values.distinctBy { it.filename }
-    if (target.isBlank()) return all
-    return all.filter { controllerSessionMatches(it, target) }
+    val matched = if (target.isBlank()) {
+        controllerDocumentCandidates()
+    } else {
+        controllerDocumentCandidates().filter { controllerSessionMatches(it, target) }
+    }
+    return matched.sortedWith(
+        compareByDescending<SessionInformation> { controllerSessionSelectionTime(it) }
+            .thenByDescending { it.sessions.size }
+            .thenBy { it.documentName.lowercase(Locale.US) }
+            .thenBy { it.filename.lowercase(Locale.US) }
+    )
+}
+
+private fun controllerClientCount(targetDocument: String): Int {
+    val target = targetDocument.trim()
+    if (target.isBlank()) {
+        return controllerClientCounts.values.sumOf { it.get().coerceAtLeast(0) }
+    }
+    controllerClientCounts[target]?.get()?.coerceAtLeast(0)?.let { return it }
+    return controllerDocumentCandidates()
+        .filter { controllerSessionMatches(it, target) }
+        .flatMap { controllerSelectionKeys(it) }
+        .distinct()
+        .sumOf { key -> controllerClientCounts[key]?.get()?.coerceAtLeast(0) ?: 0 }
+}
+
+private fun controllerFieldClientCount(targetDocument: String): Int {
+    val target = targetDocument.trim()
+    return if (target.isBlank()) {
+        sessions.size
+    } else {
+        sessions.values.count { info ->
+            controllerSessionMatches(info, target)
+        }
+    }
 }
 
 private fun controllerSessionMatches(info: SessionInformation, target: String): Boolean =
@@ -445,15 +513,9 @@ private fun launchControllerCallback(kind: String, controlId: String, callback: 
 }
 
 private fun controllerStatus(targetDocument: String, state: String): String {
-    val target = targetDocument.trim()
-    val connected = if (target.isBlank()) {
-        sessions.size
-    } else {
-        sessions.values.count { info ->
-            info.filename == target || info.documentName == target || File(info.filename).name == target
-        }
-    }
-    return controllerJson.encodeToString(ControllerStatus(state = state, clients = connected))
+    val connected = controllerClientCount(targetDocument)
+    val fieldClients = controllerFieldClientCount(targetDocument)
+    return controllerJson.encodeToString(ControllerStatus(state = state, clients = connected, fieldClients = fieldClients))
 }
 
 private fun formatControllerFloat(value: Double): String {
