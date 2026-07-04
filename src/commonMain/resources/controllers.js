@@ -14,6 +14,9 @@
   const padControls = document.querySelector("#pad-controls");
   const groupState = document.querySelector("#group-state");
   const groupControls = document.querySelector("#group-controls");
+  const outputsState = document.querySelector("#outputs-state");
+  const outputsControls = document.querySelector("#outputs-controls");
+  const outputsList = document.querySelector("#outputs-list");
 
   const state = {
     socket: null,
@@ -22,13 +25,15 @@
     activePointerId: null,
     activeControlId: null,
     last: { x: 0.5, y: 0.5 },
-    page: params.get("page") === "controls" ? "controls" : "pad",
+    page: ["pad", "controls", "outputs"].includes(params.get("page")) ? params.get("page") : "pad",
     axis: ["x", "y", "xy"].includes(params.get("axis")) ? params.get("axis") : "y",
     sendMode: ["absolute", "delta", "both"].includes(params.get("send")) ? params.get("send") : "absolute",
     debounceMs: clampNumber(Number.parseInt(params.get("debounceMs") || "200", 10), 0, 5000),
     maxExecutionMs: clampNumber(Number.parseInt(params.get("maxExecutionMs") || "750", 10), 0, 60000),
     controlsSignature: "",
+    outputsSignature: "",
     controlInfo: null,
+    outputsInfo: null,
   };
 
   function targetQuery() {
@@ -209,7 +214,7 @@
   }
 
   function setPage(page) {
-    state.page = page === "controls" ? "controls" : "pad";
+    state.page = ["controls", "outputs"].includes(page) ? page : "pad";
     document.querySelectorAll("[data-controller-page]").forEach((element) => {
       element.classList.toggle("active", element.getAttribute("data-controller-page") === state.page);
     });
@@ -217,6 +222,9 @@
     setActive("[data-page]", "data-page", state.page);
     if (state.page === "controls") {
       fetchControlGroup();
+      renderGroupReadout();
+    } else if (state.page === "outputs") {
+      fetchOutputs();
       renderGroupReadout();
     } else {
       renderPad({ x: state.last.x, y: state.last.y, dx: 0, dy: 0 });
@@ -226,6 +234,11 @@
   function controlsUrl() {
     const query = targetQuery();
     return query ? `/controllers/controls?${query}` : "/controllers/controls";
+  }
+
+  function outputsUrl() {
+    const query = targetQuery();
+    return query ? `/controllers/outputs?${query}` : "/controllers/outputs";
   }
 
   async function fetchControlGroup() {
@@ -240,6 +253,62 @@
       if (!state.controlInfo) {
         groupState.textContent = "Controls unavailable";
       }
+    }
+  }
+
+  async function fetchOutputs() {
+    if (state.page !== "outputs") return;
+    try {
+      const response = await fetch(outputsUrl(), { cache: "no-store" });
+      if (!response.ok) return;
+      const info = await response.json();
+      state.outputsInfo = info;
+      renderOutputs(info);
+    } catch (_error) {
+      if (!state.outputsInfo) outputsState.textContent = "Outputs unavailable";
+    }
+  }
+
+  function renderOutputs(info) {
+    const outputs = Array.isArray(info.outputs) ? info.outputs : [];
+    const controls = Array.isArray(info.controls) ? info.controls : [];
+    const signature = JSON.stringify({ uid: info.selectedUid || "", outputs, controls });
+    if (signature === state.outputsSignature || state.activeControlId) return;
+    state.outputsSignature = signature;
+    outputsControls.replaceChildren();
+    outputsList.replaceChildren();
+    if (!info.selectedUid) {
+      outputsState.textContent = "Select one box in Field";
+      return;
+    }
+    outputsState.textContent = `${info.selectedName || info.selectedUid} · ${outputs.length} output${outputs.length === 1 ? "" : "s"}`;
+    controls.forEach((control) => outputsControls.appendChild(renderControl(control)));
+    outputs.forEach((output) => outputsList.appendChild(renderOutputArea(output)));
+    if (!controls.length && !outputs.length) outputsState.textContent = `${info.selectedName || "selected"} has no outputs yet`;
+  }
+
+  function renderOutputArea(output) {
+    const shell = document.createElement("article");
+    shell.className = "phone-output-card";
+    const title = document.createElement("div");
+    title.className = "phone-output-title";
+    title.textContent = output.channel || "output";
+    const frame = document.createElement("iframe");
+    frame.className = "phone-output-frame";
+    frame.setAttribute("sandbox", "allow-scripts allow-forms allow-same-origin allow-popups");
+    frame.srcdoc = `<!doctype html><html><head><base target="_blank"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;background:#050505;color:#ddd;font-family:system-ui,sans-serif;overflow-wrap:anywhere;} img,svg,canvas,video,iframe{max-width:100%;height:auto;} table{max-width:100%;display:block;overflow:auto;}</style></head><body>${output.html || ""}</body></html>`;
+    frame.addEventListener("load", () => resizeOutputFrame(frame));
+    shell.append(title, frame);
+    return shell;
+  }
+
+  function resizeOutputFrame(frame) {
+    try {
+      const doc = frame.contentDocument;
+      const height = Math.max(96, Math.min(900, doc.documentElement.scrollHeight, doc.body.scrollHeight));
+      frame.style.height = `${height + 8}px`;
+    } catch (_error) {
+      frame.style.height = "220px";
     }
   }
 
@@ -307,8 +376,7 @@
   }
 
   function setControlValueText(controlId, text) {
-    const value = groupControls.querySelector(`[data-value-for="${CSS.escape(controlId)}"]`);
-    if (value) value.textContent = text;
+    document.querySelectorAll(`[data-value-for="${CSS.escape(controlId)}"]`).forEach((value) => { value.textContent = text; });
   }
 
   function renderSliderControl(control) {
@@ -571,6 +639,6 @@
   setActive("[data-mode]", "data-mode", state.sendMode);
   connect();
   setPage(state.page);
-  state.controlPollTimer = window.setInterval(fetchControlGroup, 450);
+  state.controlPollTimer = window.setInterval(() => { fetchControlGroup(); fetchOutputs(); }, 450);
   renderPad({ x: state.last.x, y: state.last.y, dx: 0, dy: 0 });
 })();

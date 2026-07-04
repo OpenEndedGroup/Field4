@@ -19,6 +19,7 @@ import afield.logger.lprintln
 import afield.server.refreshFileProxyBoxes
 import afield.server.installControllerRoutes
 import afield.server.broadcastControllerControlUpdates
+import afield.server.recordControllerOutputMessage
 import afield.server.recordControllerSelection
 import afield.server.writeFileProxyContents
 import afield.stdlib.FLineIntersection
@@ -929,6 +930,7 @@ actual fun _send(message: Message) {
 
 @OptIn(DelicateCoroutinesApi::class)
 fun _send(message: Message, document: String = ".*") {
+    recordControllerOutputMessage(document, message)
     val documentRegex = document.toRegex()
     val m = Json.encodeToString(message)
     sessions.forEach { (session, info) ->
@@ -936,6 +938,7 @@ fun _send(message: Message, document: String = ".*") {
                 info.documentName.matches(documentRegex) ||
                 File(info.filename).name.matches(documentRegex)
         if (!matchesDocument) return@forEach
+        recordControllerOutputMessage(info, message)
         sendWithOutputBackPressure(session, message, m)
     }
     if (message.name == "is-running") {
@@ -1003,6 +1006,7 @@ fun _send(session: WebSocketSession?, message: Message) {
         return
     }
     val m = Json.encodeToString(message)
+    recordControllerOutputMessage(sessions[session], message)
     sendWithOutputBackPressure(session, message, m)
 }
 

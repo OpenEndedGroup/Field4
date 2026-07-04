@@ -434,3 +434,32 @@ button {
     grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
+
+.phone-outputs {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.phone-output-card {
+  display: grid;
+  gap: 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: var(--control-radius);
+  background: var(--track);
+  padding: 0.65rem;
+}
+
+.phone-output-title {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+}
+
+.phone-output-frame {
+  width: 100%;
+  min-height: 6rem;
+  border: 1px solid var(--line);
+  border-radius: var(--inner-radius);
+  background: #050505;
+}

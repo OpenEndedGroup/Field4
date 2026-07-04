@@ -18,6 +18,7 @@ import afield.logger.lprintln
 import afield.payload
 import afield.sessions
 import afield.SessionInformation
+import afield.Set_output
 import afield.updateControllerControlValue
 import io.ktor.http.ContentType
 import io.ktor.server.application.call
@@ -34,6 +35,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.decodeFromJsonElement
 import org.joml.Vector2f
 import org.joml.Vector4f
 import java.io.File
@@ -45,6 +48,7 @@ import kotlin.math.abs
 
 private val controllerJson = Json { ignoreUnknownKeys = true }
 private val controllerSelections = ConcurrentHashMap<String, ControllerSelectionState>()
+private val controllerOutputAreas = ConcurrentHashMap<String, ConcurrentHashMap<String, ConcurrentHashMap<String, ControllerOutputArea>>>()
 private val controllerCallbackScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
 @Serializable
@@ -72,6 +76,23 @@ private data class ControllerInput(
 )
 
 @Serializable
+private data class ControllerOutputArea(
+    val uid: String,
+    val channel: String,
+    val html: String,
+    val updatedAt: Long = System.currentTimeMillis()
+)
+
+@Serializable
+private data class ControllerOutputsResponse(
+    val document: String = "",
+    val selectedUid: String? = null,
+    val selectedName: String = "",
+    val outputs: List<ControllerOutputArea> = emptyList(),
+    val controls: List<ControllerControl> = emptyList()
+)
+
+@Serializable
 private data class ControllerStatus(
     val type: String = "status",
     val state: String,
@@ -91,6 +112,16 @@ fun Route.installControllerRoutes(preferences: () -> FieldPreferences) {
                 ?: ""
             call.respondText(
                 controllerJson.encodeToString(controllerControls(targetDocument)),
+                ContentType.Application.Json
+            )
+        }
+
+        get("/outputs") {
+            val targetDocument = call.request.queryParameters["file"]
+                ?: call.request.queryParameters["document"]
+                ?: ""
+            call.respondText(
+                controllerJson.encodeToString(controllerOutputs(targetDocument)),
                 ContentType.Application.Json
             )
         }
@@ -234,6 +265,42 @@ private fun sendControllerMessage(command: OscEditorCommand, targetDocument: Str
     }
 }
 
+
+fun recordControllerOutputMessage(info: SessionInformation?, message: Message) {
+    val output = controllerOutputPayload(message) ?: return
+    val keys = info?.let { controllerSelectionKeys(it) } ?: listOf("")
+    keys.forEach { key ->
+        val byUid = controllerOutputAreas.computeIfAbsent(key) { ConcurrentHashMap() }
+        val byChannel = byUid.computeIfAbsent(output.uid) { ConcurrentHashMap() }
+        byChannel[output.channel] = ControllerOutputArea(
+            uid = output.uid,
+            channel = output.channel.ifBlank { "output" },
+            html = output.value
+        )
+    }
+}
+
+fun recordControllerOutputMessage(targetDocument: String, message: Message) {
+    val output = controllerOutputPayload(message) ?: return
+    val target = targetDocument.trim()
+    if (target.isBlank() || target == ".*") return
+    val byUid = controllerOutputAreas.computeIfAbsent(target) { ConcurrentHashMap() }
+    val byChannel = byUid.computeIfAbsent(output.uid) { ConcurrentHashMap() }
+    byChannel[output.channel] = ControllerOutputArea(
+        uid = output.uid,
+        channel = output.channel.ifBlank { "output" },
+        html = output.value
+    )
+}
+
+private fun controllerOutputPayload(message: Message): Set_output? {
+    if (message.name != "set-output") return null
+    val payload: JsonElement = message.payload ?: return null
+    val output = runCatching { controllerJson.decodeFromJsonElement(Set_output.serializer(), payload) }.getOrNull() ?: return null
+    if (output.uid.isBlank() || output.property != "outputarea") return null
+    return output
+}
+
 fun recordControllerSelection(info: SessionInformation, selection: ControllerSelectionState) {
     val normalized = selection.copy(selectedUids = selection.selectedUids.filter { it.isNotBlank() })
     controllerSelectionKeys(info).forEach { key ->
@@ -266,6 +333,29 @@ private fun controllerControls(targetDocument: String): ControllerControlsRespon
         selectedName = selectedBox?.getPropertyRaw("name") as? String ?: selectedUid.orEmpty(),
         selectedProperty = selection?.property ?: "code",
         controls = controls
+    )
+}
+
+private fun controllerOutputs(targetDocument: String): ControllerOutputsResponse {
+    val candidates = controllerSessions(targetDocument)
+    val info = candidates.firstOrNull() ?: return ControllerOutputsResponse(document = targetDocument)
+    val selection = controllerSelectionFor(targetDocument, candidates)
+    val selectedUid = selection?.selectedUids?.lastOrNull { info.boxes.containsKey(it) }
+    val selectedBox = selectedUid?.let { info.boxes[it] }
+    val outputs = selectedUid?.let { uid ->
+        controllerSelectionKeys(info).asSequence()
+            .mapNotNull { key -> controllerOutputAreas[key]?.get(uid) }
+            .firstOrNull()
+            ?.values
+            ?.sortedWith(compareBy<ControllerOutputArea> { it.channel != "controls" }.thenBy { it.channel })
+            ?: emptyList()
+    } ?: emptyList()
+    return ControllerOutputsResponse(
+        document = info.documentName,
+        selectedUid = selectedUid,
+        selectedName = selectedBox?.getPropertyRaw("name") as? String ?: selectedUid.orEmpty(),
+        outputs = outputs,
+        controls = selectedUid?.let { controllerControlsForBox(it) } ?: emptyList()
     )
 }
 
