@@ -1434,12 +1434,19 @@ tasks.register("runDesktop") {
             .start()
         forwardProcessOutput(backendProcess)
         val isMac = os.contains("mac")
+        val linuxElectronGpuArgs = listOf(
+            "--ignore-gpu-blocklist",
+            "--disable-gpu-process-crash-limit",
+            "--enable-gpu-rasterization",
+            "--enable-zero-copy",
+            "--ozone-platform-hint=auto",
+        )
         val electronCommand = if (isWindows) {
             listOf(electronHostBinary().absolutePath, ".")
         } else if (isMac) {
             listOf(electronHostBinary().absolutePath, ".")
         } else {
-            listOf(electronHostBinary().absolutePath, ".")
+            listOf(electronHostBinary().absolutePath) + linuxElectronGpuArgs + "."
         }
         val electronBinary = File(electronCommand.first())
         if (!electronBinary.exists()) {

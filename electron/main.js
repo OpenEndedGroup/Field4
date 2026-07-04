@@ -29,6 +29,11 @@ const TAB_STRIP_ASSET_BASE_URL = pathToFileURL(
 const WITH_DEVTOOLS = ["1", "true", "yes", "on"].includes(
   String(process.env.WITH_DEVTOOLS || "").toLowerCase(),
 );
+const LOG_GPU_STATUS =
+  process.platform === "linux" ||
+  ["1", "true", "yes", "on"].includes(
+    String(process.env.FIELD_ELECTRON_LOG_GPU || "").toLowerCase(),
+  );
 
 app.setName(APP_NAME);
 if (process.platform === "win32") {
@@ -36,6 +41,48 @@ if (process.platform === "win32") {
 }
 process.title = APP_NAME;
 app.commandLine.appendSwitch("ignore-certificate-errors");
+
+function appendChromiumSwitchIfMissing(name, value) {
+  if (!app.commandLine.hasSwitch(name)) {
+    app.commandLine.appendSwitch(name, value);
+  }
+}
+
+function installChromiumGpuSwitches() {
+  if (process.env.FIELD_ELECTRON_SOFTWARE_GPU === "1") {
+    console.log("[electron,gpu] software GPU mode requested by FIELD_ELECTRON_SOFTWARE_GPU=1");
+    return;
+  }
+
+  if (process.platform !== "linux") return;
+
+  appendChromiumSwitchIfMissing("ignore-gpu-blocklist");
+  appendChromiumSwitchIfMissing("disable-gpu-process-crash-limit");
+  appendChromiumSwitchIfMissing("enable-gpu-rasterization");
+  appendChromiumSwitchIfMissing("enable-zero-copy");
+  appendChromiumSwitchIfMissing("ozone-platform-hint", "auto");
+}
+
+installChromiumGpuSwitches();
+
+function logChromiumGpuSwitches() {
+  const names = [
+    "ignore-gpu-blocklist",
+    "disable-gpu-process-crash-limit",
+    "enable-gpu-rasterization",
+    "enable-zero-copy",
+    "ozone-platform-hint",
+    "disable-gpu",
+    "disable-software-rasterizer",
+  ];
+  const switches = Object.fromEntries(
+    names.map((name) => [
+      name,
+      app.commandLine.hasSwitch(name) ? app.commandLine.getSwitchValue(name) || true : false,
+    ]),
+  );
+  console.log("[electron,gpu] requested switches", switches);
+}
 
 function appIconPath() {
   if (process.platform === "win32" && fs.existsSync(APP_ICON_ICO)) {
@@ -897,12 +944,33 @@ function createMainWindow() {
 
   openTab(initialUrl, { activate: true });
   presentWindowOnStartup(win);
+  return win;
+}
+
+async function logGpuStatus(label) {
+  try {
+    console.log(`[electron,gpu] ${label} feature status`, app.getGPUFeatureStatus());
+  } catch (error) {
+    console.warn(`[electron,gpu] ${label} feature status unavailable`, error);
+  }
+
+  try {
+    console.log(`[electron,gpu] ${label} basic info`, await app.getGPUInfo("basic"));
+  } catch (error) {
+    console.warn(`[electron,gpu] ${label} basic info unavailable`, error);
+  }
 }
 
 app.whenReady().then(() => {
+  if (LOG_GPU_STATUS) {
+    logChromiumGpuSwitches();
+  }
   installDockIcon();
   installAppMenu();
   createMainWindow();
+  if (LOG_GPU_STATUS) {
+    setTimeout(() => logGpuStatus("delayed"), 2000);
+  }
 });
 
 app.on("activate", () => {
