@@ -189,9 +189,7 @@ object StandardShapes {
         val triCount = mesh.ntriangles()
         val srcVertices = mesh.npoints()
         val triangles = mesh.triangles(triCount * 3)
-            ?: error("par_shapes mesh has no triangle index buffer")
         val srcPositions = mesh.points(srcVertices * 3)
-            ?: error("par_shapes mesh has no positions")
         val srcNormals = mesh.normals(srcVertices * 3)
             ?: error("par_shapes mesh has no normals (even after compute)")
 

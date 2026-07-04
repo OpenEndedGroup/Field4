@@ -245,7 +245,7 @@ object ShaderSPIRVUtils {
 
         val resolveCallback = ShadercIncludeResolve.create { _, requestedSource, type, requestingSource, includeDepth ->
             val request = ShaderIncludeRequest(
-                requestedPath = MemoryUtil.memUTF8(requestedSource) ?: "",
+                requestedPath = MemoryUtil.memUTF8(requestedSource),
                 includeType = ShaderIncludeType.fromShaderc(type),
                 requestingSource = if (requestingSource == MemoryUtil.NULL) null else MemoryUtil.memUTF8(requestingSource),
                 includeDepth = includeDepth

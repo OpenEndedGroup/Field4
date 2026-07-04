@@ -1660,7 +1660,7 @@ private fun findPatDecorationRange(box: Box, span: PatSourceSpan, hintLine: Int?
 private data class PatSourceAnchor(val code: String, val sourceStart: Int, val lineStart: Int)
 
 private fun locatePatSourceLiteral(box: Box, context: PatParseContext, hintLine: Int?): PatSourceAnchor? {
-    val code = box.code ?: return null
+    val code = box.code
     val source = context.source
     if (source.isEmpty()) return null
     val occurrences = mutableListOf<Int>()

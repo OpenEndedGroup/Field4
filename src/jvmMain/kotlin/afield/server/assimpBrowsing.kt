@@ -204,7 +204,7 @@ fun registerAssimpBrowsingAdapters() {
 
     BrowsableAdapters.register(NodeView::class) { holder, _, title ->
         val node = holder.node
-        val trs = node.mTransformation()?.let { toTrs(it) }
+        val trs = toTrs(node.mTransformation())
         object : Browsable {
             override fun heading(): String = title ?: node.mName().dataString().ifBlank { holder.path }
             override fun dir(): Map<String, Any?> {
@@ -219,14 +219,14 @@ fun registerAssimpBrowsingAdapters() {
                 val childMap = linkedMapOf<String, Any?>()
                 node.mChildren()?.let { buf ->
                     for (i in 0 until buf.remaining()) {
-                        val child = AINode.create(buf[i]) ?: continue
+                        val child = AINode.create(buf[i])
                         val name = child.mName().dataString().ifBlank { "child[$i]" }
                         childMap[name] = NodeView(child, holder.scene, childPath(holder.path, name))
                     }
                 }
 
                 val out = linkedMapOf<String, Any?>()
-                if (trs != null) out["transform"] = trs
+                out["transform"] = trs
                 if (meshMap.isNotEmpty()) out["meshes"] = meshMap
                 if (childMap.isNotEmpty()) out["children"] = childMap
                 return out
@@ -237,7 +237,7 @@ fun registerAssimpBrowsingAdapters() {
                     "path" to holder.path,
                     "meshes" to (node.mMeshes()?.remaining() ?: 0).toString(),
                     "children" to (node.mChildren()?.remaining() ?: 0).toString(),
-                    "translate" to (trs?.let { vec3(it.t) } ?: "-")
+                    "translate" to vec3(trs.t)
                 )
                 return card(heading(), rows, accent = "#c084fc")
             }
@@ -372,7 +372,7 @@ private data class Bounds(val min: Vector3f, val max: Vector3f)
 private fun childPath(parent: String, name: String): String = if (parent == "/") "/$name" else "$parent/$name"
 
 private fun AIScene.materialAtMeshIndex(meshIndex: Int): AIMaterial? {
-    val mesh = AIMesh.create(mMeshes()!![meshIndex]) ?: return null
+    val mesh = AIMesh.create(mMeshes()!![meshIndex])
     val idx = mesh.mMaterialIndex()
     if (idx < 0 || idx >= mNumMaterials()) return null
     return AIMaterial.create(mMaterials()!![idx])
@@ -385,7 +385,7 @@ private fun NodeView.mesh(idx: Int): MeshWithMaterial {
 }
 
 private fun calcBounds(mesh: AIMesh): Bounds? {
-    val verts = mesh.mVertices() ?: return null
+    val verts = mesh.mVertices()
     if (mesh.mNumVertices() <= 0) return null
     var minX = Float.POSITIVE_INFINITY
     var minY = Float.POSITIVE_INFINITY
@@ -408,10 +408,8 @@ private fun calcBounds(mesh: AIMesh): Bounds? {
 private fun AIMesh.indexCount(): Int {
     var indexCount = 0
     val faces = mFaces()
-    if (faces != null) {
-        for (i in 0 until mNumFaces()) {
-            indexCount += faces[i].mNumIndices()
-        }
+    for (i in 0 until mNumFaces()) {
+        indexCount += faces[i].mNumIndices()
     }
     return indexCount
 }
@@ -493,7 +491,7 @@ private fun aggregateTimes(anim: AIAnimation): Triple<List<Double>, List<Double>
     val scale = mutableListOf<Double>()
     anim.mChannels()?.let { buf ->
         for (i in 0 until anim.mNumChannels()) {
-            val ch = AINodeAnim.create(buf[i]) ?: continue
+            val ch = AINodeAnim.create(buf[i])
             pos += keyTimes(ch.mPositionKeys(), ch.mNumPositionKeys())
             rot += keyTimes(ch.mRotationKeys(), ch.mNumRotationKeys())
             scale += keyTimes(ch.mScalingKeys(), ch.mNumScalingKeys())

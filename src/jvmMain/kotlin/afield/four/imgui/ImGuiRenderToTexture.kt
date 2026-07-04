@@ -32,7 +32,7 @@ import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VK13.*
-import java.net.URL
+import java.net.URI
 import java.nio.ByteOrder
 import java.util.*
 import kotlin.math.max
@@ -86,6 +86,7 @@ class ImGuiRenderToTexture(
     private val context: ImGuiContext = ImGui.createContext()
     private val fontTexId = 1L
 
+    @Suppress("UNNECESSARY_LATEINIT")
     private lateinit var fontTexture: StreamingTexture
     private val fontSampler: TextureSampler
     private val module: Module
@@ -605,7 +606,7 @@ class ImGuiRenderToTexture(
     fun loadFontFromUrlAsync(url: String, sizePixels: Float = DEFAULT_FONT_SIZE, onFinished: (Boolean) -> Unit = {}) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val bytes = URL(url).readBytes()
+                val bytes = URI(url).toURL().readBytes()
                 pendingFont = PendingFont(bytes, sizePixels)
                 onFinished(true)
             } catch (_: Exception) {

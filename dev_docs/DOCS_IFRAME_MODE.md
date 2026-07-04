@@ -23,7 +23,7 @@ The documentation iframe mode replaces the Monaco editor with an iframe of the s
 
 ```javascript
 // Switch to iframe mode with a URL
-window.switchToDocsIframe('http://localhost:9092/sample-docs.html');
+window.switchToDocsIframe('http://localhost:9092/dev_docs/experiments/sample-docs.html');
 
 // Switch back to Monaco editor
 window.switchToMonaco();
@@ -211,7 +211,7 @@ Documentation pages can be:
 
 ```javascript
 // Local resource served by Field
-window.switchToDocsIframe('http://localhost:9092/sample-docs.html');
+window.switchToDocsIframe('http://localhost:9092/dev_docs/experiments/sample-docs.html');
 
 // External documentation
 window.switchToDocsIframe('https://your-docs-site.com/field-guide.html');
@@ -231,7 +231,7 @@ The API uses `postMessage` for communication, which is safe for cross-origin con
 
 ## Sample Documentation
 
-See `src/commonMain/resources/sample-docs.html` for a complete example demonstrating all API features.
+See `dev_docs/experiments/sample-docs.html` for a complete example demonstrating all API features.
 
 ## Tips
 

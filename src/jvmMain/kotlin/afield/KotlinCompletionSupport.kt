@@ -1926,7 +1926,6 @@ internal object KotlinCompletionSupport {
         root.resolve("src/jvmMain/kotlin"),
         root.resolve("src/commonMain/kotlin"),
         root.resolve("src/jsMain/kotlin"),
-        root.resolve("src/jsChatMain/kotlin"),
         root.resolve("src/personal/kotlin")
     )
 

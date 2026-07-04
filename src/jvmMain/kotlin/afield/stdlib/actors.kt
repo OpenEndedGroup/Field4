@@ -328,6 +328,7 @@ private fun Box.drainMailbox() {
         // launch on the Framer so the handler can call frame() / yield()
         inMain {
             Box.withBoxContext(targetBox) {
+                @Suppress("UNCHECKED_CAST")
                 val scope = MessageScope(pending.envelope as Envelope<Any>, pending.deferred, handlerBox)
                 try {
                     scope.handler()

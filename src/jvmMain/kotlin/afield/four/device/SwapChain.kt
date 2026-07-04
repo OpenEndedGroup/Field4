@@ -70,18 +70,7 @@ class SwapChain(
                 .preTransform(surfCapabilities.currentTransform())
                 .compositeAlpha(KHRSurface.VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR)
                 .clipped(true)
-            if (vsync) {
-                if (Options.isWindows)
-                // we'll do frame pacing some other way
-                    vkSwapchainCreateInfo.presentMode(KHRSurface.VK_PRESENT_MODE_MAILBOX_KHR)
-                else if (Options.isLinux){
-                    vkSwapchainCreateInfo.presentMode(KHRSurface.VK_PRESENT_MODE_FIFO_RELAXED_KHR)
-                }
-                else
-                    vkSwapchainCreateInfo.presentMode(KHRSurface.VK_PRESENT_MODE_FIFO_KHR)
-            } else {
-                vkSwapchainCreateInfo.presentMode(KHRSurface.VK_PRESENT_MODE_IMMEDIATE_KHR)
-            }
+            vkSwapchainCreateInfo.presentMode(calcPresentMode(physicalDevice, surface, vsync))
 
             val numQueues = concurrentQueues?.size ?: 0
             val indices: MutableList<Int> = ArrayList()
@@ -245,6 +234,57 @@ class SwapChain(
         }
     }
 
+    private fun calcPresentMode(physicalDevice: PhysicalDevice, surface: Surface, vsync: Boolean): Int {
+        return MemoryStack.stackPush().use { stack ->
+            val count = stack.mallocInt(1)
+            vkCheck(
+                KHRSurface.vkGetPhysicalDeviceSurfacePresentModesKHR(
+                    physicalDevice.vkPhysicalDevice,
+                    surface.vkSurface,
+                    count,
+                    null
+                ),
+                "Failed to get the number of surface present modes"
+            )
+            val modes = stack.mallocInt(count[0])
+            vkCheck(
+                KHRSurface.vkGetPhysicalDeviceSurfacePresentModesKHR(
+                    physicalDevice.vkPhysicalDevice,
+                    surface.vkSurface,
+                    count,
+                    modes
+                ),
+                "Failed to get surface present modes"
+            )
+            val supported = (0 until count[0]).map { modes[it] }.toSet()
+            val preferred = if (vsync) {
+                when {
+                    Options.isWindows -> listOf(
+                        KHRSurface.VK_PRESENT_MODE_MAILBOX_KHR,
+                        KHRSurface.VK_PRESENT_MODE_FIFO_KHR
+                    )
+                    Options.isLinux -> listOf(
+                        KHRSurface.VK_PRESENT_MODE_FIFO_RELAXED_KHR,
+                        KHRSurface.VK_PRESENT_MODE_FIFO_KHR
+                    )
+                    else -> listOf(KHRSurface.VK_PRESENT_MODE_FIFO_KHR)
+                }
+            } else {
+                listOf(
+                    KHRSurface.VK_PRESENT_MODE_IMMEDIATE_KHR,
+                    KHRSurface.VK_PRESENT_MODE_MAILBOX_KHR,
+                    KHRSurface.VK_PRESENT_MODE_FIFO_RELAXED_KHR,
+                    KHRSurface.VK_PRESENT_MODE_FIFO_KHR
+                )
+            }
+            val selected = preferred.firstOrNull { it in supported } ?: KHRSurface.VK_PRESENT_MODE_FIFO_KHR
+            if (selected !in supported) {
+                lprintln("warning,graphics", "Surface did not report FIFO present mode; using Vulkan-required FIFO fallback")
+            }
+            selected
+        }
+    }
+
     private fun calcSwapChainExtent(window: Window, surfCapabilities: VkSurfaceCapabilitiesKHR): VkExtent2D {
         val result = VkExtent2D.calloc()
         if (surfCapabilities.currentExtent().width() == -0x1) {
@@ -319,7 +359,7 @@ class SwapChain(
                 .sType(KHRSwapchain.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR)
                 .pWaitSemaphores(
                     stack.longs(
-                        syncSemaphoresList[currentFrame].renderCompleteSemaphore.vkSemaphore
+                        syncSemaphoresList[imageIndex].renderCompleteSemaphore.vkSemaphore
                     )
                 )
                 .swapchainCount(1)

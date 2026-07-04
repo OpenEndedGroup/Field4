@@ -151,7 +151,7 @@ fun graphicsMemoryBarrier(cmd: CommandBuffer, buffer: VulkanBuffer? = null) {
     }
 }
 
-fun computeMemoryBarrier(cmd: CommandBuffer, buffer: Long = 0L, size: Long = VK_WHOLE_SIZE) {
+fun computeMemoryBarrier(cmd: CommandBuffer, buffer: Long? = null, size: Long = VK_WHOLE_SIZE) {
     MemoryStack.stackPush().use { stack ->
         val dep = VkDependencyInfo.calloc(stack).sType(VK_STRUCTURE_TYPE_DEPENDENCY_INFO)
         if (buffer != null) {
@@ -184,7 +184,7 @@ fun computeMemoryBarrier(cmd: CommandBuffer, buffer: Long = 0L, size: Long = VK_
     }
 }
 
-fun graphicsMemoryBarrier(cmd: CommandBuffer, buffer: Long = 0L, size: Long = VK_WHOLE_SIZE) {
+fun graphicsMemoryBarrier(cmd: CommandBuffer, buffer: Long? = null, size: Long = VK_WHOLE_SIZE) {
     MemoryStack.stackPush().use { stack ->
         val dep = VkDependencyInfo.calloc(stack).sType(VK_STRUCTURE_TYPE_DEPENDENCY_INFO)
         if (buffer != null) {

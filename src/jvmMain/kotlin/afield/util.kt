@@ -57,7 +57,7 @@ suspend fun <T> logTime_(name: String, max_window: Int = afield.max_window, bloc
     return r
 }
 
-inline fun LinkedList<Long>.windowedAppendAndPrint(name: String, max_window: Int, data: Long) {
+fun LinkedList<Long>.windowedAppendAndPrint(name: String, max_window: Int, data: Long) {
     add(data)
     if (this.size > max_window * 2) {
         max_window { this.removeFirst() }
@@ -81,7 +81,7 @@ class PersistentString(val defaultValue: (() -> String?) = { null }) {
             first = false
             value = PersistOnExit.load<String>(property.name)
             if (value == null) {
-                value = defaultValue.invoke() ?: null
+                value = defaultValue.invoke()
             }
         }
         return value
@@ -105,7 +105,7 @@ class PersistentInt(val defaultValue: (() -> Int?) = { null }) {
             first = false
             value = PersistOnExit.load<Int>(property.name)
             if (value == null) {
-                value = defaultValue?.invoke() ?: null
+                value = defaultValue.invoke()
             }
         }
         return value!!
@@ -128,14 +128,14 @@ class PersistentDouble(val defaultValue: (() -> Double)? = { 0.0 }) {
             first = false
             value = PersistOnExit.load<Double>(property.name)
             if (value == null) {
-                value = defaultValue?.invoke() ?: null
+                value = defaultValue?.invoke()
             }
         }
         return value!!
     }
 
     operator fun setValue(f: HasProperties, property: KProperty<*>, v: Double) {
-        value = v as Double
+        value = v
         needingPersistance[property.name] = v
     }
 

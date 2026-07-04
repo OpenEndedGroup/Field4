@@ -307,9 +307,28 @@
     return String(output && output.html || "").includes("data-field-fline-editor=\"true\"");
   }
 
+  function fLineEditorAspect(output) {
+    const html = String(output && output.html || "");
+    if (!html) return null;
+    try {
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const sceneScript = doc.querySelector(".field-fline-editor-scene");
+      const scene = sceneScript ? JSON.parse(sceneScript.textContent || "{}") : null;
+      const width = Number(scene && scene.width);
+      const height = Number(scene && scene.height);
+      if (Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0) {
+        return { width, height, value: width / height };
+      }
+    } catch (_error) {
+      return null;
+    }
+    return null;
+  }
+
   function renderOutputArea(output) {
     const linesOutput = isLinesOutput(output);
     const flineEditorOutput = isFLineEditorOutput(output);
+    const flineEditorFrame = flineEditorOutput ? fLineEditorAspect(output) : null;
     const shell = document.createElement("article");
     shell.className = "phone-output-card";
     shell.classList.toggle("phone-output-lines", linesOutput || flineEditorOutput);
@@ -319,18 +338,25 @@
     const frame = document.createElement("iframe");
     frame.className = "phone-output-frame";
     if (linesOutput || flineEditorOutput) frame.classList.add("phone-output-frame-lines");
+    if (flineEditorFrame) {
+      frame.dataset.outputKind = "fline-editor";
+      frame.dataset.flineEditorAspect = String(flineEditorFrame.value);
+    }
     frame.setAttribute("sandbox", "allow-scripts allow-forms allow-same-origin allow-popups");
-    frame.srcdoc = outputFrameHtml(output, linesOutput, flineEditorOutput);
+    frame.srcdoc = outputFrameHtml(output, linesOutput, flineEditorOutput, flineEditorFrame);
     frame.addEventListener("load", () => resizeOutputFrame(frame, true));
     shell.append(title, frame);
     return shell;
   }
 
-  function outputFrameHtml(output, linesOutput, flineEditorOutput) {
+  function outputFrameHtml(output, linesOutput, flineEditorOutput, flineEditorFrame) {
     const modeClass = [
       linesOutput ? "field-controller-lines-frame" : "",
       flineEditorOutput ? "field-controller-fline-editor-frame" : "",
     ].filter(Boolean).join(" ");
+    const flineAspectStyle = flineEditorFrame
+      ? ` style="--field-fline-editor-aspect:${flineEditorFrame.width} / ${flineEditorFrame.height}"`
+      : "";
     const flineEditorRuntime = flineEditorOutput ? `<script src="/sliders.js"></script>` : "";
     const linesScript = linesOutput ? `
       <script>
@@ -480,13 +506,26 @@
       .field-controller-lines-frame .afield-lines-output>svg,
       .field-controller-lines-frame .afield-lines-output svg{display:block;width:100%!important;height:auto!important;max-width:100%;}
       .field-controller-fline-editor-frame{overflow:hidden;}
-      .field-controller-fline-editor-frame .field-fline-editor-shell{width:100%!important;max-width:100%!important;overflow:hidden;}
-      .field-controller-fline-editor-frame .field-fline-editor-canvas{display:block!important;width:100%!important;height:auto!important;max-width:100%!important;}
-    </style>${flineEditorRuntime}</head><body class="${modeClass}">${output.html || ""}${linesScript}</body></html>`;
+      .field-controller-fline-editor-frame .field-fline-editor-shell{width:100%!important;max-width:100%!important;overflow:hidden;aspect-ratio:var(--field-fline-editor-aspect,4 / 3);}
+      .field-controller-fline-editor-frame .field-fline-editor-canvas{display:block!important;width:100%!important;height:100%!important;max-width:100%!important;}
+    </style>${flineEditorRuntime}</head><body class="${modeClass}"${flineAspectStyle}>${output.html || ""}${linesScript}</body></html>`;
   }
 
   function resizeOutputFrame(frame, scheduleFollowup = false) {
     try {
+      if (frame.dataset.outputKind === "fline-editor") {
+        const aspect = Number(frame.dataset.flineEditorAspect || "0");
+        const width = frame.clientWidth || frame.getBoundingClientRect().width || 320;
+        if (Number.isFinite(aspect) && aspect > 0 && width > 0) {
+          const height = Math.max(160, Math.min(900, Math.ceil(width / aspect)));
+          frame.style.height = `${height + 8}px`;
+          if (scheduleFollowup) {
+            window.setTimeout(() => resizeOutputFrame(frame), 150);
+            window.setTimeout(() => resizeOutputFrame(frame), 500);
+          }
+          return;
+        }
+      }
       const doc = frame.contentDocument;
       const root = doc.documentElement;
       const body = doc.body;

@@ -1,5 +1,7 @@
 # Image Upload Feature for AI4 Chat
 
+> Status: stale. This note refers to the removed standalone `src/jsChatMain` bundle and `/chat` static route. Current guide/shared chat UI is mounted from the main frontend; re-audit before using this as implementation guidance.
+
 ## Overview
 
 This feature adds comprehensive image support to the Field4 AI chat interface, including:

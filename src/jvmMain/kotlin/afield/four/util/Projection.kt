@@ -232,7 +232,7 @@ fun matrix4fToSimple(m: Matrix4f): SimpleMatrix {
 
 // EJML SimpleMatrix (4x4) -> JOML Matrix4f
 fun simpleToMatrix4f(s: SimpleMatrix): Matrix4f {
-    require(s.numRows() == 4 && s.numCols() == 4) { "Expected 4x4 matrix" }
+    require(s.numRows == 4 && s.numCols == 4) { "Expected 4x4 matrix" }
 
     val m = Matrix4f()
 
@@ -280,8 +280,8 @@ private const val POS_TOL = 1e-12
  *  - eigenvalues are numerically real
  */
 fun expmEigen(A: SimpleMatrix): SimpleMatrix {
-    require(A.numRows() == A.numCols()) { "expmEigen requires a square matrix" }
-    val n = A.numRows()
+    require(A.numRows == A.numCols) { "expmEigen requires a square matrix" }
+    val n = A.numRows
 
     val evd = A.eig()
     val V = SimpleMatrix(n, n)
@@ -322,8 +322,8 @@ fun expmEigen(A: SimpleMatrix): SimpleMatrix {
  *  - A has a full set of real eigenvectors (V invertible)
  */
 fun logmEigen(A: SimpleMatrix): SimpleMatrix {
-    require(A.numRows() == A.numCols()) { "logmEigen requires a square matrix" }
-    val n = A.numRows()
+    require(A.numRows == A.numCols) { "logmEigen requires a square matrix" }
+    val n = A.numRows
 
     val evd = A.eig()
     val V = SimpleMatrix(n, n)

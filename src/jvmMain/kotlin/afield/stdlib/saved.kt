@@ -20,6 +20,7 @@ import kotlin.reflect.typeOf
 inline fun <reified T> toJSONFile(file: File, value: T) {
     try {
         file.parentFile?.mkdirs()
+        @Suppress("UNCHECKED_CAST")
         val serializer = FieldJson.serializersModule.serializer(typeOf<T>()) as KSerializer<T>
         file.safeSave(FieldJson.encodeToString(serializer, value))
     } catch (t: Throwable) {
@@ -34,6 +35,7 @@ inline fun <reified T> toJSONFile(file: File, value: T) {
 inline fun <reified T> fromJSONFile(file: File, defaultValue: () -> T): T {
     try {
         if (file.exists()) {
+            @Suppress("UNCHECKED_CAST")
             val serializer = FieldJson.serializersModule.serializer(typeOf<T>()) as KSerializer<T>
             return FieldJson.decodeFromString(serializer, file.readText())
         } else {

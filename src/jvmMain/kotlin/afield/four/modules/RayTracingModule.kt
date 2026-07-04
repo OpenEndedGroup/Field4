@@ -783,8 +783,11 @@ class RayTracingDispatch(var width: Int, var height: Int = 1, var depth: Int = 1
 
         operator fun getValue(inside: RayTracingDispatch, property: KProperty<*>): () -> T {
             if (inside.push.offsets.isEmpty()) inside.initializePushConstantsFromModule(inside.inside)
-            if (inside.push.offsets.containsKey(property.name)) return inside.push.bindings[property.name] as () -> T
-            else throw IllegalArgumentException("can't find ${property.name} as a ray tracing push_constant")
+            if (inside.push.offsets.containsKey(property.name)) {
+                @Suppress("UNCHECKED_CAST")
+                val binding = inside.push.bindings[property.name] as () -> T
+                return binding
+            } else throw IllegalArgumentException("can't find ${property.name} as a ray tracing push_constant")
         }
     }
 

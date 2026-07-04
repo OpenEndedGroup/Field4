@@ -845,7 +845,8 @@ private fun chooseBestCandidate(
             val total = assignmentTotalCost(cost, assignment, orderedB.size, matching.unmatchedCost)
             val candidate = CandidateSelection(transform, assignment, total)
 
-            if (best == null || total < best!!.cost - 1e-9) {
+            val currentBest = best
+            if (currentBest == null || total < currentBest.cost - 1e-9) {
                 best = candidate
             }
         }

@@ -1359,7 +1359,7 @@ internal fun ensurePlaywrightForSessionIfNeeded(info: SessionInformation): Agent
     val currentPage = globalPlaywriteContext?.takeIf { !it.isClosed() }
     val targetUrl = buildPlaywrightDocumentUrl(info)
     val currentUrl = currentPage?.let { runCatching { it.url() }.getOrNull() }
-    if (currentPage != null && currentUrl == targetUrl) {
+    if (currentPage != null && currentUrl == targetUrl && isPlaywrightSessionHealthy(currentPage, info)) {
         return AgentOpenPlaywrightResponse(
             ok = true,
             documentName = info.documentName,
@@ -3636,8 +3636,7 @@ class Server {
                             get("{...}") {
                                 val relativeUri = URI(call.request.uri).path.removePrefix("/min/")
                                 val roots = listOf(
-                                    File("./src/jsMain/resources/monaco/min").canonicalFile,
-                                    File("./public/min").canonicalFile
+                                    File("./src/jsMain/resources/monaco/min").canonicalFile
                                 )
                                 val file = roots.asSequence()
                                     .map { root -> root to File(root, relativeUri).canonicalFile }
@@ -3657,8 +3656,6 @@ class Server {
                         get("/index.html") {
                             val directories = listOf(
                                 File("./build/kotlin-webpack/js/productionExecutable/"),
-                                File("./build/kotlin-webpack/jsChat/productionExecutable/"),
-                                File("./src/jsChatMain/resources/"),
                                 File("./src/jsMain/resources/"),
                                 File("./src/commonMain/resources/"),
                             )
@@ -3676,18 +3673,9 @@ class Server {
                             }
                         }
                         staticFiles(remotePath = "", dir = File("./build/js/packages/afield/kotlin"))
-                        staticFiles(remotePath = "", dir = File("./src/jsChatMain/resources/static/"))
-                        staticFiles(remotePath = "", dir = File("./src/jsMain/kotlin/resources/"))
                         staticFiles(remotePath = "", dir = File("./src/jsMain/resources/"))
                         staticFiles(remotePath = "", dir = File("./src/jsMain/resources/monaco"))
-                        staticFiles(remotePath = "", dir = File("./src/commonMain/kotlin/resources/"))
                         staticFiles(remotePath = "", dir = File("./src/commonMain/resources/"))
-
-                        route("/chat") {
-                            handle {
-                                call.respondFile(File("./build/js/packages/afield-js-chat/kotlin/static/chat.html"))
-                            }
-                        }
 
                         val indexHtmlInterceptor = createRouteScopedPlugin("IndexHtmlInterceptor") {
                             onCall { call ->
@@ -3697,8 +3685,6 @@ class Server {
                                     // List directories in the order you want to search for index.html
                                     val directories = listOf(
                                         File("./build/kotlin-webpack/js/productionExecutable/"),
-                                        File("./build/kotlin-webpack/jsChat/productionExecutable/"),
-                                        File("./src/jsChatMain/resources/"),
                                         File("./src/jsMain/resources/"),
                                         File("./src/commonMain/resources/"),
 //                                    File("./build/vite/dist/")

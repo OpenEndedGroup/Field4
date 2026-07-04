@@ -1,0 +1,84 @@
+name: afield_four_traditional_triangle
+description: Create one afield.four graphics box that draws a traditional triangle using the backdoor graphics context parent.
+operations:
+  - create:
+      box: agent_four_traditional_triangle
+      name: Agent Four Traditional Triangle
+      frame:
+        x: 320.0
+        y: 80.0
+        w: 300.0
+        h: 120.0
+      properties:
+        vertex: |
+          #version 450
+          layout (location = 0) in vec3 pos;
+
+          layout (location = 1) in vec4 col;
+          layout (location = 0) out vec4 fcol;
+
+          void main()
+          {
+              fcol = col;
+              gl_Position = vec4(pos, 1);
+          }
+        fragment: |
+          #version 450
+          layout(location = 0) out vec4 uFragColor;
+
+          layout(location = 0) in vec4 fcol;
+          void main()
+          {
+              uFragColor = vec4(1.0, 0.8, 0.4, 1.0) * fcol;
+          }
+        code: |
+          import afield.four.Renderer
+          import afield.four.modules.fromContext
+          val renderer: Renderer = fromContext()
+
+          var module = moduleHere {
+              primitiveType = triangle_strip
+          }
+
+          var m = Mesh()
+          module += m named "my mesh"
+          renderer += module
+
+          m.set(3, 3) {
+              pos.add(0,0,0, 0.5,0,0, 0.5,0.5,0)
+
+              3 {
+                  col.add(0,it/3.0,1-it/3.0,1)
+              }
+              tri.add(0,1,2)
+          }
+  - connect:
+      parent: agent_graphics_context
+      child: agent_four_traditional_triangle
+  - execute:
+      box: agent_four_traditional_triangle
+      property: code
+      type: fragment
+      code: |
+        import afield.four.Renderer
+        import afield.four.modules.fromContext
+        val renderer: Renderer = fromContext()
+
+        var module = moduleHere {
+            primitiveType = triangle_strip
+        }
+
+        var m = Mesh()
+        module += m named "my mesh"
+        renderer += module
+
+        m.set(3, 3) {
+            pos.add(0,0,0, 0.5,0,0, 0.5,0.5,0)
+
+            3 {
+                col.add(0,it/3.0,1-it/3.0,1)
+            }
+            tri.add(0,1,2)
+        }
+  - wait:
+      seconds: 2

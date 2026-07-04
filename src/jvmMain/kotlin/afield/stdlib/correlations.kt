@@ -210,7 +210,7 @@ object StatsDependence {
         var denomTerm = 0L
         for (i in 0 until n) {
             val li = l[i].toLong()
-            denomTerm += li * (n - li).toLong()
+            denomTerm += li * (n - li)
         }
 
         val denominator = 2.0 * denomTerm.toDouble()

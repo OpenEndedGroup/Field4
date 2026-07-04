@@ -121,7 +121,7 @@ class NanoExecution(val inside: Box) : BoxExecution {
             vm.onError = { msg, pcVal ->
                 runtimeError = "Nano VM error at PC=0x${pcVal.toString(16).padStart(2, '0')}: $msg"
                 inside.error(msg, line = execute.line, property = "code")
-                lprintln("error,nano", runtimeError ?: msg)
+                lprintln("error,nano", runtimeError)
             }
 
             val result = assembler.assembleWithSourceMap(code)

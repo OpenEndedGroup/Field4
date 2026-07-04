@@ -608,16 +608,16 @@ object PlySupport {
 
             if (hasColors) {
                 // Colors might be 0-255 or 0.0-1.0
-                val redVal = values[propIndices[colorRedName!!]!!].toFloat()
+                val redVal = values[propIndices[colorRedName]!!].toFloat()
                 r = if (redVal > 1.0f) redVal / 255.0f else redVal
-                g = if (values[propIndices[colorGreenName!!]!!].toFloat() > 1.0f)
-                    values[propIndices[colorGreenName!!]!!].toFloat() / 255.0f
+                g = if (values[propIndices[colorGreenName]!!].toFloat() > 1.0f)
+                    values[propIndices[colorGreenName]!!].toFloat() / 255.0f
                 else
-                    values[propIndices[colorGreenName!!]!!].toFloat()
-                b = if (values[propIndices[colorBlueName!!]!!].toFloat() > 1.0f)
-                    values[propIndices[colorBlueName!!]!!].toFloat() / 255.0f
+                    values[propIndices[colorGreenName]!!].toFloat()
+                b = if (values[propIndices[colorBlueName]!!].toFloat() > 1.0f)
+                    values[propIndices[colorBlueName]!!].toFloat() / 255.0f
                 else
-                    values[propIndices[colorBlueName!!]!!].toFloat()
+                    values[propIndices[colorBlueName]!!].toFloat()
                 a = if (colorAlphaName != null) {
                     val alphaVal = values[propIndices[colorAlphaName]!!].toFloat()
                     if (alphaVal > 1.0f) alphaVal / 255.0f else alphaVal

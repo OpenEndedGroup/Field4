@@ -52,6 +52,7 @@ private data class CapturedProcessResult(
 
 private val agentBackdoorScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+private const val AGENT_GRAPHICS_CONTEXT_ID = "agent_graphics_context"
 private const val AGENT_GRAPHICS_CONTEXT_NAME = "renderer"
 private const val INITIAL_FRAME_PREVIEW_PAINT_PAUSE_MS = 100L
 
@@ -603,7 +604,7 @@ private fun ensureAgentGraphicsContext(info: SessionInformation): Pair<Box, Bool
         it.name == AGENT_GRAPHICS_CONTEXT_NAME && it.getPropertyRaw("renderer") is Renderer
     }
     val graphicsBox =
-        existing ?: box(UUID.randomUUID().toString(), createIfMissing = true, initIfCreated = true, root = info).also {
+        existing ?: box(AGENT_GRAPHICS_CONTEXT_ID, createIfMissing = true, initIfCreated = true, root = info).also {
             it.name = AGENT_GRAPHICS_CONTEXT_NAME
             it.frame = Rect(0.0, 0.0, 120.0, 80.0)
         }

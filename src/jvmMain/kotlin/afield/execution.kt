@@ -483,57 +483,6 @@ private fun renderReturnValueOutput(value: Any?): String {
     }
 }
 
-private val printedHtmlOpenTagRegex = Regex("<\\s*([A-Za-z][A-Za-z0-9:-]*)(?:\\s+[^<>]*?)?/?>")
-private val printedHtmlVoidTags = setOf(
-    "area",
-    "base",
-    "br",
-    "col",
-    "embed",
-    "hr",
-    "img",
-    "input",
-    "link",
-    "meta",
-    "param",
-    "source",
-    "track",
-    "wbr"
-)
-
-private fun printedStringLooksLikeHtml(text: String): Boolean {
-    val trimmed = text.trim()
-    if (!trimmed.contains('<') || !trimmed.contains('>')) return false
-
-    for (match in printedHtmlOpenTagRegex.findAll(trimmed)) {
-        val tagName = match.groupValues[1].lowercase()
-        val tag = match.value
-        if (tagName in printedHtmlVoidTags || tag.endsWith("/>")) return true
-
-        val closingTag = Regex("</\\s*${Regex.escape(tagName)}\\s*>", RegexOption.IGNORE_CASE)
-        if (closingTag.containsMatchIn(trimmed)) return true
-    }
-
-    return false
-}
-
-private fun shouldRoutePrintedContentToOutputArea(content: Any?, rendered: String): Boolean {
-    val raw = when (content) {
-        is String -> content
-        is CharSequence -> content.toString()
-        else -> return false
-    }
-    return printedStringLooksLikeHtml(raw) && printedStringLooksLikeHtml(rendered)
-}
-
-private fun routePrintedHtmlToOutputAreaIfNeeded(box: Box, content: Any?, rendered: String, nl: Boolean): Boolean {
-    if (!shouldRoutePrintedContentToOutputArea(content, rendered)) return false
-    val html = rendered.trim() + if (nl) "<br>" else ""
-    if (html.isBlank()) return true
-    send(Message("set-output").payload(Set_output(box.id, "outputarea", "output", html)))
-    return true
-}
-
 private fun renderVariableLocationSection(
     label: String,
     container: ContainerSummary?,
@@ -842,20 +791,18 @@ fun configureOutputProxies(box: Box, reply: (Message) -> Unit, originSession: We
     box.output.proxy = { content, nl, line ->
         val n = renderPrintedOutput(content)
         if (n.trim().length > 0) {
-            if (!routePrintedHtmlToOutputAreaIfNeeded(box, content, n, nl)) {
-                dispatchExecutionOutput(
-                    box,
-                    reply,
-                    Output(
-                        uid = box.id,
-                        line = line.i,
-                        kind = "normal",
-                        html = n.trim() + (if (nl) "\n" else ""),
-                        frame = Runloop.runLoop.frame.toInt()
-                    ),
-                    originSession = originSession
-                )
-            }
+            dispatchExecutionOutput(
+                box,
+                reply,
+                Output(
+                    uid = box.id,
+                    line = line.i,
+                    kind = "normal",
+                    html = n.trim() + (if (nl) "\n" else ""),
+                    frame = Runloop.runLoop.frame.toInt()
+                ),
+                originSession = originSession
+            )
         }
     }
 
@@ -1091,20 +1038,18 @@ class KotlinExecution : BoxExecution {
                     val rendered = renderPrintedOutput(content)
                     output[output.size - 1] = output[output.size - 1] + rendered
                     if (nl) output.add("")
-                    if (!routePrintedHtmlToOutputAreaIfNeeded(box, content, rendered, nl)) {
-                        dispatchExecutionOutput(
-                            box,
-                            reply,
-                            Output(
-                                uid = box.id,
-                                line = line.i,
-                                kind = "normal",
-                                html = rendered.trim() + (if (nl) "\n" else ""),
-                                frame = Runloop.runLoop.frame.toInt()
-                            ),
-                            originSession = request.originSession
-                        )
-                    }
+                    dispatchExecutionOutput(
+                        box,
+                        reply,
+                        Output(
+                            uid = box.id,
+                            line = line.i,
+                            kind = "normal",
+                            html = rendered.trim() + (if (nl) "\n" else ""),
+                            frame = Runloop.runLoop.frame.toInt()
+                        ),
+                        originSession = request.originSession
+                    )
                 }
                 box.output.errorProxy = { content, property, line ->
                     hasError = hasError || content != null
@@ -1679,20 +1624,18 @@ class KotlinExecution : BoxExecution {
                     if (nl) output.add("")
 
 //                    lprintln("debug,execution", "out $content")
-                    if (!routePrintedHtmlToOutputAreaIfNeeded(box, content, rendered, nl)) {
-                        dispatchExecutionOutput(
-                            box,
-                            reply,
-                            Output(
-                                uid = box.id,
-                                line = line.i,
-                                kind = "normal",
-                                html = rendered.trim() + (if (nl) "\n" else ""),
-                                frame = Runloop.runLoop.frame.toInt()
-                            ),
-                            originSession = originSession
-                        )
-                    }
+                    dispatchExecutionOutput(
+                        box,
+                        reply,
+                        Output(
+                            uid = box.id,
+                            line = line.i,
+                            kind = "normal",
+                            html = rendered.trim() + (if (nl) "\n" else ""),
+                            frame = Runloop.runLoop.frame.toInt()
+                        ),
+                        originSession = originSession
+                    )
 
                 }
                 box.output.errorProxy = { content, property, line ->

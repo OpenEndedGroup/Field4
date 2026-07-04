@@ -6,7 +6,7 @@ import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
-import java.net.URL
+import java.net.URI
 import java.util.zip.ZipInputStream
 
 data class UpdateInfo(
@@ -22,7 +22,7 @@ val defaultLocalFile = "localVersion.json"
  */
 suspend fun fetchUpdateInfo(updateUrl: String = defaultUpdateUrl): UpdateInfo? = withContext(Dispatchers.IO) {
     try {
-        val connection = URL(updateUrl).openConnection() as HttpURLConnection
+        val connection = URI(updateUrl).toURL().openConnection() as HttpURLConnection
         connection.requestMethod = "GET"
         connection.connectTimeout = 5000
         connection.readTimeout = 5000
@@ -91,7 +91,7 @@ suspend fun downloadAndUnzip(zipUrl: String): Boolean = withContext(Dispatchers.
         stagingDir.mkdirs()
 
         // Step 3: Download the .zip file.
-        val connection = URL(zipUrl).openConnection() as HttpURLConnection
+        val connection = URI(zipUrl).toURL().openConnection() as HttpURLConnection
         connection.requestMethod = "GET"
         connection.connectTimeout = 5000
         connection.readTimeout = 5000

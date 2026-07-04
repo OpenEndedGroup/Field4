@@ -239,17 +239,9 @@ fun vec2NN(
     val keys = Array(copy.size) { i -> copy[i].toDoubleKey() }
     val ids = Array(copy.size) { i -> i }
     val exact = KDTree(keys, ids)
-    val approx = LSH<Int>(
-        keys[0].size,
-        lshTableCount(copy.size),
-        options.lshProjectionCount,
-        options.lshBucketWidth,
-        options.lshUniversalHashSize
-    )
-    for (i in keys.indices) {
-        approx.put(keys[i], ids[i])
-    }
-    return Vec2NNIndex(copy, mode, exact, approx)
+    val approx = if (mode == VecNNMode.APPROXIMATE) buildLshOrNull(keys, ids, options, "vec2NN") else null
+    val effectiveMode = if (mode == VecNNMode.APPROXIMATE && approx == null) VecNNMode.EXACT else mode
+    return Vec2NNIndex(copy, effectiveMode, exact, approx)
 }
 
 fun vec3NN(
@@ -270,17 +262,34 @@ fun vec3NN(
     val keys = Array(copy.size) { i -> copy[i].toDoubleKey() }
     val ids = Array(copy.size) { i -> i }
     val exact = KDTree(keys, ids)
-    val approx = LSH<Int>(
-        keys[0].size,
-        lshTableCount(copy.size),
-        options.lshProjectionCount,
-        options.lshBucketWidth,
-        options.lshUniversalHashSize
-    )
-    for (i in keys.indices) {
-        approx.put(keys[i], ids[i])
+    val approx = if (mode == VecNNMode.APPROXIMATE) buildLshOrNull(keys, ids, options, "vec3NN") else null
+    val effectiveMode = if (mode == VecNNMode.APPROXIMATE && approx == null) VecNNMode.EXACT else mode
+    return Vec3NNIndex(copy, effectiveMode, exact, approx)
+}
+
+private fun buildLshOrNull(
+    keys: Array<DoubleArray>,
+    ids: Array<Int>,
+    options: VecNNBuildOptions,
+    fn: String
+): LSH<Int>? {
+    return try {
+        LSH<Int>(
+            keys[0].size,
+            lshTableCount(keys.size),
+            options.lshProjectionCount,
+            options.lshBucketWidth,
+            options.lshUniversalHashSize
+        ).also { approx ->
+            for (i in keys.indices) {
+                approx.put(keys[i], ids[i])
+            }
+        }
+    } catch (t: Throwable) {
+        if (t is VirtualMachineError || t is ThreadDeath) throw t
+        System.err.println("$fn: approximate LSH backend unavailable; falling back to exact nearest-neighbor search: ${t.message ?: t.javaClass.name}")
+        null
     }
-    return Vec3NNIndex(copy, mode, exact, approx)
 }
 
 private fun validateBuildOptions(options: VecNNBuildOptions, fn: String) {

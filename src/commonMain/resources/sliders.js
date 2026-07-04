@@ -1114,6 +1114,36 @@ window.__flineHoverOut = function(groupEl) {
         updateStatus(state);
     }
 
+    function editorHasPointerWork(state) {
+        return !!(state.panning || state.dragging || state.marquee || state.pointerDown || state.drawingStroke);
+    }
+
+    function scheduleEditorResizeRender(state, delay) {
+        if (!state) return;
+        state.resizeRenderPending = true;
+        if (state.resizeRenderTimer) {
+            clearTimeout(state.resizeRenderTimer);
+            state.resizeRenderTimer = null;
+        }
+        state.resizeRenderTimer = setTimeout(function() {
+            state.resizeRenderTimer = null;
+            if (editorHasPointerWork(state)) {
+                scheduleEditorResizeRender(state, 80);
+                return;
+            }
+            if (!state.resizeRenderPending) return;
+            state.resizeRenderPending = false;
+            window.requestAnimationFrame(function() {
+                renderFLineEditor(state);
+            });
+        }, delay == null ? 80 : delay);
+    }
+
+    function flushEditorResizeRender(state) {
+        if (!state || !state.resizeRenderPending || editorHasPointerWork(state)) return;
+        scheduleEditorResizeRender(state, 0);
+    }
+
     function wireToolbar(root, state) {
         root.querySelectorAll('[data-mode-button]').forEach(function(button) {
             var mode = button.getAttribute('data-mode-button');
@@ -1189,7 +1219,9 @@ window.__flineHoverOut = function(groupEl) {
             items: new Map(),
             points: [],
             edges: [],
-            faces: []
+            faces: [],
+            resizeRenderTimer: null,
+            resizeRenderPending: false
         };
 
         root.__fieldFLineEditorInitialized = true;
@@ -1199,13 +1231,16 @@ window.__flineHoverOut = function(groupEl) {
         applyEditorView(state);
         renderFLineEditor(state);
         if (typeof ResizeObserver === 'function') {
-            var lastSizeKey = '';
+            var lastWidth = -1;
+            var lastHeight = -1;
             state.resizeObserver = new ResizeObserver(function(entries) {
                 var rect = entries && entries[0] ? entries[0].contentRect : svg.getBoundingClientRect();
-                var sizeKey = Math.round(rect.width) + 'x' + Math.round(rect.height);
-                if (sizeKey === lastSizeKey) return;
-                lastSizeKey = sizeKey;
-                renderFLineEditor(state);
+                var width = Math.round(rect.width || 0);
+                var height = Math.round(rect.height || 0);
+                if (Math.abs(width - lastWidth) < 2 && Math.abs(height - lastHeight) < 2) return;
+                lastWidth = width;
+                lastHeight = height;
+                scheduleEditorResizeRender(state, 80);
             });
             state.resizeObserver.observe(svg);
         }
@@ -1406,6 +1441,7 @@ window.__flineHoverOut = function(groupEl) {
                 try { svg.releasePointerCapture(event.pointerId); } catch (_) {}
                 event.preventDefault();
                 event.stopPropagation();
+                flushEditorResizeRender(state);
                 return;
             }
             if (state.mode === 'draw') {
@@ -1419,6 +1455,7 @@ window.__flineHoverOut = function(groupEl) {
                     renderFLineEditor(state);
                 }
                 try { svg.releasePointerCapture(event.pointerId); } catch (_) {}
+                flushEditorResizeRender(state);
                 return;
             }
 
@@ -1452,6 +1489,7 @@ window.__flineHoverOut = function(groupEl) {
             }
 
             try { svg.releasePointerCapture(event.pointerId); } catch (_) {}
+            flushEditorResizeRender(state);
         }
 
         svg.addEventListener('pointerup', finishPointer);

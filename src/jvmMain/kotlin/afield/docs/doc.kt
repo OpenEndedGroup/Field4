@@ -25,7 +25,30 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-val FFMPEG = "/opt/homebrew/bin/ffmpeg"
+val FFMPEG: String by lazy { locateFfmpeg() }
+
+private fun locateFfmpeg(): String {
+    val explicit = listOf("AFIELD_FFMPEG", "AFIELD_FFMPEG_PATH", "FFMPEG")
+        .mapNotNull { System.getenv(it)?.takeIf(String::isNotBlank) }
+        .firstOrNull()
+    if (explicit != null) return explicit
+
+    val candidates = listOf(
+        "/opt/homebrew/bin/ffmpeg",
+        "/usr/local/bin/ffmpeg",
+        "/usr/bin/ffmpeg"
+    )
+    candidates.firstOrNull { File(it).canExecute() }?.let { return it }
+
+    val pathCandidate = System.getenv("PATH")
+        ?.split(File.pathSeparator)
+        ?.asSequence()
+        ?.map { File(it, "ffmpeg") }
+        ?.firstOrNull { it.canExecute() }
+    if (pathCandidate != null) return pathCandidate.absolutePath
+
+    return "ffmpeg"
+}
 
 fun coerceToDouble(orDefault: Any?): Double {
     return when (orDefault) {
@@ -620,6 +643,23 @@ fun activateThisProcessMac(processName: String) {
     }
 }
 
+private suspend fun Window.rendererForDirectCapture(timeoutMs: Long): afield.four.Renderer {
+    val deadline = System.nanoTime() + timeoutMs * 1_000_000L
+    var lastReason = "window has no associated renderer"
+    while (System.nanoTime() < deadline) {
+        val renderer = associatedRenderer
+        if (renderer == null) {
+            lastReason = "window has no associated renderer"
+        } else if (!renderer.supportsDirectWindowCapture(this)) {
+            lastReason = "renderer swapchain is not ready for transfer-source capture"
+        } else {
+            return renderer
+        }
+        delay(10L)
+    }
+    error("Renderer-owned window capture is unavailable: $lastReason")
+}
+
 // helper for docs, not for rendering things for real
 suspend fun Window.raiseAndScreenshot(
     waitFrames: Int,
@@ -627,7 +667,8 @@ suspend fun Window.raiseAndScreenshot(
     captureTimeoutMs: Long = 15_000L,
     preferDirectCapture: Boolean = true
 ) {
-    associatedRenderer?.takeIf { preferDirectCapture && it.supportsDirectWindowCapture(this) }?.let { renderer ->
+    if (preferDirectCapture) {
+        val renderer = rendererForDirectCapture(captureTimeoutMs)
         waitFrames {
             lprintln("info,doc", " -- waiting for renderer frame capture --")
             yield()

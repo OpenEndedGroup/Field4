@@ -25,7 +25,6 @@ class PatClock internal constructor(
             return synchronized(this) {
                 shared?.also {
                     if (started) it.start()
-                    it
                 } ?: PatClock(label = "global").also {
                     shared = it
                     if (started) it.start()

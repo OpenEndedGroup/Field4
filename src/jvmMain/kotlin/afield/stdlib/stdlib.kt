@@ -1,4 +1,5 @@
 @file:afield.CompletionCategory("Workspace")
+@file:Suppress("UNCHECKED_CAST")
 
 package afield.stdlib
 

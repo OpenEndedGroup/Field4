@@ -233,6 +233,7 @@ class GpuProfiler(
 
 
     // Pipeline stats
+    @ConsistentCopyVisibility
     data class PipeStatScope internal constructor(val pool: Long, val index: Int)
 
     fun beginPipelineStats(cmd: VkCommandBuffer, frameIndex: Int): PipeStatScope? {
@@ -248,6 +249,7 @@ class GpuProfiler(
     }
 
     // Perf counters
+    @ConsistentCopyVisibility
     data class PerfScope internal constructor(val index: Int)
 
     fun beginPerfCounters(cmd: VkCommandBuffer, frameIndex: Int): PerfScope? {
@@ -390,7 +392,7 @@ class GpuProfiler(
             val c = counters[idxSel]
             val d = descriptions[idxSel]
             metas += PerfCounterMeta(
-                name = d.nameString() ?: "counter_$idxSel",
+                name = d.nameString(),
                 unit = c.unit(),
                 scope = c.scope()
             )

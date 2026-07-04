@@ -1009,6 +1009,7 @@ class Renderer(
                 "slow window capture readback path=${capture.request.outputPath} ms=$readMs size=${capture.width}x${capture.height}"
             )
         }
+        @OptIn(DelicateCoroutinesApi::class)
         GlobalScope.launch(Runloop.miscPool.asCoroutineDispatcher()) {
             encodeWindowCapture(pixels)
         }
@@ -1424,7 +1425,8 @@ class Renderer(
                 }
             }
 
-            val enableSecondaryModules = !Options.isMac
+            val enableSecondaryModules =
+                Options.secondaryGraphicsCommandBuffers && device.supportsMaintenance7
             val moduleBuffers: List<CommandBuffer> =
                 if (enableSecondaryModules && moduleElements.isNotEmpty()) {
                     val collected = arrayOfNulls<CommandBuffer>(moduleElements.size)
@@ -1530,8 +1532,8 @@ class Renderer(
     ) {
         runOnQueueThread {
             MemoryStack.stackPush().use { stack ->
-                val idx = context.swapChain.currentFrame
-                val sync = context.swapChain.syncSemaphoresList[idx]
+                val acquireSync = context.swapChain.syncSemaphoresList[context.swapChain.currentFrame]
+                val presentSync = context.swapChain.syncSemaphoresList[context.currentImage]
 
                 // Command buffer info
                 val cbInfo = VkCommandBufferSubmitInfo.calloc(1, stack)
@@ -1543,8 +1545,8 @@ class Renderer(
                 // Always wait for image acquisition; wait for compute only when this window ran it.
                 val waits = VkSemaphoreSubmitInfo.calloc(if (computeSemaphore == null) 1 else 2, stack)
                 waits[0].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
-                    .semaphore(sync.imgAcquisitionSemaphore.vkSemaphore)
-                    .value(sync.imgAcquisitionSemaphore.currentValue())
+                    .semaphore(acquireSync.imgAcquisitionSemaphore.vkSemaphore)
+                    .value(acquireSync.imgAcquisitionSemaphore.currentValue())
                     .stageMask(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT)
                     .deviceIndex(0)
                 if (computeSemaphore != null) {
@@ -1559,8 +1561,8 @@ class Renderer(
                 // Signal semaphore: render complete
                 val signals = VkSemaphoreSubmitInfo.calloc(1, stack)
                 signals[0].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
-                    .semaphore(sync.renderCompleteSemaphore.vkSemaphore)
-                    .value(sync.renderCompleteSemaphore.nextSignalValue())
+                    .semaphore(presentSync.renderCompleteSemaphore.vkSemaphore)
+                    .value(presentSync.renderCompleteSemaphore.nextSignalValue())
                     .stageMask(VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT)
                     .deviceIndex(0)
 

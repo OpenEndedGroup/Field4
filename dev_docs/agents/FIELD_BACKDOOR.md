@@ -14,6 +14,8 @@ Use it when you need to:
 
 Use the sidecar-file workflow when you want persistent workspace edits on disk. Use the backdoor when you want execution, output capture, and fast verification.
 
+For semantic automation, prefer transcript macros. `OperationTranscript` is the canonical format for Field document operations; the backdoor is the transport and capture harness around it. The legacy `replay-operations` / `play-operations` commands remain for compatibility while examples migrate to transcript macro YAML.
+
 ## What It Does
 
 From the repository root, `tools/field_backdoor.py` will:
@@ -32,7 +34,7 @@ The session logs store truncated previews of large websocket payloads rather tha
 Run this from the repo root:
 
 ```bash
-python3 tools/field_backdoor.py --json \
+uv run --group backdoor python tools/field_backdoor.py --json --port 9477 \
   --command 'new-box --name Hello' \
   --command 'run @last --value "println(\"hello world\")"'
 ```
@@ -50,7 +52,7 @@ What this does:
 Before doing anything more involved, run:
 
 ```bash
-python3 tools/field_backdoor.py --json --command status
+uv run --group backdoor python tools/field_backdoor.py --json --port 9477 --command status
 ```
 
 This tells you:
@@ -76,13 +78,35 @@ For docs work, treat the smoke suite and the MkDocs runner as one loop:
 
 ```bash
 python3 tools/run_field_tests.py --refresh-catalog
-cd public && FIELD_DOCS_RUNNER_MODE=always mkdocs build
+cd public && FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 \
+  uv run --project .. --group docs mkdocs build
 ```
 
 When you only need to rebuild the HTML around already-generated captures, use:
 
 ```bash
-cd public && FIELD_DOCS_RUNNER_MODE=never mkdocs build
+cd public && FIELD_DOCS_RUNNER_MODE=never \
+  uv run --project .. --group docs mkdocs build
+```
+
+## uv Dependency Recipes
+
+The root `pyproject.toml` defines two dependency groups:
+
+- `backdoor`: `websockets` and `PyYAML` for `tools/field_backdoor.py`.
+- `docs`: MkDocs, the configured MkDocs plugins, `pillow` for docs hooks, and the backdoor dependencies. The docs group intentionally includes the backdoor dependencies because `public/docs_hooks.py` launches `tools/field_backdoor.py` with the same Python interpreter that runs MkDocs.
+
+Use:
+
+```bash
+uv run --group backdoor python tools/field_backdoor.py --json --port 9477 --command status
+```
+
+and:
+
+```bash
+cd public && FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 \
+  uv run --project .. --group docs mkdocs build
 ```
 
 That skips all screenshot/video execution and uses whatever assets already exist on disk.
@@ -119,6 +143,60 @@ python3 tools/field_backdoor.py --json \
 ```
 
 Each `--command` runs in order. `@last` means “the most recently created box in this session”.
+
+## Transcript Macros
+
+Use `macro` or `transcript` commands when you want durable semantic automation:
+
+```bash
+python3 tools/field_backdoor.py --json --port 9477 \
+  --command 'macro list' \
+  --command 'macro run my_macro --selection @last'
+```
+
+Write a macro from a YAML file:
+
+```bash
+python3 tools/field_backdoor.py --json --port 9477 \
+  --command 'macro write cleanup_demo --file /tmp/cleanup_demo.yaml' \
+  --command 'macro run cleanup_demo'
+```
+
+Macro files use the same `operations:` shape written by `OperationTranscript`:
+
+```yaml
+operations:
+  - create:
+      box: source
+      name: Source Box
+      frame: {x: 40.0, y: 40.0, w: 180.0, h: 100.0}
+  - edit:
+      box: source
+      property: name
+      from: Before
+      to: After
+```
+
+Curated reusable examples live in `dev_docs/agents/transcripts/`. Start there before inventing a new automation shape:
+
+```bash
+uv run --group backdoor python tools/field_backdoor.py --json --port 9477 \
+  --command 'macro write agent_hello_display --file dev_docs/agents/transcripts/hello_display.yaml' \
+  --command 'macro run agent_hello_display'
+```
+
+For blank-canvas or multi-box construction macros, prefer stable box ids and run without `--selection`; selection remapping is intended for single-box edit macros.
+
+Useful commands:
+- `macro state`
+- `macro list`
+- `macro read <name>`
+- `macro write <name> --file <path>`
+- `macro run <name> [--selection <uid>]`
+- `macro undo <name> [--selection <uid>]`
+- `macro page --offset 0 --limit 80`
+- `macro save-selection <name> --indices 3,4,5`
+- `macro undo-selection --indices 3,4,5`
 
 ## Prefer `--file -` or `--file` for Larger Snippets
 
@@ -169,6 +247,24 @@ This mode:
 - automatically connects later `new-box` boxes in that backdoor session as children of `renderer`
 
 That makes inherited context variables such as `renderer` and `window` valid in child test snippets, which is the preferred setup for testing `afield.four` from the backdoor or from `graphicsContext: true` smoke/docs runners. Prefer scratch when you want that setup to stay disposable.
+
+This is a topology contract. A graphics snippet does not have a usable `Renderer` unless it is running in a box connected beneath the launched renderer parent. For OperationTranscript-driven automation, use `dev_docs/agents/transcripts/graphics_renderer_launch.yaml`, then create the example box and connect `agent_graphics_context -> example_box` before running the example.
+
+For launched or coroutine-based graphics code, capture context before the async boundary:
+
+```kotlin
+import afield.four.Renderer
+import afield.four.modules.fromContext
+
+val renderer: Renderer = fromContext()
+
+val renderScene: suspend () -> Unit = {
+    // Pass renderer explicitly to helpers called from here.
+}
+start(renderScene)
+```
+
+If you see `must pass in a value for context parameter afield.four.Renderer`, debug the box graph first: confirm the renderer box was launched, its render loop is running, and the example box is a child of it. Do not paper over this with longer sleeps or display/window screenshot fallbacks.
 
 ## Scratch vs Named Documents
 
@@ -416,7 +512,7 @@ What each command does:
 - `record-box` hides Monaco, opens outputs, computes a padded clip, and records just that region.
 - `--duration <seconds>` sets the recording length (default 5).
 - `--fps <rate>` sets the target frame rate (default 30). The actual rate depends on CDP screencast throughput.
-- Output is H.264/MP4 with `faststart` for web-ready playback. Requires `ffmpeg` installed at `/opt/homebrew/bin/ffmpeg`.
+- Output is H.264/MP4 with `faststart` for web-ready playback. Requires `ffmpeg`; Field resolves `AFIELD_FFMPEG`, `AFIELD_FFMPEG_PATH`, `FFMPEG`, common platform paths, then `PATH`.
 
 All three commands return JSON with:
 - `ok`, `path`, `uid`, `documentName`, `scratch`, `sessionKey`

@@ -214,6 +214,13 @@ class FromUniform {
     }
 }
 
+private fun sampledImageLayout(view: HasImageView): Int {
+    val aspectMask = view.imageView.aspectMask
+    val depthOrStencil = (aspectMask and (VK_IMAGE_ASPECT_DEPTH_BIT or VK_IMAGE_ASPECT_STENCIL_BIT)) != 0
+    return if (depthOrStencil) VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+    else VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+}
+
 class ModulePointer(var current: Module) : Renderable {
     override fun render(command: CommandBuffer, bounds: Rectanglef) {
         if (current.valid && current.enabled) current.render(command, bounds)
@@ -395,7 +402,7 @@ class Module(val parameters: Parameters) : Renderable {
                 require(views.isNotEmpty()) { "TexturePointer ${name} has no image views" }
 
                 val imageInfo = VkDescriptorImageInfo.calloc(1, stack)
-                    .imageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .imageLayout(sampledImageLayout(views.first()))
                     .imageView(views.first().imageView.vkImageView)
                     .sampler(sampler.vkSampler)
 
@@ -426,7 +433,7 @@ class Module(val parameters: Parameters) : Renderable {
 
                 val infos = VkDescriptorImageInfo.calloc(views.size, stack)
                 for (i in views.indices) {
-                    infos[i].imageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    infos[i].imageLayout(sampledImageLayout(views[i]))
                         .imageView(views[i].imageView.vkImageView).sampler(sampler.vkSampler)
                 }
 

@@ -68,7 +68,7 @@ Added to `commands.kt`:
   - Security considerations
   - Troubleshooting guide
 
-- **sample-docs.html**: Interactive demonstration page with:
+- **dev_docs/experiments/sample-docs.html**: Interactive demonstration page with:
   - Complete API reference
   - Live demos for all features
   - Working code examples
@@ -87,7 +87,7 @@ Added to `commands.kt`:
 ### Basic Usage
 1. Press `F1` or `Cmd/Ctrl+P` to open command menu
 2. Type "Switch to Documentation Iframe"
-3. Enter URL: `http://localhost:9092/sample-docs.html`
+3. Enter URL: `http://localhost:9092/dev_docs/experiments/sample-docs.html`
 4. Interact with the documentation page
 5. Click "Back to Editor" or use command menu to return
 
@@ -147,14 +147,14 @@ if (typeof window.newBox === 'function') {
 
 This is documented in:
 - DOCS_IFRAME_MODE.md
-- sample-docs.html demos
+- `dev_docs/experiments/sample-docs.html` demos
 - API console warnings
 
 ## Files Modified/Added
 
 ### New Files
 - `src/commonMain/resources/docsIframeApi.js` (295 lines)
-- `src/commonMain/resources/sample-docs.html` (344 lines)
+- `dev_docs/experiments/sample-docs.html` (344 lines)
 - `DOCS_IFRAME_MODE.md` (207 lines)
 - `IMPLEMENTATION_COMPLETE.md` (this file)
 

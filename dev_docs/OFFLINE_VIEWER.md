@@ -35,14 +35,21 @@ http://your-server.com/offline.html?file=http://example.com/path/to/metadata.edn
 
 ### Publishing Documentation
 
-1. Copy these files to your web server:
+1. Build a static bundle:
+   ```bash
+   ./build-offline-docs.sh
+   ```
+
+2. Copy `dist/offline-viewer/` to your web server. It contains:
    - `offline.html`
    - `edn-parser.js`
    - `offline-viewer.js`
-   - `iosevka-regular.woff2` and `iosevka.css` (fonts)
+   - `examples-gallery.html`
+   - `iosevka.css` and `woff2/` (fonts)
    - `min/vs/` directory (Monaco editor)
+   - `metadata_store/` example documents
 
-2. Create an HTML page linking to your Field documents:
+3. Create an HTML page linking to your Field documents:
 
 ```html
 <a href="offline.html?file=examples/hello-world.edn">

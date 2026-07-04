@@ -456,7 +456,7 @@ val Vector3dc.v2: Vector2d
     get() = Vector2d(this.x(), this.y())
 
 val Vector2fc.v3: Vector3f
-    get() = Vector3f(this.x().toFloat(), this.y().toFloat(), 0.0f)
+    get() = Vector3f(this.x(), this.y(), 0.0f)
 
 val Vector3fc.v2: Vector2f
     get() = Vector2f(this.x(), this.y())
@@ -683,5 +683,4 @@ class Cuboid(val x: Float, val y: Float, val z: Float, val w: Float, val h: Floa
         }
     }
 }
-
 

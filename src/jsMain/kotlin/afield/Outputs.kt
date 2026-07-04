@@ -139,7 +139,7 @@ private fun sameEditor(a: dynamic, b: dynamic): Boolean {
     return weakHash(a) == weakHash(b)
 }
 
-private fun findReusableOutput(editor: dynamic, belowLine: Int, extraClass: String): dynamic {
+private fun findReusableOutput(editor: dynamic, belowLine: Int, extraClass: String, allowNearby: Boolean = true): dynamic {
     val candidates = knownOutputs.filter { output ->
         val outputEditor = output.editor ?: return@filter false
         sameEditor(outputEditor, editor) && (output.kind as? String) == extraClass
@@ -149,6 +149,7 @@ private fun findReusableOutput(editor: dynamic, belowLine: Int, extraClass: Stri
         .filter { (it.line as? Number)?.toInt() == belowLine }
         .maxByOrNull { (it.insertionOrder as? Number)?.toInt() ?: -1 }
     if (exact != null) return exact
+    if (!allowNearby) return null
 
     return candidates
         .filter {
@@ -1301,7 +1302,12 @@ fun addOutput(
         }
     }
 
-    val found = if (canInline) null else findReusableOutput(editor, belowLine, extraClass)
+    val found = if (canInline) null else findReusableOutput(
+        editor,
+        belowLine,
+        extraClass,
+        allowNearby = !richHtml && extraClass != "error"
+    )
     if (found != null) {
         found.autoScroll = !replaceRichHtml
         val shouldPulse = if (replaceRichHtml) {

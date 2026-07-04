@@ -22,6 +22,37 @@ This repository builds **Field·4**, a Kotlin-based live-coding environment for 
   - Keystore env vars: `AFIELD_KEYSTORE_PATH`, `AFIELD_KEYSTORE_PASS`, `AFIELD_KEYSTORE_ALIAS`
   - Generate dev keystore: `./gradlew generateLocalKeystore` (writes `config/field4-local.p12`)
 
+### Python / uv recipes for agents
+
+Use `uv` for agent-facing Python tooling so MkDocs and the backdoor share the same dependency environment. This matters because `public/docs_hooks.py` runs `tools/field_backdoor.py` with the same Python interpreter that is running MkDocs.
+
+- Backdoor status:
+
+```bash
+uv run --group backdoor python tools/field_backdoor.py --json --port 9477 --command status
+```
+
+- Full MkDocs build with all Field screenshots/videos regenerated:
+
+```bash
+cd public && FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 \
+  uv run --project .. --group docs mkdocs build
+```
+
+- Fast docs build using existing captures:
+
+```bash
+cd public && FIELD_DOCS_RUNNER_MODE=never \
+  uv run --project .. --group docs mkdocs build
+```
+
+- Iterating docs locally:
+
+```bash
+cd public && FIELD_DOCS_RUNNER_MODE=incremental FIELD_DOCS_RUNNER_PORT=9477 \
+  uv run --project .. --group docs mkdocs serve
+```
+
 ### Gradle hygiene for agents
 
 - On Windows, agents should use the checked-in Gradle wrapper directly for compile checks:
@@ -43,13 +74,13 @@ Mac OS X, aarch64
 Mac OS X
 ```
 
-  In this state, do not keep waiting, do not retry `./gradlew --status`, and do not start more Gradle tasks. Run `killall -9 java`, then report the compile as unverified. Prefer a targeted verification path such as `python3 tools/field_backdoor.py --json --port <custom-port> --command 'run-jvm-main ...'` when it fits the change.
+  In this state, do not keep waiting, do not retry `./gradlew --status`, and do not start more Gradle tasks. Run `killall -9 java`, then report the compile as unverified. Prefer a targeted verification path such as `uv run --group backdoor python tools/field_backdoor.py --json --port <custom-port> --command 'run-jvm-main ...'` when it fits the change.
 - If Gradle appears hung or reports a lock error, run `killall -9 java` before retrying Gradle.
 - Use an isolated `GRADLE_USER_HOME` / `--project-cache-dir` only as a fallback when there is a confirmed cache-lock conflict that cannot be cleared without disrupting the user's running work. The isolated path is expected to be much slower because it loses the warm project caches.
 
 ## Field Backdoor (Preferred for Agents)
 
-- When you need to verify Field behavior by actually running code, prefer `python3 tools/field_backdoor.py` over driving the browser manually.
+- When you need to verify Field behavior by actually running code, prefer `uv run --group backdoor python tools/field_backdoor.py` over driving the browser manually.
 - When the thing you want to verify is a JVM entrypoint or smoke-style example, prefer the backdoor's `run-jvm-main` command over ad hoc `gradlew` `JavaExec`, temporary init scripts, or custom classpath launchers. Use transient scratch boxes for snippet-level checks and screenshots.
 - The backdoor attaches to an existing Field at `https://localhost:9092` or starts Field itself using the Gradle wrapper command above, opens a scratch document by default, and lets you create boxes, set code/shaders, run or launch them, stop them, and capture outputs/errors as JSON.
 - For agent automation, do not rely on the default port. Pass a custom high port such as `--port 9477` so the backdoor starts or reuses an isolated agent-owned Field instead of silently attaching to a stale dev server on `9092`.
@@ -60,18 +91,20 @@ Mac OS X
 - Every run writes a unique log file under `.field-backdoor/logs/`. `status` reports both the session log and the managed server log path.
 - Session logs are debugging artifacts, not durable state. They now store truncated previews of very large websocket payloads, and it is safe to clear `.field-backdoor/logs/` if runaway visualizer output fills the disk during automation.
 - `run-jvm-main` omits the full launched JVM command/classpath from JSON output by default to keep agent context small. Add `--include-command` only when debugging launch/classpath construction.
+- For semantic document automation, prefer `OperationTranscript` macro YAML over one-off command chains. Reusable agent examples live in `dev_docs/agents/transcripts/`; write them into the current document with `macro write <name> --file <path>`, then run them with `macro run <name>`.
+- For `afield.four` graphics automation, treat renderer access as graph topology. Run `dev_docs/agents/transcripts/graphics_renderer_launch.yaml`, create the example box, connect `agent_graphics_context -> example_box`, then run the example. If code starts coroutine work with `start(...)`, resolve `val renderer: Renderer = fromContext()` before `start(...)` and pass it into async helpers explicitly.
 
 Minimum hello world:
 
 ```bash
-python3 tools/field_backdoor.py --json --port 9477 \
+uv run --group backdoor python tools/field_backdoor.py --json --port 9477 \
   --command 'new-box --name Hello' \
   --command 'run @last --value "println(\"hello world\")"'
 ```
 
 Recommended agent workflow:
 
-1. Pick a custom high port and start with `python3 tools/field_backdoor.py --json --port 9477 --command status` to see whether it started Field, whether `managedServer` is true, and where the logs are.
+1. Pick a custom high port and start with `uv run --group backdoor python tools/field_backdoor.py --json --port 9477 --command status` to see whether it started Field, whether `managedServer` is true, and where the logs are.
 2. If you unexpectedly connect to an existing server or suspect stale code, do not keep retrying on the same default port. Pick a new custom port and start a fresh managed Field there.
 3. For quick execution checks, stay in scratch mode and use `new-box`, `connect`, `disconnect`, `set`, `run`, `launch`, `stop`, and `output`.
 4. For larger snippets, prefer `--file -` with a heredoc or pipe. Use `--file <path>` when the code already lives in a file.
@@ -166,6 +199,8 @@ Use:
 
 Detailed reference:
 - `dev_docs/agents/FIELD_BACKDOOR.md`
+- Medium-term transcript analysis loop:
+  `dev_docs/agents/TRANSCRIPT_SELF_IMPROVEMENT_LOOPS.md`
 
 Phase-1 smoke test runner:
 
@@ -178,7 +213,7 @@ This regenerates `build/field-tests/catalog.json`, then runs each discovered `FI
 ## Autonomous Docs/Test Loop
 
 - Agents are expected to make code changes, API changes, documentation fixes, and test-runner fixes autonomously when the docs/test pipeline exposes a real problem.
-- The default repair loop is: run `python3 tools/run_field_tests.py --refresh-catalog`, run `cd public && FIELD_DOCS_RUNNER_MODE=always mkdocs build` (or `mkdocs serve` while iterating), inspect the first concrete failing example, fix it in code or docs, and rerun until clean.
+- The default repair loop is: run `python3 tools/run_field_tests.py --refresh-catalog`, run `cd public && FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project .. --group docs mkdocs build` (or `uv run --project .. --group docs mkdocs serve` while iterating), inspect the first concrete failing example, fix it in code or docs, and rerun until clean.
 - Use `FIELD_DOCS_RUNNER_MODE=incremental` for fast local iteration against an already-clean cache.
 - Use `FIELD_DOCS_RUNNER_MODE=strict` when runner logic changes should invalidate cached captures through `public/docs_hooks.py` digest changes.
 - Use `FIELD_DOCS_RUNNER_MODE=always` when you need every screenshot/video to be regenerated regardless of cache state.
@@ -238,9 +273,9 @@ Static assets loaded by `src/commonMain/resources/index.html`:
 - `src/jsMain/resources/monaco/`: Monaco Editor distribution.
 - `src/jsMain/resources/*.js|*.css|*.woff2`: fonts, UI helpers, plotly, interact.js, etc.
 
-### `src/jsChatMain` (Chat UI bundle)
+### Chat UI
 
-- Separate Kotlin/JS entrypoint for a lightweight chat page used by guide/slideshow features.
+- There is no separate `src/jsChatMain` bundle in this checkout. Guide/shared chat UI is mounted from the main frontend and proxied through `src/jvmMain/kotlin/afield/server/chat.kt` when the optional Flask chat server is running.
 
 ---
 
@@ -347,6 +382,7 @@ Debugging checklist:
   - then walking up `parents` and repeating the same checks
 - The helpers live in `afield.four.modules` (see `src/jvmMain/kotlin/afield/four/modules/Mesh.kt`) and are used heavily so constructors can be ergonomic during live coding, e.g. `val renderer: Renderer = fromContext()`.
 - Use `fromContextWithNameOrNull<T>("name")` when you need a specific named value rather than “first by type”.
+- A missing `Renderer` in graphics code is usually a topology bug, not a timing bug: the renderer parent was not launched, the example box was not connected beneath it, or the code looked up context after crossing an async boundary. Fix the graph or capture `Renderer` before `start(...)`; do not solve this with sleeps.
 
 ### Integrated editor + documentation browser
 
@@ -480,11 +516,11 @@ The default mapping is in `Box.ioSeparateProperties` (`src/jvmMain/kotlin/afield
 - Source content: `public/docs/` (Markdown; notebooks supported via `mkdocs-jupyter`)
 - Output: `public/field4/` (`site_dir: field4` in `public/mkdocs.yml`)
 - Typical loop:
-  - Build docs: `cd public && mkdocs build`
-  - Fast incremental docs build: `cd public && FIELD_DOCS_RUNNER_MODE=incremental mkdocs build`
-  - Strict docs build that re-runs screenshots even after runner changes: `cd public && FIELD_DOCS_RUNNER_MODE=strict mkdocs build`
-  - Full recapture build that bypasses the screenshot/video cache entirely: `cd public && FIELD_DOCS_RUNNER_MODE=always mkdocs build`
-  - No-capture docs build that reuses existing assets without starting Field: `cd public && FIELD_DOCS_RUNNER_MODE=never mkdocs build`
+  - Build docs: `cd public && uv run --project .. --group docs mkdocs build`
+  - Fast incremental docs build: `cd public && FIELD_DOCS_RUNNER_MODE=incremental FIELD_DOCS_RUNNER_PORT=9477 uv run --project .. --group docs mkdocs build`
+  - Strict docs build that re-runs screenshots even after runner changes: `cd public && FIELD_DOCS_RUNNER_MODE=strict FIELD_DOCS_RUNNER_PORT=9477 uv run --project .. --group docs mkdocs build`
+  - Full recapture build that bypasses the screenshot/video cache entirely: `cd public && FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project .. --group docs mkdocs build`
+  - No-capture docs build that reuses existing assets without starting Field: `cd public && FIELD_DOCS_RUNNER_MODE=never uv run --project .. --group docs mkdocs build`
   - Serve built site (matches Field’s default docs iframe URL): `cd public && python3 -m http.server 8000`
   - Browse: `http://localhost:8000/field4/`
 
@@ -502,7 +538,9 @@ The default mapping is in `Box.ioSeparateProperties` (`src/jvmMain/kotlin/afield
 ### Read-only viewer for `.edn` documents (offline viewer)
 
 - Source: `src/commonMain/resources/offline.html`, `src/commonMain/resources/offline-viewer.js`, `src/commonMain/resources/edn-parser.js`
+- Canonical vendored assets: `src/jsMain/resources/monaco/min`, `src/jsMain/resources/woff2`, `src/jsMain/resources/iosevka.css`
 - Build script: `build-offline-docs.sh` → outputs `dist/offline-viewer/`
+- Static copies under `public/` and `dev_docs/` are generated/ignored; refresh them with `python3 tools/sync_offline_assets.py --target public --target dev_docs --no-docs`.
 - Embedding docs: `src/commonMain/resources/embed-example.html` shows how to iframe `offline.html?file=...` for read-only document display.
 
 ---

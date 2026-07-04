@@ -13,6 +13,7 @@ import com.illposed.osc.transport.OSCPortIn
 import com.illposed.osc.transport.OSCPortInBuilder
 import com.illposed.osc.transport.OSCPortOut
 import com.illposed.osc.transport.OSCPortOutBuilder
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -250,6 +251,7 @@ private data class OscClientEntry(val client: OscClient)
 object OscServers {
     private val cache = ConcurrentHashMap<Int, OscEntry>()
 
+    @OptIn(DelicateCoroutinesApi::class)
     fun get(port: Int = 9000): OscServer {
         val entry = cache.compute(port) { _, existing ->
             if (existing == null || existing.job.isCancelled || existing.job.isCompleted) {

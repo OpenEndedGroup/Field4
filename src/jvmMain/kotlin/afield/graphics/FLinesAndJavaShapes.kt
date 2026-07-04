@@ -91,9 +91,10 @@ class FLinesAndJavaShapes {
         f.nodes.forEach {
             when (it) {
                 is FLine.MoveTo -> {
-                    at = FLine()
-                    r.add(at!!)
-                    at!!.nodes.add(it.copy())
+                    val line = FLine()
+                    at = line
+                    r.add(line)
+                    line.nodes.add(it.copy())
                 }
 
                 is FLine.LineTo -> {
@@ -223,9 +224,9 @@ class FLinesAndJavaShapes {
                 if (alpha < 0.5) Vec3(on.nodes.get(clamp(index)).to)
                 else Vec3(on.nodes.get(clamp(index + 1)).to)
             } else if (segmentIsLinear()) {
-                on.nodes.get(clamp(index)).to.lerp(on.nodes.get(clamp(index + 1)).to, alpha.toFloat(), Vec3())
+                on.nodes.get(clamp(index)).to.lerp(on.nodes.get(clamp(index + 1)).to, alpha, Vec3())
             } else if (segmentIsClose()) {
-                on.nodes.get(clamp(index)).to.lerp(closeTarget(), alpha.toFloat(), Vec3())
+                on.nodes.get(clamp(index)).to.lerp(closeTarget(), alpha, Vec3())
             } else if (segmentIsCubic()) {
                 evaluateCubicFrame(
                     on.nodes.get(clamp(index)).to,
@@ -386,7 +387,7 @@ class FLinesAndJavaShapes {
             val t: Vec3? = tangent()
             val t2: Vec2? = if (t == null) null else Vec2(t.y, -t.x)
 
-            if (t2 == null) System.err.println(("NORMAL2 failed :" + on.nodes).toString() + " / " + this.alpha)
+            if (t2 == null) System.err.println("NORMAL2 failed :" + on.nodes + " / " + this.alpha)
 
             return t2
         }
@@ -403,7 +404,7 @@ class FLinesAndJavaShapes {
                 val p3: Vec3 = (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).to
 
                 val c = CubicSegment3(p0, p1, p2, p3)
-                return Vec3(normal()).normalize().mul(c.R(alpha).toFloat())
+                return Vec3(normal()).normalize().mul(c.R(alpha))
             } else return null
         }
 
@@ -502,11 +503,11 @@ class FLinesAndJavaShapes {
          */
         fun extremalOuterPoints(): List<Float> {
             return this.extremalOuterPoints { p: Pair<Vec3, Vec3> ->
-                Math.signum(p.first.x) !== Math.signum(
+                Math.signum(p.first.x) != Math.signum(
                     p.second.x
-                ) || Math.signum(p.first.y) !== Math.signum(p.second.y) || Math.signum(
+                ) || Math.signum(p.first.y) != Math.signum(p.second.y) || Math.signum(
                     p.first.z
-                ) !== Math.signum(p.second.z)
+                ) != Math.signum(p.second.z)
             }
         }
 
@@ -617,11 +618,12 @@ class FLinesAndJavaShapes {
                     cursor.setD(at)
                     val s: Pair<FLine?, FLine?> = cursor.split()
 
-                    f.add(s.first!!)
+                    val left = s.first ?: return f
+                    f.add(left)
                     soFar = at
                     right = s.second
-                    if (right==null) return f
-                    cursor = Cursor(right!!, 0.1f)
+                    val nextRight = right ?: return f
+                    cursor = Cursor(nextRight, 0.1f)
                 }
                 f.add(right!!)
                 return f
@@ -719,7 +721,7 @@ class FLinesAndJavaShapes {
         fun setD(d: Float): Cursor {
             val q: Float = pathFlattener.lengthToDot(d)
             index = q.toInt()
-            alpha = (q - index).toFloat()
+            alpha = q - index
             return this
         }
 
@@ -773,10 +775,10 @@ class FLinesAndJavaShapes {
             this.b = Vec3(b)
             this.c = Vec3(c)
             this.d = Vec3(d)
-            this.a.x += dx.toFloat()
-            this.b.x += dx.toFloat()
-            this.c.x += dx.toFloat()
-            this.d.x += dx.toFloat()
+            this.a.x += dx
+            this.b.x += dx
+            this.c.x += dx
+            this.d.x += dx
         }
 
         constructor(a: Vec3, b: Vec3, c: Vec3, d: Vec3, dx: Float, dy: Float) {
@@ -784,14 +786,14 @@ class FLinesAndJavaShapes {
             this.b = Vec3(b)
             this.c = Vec3(c)
             this.d = Vec3(d)
-            this.a.x += dx.toFloat()
-            this.b.x += dx.toFloat()
-            this.c.x += dx.toFloat()
-            this.d.x += dx.toFloat()
-            this.a.y += dy.toFloat()
-            this.b.y += dy.toFloat()
-            this.c.y += dy.toFloat()
-            this.d.y += dy.toFloat()
+            this.a.x += dx
+            this.b.x += dx
+            this.c.x += dx
+            this.d.x += dx
+            this.a.y += dy
+            this.b.y += dy
+            this.c.y += dy
+            this.d.y += dy
         }
 
         constructor(a: Vec3, d: Vec3) {
@@ -812,7 +814,7 @@ class FLinesAndJavaShapes {
             val c2 = rotateToX(x1, x2)
             return c2.findYZeroRoots().filter { x ->
                 Math.abs(
-                    evaluateCubicFrame(c2.a.z, c2.b.z, c2.c.z, c2.d.z, x.toFloat()).x
+                    evaluateCubicFrame(c2.a.z, c2.b.z, c2.c.z, c2.d.z, x).x
                 ) < 1e-5f
             }.map { x ->
                 evaluateCubicFrame(
@@ -887,7 +889,7 @@ class FLinesAndJavaShapes {
             val s1 = CubicSegment3(a, b, c, d)
             val s2 = CubicSegment3(a, b, c, d)
 
-            splitCubicFrame(s1.a, s1.b, s2.c, s2.d, alpha.toFloat(), c12, m, c21, Vec3())
+            splitCubicFrame(s1.a, s1.b, s2.c, s2.d, alpha, c12, m, c21, Vec3())
 
             s1.c = c12
             s1.d = m
@@ -983,8 +985,8 @@ class FLinesAndJavaShapes {
             val dd: MutableList<Float> = ArrayList()
 
             for (i in 0 until subdiv) {
-                val alphaStart = ((i - 0.75f) / subdiv).toFloat()
-                val alphaEnd = ((i + 0.75f) / subdiv).toFloat()
+                val alphaStart = (i - 0.75f) / subdiv
+                val alphaEnd = (i + 0.75f) / subdiv
                 val yStart: Float = evaluateCubicFrame(a.y, b.y, c.y, d.y, alphaStart).x
                 val yEnd: Float = evaluateCubicFrame(a.y, b.y, c.y, d.y, alphaEnd).x
                 if (sign(yStart) != sign(yEnd)) {
@@ -1036,8 +1038,8 @@ class FLinesAndJavaShapes {
             val dd: MutableList<Float> = ArrayList()
 
             for (i in 0 until subdiv) {
-                val alphaStart = ((i - 0.75f) / subdiv).toFloat()
-                val alphaEnd = ((i + 0.75f) / subdiv).toFloat()
+                val alphaStart = (i - 0.75f) / subdiv
+                val alphaEnd = (i + 0.75f) / subdiv
                 val yStart: Float = evaluateCubicFrame(a.x, b.x, c.x, d.x, alphaStart).x
                 val yEnd: Float = evaluateCubicFrame(a.x, b.x, c.x, d.x, alphaEnd).x
                 if (sign(yStart) != sign(yEnd)) {
@@ -1088,8 +1090,8 @@ class FLinesAndJavaShapes {
             val dd: MutableList<Float> = ArrayList()
 
             for (i in 0 until subdiv) {
-                val alphaStart = ((i - 0.75f) / subdiv).toFloat()
-                val alphaEnd = ((i + 0.75f) / subdiv).toFloat()
+                val alphaStart = (i - 0.75f) / subdiv
+                val alphaEnd = (i + 0.75f) / subdiv
                 val yStart: Float = evaluateCubicFrame(a.y, b.y, c.y, d.y, alphaStart).y
                 val yEnd: Float = evaluateCubicFrame(a.y, b.y, c.y, d.y, alphaEnd).y
                 if (sign(yStart) != sign(yEnd)) {
@@ -1141,8 +1143,8 @@ class FLinesAndJavaShapes {
             val dd: MutableList<Float> = ArrayList()
 
             for (i in 0 until subdiv) {
-                val alphaStart = ((i - 0.75f) / subdiv).toFloat()
-                val alphaEnd = ((i + 0.75f) / subdiv).toFloat()
+                val alphaStart = (i - 0.75f) / subdiv
+                val alphaEnd = (i + 0.75f) / subdiv
                 val yStart: Float = evaluateCubicFrame(a.x, b.x, c.x, d.x, alphaStart).y
                 val yEnd: Float = evaluateCubicFrame(a.x, b.x, c.x, d.x, alphaEnd).y
                 if (sign(yStart) != sign(yEnd)) {
@@ -1195,8 +1197,8 @@ class FLinesAndJavaShapes {
             val dd: MutableList<Float> = ArrayList()
 
             for (i in 0 until subdiv) {
-                val alphaStart = ((i - 0.75f) / subdiv).toFloat()
-                val alphaEnd = ((i + 0.75f) / subdiv).toFloat()
+                val alphaStart = (i - 0.75f) / subdiv
+                val alphaEnd = (i + 0.75f) / subdiv
                 val yStart: Float = evaluateCubicFrame(a.z, b.z, c.z, d.z, alphaStart).y
                 val yEnd: Float = evaluateCubicFrame(a.z, b.z, c.z, d.z, alphaEnd).y
                 if (sign(yStart) != sign(yEnd)) {
@@ -1271,7 +1273,7 @@ class FLinesAndJavaShapes {
             val D: Vec3 = D(alpha)
             val DD: Vec3 = DD(alpha)
 
-            return (D.x * D.x + D.y * D.y + D.z * D.z).pow((3 / 2f).toFloat()) / D.cross(DD, Vec3())
+            return (D.x * D.x + D.y * D.y + D.z * D.z).pow(3 / 2f) / D.cross(DD, Vec3())
                 .length()
         }
 
@@ -1499,7 +1501,7 @@ class FLinesAndJavaShapes {
             val s1: CubicSegment2 = CubicSegment2(a, b, c, d)
             val s2: CubicSegment2 = CubicSegment2(a, b, c, d)
 
-            splitCubicFrame(s1.a, s1.b, s2.c, s2.d, alpha.toFloat(), c12, m, c21, Vec2())
+            splitCubicFrame(s1.a, s1.b, s2.c, s2.d, alpha, c12, m, c21, Vec2())
 
             s1.c = c12
             s1.d = m
@@ -1587,8 +1589,8 @@ class FLinesAndJavaShapes {
             val dd: MutableList<Float> = ArrayList()
 
             for (i in 0 until subdiv) {
-                val alphaStart = ((i - 0.75f) / subdiv).toFloat()
-                val alphaEnd = ((i + 0.75f) / subdiv).toFloat()
+                val alphaStart = (i - 0.75f) / subdiv
+                val alphaEnd = (i + 0.75f) / subdiv
                 val yStart: Float = evaluateCubicFrame(a.y, b.y, c.y, d.y, alphaStart).x
                 val yEnd: Float = evaluateCubicFrame(a.y, b.y, c.y, d.y, alphaEnd).x
                 if (sign(yStart) != sign(yEnd)) {
@@ -1640,8 +1642,8 @@ class FLinesAndJavaShapes {
             val dd: MutableList<Float> = ArrayList()
 
             for (i in 0 until subdiv) {
-                val alphaStart = ((i - 0.75f) / subdiv).toFloat()
-                val alphaEnd = ((i + 0.75f) / subdiv).toFloat()
+                val alphaStart = (i - 0.75f) / subdiv
+                val alphaEnd = (i + 0.75f) / subdiv
                 val yStart: Float = evaluateCubicFrame(a.x, b.x, c.x, d.x, alphaStart).x
                 val yEnd: Float = evaluateCubicFrame(a.x, b.x, c.x, d.x, alphaEnd).x
                 if (sign(yStart) != sign(yEnd)) {
@@ -1693,8 +1695,8 @@ class FLinesAndJavaShapes {
             val dd: MutableList<Float> = ArrayList()
 
             for (i in 0 until subdiv) {
-                val alphaStart = ((i - 0.75f) / subdiv).toFloat()
-                val alphaEnd = ((i + 0.75f) / subdiv).toFloat()
+                val alphaStart = (i - 0.75f) / subdiv
+                val alphaEnd = (i + 0.75f) / subdiv
                 val yStart: Float = evaluateCubicFrame(a.y, b.y, c.y, d.y, alphaStart).y
                 val yEnd: Float = evaluateCubicFrame(a.y, b.y, c.y, d.y, alphaEnd).y
                 if (sign(yStart) != sign(yEnd)) {
@@ -1746,8 +1748,8 @@ class FLinesAndJavaShapes {
             val dd: MutableList<Float> = ArrayList()
 
             for (i in 0 until subdiv) {
-                val alphaStart = ((i - 0.75f) / subdiv).toFloat()
-                val alphaEnd = ((i + 0.75f) / subdiv).toFloat()
+                val alphaStart = (i - 0.75f) / subdiv
+                val alphaEnd = (i + 0.75f) / subdiv
                 val yStart: Float = evaluateCubicFrame(a.x, b.x, c.x, d.x, alphaStart).y
                 val yEnd: Float = evaluateCubicFrame(a.x, b.x, c.x, d.x, alphaEnd).y
                 if (sign(yStart) != sign(yEnd)) {
@@ -1895,8 +1897,8 @@ class FLinesAndJavaShapes {
             val alpha2 = alpha * alpha
             val alpha3 = alpha2 * alpha
 
-            out.x = (a.x * oma3 + 3 * c1.x * alpha * oma2 + 3 * c2.x * alpha2 * oma + b.x * alpha3).toFloat()
-            out.y = (a.y * oma3 + 3 * c1.y * alpha * oma2 + 3 * c2.y * alpha2 * oma + b.y * alpha3).toFloat()
+            out.x = a.x * oma3 + 3 * c1.x * alpha * oma2 + 3 * c2.x * alpha2 * oma + b.x * alpha3
+            out.y = a.y * oma3 + 3 * c1.y * alpha * oma2 + 3 * c2.y * alpha2 * oma + b.y * alpha3
 
             return out
         }
@@ -1914,14 +1916,14 @@ class FLinesAndJavaShapes {
             var alpha3 = alpha2 * alpha
 
             val out: Vec2 = Vec2()
-            out.x = (a * oma3 + 3 * c1 * alpha * oma2 + 3 * c2 * alpha2 * oma + b * alpha3).toFloat()
+            out.x = a * oma3 + 3 * c1 * alpha * oma2 + 3 * c2 * alpha2 * oma + b * alpha3
 
             oma3 = -3 * (1 - alpha) * (1 - alpha)
             val alphaoma2 = 3 * alpha * alpha - 4 * alpha + 1
             val alpha2oma = alpha * (2 - 3 * alpha)
             alpha3 = 3 * alpha * alpha
 
-            out.y = (a * oma3 + 3 * c1 * alphaoma2 + 3 * c2 * alpha2oma + b * alpha3).toFloat()
+            out.y = a * oma3 + 3 * c1 * alphaoma2 + 3 * c2 * alpha2oma + b * alpha3
 
             return out
         }
@@ -1937,7 +1939,7 @@ class FLinesAndJavaShapes {
             var alpha2oma = alpha * (2 - 3 * alpha)
             var alpha3 = 3 * alpha * alpha
 
-            out.x = (a * oma3 + 3 * c1 * alphaoma2 + 3 * c2 * alpha2oma + b * alpha3).toFloat()
+            out.x = a * oma3 + 3 * c1 * alphaoma2 + 3 * c2 * alpha2oma + b * alpha3
 
 
             oma3 = -2 + 2 * alpha
@@ -1945,7 +1947,7 @@ class FLinesAndJavaShapes {
             alpha2oma = 2 - 6 * alpha
             alpha3 = 6 * alpha
 
-            out.y = (a * oma3 + 3 * c1 * alphaoma2 + 3 * c2 * alpha2oma + b * alpha3).toFloat()
+            out.y = a * oma3 + 3 * c1 * alphaoma2 + 3 * c2 * alpha2oma + b * alpha3
 
             return out
         }
@@ -1959,9 +1961,9 @@ class FLinesAndJavaShapes {
             val alpha2 = alpha * alpha
             val alpha3 = alpha2 * alpha
 
-            out.x = (a.x * oma3 + 3 * c1.x * alpha * oma2 + 3 * c2.x * alpha2 * oma + b.x * alpha3).toFloat()
-            out.y = (a.y * oma3 + 3 * c1.y * alpha * oma2 + 3 * c2.y * alpha2 * oma + b.y * alpha3).toFloat()
-            out.z = (a.z * oma3 + 3 * c1.z * alpha * oma2 + 3 * c2.z * alpha2 * oma + b.z * alpha3).toFloat()
+            out.x = a.x * oma3 + 3 * c1.x * alpha * oma2 + 3 * c2.x * alpha2 * oma + b.x * alpha3
+            out.y = a.y * oma3 + 3 * c1.y * alpha * oma2 + 3 * c2.y * alpha2 * oma + b.y * alpha3
+            out.z = a.z * oma3 + 3 * c1.z * alpha * oma2 + 3 * c2.z * alpha2 * oma + b.z * alpha3
 
             return out
         }
@@ -1991,9 +1993,9 @@ class FLinesAndJavaShapes {
             val alpha2oma = alpha * (2 - 3 * alpha)
             val alpha3 = 3 * alpha * alpha
 
-            out.x = (a.x * oma3 + 3 * c1.x * alphaoma2 + 3 * c2.x * alpha2oma + b.x * alpha3).toFloat()
-            out.y = (a.y * oma3 + 3 * c1.y * alphaoma2 + 3 * c2.y * alpha2oma + b.y * alpha3).toFloat()
-            out.z = (a.z * oma3 + 3 * c1.z * alphaoma2 + 3 * c2.z * alpha2oma + b.z * alpha3).toFloat()
+            out.x = a.x * oma3 + 3 * c1.x * alphaoma2 + 3 * c2.x * alpha2oma + b.x * alpha3
+            out.y = a.y * oma3 + 3 * c1.y * alphaoma2 + 3 * c2.y * alpha2oma + b.y * alpha3
+            out.z = a.z * oma3 + 3 * c1.z * alphaoma2 + 3 * c2.z * alpha2oma + b.z * alpha3
 
             println(a.toString() + " " + c1 + " " + c2 + " " + b + " " + alpha + " == " + out)
 
@@ -2008,9 +2010,9 @@ class FLinesAndJavaShapes {
             val alpha2oma = (2 - 6 * alpha)
             val alpha3 = 6 * alpha
 
-            out.x = (a.x * oma3 + 3 * c1.x * alphaoma2 + 3 * c2.x * alpha2oma + b.x * alpha3).toFloat()
-            out.y = (a.y * oma3 + 3 * c1.y * alphaoma2 + 3 * c2.y * alpha2oma + b.y * alpha3).toFloat()
-            out.z = (a.z * oma3 + 3 * c1.z * alphaoma2 + 3 * c2.z * alpha2oma + b.z * alpha3).toFloat()
+            out.x = a.x * oma3 + 3 * c1.x * alphaoma2 + 3 * c2.x * alpha2oma + b.x * alpha3
+            out.y = a.y * oma3 + 3 * c1.y * alphaoma2 + 3 * c2.y * alpha2oma + b.y * alpha3
+            out.z = a.z * oma3 + 3 * c1.z * alphaoma2 + 3 * c2.z * alpha2oma + b.z * alpha3
 
             return out
         }
@@ -2126,47 +2128,44 @@ class FLinesAndJavaShapes {
                     if (lastAt == null || (Math.abs(lastAt.x - cc[4]) + Math.abs(lastAt.y - cc[5]) > 1e-15)) `in`.cubicTo(
                         cc[0], cc[1], cc[2], cc[3], cc[4], cc[5]
                     )
-                    if (lastAt == null) lastAt = Vec2(cc[4].toFloat(), cc[5].toFloat())
+                    if (lastAt == null) lastAt = Vec2(cc[4], cc[5])
                     else {
-                        lastAt.x = cc[4].toFloat()
-                        lastAt.y = cc[5].toFloat()
+                        lastAt.x = cc[4]
+                        lastAt.y = cc[5]
                     }
                 } else if (ty == PathIterator.SEG_LINETO) {
                     if (lastAt == null || (Math.abs(lastAt.x - cc[0]) + Math.abs(lastAt.y - cc[1]) > 1e-15)) `in`.lineTo(
                         cc[0], cc[1]
                     )
-                    if (lastAt == null) lastAt = Vec2(cc[0].toFloat(), cc[1].toFloat())
+                    if (lastAt == null) lastAt = Vec2(cc[0], cc[1])
                     else {
-                        lastAt.x = cc[0].toFloat()
-                        lastAt.y = cc[1].toFloat()
+                        lastAt.x = cc[0]
+                        lastAt.y = cc[1]
                     }
                 } else if (ty == PathIterator.SEG_MOVETO) {
                     if (lastAt == null || (Math.abs(lastAt.x - cc[0]) + Math.abs(lastAt.y - cc[1]) > 1e-15)) `in`.moveTo(
                         cc[0], cc[1]
                     )
 
-                    lastMoveTo = Vec2(cc[0].toFloat(), cc[1].toFloat())
+                    lastMoveTo = Vec2(cc[0], cc[1])
 
-                    if (lastAt == null) lastAt = Vec2(cc[0].toFloat(), cc[1].toFloat())
+                    if (lastAt == null) lastAt = Vec2(cc[0], cc[1])
                     else {
-                        lastAt.x = cc[0].toFloat()
-                        lastAt.y = cc[1].toFloat()
+                        lastAt.x = cc[0]
+                        lastAt.y = cc[1]
                     }
                 } else if (ty == PathIterator.SEG_QUADTO) {
+                    val start = lastAt ?: Vec2(cc[2], cc[3])
                     if (lastAt == null || (Math.abs(lastAt.x - cc[2]) + Math.abs(lastAt.y - cc[3]) > 1e-15)) `in`.cubicTo(
-                        (cc[0] - lastAt!!.x) * (2 / 3f) + lastAt!!.x,
-                        (cc[1] - lastAt!!.y) * (2 / 3f) + lastAt!!.y,
+                        (cc[0] - start.x) * (2 / 3f) + start.x,
+                        (cc[1] - start.y) * (2 / 3f) + start.y,
                         (cc[0] - cc[2]) * (2 / 3f) + cc[2],
                         (cc[1] - cc[3]) * (2 / 3f) + cc[3],
-                        cc[2].toFloat(),
-                        cc[3].toFloat()
+                        cc[2],
+                        cc[3]
                     )
 
-                    if (lastAt == null) lastAt = Vec2(cc[2].toFloat(), cc[3].toFloat())
-                    else {
-                        lastAt.x = cc[2].toFloat()
-                        lastAt.y = cc[3].toFloat()
-                    }
+                    lastAt = Vec2(cc[2], cc[3])
                 }
 
                 pi.next()
@@ -2191,54 +2190,51 @@ class FLinesAndJavaShapes {
                     lastAt = null
                 } else if (ty == PathIterator.SEG_CUBICTO) {
                     if (lastAt == null || (Math.abs(lastAt.x - cc[4]) + Math.abs(lastAt.y - cc[5]) > 1e-15)) `in`.cubicTo(
-                        cc[0].toFloat(),
-                        cc[1].toFloat(),
-                        cc[2].toFloat(),
-                        cc[3].toFloat(),
-                        cc[4].toFloat(),
-                        cc[5].toFloat()
+                        cc[0],
+                        cc[1],
+                        cc[2],
+                        cc[3],
+                        cc[4],
+                        cc[5]
                     )
-                    if (lastAt == null) lastAt = Vec2(cc[4].toFloat(), cc[5].toFloat())
+                    if (lastAt == null) lastAt = Vec2(cc[4], cc[5])
                     else {
-                        lastAt.x = cc[4].toFloat()
-                        lastAt.y = cc[5].toFloat()
+                        lastAt.x = cc[4]
+                        lastAt.y = cc[5]
                     }
                 } else if (ty == PathIterator.SEG_LINETO) {
                     if (lastAt == null || (Math.abs(lastAt.x - cc[0]) + Math.abs(lastAt.y - cc[1]) > 1e-15)) `in`.lineTo(
                         cc[0], cc[1]
                     )
-                    if (lastAt == null) lastAt = Vec2(cc[0].toFloat(), cc[1].toFloat())
+                    if (lastAt == null) lastAt = Vec2(cc[0], cc[1])
                     else {
-                        lastAt.x = cc[0].toFloat()
-                        lastAt.y = cc[1].toFloat()
+                        lastAt.x = cc[0]
+                        lastAt.y = cc[1]
                     }
                 } else if (ty == PathIterator.SEG_MOVETO) {
                     if (lastAt == null || (Math.abs(lastAt.x - cc[0]) + Math.abs(lastAt.y - cc[1]) > 1e-15)) `in`.moveTo(
                         cc[0], cc[1]
                     )
 
-                    lastMoveTo = Vec2(cc[0].toFloat(), cc[1].toFloat())
+                    lastMoveTo = Vec2(cc[0], cc[1])
 
-                    if (lastAt == null) lastAt = Vec2(cc[0].toFloat(), cc[1].toFloat())
+                    if (lastAt == null) lastAt = Vec2(cc[0], cc[1])
                     else {
-                        lastAt.x = cc[0].toFloat()
-                        lastAt.y = cc[1].toFloat()
+                        lastAt.x = cc[0]
+                        lastAt.y = cc[1]
                     }
                 } else if (ty == PathIterator.SEG_QUADTO) {
+                    val start = lastAt ?: Vec2(cc[2], cc[3])
                     if (lastAt == null || (Math.abs(lastAt.x - cc[2]) + Math.abs(lastAt.y - cc[3]) > 1e-15)) `in`.cubicTo(
-                        (cc[0] - lastAt!!.x) * (2 / 3f) + lastAt!!.x,
-                        (cc[1] - lastAt!!.y) * (2 / 3f) + lastAt!!.y,
+                        (cc[0] - start.x) * (2 / 3f) + start.x,
+                        (cc[1] - start.y) * (2 / 3f) + start.y,
                         (cc[0] - cc[2]) * (2 / 3f) + cc[2],
                         (cc[1] - cc[3]) * (2 / 3f) + cc[3],
                         cc[2],
                         cc[3]
                     )
 
-                    if (lastAt == null) lastAt = Vec2(cc[2].toFloat(), cc[3].toFloat())
-                    else {
-                        lastAt.x = cc[2].toFloat()
-                        lastAt.y = cc[3].toFloat()
-                    }
+                    lastAt = Vec2(cc[2], cc[3])
                 }
 
                 pi.next()
@@ -2254,26 +2250,26 @@ class FLinesAndJavaShapes {
                 var z = 0.0
                 for (n2 in copyDepthFrom.nodes) {
                     run {
-                        val dd = ((n2.to.x - n.x) * (n2.to.x - n.x) + (n2.to.y - n.y) * (n2.to.y - n.y)) as Float
+                        val dd = (n2.to.x - n.x) * (n2.to.x - n.x) + (n2.to.y - n.y) * (n2.to.y - n.y)
                         if (dd < d) {
-                            d = dd.toFloat()
+                            d = dd
                             z = n2.to.z.toDouble()
                         }
                     }
                     if (n2 is FLine.CubicTo) {
                         run {
                             val dd =
-                                ((n2.c1.x - n.x) * (n2.c1.x - n.x) + (n2.c1.y - n.y) * (n2.c1.y - n.y)) as Float
+                                (n2.c1.x - n.x) * (n2.c1.x - n.x) + (n2.c1.y - n.y) * (n2.c1.y - n.y)
                             if (dd < d) {
-                                d = dd.toFloat()
+                                d = dd
                                 z = n2.c1.z.toDouble()
                             }
                         }
                         run {
                             val dd =
-                                (((n2).c2.x - n.x) * ((n2).c2.x - n.x) + ((n2).c2.y - n.y) * ((n2).c2.y - n.y)) as Float
+                                (n2.c2.x - n.x) * (n2.c2.x - n.x) + (n2.c2.y - n.y) * (n2.c2.y - n.y)
                             if (dd < d) {
-                                d = dd.toFloat()
+                                d = dd
                                 z = (n2).c2.z.toDouble()
                             }
                         }
@@ -2286,13 +2282,13 @@ class FLinesAndJavaShapes {
 
         private fun copyDepthFrom(s1: FLine, close: Function<Vec2, Float>) {
             for (n in s1.nodes) {
-                var z = close.apply(n.to.v2).toFloat()
+                var z = close.apply(n.to.v2)
                 n.to.z = z
                 if (n is FLine.CubicTo) {
-                    z = close.apply((n as FLine.CubicTo).c1.v2)
-                    (n as FLine.CubicTo).c1.z = z
-                    z = close.apply((n as FLine.CubicTo).c2.v2)
-                    (n as FLine.CubicTo).c2.z = z
+                    z = close.apply(n.c1.v2)
+                    n.c1.z = z
+                    z = close.apply(n.c2.v2)
+                    n.c2.z = z
                 }
             }
 //            s1.modify()
@@ -2324,7 +2320,7 @@ class FLinesAndJavaShapes {
             var D = 0.0
             while (D < cc.lengthD()) {
                 r.add(cc.position())
-                cc.setD(distance.let { D += it.toFloat(); D }.toFloat())
+                cc.setD(distance.let { D += it; D }.toFloat())
             }
             return r
         }

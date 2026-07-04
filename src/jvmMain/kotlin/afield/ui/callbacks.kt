@@ -37,6 +37,5 @@ var Box.onTopologyChange by Delegation<MutableMap<String, (Box, Boolean, Box) ->
 }
 
 fun onTopologyChange(a: Box, adding: Boolean, newChild: Box) {
-    (a as Box).onTopologyChange.values.forEach { it(a, adding, newChild) }
+    a.onTopologyChange.values.forEach { it(a, adding, newChild) }
 }
-

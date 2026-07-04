@@ -4066,7 +4066,7 @@ suspend fun main() {
     }
 
     fun applyIncomingRect(set: Set_rect): Boolean {
-        if (set.property !== "frame") return false
+        if (set.property != "frame") return false
 
         val u = set.uid
         val boxes = document.body!!.getElementsByClassName("box").asList()
@@ -4139,7 +4139,7 @@ suspend fun main() {
 
     handlers.put("set-animated-rect") { message, _ ->
         val set = Json.decodeFromJsonElement<Set_animated_rect>(message.payload!!)
-        if (set.property !== "frame") return@put Handled.no
+        if (set.property != "frame") return@put Handled.no
 
         val u = set.uid
         val boxes = document.body!!.getElementsByClassName("box").asList()

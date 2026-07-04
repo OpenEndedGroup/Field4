@@ -174,6 +174,10 @@ class RenderTarget(
 
             val recorded = preRecordedInsideRendering
             val useSecondaryInsideRendering = !recorded.isNullOrEmpty()
+            val renderingFlags = if (useSecondaryInsideRendering) {
+                VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT or
+                    KHRMaintenance7.VK_RENDERING_CONTENTS_INLINE_BIT_KHR
+            } else 0
 
             // Rendering info (KHR)
             val renderInfo = VkRenderingInfoKHR.calloc(stack)
@@ -183,7 +187,7 @@ class RenderTarget(
                         .offset(VkOffset2D.calloc(stack).x(0).y(0))
                         .extent(VkExtent2D.calloc(stack).width(width).height(height))
                 )
-                .flags(if (useSecondaryInsideRendering) VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT else 0)
+                .flags(renderingFlags)
                 .layerCount(1)
                 .pColorAttachments(colorAttachment)
                 .pDepthAttachment(depthAttachment.get(0))

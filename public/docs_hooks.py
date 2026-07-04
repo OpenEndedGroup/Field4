@@ -36,7 +36,7 @@ STATIC_FENCES = {"diffstatic", "diffstatic_runner"}
 FENCE_NAMES = sorted(RUNNER_TARGETS, key=len, reverse=True)
 SCRIPT_VERSION = 12
 RUNNER_RETRIES = 3
-RUNNER_SUBPROCESS_GRACE_SEC = 20.0
+RUNNER_SUBPROCESS_GRACE_SEC = 5.0
 RUNNER_MODE_ENV = "FIELD_DOCS_RUNNER_MODE"
 RUNNER_CONTINUE_ON_ERROR_ENV = "FIELD_DOCS_RUNNER_CONTINUE_ON_ERROR"
 RUNNER_PORT_ENV = "FIELD_DOCS_RUNNER_PORT"
@@ -92,7 +92,11 @@ class RunnerOptions:
     source_box_properties: tuple[str, ...]
     source_box_wait: float
     run_box: str | None
+    capture_box: str | None
     setup_boxes: tuple[str, ...]
+    macro_file: str | None
+    macro_name: str | None
+    macro_selection: tuple[str, ...]
     native_wait_frames: int
     box_name: str
     box_x: float
@@ -100,6 +104,10 @@ class RunnerOptions:
     box_w: float
     box_h: float
     open_outputs: bool
+    wait_output: bool
+    wait_output_kind: str
+    wait_output_channel: str | None
+    wait_output_contains: str | None
     with_editor: bool
     graphics_context: bool
     force: bool
@@ -361,6 +369,26 @@ class RunnerState:
         if cache_allowed and not options.force and video_path.exists() and cached_digest == digest:
             LOG.info("Field docs runner cache hit (video): %s", video_path)
             return
+        if reuse_existing_asset_for_incremental(
+            runner_mode=self.runner_mode,
+            output_path=video_path,
+            options=options,
+            cached_metadata=cached_metadata,
+            current_metadata=cache_metadata,
+        ):
+            LOG.info("Field docs runner using existing video asset after runner-only cache change: %s", video_path)
+            self.cache[cache_key] = digest
+            self.cache_metadata[cache_key] = cache_metadata
+            self.dirty = True
+            self.save()
+            return
+        if cache_allowed and not options.force and self.runner_mode == "incremental" and video_path.exists() and cached_digest is None:
+            LOG.info("Field docs runner using existing checked-in video asset without cache entry: %s", video_path)
+            self.cache[cache_key] = digest
+            self.cache_metadata[cache_key] = cache_metadata
+            self.dirty = True
+            self.save()
+            return
         LOG.info(
             "Field docs runner cache %s (video): %s",
             cache_status_label(cache_allowed=cache_allowed, force=options.force),
@@ -378,6 +406,8 @@ class RunnerState:
         )
         command = build_backdoor_command(
             repo_root=self.repo_root,
+            page_path=page_path,
+            block_index=block_index,
             screenshot_path=video_path,
             options=video_options,
             is_video=True,
@@ -399,15 +429,20 @@ class RunnerState:
                 )
             except subprocess.TimeoutExpired as exc:
                 if attempt < RUNNER_RETRIES:
-                    self._restart_shared_field_server(
-                        reason=f"timeout while recording {page_path.name} -> {video_path}"
-                    )
                     LOG.warning(
-                        "Field docs runner video attempt %s/%s timed out for %s -> %s; retrying",
+                        "Field docs runner video attempt %s/%s timed out for %s -> %s; retrying\n%s",
                         attempt,
                         RUNNER_RETRIES,
                         page_path.name,
                         video_path,
+                        format_timeout_failure_details(
+                            exc,
+                            command=command,
+                            field_log_path=self.shared_log_path,
+                        ),
+                    )
+                    self._restart_shared_field_server(
+                        reason=f"timeout while recording {page_path.name} -> {video_path}"
                     )
                     continue
                 self._restart_shared_field_server(
@@ -421,15 +456,20 @@ class RunnerState:
             if completed.returncode == 0:
                 break
             if attempt < RUNNER_RETRIES:
-                self._restart_shared_field_server(
-                    reason=f"failed video capture attempt {attempt}/{RUNNER_RETRIES} for {page_path.name} -> {video_path}"
-                )
                 LOG.warning(
-                    "Field docs runner video attempt %s/%s failed for %s -> %s; retrying",
+                    "Field docs runner video attempt %s/%s failed for %s -> %s; retrying\n%s",
                     attempt,
                     RUNNER_RETRIES,
                     page_path.name,
                     video_path,
+                    format_completed_failure_details(
+                        completed,
+                        command=command,
+                        field_log_path=self.shared_log_path,
+                    ),
+                )
+                self._restart_shared_field_server(
+                    reason=f"failed video capture attempt {attempt}/{RUNNER_RETRIES} for {page_path.name} -> {video_path}"
                 )
             else:
                 self._restart_shared_field_server(
@@ -437,12 +477,13 @@ class RunnerState:
                 )
         assert completed is not None
         if completed.returncode != 0:
-            details = completed.stdout.strip()
-            if completed.stderr.strip():
-                details = f"{details}\n{completed.stderr.strip()}".strip()
+            details = format_completed_failure_details(
+                completed,
+                command=command,
+                field_log_path=self.shared_log_path,
+            )
             raise RuntimeError(
                 f"Field docs runner video failed for {page_path.name} -> {video_path}.\n"
-                f"Command: {shlex.join(command)}\n"
                 f"{details}"
             )
         execution_error = extract_backdoor_execution_error(completed.stdout)
@@ -489,6 +530,26 @@ class RunnerState:
         if cache_allowed and not options.force and screenshot_path.exists() and cached_digest == digest:
             LOG.info("Field docs runner cache hit: %s", screenshot_path)
             return
+        if reuse_existing_asset_for_incremental(
+            runner_mode=self.runner_mode,
+            output_path=screenshot_path,
+            options=options,
+            cached_metadata=cached_metadata,
+            current_metadata=cache_metadata,
+        ):
+            LOG.info("Field docs runner using existing screenshot asset after runner-only cache change: %s", screenshot_path)
+            self.cache[cache_key] = digest
+            self.cache_metadata[cache_key] = cache_metadata
+            self.dirty = True
+            self.save()
+            return
+        if cache_allowed and not options.force and self.runner_mode == "incremental" and screenshot_path.exists() and cached_digest is None:
+            LOG.info("Field docs runner using existing checked-in screenshot asset without cache entry: %s", screenshot_path)
+            self.cache[cache_key] = digest
+            self.cache_metadata[cache_key] = cache_metadata
+            self.dirty = True
+            self.save()
+            return
         LOG.info(
             "Field docs runner cache %s: %s",
             cache_status_label(cache_allowed=cache_allowed, force=options.force),
@@ -520,6 +581,8 @@ class RunnerState:
                     pass
         command = build_backdoor_command(
             repo_root=self.repo_root,
+            page_path=page_path,
+            block_index=block_index,
             screenshot_path=screenshot_path,
             options=options,
             source_image_path=source_image_path,
@@ -542,15 +605,20 @@ class RunnerState:
                 )
             except subprocess.TimeoutExpired as exc:
                 if attempt < RUNNER_RETRIES:
-                    self._restart_shared_field_server(
-                        reason=f"timeout while capturing {page_path.name} -> {screenshot_path}"
-                    )
                     LOG.warning(
-                        "Field docs runner attempt %s/%s timed out for %s -> %s; retrying",
+                        "Field docs runner attempt %s/%s timed out for %s -> %s; retrying\n%s",
                         attempt,
                         RUNNER_RETRIES,
                         page_path.name,
                         screenshot_path,
+                        format_timeout_failure_details(
+                            exc,
+                            command=command,
+                            field_log_path=self.shared_log_path,
+                        ),
+                    )
+                    self._restart_shared_field_server(
+                        reason=f"timeout while capturing {page_path.name} -> {screenshot_path}"
                     )
                     continue
                 self._restart_shared_field_server(
@@ -564,15 +632,20 @@ class RunnerState:
             if completed.returncode == 0:
                 break
             if attempt < RUNNER_RETRIES:
-                self._restart_shared_field_server(
-                    reason=f"failed capture attempt {attempt}/{RUNNER_RETRIES} for {page_path.name} -> {screenshot_path}"
-                )
                 LOG.warning(
-                    "Field docs runner attempt %s/%s failed for %s -> %s; retrying",
+                    "Field docs runner attempt %s/%s failed for %s -> %s; retrying\n%s",
                     attempt,
                     RUNNER_RETRIES,
                     page_path.name,
                     screenshot_path,
+                    format_completed_failure_details(
+                        completed,
+                        command=command,
+                        field_log_path=self.shared_log_path,
+                    ),
+                )
+                self._restart_shared_field_server(
+                    reason=f"failed capture attempt {attempt}/{RUNNER_RETRIES} for {page_path.name} -> {screenshot_path}"
                 )
             else:
                 self._restart_shared_field_server(
@@ -580,12 +653,13 @@ class RunnerState:
                 )
         assert completed is not None
         if completed.returncode != 0:
-            details = completed.stdout.strip()
-            if completed.stderr.strip():
-                details = f"{details}\n{completed.stderr.strip()}".strip()
+            details = format_completed_failure_details(
+                completed,
+                command=command,
+                field_log_path=self.shared_log_path,
+            )
             raise RuntimeError(
                 f"Field docs runner failed for {page_path.name} -> {screenshot_path}.\n"
-                f"Command: {shlex.join(command)}\n"
                 f"{details}"
             )
         execution_error = extract_backdoor_execution_error(completed.stdout)
@@ -727,6 +801,13 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                 line_number=start_line,
             )
             code = wrap_runnable_code_for_language(code=code, language_key=language_key)
+            options = maybe_enable_output_wait(options=options, code=code)
+            runner_code = code_with_macro_digest(
+                code=code,
+                options=options,
+                repo_root=state.repo_root,
+                page_path=page_path,
+            )
             screenshot_succeeded = False
             video_succeeded = False
             if options.screenshot:
@@ -740,7 +821,7 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                     )
                 else:
                     try:
-                        state.ensure_screenshot(code=code, options=options, page_path=page_path, block_index=block_index)
+                        state.ensure_screenshot(code=runner_code, options=options, page_path=page_path, block_index=block_index)
                         screenshot_succeeded = True
                     except RuntimeError as exc:
                         if not state.continue_on_error:
@@ -759,7 +840,7 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                     )
                 else:
                     try:
-                        state.ensure_video(code=code, options=options, page_path=page_path, block_index=block_index)
+                        state.ensure_video(code=runner_code, options=options, page_path=page_path, block_index=block_index)
                         video_succeeded = True
                     except RuntimeError as exc:
                         if not state.continue_on_error:
@@ -820,6 +901,10 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
 
     with_editor = capture == "window-editor" or parse_bool(first_attr(attrs, "with-editor", "with_editor"), default=False)
     open_outputs = parse_bool(first_attr(attrs, "open-outputs", "open_outputs"), default=True)
+    wait_output = parse_bool(first_attr(attrs, "wait-output", "wait_output", "waitForOutput", "wait-for-output"), default=False)
+    wait_output_kind = (first_attr(attrs, "wait-output-kind", "wait_output_kind") or "display").strip().lower()
+    if wait_output_kind not in {"inline", "display", "all"}:
+        raise RuntimeError(f"{page_path}:{line_number} unsupported wait-output-kind={wait_output_kind!r}")
 
     if capture == "window-editor":
         default_box_w = 1200.0
@@ -859,7 +944,11 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
         source_box_properties=parse_box_list(first_attr(attrs, "source-box-properties", "source_box_properties", "source-properties", "source_properties")),
         source_box_wait=parse_float(first_attr(attrs, "source-box-wait", "source_box_wait"), default=0.0),
         run_box=first_attr(attrs, "run-box", "run_box", "box-uid", "box_uid", "uid"),
+        capture_box=first_attr(attrs, "capture-box", "capture_box", "target-box", "target_box", "target-uid", "target_uid"),
         setup_boxes=parse_box_list(first_attr(attrs, "setup-boxes", "setup_boxes", "setup")),
+        macro_file=first_attr(attrs, "macro-file", "macro_file", "transcript-file", "transcript_file", "transcript"),
+        macro_name=first_attr(attrs, "macro-name", "macro_name", "transcript-name", "transcript_name"),
+        macro_selection=parse_box_list(first_attr(attrs, "macro-selection", "macro_selection", "selection")),
         native_wait_frames=int(parse_float(first_attr(attrs, "native-wait-frames", "native_wait_frames"), default=30.0)),
         box_name=first_attr(attrs, "name") or f"{page_path.stem}-{block_index}",
         box_x=parse_float(first_attr(attrs, "x"), default=24.0),
@@ -867,6 +956,10 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
         box_w=parse_float(first_attr(attrs, "w"), default=default_box_w),
         box_h=parse_float(first_attr(attrs, "h"), default=default_box_h),
         open_outputs=open_outputs,
+        wait_output=wait_output,
+        wait_output_kind=wait_output_kind,
+        wait_output_channel=first_attr(attrs, "wait-output-channel", "wait_output_channel"),
+        wait_output_contains=first_attr(attrs, "wait-output-contains", "wait_output_contains", "output-contains", "contains"),
         with_editor=with_editor,
         graphics_context=parse_bool(
             first_attr(attrs, "graphics-context", "graphics_context", "graphicsContext"),
@@ -1190,7 +1283,7 @@ def compute_runner_source_digest(repo_root: Path) -> str:
 
 
 def options_digest_payload(options: RunnerOptions) -> dict[str, Any]:
-    return {
+    payload = {
         "sourceImage": options.source_image,
         "capture": options.capture,
         "effectiveCapture": effective_capture_mode(options),
@@ -1204,7 +1297,11 @@ def options_digest_payload(options: RunnerOptions) -> dict[str, Any]:
         "sourceBoxProperties": list(options.source_box_properties),
         "sourceBoxWait": options.source_box_wait,
         "runBox": options.run_box,
+        "captureBox": options.capture_box,
         "setupBoxes": list(options.setup_boxes),
+        "macroFile": options.macro_file,
+        "macroName": options.macro_name,
+        "macroSelection": list(options.macro_selection),
         "nativeWaitFrames": options.native_wait_frames,
         "boxName": options.box_name,
         "boxX": options.box_x,
@@ -1218,6 +1315,14 @@ def options_digest_payload(options: RunnerOptions) -> dict[str, Any]:
         "duration": options.duration,
         "fps": options.fps,
     }
+    if options.wait_output:
+        payload.update({
+            "waitOutput": True,
+            "waitOutputKind": options.wait_output_kind,
+            "waitOutputChannel": options.wait_output_channel,
+            "waitOutputContains": options.wait_output_contains,
+        })
+    return payload
 
 
 def digest_string(value: str) -> str:
@@ -1316,6 +1421,67 @@ def tail_text(path: Path, *, max_lines: int) -> str:
     return "\n".join(lines[-max_lines:])
 
 
+def tail_inline_text(text: str, *, max_lines: int) -> str:
+    lines = text.strip().splitlines()
+    if not lines:
+        return ""
+    return "\n".join(lines[-max_lines:])
+
+
+def process_output_text(value: str | bytes | None) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return value
+
+
+def format_completed_failure_details(
+    completed: subprocess.CompletedProcess[str],
+    *,
+    command: list[str],
+    field_log_path: Path | None,
+    max_lines: int = 80,
+) -> str:
+    parts = [
+        f"Return code: {completed.returncode}",
+        f"Command: {shlex.join(command)}",
+    ]
+    stdout = tail_inline_text(process_output_text(completed.stdout), max_lines=max_lines)
+    stderr = tail_inline_text(process_output_text(completed.stderr), max_lines=max_lines)
+    if stdout:
+        parts.append(f"Backdoor stdout tail:\n{stdout}")
+    if stderr:
+        parts.append(f"Backdoor stderr tail:\n{stderr}")
+    field_log = tail_text(field_log_path, max_lines=max_lines) if field_log_path is not None else ""
+    if field_log:
+        parts.append(f"Field server log tail:\n{field_log}")
+    return "\n\n".join(parts)
+
+
+def format_timeout_failure_details(
+    exc: subprocess.TimeoutExpired,
+    *,
+    command: list[str],
+    field_log_path: Path | None,
+    max_lines: int = 80,
+) -> str:
+    parts = [
+        f"Timed out after {exc.timeout:.1f}s",
+        f"Command: {shlex.join(command)}",
+    ]
+    stdout = tail_inline_text(process_output_text(exc.stdout), max_lines=max_lines)
+    stderr = tail_inline_text(process_output_text(exc.stderr), max_lines=max_lines)
+    if stdout:
+        parts.append(f"Backdoor stdout tail before timeout:\n{stdout}")
+    if stderr:
+        parts.append(f"Backdoor stderr tail before timeout:\n{stderr}")
+    field_log = tail_text(field_log_path, max_lines=max_lines) if field_log_path is not None else ""
+    if field_log:
+        parts.append(f"Field server log tail:\n{field_log}")
+    return "\n\n".join(parts)
+
+
 def cache_status_label(*, cache_allowed: bool, force: bool) -> str:
     if not cache_allowed:
         return "bypassed"
@@ -1377,6 +1543,24 @@ def compare_cache_metadata(
     if not reasons:
         reasons.append("digest changed")
     return reasons
+
+
+def reuse_existing_asset_for_incremental(
+    *,
+    runner_mode: str,
+    output_path: Path,
+    options: RunnerOptions,
+    cached_metadata: dict[str, Any] | None,
+    current_metadata: dict[str, Any],
+) -> bool:
+    if runner_mode != "incremental" or options.force or not output_path.exists():
+        return False
+    if not isinstance(cached_metadata, dict):
+        return False
+    stable_keys = ("page", "block", "scriptVersion", "codeDigest", "optionsDigest")
+    if any(cached_metadata.get(key) != current_metadata.get(key) for key in stable_keys):
+        return False
+    return cached_metadata.get("runnerSourceDigest") != current_metadata.get("runnerSourceDigest")
 
 
 def parse_backdoor_results(stdout: str) -> list[dict[str, Any]]:
@@ -1515,22 +1699,8 @@ def extract_backdoor_output_gap(*, stdout: str, code: str, options: RunnerOption
     has_output_area = bool(set_output_events)
     has_svg_output = any("<svg" in str(payload.get("value", "")).lower() for payload in set_output_events)
 
-    expects_svg_override = parse_codegen_expectation(code=code, key="FIELD_DOCS_EXPECT_SVG")
-    expects_output_area_override = parse_codegen_expectation(code=code, key="FIELD_DOCS_EXPECT_OUTPUT_AREA")
-
-    expects_svg = (
-        expects_svg_override
-        if expects_svg_override is not None
-        else re.search(r"\blines\s*\([\s\S]*?\bchannel\s*=", code) is not None
-    )
-    expects_display = re.search(r"\bdisplay\s*\(", code) is not None
-    # Only enforce output-area diagnostics when code appears to request rendered output.
-    # `open_outputs` controls screenshot UI state, not whether every snippet must emit outputs.
-    expects_output_area = (
-        expects_output_area_override
-        if expects_output_area_override is not None
-        else (expects_svg or expects_display)
-    )
+    expects_svg = runner_code_expects_svg(code)
+    expects_output_area = runner_code_expects_output_area(code)
 
     if expects_output_area and not has_output_area:
         return (
@@ -1544,6 +1714,29 @@ def extract_backdoor_output_gap(*, stdout: str, code: str, options: RunnerOption
         return "Code appears to call lines(...) but no SVG output was observed in set-output payloads." + channel_text
 
     return None
+
+
+def maybe_enable_output_wait(*, options: RunnerOptions, code: str) -> RunnerOptions:
+    if options.graphics_context or options.wait_output:
+        return options
+    if not runner_code_expects_output_area(code):
+        return options
+    return replace(options, wait_output=True, wait_output_kind="display")
+
+
+def runner_code_expects_svg(code: str) -> bool:
+    expects_svg_override = parse_codegen_expectation(code=code, key="FIELD_DOCS_EXPECT_SVG")
+    if expects_svg_override is not None:
+        return expects_svg_override
+    return re.search(r"\blines\s*\([\s\S]*?\bchannel\s*=", code) is not None
+
+
+def runner_code_expects_output_area(code: str) -> bool:
+    expects_output_area_override = parse_codegen_expectation(code=code, key="FIELD_DOCS_EXPECT_OUTPUT_AREA")
+    if expects_output_area_override is not None:
+        return expects_output_area_override
+    expects_display = re.search(r"\bdisplay\s*\(", code) is not None
+    return runner_code_expects_svg(code) or expects_display
 
 
 def validate_screenshot_pixels(*, screenshot_path: Path, options: RunnerOptions) -> str | None:
@@ -1621,6 +1814,101 @@ def source_box_set_commands(
     return commands
 
 
+def resolve_macro_file_path(*, repo_root: Path, page_path: Path, macro_file: str) -> Path:
+    raw = Path(macro_file)
+    if raw.is_absolute():
+        return raw
+    page_relative = (page_path.parent / raw).resolve()
+    if page_relative.exists():
+        return page_relative
+    return (repo_root / raw).resolve()
+
+
+def macro_name_for_options(*, options: RunnerOptions, page_path: Path, block_index: int) -> str:
+    if options.macro_name:
+        return options.macro_name
+    if options.macro_file:
+        return Path(options.macro_file).stem
+    return f"{page_path.stem}-{block_index}"
+
+
+def safe_transcript_id(text: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9_]+", "_", text.strip())
+    cleaned = re.sub(r"_+", "_", cleaned).strip("_")
+    if not cleaned:
+        cleaned = "box"
+    if cleaned[0].isdigit():
+        cleaned = f"box_{cleaned}"
+    return cleaned[:80]
+
+
+def docs_runner_target_uid(*, page_path: Path, block_index: int, options: RunnerOptions) -> str:
+    if options.run_box:
+        return options.run_box
+    return safe_transcript_id(f"docs_{page_path.stem}_{block_index}_{options.box_name}")
+
+
+def graphics_renderer_transcript_path(repo_root: Path) -> Path:
+    return repo_root / "dev_docs" / "agents" / "transcripts" / "graphics_renderer_launch.yaml"
+
+
+def generated_graphics_child_transcript(*, target_uid: str, options: RunnerOptions) -> str:
+    transcript: dict[str, Any] = {
+        "name": f"{target_uid}_setup",
+        "description": "Generated by public/docs_hooks.py for a native graphics docs capture.",
+        "operations": [
+            {
+                "create": {
+                    "box": target_uid,
+                    "name": options.box_name,
+                    "frame": {
+                        "x": options.box_x,
+                        "y": options.box_y,
+                        "w": options.box_w,
+                        "h": options.box_h,
+                    },
+                }
+            },
+            {
+                "connect": {
+                    "parent": "agent_graphics_context",
+                    "child": target_uid,
+                }
+            },
+        ],
+    }
+    return json.dumps(transcript, separators=(",", ":"))
+
+
+def code_with_macro_digest(*, code: str, options: RunnerOptions, repo_root: Path, page_path: Path) -> str:
+    digest_lines: list[str] = []
+    if options.graphics_context:
+        renderer_path = graphics_renderer_transcript_path(repo_root)
+        try:
+            renderer_digest = hashlib.sha256(renderer_path.read_bytes()).hexdigest()
+        except FileNotFoundError:
+            renderer_digest = "<missing>"
+        digest_lines.extend([
+            f"// FIELD_DOCS_RENDERER_MACRO_FILE: {renderer_path.relative_to(repo_root)}",
+            f"// FIELD_DOCS_RENDERER_MACRO_DIGEST: {renderer_digest}",
+        ])
+    if options.macro_file:
+        macro_path = resolve_macro_file_path(repo_root=repo_root, page_path=page_path, macro_file=options.macro_file)
+        try:
+            macro_bytes = macro_path.read_bytes()
+        except FileNotFoundError:
+            macro_digest = "<missing>"
+        else:
+            macro_digest = hashlib.sha256(macro_bytes).hexdigest()
+        digest_lines.extend([
+            f"// FIELD_DOCS_MACRO_FILE: {options.macro_file}",
+            f"// FIELD_DOCS_MACRO_DIGEST: {macro_digest}",
+        ])
+    if not digest_lines:
+        return code
+    return "\n".join([code, *digest_lines])
+
+
 def runner_subprocess_timeout(*, options: RunnerOptions, is_video: bool) -> float:
     base = max(options.timeout, options.duration + 30.0) if is_video else options.timeout
     return base + RUNNER_SUBPROCESS_GRACE_SEC
@@ -1629,6 +1917,8 @@ def runner_subprocess_timeout(*, options: RunnerOptions, is_video: bool) -> floa
 def build_backdoor_command(
     *,
     repo_root: Path,
+    page_path: Path,
+    block_index: int,
     screenshot_path: Path,
     options: RunnerOptions,
     is_video: bool = False,
@@ -1649,10 +1939,72 @@ def build_backdoor_command(
     ]
     if options.document:
         command.extend(["--document", options.document])
-    if options.graphics_context:
-        command.append("--graphics-context")
     backdoor_commands: list[str] = []
-    if options.run_box:
+    generated_target_uid = docs_runner_target_uid(page_path=page_path, block_index=block_index, options=options)
+    default_target_uid = options.capture_box or options.run_box or (generated_target_uid if options.graphics_context else "@last")
+    if options.graphics_context:
+        renderer_macro_path = graphics_renderer_transcript_path(repo_root)
+        backdoor_commands.append(shlex.join([
+            "macro",
+            "write",
+            "graphics_renderer_launch",
+            "--file", str(renderer_macro_path),
+            "--timeout", str(options.timeout),
+        ]))
+        backdoor_commands.append(shlex.join([
+            "macro",
+            "run",
+            "graphics_renderer_launch",
+            "--timeout", str(options.timeout),
+        ]))
+        backdoor_commands.append(shlex.join([
+            "wait-output",
+            "agent_graphics_context",
+            "--kind", "inline",
+            "--contains", "agent graphics renderer ready",
+            "--timeout", str(options.timeout),
+        ]))
+    if options.macro_file:
+        macro_path = resolve_macro_file_path(repo_root=repo_root, page_path=page_path, macro_file=options.macro_file)
+        macro_name = macro_name_for_options(options=options, page_path=page_path, block_index=block_index)
+        backdoor_commands.append(shlex.join([
+            "macro",
+            "write",
+            macro_name,
+            "--file", str(macro_path),
+            "--timeout", str(options.timeout),
+        ]))
+        macro_run_parts = [
+            "macro",
+            "run",
+            macro_name,
+            "--timeout", str(options.timeout),
+        ]
+        for selection in options.macro_selection:
+            macro_run_parts.extend(["--selection", selection])
+        backdoor_commands.append(shlex.join(macro_run_parts))
+    elif options.run_box:
+        if options.graphics_context:
+            connect_transcript = {
+                "name": f"{safe_transcript_id(options.run_box)}_graphics_parent",
+                "description": "Generated by public/docs_hooks.py to connect an existing box to the docs renderer.",
+                "operations": [
+                    {"connect": {"parent": "agent_graphics_context", "child": options.run_box}},
+                ],
+            }
+            backdoor_commands.append(shlex.join([
+                "macro",
+                "write",
+                f"{safe_transcript_id(options.run_box)}_graphics_parent",
+                "--content", json.dumps(connect_transcript, separators=(",", ":")),
+                "--timeout", str(options.timeout),
+            ]))
+            backdoor_commands.append(shlex.join([
+                "macro",
+                "run",
+                f"{safe_transcript_id(options.run_box)}_graphics_parent",
+                "--timeout", str(options.timeout),
+            ]))
         for setup_box in options.setup_boxes:
             backdoor_commands.append(shlex.join([
                 "run",
@@ -1665,6 +2017,21 @@ def build_backdoor_command(
             "--property", options.property_name,
             "--timeout", str(options.timeout),
         ]))
+    elif options.graphics_context:
+        setup_macro_name = f"{generated_target_uid}_setup"
+        backdoor_commands.append(shlex.join([
+            "macro",
+            "write",
+            setup_macro_name,
+            "--content", generated_graphics_child_transcript(target_uid=generated_target_uid, options=options),
+            "--timeout", str(options.timeout),
+        ]))
+        backdoor_commands.append(shlex.join([
+            "macro",
+            "run",
+            setup_macro_name,
+            "--timeout", str(options.timeout),
+        ]))
     else:
         backdoor_commands.append(shlex.join([
             "new-box",
@@ -1675,16 +2042,18 @@ def build_backdoor_command(
             "--h", str(options.box_h),
             "--timeout", str(options.timeout),
         ]))
-    if options.source_box:
+    if options.source_box and not options.macro_file:
         backdoor_commands.extend(source_box_set_commands(
             repo_root=repo_root,
             source_box=options.source_box,
-            target_uid=options.run_box or "@last",
+            target_uid=options.run_box or (generated_target_uid if options.graphics_context else "@last"),
             source_box_properties=options.source_box_properties,
         ))
         if options.source_box_wait > 0:
             backdoor_commands.append(shlex.join(["sleep", str(options.source_box_wait)]))
-    if options.run_box is None and capture_mode == "editor":
+    if options.macro_file:
+        pass
+    elif options.run_box is None and capture_mode == "editor":
         backdoor_commands.append(shlex.join([
             "set",
             "@last",
@@ -1710,7 +2079,7 @@ def build_backdoor_command(
     ):
         backdoor_commands.append(shlex.join([
             "launch" if options.execution == "launch" else "run",
-            "@last",
+            generated_target_uid if options.graphics_context else "@last",
             "--property", options.property_name,
             "--file", "-",
             "--timeout", str(options.timeout),
@@ -1718,18 +2087,32 @@ def build_backdoor_command(
     elif options.run_box is None:
         backdoor_commands.append(shlex.join([
             "launch" if options.execution == "launch" else "run",
-            "@last",
+            generated_target_uid if options.graphics_context else "@last",
             "--property", options.property_name,
             "--timeout", str(options.timeout),
         ]))
-    if options.wait > 0:
+    if options.wait > 0 and source_image_path is None:
         backdoor_commands.append(shlex.join(["sleep", str(options.wait)]))
+    if options.wait_output:
+        wait_output_parts = [
+            "wait-output",
+            default_target_uid,
+            "--kind", options.wait_output_kind,
+            "--timeout", str(options.timeout),
+        ]
+        if options.wait_output_channel:
+            wait_output_parts.extend(["--channel", options.wait_output_channel])
+        if options.wait_output_contains:
+            wait_output_parts.extend(["--contains", options.wait_output_contains])
+        backdoor_commands.append(shlex.join(wait_output_parts))
     if source_image_path is not None:
         wait_file_parts = [
             "wait-file",
             str(source_image_path),
             "--timeout",
             str(options.timeout),
+            "--fail-on-error-uid",
+            default_target_uid,
         ]
         if source_image_min_mtime is not None:
             wait_file_parts.extend(["--newer-than", str(source_image_min_mtime)])
@@ -1738,9 +2121,10 @@ def build_backdoor_command(
     if is_video:
         # Use record-* commands instead of screenshot-*
         if capture_mode == "box":
+            target_uid = default_target_uid
             parts = [
                 "record-box",
-                "@last",
+                target_uid,
                 str(screenshot_path),
                 "--padding", str(options.padding),
                 "--duration", str(options.duration),
@@ -1749,9 +2133,10 @@ def build_backdoor_command(
             ]
             backdoor_commands.append(shlex.join(parts))
         elif capture_mode == "editor":
+            target_uid = default_target_uid
             parts = [
                 "record-editor",
-                "@last",
+                target_uid,
                 str(screenshot_path),
                 "--property", options.property_name,
                 "--padding", str(options.padding),
@@ -1766,7 +2151,7 @@ def build_backdoor_command(
             parts = [
                 "record-window",
                 str(screenshot_path),
-                "--uid", "@last",
+                "--uid", default_target_uid,
                 "--property", options.property_name,
                 "--duration", str(options.duration),
                 "--fps", str(options.fps),
@@ -1788,7 +2173,7 @@ def build_backdoor_command(
                 "--timeout", str(options.timeout),
             ]))
         elif capture_mode == "box":
-            target_uid = options.run_box or "@last"
+            target_uid = default_target_uid
             parts = [
                 "screenshot-box",
                 target_uid,
@@ -1798,7 +2183,7 @@ def build_backdoor_command(
             ]
             backdoor_commands.append(shlex.join(parts))
         elif capture_mode == "editor":
-            target_uid = options.run_box or "@last"
+            target_uid = default_target_uid
             parts = [
                 "screenshot-editor",
                 target_uid,
@@ -1811,7 +2196,7 @@ def build_backdoor_command(
                 parts.append("--open-outputs")
             backdoor_commands.append(shlex.join(parts))
         else:
-            target_uid = options.run_box or "@last"
+            target_uid = default_target_uid
             parts = [
                 "screenshot-window",
                 str(screenshot_path),
@@ -1825,10 +2210,10 @@ def build_backdoor_command(
                 parts.append("--with-editor")
             backdoor_commands.append(shlex.join(parts))
 
-    if options.execution == "launch":
+    if options.execution == "launch" and not options.macro_file:
         backdoor_commands.append(shlex.join([
             "stop",
-            options.run_box or "@last",
+            default_target_uid,
             "--timeout", str(options.timeout),
         ]))
     for command_line in backdoor_commands:

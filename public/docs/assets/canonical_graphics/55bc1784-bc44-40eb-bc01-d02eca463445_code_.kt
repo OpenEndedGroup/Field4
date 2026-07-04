@@ -1,4 +1,4 @@
-prop<LoadedTexture>(bbc) = LoadedTexture("/Users/marc/Desktop/bbc.jpg")
+prop<LoadedTexture>(bbc) = LoadedTexture("public/docs/assets/afield_four_graphics/docs-checker-texture.png")
 bbc.transferNow()
 
 var module = moduleHere {}

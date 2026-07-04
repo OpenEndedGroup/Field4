@@ -1222,7 +1222,7 @@ open class RenderToTexture(
                         .offset(VkOffset2D.calloc(stack).x(0).y(0))
                         .extent(VkExtent2D.calloc(stack).width(width).height(height))
                 )
-                .flags(if (!Options.isMac) VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT else 0)
+                .flags(0)
                 .layerCount(renderLayers)
                 .viewMask(renderViewMask)
                 .pColorAttachments(colorAttachmentInfo)

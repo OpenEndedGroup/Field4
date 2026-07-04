@@ -28,7 +28,7 @@ object FloatEarcut {
 
         val triangles: MutableList<Int> = ArrayList<Int>()
 
-        if (outerNode == null || outerNode.next === outerNode.prev) return triangles
+        if (outerNode.next === outerNode.prev) return triangles
 
         var minX = 0f
         var minY = 0f

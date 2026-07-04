@@ -33,6 +33,7 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
     val pushDescriptorMax: Int
     val supportsExtendedDynamicState3: Boolean
     val supportsExtendedDynamicState: Boolean
+    val supportsMaintenance7: Boolean
     val supportsMultiview: Boolean
     val supportsRayTracing: Boolean
     val supportsRayQuery: Boolean
@@ -81,6 +82,17 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 hasExt(org.lwjgl.vulkan.EXTExtendedDynamicState.VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME)
             val hasExtDynamicState3 =
                 hasExt(org.lwjgl.vulkan.EXTExtendedDynamicState3.VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME)
+            val hasMaintenance7 = hasExt(KHRMaintenance7.VK_KHR_MAINTENANCE_7_EXTENSION_NAME)
+            supportsMaintenance7 = if (hasMaintenance7) {
+                val m7Features = VkPhysicalDeviceMaintenance7FeaturesKHR.calloc(stack)
+                    .sType(KHRMaintenance7.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_7_FEATURES_KHR)
+                val m7FeatureProbe = VkPhysicalDeviceFeatures2.calloc(stack).apply {
+                    sType(VK12.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2)
+                    pNext(m7Features.address())
+                }
+                VK11.vkGetPhysicalDeviceFeatures2(physicalDevice.vkPhysicalDevice, m7FeatureProbe)
+                m7Features.maintenance7()
+            } else false
             supportsExtendedDynamicState = hasExtDynamicState
             supportsExtendedDynamicState3 = hasExtDynamicState3
             supportsMultiview = hasExt(KHRMultiview.VK_KHR_MULTIVIEW_EXTENSION_NAME)
@@ -98,6 +110,7 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 addIfSupported(KHRCreateRenderpass2.VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME)
                 addIfSupported(KHRSeparateDepthStencilLayouts.VK_KHR_SEPARATE_DEPTH_STENCIL_LAYOUTS_EXTENSION_NAME)
                 addIfSupported(KHRPushDescriptor.VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME)
+                if (supportsMaintenance7) add(KHRMaintenance7.VK_KHR_MAINTENANCE_7_EXTENSION_NAME)
 
                 addIfSupported(KHR16bitStorage.VK_KHR_16BIT_STORAGE_EXTENSION_NAME)
 
@@ -171,6 +184,7 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
 
             val features11 = VkPhysicalDeviceVulkan11Features.calloc(stack).apply {
                 `sType$Default`()
+                multiview(supportsMultiview)
                 shaderDrawParameters(true)
                 storagePushConstant16(true)
             }
@@ -240,14 +254,14 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 memPutAddress(tail + VkBaseOutStructure.PNEXT, eds3.address()); tail = eds3.address()
             }
 
-            // Optional: mesh shader + present features (Windows path).
-            if (supportsMultiview) {
-                val mv = VkPhysicalDeviceMultiviewFeaturesKHR.calloc(stack)
-                    .sType(KHRMultiview.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR)
-                    .multiview(true)
-                memPutAddress(tail + VkBaseOutStructure.PNEXT, mv.address()); tail = mv.address()
+            if (supportsMaintenance7) {
+                val m7 = VkPhysicalDeviceMaintenance7FeaturesKHR.calloc(stack)
+                    .sType(KHRMaintenance7.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_7_FEATURES_KHR)
+                    .maintenance7(true)
+                memPutAddress(tail + VkBaseOutStructure.PNEXT, m7.address()); tail = m7.address()
             }
 
+            // Optional: mesh shader + present features (Windows path).
             if (enableMeshShading) {
                 val mesh = VkPhysicalDeviceMeshShaderFeaturesEXT.calloc(stack)
                     .sType(EXTMeshShader.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT)
@@ -356,7 +370,7 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                     .sType(VK11.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2)
                 val pushProps = VkPhysicalDevicePushDescriptorPropertiesKHR.calloc(stack)
                     .sType(KHRPushDescriptor.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR)
-                props2.pNext(pushProps.address().toLong())
+                props2.pNext(pushProps.address())
                 vkGetPhysicalDeviceProperties2(physicalDevice.vkPhysicalDevice, props2)
                 pushProps.maxPushDescriptors()
             } else 0

@@ -316,13 +316,16 @@ class SummaryStatsBuffer(
         private set
 
     val size: Int
+        @Synchronized
         get() = values.size
 
+    @Synchronized
     fun setWindow(size: Int): SummaryStatsBuffer {
         maxSize = size
         return this
     }
 
+    @Synchronized
     fun clear(resetCounters: Boolean = false): SummaryStatsBuffer {
         values.clear()
         if (resetCounters) {
@@ -339,6 +342,7 @@ class SummaryStatsBuffer(
      * Null and non-finite values are counted as dropped; finite values are
      * converted to `Double`, appended, and trimmed to the current window.
      */
+    @Synchronized
     fun add(value: Number?): SummaryStatsBuffer {
         samplesSeen++
         val v = value?.toDouble()
@@ -358,13 +362,17 @@ class SummaryStatsBuffer(
         return this
     }
 
+    @Synchronized
     fun values(): List<Double> = values.toList()
 
+    @Synchronized
     fun snapshot(): SummaryStats =
-        buildSummaryStats(values, droppedCount = clampLongToInt(droppedNonFinite))
+        buildSummaryStats(values.toList(), droppedCount = clampLongToInt(droppedNonFinite))
 
-    fun histogram(): Histogram = buildHistogram(values)
+    @Synchronized
+    fun histogram(): Histogram = buildHistogram(values.toList())
 
+    @Synchronized
     fun summaryBox(): SummaryStatsBox {
         val current = values.toList()
         return SummaryStatsBox(
@@ -447,7 +455,7 @@ class SummaryStatsBuffer(
         keyTextOpacity: Double = 0.5,
         minLabelSeparationPx: Double = 12.0
     ): String = seriesPlotToSvg(
-        rawValues = values,
+        rawValues = values(),
         previousStats = previousStats,
         widthPx = widthPx,
         heightPx = heightPx,
@@ -522,13 +530,16 @@ class Vec2SummaryStatsBuffer(
         private set
 
     val size: Int
+        @Synchronized
         get() = values.size
 
+    @Synchronized
     fun setWindow(size: Int): Vec2SummaryStatsBuffer {
         maxSize = size
         return this
     }
 
+    @Synchronized
     fun clear(resetCounters: Boolean = false): Vec2SummaryStatsBuffer {
         values.clear()
         if (resetCounters) {
@@ -539,6 +550,7 @@ class Vec2SummaryStatsBuffer(
         return this
     }
 
+    @Synchronized
     fun add(value: Vec2?): Vec2SummaryStatsBuffer {
         samplesSeen++
         val v = value?.let(::Vec2)
@@ -556,13 +568,16 @@ class Vec2SummaryStatsBuffer(
         return this
     }
 
+    @Synchronized
     fun values(): List<Vec2> = values.map(::Vec2)
 
+    @Synchronized
     fun snapshot(): Vec2SummaryStats =
-        buildVec2SummaryStats(values, droppedCount = clampLongToInt(droppedNonFinite))
+        buildVec2SummaryStats(values.map(::Vec2), droppedCount = clampLongToInt(droppedNonFinite))
 
+    @Synchronized
     fun summaryBox(): Vec2SummaryStatsBox {
-        val current = values()
+        val current = values.map(::Vec2)
         return Vec2SummaryStatsBox(
             values = current,
             stats = buildVec2SummaryStats(current, droppedCount = clampLongToInt(droppedNonFinite)),
@@ -573,6 +588,7 @@ class Vec2SummaryStatsBuffer(
         )
     }
 
+    @Synchronized
     fun lengthHistogram(): Histogram = buildHistogram(values.asSequence().map { it.length().toDouble() }.toList())
 
     fun lengthHistogramSvg(
@@ -617,13 +633,16 @@ class Vec3SummaryStatsBuffer(
         private set
 
     val size: Int
+        @Synchronized
         get() = values.size
 
+    @Synchronized
     fun setWindow(size: Int): Vec3SummaryStatsBuffer {
         maxSize = size
         return this
     }
 
+    @Synchronized
     fun clear(resetCounters: Boolean = false): Vec3SummaryStatsBuffer {
         values.clear()
         if (resetCounters) {
@@ -634,6 +653,7 @@ class Vec3SummaryStatsBuffer(
         return this
     }
 
+    @Synchronized
     fun add(value: Vec3?): Vec3SummaryStatsBuffer {
         samplesSeen++
         val v = value?.let(::Vec3)
@@ -651,13 +671,16 @@ class Vec3SummaryStatsBuffer(
         return this
     }
 
+    @Synchronized
     fun values(): List<Vec3> = values.map(::Vec3)
 
+    @Synchronized
     fun snapshot(): Vec3SummaryStats =
-        buildVec3SummaryStats(values, droppedCount = clampLongToInt(droppedNonFinite))
+        buildVec3SummaryStats(values.map(::Vec3), droppedCount = clampLongToInt(droppedNonFinite))
 
+    @Synchronized
     fun summaryBox(): Vec3SummaryStatsBox {
-        val current = values()
+        val current = values.map(::Vec3)
         return Vec3SummaryStatsBox(
             values = current,
             stats = buildVec3SummaryStats(current, droppedCount = clampLongToInt(droppedNonFinite)),
@@ -668,6 +691,7 @@ class Vec3SummaryStatsBuffer(
         )
     }
 
+    @Synchronized
     fun lengthHistogram(): Histogram = buildHistogram(values.asSequence().map { it.length().toDouble() }.toList())
 
     fun lengthHistogramSvg(
@@ -712,13 +736,16 @@ class Vec4SummaryStatsBuffer(
         private set
 
     val size: Int
+        @Synchronized
         get() = values.size
 
+    @Synchronized
     fun setWindow(size: Int): Vec4SummaryStatsBuffer {
         maxSize = size
         return this
     }
 
+    @Synchronized
     fun clear(resetCounters: Boolean = false): Vec4SummaryStatsBuffer {
         values.clear()
         if (resetCounters) {
@@ -729,6 +756,7 @@ class Vec4SummaryStatsBuffer(
         return this
     }
 
+    @Synchronized
     fun add(value: Vec4?): Vec4SummaryStatsBuffer {
         samplesSeen++
         val v = value?.let(::Vec4)
@@ -746,13 +774,16 @@ class Vec4SummaryStatsBuffer(
         return this
     }
 
+    @Synchronized
     fun values(): List<Vec4> = values.map(::Vec4)
 
+    @Synchronized
     fun snapshot(): Vec4SummaryStats =
-        buildVec4SummaryStats(values, droppedCount = clampLongToInt(droppedNonFinite))
+        buildVec4SummaryStats(values.map(::Vec4), droppedCount = clampLongToInt(droppedNonFinite))
 
+    @Synchronized
     fun summaryBox(): Vec4SummaryStatsBox {
-        val current = values()
+        val current = values.map(::Vec4)
         return Vec4SummaryStatsBox(
             values = current,
             stats = buildVec4SummaryStats(current, droppedCount = clampLongToInt(droppedNonFinite)),
@@ -763,6 +794,7 @@ class Vec4SummaryStatsBuffer(
         )
     }
 
+    @Synchronized
     fun lengthHistogram(): Histogram = buildHistogram(values.asSequence().map { it.length().toDouble() }.toList())
 
     fun lengthHistogramSvg(

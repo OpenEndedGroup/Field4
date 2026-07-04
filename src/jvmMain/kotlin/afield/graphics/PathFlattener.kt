@@ -22,7 +22,7 @@ class PathFlattener(private val c: FLine, tol: Float) {
     }
 
     var mappings: MutableList<Mapping> = ArrayList()
-    private val tol = tol.toFloat()
+    private val tol = tol
 
 
     var searchDistance: Comparator<Any> = object : Comparator<Any> {
@@ -102,7 +102,7 @@ class PathFlattener(private val c: FLine, tol: Float) {
         m.end = b
         m.dotStart = dotStart
         m.dotEnd = dotEnd
-        if (mappings.size == 0) m.cumulativeDistanceAtEnd = b.distance(a).toFloat()
+        if (mappings.size == 0) m.cumulativeDistanceAtEnd = b.distance(a)
         else m.cumulativeDistanceAtEnd = b.distance(a) + mappings[mappings.size - 1].cumulativeDistanceAtEnd
         mappings.add(m)
     }

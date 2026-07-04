@@ -12,33 +12,27 @@ edn-parser.js         # EDN format parser
 offline-viewer.js     # Viewer logic
 examples-gallery.html # Optional: example gallery
 iosevka.css          # Font styles (from main Field4)
-iosevka-*.woff2      # Font files
+woff2/               # Iosevka font files
 min/vs/              # Monaco editor (from main Field4)
 outputareas.css      # Styles (from main Field4)
+metadata_store/      # Optional example documents
 ```
 
 ## Deployment Options
 
 ### Option 1: GitHub Pages
 
-1. Create a `docs/` folder in your repository
-2. Copy the required files:
+1. Build the offline viewer bundle:
    ```bash
-   mkdir -p docs
-   cp src/commonMain/resources/offline.html docs/
-   cp src/commonMain/resources/edn-parser.js docs/
-   cp src/commonMain/resources/offline-viewer.js docs/
-   cp src/commonMain/resources/examples-gallery.html docs/
-   cp -r src/jsMain/resources/iosevka* docs/
-   cp -r src/jsMain/resources/outputareas.css docs/
-   cp -r src/jsMain/resources/monaco/min docs/
+   ./build-offline-docs.sh
    ```
-3. Copy your `.edn` files:
+2. Copy the generated bundle:
    ```bash
-   cp -r metadata_store docs/
+   rm -rf docs
+   cp -r dist/offline-viewer docs
    ```
-4. Enable GitHub Pages in repository settings (source: `docs/` folder)
-5. Access at: `https://yourusername.github.io/yourrepo/offline.html?file=metadata_store/example.edn`
+3. Enable GitHub Pages in repository settings (source: `docs/` folder)
+4. Access at: `https://yourusername.github.io/yourrepo/offline.html?file=metadata_store/example.edn`
 
 ### Option 2: Netlify
 
@@ -89,7 +83,7 @@ public/
 ├── offline-viewer.js
 ├── examples-gallery.html
 ├── iosevka.css
-├── iosevka-regular.woff2
+├── woff2/
 ├── outputareas.css
 ├── min/
 │   └── vs/
@@ -239,29 +233,19 @@ npx http-server -p 8000
 - Check browser network tab for errors
 
 **Fonts not loading:**
-- Ensure `.woff2` files are in same directory
+- Ensure `woff2/` exists beside `iosevka.css`
 - Check `iosevka.css` paths
 - May need to adjust font paths for your hosting
 
 ## Advanced: Build Script
 
-Create a `build-docs.sh` script:
+Use the repository build script:
 
 ```bash
-#!/bin/bash
-mkdir -p dist
-cp src/commonMain/resources/offline.html dist/
-cp src/commonMain/resources/edn-parser.js dist/
-cp src/commonMain/resources/offline-viewer.js dist/
-cp src/commonMain/resources/examples-gallery.html dist/
-cp -r src/jsMain/resources/iosevka* dist/
-cp -r src/jsMain/resources/outputareas.css dist/
-cp -r src/jsMain/resources/monaco/min dist/
-cp -r metadata_store dist/
-echo "Documentation built in dist/"
+./build-offline-docs.sh
 ```
 
-Then deploy `dist/` to your hosting provider.
+Then deploy `dist/offline-viewer/` to your hosting provider.
 
 ## Examples
 

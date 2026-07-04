@@ -388,7 +388,7 @@ fun templating() {
                     box.frame = frame.copy(x = frame.x + deltaX, y = frame.y + deltaY)
                 }
 
-                lprintln("Translated ${topLevelBoxes.size} boxes by ($deltaX, $deltaY) to center at mouse position (${exec.mouseX}, ${exec.mouseY})")
+                lprintln("info,templating", "Translated ${topLevelBoxes.size} boxes by ($deltaX, $deltaY) to center at mouse position (${exec.mouseX}, ${exec.mouseY})")
             }
         }
 

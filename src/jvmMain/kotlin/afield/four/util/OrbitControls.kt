@@ -213,7 +213,7 @@ class OrbitControls(
         if (radius < 1e-12) return false
 
         var theta = atan2(offset.x.toDouble(), offset.z.toDouble())
-        var phi = acos((offset.y / radius).toDouble().coerceIn(-1.0, 1.0))
+        var phi = acos((offset.y / radius).coerceIn(-1.0, 1.0))
 
         theta += sphericalDeltaTheta
         phi += sphericalDeltaPhi

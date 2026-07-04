@@ -328,26 +328,26 @@ fun outputTo(f: FLine, s: Canvas) {
         var first = true
         f.nodes.forEach {
             when (it) {
-                is FLine.MoveTo -> p.moveTo(it.to.x.toFloat(), it.to.y.toFloat())
+                is FLine.MoveTo -> p.moveTo(it.to.x, it.to.y)
                 is FLine.LineTo -> {
                     if (first) {
-                        p.moveTo(it.to.x.toFloat(), it.to.y.toFloat())
+                        p.moveTo(it.to.x, it.to.y)
                     } else
-                        p.lineTo(it.to.x.toFloat(), it.to.y.toFloat())
+                        p.lineTo(it.to.x, it.to.y)
                 }
 
                 is FLine.CubicTo -> {
                     if (first) {
-                        p.moveTo(it.to.x.toFloat(), it.to.y.toFloat())
+                        p.moveTo(it.to.x, it.to.y)
                     } else
 
                         p.cubicTo(
-                            it.c1.x.toFloat(),
-                            it.c1.y.toFloat(),
-                            it.c2.x.toFloat(),
-                            it.c2.y.toFloat(),
-                            it.to.x.toFloat(),
-                            it.to.y.toFloat()
+                            it.c1.x,
+                            it.c1.y,
+                            it.c2.x,
+                            it.c2.y,
+                            it.to.x,
+                            it.to.y
                         )
                 }
 
@@ -358,7 +358,7 @@ fun outputTo(f: FLine, s: Canvas) {
 
         paint.strokeWidth = f.thickness?.toFloat() ?: 1.0f
         val c = f.color
-        paint.color4f = Color4f(c.x.toFloat(), c.y.toFloat(), c.z.toFloat(), c.w.toFloat())
+        paint.color4f = Color4f(c.x, c.y, c.z, c.w)
         val mode =
             if (f.stroked && f.filled)
                 PaintMode.STROKE_AND_FILL
@@ -380,16 +380,16 @@ fun outputTo(f: FLine, s: Canvas) {
 
             f.nodes.forEach {
                 when (it) {
-                    is FLine.MoveTo -> circ?.addCircle(it.to.x.toFloat(), it.to.y.toFloat(), radiusFor(f, it).toFloat())
-                    is FLine.LineTo -> circ?.addCircle(it.to.x.toFloat(), it.to.y.toFloat(), radiusFor(f, it).toFloat())
-                    is FLine.CubicTo -> circ?.addCircle(it.to.x.toFloat(), it.to.y.toFloat(), radiusFor(f, it).toFloat())
+                    is FLine.MoveTo -> circ.addCircle(it.to.x, it.to.y, radiusFor(f, it).toFloat())
+                    is FLine.LineTo -> circ.addCircle(it.to.x, it.to.y, radiusFor(f, it).toFloat())
+                    is FLine.CubicTo -> circ.addCircle(it.to.x, it.to.y, radiusFor(f, it).toFloat())
                     is FLine.Close -> {}
                 }
             }
 
-            paint.color4f = Color4f(c.x.toFloat(), c.y.toFloat(), c.z.toFloat(), c.w.toFloat())
+            paint.color4f = Color4f(c.x, c.y, c.z, c.w)
             paint.mode = PaintMode.FILL
-            circ?.let { s.drawPath(it, paint) }
+            s.drawPath(circ, paint)
         }
     } finally {
         runCatching { circ?.close() }

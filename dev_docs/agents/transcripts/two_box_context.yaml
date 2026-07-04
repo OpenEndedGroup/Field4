@@ -1,0 +1,46 @@
+name: two_box_context
+description: Create a parent/child pair and verify inherited graph context from the child.
+operations:
+  - create:
+      box: agent_context_parent
+      name: Agent Context Parent
+      frame:
+        x: 80.0
+        y: 260.0
+        w: 220.0
+        h: 100.0
+      properties:
+        code: |
+          thisBox.setPropertyRaw("agent_context_value", "value from parent")
+          println("parent context ready")
+  - create:
+      box: agent_context_child
+      name: Agent Context Child
+      frame:
+        x: 360.0
+        y: 260.0
+        w: 240.0
+        h: 100.0
+      properties:
+        code: |
+          val inherited = fromContextWithNameOrNull<String>("agent_context_value")
+          println("child inherited: $inherited")
+  - connect:
+      parent: agent_context_parent
+      child: agent_context_child
+  - execute:
+      box: agent_context_parent
+      property: code
+      type: fragment
+      code: |
+        thisBox.setPropertyRaw("agent_context_value", "value from parent")
+        println("parent context ready")
+  - execute:
+      box: agent_context_child
+      property: code
+      type: fragment
+      code: |
+        val inherited = fromContextWithNameOrNull<String>("agent_context_value")
+        println("child inherited: $inherited")
+  - wait:
+      millis: 250

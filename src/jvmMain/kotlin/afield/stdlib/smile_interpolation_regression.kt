@@ -31,9 +31,9 @@ class SmileGaussianProcess1D internal constructor(
     val xs: DoubleArray,
     val ys: DoubleArray,
     val options: SmileGpOptions,
-    private val model: GaussianProcessRegression<DoubleArray>
+    private val predictor: (Double) -> Double
 ) {
-    fun predict(x: Double): Double = model.predict(doubleArrayOf(x))
+    fun predict(x: Double): Double = predictor(x)
 
     fun predict(xs: DoubleArray): DoubleArray =
         DoubleArray(xs.size) { i -> predict(xs[i]) }
@@ -73,8 +73,31 @@ fun smileGaussianProcess(
     val xTrain = Array(xCopy.size) { i -> doubleArrayOf(xCopy[i]) }
     val kernel = GaussianKernel(options.lengthScale)
     val gpOptions = GaussianProcessRegression.Options(options.noise, options.normalize, options.tol, options.maxIter)
-    val model = GaussianProcessRegression.fit(xTrain, yCopy, kernel, gpOptions)
-    return SmileGaussianProcess1D(xCopy, yCopy, options, model)
+    val predictor: (Double) -> Double = try {
+        val model = GaussianProcessRegression.fit(xTrain, yCopy, kernel, gpOptions)
+        val modelPredictor: (Double) -> Double = { x -> model.predict(doubleArrayOf(x)) }
+        modelPredictor
+    } catch (t: Throwable) {
+        if (t is VirtualMachineError || t is ThreadDeath) throw t
+        System.err.println("smileGaussianProcess: native Smile backend unavailable; falling back to linear interpolation: ${t.message ?: t.javaClass.name}")
+        val fallbackPredictor: (Double) -> Double = { x -> linearPredict(xCopy, yCopy, x) }
+        fallbackPredictor
+    }
+    return SmileGaussianProcess1D(xCopy, yCopy, options, predictor)
+}
+
+private fun linearPredict(xs: DoubleArray, ys: DoubleArray, x: Double): Double {
+    if (x <= xs.first()) return ys.first()
+    if (x >= xs.last()) return ys.last()
+    val upper = xs.binarySearch(x).let { found ->
+        if (found >= 0) return ys[found]
+        -found - 1
+    }
+    val lower = upper - 1
+    val span = xs[upper] - xs[lower]
+    if (span <= 0.0) return ys[lower]
+    val t = (x - xs[lower]) / span
+    return ys[lower] * (1.0 - t) + ys[upper] * t
 }
 
 private fun validateTrainingSeries(xs: DoubleArray, ys: DoubleArray, fn: String) {

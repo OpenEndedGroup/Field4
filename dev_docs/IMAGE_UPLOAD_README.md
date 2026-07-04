@@ -1,5 +1,7 @@
 # Image Upload and Window Capture Implementation
 
+> Status: stale. This note predates the removal of the standalone `src/jsChatMain` bundle and `/chat` static route. Current guide/shared chat UI is mounted from the main frontend; use this file only as historical context for image-upload ideas until the chat/image path is re-audited.
+
 This implementation adds comprehensive image support to Field4, including uploading images to AI chat and capturing Vulkan window content to temporary PNG files.
 
 ## Quick Links

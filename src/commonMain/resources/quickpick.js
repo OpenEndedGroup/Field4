@@ -1452,8 +1452,11 @@ const normalizeCommandAction = (action, category, editor) => {
                 action: metadataSource,
                 previewHtml: (item) => palettePreviewForAction(item),
                 run: () => {
-                        const runner = action.run || metadataSource.run || action._run || metadataSource._run
-                        if (typeof runner === "function") runner(editor || window.globalEditor)
+                        const runnerOwner = typeof action.run === "function" || typeof action._run === "function"
+                                ? action
+                                : metadataSource
+                        const runner = runnerOwner.run || runnerOwner._run
+                        if (typeof runner === "function") runner.call(runnerOwner, editor || window.globalEditor)
                 },
         }
 }

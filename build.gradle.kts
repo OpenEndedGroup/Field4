@@ -1620,45 +1620,6 @@ tasks.register("smokeCeres") {
     dependsOn(smokeCeresGeometryPrimitives, smokeCeresArchitecturalDsl, smokeCeresInteractionExamples)
 }
 
-tasks.register<JavaExec>("runai") {
-    javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
-    })
-    group = "application"
-    description = "Runs ai3 tests"
-
-    classpath = sourceSets["jvmMain"].runtimeClasspath
-
-    mainClass.set("afield.ai.AI3Kt") // adjust to match your file/class
-    standardInput = System.`in`
-}
-
-tasks.register<JavaExec>("runai2") {
-    javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
-    })
-    group = "application"
-    description = "Runs ai2 chat"
-
-    classpath = sourceSets["jvmMain"].runtimeClasspath
-
-    mainClass.set("plans.mcp.ChatKt") // adjust to match your file/class
-    standardInput = System.`in`
-}
-
-tasks.register<JavaExec>("runmcp") {
-    javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
-    })
-    group = "application"
-    description = "Runs ai2 tests"
-
-    classpath = sourceSets["jvmMain"].runtimeClasspath
-
-    mainClass.set("afield.ai.SimpleMCP2Kt") // adjust to match your file/class
-    standardInput = System.`in`
-}
-
 tasks.register<JavaExec>("runfilestore") {
     javaLauncher.set(javaToolchains.launcherFor {
         languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))

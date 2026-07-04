@@ -95,7 +95,7 @@ class Image(private val device: Device, val imageData: ImageData) {
 
     // Per-command-buffer layout tracking (optional; best-effort)
     @Volatile
-    private var layoutByCommandBuffer = java.util.WeakHashMap<Long, Int>()
+    private var layoutByCommandBuffer = java.util.concurrent.ConcurrentHashMap<Long, Int>()
 
     fun setLayoutFor(commandBufferHandle: Long, layout: Int) {
         layoutByCommandBuffer[commandBufferHandle] = layout

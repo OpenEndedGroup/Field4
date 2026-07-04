@@ -822,7 +822,7 @@ class Flanger(
             val dp = depthBuf[i].toDouble().coerceIn(0.0, maxDelay.toDouble())
             val delay = dp * (0.5 + 0.5 * sin(2.0 * PI * lfoPhase)) * ctx.sampleRate
             val readIdx = ((writePos - delay.toInt() + bufSize) % bufSize)
-            val delayed = buffer[readIdx.toInt() % bufSize]
+            val delayed = buffer[readIdx % bufSize]
             val fb = fbBuf[i].coerceIn(-0.99f, 0.99f)
             buffer[writePos] = inBuf[i] + delayed * fb
             writePos = (writePos + 1) % bufSize

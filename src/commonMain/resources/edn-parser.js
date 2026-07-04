@@ -1,5 +1,5 @@
 /**
- * Simple EDN (Extensible Data Notation) parser for Field4 offline viewer
+ * Simple EDN (Extensible Data Notation) parser for Field·4 offline viewer
  * Supports the subset of EDN used in Field metadata files:
  * - Maps: {:key value}
  * - Vectors: [1 2 3]
@@ -61,6 +61,8 @@ class EdnParser {
             return this.parseBoolean();
         } else if (char === 'n') {
             return this.parseNil();
+        } else if (char === '#') {
+            return this.parseTaggedOrSet();
         } else if (char === '-' || (char >= '0' && char <= '9')) {
             return this.parseNumber();
         } else {
@@ -100,6 +102,63 @@ class EdnParser {
 
         this.advance(); // skip ']'
         return vector;
+    }
+
+    parseSet() {
+        const set = [];
+        this.advance(); // skip '{'
+        this.skipWhitespaceAndComments();
+
+        while (this.peek() !== '}') {
+            set.push(this.parseValue());
+            this.skipWhitespaceAndComments();
+        }
+
+        this.advance(); // skip '}'
+        return set;
+    }
+
+    parseTaggedOrSet() {
+        this.advance(); // skip '#'
+        const next = this.peek();
+
+        // EDN set literal #{...}
+        if (next === '{') {
+            return this.parseSet();
+        }
+
+        // Tagged literal #tag value
+        let tag = '';
+        while (this.pos < this.text.length) {
+            const char = this.peek();
+            if (char === ' ' || char === '\t' || char === '\n' || char === '\r' ||
+                char === '{' || char === '}' || char === '[' || char === ']' || char === '"' || char === ':' || char === ';') {
+                break;
+            }
+            tag += this.advance();
+        }
+
+        this.skipWhitespaceAndComments();
+        const value = this.parseValue();
+        return this.applyTag(tag, value);
+    }
+
+    applyTag(tag, value) {
+        switch (tag) {
+            case 'afield/file-inline':
+                // Inline file content; unwrap to the inline string when present
+                if (value && typeof value === 'object' && 'inline' in value) {
+                    return value.inline;
+                }
+                return value;
+            case 'afield/rect':
+            case 'afield/box':
+                // Rects and box refs can be used as-is for rendering
+                return value;
+            default:
+                // Unknown tag: keep payload but annotate for potential debugging
+                return { tag, value };
+        }
     }
 
     parseKeyword() {

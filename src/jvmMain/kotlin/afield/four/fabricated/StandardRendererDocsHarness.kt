@@ -1,12 +1,14 @@
 package afield.four.fabricated
 
 import afield.Box
+import afield.documents
 import afield.four.TexturePreviewCache
 import afield.four.Renderer
 import afield.four.modules.fromContext
 import afield.four.util.Window
 import afield.logger.lprintln
 import afield.stdlib.Vec3
+import afield.thisSessionInfo
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.yield
 import org.joml.Matrix4f
@@ -494,24 +496,52 @@ object StandardRendererDocsHarness {
     }
 
     private fun rendererFromContextOrDocument(): Renderer {
-        try {
-            return fromContext()
-        } catch (_: IllegalArgumentException) {
+        runCatching { fromContext<Renderer>() }.getOrNull()?.let { return it }
+
+        runCatching { Box.context.get() }.getOrNull()?.let { start ->
+            rendererNear(start)?.let { return it }
         }
 
-        val start = Box.context.get()
-        val root = start.root
+        documents.values.forEach { session ->
+            session.boxes["agent_graphics_context"]?.let { rendererIn(it) }?.let { return it }
+            session.boxes.values.firstOrNull { it.name == "renderer" }?.let { rendererIn(it) }?.let { return it }
+        }
+
+        runCatching { thisSessionInfo.get() }.getOrNull()?.let { session ->
+            session.boxes.values.forEach { box ->
+                rendererIn(box)?.let { return it }
+            }
+            rendererIn(session.root)?.let { return it }
+        }
+
+        documents.values.forEach { session ->
+            session.boxes.values.forEach { box ->
+                rendererIn(box)?.let { return it }
+            }
+            rendererIn(session.root)?.let { return it }
+        }
+
+        throw IllegalArgumentException("must pass in a value for context parameter ${Renderer::class.java.name}")
+    }
+
+    private fun rendererNear(start: Box): Renderer? {
         val seen = mutableSetOf<Box>()
         val queue = ArrayDeque<Box>()
-        queue.add(root)
+        queue.add(start)
         while (queue.isNotEmpty()) {
             val box = queue.removeFirst()
             if (!seen.add(box)) continue
-            box.properties.values.firstOrNull { it is Renderer }?.let { return it as Renderer }
-            box.ki.context.vars.values.firstOrNull { it.value is Renderer }?.let { return it.value as Renderer }
+            rendererIn(box)?.let { return it }
+            box.parents.forEach { queue.add(it) }
             box.children.forEach { queue.add(it) }
         }
-        throw IllegalArgumentException("must pass in a value for context parameter ${Renderer::class.java.name}")
+        return null
+    }
+
+    private fun rendererIn(box: Box): Renderer? {
+        (box.getPropertyRaw("renderer") as? Renderer)?.let { return it }
+        box.properties.values.firstOrNull { it is Renderer }?.let { return it as Renderer }
+        return box.ki.context.vars.values.firstOrNull { it.value is Renderer }?.value as? Renderer
     }
 
     private fun tempPng(prefix: String): File = Files.createTempFile(prefix, ".png").toFile()

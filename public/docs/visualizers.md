@@ -56,6 +56,7 @@ loop {
     __m("histogram").histogram(value, dur = 480)
     __m("trail").history(value, dur = 48)
     __m("summary").stats(value, dur = 48)
+    frame()
 }
 ```
 

@@ -62,10 +62,14 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-default-scene.png" source-image="/tmp/docs-fabricate-default-native.png" wait="15.0" timeout="120" capture="box" execution="launch" embed=true graphics-context=true name="fabricate-default-scene"}
 :::static
+import afield.four.Renderer
 import afield.four.fabricated.StandardRendererDocsHarness
+import afield.four.modules.fromContext
+
+val renderer: Renderer = fromContext()
 
 val captureScene: suspend () -> Unit = {
-    val image = StandardRendererDocsHarness.renderDefaultScene("/tmp/docs-fabricate-default-native.png")
+    val image = StandardRendererDocsHarness.renderDefaultScene("/tmp/docs-fabricate-default-native.png", renderer = renderer)
     display("render", StandardRendererDocsHarness.htmlForImage(image, "Default StandardRenderer scene"))
     println("fabricate default scene ready")
 }
@@ -132,10 +136,14 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-shiny-checkerboard.png" source-image="/tmp/docs-fabricate-shiny-checkerboard-native.png" wait="20.0" timeout="180" capture="box" execution="launch" embed=true graphics-context=true name="fabricate-shiny-torii-checkerboard"}
 :::static
+import afield.four.Renderer
 import afield.four.fabricated.StandardRendererDocsHarness
+import afield.four.modules.fromContext
+
+val renderer: Renderer = fromContext()
 
 val captureScene: suspend () -> Unit = {
-    val image = StandardRendererDocsHarness.renderShinyToriCheckerboard("/tmp/docs-fabricate-shiny-checkerboard-native.png")
+    val image = StandardRendererDocsHarness.renderShinyToriCheckerboard("/tmp/docs-fabricate-shiny-checkerboard-native.png", renderer = renderer)
     display("render", StandardRendererDocsHarness.htmlForImage(image, "Shiny torii over checkerboard planes"))
     println("fabricate shiny checkerboard scene ready")
 }
@@ -182,10 +190,14 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-camera-depth-study.png" source-image="/tmp/docs-fabricate-camera-depth-study-native.png" wait="25.0" timeout="180" capture="box" execution="launch" embed=true graphics-context=true name="fabricate-camera-depth-study"}
 :::static
+import afield.four.Renderer
 import afield.four.fabricated.StandardRendererDocsHarness
+import afield.four.modules.fromContext
+
+val renderer: Renderer = fromContext()
 
 val captureScene: suspend () -> Unit = {
-    val image = StandardRendererDocsHarness.renderCheckerboardCameraDepthStudy("/tmp/docs-fabricate-camera-depth-study-native.png")
+    val image = StandardRendererDocsHarness.renderCheckerboardCameraDepthStudy("/tmp/docs-fabricate-camera-depth-study-native.png", renderer = renderer)
     display("render", StandardRendererDocsHarness.htmlForImage(image, "Left: near framing, right: far framing"))
     println("fabricate camera depth study ready")
 }
@@ -243,10 +255,14 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-shader-generated-checkerboard.png" source-image="/tmp/docs-fabricate-shader-checkerboard-native.png" wait="20.0" timeout="180" capture="box" execution="launch" embed=true graphics-context=true name="fabricate-shader-generated-checkerboard"}
 :::static
+import afield.four.Renderer
 import afield.four.fabricated.StandardRendererDocsHarness
+import afield.four.modules.fromContext
+
+val renderer: Renderer = fromContext()
 
 val captureScene: suspend () -> Unit = {
-    val image = StandardRendererDocsHarness.renderShaderGeneratedCheckerboard("/tmp/docs-fabricate-shader-checkerboard-native.png")
+    val image = StandardRendererDocsHarness.renderShaderGeneratedCheckerboard("/tmp/docs-fabricate-shader-checkerboard-native.png", renderer = renderer)
     display("render", StandardRendererDocsHarness.htmlForImage(image, "Checkerboard generated in shader on one floor mesh"))
     println("fabricate shader checkerboard scene ready")
 }
@@ -293,10 +309,14 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-metalness.png" source-image="/tmp/docs-fabricate-metalness-native.png" wait="15.0" timeout="120" capture="box" execution="launch" embed=true graphics-context=true name="fabricate-metalness"}
 :::static
+import afield.four.Renderer
 import afield.four.fabricated.StandardRendererDocsHarness
+import afield.four.modules.fromContext
+
+val renderer: Renderer = fromContext()
 
 val captureScene: suspend () -> Unit = {
-    val image = StandardRendererDocsHarness.renderMetalnessComparison("/tmp/docs-fabricate-metalness-native.png")
+    val image = StandardRendererDocsHarness.renderMetalnessComparison("/tmp/docs-fabricate-metalness-native.png", renderer = renderer)
     display("render", StandardRendererDocsHarness.htmlForImage(image, "Left: metallic = 0.0, right: metallic = 1.0"))
     println("fabricate metalness comparison ready")
 }
@@ -345,10 +365,14 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-shadows.png" source-image="/tmp/docs-fabricate-shadow-native.png" wait="30.0" timeout="180" capture="box" execution="launch" embed=true graphics-context=true name="fabricate-shadows"}
 :::static
+import afield.four.Renderer
 import afield.four.fabricated.StandardRendererDocsHarness
+import afield.four.modules.fromContext
+
+val renderer: Renderer = fromContext()
 
 val captureScene: suspend () -> Unit = {
-    val image = StandardRendererDocsHarness.renderShadowComparison("/tmp/docs-fabricate-shadow-native.png")
+    val image = StandardRendererDocsHarness.renderShadowComparison("/tmp/docs-fabricate-shadow-native.png", renderer = renderer)
     display("render", StandardRendererDocsHarness.htmlForImage(image, "Left: shadows off, right: default shadows"))
     println("fabricate shadow comparison ready")
 }
@@ -395,10 +419,14 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-ao.png" source-image="/tmp/docs-fabricate-ao-native.png" wait="30.0" timeout="180" capture="box" execution="launch" embed=true graphics-context=true name="fabricate-ao"}
 :::static
+import afield.four.Renderer
 import afield.four.fabricated.StandardRendererDocsHarness
+import afield.four.modules.fromContext
+
+val renderer: Renderer = fromContext()
 
 val captureScene: suspend () -> Unit = {
-    val image = StandardRendererDocsHarness.renderAoComparison("/tmp/docs-fabricate-ao-native.png")
+    val image = StandardRendererDocsHarness.renderAoComparison("/tmp/docs-fabricate-ao-native.png", renderer = renderer)
     display("render", StandardRendererDocsHarness.htmlForImage(image, "Left: AO off, right: default AO"))
     println("fabricate ao comparison ready")
 }

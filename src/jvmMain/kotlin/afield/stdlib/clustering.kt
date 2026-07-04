@@ -723,7 +723,7 @@ private fun kMedians(
             else -> Random(seedBase + run)
         }
         val candidate = runKMedians(rows, k, options, rng)
-        if (best == null || candidate.objective < best!!.objective) best = candidate
+        if (best == null || candidate.objective < best.objective) best = candidate
     }
     return best!!
 }

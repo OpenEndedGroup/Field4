@@ -561,22 +561,28 @@ private object GraphWalker {
     }
 
     private fun reflectiveEdges(node: Any, options: GraphWalkOptions): List<LiveGraphEdge> = when (node) {
-        is Map<*, *> -> node.keys.mapNotNull { rawKey ->
-            val key = rawKey?.toString() ?: return@mapNotNull null
+        is Map<*, *> -> {
+            @Suppress("UNCHECKED_CAST")
             val mutable = node as? MutableMap<Any?, Any?>
-            LiveGraphEdge(
-                name = key,
-                getter = { node[rawKey] },
-                setter = mutable?.let { map -> { value -> map[rawKey] = value } }
-            )
+            node.keys.mapNotNull { rawKey ->
+                val key = rawKey?.toString() ?: return@mapNotNull null
+                LiveGraphEdge(
+                    name = key,
+                    getter = { node[rawKey] },
+                    setter = mutable?.let { map -> { value -> map[rawKey] = value } }
+                )
+            }
         }
-        is List<*> -> node.indices.map { index ->
+        is List<*> -> {
+            @Suppress("UNCHECKED_CAST")
             val mutable = node as? MutableList<Any?>
-            LiveGraphEdge(
-                name = index.toString(),
-                getter = { node.getOrNull(index) },
-                setter = mutable?.let { list -> { value -> list[index] = value } }
-            )
+            node.indices.map { index ->
+                LiveGraphEdge(
+                    name = index.toString(),
+                    getter = { node.getOrNull(index) },
+                    setter = mutable?.let { list -> { value -> list[index] = value } }
+                )
+            }
         }
         is Array<*> -> node.indices.map { index ->
             LiveGraphEdge(
@@ -591,6 +597,7 @@ private object GraphWalker {
                 prop.get(node)
             }
             val setter = if (prop is KMutableProperty1<*, *>) {
+                @Suppress("UNCHECKED_CAST")
                 val mutable = prop as KMutableProperty1<Any, Any?>
                 { value: Any? ->
                     mutable.isAccessible = options.includePrivate

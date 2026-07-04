@@ -104,10 +104,11 @@ class PythonExecution : BoxExecution {
                 val threadLocal = threadUsedField.get(null) as ThreadLocal<*>
                 threadLocal.remove()
             } catch (e: Exception) {
-                lprintln("warning: could not reset Jep.threadUsed via reflection: $e")
+                lprintln("warning,python", "could not reset Jep.threadUsed via reflection: $e")
             }
 
             globalInterpreter = object : SharedInterpreter() {
+                @Suppress("OVERRIDE_DEPRECATION")
                 override fun isValidThread() {
                     return
                 }
@@ -1226,12 +1227,13 @@ class PythonInterface {
                 return false
             }
 
+            @Suppress("DEPRECATION")
             MainInterpreter.setInitParams(PyConfig().setPythonHome(pythonHome.absolutePath))
             MainInterpreter.setJepLibraryPath(jepLib.absolutePath)
 
             if (venvSitePackages != null) {
-                conf.addIncludePaths(venvSitePackages!!.absolutePath)
-                resolvedVenvSitePackagesPath = venvSitePackages!!.absolutePath
+                conf.addIncludePaths(venvSitePackages.absolutePath)
+                resolvedVenvSitePackagesPath = venvSitePackages.absolutePath
             }
 
             resolvedVenvPath = venvPath.absolutePath
@@ -1259,6 +1261,7 @@ class PythonInterface {
                 if (venvProp != null) {
                     lprintln("warning,python", "venv resolution failed for $venvProp, falling back to hardcoded miniconda paths")
                 }
+                @Suppress("DEPRECATION")
                 MainInterpreter.setInitParams(PyConfig().setPythonHome("/opt/homebrew/Caskroom/miniconda/base/"))
                 MainInterpreter.setJepLibraryPath("/opt/homebrew/Caskroom/miniconda/base/lib/python3.11/site-packages/jep/libjep.jnilib")
                 resolvedPythonExecutable = "/opt/homebrew/Caskroom/miniconda/base/bin/python"

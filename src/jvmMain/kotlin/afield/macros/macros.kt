@@ -67,7 +67,6 @@ suspend fun standardExecutionPractice(
         if (ret is ResultValue.Error) {
             return result
         }
-        ret
     }
     return result
 }
@@ -149,7 +148,7 @@ suspend fun checkPreambleAndExecute(
     val extraLines = extra.values.joinToString(separator = "\n")
     if (extraLines.trim().isNotEmpty()) {
         println(" preamble, extra lines are ${extraLines}, executing")
-        (inside as Box).ki.withSourceProperty("preamble") {
+        inside.ki.withSourceProperty("preamble") {
             inside.ki.exec(
                 extraLines, onCompileError, onEvalError, onEvalException, implicits = listOf(inside)
             )

@@ -814,8 +814,8 @@ class Instance(validate: Boolean) {
                             for (i in 0 until count) {
                                 val t = props[i]
                                 lprintln("info,vulkan", " - ${t.nameString()} ${t.versionString()}")
-                                lprintln("info,vulkan", "    layer='${t.layerString() ?: ""}'")
-                                lprintln("info,vulkan", "    desc='${t.descriptionString() ?: ""}'")
+                                lprintln("info,vulkan", "    layer='${t.layerString()}'")
+                                lprintln("info,vulkan", "    desc='${t.descriptionString()}'")
                                 lprintln("info,vulkan", "    purposes=${purposes(t.purposes())}")
                             }
                         }

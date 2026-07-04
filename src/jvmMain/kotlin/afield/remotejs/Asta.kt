@@ -147,7 +147,7 @@ class Asta {
         }
 
 
-        children.forEach { recurOver(it!!, i + 2, v) }
+        children.forEach { recurOver(it, i + 2, v) }
     }
 
     private fun reconstructOver(
@@ -251,7 +251,7 @@ class Asta {
             val (s, e) = startAndEndPositionFor(c)
 
             text = text.replaceRange(
-                (s - start).toInt()..(e - start - 1).toInt(),
+                (s - start)..(e - start - 1),
                 reconstructOver(
                     c,
                     i + 5,
@@ -322,7 +322,7 @@ class Asta {
 //                e.printStackTrace()
                 Collections.EMPTY_LIST
             }
-        }.filter { it != null }.map { it as Tree }.sortedBy { it!!.startPosition }.toList()
+        }.filterIsInstance<Tree>().sortedBy { it.startPosition }.toList()
     }
 
     private fun startAndEndPositionFor(c: Tree, correct: Boolean = true): Pair<Int, Int> {

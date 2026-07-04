@@ -1,0 +1,51 @@
+name: graphics_renderer_launch
+description: Create and launch the reusable afield.four renderer parent box for graphics transcripts.
+operations:
+  - create:
+      box: agent_graphics_context
+      name: renderer
+      frame:
+        x: 40.0
+        y: 40.0
+        w: 160.0
+        h: 90.0
+      properties:
+        code: |
+          import afield.four.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+
+          Options.enableHDR = false
+          Options.profiling = false
+
+          once.renderer {
+              window = Window("Field")
+              Renderer(window)
+          }
+
+          println("agent graphics renderer ready")
+          start(renderer::run)
+  - launch:
+      box: agent_graphics_context
+      property: code
+      type: code
+      strand: renderer
+      code: |
+        import afield.four.util.Options
+
+        prop<Window>(window)
+        prop<Renderer>(renderer)
+
+        Options.enableHDR = false
+        Options.profiling = false
+
+        once.renderer {
+            window = Window("Field")
+            Renderer(window)
+        }
+
+        println("agent graphics renderer ready")
+        start(renderer::run)
+  - wait:
+      frames: 3

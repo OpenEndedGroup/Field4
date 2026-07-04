@@ -670,6 +670,7 @@ object OperationTranscript {
 
     private fun mergePendingEditIntoPrevious(state: DocumentState, pending: PendingEdit): Boolean {
         val editIndex = previousEditableIndexFor(state.entries, pending.box, pending.property) ?: return false
+        @Suppress("UNCHECKED_CAST")
         val payload = state.entries[editIndex]["edit"] as? MutableMap<String, Any?> ?: return false
         payload["to"] = pending.to
         removeTrailingWaitsAfter(state.entries, editIndex)
@@ -702,6 +703,7 @@ object OperationTranscript {
 
     private fun mergeMoveIntoPrevious(state: DocumentState, box: String, to: Rect): Boolean {
         val moveIndex = previousMoveIndexFor(state.entries, box) ?: return false
+        @Suppress("UNCHECKED_CAST")
         val payload = state.entries[moveIndex]["move"] as? MutableMap<String, Any?> ?: return false
         payload["to"] = rectMap(to)
         removeTrailingWaitsAfter(state.entries, moveIndex)
@@ -748,6 +750,7 @@ object OperationTranscript {
                 if (previous == null) {
                     out += deepLinkedMap(entry)
                 } else {
+                    @Suppress("UNCHECKED_CAST")
                     val previousPayload = out[previous]["edit"] as? MutableMap<String, Any?> ?: run {
                         out += deepLinkedMap(entry)
                         return@forEach
@@ -765,6 +768,7 @@ object OperationTranscript {
                 if (previous == null) {
                     out += deepLinkedMap(entry)
                 } else {
+                    @Suppress("UNCHECKED_CAST")
                     val previousPayload = out[previous]["move"] as? MutableMap<String, Any?> ?: run {
                         out += deepLinkedMap(entry)
                         return@forEach
@@ -859,9 +863,16 @@ object OperationTranscript {
             "stop", "stop-all", "stop-box" -> if (boxId.isBlank()) "stop" else "stop $boxId"
             "connect" -> "connect ${(payload["parent"] ?: payload["from"] ?: payload["source"] ?: payload["box"]).orEmptyString()} -> ${(payload["child"] ?: payload["to"] ?: payload["target"]).orEmptyString()}"
             "disconnect" -> "disconnect ${(payload["parent"] ?: payload["from"] ?: payload["source"] ?: payload["box"]).orEmptyString()} -> ${(payload["child"] ?: payload["to"] ?: payload["target"]).orEmptyString()}"
+            "create", "new-box", "box" -> "create ${(payload["box"] ?: payload["uid"] ?: payload["id"] ?: payload["target"]).orEmptyString()} ${(payload["name"] ?: "").orEmptyString()}".trim()
+            "delete", "tombstone" -> "delete ${(payload["box"] ?: payload["uid"] ?: payload["id"] ?: payload["target"]).orEmptyString()}".trim()
             "wait" -> {
-                val frames = payload["frames"]?.toString() ?: "?"
-                "wait $frames ${if (frames.toLongOrNull() == 1L) "frame" else "frames"}"
+                val millis = payload["millis"] ?: payload["ms"]
+                if (millis != null) {
+                    "wait ${millis}ms"
+                } else {
+                    val frames = payload["frames"]?.toString() ?: "?"
+                    "wait $frames ${if (frames.toLongOrNull() == 1L) "frame" else "frames"}"
+                }
             }
             "marker" -> "marker ${(payload["kind"] ?: "").orEmptyString()} ${(payload["label"] ?: "").orEmptyString()}".trim()
             else -> verb.ifBlank { "entry" }
@@ -1142,12 +1153,48 @@ object OperationTranscript {
                 val target = mappedBox() ?: return false
                 val frameValue = payload[if (direction == "undo") "from" else "to"] ?: payload["frame"] ?: payload["value"] ?: return false
                 val frameMap = frameValue as? Map<*, *> ?: return false
-                target.frame = Rect(
-                    frameMap["x"].asDouble(),
-                    frameMap["y"].asDouble(),
-                    frameMap["w"].asDouble(),
-                    frameMap["h"].asDouble()
-                )
+                target.frame = rectFromMap(frameMap)
+                true
+            }
+            "create", "new-box", "box" -> {
+                val raw = (payload["box"] ?: payload["uid"] ?: payload["id"] ?: payload["target"])?.toString() ?: return false
+                val mapped = boxMap[raw] ?: raw
+                if (mapped == "root" || mapped == METAROOT_ID) return false
+                val info = thisSessionInfo.get()
+                val target = box(mapped, createIfMissing = true, initIfCreated = true, root = info)
+                if (direction == "undo") {
+                    tombstoneBox(target)
+                    return true
+                }
+                target.setPropertyRaw("_tombstone", false, doResync = true)
+                (payload["name"] ?: payload["title"])?.toString()?.let { target.name = it }
+                val frameMap = (payload["frame"] ?: payload["rect"]) as? Map<*, *>
+                if (frameMap != null) target.frame = rectFromMap(frameMap)
+                (payload["properties"] as? Map<*, *>)?.forEach { (key, value) ->
+                    val property = key?.toString()?.takeIf { it.isNotBlank() } ?: return@forEach
+                    if (value != null) target.setPropertyRaw(property, value, doResync = true)
+                }
+                info.root.connect(target)
+                needsResync.add(info.root to "children")
+                needsResync.add(target to "parents")
+                needsResync.add(info.root to "actions")
+                needsResync.add(target to "actions")
+                target.resyncAll()
+                info.topologyGeneration++
+                true
+            }
+            "delete", "tombstone" -> {
+                val target = mappedBox() ?: return false
+                if (target.id == "root" || target.id == METAROOT_ID) return false
+                if (direction == "undo") {
+                    val info = thisSessionInfo.get()
+                    target.setPropertyRaw("_tombstone", false, doResync = true)
+                    info.root.connect(target)
+                    target.resyncAll()
+                    info.topologyGeneration++
+                } else {
+                    tombstoneBox(target)
+                }
                 true
             }
             "connect", "disconnect" -> {
@@ -1185,8 +1232,44 @@ object OperationTranscript {
                 target.ke.stop(target)
                 true
             }
-            "wait", "marker" -> false
+            "wait" -> {
+                if (direction == "undo") return false
+                val explicitMillis = payload["millis"]?.asLongOrDefault(-1L)
+                    ?: payload["ms"]?.asLongOrDefault(-1L)
+                    ?: payload["seconds"]?.asDoubleOrNull()?.let { (it * 1000.0).toLong() }
+                val frames = payload["frames"]?.asLongOrDefault(-1L)
+                if (explicitMillis != null && explicitMillis >= 0L) {
+                    Thread.sleep(explicitMillis.coerceIn(0L, 30_000L))
+                } else if (frames != null && frames >= 0L) {
+                    waitForRunloopFrames(frames.coerceIn(0L, 30_000L))
+                }
+                true
+            }
+            "marker" -> false
             else -> false
+        }
+    }
+
+    private fun tombstoneBox(target: Box) {
+        if (target.id == "root" || target.id == METAROOT_ID) return
+        val info = thisSessionInfo.get()
+        if (target.nestedIn != null) {
+            target.nestedIn = null
+        }
+        target.setPropertyRaw("_tombstone", true, doResync = true)
+        info.root.disconnect(target)
+        needsResync.add(info.root to "children")
+        needsResync.add(target to "parents")
+        needsResync.add(info.root to "actions")
+        needsResync.add(target to "actions")
+        info.topologyGeneration++
+    }
+
+    private fun waitForRunloopFrames(frames: Long) {
+        if (frames <= 0L) return
+        val target = Runloop.runLoop.frame + frames
+        while (Runloop.runLoop.frame < target) {
+            Thread.sleep(1L)
         }
     }
 
@@ -1242,6 +1325,26 @@ object OperationTranscript {
         is Number -> toDouble()
         else -> toString().toDouble()
     }
+
+    private fun Any?.asDoubleOrNull(): Double? = when (this) {
+        is Number -> toDouble()
+        null -> null
+        else -> toString().toDoubleOrNull()
+    }
+
+    private fun Any?.asLongOrDefault(default: Long): Long = when (this) {
+        is Number -> toLong()
+        null -> default
+        else -> toString().toLongOrNull() ?: default
+    }
+
+    private fun rectFromMap(frameMap: Map<*, *>): Rect =
+        Rect(
+            frameMap["x"].asDouble(),
+            frameMap["y"].asDouble(),
+            frameMap["w"].asDouble(),
+            frameMap["h"].asDouble()
+        )
 
     private fun Any?.asIntOrDefault(default: Int): Int = when (this) {
         is Number -> toInt()

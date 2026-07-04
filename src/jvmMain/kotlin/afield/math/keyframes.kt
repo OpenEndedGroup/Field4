@@ -28,7 +28,7 @@ class KeyframeEvaluator(jsonString: String) {
 
     /** True when the iframe WebSocket is connected and still open. */
     val hasLiveSession: Boolean
-        @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+        @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
         get() = ::session.isInitialized && !session.outgoing.isClosedForSend
 
     /** The box ID + name uid this evaluator is associated with */

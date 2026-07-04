@@ -62,6 +62,11 @@ object Options {
         "afield.four.computeOncePerFrame",
         System.getenv("AFIELD_FOUR_COMPUTE_ONCE_PER_FRAME") ?: "true"
     ).toBoolean()
+    // Requested by default; actual use is gated by Device.supportsMaintenance7.
+    var secondaryGraphicsCommandBuffers = System.getProperty(
+        "afield.four.secondaryGraphicsCommandBuffers",
+        System.getenv("AFIELD_FOUR_SECONDARY_GRAPHICS_COMMAND_BUFFERS") ?: "true"
+    ).toBoolean()
     var enableVR = false
 
     fun doVulkanSDK() {

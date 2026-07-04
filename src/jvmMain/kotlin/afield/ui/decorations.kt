@@ -121,6 +121,7 @@ data class Location(val inside: Box, val property: String, val line: Int, val co
  * @return The updated value.
  */
 fun <K, V> MutableMap<K, in V>.update(key: K, d: V, u: (V) -> V): V {
+    @Suppress("UNCHECKED_CAST")
     val v = u(computeIfAbsent(key) { d } as V)
     put(key, v)
     return v
@@ -452,16 +453,11 @@ fun Marker.liveNumber(defaultValue: Number = 0.0): Double {
     if (location == null) {
         lprintln("warn,decorations", "liveNumber: Could not find location for marker ${this.name}, using cached value: $cachedValue")
         clearLiveNumberError()
-        return cachedValue.toDouble()
+        return cachedValue
     }
 
     // Get the source code and split it into lines
-    val lines = this.box.code?.split("\n")
-    if (lines == null) {
-        lprintln("warn,decorations", "liveNumber: Could not access source code, using cached value: $cachedValue")
-        clearLiveNumberError()
-        return cachedValue
-    }
+    val lines = this.box.code.split("\n")
 
     // Get the line where liveNumber is called
     val lineIndex = location.line - 1

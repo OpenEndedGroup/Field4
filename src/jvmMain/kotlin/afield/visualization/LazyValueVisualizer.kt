@@ -90,7 +90,7 @@ private object H2TokenRetention {
 
 object LazyValueVisualizer {
     fun visualize(value: Any?, appendable: Boolean = false): String {
-        val adapted = (value as? Any)?.let { H2ValueRegistry.adapt(it) }
+        val adapted = value?.let { H2ValueRegistry.adapt(it) }
         if (adapted == null && !isHeavyStructure(value)) return ValueVisualizer.visualize(value, appendable = appendable)
 
         val rawValue = adapted?.value ?: value

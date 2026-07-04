@@ -20,7 +20,11 @@ class MeshGroup : ArrayList<Mesh>() {
                 if (inside.push.offsets.isEmpty()) {
                     inside.initializePushConstantsFromModule(inside.inside)
                 }
-                if (inside.push.offsets.containsKey(property.name)) return@getValue inside.push.bindings[property.name] as () -> T
+                if (inside.push.offsets.containsKey(property.name)) {
+                    @Suppress("UNCHECKED_CAST")
+                    val binding = inside.push.bindings[property.name] as () -> T
+                    return@getValue binding
+                }
             }
             throw IllegalArgumentException(" can't find ${property.name} in a mesh group in this module ${inside} as a push_constant or a UBO structure")
         }
@@ -44,7 +48,11 @@ class MeshMeshGroup : ArrayList<MeshMesh>() {
                 if (inside.push.offsets.isEmpty()) {
                     inside.initializePushConstantsFromModule(inside.inside)
                 }
-                if (inside.push.offsets.containsKey(property.name)) return@getValue inside.push.bindings[property.name] as () -> T
+                if (inside.push.offsets.containsKey(property.name)) {
+                    @Suppress("UNCHECKED_CAST")
+                    val binding = inside.push.bindings[property.name] as () -> T
+                    return@getValue binding
+                }
             }
             throw IllegalArgumentException(" can't find ${property.name} in a mesh group in this module ${inside} as a push_constant or a UBO structure")
         }
@@ -68,10 +76,13 @@ class ComputeMeshGroup : ArrayList<ComputeMesh>() {
                 if (inside.push.offsets.isEmpty()) {
                     inside.initializePushConstantsFromModule(inside.inside)
                 }
-                if (inside.push.offsets.containsKey(property.name)) return@getValue inside.push.bindings[property.name] as () -> T
+                if (inside.push.offsets.containsKey(property.name)) {
+                    @Suppress("UNCHECKED_CAST")
+                    val binding = inside.push.bindings[property.name] as () -> T
+                    return@getValue binding
+                }
             }
             throw IllegalArgumentException(" can't find ${property.name} in a mesh group in this module ${inside} as a push_constant or a UBO structure")
         }
     }
 }
-

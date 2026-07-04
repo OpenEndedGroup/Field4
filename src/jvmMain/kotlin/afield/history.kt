@@ -739,7 +739,7 @@ object HistoryManager {
                         .ifEmpty { null }
 
                     val touched = restoreSelectedPersistentProperties(
-                        source!!,
+                        source,
                         targetBox,
                         savingContext,
                         targetSnapshot.directory,
@@ -1707,13 +1707,13 @@ object HistoryManager {
             return HistoryLineChurnResult(uid = uid, property = property, versionCount = versions.size)
         }
 
-        var previousLines = splitHistoryLines(loadBoxPropertyText(versions.first(), documentPath, uid, property) ?: "")
+        var previousLines = splitHistoryLines(loadBoxPropertyText(versions.first(), documentPath, uid, property))
         var scores = DoubleArray(previousLines.size)
         var counts = IntArray(previousLines.size)
         val transitions = versions.size - 1
 
         for (i in 1 until versions.size) {
-            val currentLines = splitHistoryLines(loadBoxPropertyText(versions[i], documentPath, uid, property) ?: "")
+            val currentLines = splitHistoryLines(loadBoxPropertyText(versions[i], documentPath, uid, property))
             val alignment = alignNewLinesToOld(previousLines, currentLines)
             val nextScores = DoubleArray(currentLines.size)
             val nextCounts = IntArray(currentLines.size)

@@ -106,6 +106,7 @@ private class TemplateEngine(
             is Iterable<*> -> any.mapNotNull { asSingleResolverOrNull(it) }
             else -> {
                 // Try to treat it as a lambda-like resolver.
+                @Suppress("UNCHECKED_CAST")
                 val fn = any as? ResolverFn
                 if (fn != null) listOf(FnResolver(fn))
                 else throw TemplateException(
@@ -119,6 +120,7 @@ private class TemplateEngine(
             is Resolver -> any
             is Map<*, *> -> MapResolver(any.entries.associate { it.key.toString() to it.value })
             else -> {
+                @Suppress("UNCHECKED_CAST")
                 val fn = any as? ResolverFn
                 if (fn != null) FnResolver(fn) else null
             }

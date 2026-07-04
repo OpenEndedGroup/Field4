@@ -344,7 +344,7 @@ object TexturePreviewCache {
 
                     // Transition blit image to TRANSFER_DST
                     image_layout_transition(
-                        cmd.vkCommandBuffer, blitImage!!.vkImage,
+                        cmd.vkCommandBuffer, blitImage.vkImage,
                         VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
                         0, VK_ACCESS_2_TRANSFER_WRITE_BIT,
                         VK10.VK_IMAGE_LAYOUT_UNDEFINED, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, range
@@ -363,19 +363,19 @@ object TexturePreviewCache {
                     VK10.vkCmdBlitImage(
                         cmd.vkCommandBuffer,
                         vkImage, VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                        blitImage!!.vkImage, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                        blitImage.vkImage, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                         blit, VK10.VK_FILTER_LINEAR
                     )
 
                     // Transition blit image to TRANSFER_SRC for the copy-to-buffer
                     image_layout_transition(
-                        cmd.vkCommandBuffer, blitImage!!.vkImage,
+                        cmd.vkCommandBuffer, blitImage.vkImage,
                         VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
                         VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_ACCESS_2_TRANSFER_READ_BIT,
                         VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, range
                     )
 
-                    copySourceImage = blitImage!!.vkImage
+                    copySourceImage = blitImage.vkImage
                     copySourceLayout = VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
                 } else {
                     copySourceImage = vkImage
@@ -435,7 +435,7 @@ object TexturePreviewCache {
             }
 
             if (result != null) {
-                val cached = CachedPreview(result!!, thumbW, thumbH, System.nanoTime())
+                val cached = CachedPreview(result, thumbW, thumbH, System.nanoTime())
                 cache[vkImage] = cached
                 return imgTag(cached)
             }

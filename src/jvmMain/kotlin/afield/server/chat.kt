@@ -8,6 +8,7 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -21,6 +22,7 @@ import kotlinx.serialization.json.decodeFromJsonElement
  */
 
 @RunsAt(installHandlers)
+@OptIn(DelicateCoroutinesApi::class)
 fun chat() {
     // Chat server configuration
     val chatServerUrl = System.getenv("CHAT_SERVER_URL") ?: "http://localhost:5002"

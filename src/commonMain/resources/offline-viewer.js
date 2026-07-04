@@ -1,5 +1,5 @@
 /**
- * Field4 Offline Viewer
+ * Field·4 Offline Viewer
  * Renders Field documents in read-only mode without backend connection
  */
 
@@ -76,7 +76,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         // Setup view toggle
         setupLiterateToggle();
 
-        // Setup the "Open in Field4" button
+        // Setup the "Open in Field·4" button
         setupOpenLocalButton(ednFileUrl, ednText, data);
 
         // Setup help overlay
@@ -761,7 +761,7 @@ function setupOpenLocalButton(fileUrl, ednText, data) {
     const button = document.getElementById('open-local');
     button.style.display = 'inline-block';
     button.href = '#';
-    button.title = 'Send to Field4 desktop application';
+    button.title = 'Send to Field·4 desktop application';
 
     let busy = false;
 
@@ -770,7 +770,7 @@ function setupOpenLocalButton(fileUrl, ednText, data) {
         if (busy) return;
         busy = true;
         const originalLabel = button.textContent;
-        button.textContent = 'Sending to Field4...';
+        button.textContent = 'Sending to Field·4...';
         try {
             const recommendedName = deriveRecommendedName(fileUrl);
             let localBase = 'https://localhost:9092';
@@ -805,20 +805,22 @@ function setupOpenLocalButton(fileUrl, ednText, data) {
             // Update URL bar so this offline page now points at the local copy
             window.history.pushState({}, '', `?file=${encodeURIComponent(localEdnUrl)}`);
 
-            // Convert button back into a normal link to Field4
+            // Convert button back into a normal link to Field·4
             button.href = openUrl;
-            button.textContent = 'Open in Field4';
-            button.title = `Open ${result.documentName} in Field4`;
+            button.target = '_blank';
+            button.rel = 'noopener';
+            button.textContent = 'Open in Field·4';
+            button.title = `Open ${result.documentName} in Field·4`;
 
             if (hostOpened) {
-                button.textContent = 'Opening in Field4...';
+                button.textContent = 'Opening in Field·4...';
                 return;
             }
 
-            // Launch Field4 directly when we imported over localhost ourselves.
-            window.location.href = openUrl;
+            // Launch Field·4 in a new tab when we imported over localhost ourselves.
+            window.open(openUrl, '_blank', 'noopener');
         } catch (error) {
-            showError(`Failed to send to Field4: ${error.message}`);
+            showError(`Failed to send to Field·4: ${error.message}`);
             button.textContent = originalLabel;
         } finally {
             busy = false;
@@ -843,7 +845,7 @@ function deriveRecommendedName(fileUrl) {
 function showError(message) {
     const loading = document.getElementById('loading');
     const error = document.getElementById('error');
-    
+
     loading.style.display = 'none';
     error.style.display = 'block';
     error.innerHTML = `
@@ -860,13 +862,11 @@ function showDocumentInfo(data, fileUrl) {
     const fileName = fileUrl.split('/').pop();
     const boxCount = data.boxes ? data.boxes.filter(b => !(b.properties || {})._tombstone).length : 0;
     const version = data.version || 'unknown';
-    
+
     banner.innerHTML = `
-        Offline Documentation Mode — Read Only 
-        <span style="opacity: 0.6; margin-left: 12px; font-size: 11px;">
+        <span style="opacity: 0.7; font-size: 11px;">
             ${fileName} • ${boxCount} box${boxCount !== 1 ? 'es' : ''} • v${version}
         </span>
-        <span style="opacity: 0.6; margin-left: 12px;">Press <kbd style="padding: 2px 6px; background: rgba(255,255,255,0.1); border-radius: 3px;">?</kbd> for help</span>
     `;
 }
 
@@ -880,7 +880,7 @@ window.addEventListener('resize', () => {
 function setupHelpOverlay() {
     // Add help overlay that shows on ? key
     let helpVisible = false;
-    
+
     const helpOverlay = document.createElement('div');
     helpOverlay.id = 'help-overlay';
     helpOverlay.style.cssText = `
@@ -896,23 +896,23 @@ function setupHelpOverlay() {
         justify-content: center;
         backdrop-filter: blur(10px);
     `;
-    
+
     helpOverlay.innerHTML = `
         <div style="max-width: 620px; padding: 28px; background: rgba(32, 32, 32, 0.92); border-radius: 12px; border: 1.5px solid var(--field-cyan);">
             <h2 style="margin: 0 0 12px 0; color: var(--field-cyan); font-size: 26px;">Offline Viewer Help</h2>
             <div style="line-height: 1.6; color: #e1ecff;">
                 <p style="margin: 0 0 8px 0;"><strong>Navigation</strong></p>
-                <p style="margin: 0 0 6px 0;"><kbd>Click box</kbd> — Select box and view code</p>
-                <p style="margin: 0 0 6px 0;"><kbd>Middle mouse</kbd> or <kbd>Shift + Drag</kbd> — Pan canvas</p>
-                <p style="margin: 0 0 6px 0;"><kbd>Mouse wheel</kbd> — Scroll canvas</p>
-                <p style="margin: 0 0 6px 0;"><kbd>Arrow keys</kbd> — Pan canvas (when editor not focused)</p>
-                <p style="margin: 0 0 12px 0;"><kbd>Escape</kbd> — Deselect box and hide editor</p>
+                <p style="margin: 0 0 6px 0;">• <kbd>Click box</kbd> — Select box and view code</p>
+                <p style="margin: 0 0 6px 0;">• <kbd>Middle mouse</kbd> or <kbd>Shift + Drag</kbd> — Pan canvas</p>
+                <p style="margin: 0 0 6px 0;">• <kbd>Mouse wheel</kbd> — Scroll canvas</p>
+                <p style="margin: 0 0 6px 0;">• <kbd>Arrow keys</kbd> — Pan canvas (when editor not focused)</p>
+                <p style="margin: 0 0 12px 0;">• <kbd>Escape</kbd> — Deselect box and hide editor</p>
                 <p style="margin: 12px 0 8px 0;"><strong>Features</strong></p>
                 <p style="margin: 0 0 6px 0;">• Click property tabs to switch between code/GLSL/python</p>
                 <p style="margin: 0 0 6px 0;">• Monaco editor provides syntax highlighting</p>
-                <p style="margin: 0 0 16px 0;">• Click "Open in Field4" to launch in desktop app</p>
+                <p style="margin: 0 0 16px 0;">• Click "Open in Field·4" to launch in an already running desktop app</p>
                 <p style="margin: 0; opacity: 0.8; font-size: 13px;">
-                    This is a read-only documentation mode. To edit or execute code, open in Field4 desktop application.
+                    This is a <b>read-only</b> documentation mode. To edit or execute code, launch Field·4 and click on the link in the bottom right.
                 </p>
             </div>
             <div style="text-align: center; margin-top: 18px;">
@@ -922,29 +922,29 @@ function setupHelpOverlay() {
             </div>
         </div>
     `;
-    
+
     document.body.appendChild(helpOverlay);
-    
+
     const button = helpOverlay.querySelector('button');
     button.addEventListener('click', () => {
         helpOverlay.style.display = 'none';
         helpVisible = false;
     });
-    
+
     helpOverlay.addEventListener('click', (e) => {
         if (e.target === helpOverlay) {
             helpOverlay.style.display = 'none';
             helpVisible = false;
         }
     });
-    
+
     document.addEventListener('keydown', (e) => {
         // Don't process help keys if user is typing in an input field
-        const isTyping = document.activeElement && 
-                        (document.activeElement.tagName === 'INPUT' || 
+        const isTyping = document.activeElement &&
+                        (document.activeElement.tagName === 'INPUT' ||
                          document.activeElement.tagName === 'TEXTAREA' ||
                          document.activeElement.classList.contains('monaco-mouse-cursor-text'));
-        
+
         if ((e.key === '?' || e.key === 'h') && !isTyping) {
             e.preventDefault();
             helpOverlay.style.display = helpVisible ? 'none' : 'flex';

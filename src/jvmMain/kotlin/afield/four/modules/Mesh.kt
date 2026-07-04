@@ -136,9 +136,11 @@ class Mesh(var renderer: Renderer = fromContext()) {
             if (inside.push.offsets.isEmpty()) {
                 inside.initializePushConstantsFromModule(inside.inside)
             }
-            if (inside.push.offsets.containsKey(property.name))
-                return inside.push.bindings[property.name] as () -> T
-            else throw IllegalArgumentException(" can't find ${property.name} in a mesh in this module ${inside.inside.current.parameters.name} as a push_constant or a UBO structure")
+            if (inside.push.offsets.containsKey(property.name)) {
+                @Suppress("UNCHECKED_CAST")
+                val binding = inside.push.bindings[property.name] as () -> T
+                return binding
+            } else throw IllegalArgumentException(" can't find ${property.name} in a mesh in this module ${inside.inside.current.parameters.name} as a push_constant or a UBO structure")
         }
     }
 

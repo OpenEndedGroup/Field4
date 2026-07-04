@@ -179,6 +179,26 @@ dist/
 public/field4/
 public/docs/generated/
 public/.field-docs-runner-cache.json
+public/edn-parser.js
+public/examples-gallery.html
+public/offline-viewer.js
+public/offline.html
+public/outputareas.css
+public/iosevka.css
+public/iosevka-*.woff2
+public/min/
+public/woff2/
+public/metadata_store/
+dev_docs/edn-parser.js
+dev_docs/examples-gallery.html
+dev_docs/offline-viewer.js
+dev_docs/offline.html
+dev_docs/outputareas.css
+dev_docs/iosevka.css
+dev_docs/iosevka-*.woff2
+dev_docs/min/
+dev_docs/woff2/
+dev_docs/metadata_store/
 
 ### JVM / Kotlin generated resources
 bin/jvmMain/

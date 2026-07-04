@@ -20,7 +20,7 @@ That last part is the trick worth learning. If a vertex shader declares `layout(
 
 Start with one shader module and one mesh. `moduleHere { ... }` creates a shader module from the current box's shader properties. `Mesh()` creates draw data. `module += m named "my mesh"` attaches the mesh to the module, and `renderer += module` makes the module part of the window.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/00-traditional-triangle.png" wait="2.0" timeout="120" capture="native-window" native-wait-frames="20" graphics-context=true embed=true name="four-traditional-triangle" source-box="assets/canonical_graphics/cc81ab4e-6c43-4908-bfff-7c8f827c927c" source-box-properties="vertex,fragment" source-box-wait="3.0"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/00-traditional-triangle.png" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" graphics-context=true embed=true force=true name="four-traditional-triangle" macro-file="../../dev_docs/agents/transcripts/afield_four_traditional_triangle.yaml" capture-box="agent_four_traditional_triangle"}
 import afield.four.Renderer
 import afield.four.modules.fromContext
 val renderer: Renderer = fromContext()
@@ -80,7 +80,7 @@ The first example is deliberately small: vertex data is written directly into th
 
 The first triangle put `pos` and `col` directly into the mesh's vertex buffers. Sometimes you want a buffer that is visible as an ordinary named resource in the shader: perhaps the geometry changes every frame, perhaps a compute shader fills it, or perhaps several draws share it. This example uses the simplest version of that pattern: write a few positions into a `defaultBuffer`, bind that buffer to a reflected push-constant member, and draw vertices by index.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/01-buffer-triangles.png" wait="2.0" timeout="180" capture="native-window" native-wait-frames="20" graphics-context=true embed=true name="four-buffer-triangles" source-box="assets/canonical_graphics/af0946dd-f25d-4355-984d-f0d24a43ee12" source-box-properties="vertex,fragment" source-box-wait="5.0"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/01-buffer-triangles.png" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" graphics-context=true embed=true name="four-buffer-triangles" source-box="assets/canonical_graphics/af0946dd-f25d-4355-984d-f0d24a43ee12" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 import afield.four.Renderer
 import afield.four.modules.fromContext
 val renderer: Renderer = fromContext()
@@ -169,7 +169,7 @@ void main()
 
 The previous two examples draw in clip-space coordinates. To draw from a camera, the shader needs projection and view matrices. This version stores those matrices in a uniform buffer owned by the module.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/01b-ubo-camera.png" wait="2.0" timeout="180" capture="native-window" native-wait-frames="20" graphics-context=true embed=true name="four-ubo-camera" source-box="assets/canonical_graphics/85e8478b-529b-406e-b835-7c00912848f2" source-box-properties="vertex,fragment" source-box-wait="5.0"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/01b-ubo-camera.png" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" graphics-context=true embed=true name="four-ubo-camera" source-box="assets/canonical_graphics/85e8478b-529b-406e-b835-7c00912848f2" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 import afield.four.Renderer
 import afield.four.modules.fromContext
 val renderer: Renderer = fromContext()
@@ -226,7 +226,7 @@ Because the uniform block is named `camera`, the Kotlin side writes `module.came
 
 For quick sketches, it is often simpler for the mesh to carry the camera matrices as push constants. The draw data still lives in `m`, but now `m.p` and `m.m` are assigned directly before the draw.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/02-camera-matrices.png" wait="2.0" timeout="180" capture="native-window" native-wait-frames="20" graphics-context=true embed=true name="four-camera-matrices" source-box="assets/canonical_graphics/b2ba23e8-18e5-4f07-a709-2b89116a83b3" source-box-properties="vertex,fragment" source-box-wait="5.0"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/02-camera-matrices.png" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" graphics-context=true embed=true name="four-camera-matrices" source-box="assets/canonical_graphics/b2ba23e8-18e5-4f07-a709-2b89116a83b3" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 import afield.four.Renderer
 import afield.four.modules.fromContext
 val renderer: Renderer = fromContext()
@@ -283,7 +283,7 @@ That is why the Kotlin changed from `module.camera.p = ...` to `m.p = ...`. `p` 
 
 `KeyCamera` does not change the shader contract. It wraps a `Camera` and updates it from keyboard input while the renderer runs.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/02-keyboard-camera.png" wait="2.0" timeout="120" capture="native-window" native-wait-frames="20" graphics-context=true embed=true name="four-keyboard-camera" source-box="assets/canonical_graphics/954d64d5-ee3f-4cb7-8ac7-1e2cce8a9073" source-box-properties="vertex,fragment" source-box-wait="3.0"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/02-keyboard-camera.png" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" graphics-context=true embed=true name="four-keyboard-camera" source-box="assets/canonical_graphics/954d64d5-ee3f-4cb7-8ac7-1e2cce8a9073" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 import afield.four.Renderer
 import afield.four.modules.fromContext
 val renderer: Renderer = fromContext()
@@ -384,12 +384,12 @@ void main() {
 
 Textures add another reflected resource. The shader declares a sampler named `bbc`; Kotlin creates a `LoadedTexture` property with the same name and transfers it before drawing.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/04-texturing.png" wait="2.0" timeout="120" capture="native-window" native-wait-frames="20" graphics-context=true embed=true name="four-texturing" source-box="assets/canonical_graphics/55bc1784-bc44-40eb-bc01-d02eca463445" source-box-properties="vertex,fragment" source-box-wait="3.0"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/04-texturing.png" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" graphics-context=true embed=true name="four-texturing" source-box="assets/canonical_graphics/55bc1784-bc44-40eb-bc01-d02eca463445" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 import afield.four.Renderer
 import afield.four.modules.fromContext
 val renderer: Renderer = fromContext()
 
-prop<LoadedTexture>(bbc) = LoadedTexture("/Users/marc/Desktop/bbc.jpg")
+prop<LoadedTexture>(bbc) = LoadedTexture("public/docs/assets/afield_four_graphics/docs-checker-texture.png")
 bbc.transferNow()
 
 var module = moduleHere {}

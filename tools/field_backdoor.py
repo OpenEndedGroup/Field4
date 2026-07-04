@@ -222,6 +222,19 @@ def canonical_operation_verb(verb: str) -> str:
         "assign": "let",
         "set-var": "let",
         "set-variable": "let",
+        "screenshot": "screenshot",
+        "capture-screenshot": "screenshot",
+        "capture": "screenshot",
+        "screen-shot": "screenshot",
+        "native-screenshot": "native-screenshot",
+        "native-window-screenshot": "native-screenshot",
+        "capture-native-window": "native-screenshot",
+        "output": "capture-output",
+        "capture-output": "capture-output",
+        "collect-output": "capture-output",
+        "wait-output": "wait-output",
+        "wait-for-output": "wait-output",
+        "output-wait": "wait-output",
     }
     return aliases.get(normalized, "unknown")
 
@@ -251,6 +264,21 @@ def parse_float_field(mapping: dict[str, Any], key: str, default: float | None =
         raise BackdoorError(f"field {key} must be numeric, got {value!r}") from exc
 
 
+def parse_bool_value(value: Any, default: bool = False) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    text = str(value).strip().lower()
+    if text in {"1", "true", "yes", "y", "on"}:
+        return True
+    if text in {"0", "false", "no", "n", "off"}:
+        return False
+    return default
+
+
 def parse_frame_value(value: Any) -> dict[str, float]:
     if isinstance(value, dict):
         return {
@@ -275,6 +303,26 @@ def parse_replay_cli_variables(items: list[str]) -> dict[str, Any]:
             raise BackdoorError(f"--var has an empty variable name: {item!r}")
         variables[name] = parse_replay_scalar(value_text)
     return variables
+
+
+def parse_repeated_string_values(values: list[str]) -> list[str]:
+    result: list[str] = []
+    for raw in values:
+        for part in re.split(r"[\s,]+", raw):
+            cleaned = part.strip()
+            if cleaned:
+                result.append(cleaned)
+    return result
+
+
+def parse_repeated_int_values(values: list[str]) -> list[int]:
+    result: list[int] = []
+    for value in parse_repeated_string_values(values):
+        try:
+            result.append(int(value))
+        except ValueError as exc:
+            raise CommandParseError(f"expected integer index, got {value!r}") from exc
+    return result
 
 
 def parse_replay_scalar(text: str) -> Any:
@@ -614,6 +662,13 @@ class FieldBackdoor:
                 message = json.loads(raw)
                 event = self._build_event(message)
                 self._apply_event(event)
+                payload = event.get("payload")
+                if event.get("name") == "message-batch" and isinstance(payload, dict):
+                    for child in payload.get("messages") or []:
+                        if isinstance(child, dict):
+                            child_event = self._build_event(child)
+                            child_event["batchSeq"] = event["seq"]
+                            self._apply_event(child_event)
                 async with self.condition:
                     self.condition.notify_all()
         except Exception as exc:
@@ -1495,6 +1550,44 @@ class FieldBackdoor:
             raise BackdoorError("agent-wait-frames returned an invalid payload")
         return payload
 
+    async def macro_transcript_command(
+        self,
+        *,
+        command: str,
+        name: str = "",
+        label: str = "",
+        selection: list[str] | None = None,
+        scope: str = "document",
+        project_name: str = "",
+        content: str = "",
+        offset: int = 0,
+        limit: int = 80,
+        indices: list[int] | None = None,
+        mode: str = "",
+        timeout: float,
+    ) -> dict[str, Any]:
+        event = await self.call_for_single_reply(
+            "macro-transcript-command",
+            {
+                "command": command,
+                "name": name,
+                "label": label,
+                "selection": selection or [],
+                "scope": scope,
+                "projectName": project_name,
+                "content": content,
+                "offset": offset,
+                "limit": limit,
+                "indices": indices or [],
+                "mode": mode,
+            },
+            timeout=timeout,
+        )
+        payload = event.get("payload")
+        if not isinstance(payload, dict):
+            raise BackdoorError("macro-transcript-command returned an invalid payload")
+        return payload
+
     async def replay_operations(
         self,
         entries: list[Any],
@@ -1754,6 +1847,130 @@ class FieldBackdoor:
                 summary["result"] = data
                 summary["timedOut"] = timed_out
                 summary["eventCount"] = len(events)
+            return summary
+
+        if verb == "screenshot":
+            mode = str(first_present(payload, "capture", "mode", "kind", "type") or "box").strip().replace("_", "-").lower()
+            path = first_present(payload, "path", "file", "to", "output")
+            if path is None:
+                raise BackdoorError("screenshot operation needs path/file/to/output")
+            box_token = first_present(payload, "box", "uid", "id", "target")
+            box = self.resolve_replay_box(box_token or "@last", dry_run=dry_run)
+            padding = float(first_present(payload, "padding", "pad") or 12.0)
+            property_name = str(first_present(payload, "property", "prop") or "code")
+            open_outputs = parse_bool_value(first_present(payload, "openOutputs", "open-outputs", "outputs"), True)
+            pan_into_view = not parse_bool_value(first_present(payload, "noPan", "no-pan"), False)
+            show_editor = parse_bool_value(first_present(payload, "withEditor", "with-editor", "editor"), False)
+            summary.update({
+                "mode": mode,
+                "box": box,
+                "path": str(path),
+                "padding": padding,
+                "property": property_name,
+                "openOutputs": open_outputs,
+            })
+            if not dry_run:
+                if mode == "box":
+                    summary["result"] = await self.screenshot_box(
+                        uid=box,
+                        path=str(path),
+                        padding=padding,
+                        pan_into_view=pan_into_view,
+                        timeout=timeout,
+                    )
+                elif mode == "editor":
+                    summary["result"] = await self.screenshot_window(
+                        path=str(path),
+                        uid=box,
+                        property_name=property_name,
+                        show_editor=True,
+                        editor_only=True,
+                        open_outputs=open_outputs,
+                        padding=padding,
+                        pan_into_view=pan_into_view,
+                        timeout=timeout,
+                    )
+                elif mode in {"window", "browser-window"}:
+                    summary["result"] = await self.screenshot_window(
+                        path=str(path),
+                        uid=box,
+                        property_name=property_name,
+                        show_editor=show_editor,
+                        editor_only=False,
+                        open_outputs=open_outputs,
+                        padding=padding,
+                        pan_into_view=pan_into_view,
+                        timeout=timeout,
+                    )
+                else:
+                    raise BackdoorError(f"unsupported screenshot mode {mode!r}")
+            return summary
+
+        if verb == "native-screenshot":
+            path = first_present(payload, "path", "file", "to", "output")
+            if path is None:
+                raise BackdoorError("native-screenshot operation needs path/file/to/output")
+            wait_frames = int(float(first_present(payload, "waitFrames", "wait-frames", "frames") or 30))
+            summary.update({"path": str(path), "waitFrames": wait_frames})
+            if not dry_run:
+                summary["result"] = await self.native_window_screenshot(
+                    path=str(path),
+                    wait_frames=wait_frames,
+                    timeout=timeout,
+                )
+            return summary
+
+        if verb == "capture-output":
+            box = self.resolve_replay_box(first_present(payload, "box", "uid", "id", "target") or "@last", dry_run=dry_run)
+            channel_value = first_present(payload, "channel")
+            channel = None if channel_value is None else str(channel_value)
+            kind = str(first_present(payload, "kind", "mode", "capture") or "all").strip().lower()
+            if kind not in {"inline", "display", "all"}:
+                raise BackdoorError("capture-output kind must be inline, display, or all")
+            path = first_present(payload, "path", "file", "to", "output")
+            bind_name = first_present(payload, "as", "var", "assign", "bind", "into")
+            summary.update({"box": box, "channel": channel, "kind": kind})
+            if not dry_run:
+                events = self.collect_output(box, channel=channel, kind=kind)
+                summary["outputCount"] = len(events)
+                summary["outputs"] = events
+                if bind_name is not None:
+                    assigned = set_replay_variable(variables, str(bind_name), events)
+                    summary["assigned"] = assigned
+                if path is not None:
+                    output_path = Path(str(path)).expanduser().resolve()
+                    output_path.parent.mkdir(parents=True, exist_ok=True)
+                    output_path.write_text(json.dumps(events, indent=2), encoding="utf-8")
+                    summary["path"] = str(output_path)
+            return summary
+
+        if verb == "wait-output":
+            box = self.resolve_replay_box(first_present(payload, "box", "uid", "id", "target") or "@last", dry_run=dry_run)
+            channel_value = first_present(payload, "channel")
+            channel = None if channel_value is None else str(channel_value)
+            kind = str(first_present(payload, "kind", "mode", "capture") or "all").strip().lower()
+            if kind not in {"inline", "display", "all"}:
+                raise BackdoorError("wait-output kind must be inline, display, or all")
+            contains_value = first_present(payload, "contains", "text", "value")
+            contains = None if contains_value is None else str(contains_value)
+            summary.update({"box": box, "channel": channel, "kind": kind, "contains": contains})
+            if not dry_run:
+                events, timed_out = await self.wait_output(
+                    box,
+                    channel=channel,
+                    kind=kind,
+                    contains=contains,
+                    timeout=timeout,
+                )
+                summary["outputCount"] = len(events)
+                summary["outputs"] = events
+                summary["timedOut"] = timed_out
+                if timed_out:
+                    raise BackdoorError(
+                        f"timed out waiting for {kind} output from {box}"
+                        + (f" on channel {channel}" if channel else "")
+                        + (f" containing {contains!r}" if contains else "")
+                    )
             return summary
 
         raise BackdoorError(f"unhandled operation verb {verb!r}")
@@ -2090,6 +2307,11 @@ class FieldBackdoor:
 
     def collect_output(self, uid: str, *, channel: str | None, kind: str) -> list[dict[str, Any]]:
         resolved = self.resolve_box_token(uid)
+        collected = self._matching_output_events(resolved, channel=channel, kind=kind, contains=None)
+        self.logger.log("collect_output", uid=resolved, channel=channel, kind=kind, count=len(collected))
+        return collected
+
+    def _matching_output_events(self, resolved: str, *, channel: str | None, kind: str, contains: str | None) -> list[dict[str, Any]]:
         accepted_names = {
             "inline": {"output"},
             "display": {"set-output", "output-control"},
@@ -2103,9 +2325,45 @@ class FieldBackdoor:
                 continue
             if channel is not None and event.get("channel") != channel:
                 continue
+            if contains is not None:
+                payload_text = json.dumps(event.get("payload"), ensure_ascii=False, sort_keys=True)
+                if contains not in payload_text:
+                    continue
             collected.append(event)
-        self.logger.log("collect_output", uid=resolved, channel=channel, kind=kind, count=len(collected))
         return collected
+
+    async def wait_output(self, uid: str, *, channel: str | None, kind: str, contains: str | None, timeout: float) -> tuple[list[dict[str, Any]], bool]:
+        resolved = self.resolve_box_token(uid)
+        self.logger.log(
+            "wait_output_start",
+            uid=resolved,
+            channel=channel,
+            kind=kind,
+            contains=contains,
+            timeout=timeout,
+        )
+
+        def predicate():
+            events = self._matching_output_events(resolved, channel=channel, kind=kind, contains=contains)
+            return events if events else None
+
+        timed_out = False
+        try:
+            events = await self.wait_for(predicate, timeout, f"wait-output:{resolved}")
+        except asyncio.TimeoutError:
+            timed_out = True
+            events = self._matching_output_events(resolved, channel=channel, kind=kind, contains=contains)
+
+        self.logger.log(
+            "wait_output_complete",
+            uid=resolved,
+            channel=channel,
+            kind=kind,
+            contains=contains,
+            timedOut=timed_out,
+            count=len(events),
+        )
+        return events, timed_out
 
     def execution_errors(self, events: list[dict[str, Any]]) -> list[str]:
         problems: list[str] = []
@@ -2342,6 +2600,23 @@ def build_command_parser() -> argparse.ArgumentParser:
         replay_parser.add_argument("--continue-on-error", action="store_true")
         replay_parser.add_argument("--var", action="append", default=[])
 
+    for command_name in ("macro", "transcript"):
+        macro_parser = subparsers.add_parser(command_name, add_help=False)
+        macro_parser.add_argument("macro_command")
+        macro_parser.add_argument("name", nargs="?")
+        macro_parser.add_argument("--label", default="")
+        macro_parser.add_argument("--selection", action="append", default=[])
+        macro_parser.add_argument("--scope", default="document")
+        macro_parser.add_argument("--project-name", default="")
+        macro_parser.add_argument("--content")
+        macro_parser.add_argument("--file")
+        macro_parser.add_argument("--offset", type=int, default=0)
+        macro_parser.add_argument("--limit", type=int, default=80)
+        macro_parser.add_argument("--index", dest="index_values", action="append", default=[])
+        macro_parser.add_argument("--indices", dest="index_values", action="append", default=[])
+        macro_parser.add_argument("--mode", default="")
+        macro_parser.add_argument("--timeout", type=float)
+
     for command_name in ("run", "launch", "continue"):
         exec_parser = subparsers.add_parser(command_name, add_help=False)
         exec_parser.add_argument("uid")
@@ -2360,11 +2635,19 @@ def build_command_parser() -> argparse.ArgumentParser:
     wait_file.add_argument("--timeout", type=float)
     wait_file.add_argument("--stable-reads", type=int, default=2)
     wait_file.add_argument("--newer-than", type=float)
+    wait_file.add_argument("--fail-on-error-uid")
 
     output_parser = subparsers.add_parser("output", add_help=False)
     output_parser.add_argument("uid")
     output_parser.add_argument("--channel")
     output_parser.add_argument("--kind", choices=("inline", "display", "all"), default="all")
+
+    wait_output_parser = subparsers.add_parser("wait-output", add_help=False)
+    wait_output_parser.add_argument("uid")
+    wait_output_parser.add_argument("--channel")
+    wait_output_parser.add_argument("--kind", choices=("inline", "display", "all"), default="all")
+    wait_output_parser.add_argument("--contains")
+    wait_output_parser.add_argument("--timeout", type=float)
 
     raw_send = subparsers.add_parser("raw-send", add_help=False)
     raw_send.add_argument("name")
@@ -2717,6 +3000,41 @@ async def dispatch_command(
         )
         return result
 
+    if args.command in {"macro", "transcript"}:
+        timeout = args.timeout or client.default_timeout
+        if args.content is not None and args.file is not None:
+            raise BackdoorError(f"{args.command} accepts --content or --file, not both")
+        if args.macro_command in {"write"} and args.content is None and args.file is None:
+            raise BackdoorError(f"{args.command} write requires --content or --file")
+        content = args.content or ""
+        if args.file:
+            content = client.read_text_source(args.file, command_line=command_line)
+        data = await client.macro_transcript_command(
+            command=args.macro_command,
+            name=args.name or "",
+            label=args.label,
+            selection=[client.resolve_uid(value) for value in parse_repeated_string_values(args.selection)],
+            scope=args.scope,
+            project_name=args.project_name,
+            content=content,
+            offset=args.offset,
+            limit=args.limit,
+            indices=parse_repeated_int_values(args.index_values),
+            mode=args.mode,
+            timeout=timeout,
+        )
+        ok = bool(data.get("success"))
+        result = command_result(command_line, ok, data=data, events=[])
+        client.logger.log(
+            "command_dispatch_complete",
+            commandLine=command_line,
+            ok=result["ok"],
+            macroCommand=args.macro_command,
+            macroName=args.name or "",
+            operationCount=data.get("operationCount"),
+        )
+        return result
+
     if args.command in {"run", "launch", "continue"}:
         if auto_playwright:
             await ensure_playwright_attached(
@@ -2765,7 +3083,39 @@ async def dispatch_command(
         stable_reads = max(1, int(args.stable_reads))
         observed_stable_reads = 0
         last_size = -1
+        start_seq = client.event_seq
+        fail_on_error_uid = client.resolve_box_token(args.fail_on_error_uid) if args.fail_on_error_uid else None
+
+        def error_event(events):
+            if fail_on_error_uid is None:
+                return None
+            for event in events:
+                if event.get("uid") != fail_on_error_uid:
+                    continue
+                name = event.get("name") or event.get("messageName")
+                payload = event.get("payload")
+                if not isinstance(payload, dict):
+                    continue
+                if name in {"output", "peer-output"} and payload.get("kind") in {"error", "err"}:
+                    return event
+                if name == "notify" and str(payload.get("category", "")).strip().lower() == "error":
+                    return event
+            return None
+
         while time.monotonic() < deadline:
+            events = client.events_since(start_seq)
+            failed = error_event(events)
+            if failed is not None:
+                payload = failed.get("payload") or {}
+                html = str(payload.get("html") or payload.get("text") or "execution error").replace("\n", " ").strip()
+                data = {
+                    "path": str(path),
+                    "error": f"target {fail_on_error_uid} emitted an error while waiting for file: {html}",
+                    "failedEvent": failed,
+                }
+                result = command_result(command_line, False, data=data, events=events)
+                client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"], eventCount=len(events), error=data["error"])
+                return result
             if path.exists():
                 stat = path.stat()
                 size = stat.st_size
@@ -2785,12 +3135,12 @@ async def dispatch_command(
                             "mtime": stat.st_mtime,
                             "stableReads": observed_stable_reads,
                         }
-                        result = command_result(command_line, True, data=data, events=[])
+                        result = command_result(command_line, True, data=data, events=client.events_since(start_seq))
                         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"], size=size)
                         return result
             await asyncio.sleep(0.1)
         data = {"path": str(path), "error": f"timed out waiting for file after {timeout:.1f}s"}
-        result = command_result(command_line, False, data=data, events=[], timed_out=True)
+        result = command_result(command_line, False, data=data, events=client.events_since(start_seq), timed_out=True)
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"], timedOut=True)
         return result
 
@@ -2799,6 +3149,26 @@ async def dispatch_command(
         data = {"uid": client.resolve_uid(args.uid), "kind": args.kind, "channel": args.channel, "count": len(events)}
         result = command_result(command_line, True, data=data, events=events)
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"], eventCount=len(events))
+        return result
+
+    if args.command == "wait-output":
+        timeout = args.timeout or client.default_timeout
+        events, timed_out = await client.wait_output(
+            args.uid,
+            channel=args.channel,
+            kind=args.kind,
+            contains=args.contains,
+            timeout=timeout,
+        )
+        data = {
+            "uid": client.resolve_uid(args.uid),
+            "kind": args.kind,
+            "channel": args.channel,
+            "contains": args.contains,
+            "count": len(events),
+        }
+        result = command_result(command_line, not timed_out, data=data, events=events, timed_out=timed_out)
+        client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"], eventCount=len(events), timedOut=timed_out)
         return result
 
     if args.command == "input-key":
@@ -2965,7 +3335,7 @@ async def repl(
             return 0
         if line == "help":
             client.logger.log("repl_help")
-            print("Commands: open, status, snapshot, boxes, sleep, playwright-open, editor-open, page-eval, screenshot-window, screenshot-editor, screenshot-box, native-screenshot, record-window, record-editor, record-box, new-box, connect, disconnect, set, replay-operations, play-operations, run, launch, continue, stop, wait-file, output, raw-send, run-jvm-main, exit")
+            print("Commands: open, status, snapshot, boxes, sleep, playwright-open, editor-open, page-eval, screenshot-window, screenshot-editor, screenshot-box, native-screenshot, record-window, record-editor, record-box, new-box, connect, disconnect, set, macro, transcript, replay-operations, play-operations, run, launch, continue, stop, wait-file, output, wait-output, raw-send, run-jvm-main, exit")
             continue
         try:
             parsed = parse_command(line)
@@ -3039,6 +3409,12 @@ async def async_main(argv: list[str], logger: SessionLogger) -> int:
             await client.open_document(args.document, scratch=args.scratch or not args.document, timeout=args.timeout)
             if client.graphics_context_enabled:
                 await client.ensure_graphics_context(timeout=args.timeout)
+            if args.with_playwright:
+                await ensure_playwright_attached(
+                    client,
+                    timeout=auto_playwright_timeout,
+                    reason="startup:--with-playwright",
+                )
 
         if command_lines:
             for line in command_lines:

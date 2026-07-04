@@ -277,7 +277,7 @@ object GltfSupport {
         val children = node.mChildren()
         if (children != null) {
             for (i in 0 until children.remaining()) {
-                val child = AINode.create(children[i]) ?: continue
+                val child = AINode.create(children[i])
                 traverseNode(scene, child, world, outMeshes, config, baseDir)
             }
         }
@@ -315,7 +315,7 @@ object GltfSupport {
 
             // normal or default
             if (hasNormals) {
-                val n = normalBuf!![i]
+                val n = normalBuf[i]
                 vertexData.putFloat(n.x())
                 vertexData.putFloat(n.y())
                 vertexData.putFloat(n.z())
@@ -327,7 +327,7 @@ object GltfSupport {
 
             // uv or default
             if (hasTex) {
-                val t = texBuf!![i]
+                val t = texBuf[i]
 //                lprintln("debug,gltf", "tc at load time is ${t} -> ${t.x()} ${t.y()} from ${i} / ${texBuf}")
                 vertexData.putFloat(t.x())
                 vertexData.putFloat(t.y())
@@ -338,7 +338,7 @@ object GltfSupport {
 
             // color: if includeVertexColors: actual or white; else: white
             if (includeVertexColors && hasColors) {
-                val c = colorBuf!![i]
+                val c = colorBuf[i]
                 vertexData.putFloat(c.r())
                 vertexData.putFloat(c.g())
                 vertexData.putFloat(c.b())
@@ -508,10 +508,6 @@ object GltfSupport {
         return if (height == 0) {
             // Compressed data (PNG/JPEG/etc) stored in pcData with byte length = width
             val texels = aiTex.pcData()
-            if (texels == null) {
-                lprintln("warning,gltf", "Embedded texture has no data buffer: $path")
-                return null
-            }
             val encoded = memByteBuffer(texels.address(), width)
             try {
                 val t = LoadedTexture.fromEncodedMemory("embedded:$path", encoded, renderer)
@@ -524,7 +520,7 @@ object GltfSupport {
             // Raw texels stored as BGRA in pcData (width*height entries)
             val texels = aiTex.pcData()
             val pixelCount = width * height
-            if (texels == null || texels.capacity() < pixelCount) {
+            if (texels.capacity() < pixelCount) {
                 lprintln("warning,gltf", "Embedded texture texel data is incomplete: $path")
                 return null
             }

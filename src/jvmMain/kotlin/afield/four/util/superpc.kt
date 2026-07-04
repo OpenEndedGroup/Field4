@@ -216,16 +216,16 @@ abstract class PushConstants<T : Any> : WritesToBuffer {
      *
      * IMPORTANT: ensure bb.order(ByteOrder.LITTLE_ENDIAN)
      */
-    override fun writeTo(bb: ByteBuffer, baseOffset: Int) {
-        val oldPos = bb.position()
+    override fun writeTo(b: ByteBuffer, baseOffset: Int) {
+        val oldPos = b.position()
 
         for (f in schema.fields) {
             val abs = baseOffset + f.pcOffsetBytes
             val v = f.property.get(this as Any)
-            writeField(bb, abs, f.kind, v)
+            writeField(b, abs, f.kind, v)
         }
 
-        bb.position(oldPos)
+        b.position(oldPos)
     }
 
     /**

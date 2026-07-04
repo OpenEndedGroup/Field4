@@ -307,21 +307,21 @@ class MeshModule(val parameters: Parameters) : Renderable {
                 var found = false
                 ti.ubos.forEach { if (it.set == set) {
                     found = true
-                    val sz = (it as Introspected.UBO).size.toLong()
+                    val sz = it.size.toLong()
                     val bp = buffer(it, it.name) { size = sz; source = it; uniform(); hosted() }
                     val buf = parameters.uboResolver(bp) ?: throw IllegalArgumentException("can't link UBO ${it.name}")
                     uniforms[it.name] = Module.Uniform(it.name, it, source = bp, buf.toBuffer(), VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
                 } }
                 mi.ubos.forEach { if (it.set == set) {
                     found = true
-                    val sz = (it as Introspected.UBO).size.toLong()
+                    val sz = it.size.toLong()
                     val bp = buffer(it, it.name) { size = sz; source = it; uniform(); hosted() }
                     val buf = parameters.uboResolver(bp) ?: throw IllegalArgumentException("can't link UBO ${it.name}")
                     uniforms[it.name] = Module.Uniform(it.name, it, source = bp, buf.toBuffer(), VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
                 } }
                 fi.ubos.forEach { if (it.set == set) {
                     found = true
-                    val sz = (it as Introspected.UBO).size.toLong()
+                    val sz = it.size.toLong()
                     val bp = buffer(it, it.name) { size = sz; source = it; uniform(); hosted() }
                     val buf = parameters.uboResolver(bp) ?: throw IllegalArgumentException("can't link UBO ${it.name}")
                     uniforms[it.name] = Module.Uniform(it.name, it, source = bp, buf.toBuffer(), VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
@@ -334,7 +334,7 @@ class MeshModule(val parameters: Parameters) : Renderable {
                 var found = false
                 ti.ssbo.forEach { if (it.set == set) {
                     found = true
-                    var sz = (it as Introspected.UBO).size.toLong()
+                    var sz = it.size.toLong()
                     if (sz == 0L) sz = parameters.ssboSizer(it)?.toLong() ?: 0L
                     val bp = buffer(it, it.name) { size = sz; source = it; storage(); hosted() }
                     val buf = parameters.ssboResolver(bp) ?: throw IllegalArgumentException("can't link SSBO buffer ${it.name}, resolver returned null")
@@ -342,7 +342,7 @@ class MeshModule(val parameters: Parameters) : Renderable {
                 } }
                 mi.ssbo.forEach { if (it.set == set) {
                     found = true
-                    var sz = (it as Introspected.UBO).size.toLong()
+                    var sz = it.size.toLong()
                     if (sz == 0L) sz = parameters.ssboSizer(it)?.toLong() ?: 0L
                     val bp = buffer(it, it.name) { size = sz; source = it; storage(); hosted() }
                     val buf = parameters.ssboResolver(bp) ?: throw IllegalArgumentException("can't link SSBO buffer ${it.name}, resolver returned null")
@@ -350,7 +350,7 @@ class MeshModule(val parameters: Parameters) : Renderable {
                 } }
                 fi.ssbo.forEach { if (it.set == set) {
                     found = true
-                    var sz = (it as Introspected.UBO).size.toLong()
+                    var sz = it.size.toLong()
                     if (sz == 0L) sz = parameters.ssboSizer(it)?.toLong() ?: 0L
                     val bp = buffer(it, it.name) { size = sz; source = it; storage(); hosted() }
                     val buf = parameters.ssboResolver(bp) ?: throw IllegalArgumentException("can't link SSBO buffer ${it.name}, resolver returned null")
@@ -364,7 +364,7 @@ class MeshModule(val parameters: Parameters) : Renderable {
                 var found = false
                 ti.textures.forEach { if (it.set == set) {
                     found = true
-                    val (texture, sampler) = parameters.textureResolver(it as Introspected.Texture)!!
+                    val (texture, sampler) = parameters.textureResolver(it)!!
                     val views = texture.imageViewArray
                     require(views.isNotEmpty()) { "Texture ${it.name} resolved to empty image view array" }
 
@@ -379,7 +379,7 @@ class MeshModule(val parameters: Parameters) : Renderable {
                 } }
                 mi.textures.forEach { if (it.set == set) {
                     found = true
-                    val (texture, sampler) = parameters.textureResolver(it as Introspected.Texture)!!
+                    val (texture, sampler) = parameters.textureResolver(it)!!
                     val views = texture.imageViewArray
                     require(views.isNotEmpty()) { "Texture ${it.name} resolved to empty image view array" }
 
@@ -394,7 +394,7 @@ class MeshModule(val parameters: Parameters) : Renderable {
                 } }
                 fi.textures.forEach { if (it.set == set) {
                     found = true
-                    val (texture, sampler) = parameters.textureResolver(it as Introspected.Texture)!!
+                    val (texture, sampler) = parameters.textureResolver(it)!!
                     val views = texture.imageViewArray
                     require(views.isNotEmpty()) { "Texture ${it.name} resolved to empty image view array" }
 
@@ -415,17 +415,17 @@ class MeshModule(val parameters: Parameters) : Renderable {
                 var found = false
                 ti.images.forEach { if (it.set == set) {
                     found = true
-                    val image = parameters.imageResolver(it as Introspected.Image)!!
+                    val image = parameters.imageResolver(it)!!
                     uniforms[it.name] = Module.ImagePointer(it.name, it, source = null, image)
                 } }
                 mi.images.forEach { if (it.set == set) {
                     found = true
-                    val image = parameters.imageResolver(it as Introspected.Image)!!
+                    val image = parameters.imageResolver(it)!!
                     uniforms[it.name] = Module.ImagePointer(it.name, it, source = null, image)
                 } }
                 fi.images.forEach { if (it.set == set) {
                     found = true
-                    val image = parameters.imageResolver(it as Introspected.Image)!!
+                    val image = parameters.imageResolver(it)!!
                     uniforms[it.name] = Module.ImagePointer(it.name, it, source = null, image)
                 } }
                 if (!found) return@forEach
@@ -711,7 +711,7 @@ class MeshModule(val parameters: Parameters) : Renderable {
     fun copyMeshesFrom(old: MeshModule) {
         old.meshes.entries.removeIf {
             meshes[it.key] = it.value
-            (it.value as? MeshMesh)?.let { mm -> mm.inside = this.pointer() }
+            it.value.inside = this.pointer()
             true
         }
         before.putAll(old.before)

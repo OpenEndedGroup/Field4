@@ -1390,8 +1390,9 @@ class VirtualTextureSystem(
     }
 
     private fun scheduleUploads() {
-        val useTimeline = uploadTimeline != null
-        val completedTimeline = if (useTimeline) getTimelineValue(uploadTimeline!!) else 0L
+        val timeline = uploadTimeline
+        val useTimeline = timeline != null
+        val completedTimeline = if (timeline != null) getTimelineValue(timeline) else 0L
 
         val staging = stagingPool.acquire(completedTimeline, useTimeline) ?: return
 
@@ -1463,9 +1464,9 @@ class VirtualTextureSystem(
             PendingPublish(it.virtualTexId, it.bandIndex, it.slotId, it.requestId)
         }
 
-        if (useTimeline) {
-            val signalValue = uploadTimeline!!.nextSignalValue()
-            submitWithTimeline(cmd, uploadTimeline!!, signalValue)
+        if (timeline != null) {
+            val signalValue = timeline.nextSignalValue()
+            submitWithTimeline(cmd, timeline, signalValue)
             pendingBatches.add(
                 PendingBatch(cmd, null, signalValue, pendingPublishes, staging)
             )
@@ -1482,8 +1483,9 @@ class VirtualTextureSystem(
 
     private fun drainPendingBatches() {
         if (pendingBatches.isEmpty()) return
-        val useTimeline = uploadTimeline != null
-        val completed = if (useTimeline) getTimelineValue(uploadTimeline!!) else 0L
+        val timeline = uploadTimeline
+        val useTimeline = timeline != null
+        val completed = if (timeline != null) getTimelineValue(timeline) else 0L
 
         val iter = pendingBatches.iterator()
         while (iter.hasNext()) {

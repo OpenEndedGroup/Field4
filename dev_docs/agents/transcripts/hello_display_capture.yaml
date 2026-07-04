@@ -1,0 +1,34 @@
+name: hello_display_capture
+description: Backdoor replay transcript that creates a display box, captures its output events, and writes a cropped screenshot.
+operations:
+  - create:
+      box: hello_display
+      name: Agent Hello Display Capture
+      frame:
+        x: 80.0
+        y: 80.0
+        w: 280.0
+        h: 120.0
+      properties:
+        code: |
+          display("main", "<div style=\"padding:16px;border:1px solid #6b8fb3;background:#eef7ff;color:#1b2a38\">hello from replay transcript</div>")
+  - run:
+      box: hello_display
+      property: code
+      code: |
+        display("main", "<div style=\"padding:16px;border:1px solid #6b8fb3;background:#eef7ff;color:#1b2a38\">hello from replay transcript</div>")
+  - wait-output:
+      box: hello_display
+      kind: display
+      contains: hello from replay transcript
+  - capture-output:
+      box: hello_display
+      kind: all
+      as: hello_outputs
+      path: build/agent-transcripts/hello-display-output.json
+  - screenshot:
+      box: hello_display
+      mode: box
+      path: build/agent-transcripts/hello-display.png
+      padding: 18
+      open-outputs: true

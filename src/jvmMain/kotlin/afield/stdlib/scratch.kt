@@ -13,6 +13,7 @@ val Box.once
 class Once(val inside : Box) {
 }
 
+@Suppress("UNCHECKED_CAST")
 class Onceing<T>() {
     operator fun getValue(f: Once, property: KProperty<*>): ( () -> T) -> T {
         return { compute ->

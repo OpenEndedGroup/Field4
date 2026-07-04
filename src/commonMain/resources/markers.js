@@ -137,7 +137,7 @@ function initMarkerSupport(globalEditor) {
                 }
         });
 
-        markerDecorationsLayer = globalEditor.createDecorationsCollection({})
+        markerDecorationsLayer = globalEditor.createDecorationsCollection([])
 
         globalEditor.addAction({
                 id: "insert-stack-marker",
@@ -148,8 +148,8 @@ function initMarkerSupport(globalEditor) {
                 contextMenuGroupId: "navigation",
                 contextMenuOrder: 2.0,
                 run: function (e) {
-
                         addMarkerHere(globalEditor, `__m("${epoch64()}")`)
+                        globalEditor.focus()
                 }
         })
 

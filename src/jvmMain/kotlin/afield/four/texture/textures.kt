@@ -32,7 +32,9 @@ open class LoadedTexture protected constructor(
 
     val fileName: String
     var height = 0
+    @Suppress("UNNECESSARY_LATEINIT")
     lateinit var image: Image
+    @Suppress("UNNECESSARY_LATEINIT")
     override lateinit var imageView: ImageView
     var mipLevels = 0
     var width = 0
@@ -872,7 +874,9 @@ class MappedMonochromeTexture(
 }
 
 class StorageImage(val renderer: Renderer, val width: Int, val height: Int, val imageFormat: Int) : HasImageView {
+    @Suppress("UNNECESSARY_LATEINIT")
     lateinit var image: Image
+    @Suppress("UNNECESSARY_LATEINIT")
     lateinit override var imageView: ImageView
 
     var recordedTransition = false

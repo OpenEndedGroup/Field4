@@ -276,7 +276,7 @@ open class Introspected {
         val name: String, val type: Either<PrimitiveType, List<Member>>, val location: Int
     ) {
         val sizeInBytes: Long
-            get() = type.fold({ it.sizeInBytes }, { it.sumOf { it.memberSize() }.toLong() })
+            get() = type.fold({ it.sizeInBytes }, { it.sumOf { it.memberSize() } })
     }
 
     data class Member(
@@ -940,8 +940,7 @@ class Introspection private constructor(
                     val blockType = elementLayout?.optJSONObject("type") ?: type.optJSONObject("elementType")
                     val members = slangMembersFromFields(blockType?.optJSONArray("fields"))
                     val size = elementLayout?.optJSONObject("binding")?.optInt("size", 0)
-                        ?: blockBinding?.optInt("size", 0)
-                        ?: 0
+                        ?: blockBinding.optInt("size", 0)
                     ubos.add(UBO(name, size, slangBindingSet(blockBinding), slangBindingIndex(blockBinding), members))
                 }
             }

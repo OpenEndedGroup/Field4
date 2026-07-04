@@ -405,6 +405,25 @@ private fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest): BoxScre
               window.fieldBackdoorUiReady === true &&
               typeof window.fieldBackdoorPrepareBoxScreenshot === "function";
           };
+          const pageDebug = () => {
+            const boxes = Array.from((document.body && document.body.getElementsByClassName("box")) || []);
+            return JSON.stringify({
+              href: String(window.location && window.location.href ? window.location.href : ""),
+              readyState: String(document.readyState || ""),
+              fieldClientOpen: window.fieldClientOpen === true,
+              disconnectedOverlayActive: window.fieldBackdoorDisconnectedOverlayActive === true,
+              uiReady: window.fieldBackdoorUiReady === true,
+              currentDocumentFilename: window.currentDocumentFilename || null,
+              currentDocumentSessionKey: window.currentDocumentSessionKey || null,
+              currentDocumentScratch: window.currentDocumentScratch === true,
+              boxCount: boxes.length,
+              boxes: boxes.slice(0, 8).map((element) => ({
+                uid: element.uid || element.getAttribute("uid") || element.getAttribute("data-uid") || "",
+                className: String(element.className || ""),
+                text: String(element.textContent || "").trim().slice(0, 80)
+              }))
+            });
+          };
           const decode = (value) => {
             if (typeof value !== "string") {
               return null;
@@ -465,7 +484,7 @@ private fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest): BoxScre
             }
             const box = findBox(request.uid);
             if (!box) {
-              lastMessage = `box ${'$'}{request.uid} not found`;
+              lastMessage = `box ${'$'}{request.uid} not found; page=${'$'}{pageDebug()}`;
               await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
               continue;
             }
@@ -558,6 +577,25 @@ private fun requestWindowScreenshot(page: Page, req: WindowScreenshotRequest): W
               window.fieldBackdoorUiReady === true &&
               typeof window.fieldBackdoorPrepareWindowScreenshot === "function";
           };
+          const pageDebug = () => {
+            const boxes = Array.from((document.body && document.body.getElementsByClassName("box")) || []);
+            return JSON.stringify({
+              href: String(window.location && window.location.href ? window.location.href : ""),
+              readyState: String(document.readyState || ""),
+              fieldClientOpen: window.fieldClientOpen === true,
+              disconnectedOverlayActive: window.fieldBackdoorDisconnectedOverlayActive === true,
+              uiReady: window.fieldBackdoorUiReady === true,
+              currentDocumentFilename: window.currentDocumentFilename || null,
+              currentDocumentSessionKey: window.currentDocumentSessionKey || null,
+              currentDocumentScratch: window.currentDocumentScratch === true,
+              boxCount: boxes.length,
+              boxes: boxes.slice(0, 8).map((element) => ({
+                uid: element.uid || element.getAttribute("uid") || element.getAttribute("data-uid") || "",
+                className: String(element.className || ""),
+                text: String(element.textContent || "").trim().slice(0, 80)
+              }))
+            });
+          };
           const decode = (value) => {
             if (typeof value !== "string") {
               return null;
@@ -626,7 +664,7 @@ private fun requestWindowScreenshot(page: Page, req: WindowScreenshotRequest): W
             if (request.uid) {
               const box = findBox(request.uid);
               if (!box) {
-                lastMessage = `box ${'$'}{request.uid} not found`;
+                lastMessage = `box ${'$'}{request.uid} not found; page=${'$'}{pageDebug()}`;
                 await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
                 continue;
               }

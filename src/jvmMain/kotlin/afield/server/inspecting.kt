@@ -69,8 +69,13 @@ private fun getProp(obj: Any?, key: String): Any? {
 private fun setProp(obj: Any?, key: String, value: Any?) {
     if (obj == null) return
     when (obj) {
-        is MutableMap<*, *> -> (obj as MutableMap<String, Any?>)[key] = value
+        is MutableMap<*, *> -> {
+            @Suppress("UNCHECKED_CAST")
+            val map = obj as MutableMap<String, Any?>
+            map[key] = value
+        }
         is MutableList<*> -> key.toIntOrNull()?.let { idx ->
+            @Suppress("UNCHECKED_CAST")
             val list = obj as MutableList<Any?>
             while (list.size <= idx) list.add(null)
             list[idx] = value
@@ -115,6 +120,7 @@ fun extractMappedData(roots: List<Any?>, specs: List<TypeDef>): ExtractResult {
                 val seg = segs[i]
                 val isLast = i == segs.lastIndex
                 if (cur is MutableMap<*, *>) {
+                    @Suppress("UNCHECKED_CAST")
                     val map = cur as MutableMap<String, Any?>
                     if (isLast) map[seg] = value
                     else cur = map.getOrPut(seg) {
@@ -122,6 +128,7 @@ fun extractMappedData(roots: List<Any?>, specs: List<TypeDef>): ExtractResult {
                         if (nextIsNum) mutableListOf<Any?>() else mutableMapOf<String, Any?>()
                     }
                 } else if (cur is MutableList<*>) {
+                    @Suppress("UNCHECKED_CAST")
                     val list = cur as MutableList<Any?>
                     val idx = seg.toIntOrNull() ?: return
                     while (list.size <= idx) list.add(null)
@@ -429,7 +436,6 @@ private fun jsonElementToValue(el: JsonElement): Any? = when (el) {
 
     is JsonObject -> el.mapValues { jsonElementToValue(it.value) }
     is JsonArray -> el.map { jsonElementToValue(it) }
-    else -> null
 }
 
 private fun jsonElementToMap(el: JsonElement): Map<String, Any?> {

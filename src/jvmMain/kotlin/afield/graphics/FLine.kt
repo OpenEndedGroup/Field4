@@ -637,7 +637,7 @@ class FLine : HasProperties {
      *
      * @param tol Flatness tolerance used by the cursor.
      */
-    fun cursor(tol: Float = 0.01f): FLinesAndJavaShapes.Cursor = FLinesAndJavaShapes.Cursor(this, tol = tol.toFloat())
+    fun cursor(tol: Float = 0.01f): FLinesAndJavaShapes.Cursor = FLinesAndJavaShapes.Cursor(this, tol = tol)
 
     /**
      * Create a cursor positioned at the closest point to [closestTo].
@@ -682,7 +682,7 @@ class FLine : HasProperties {
     fun sampleByDistance(distance: Float): List<Vec3> {
         val c = cursor()
         val r = ArrayList<Vec3>()
-        val tol = min(0.1f, 0.1f * distance).toFloat()
+        val tol = min(0.1f, 0.1f * distance)
         while (c.d <= c.lengthD()) {
             r.add(c.position())
             val was = c.d
@@ -934,11 +934,11 @@ class FLine : HasProperties {
             if (points.isEmpty()) return emptyList()
             val out = ArrayList<Vec3>(points.size)
             points.forEach { p ->
-                if (out.isEmpty() || !same2D(out.last(), p)) {
+                if (out.isEmpty() || !same2D(out[out.lastIndex], p)) {
                     out.add(Vec3(p))
                 }
             }
-            if (out.size >= 2 && same2D(out.first(), out.last())) {
+            if (out.size >= 2 && same2D(out[0], out[out.lastIndex])) {
                 out.removeAt(out.lastIndex)
             }
             return out

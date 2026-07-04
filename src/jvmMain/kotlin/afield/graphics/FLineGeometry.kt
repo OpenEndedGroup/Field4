@@ -1067,16 +1067,17 @@ fun FLine.windingNumber(point: Vec2): Int {
     this.nodes.forEach { node ->
         val currentPoint = Vec2(node.to.x, node.to.y)
 
-        if (prevPoint != null) {
-            if (prevPoint!!.y <= point.y) {
+        val previous = prevPoint
+        if (previous != null) {
+            if (previous.y <= point.y) {
                 if (currentPoint.y > point.y) {
-                    if (isLeft(prevPoint!!, currentPoint, point) > 0) {
+                    if (isLeft(previous, currentPoint, point) > 0) {
                         winding++
                     }
                 }
             } else {
                 if (currentPoint.y <= point.y) {
-                    if (isLeft(prevPoint!!, currentPoint, point) < 0) {
+                    if (isLeft(previous, currentPoint, point) < 0) {
                         winding--
                     }
                 }
@@ -1117,16 +1118,19 @@ fun FLine.signedArea2D(): Float {
             firstPoint = currentPoint
         }
 
-        if (prevPoint != null) {
-            area += (prevPoint!!.x * currentPoint.y - currentPoint.x * prevPoint!!.y)
+        val previous = prevPoint
+        if (previous != null) {
+            area += (previous.x * currentPoint.y - currentPoint.x * previous.y)
         }
 
         prevPoint = currentPoint
     }
 
     // Close the curve
-    if (firstPoint != null && prevPoint != null) {
-        area += (prevPoint!!.x * firstPoint!!.y - firstPoint!!.x * prevPoint!!.y)
+    val first = firstPoint
+    val previous = prevPoint
+    if (first != null && previous != null) {
+        area += (previous.x * first.y - first.x * previous.y)
     }
 
     return area * 0.5f
@@ -1161,20 +1165,23 @@ fun FLine.centroid2D(): Vec2 {
             firstPoint = currentPoint
         }
 
-        if (prevPoint != null) {
-            val cross = prevPoint!!.x * currentPoint.y - currentPoint.x * prevPoint!!.y
-            cx += (prevPoint!!.x + currentPoint.x) * cross
-            cy += (prevPoint!!.y + currentPoint.y) * cross
+        val previous = prevPoint
+        if (previous != null) {
+            val cross = previous.x * currentPoint.y - currentPoint.x * previous.y
+            cx += (previous.x + currentPoint.x) * cross
+            cy += (previous.y + currentPoint.y) * cross
         }
 
         prevPoint = currentPoint
     }
 
     // Close the curve
-    if (firstPoint != null && prevPoint != null) {
-        val cross = prevPoint!!.x * firstPoint!!.y - firstPoint!!.x * prevPoint!!.y
-        cx += (prevPoint!!.x + firstPoint!!.x) * cross
-        cy += (prevPoint!!.y + firstPoint!!.y) * cross
+    val first = firstPoint
+    val previous = prevPoint
+    if (first != null && previous != null) {
+        val cross = previous.x * first.y - first.x * previous.y
+        cx += (previous.x + first.x) * cross
+        cy += (previous.y + first.y) * cross
     }
 
     val factor = 1f / (6f * area)
@@ -2251,7 +2258,7 @@ private fun appendArcBetweenVectors(
     val angle = atan2(
         Vec3(startVec).cross(endVec, Vec3()).dot(n),
         Vec3(startVec).dot(endVec)
-    ).toFloat()
+    )
     val step = angle / segs
 
     for (i in 1..segs) {
@@ -2637,8 +2644,6 @@ fun FLine.smoothTo(endPoint: Vec3, smoothness: Float = 1f): FLine {
             last.c2 = Vec3(current).sub(handle)
             rev++
         }
-
-        else -> {}
     }
 
     val c1New = Vec3(current).add(handle)
@@ -2727,8 +2732,6 @@ fun FLine.tcbTo(
             last.c2 = Vec3(prev).sub(Vec3(inPrev).mul(1f / 3f))
             rev++
         }
-
-        else -> {}
     }
 
     val c1New = Vec3(prev).add(Vec3(outPrev).mul(1f / 3f))
