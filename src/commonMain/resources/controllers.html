@@ -19,6 +19,7 @@
         <div class="page-tabs segmented" role="group" aria-label="Controller page">
           <button type="button" class="segment active" data-page="pad">PAD</button>
           <button type="button" class="segment" data-page="controls">GROUP</button>
+          <button type="button" class="segment" data-page="outputs">OUTPUTS</button>
         </div>
         <div id="pad-controls" class="controls" aria-label="Controller options">
           <div class="segmented" role="group" aria-label="Value axis">
@@ -49,6 +50,11 @@
       <section id="group-page" class="control-page controller-page" data-controller-page="controls" aria-label="Selected box controls">
         <div id="group-state" class="group-state">No selected control group</div>
         <div id="group-controls" class="group-controls"></div>
+      </section>
+      <section id="outputs-page" class="control-page controller-page" data-controller-page="outputs" aria-label="Selected box outputs">
+        <div id="outputs-state" class="group-state">No selected output areas</div>
+        <div id="outputs-controls" class="group-controls"></div>
+        <div id="outputs-list" class="phone-outputs"></div>
       </section>
     </main>
   </body>

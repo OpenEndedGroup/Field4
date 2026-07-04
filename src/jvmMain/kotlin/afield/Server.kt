@@ -19,6 +19,7 @@ import afield.logger.lprintln
 import afield.server.refreshFileProxyBoxes
 import afield.server.installControllerRoutes
 import afield.server.broadcastControllerControlUpdates
+import afield.server.recordControllerOutputMessage
 import afield.server.recordControllerSelection
 import afield.server.writeFileProxyContents
 import afield.stdlib.FLineIntersection
@@ -929,6 +930,7 @@ actual fun _send(message: Message) {
 
 @OptIn(DelicateCoroutinesApi::class)
 fun _send(message: Message, document: String = ".*") {
+    recordControllerOutputMessage(message)
     val documentRegex = document.toRegex()
     val m = Json.encodeToString(message)
     sessions.forEach { (session, info) ->
@@ -998,6 +1000,7 @@ internal fun recordRecentDocument(documentName: String) {
 
 @OptIn(DelicateCoroutinesApi::class)
 fun _send(session: WebSocketSession?, message: Message) {
+    recordControllerOutputMessage(message)
     if (session == null) {
         _send(message)
         return
