@@ -48,7 +48,7 @@ import kotlin.math.abs
 
 private val controllerJson = Json { ignoreUnknownKeys = true }
 private val controllerSelections = ConcurrentHashMap<String, ControllerSelectionState>()
-private val controllerOutputAreas = ConcurrentHashMap<String, ConcurrentHashMap<String, ControllerOutputArea>>()
+private val controllerOutputAreas = ConcurrentHashMap<String, ConcurrentHashMap<String, ConcurrentHashMap<String, ControllerOutputArea>>>()
 private val controllerCallbackScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
 @Serializable
@@ -266,17 +266,39 @@ private fun sendControllerMessage(command: OscEditorCommand, targetDocument: Str
 }
 
 
-fun recordControllerOutputMessage(message: Message) {
-    if (message.name != "set-output") return
-    val payload: JsonElement = message.payload ?: return
-    val output = runCatching { controllerJson.decodeFromJsonElement(Set_output.serializer(), payload) }.getOrNull() ?: return
-    if (output.uid.isBlank() || output.property != "outputarea") return
-    val byChannel = controllerOutputAreas.computeIfAbsent(output.uid) { ConcurrentHashMap() }
+fun recordControllerOutputMessage(info: SessionInformation?, message: Message) {
+    val output = controllerOutputPayload(message) ?: return
+    val keys = info?.let { controllerSelectionKeys(it) } ?: listOf("")
+    keys.forEach { key ->
+        val byUid = controllerOutputAreas.computeIfAbsent(key) { ConcurrentHashMap() }
+        val byChannel = byUid.computeIfAbsent(output.uid) { ConcurrentHashMap() }
+        byChannel[output.channel] = ControllerOutputArea(
+            uid = output.uid,
+            channel = output.channel.ifBlank { "output" },
+            html = output.value
+        )
+    }
+}
+
+fun recordControllerOutputMessage(targetDocument: String, message: Message) {
+    val output = controllerOutputPayload(message) ?: return
+    val target = targetDocument.trim()
+    if (target.isBlank() || target == ".*") return
+    val byUid = controllerOutputAreas.computeIfAbsent(target) { ConcurrentHashMap() }
+    val byChannel = byUid.computeIfAbsent(output.uid) { ConcurrentHashMap() }
     byChannel[output.channel] = ControllerOutputArea(
         uid = output.uid,
         channel = output.channel.ifBlank { "output" },
         html = output.value
     )
+}
+
+private fun controllerOutputPayload(message: Message): Set_output? {
+    if (message.name != "set-output") return null
+    val payload: JsonElement = message.payload ?: return null
+    val output = runCatching { controllerJson.decodeFromJsonElement(Set_output.serializer(), payload) }.getOrNull() ?: return null
+    if (output.uid.isBlank() || output.property != "outputarea") return null
+    return output
 }
 
 fun recordControllerSelection(info: SessionInformation, selection: ControllerSelectionState) {
@@ -321,7 +343,10 @@ private fun controllerOutputs(targetDocument: String): ControllerOutputsResponse
     val selectedUid = selection?.selectedUids?.lastOrNull { info.boxes.containsKey(it) }
     val selectedBox = selectedUid?.let { info.boxes[it] }
     val outputs = selectedUid?.let { uid ->
-        controllerOutputAreas[uid]?.values
+        controllerSelectionKeys(info).asSequence()
+            .mapNotNull { key -> controllerOutputAreas[key]?.get(uid) }
+            .firstOrNull()
+            ?.values
             ?.sortedWith(compareBy<ControllerOutputArea> { it.channel != "controls" }.thenBy { it.channel })
             ?: emptyList()
     } ?: emptyList()

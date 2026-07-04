@@ -930,7 +930,7 @@ actual fun _send(message: Message) {
 
 @OptIn(DelicateCoroutinesApi::class)
 fun _send(message: Message, document: String = ".*") {
-    recordControllerOutputMessage(message)
+    recordControllerOutputMessage(document, message)
     val documentRegex = document.toRegex()
     val m = Json.encodeToString(message)
     sessions.forEach { (session, info) ->
@@ -938,6 +938,7 @@ fun _send(message: Message, document: String = ".*") {
                 info.documentName.matches(documentRegex) ||
                 File(info.filename).name.matches(documentRegex)
         if (!matchesDocument) return@forEach
+        recordControllerOutputMessage(info, message)
         sendWithOutputBackPressure(session, message, m)
     }
     if (message.name == "is-running") {
@@ -1000,12 +1001,12 @@ internal fun recordRecentDocument(documentName: String) {
 
 @OptIn(DelicateCoroutinesApi::class)
 fun _send(session: WebSocketSession?, message: Message) {
-    recordControllerOutputMessage(message)
     if (session == null) {
         _send(message)
         return
     }
     val m = Json.encodeToString(message)
+    recordControllerOutputMessage(sessions[session], message)
     sendWithOutputBackPressure(session, message, m)
 }
 
