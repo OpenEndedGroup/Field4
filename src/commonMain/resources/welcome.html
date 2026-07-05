@@ -256,6 +256,7 @@
         .project-management-header,
         .maven-header,
         .ai-settings-header,
+        .python-settings-header,
         .preferences-header,
         .osc-settings-header {
             display: grid;
@@ -269,6 +270,7 @@
         .project-management-label,
         .maven-label,
         .ai-settings-label,
+        .python-settings-label,
         .preferences-label,
         .osc-settings-label {
             color: var(--field-text-soft);
@@ -278,6 +280,7 @@
         #project-management-state,
         #maven-state,
         #ai-settings-state,
+        #python-settings-state,
         #preferences-state,
         #osc-settings-state {
             min-width: 0;
@@ -291,6 +294,7 @@
         .project-management-controls,
         .maven-controls,
         .ai-settings-controls,
+        .python-settings-controls,
         .osc-settings-controls {
             display: grid;
             grid-template-columns: 1fr;
@@ -300,6 +304,25 @@
 
         .ai-settings-controls {
             grid-template-columns: 1fr auto;
+        }
+
+        .python-settings-controls {
+            grid-template-columns: 116px minmax(0, 1fr) auto auto;
+        }
+
+        .python-settings-field {
+            display: grid;
+            grid-template-columns: 90px 1fr;
+            gap: 8px;
+            align-items: center;
+            font-size: 12px;
+            color: var(--field-text-soft);
+        }
+
+        .python-settings-note {
+            color: var(--field-text-soft);
+            font-size: 11px;
+            line-height: 1.35;
         }
 
         .ai-settings-models {
@@ -432,7 +455,9 @@
         #osc-editor-launch-address:focus,
         #osc-editor-stop-address:focus,
         #osc-editor-debounce-ms:focus,
-        #osc-editor-max-execution-ms:focus {
+        #osc-editor-max-execution-ms:focus,
+        #python-settings-kind:focus,
+        #python-settings-path:focus {
             border-color: var(--field-cyan);
         }
 
@@ -440,6 +465,7 @@
         #project-management-status,
         #maven-status,
         #ai-settings-status,
+        #python-settings-status,
         #completion-doc-polish-status,
         #ai-tool-use-improvement-status,
         #code-use-status,
@@ -454,6 +480,7 @@
         #project-management-status.error,
         #maven-status.error,
         #ai-settings-status.error,
+        #python-settings-status.error,
         #completion-doc-polish-status.error,
         #ai-tool-use-improvement-status.error,
         #code-use-status.error,
@@ -519,6 +546,7 @@
         .project-management-body,
         .maven-body,
         .ai-settings-body,
+        .python-settings-body,
         .preferences-body,
         .runtime-info-body,
         .osc-settings-body {
@@ -1382,6 +1410,9 @@
             .ai-settings-controls,
             .ai-settings-field,
             .ai-settings-provider,
+            .python-settings-header,
+            .python-settings-controls,
+            .python-settings-field,
             .ai-docs-header,
             .ai-docs-actions,
             .osc-settings-header,
@@ -1395,6 +1426,7 @@
             #project-management-state,
             #maven-state,
             #ai-settings-state,
+            #python-settings-state,
             #completion-doc-polish-state,
             #ai-tool-use-improvement-state,
             #code-use-state,
@@ -1609,6 +1641,33 @@
                         <pre id="runtime-info-args" class="runtime-info-args" hidden></pre>
                     </div>
                 </details>
+                <details id="python-settings-details">
+                    <summary>
+                        <span>Python</span>
+                        <span id="python-settings-summary" class="changelog-count">checking</span>
+                    </summary>
+                    <div class="python-settings-body">
+                        <div class="python-settings-header">
+                            <span class="python-settings-label">JEP</span>
+                            <span id="python-settings-state">checking</span>
+                        </div>
+                        <div class="python-settings-controls">
+                            <select id="python-settings-kind" aria-label="Python setting kind">
+                                <option value="venv">venv</option>
+                                <option value="executable">python</option>
+                            </select>
+                            <input id="python-settings-path" type="text" autocomplete="off" placeholder="~/project/.venv or /usr/bin/python3">
+                            <input id="python-directory-picker" type="file" webkitdirectory directory hidden>
+                            <input id="python-file-picker" type="file" hidden>
+                            <button id="choose-python-path" type="button">Open</button>
+                            <button id="save-python-settings" type="button">Save</button>
+                        </div>
+                        <div class="python-settings-note">
+                            Choose a venv or Python executable where <code>pip install jep</code> has been run. Saving validates the path; restart Field for JEP to bind the new native library.
+                        </div>
+                        <div id="python-settings-status" aria-live="polite"></div>
+                    </div>
+                </details>
                 <details id="ai-settings-details">
                     <summary>
                         <span>AI</span>
@@ -1820,6 +1879,19 @@
             fastModel: "",
             fallbackModel: ""
         },
+        pythonSettings: {
+            configured: false,
+            source: "",
+            kind: "venv",
+            path: "",
+            pythonExecutable: "",
+            pythonHome: "",
+            jepLibrary: "",
+            sitePackages: "",
+            configPath: "",
+            message: "checking",
+            restartRequired: false
+        },
         completionDocPolish: {
             cache: {
                 cachePath: "",
@@ -1866,6 +1938,7 @@
             message: ""
         },
         savingAiSettings: false,
+        savingPythonSettings: false,
         preferences: {
             profiling: false,
             framePresentationLog: false,
@@ -2621,6 +2694,50 @@
             argsNode.hidden = args.length === 0;
             argsNode.textContent = args.join("\n");
         }
+    }
+
+    function setPythonSettingsStatus(text, isError = false) {
+        const node = document.getElementById("python-settings-status");
+        if (!node) return;
+        node.textContent = text || "";
+        node.classList.toggle("error", !!isError);
+    }
+
+    function renderPythonSettings() {
+        const settings = state.pythonSettings || {};
+        const summary = document.getElementById("python-settings-summary");
+        const stateNode = document.getElementById("python-settings-state");
+        const kindInput = document.getElementById("python-settings-kind");
+        const pathInput = document.getElementById("python-settings-path");
+        const chooseButton = document.getElementById("choose-python-path");
+        const saveButton = document.getElementById("save-python-settings");
+        const configured = !!settings.configured;
+        const kind = settings.kind === "executable" ? "executable" : "venv";
+        const path = settings.path || "";
+        const executable = settings.pythonExecutable || "";
+        const jep = settings.jepLibrary || "";
+        const source = settings.source || (configured ? "configured" : "not configured");
+
+        if (summary) summary.textContent = configured ? "configured" : "missing JEP";
+        if (stateNode) {
+            stateNode.textContent = configured
+                ? [source, executable].filter(Boolean).join(" · ")
+                : (settings.message || "Choose a Python with JEP installed.");
+        }
+        if (kindInput && document.activeElement !== kindInput) kindInput.value = kind;
+        if (pathInput && document.activeElement !== pathInput) pathInput.value = path;
+
+        [kindInput, pathInput, chooseButton, saveButton].filter(Boolean).forEach((node) => {
+            node.disabled = !!state.savingPythonSettings;
+        });
+
+        const details = [];
+        if (settings.restartRequired) details.push("Restart Field for this Python setting to take effect.");
+        if (settings.message) details.push(settings.message);
+        if (executable) details.push(`python: ${executable}`);
+        if (jep) details.push(`jep: ${jep}`);
+        if (settings.configPath) details.push(`settings: ${settings.configPath}`);
+        setPythonSettingsStatus(details.join(" · "), !configured && !!settings.message);
     }
 
     function setAiSettingsStatus(text, isError = false) {
@@ -3648,6 +3765,7 @@
             state.codeUse = payload.codeUse || state.codeUse;
             state.preferences = payload.preferences || state.preferences;
             state.runtimeInfo = payload.runtimeInfo || state.runtimeInfo || {};
+            state.pythonSettings = payload.pythonSettings || state.pythonSettings || {};
             try {
                 window.localStorage.setItem("field4.editorPropertyStickiness", state.preferences.editorPropertyStickiness || "none");
             } catch (_) {
@@ -3656,6 +3774,7 @@
             renderWorkspaceControls();
             renderProjectManagement();
             renderRuntimeInfo();
+            renderPythonSettings();
             renderAiSettings();
             renderPreferences();
             renderOscSettings();
@@ -3687,6 +3806,7 @@
             renderWorkspaceControls();
             renderProjectManagement();
             renderRuntimeInfo();
+            renderPythonSettings();
             renderAiSettings();
             renderPreferences();
             renderOscSettings();
@@ -4034,6 +4154,166 @@
         }
     }
 
+    function pythonPathFromDialogResult(result) {
+        return workspacePathFromDialogResult(result);
+    }
+
+    async function choosePythonExecutableViaElectron() {
+        const candidates = [
+            window.field4?.selectPythonExecutable,
+            window.field4?.selectFile,
+            window.fieldElectron?.selectPythonExecutable,
+            window.fieldElectron?.selectFile,
+            window.electronAPI?.selectPythonExecutable,
+            window.electronAPI?.selectFile
+        ].filter((fn) => typeof fn === "function");
+
+        for (const fn of candidates) {
+            const selected = pythonPathFromDialogResult(await fn());
+            if (selected) return selected;
+        }
+
+        const electron = typeof window.require === "function"
+            ? (() => {
+                try {
+                    return window.require("electron");
+                } catch (_) {
+                    return null;
+                }
+            })()
+            : null;
+
+        if (electron?.ipcRenderer?.invoke) {
+            for (const channel of ["select-python-executable", "select-file", "show-open-dialog"]) {
+                try {
+                    const selected = pythonPathFromDialogResult(await electron.ipcRenderer.invoke(channel, {
+                        properties: ["openFile"]
+                    }));
+                    if (selected) return selected;
+                } catch (_) {
+                }
+            }
+        }
+
+        if (electron?.remote?.dialog?.showOpenDialog) {
+            const selected = pythonPathFromDialogResult(await electron.remote.dialog.showOpenDialog({
+                properties: ["openFile"]
+            }));
+            if (selected) return selected;
+        }
+
+        return "";
+    }
+
+    function choosePythonViaDirectoryInput() {
+        const input = document.getElementById("python-directory-picker");
+        if (!input) return Promise.resolve("");
+        return new Promise((resolve) => {
+            const finish = () => {
+                input.removeEventListener("change", finish);
+                const file = input.files?.[0];
+                input.value = "";
+                if (!file || !file.path) {
+                    resolve("");
+                    return;
+                }
+                const fullPath = String(file.path);
+                const relativePath = String(file.webkitRelativePath || file.name || "");
+                if (relativePath && fullPath.endsWith(relativePath)) {
+                    resolve(fullPath.slice(0, fullPath.length - relativePath.length).replace(/[\\/]+$/, ""));
+                    return;
+                }
+                resolve(fullPath.replace(/[\\/][^\\/]*$/, ""));
+            };
+            input.addEventListener("change", finish, { once: true });
+            input.click();
+        });
+    }
+
+    function choosePythonViaFileInput() {
+        const input = document.getElementById("python-file-picker");
+        if (!input) return Promise.resolve("");
+        return new Promise((resolve) => {
+            const finish = () => {
+                input.removeEventListener("change", finish);
+                const file = input.files?.[0];
+                input.value = "";
+                resolve(file?.path ? String(file.path) : "");
+            };
+            input.addEventListener("change", finish, { once: true });
+            input.click();
+        });
+    }
+
+    async function choosePythonPath() {
+        const kind = document.getElementById("python-settings-kind")?.value === "executable" ? "executable" : "venv";
+        const input = document.getElementById("python-settings-path");
+        setPythonSettingsStatus(kind === "venv" ? "Opening venv directory chooser..." : "Opening Python executable chooser...");
+
+        try {
+            const selected = kind === "venv"
+                ? await chooseWorkspaceViaElectronBridge() || await choosePythonViaDirectoryInput()
+                : await choosePythonExecutableViaElectron() || await choosePythonViaFileInput();
+            if (!selected) {
+                setPythonSettingsStatus("This browser cannot expose a file path here. Paste or type the Python path.");
+                return;
+            }
+            if (input) input.value = selected;
+            setPythonSettingsStatus("Python path selected. Save to validate JEP.");
+        } catch (error) {
+            console.error("Failed to choose Python path", error);
+            setPythonSettingsStatus(error?.message || "Could not choose a Python path.", true);
+        }
+    }
+
+    function readPythonSettingsForm() {
+        return {
+            kind: document.getElementById("python-settings-kind")?.value === "executable" ? "executable" : "venv",
+            path: String(document.getElementById("python-settings-path")?.value || "").trim()
+        };
+    }
+
+    async function savePythonSettings() {
+        const request = readPythonSettingsForm();
+        if (!request.path) {
+            setPythonSettingsStatus("Enter a venv directory or Python executable path.", true);
+            return;
+        }
+
+        state.savingPythonSettings = true;
+        renderPythonSettings();
+        setPythonSettingsStatus("Validating Python/JEP...");
+
+        try {
+            const response = await fetch("/api/python-settings", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                body: JSON.stringify(request)
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(payload.error || `HTTP ${response.status}`);
+            }
+
+            state.pythonSettings = payload || state.pythonSettings;
+            renderPythonSettings();
+        } catch (error) {
+            console.error("Failed to save Python settings", error);
+            state.pythonSettings = {
+                ...(state.pythonSettings || {}),
+                kind: request.kind,
+                path: request.path,
+                configured: false,
+                message: error?.message || "Could not save Python settings."
+            };
+            setPythonSettingsStatus(error?.message || "Could not save Python settings.", true);
+        } finally {
+            state.savingPythonSettings = false;
+            renderPythonSettings();
+        }
+    }
+
     async function saveAiSettings() {
         const provider = state.aiSettings?.provider === "openrouter" ? "openrouter" : "openai";
         const openAiInput = document.getElementById("openai-platform-key");
@@ -4145,7 +4425,7 @@
     }
 
     function openCodeUseBrowser() {
-        window.open("/code-use.html", "_blank", "noopener");
+        window.open("/code-use", "_blank", "noopener");
     }
 
     async function learnOscAddress(targetId) {
@@ -4390,6 +4670,10 @@
         const openRouterKeyInput = document.getElementById("openrouter-api-key");
         const aiProviderButtons = document.querySelectorAll("[data-ai-provider]");
         const saveAiSettingsButton = document.getElementById("save-ai-settings");
+        const pythonSettingsKind = document.getElementById("python-settings-kind");
+        const pythonSettingsPath = document.getElementById("python-settings-path");
+        const choosePythonPathButton = document.getElementById("choose-python-path");
+        const savePythonSettingsButton = document.getElementById("save-python-settings");
         const runCompletionDocPolishButton = document.getElementById("run-completion-doc-polish");
         const runAiToolUseReviewButton = document.getElementById("run-ai-tool-use-review");
         const runAiToolUseApplyButton = document.getElementById("run-ai-tool-use-apply");
@@ -4534,6 +4818,8 @@
         });
 
         saveAiSettingsButton?.addEventListener("click", saveAiSettings);
+        choosePythonPathButton?.addEventListener("click", choosePythonPath);
+        savePythonSettingsButton?.addEventListener("click", savePythonSettings);
         runCompletionDocPolishButton?.addEventListener("click", runCompletionDocPolish);
         runAiToolUseReviewButton?.addEventListener("click", () => runAiToolUseImprovement(true));
         runAiToolUseApplyButton?.addEventListener("click", () => runAiToolUseImprovement(false));
@@ -4557,6 +4843,26 @@
 
         openRouterKeyInput?.addEventListener("input", () => {
             setAiSettingsStatus("");
+        });
+
+        pythonSettingsKind?.addEventListener("change", () => {
+            setPythonSettingsStatus("");
+            state.pythonSettings = {
+                ...(state.pythonSettings || {}),
+                kind: pythonSettingsKind.value === "executable" ? "executable" : "venv",
+                path: pythonSettingsPath?.value || ""
+            };
+            renderPythonSettings();
+        });
+
+        pythonSettingsPath?.addEventListener("input", () => {
+            setPythonSettingsStatus("");
+        });
+
+        pythonSettingsPath?.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            savePythonSettings();
         });
 
         document.querySelectorAll(".preference-toggle input").forEach((input) => {

@@ -4,8 +4,13 @@ import afield.ai.KotlinDefinitionRecord
 import afield.ai.KotlinSourceIndex
 import afield.logger.lprintln
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
@@ -14,6 +19,7 @@ import java.security.MessageDigest
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.ResultSet
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.ArrayBlockingQueue
@@ -28,11 +34,24 @@ data class CodeUseSummary(
     val databasePath: String,
     val queueSize: Int,
     val droppedEvents: Long,
+    val analyzerQueueSize: Int = 0,
+    val droppedAnalysisJobs: Long = 0,
+    val analyzerBackend: String = "source-index",
+    val analyzerMessage: String = "",
+    val semanticBackend: String = "source-index-fallback",
+    val semanticMessage: String = "",
+    val semanticSidecarUrl: String = "",
     val snippets: Long = 0,
     val compileEvents: Long = 0,
     val evalEvents: Long = 0,
     val launchEvents: Long = 0,
     val sourceBlobs: Long = 0,
+    val symbolUseEdges: Long = 0,
+    val k2ResolvedUseEdges: Long = 0,
+    val sourceIndexUseEdges: Long = 0,
+    val textualUseEdges: Long = 0,
+    val unknownUseEdges: Long = 0,
+    val unresolvedUseEdges: Long = 0,
     val message: String = ""
 )
 
@@ -205,13 +224,81 @@ data class CodeUseRelatedSourceRow(
     val peerCallers: List<CodeUseSnippetUseRow> = emptyList()
 )
 
+@Serializable
+data class CodeUseSemanticAnalyzeRequest(
+    val code: String,
+    val sourceName: String = "AgentSnippet.kt",
+    val limit: Int = 5,
+    val callersPerSymbol: Int = 5,
+    val sourceRadiusLines: Int = 24,
+    val databasePath: String = "",
+    val workspaceRoot: String = "",
+    val classpathHash: String = "",
+    val sourceRoots: List<String> = emptyList(),
+    val classpathRoots: List<String> = emptyList(),
+    val imports: List<String> = emptyList(),
+    val implicitReceivers: List<String> = emptyList(),
+    val timeoutMs: Long = 0L
+)
+
+@Serializable
+data class CodeUseSemanticUseRow(
+    val symbolName: String,
+    val callableId: String = "",
+    val kind: String = "",
+    val packageName: String = "",
+    val sourceFile: String = "",
+    val line: Int = 0,
+    val useKind: String = "",
+    val receiverType: String = "",
+    val snippetLine: Int = 0,
+    val snippetColumn: Int = 0,
+    val confidence: String = "k2-resolved",
+    val evidence: String = ""
+)
+
+@Serializable
+data class CodeUseSemanticUnresolvedRow(
+    val text: String,
+    val line: Int = 0,
+    val column: Int = 0,
+    val reason: String = ""
+)
+
+@Serializable
+data class CodeUseSemanticAnalyzeResult(
+    val success: Boolean,
+    val backend: String,
+    val message: String,
+    val sourceName: String = "",
+    val sidecarUrl: String = "",
+    val resolvedUses: List<CodeUseSemanticUseRow> = emptyList(),
+    val unresolvedUses: List<CodeUseSemanticUnresolvedRow> = emptyList(),
+    val references: List<CodeUseSourceReferenceRow> = emptyList(),
+    val relatedSources: List<CodeUseRelatedSourceRow> = emptyList()
+)
+
+@Serializable
+private data class CodeUseSemanticSidecarHealthResult(
+    val ok: Boolean = false,
+    val backend: String = "",
+    val workspaceRoot: String = ""
+)
+
 object CodeUseTelemetryService {
     private const val QUEUE_CAPACITY = 4096
+    private const val ANALYSIS_QUEUE_CAPACITY = 2048
     private const val MAX_SOURCE_CHARS = 1_000_000
-    private val json = Json { encodeDefaults = true }
+    private val json = Json {
+        encodeDefaults = true
+        ignoreUnknownKeys = true
+    }
     private val queue = ArrayBlockingQueue<CodeUseEvent>(QUEUE_CAPACITY)
+    private val analysisQueue = ArrayBlockingQueue<CodeUseAnalysisJob>(ANALYSIS_QUEUE_CAPACITY)
     private val droppedEvents = AtomicLong(0)
+    private val droppedAnalysisJobs = AtomicLong(0)
     private val started = AtomicLong(0)
+    private val analysisStarted = AtomicLong(0)
     private val disabledMessage = AtomicLong(0)
     private val schemaLock = Any()
 
@@ -229,6 +316,30 @@ object CodeUseTelemetryService {
             ?: System.getenv("AFIELD_CODE_USE_PATH")
             ?: Paths.get(System.getProperty("user.home"), ".afield", "code-use", "field-code-use.sqlite").toString()
     ).toAbsolutePath().normalize()
+
+    private val semanticK2Status: SemanticK2AnalyzerStatus = SemanticK2AnalyzerStatus.detect()
+    private val semanticSidecarUrl: String = (
+        System.getProperty("afield.codeUse.semanticSidecar.url")
+            ?: System.getenv("AFIELD_CODE_USE_SEMANTIC_SIDECAR_URL")
+            ?: ""
+        ).trim()
+    private val semanticSidecarTimeoutMs: Long = (
+        System.getProperty("afield.codeUse.semanticSidecar.timeoutMs")
+            ?: System.getenv("AFIELD_CODE_USE_SEMANTIC_SIDECAR_TIMEOUT_MS")
+            ?: "2500"
+        ).toLongOrNull()?.coerceIn(100L, 30_000L) ?: 2500L
+    private val semanticSidecarHttpClient: HttpClient = HttpClient.newBuilder()
+        .connectTimeout(Duration.ofMillis(semanticSidecarTimeoutMs))
+        .build()
+
+    @Volatile
+    private var semanticSidecarHealthCache: Pair<Long, SemanticSidecarHealthStatus>? = null
+
+    private data class SemanticSidecarHealthStatus(
+        val backend: String,
+        val message: String,
+        val url: String
+    )
 
     fun newSnippetKey(): String = UUID.randomUUID().toString()
 
@@ -323,27 +434,49 @@ object CodeUseTelemetryService {
 
     fun summary(): CodeUseSummary {
         start()
+        val semanticHealth = semanticSidecarHealthStatus()
         if (!enabled) {
             return CodeUseSummary(
                 enabled = false,
                 databasePath = databasePath.absolutePathString(),
                 queueSize = queue.size,
                 droppedEvents = droppedEvents.get(),
+                analyzerQueueSize = analysisQueue.size,
+                droppedAnalysisJobs = droppedAnalysisJobs.get(),
+                analyzerBackend = storeAnalyzerBackend(semanticHealth),
+                analyzerMessage = storeAnalyzerMessage(semanticHealth),
+                semanticBackend = semanticHealth.backend,
+                semanticMessage = semanticHealth.message,
+                semanticSidecarUrl = semanticHealth.url,
                 message = "Code-use telemetry is disabled; SQLite initialization failed."
             )
         }
         return runCatching {
             withConnection { conn ->
+                val confidence = confidenceSummary(conn)
                 CodeUseSummary(
                     enabled = true,
                     databasePath = databasePath.absolutePathString(),
                     queueSize = queue.size,
                     droppedEvents = droppedEvents.get(),
+                    analyzerQueueSize = analysisQueue.size,
+                    droppedAnalysisJobs = droppedAnalysisJobs.get(),
+                    analyzerBackend = storeAnalyzerBackend(semanticHealth),
+                    analyzerMessage = storeAnalyzerMessage(semanticHealth),
+                    semanticBackend = semanticHealth.backend,
+                    semanticMessage = semanticHealth.message,
+                    semanticSidecarUrl = semanticHealth.url,
                     snippets = count(conn, "snippets"),
                     compileEvents = count(conn, "compile_events"),
                     evalEvents = count(conn, "eval_events"),
                     launchEvents = count(conn, "launch_events"),
-                    sourceBlobs = count(conn, "source_blobs")
+                    sourceBlobs = count(conn, "source_blobs"),
+                    symbolUseEdges = confidence.symbolUseEdges,
+                    k2ResolvedUseEdges = confidence.k2ResolvedUseEdges,
+                    sourceIndexUseEdges = confidence.sourceIndexUseEdges,
+                    textualUseEdges = confidence.textualUseEdges,
+                    unknownUseEdges = confidence.unknownUseEdges,
+                    unresolvedUseEdges = confidence.unresolvedUseEdges
                 )
             }
         }.getOrElse {
@@ -352,6 +485,13 @@ object CodeUseTelemetryService {
                 databasePath = databasePath.absolutePathString(),
                 queueSize = queue.size,
                 droppedEvents = droppedEvents.get(),
+                analyzerQueueSize = analysisQueue.size,
+                droppedAnalysisJobs = droppedAnalysisJobs.get(),
+                analyzerBackend = storeAnalyzerBackend(semanticHealth),
+                analyzerMessage = storeAnalyzerMessage(semanticHealth),
+                semanticBackend = semanticHealth.backend,
+                semanticMessage = semanticHealth.message,
+                semanticSidecarUrl = semanticHealth.url,
                 message = it.message ?: it.javaClass.name
             )
         }
@@ -576,6 +716,7 @@ object CodeUseTelemetryService {
                        COUNT(DISTINCT su.snippet_id) AS unique_snippet_count
                 FROM symbols s
                 LEFT JOIN symbol_uses su ON su.symbol_id = s.id
+                    AND COALESCE(su.confidence, '') <> 'source-index-match'
                 GROUP BY s.id
                 ORDER BY use_count DESC, s.fq_name ASC
                 LIMIT ?
@@ -611,52 +752,34 @@ object CodeUseTelemetryService {
         if (names.isEmpty()) return target to emptyList()
 
         val resolved = resolvedSnippetUsesForTarget(target!!, limit)
-        if (resolved.isNotEmpty()) return target.copy(confidence = "resolved") to resolved
+        if (resolved.isNotEmpty()) {
+            return target.copy(confidence = combineConfidences(resolved.map { it.confidence })) to resolved
+        }
 
         return target to textualSnippetUses(names, limit = limit, sinceEpochMs = 0L)
     }
 
     fun referencesForCode(code: String, limit: Int = 5): List<CodeUseSourceReferenceRow> {
         val text = code.take(80_000)
-        val tokens = extractCodeTokens(text)
-        if (tokens.isEmpty()) return emptyList()
-        val loweredText = text.lowercase()
         val definitions = sourceDefinitions()
         if (definitions.isEmpty()) return emptyList()
-
-        return definitions.mapNotNull { def ->
-            val simple = def.name.substringAfterLast('.')
-            val lowerSimple = simple.lowercase()
-            val lowerFull = def.name.lowercase()
-            var score = 0
-            val evidence = mutableListOf<String>()
-            if (lowerFull.length > lowerSimple.length && lowerFull in loweredText) {
-                score += 70
-                evidence += "qualified-name"
+        val defsBySimpleName = definitions.groupBy { it.name.substringAfterLast('.') }
+        return sourceIndexMatchesForSource(text, defsBySimpleName)
+            .groupBy { "${it.definition.filePath}:${it.definition.line}:${it.definition.name}" }
+            .values
+            .map { group ->
+                val first = group.first()
+                val def = first.definition
+                CodeUseSourceReferenceRow(
+                    symbolName = def.name,
+                    kind = def.kind,
+                    sourceFile = def.filePath,
+                    line = def.line,
+                    score = group.sumOf { sourceIndexReferenceScore(it.confidence) },
+                    confidence = combineConfidences(group.map { it.confidence }),
+                    evidence = group.map { it.evidence }.filter { it.isNotBlank() }.distinct().joinToString(",")
+                )
             }
-            if (lowerSimple in tokens) {
-                score += 35
-                evidence += "identifier"
-            }
-            if (Regex("""\b${Regex.escape(simple)}\s*\(""").containsMatchIn(text)) {
-                score += 25
-                evidence += "call-shape"
-            }
-            if (Regex("""\.\s*${Regex.escape(simple)}\b""").containsMatchIn(text)) {
-                score += 15
-                evidence += "member-access"
-            }
-            if (score <= 0) return@mapNotNull null
-            CodeUseSourceReferenceRow(
-                symbolName = def.name,
-                kind = def.kind,
-                sourceFile = def.filePath,
-                line = def.line,
-                score = score,
-                confidence = "source-index-match",
-                evidence = evidence.distinct().joinToString(",")
-            )
-        }
             .sortedWith(
                 compareByDescending<CodeUseSourceReferenceRow> { it.score }
                     .thenBy { it.sourceFile }
@@ -671,7 +794,61 @@ object CodeUseTelemetryService {
         callersPerSymbol: Int = 5,
         sourceRadiusLines: Int = 24
     ): List<CodeUseRelatedSourceRow> =
-        referencesForCode(code, symbolLimit.coerceIn(1, 20)).map { ref ->
+        relatedSourceForReferences(
+            referencesForCode(code, symbolLimit.coerceIn(1, 20)),
+            callersPerSymbol = callersPerSymbol,
+            sourceRadiusLines = sourceRadiusLines
+        )
+
+    fun semanticAnalyzeCode(request: CodeUseSemanticAnalyzeRequest): CodeUseSemanticAnalyzeResult {
+        val safeRequest = enrichedSemanticRequest(request)
+        if (safeRequest.code.isBlank()) {
+            return CodeUseSemanticAnalyzeResult(
+                success = false,
+                backend = "none",
+                message = "No code was provided for semantic analysis.",
+                sourceName = safeRequest.sourceName
+            )
+        }
+
+        val sidecar = semanticSidecarResult(safeRequest)
+        if (sidecar != null) {
+            return enrichSemanticResult(safeRequest, sidecar)
+        }
+
+        return fallbackSemanticResult(
+            request = safeRequest,
+            message = if (semanticSidecarUrl.isBlank()) {
+                "No semantic K2 sidecar is configured; used local source-index graph fallback."
+            } else {
+                "Semantic K2 sidecar was unavailable; used local source-index graph fallback."
+            }
+        )
+    }
+
+    fun semanticAnalyzeCode(
+        code: String,
+        sourceName: String = "AgentSnippet.kt",
+        limit: Int = 5,
+        callersPerSymbol: Int = 5,
+        sourceRadiusLines: Int = 24
+    ): CodeUseSemanticAnalyzeResult =
+        semanticAnalyzeCode(
+            CodeUseSemanticAnalyzeRequest(
+                code = code,
+                sourceName = sourceName,
+                limit = limit,
+                callersPerSymbol = callersPerSymbol,
+                sourceRadiusLines = sourceRadiusLines
+            )
+        )
+
+    private fun relatedSourceForReferences(
+        references: List<CodeUseSourceReferenceRow>,
+        callersPerSymbol: Int = 5,
+        sourceRadiusLines: Int = 24
+    ): List<CodeUseRelatedSourceRow> =
+        references.map { ref ->
             val stats = sourceUsageStats(ref.symbolName)
             val excerpt = sourceExcerpt(ref.sourceFile, ref.line, sourceRadiusLines.coerceIn(4, 80))
             val (_, callers) = callersForSourceLine(ref.sourceFile, ref.line, callersPerSymbol.coerceIn(0, 20))
@@ -694,6 +871,226 @@ object CodeUseTelemetryService {
             )
         }
 
+    private fun enrichedSemanticRequest(request: CodeUseSemanticAnalyzeRequest): CodeUseSemanticAnalyzeRequest {
+        val root = Paths.get(System.getProperty("user.dir")).toAbsolutePath().normalize().absolutePathString()
+        return request.copy(
+            code = request.code.take(80_000),
+            sourceName = request.sourceName.ifBlank { "AgentSnippet.kt" },
+            limit = request.limit.coerceIn(1, 20),
+            callersPerSymbol = request.callersPerSymbol.coerceIn(0, 20),
+            sourceRadiusLines = request.sourceRadiusLines.coerceIn(4, 80),
+            databasePath = request.databasePath.ifBlank { databasePath.absolutePathString() },
+            workspaceRoot = request.workspaceRoot.ifBlank { root },
+            sourceRoots = request.sourceRoots.ifEmpty { defaultSemanticSourceRoots(root) },
+            classpathRoots = request.classpathRoots,
+            timeoutMs = request.timeoutMs.takeIf { it > 0 }?.coerceIn(100L, 30_000L) ?: semanticSidecarTimeoutMs
+        )
+    }
+
+    private fun storeAnalyzerBackend(semanticHealth: SemanticSidecarHealthStatus): String =
+        if (semanticHealth.backend != "source-index-fallback" && semanticHealth.url.isNotBlank()) {
+            "k2-sidecar"
+        } else {
+            "source-index"
+        }
+
+    private fun storeAnalyzerMessage(semanticHealth: SemanticSidecarHealthStatus): String =
+        if (semanticHealth.backend != "source-index-fallback" && semanticHealth.url.isNotBlank()) {
+            "Background event-store analyzer uses the semantic K2 sidecar for new snippets, with source-index fallback when the sidecar is unavailable."
+        } else {
+            "Background event-store analyzer is using the source index; live semantic queries use the sidecar when available."
+        }
+
+    private fun semanticSidecarHealthStatus(): SemanticSidecarHealthStatus {
+        val timestamp = now()
+        val cached = semanticSidecarHealthCache
+        if (cached != null && timestamp - cached.first < 2_000L) return cached.second
+        val status = computeSemanticSidecarHealthStatus()
+        semanticSidecarHealthCache = timestamp to status
+        return status
+    }
+
+    private fun computeSemanticSidecarHealthStatus(): SemanticSidecarHealthStatus {
+        val base = semanticSidecarBaseEndpoint()
+            ?: return SemanticSidecarHealthStatus(
+                backend = "source-index-fallback",
+                message = "No semantic K2 sidecar is configured; live semantic queries use source-index fallback.",
+                url = ""
+            )
+        val healthEndpoint = base.resolve("/health")
+        return runCatching {
+            val request = HttpRequest.newBuilder(healthEndpoint)
+                .timeout(Duration.ofMillis(semanticSidecarTimeoutMs.coerceAtMost(800L)))
+                .header("Accept", "application/json")
+                .GET()
+                .build()
+            val response = semanticSidecarHttpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8))
+            if (response.statusCode() !in 200..299) {
+                return SemanticSidecarHealthStatus(
+                    backend = "source-index-fallback",
+                    message = "Semantic K2 sidecar health check returned HTTP ${response.statusCode()}; live semantic queries use source-index fallback.",
+                    url = base.toString()
+                )
+            }
+            val health = json.decodeFromString<CodeUseSemanticSidecarHealthResult>(response.body())
+            if (!health.ok) {
+                return SemanticSidecarHealthStatus(
+                    backend = "source-index-fallback",
+                    message = "Semantic K2 sidecar at $base reported unhealthy; live semantic queries use source-index fallback.",
+                    url = base.toString()
+                )
+            }
+            SemanticSidecarHealthStatus(
+                backend = health.backend.ifBlank { "k2-sidecar" },
+                message = "Semantic K2 sidecar is available at $base for ${health.workspaceRoot.ifBlank { "this checkout" }}.",
+                url = base.toString()
+            )
+        }.getOrElse {
+            SemanticSidecarHealthStatus(
+                backend = "source-index-fallback",
+                message = "Semantic K2 sidecar is configured at $base but is unavailable (${it.message ?: it.javaClass.simpleName}); live semantic queries use source-index fallback.",
+                url = base.toString()
+            )
+        }
+    }
+
+    private fun defaultSemanticSourceRoots(workspaceRoot: String): List<String> {
+        val root = Paths.get(workspaceRoot)
+        return listOf("src/jvmMain/kotlin", "src/commonMain/kotlin", "src/personal/kotlin")
+            .map { root.resolve(it).toAbsolutePath().normalize() }
+            .filter { Files.exists(it) }
+            .map { it.absolutePathString() }
+    }
+
+    private fun semanticSidecarResult(request: CodeUseSemanticAnalyzeRequest): CodeUseSemanticAnalyzeResult? {
+        val endpoint = semanticSidecarEndpoint() ?: return null
+        return runCatching {
+            val body = json.encodeToString(request)
+            val httpRequest = HttpRequest.newBuilder(endpoint)
+                .timeout(Duration.ofMillis(request.timeoutMs))
+                .header("Content-Type", "application/json")
+                .header("Accept", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
+                .build()
+            val response = semanticSidecarHttpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8))
+            if (response.statusCode() !in 200..299) {
+                lprintln("warning,code-use", "semantic sidecar returned HTTP ${response.statusCode()} from $endpoint")
+                return null
+            }
+            json.decodeFromString<CodeUseSemanticAnalyzeResult>(response.body())
+        }.onFailure {
+            lprintln("warning,code-use", "semantic sidecar unavailable at $endpoint: ${it.message ?: it.javaClass.name}")
+        }.getOrNull()
+    }
+
+    private fun semanticSidecarEndpoint(): URI? {
+        val base = semanticSidecarBaseEndpoint() ?: return null
+        return if (base.path.endsWith("/analyze")) base else base.resolve("/analyze")
+    }
+
+    private fun semanticSidecarBaseEndpoint(): URI? =
+        runCatching {
+            if (semanticSidecarUrl.isBlank()) return null
+            val trimmed = semanticSidecarUrl.trimEnd('/')
+            val withoutAnalyze = if (trimmed.endsWith("/analyze")) trimmed.removeSuffix("/analyze") else trimmed
+            URI.create(withoutAnalyze)
+        }.onFailure {
+            lprintln("warning,code-use", "invalid semantic sidecar URL '$semanticSidecarUrl': ${it.message ?: it.javaClass.name}")
+        }.getOrNull()
+
+    private fun enrichSemanticResult(
+        request: CodeUseSemanticAnalyzeRequest,
+        sidecar: CodeUseSemanticAnalyzeResult
+    ): CodeUseSemanticAnalyzeResult {
+        val references = sidecar.references.ifEmpty {
+            semanticUsesToReferences(sidecar.resolvedUses).ifEmpty {
+                referencesForCode(request.code, request.limit)
+            }
+        }
+        val related = sidecar.relatedSources.ifEmpty {
+            relatedSourceForReferences(
+                references.take(request.limit),
+                callersPerSymbol = request.callersPerSymbol,
+                sourceRadiusLines = request.sourceRadiusLines
+            )
+        }
+        val message = buildString {
+            append(sidecar.message.ifBlank { "Semantic sidecar returned ${sidecar.resolvedUses.size} resolved use(s)." })
+            if (sidecar.references.isEmpty() || sidecar.relatedSources.isEmpty()) {
+                append(" Field enriched the result from the local code-use graph.")
+            }
+        }
+        return sidecar.copy(
+            success = sidecar.success,
+            backend = sidecar.backend.ifBlank { "semantic-sidecar" },
+            message = message,
+            sourceName = sidecar.sourceName.ifBlank { request.sourceName },
+            sidecarUrl = sidecar.sidecarUrl.ifBlank { semanticSidecarUrl },
+            references = references.take(request.limit),
+            relatedSources = related.take(request.limit)
+        )
+    }
+
+    private fun fallbackSemanticResult(
+        request: CodeUseSemanticAnalyzeRequest,
+        message: String
+    ): CodeUseSemanticAnalyzeResult {
+        val references = referencesForCode(request.code, request.limit)
+        val related = relatedSourceForReferences(
+            references,
+            callersPerSymbol = request.callersPerSymbol,
+            sourceRadiusLines = request.sourceRadiusLines
+        )
+        val unresolved = if (references.isEmpty()) {
+            extractCandidateUses(request.code).take(20).map {
+                CodeUseSemanticUnresolvedRow(
+                    text = it.text,
+                    line = it.line,
+                    column = it.column,
+                    reason = "source-index-fallback-no-match"
+                )
+            }
+        } else {
+            emptyList()
+        }
+        return CodeUseSemanticAnalyzeResult(
+            success = true,
+            backend = "source-index-fallback",
+            message = message,
+            sourceName = request.sourceName,
+            sidecarUrl = semanticSidecarUrl,
+            unresolvedUses = unresolved,
+            references = references,
+            relatedSources = related
+        )
+    }
+
+    private fun semanticUsesToReferences(uses: List<CodeUseSemanticUseRow>): List<CodeUseSourceReferenceRow> =
+        uses
+            .filter { it.sourceFile.isNotBlank() && it.line > 0 && it.symbolName.isNotBlank() }
+            .groupBy { "${normalizeSourcePath(it.sourceFile)}:${it.line}:${it.symbolName}" }
+            .values
+            .map { group ->
+                val first = group.first()
+                CodeUseSourceReferenceRow(
+                    symbolName = first.symbolName,
+                    kind = first.kind,
+                    sourceFile = normalizeSourcePath(first.sourceFile),
+                    line = first.line,
+                    score = 100 + group.size,
+                    confidence = first.confidence.ifBlank { "k2-resolved" },
+                    evidence = group.map { it.evidence.ifBlank { it.useKind } }
+                        .filter { it.isNotBlank() }
+                        .distinct()
+                        .joinToString(",")
+                )
+            }
+            .sortedWith(
+                compareByDescending<CodeUseSourceReferenceRow> { it.score }
+                    .thenBy { it.sourceFile }
+                    .thenBy { it.line }
+            )
+
     fun hotSourceSymbols(window: String = "all", limit: Int = 20): List<CodeUseHotSourceSymbolRow> {
         val since = windowStartEpochMs(window)
         val resolved = resolvedHotSourceSymbols(since, limit)
@@ -702,6 +1099,94 @@ object CodeUseTelemetryService {
     }
 
     fun earlyDocumentSymbols(document: String = "", earlyWindowMs: Long = 10 * 60 * 1000L, limit: Int = 20): List<CodeUseEarlySourceSymbolRow> {
+        val resolved = resolvedEarlyDocumentSymbols(document, earlyWindowMs, limit)
+        if (resolved.isNotEmpty()) return resolved
+        return textualEarlyDocumentSymbols(document, earlyWindowMs, limit)
+    }
+
+    private fun resolvedEarlyDocumentSymbols(document: String, earlyWindowMs: Long, limit: Int): List<CodeUseEarlySourceSymbolRow> =
+        queryRows(limit.coerceIn(1, 500)) { conn, safeLimit ->
+            val documentFilter = document.trim()
+            val earlyWindow = earlyWindowMs.coerceAtLeast(1_000L)
+            conn.prepareStatement(
+                """
+                WITH document_starts AS (
+                    SELECT document, MIN(created_at) AS start_at
+                    FROM snippets
+                    WHERE document <> ''
+                      AND (? = '' OR document LIKE ? ESCAPE '\' COLLATE NOCASE)
+                    GROUP BY document
+                ),
+                site_uses AS (
+                    SELECT
+                        s.document,
+                        sym.fq_name,
+                        sym.kind,
+                        sym.source_file,
+                        sym.line,
+                        COALESCE(s.document, '') || '|' || COALESCE(s.box_uid, '') || '|' || COALESCE(s.property, '') AS site_id,
+                        MIN(su.created_at) AS first_use_at,
+                        MAX(su.created_at) AS last_use_at,
+                        GROUP_CONCAT(DISTINCT COALESCE(NULLIF(su.confidence, ''), 'unknown')) AS confidences
+                    FROM symbol_uses su
+                    JOIN symbols sym ON sym.id = su.symbol_id
+                    JOIN snippets s ON s.id = su.snippet_id
+                    WHERE s.document <> ''
+                      AND COALESCE(su.confidence, '') <> 'source-index-match'
+                      AND (? = '' OR s.document LIKE ? ESCAPE '\' COLLATE NOCASE)
+                    GROUP BY s.document, sym.id, site_id
+                )
+                SELECT
+                    su.document,
+                    su.fq_name,
+                    su.kind,
+                    su.source_file,
+                    su.line,
+                    SUM(CASE WHEN su.first_use_at <= ds.start_at + ? THEN 1 ELSE 0 END) AS early_sites,
+                    SUM(CASE WHEN su.first_use_at > ds.start_at + ? THEN 1 ELSE 0 END) AS later_sites,
+                    MIN(su.first_use_at) AS first_seen,
+                    MAX(su.last_use_at) AS last_seen,
+                    GROUP_CONCAT(DISTINCT su.confidences) AS confidences
+                FROM site_uses su
+                JOIN document_starts ds ON ds.document = su.document
+                GROUP BY su.document, su.fq_name, su.kind, su.source_file, su.line
+                HAVING early_sites > 0 AND later_sites <= 1
+                ORDER BY (early_sites - later_sites) DESC, later_sites ASC, first_seen ASC
+                LIMIT ?
+                """.trimIndent()
+            ).use { ps ->
+                val like = "%${escapeLike(documentFilter)}%"
+                ps.setString(1, documentFilter)
+                ps.setString(2, like)
+                ps.setString(3, documentFilter)
+                ps.setString(4, like)
+                ps.setLong(5, earlyWindow)
+                ps.setLong(6, earlyWindow)
+                ps.setInt(7, safeLimit)
+                ps.executeQuery().use { rs ->
+                    buildList {
+                        while (rs.next()) {
+                            add(
+                                CodeUseEarlySourceSymbolRow(
+                                    document = rs.getString("document").orEmpty(),
+                                    symbolName = rs.getString("fq_name").orEmpty(),
+                                    kind = rs.getString("kind").orEmpty(),
+                                    sourceFile = rs.getString("source_file").orEmpty(),
+                                    line = rs.getInt("line"),
+                                    earlyUseCount = rs.getLong("early_sites"),
+                                    laterUseCount = rs.getLong("later_sites"),
+                                    firstSeenEpochMs = rs.getLong("first_seen"),
+                                    lastSeenEpochMs = rs.getLong("last_seen"),
+                                    confidence = combineConfidences(rs.getString("confidences").orEmpty().split(","))
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+    private fun textualEarlyDocumentSymbols(document: String = "", earlyWindowMs: Long = 10 * 60 * 1000L, limit: Int = 20): List<CodeUseEarlySourceSymbolRow> {
         val definitions = sourceDefinitions()
         if (definitions.isEmpty()) return emptyList()
         val defsBySimpleName = definitions.groupBy { it.name.substringAfterLast('.') }
@@ -717,17 +1202,15 @@ object CodeUseTelemetryService {
         rows.forEach { row ->
             val start = documentStart[row.document] ?: row.createdAtEpochMs
             val early = row.createdAtEpochMs <= start + earlyWindowMs.coerceAtLeast(1_000L)
-            val tokens = extractCodeTokens(row.sourceText)
-            tokens.forEach { token ->
-                val defs = defsBySimpleName[token].orEmpty()
-                if (defs.size > 8) return@forEach
-                defs.forEach { def ->
-                    val key = "${row.document}|${def.filePath}:${def.line}:${def.name}"
-                    val stat = stats.getOrPut(key) { EarlyStat(row.document, def) }
-                    if (early) stat.earlyUseCount++ else stat.laterUseCount++
-                    if (stat.firstSeenEpochMs == 0L || row.createdAtEpochMs < stat.firstSeenEpochMs) stat.firstSeenEpochMs = row.createdAtEpochMs
-                    if (row.createdAtEpochMs > stat.lastSeenEpochMs) stat.lastSeenEpochMs = row.createdAtEpochMs
-                }
+            val matches = sourceIndexMatchesForSource(row.sourceText, defsBySimpleName)
+            matches.forEach { match ->
+                val def = match.definition
+                val key = "${row.document}|${def.filePath}:${def.line}:${def.name}"
+                val stat = stats.getOrPut(key) { EarlyStat(row.document, def) }
+                if (early) stat.earlyUseCount++ else stat.laterUseCount++
+                stat.confidences += match.confidence
+                if (stat.firstSeenEpochMs == 0L || row.createdAtEpochMs < stat.firstSeenEpochMs) stat.firstSeenEpochMs = row.createdAtEpochMs
+                if (row.createdAtEpochMs > stat.lastSeenEpochMs) stat.lastSeenEpochMs = row.createdAtEpochMs
             }
         }
 
@@ -750,7 +1233,7 @@ object CodeUseTelemetryService {
                     laterUseCount = it.laterUseCount,
                     firstSeenEpochMs = it.firstSeenEpochMs,
                     lastSeenEpochMs = it.lastSeenEpochMs,
-                    confidence = "textual"
+                    confidence = combineConfidences(it.confidences)
                 )
             }
     }
@@ -778,7 +1261,8 @@ object CodeUseTelemetryService {
         var earlyUseCount: Long = 0,
         var laterUseCount: Long = 0,
         var firstSeenEpochMs: Long = 0,
-        var lastSeenEpochMs: Long = 0
+        var lastSeenEpochMs: Long = 0,
+        val confidences: MutableSet<String> = linkedSetOf()
     )
 
     private data class SourceUsageStats(
@@ -848,7 +1332,7 @@ object CodeUseTelemetryService {
                     kind = it.kind,
                     sourceFile = it.filePath,
                     line = it.line,
-                    confidence = "source-index-match"
+                    confidence = "source-index-target"
                 )
             }
 
@@ -977,6 +1461,7 @@ object CodeUseTelemetryService {
                 )
                 WHERE sym.source_file = ?
                   AND sym.line = ?
+                  AND COALESCE(su.confidence, '') <> 'source-index-match'
                 ORDER BY su.created_at DESC, su.id DESC
                 LIMIT ?
                 """.trimIndent()
@@ -1045,17 +1530,21 @@ object CodeUseTelemetryService {
 
     private fun resolvedHotSourceSymbols(sinceEpochMs: Long, limit: Int): List<CodeUseHotSourceSymbolRow> =
         queryRows(limit.coerceIn(1, 500)) { conn, safeLimit ->
-            val sinceClause = if (sinceEpochMs > 0L) "WHERE su.created_at >= ?" else ""
+            val whereParts = mutableListOf("COALESCE(su.confidence, '') <> 'source-index-match'")
+            if (sinceEpochMs > 0L) whereParts += "su.created_at >= ?"
+            val whereClause = "WHERE ${whereParts.joinToString(" AND ")}"
             conn.prepareStatement(
                 """
                 SELECT sym.fq_name, sym.kind, sym.source_file, sym.line,
-                       COUNT(su.id) AS use_count,
+                       COUNT(DISTINCT COALESCE(s.document, '') || '|' || COALESCE(s.box_uid, '') || '|' || COALESCE(s.property, '')) AS use_count,
                        COUNT(DISTINCT su.snippet_id) AS unique_snippet_count,
                        MIN(su.created_at) AS first_seen,
-                       MAX(su.created_at) AS last_seen
+                       MAX(su.created_at) AS last_seen,
+                       GROUP_CONCAT(DISTINCT COALESCE(NULLIF(su.confidence, ''), 'unknown')) AS confidences
                 FROM symbol_uses su
                 JOIN symbols sym ON sym.id = su.symbol_id
-                $sinceClause
+                JOIN snippets s ON s.id = su.snippet_id
+                $whereClause
                 GROUP BY sym.id
                 ORDER BY use_count DESC, unique_snippet_count DESC, last_seen DESC
                 LIMIT ?
@@ -1077,7 +1566,7 @@ object CodeUseTelemetryService {
                                     uniqueSnippetCount = rs.getLong("unique_snippet_count"),
                                     firstSeenEpochMs = rs.getLong("first_seen"),
                                     lastSeenEpochMs = rs.getLong("last_seen"),
-                                    confidence = "resolved"
+                                    confidence = combineConfidences(rs.getString("confidences").orEmpty().split(","))
                                 )
                             )
                         }
@@ -1092,23 +1581,25 @@ object CodeUseTelemetryService {
         val defsBySimpleName = definitions.groupBy { it.name.substringAfterLast('.') }
         val stats = LinkedHashMap<String, HotStat>()
         snippetTexts(sinceEpochMs = sinceEpochMs, limit = 5000).forEach { row ->
-            val tokens = extractCodeTokens(row.sourceText)
-            tokens.forEach { token ->
-                val defs = defsBySimpleName[token].orEmpty()
-                if (defs.size > 8) return@forEach
-                defs.forEach { def ->
+            val siteId = observedCodeSiteId(row)
+            sourceIndexMatchesForSource(row.sourceText, defsBySimpleName)
+                .groupBy { "${it.definition.filePath}:${it.definition.line}:${it.definition.name}" }
+                .values
+                .forEach { group ->
+                    val match = group.first()
+                    val def = match.definition
                     val key = "${def.filePath}:${def.line}:${def.name}"
                     val stat = stats.getOrPut(key) { HotStat(def) }
-                    stat.useCount++
+                    stat.siteIds += siteId
                     stat.snippetIds += row.id
+                    stat.confidences += group.map { it.confidence }
                     if (stat.firstSeenEpochMs == 0L || row.createdAtEpochMs < stat.firstSeenEpochMs) stat.firstSeenEpochMs = row.createdAtEpochMs
                     if (row.createdAtEpochMs > stat.lastSeenEpochMs) stat.lastSeenEpochMs = row.createdAtEpochMs
                 }
-            }
         }
         return stats.values
             .sortedWith(
-                compareByDescending<HotStat> { it.useCount }
+                compareByDescending<HotStat> { it.siteIds.size }
                     .thenByDescending { it.snippetIds.size }
                     .thenByDescending { it.lastSeenEpochMs }
             )
@@ -1119,21 +1610,70 @@ object CodeUseTelemetryService {
                     kind = it.definition.kind,
                     sourceFile = it.definition.filePath,
                     line = it.definition.line,
-                    useCount = it.useCount,
+                    useCount = it.siteIds.size.toLong(),
                     uniqueSnippetCount = it.snippetIds.size.toLong(),
                     firstSeenEpochMs = it.firstSeenEpochMs,
                     lastSeenEpochMs = it.lastSeenEpochMs,
-                    confidence = "textual"
+                    confidence = combineConfidences(it.confidences)
                 )
             }
     }
 
+    private fun observedCodeSiteId(row: SnippetTextRow): String =
+        "${row.document}|${row.boxUid}|${row.property}"
+
+    private fun sourceIndexMatchesForSource(
+        source: String,
+        defsBySimpleName: Map<String, List<KotlinDefinitionRecord>>
+    ): List<SourceIndexStaticMatch> =
+        extractCandidateUses(source).flatMap { candidate ->
+            val matches = defsBySimpleName[candidate.text].orEmpty()
+                .filter { candidateMatchesDefinition(candidate, it) }
+            val selected = selectSourceIndexMatches(candidate, matches)
+            val evidence = if (candidate.receiverHint.isBlank()) {
+                "${candidate.useKind}:${candidate.text}"
+            } else {
+                "${candidate.useKind}:${candidate.receiverHint}.${candidate.text}"
+            }
+            selected.definitions.map { SourceIndexStaticMatch(it, selected.confidence, evidence) }
+        }
+
+    private fun sourceIndexReferenceScore(confidence: String): Int =
+        when {
+            confidence.contains("qualified") -> 100
+            confidence.contains("unique") -> 70
+            else -> 1
+        }
+
+    private fun combineConfidences(confidences: Iterable<String>): String {
+        val clean = confidences
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .sortedWith(
+                compareBy<String> {
+                    when {
+                        it.contains("k2") -> 0
+                        it.contains("source-index") -> 1
+                        it.contains("textual") -> 2
+                        else -> 3
+                    }
+                }.thenBy { it }
+            )
+        return when (clean.size) {
+            0 -> "unknown"
+            1 -> clean.first()
+            else -> clean.joinToString("+")
+        }
+    }
+
     private data class HotStat(
         val definition: KotlinDefinitionRecord,
-        var useCount: Long = 0,
+        val siteIds: MutableSet<String> = linkedSetOf(),
         val snippetIds: MutableSet<String> = linkedSetOf(),
         var firstSeenEpochMs: Long = 0,
-        var lastSeenEpochMs: Long = 0
+        var lastSeenEpochMs: Long = 0,
+        val confidences: MutableSet<String> = linkedSetOf()
     )
 
     private fun snippetTextsContaining(term: String, sinceEpochMs: Long, limit: Int): List<SnippetTextRow> =
@@ -1298,6 +1838,11 @@ object CodeUseTelemetryService {
                 writerLoop()
             }
         }
+        if (analysisStarted.compareAndSet(0, 1)) {
+            thread(name = "code-use-telemetry-analyzer", isDaemon = true) {
+                analysisLoop()
+            }
+        }
     }
 
     private fun writerLoop() {
@@ -1324,6 +1869,373 @@ object CodeUseTelemetryService {
                 lprintln("warning,code-use", "code-use telemetry disabled: ${t.message ?: t.javaClass.name}")
             }
         }
+    }
+
+    private fun enqueueAnalysis(
+        snippetId: String,
+        source: String,
+        sourceName: String,
+        createdAtEpochMs: Long,
+        mode: String = ""
+    ) {
+        if (!isSignalBearingSource(source, mode)) return
+        val job = CodeUseAnalysisJob(
+            snippetId = snippetId,
+            source = source.take(MAX_SOURCE_CHARS),
+            sourceName = sourceName,
+            createdAtEpochMs = createdAtEpochMs
+        )
+        if (!analysisQueue.offer(job)) {
+            droppedAnalysisJobs.incrementAndGet()
+        }
+    }
+
+    private fun analysisLoop() {
+        Thread.currentThread().priority = Thread.MIN_PRIORITY
+        while (true) {
+            val first = analysisQueue.poll(1, TimeUnit.SECONDS) ?: continue
+            val latestBySnippet = LinkedHashMap<String, CodeUseAnalysisJob>()
+            latestBySnippet[first.snippetId] = first
+            var drained = 0
+            while (drained < 128) {
+                val next = analysisQueue.poll() ?: break
+                latestBySnippet[next.snippetId] = next
+                drained++
+            }
+            latestBySnippet.values.forEach { job ->
+                runCatching { analyzeAndStore(job) }
+                    .onFailure { lprintln("warning,code-use", "code-use analyzer skipped ${job.snippetId}: ${it.message ?: it.javaClass.name}") }
+            }
+        }
+    }
+
+    private fun analyzeAndStore(job: CodeUseAnalysisJob) {
+        val analyzed = analyzeSource(job.source, job.sourceName)
+        withConnection { conn ->
+            conn.autoCommit = false
+            try {
+                conn.prepareStatement("DELETE FROM symbol_uses WHERE snippet_id = ?").use { ps ->
+                    ps.setString(1, job.snippetId)
+                    ps.executeUpdate()
+                }
+                conn.prepareStatement("DELETE FROM unresolved_uses WHERE snippet_id = ?").use { ps ->
+                    ps.setString(1, job.snippetId)
+                    ps.executeUpdate()
+                }
+
+                val seenUses = linkedSetOf<String>()
+                analyzed.resolved.forEach { use ->
+                    val symbolId = upsertSymbol(conn, use.definition, use.callableId, use.packageName)
+                    val key = "$symbolId|${use.useKind}|${use.line}|${use.column}"
+                    if (!seenUses.add(key)) return@forEach
+                    conn.prepareStatement(
+                        """
+                        INSERT INTO symbol_uses(snippet_id, symbol_id, use_kind, receiver_type, line, column, confidence, created_at)
+                        VALUES(?, ?, ?, ?, ?, ?, ?, ?)
+                        """.trimIndent()
+                    ).use { ps ->
+                        ps.setString(1, job.snippetId)
+                        ps.setLong(2, symbolId)
+                        ps.setString(3, use.useKind)
+                        ps.setString(4, use.receiverType)
+                        ps.setInt(5, use.line)
+                        ps.setInt(6, use.column)
+                        ps.setString(7, use.confidence)
+                        ps.setLong(8, job.createdAtEpochMs)
+                        ps.executeUpdate()
+                    }
+                }
+
+                analyzed.unresolved.take(80).forEach { unresolved ->
+                    conn.prepareStatement(
+                        """
+                        INSERT INTO unresolved_uses(snippet_id, text, line, column, reason, created_at)
+                        VALUES(?, ?, ?, ?, ?, ?)
+                        """.trimIndent()
+                    ).use { ps ->
+                        ps.setString(1, job.snippetId)
+                        ps.setString(2, unresolved.text)
+                        ps.setInt(3, unresolved.line)
+                        ps.setInt(4, unresolved.column)
+                        ps.setString(5, unresolved.reason)
+                        ps.setLong(6, job.createdAtEpochMs)
+                        ps.executeUpdate()
+                    }
+                }
+                conn.commit()
+            } catch (t: Throwable) {
+                runCatching { conn.rollback() }
+                throw t
+            } finally {
+                conn.autoCommit = true
+            }
+        }
+    }
+
+    private fun upsertSymbol(
+        conn: Connection,
+        definition: KotlinDefinitionRecord,
+        callableId: String = "",
+        packageNameOverride: String = ""
+    ): Long {
+        val packageName = packageNameOverride.ifBlank { sourcePackage(definition.filePath) }
+        val callable = callableId.ifBlank { definition.name }
+        conn.prepareStatement(
+            """
+            SELECT id FROM symbols
+            WHERE fq_name = ? AND callable_id = ? AND kind = ? AND source_file = ? AND line = ?
+            ORDER BY id ASC LIMIT 1
+            """.trimIndent()
+        ).use { ps ->
+            ps.setString(1, definition.name)
+            ps.setString(2, callable)
+            ps.setString(3, definition.kind)
+            ps.setString(4, definition.filePath)
+            ps.setInt(5, definition.line)
+            ps.executeQuery().use { rs ->
+                if (rs.next()) return rs.getLong("id")
+            }
+        }
+        conn.prepareStatement(
+            """
+            INSERT INTO symbols(fq_name, callable_id, kind, package, source_file, line)
+            VALUES(?, ?, ?, ?, ?, ?)
+            """.trimIndent(),
+            java.sql.Statement.RETURN_GENERATED_KEYS
+        ).use { ps ->
+            ps.setString(1, definition.name)
+            ps.setString(2, callable)
+            ps.setString(3, definition.kind)
+            ps.setString(4, packageName)
+            ps.setString(5, definition.filePath)
+            ps.setInt(6, definition.line)
+            ps.executeUpdate()
+            ps.generatedKeys.use { rs ->
+                if (rs.next()) return rs.getLong(1)
+            }
+        }
+        error("Could not insert symbol ${definition.name}")
+    }
+
+    private fun sourcePackage(sourceFile: String): String {
+        val root = Paths.get(System.getProperty("user.dir")).toAbsolutePath().normalize()
+        val path = runCatching {
+            val raw = Paths.get(sourceFile)
+            if (raw.isAbsolute) raw else root.resolve(raw)
+        }.getOrNull() ?: return ""
+        if (!Files.exists(path)) return ""
+        return runCatching {
+            Files.newBufferedReader(path, StandardCharsets.UTF_8).useLines { lines ->
+                lines.firstNotNullOfOrNull { line ->
+                    Regex("""^\s*package\s+([A-Za-z0-9_.]+)""").find(line)?.groupValues?.getOrNull(1)
+                }.orEmpty()
+            }
+        }.getOrDefault("")
+    }
+
+    private fun analyzeSource(source: String, sourceName: String = ""): AnalyzedSource {
+        if (!isSignalBearingSource(source)) {
+            return AnalyzedSource(resolved = emptyList(), unresolved = emptyList())
+        }
+        analyzeSourceWithSidecar(source, sourceName)?.let { return it }
+        val definitions = sourceDefinitions()
+        if (definitions.isEmpty()) {
+            return AnalyzedSource(
+                resolved = emptyList(),
+                unresolved = extractCandidateUses(source).take(80).map {
+                    CodeUseAnalyzerUnresolved(it.text, it.line, it.column, "source-index-empty")
+                }
+            )
+        }
+        val defsBySimple = definitions.groupBy { it.name.substringAfterLast('.') }
+        val resolved = mutableListOf<CodeUseAnalyzerUse>()
+        val unresolved = mutableListOf<CodeUseAnalyzerUnresolved>()
+        extractCandidateUses(source).forEach { candidate ->
+            val matches = defsBySimple[candidate.text].orEmpty()
+                .filter { candidateMatchesDefinition(candidate, it) }
+            val selected = selectSourceIndexMatches(candidate, matches)
+            when {
+                matches.isEmpty() -> unresolved += CodeUseAnalyzerUnresolved(
+                    text = candidate.text,
+                    line = candidate.line,
+                    column = candidate.column,
+                    reason = "no-source-index-match"
+                )
+                selected.definitions.isEmpty() -> unresolved += CodeUseAnalyzerUnresolved(
+                    text = candidate.text,
+                    line = candidate.line,
+                    column = candidate.column,
+                    reason = "ambiguous-source-index-match:${selected.ambiguousCount}"
+                )
+                else -> selected.definitions.forEach { definition ->
+                    resolved += CodeUseAnalyzerUse(
+                        definition = definition,
+                        useKind = candidate.useKind,
+                        receiverType = candidate.receiverHint,
+                        line = candidate.line,
+                        column = candidate.column,
+                        confidence = selected.confidence
+                    )
+                }
+            }
+        }
+        return AnalyzedSource(resolved = resolved, unresolved = unresolved)
+    }
+
+    private fun analyzeSourceWithSidecar(source: String, sourceName: String): AnalyzedSource? {
+        val request = enrichedSemanticRequest(
+            CodeUseSemanticAnalyzeRequest(
+                code = source,
+                sourceName = sourceName.ifBlank { "FieldSnippet.kt" },
+                limit = 80,
+                timeoutMs = semanticSidecarTimeoutMs
+            )
+        ).copy(limit = 80)
+        val result = semanticSidecarResult(request) ?: return null
+        if (!result.success) return null
+        val resolved = result.resolvedUses
+            .filter { it.sourceFile.isNotBlank() && it.line > 0 && it.symbolName.isNotBlank() }
+            .map {
+                CodeUseAnalyzerUse(
+                    definition = KotlinDefinitionRecord(
+                        name = it.symbolName,
+                        kind = it.kind.ifBlank { "symbol" },
+                        filePath = normalizeSourcePath(it.sourceFile),
+                        line = it.line,
+                        fileId = null,
+                        contentHash = ""
+                    ),
+                    callableId = it.callableId.ifBlank { it.symbolName },
+                    packageName = it.packageName,
+                    useKind = it.useKind.ifBlank { "reference" },
+                    receiverType = it.receiverType,
+                    line = it.snippetLine,
+                    column = it.snippetColumn,
+                    confidence = it.confidence.ifBlank { "k2-resolved" }
+                )
+            }
+        val unresolved = result.unresolvedUses.map {
+            CodeUseAnalyzerUnresolved(
+                text = it.text,
+                line = it.line,
+                column = it.column,
+                reason = it.reason.ifBlank { "k2-unresolved" }
+            )
+        }
+        if (resolved.isEmpty() && unresolved.isEmpty()) return null
+        return AnalyzedSource(resolved = resolved, unresolved = unresolved)
+    }
+
+    private fun isSignalBearingSource(source: String, mode: String = ""): Boolean {
+        if (source.isBlank()) return false
+        val normalizedMode = mode.trim().lowercase()
+        if (
+            normalizedMode.contains("field-startup-imports") ||
+            normalizedMode.contains("imports-or-preamble") ||
+            normalizedMode == "compile:blank"
+        ) {
+            return false
+        }
+        return source.lineSequence().any { rawLine ->
+            val trimmed = rawLine.substringBefore("//").trim()
+            trimmed.isNotBlank() &&
+                !trimmed.startsWith("package ") &&
+                !trimmed.startsWith("import ") &&
+                !trimmed.startsWith("@file:")
+        }
+    }
+
+    private fun candidateMatchesDefinition(candidate: CodeUseCandidate, definition: KotlinDefinitionRecord): Boolean =
+        when (candidate.useKind) {
+            "constructor" -> definition.kind in setOf("class", "interface", "object")
+            "call" -> definition.kind in setOf("fun", "class", "object")
+            "property" -> definition.kind in setOf("val", "var", "fun")
+            else -> true
+        }
+
+    private fun selectSourceIndexMatches(
+        candidate: CodeUseCandidate,
+        matches: List<KotlinDefinitionRecord>
+    ): SourceIndexMatchSelection {
+        if (matches.isEmpty()) return SourceIndexMatchSelection(emptyList(), "source-index-empty", 0)
+        val receiver = candidate.receiverHint.trim()
+        val narrowed = if (receiver.isBlank()) {
+            matches
+        } else {
+            matches.filter { definitionOwnerMatches(receiver, it) }
+        }
+        if (narrowed.size == 1) {
+            return SourceIndexMatchSelection(
+                definitions = narrowed,
+                confidence = if (receiver.isBlank()) "source-index-unique" else "source-index-qualified",
+                ambiguousCount = 1
+            )
+        }
+        return SourceIndexMatchSelection(
+            definitions = emptyList(),
+            confidence = "source-index-ambiguous",
+            ambiguousCount = if (narrowed.isEmpty()) matches.size else narrowed.size
+        )
+    }
+
+    private fun definitionOwnerMatches(receiver: String, definition: KotlinDefinitionRecord): Boolean {
+        val localOwner = definition.name.substringBeforeLast('.', missingDelimiterValue = "")
+        if (localOwner == receiver || localOwner.substringAfterLast('.') == receiver) return true
+        val fqOwner = definitionFqName(definition).substringBeforeLast('.', missingDelimiterValue = "")
+        return fqOwner == receiver || fqOwner.endsWith(".$receiver")
+    }
+
+    private fun definitionFqName(definition: KotlinDefinitionRecord): String {
+        val name = definition.name.trim()
+        if (name.isBlank()) return ""
+        val pkg = sourcePackage(definition.filePath)
+        return if (pkg.isBlank() || name.startsWith("$pkg.")) name else "$pkg.$name"
+    }
+
+    private fun extractCandidateUses(source: String): List<CodeUseCandidate> {
+        val noise = analyzerNoiseTokens
+        val out = mutableListOf<CodeUseCandidate>()
+        source.lineSequence().forEachIndexed { lineIndex, rawLine ->
+            val lineNumber = lineIndex + 1
+            val line = rawLine.substringBefore("//")
+            val trimmed = line.trimStart()
+            if (trimmed.startsWith("package ") || trimmed.startsWith("import ")) return@forEachIndexed
+            val declarationNames = declarationNamesInLine(line)
+            Regex("""[A-Za-z_][A-Za-z0-9_]*""").findAll(line).forEach { match ->
+                val text = match.value
+                if (text in noise || text in declarationNames) return@forEach
+                val before = line.take(match.range.first).trimEnd()
+                val after = line.drop(match.range.last + 1).trimStart()
+                val prevIdentifier = Regex("""([A-Za-z_][A-Za-z0-9_]*)\s*\.?\s*$""")
+                    .find(before)
+                    ?.groupValues
+                    ?.getOrNull(1)
+                    .orEmpty()
+                val useKind = when {
+                    after.startsWith("(") && text.first().isUpperCase() -> "constructor"
+                    after.startsWith("(") -> "call"
+                    before.endsWith(".") -> "property"
+                    else -> "reference"
+                }
+                if (useKind == "reference" && text.first().isLowerCase()) return@forEach
+                out += CodeUseCandidate(
+                    text = text,
+                    useKind = useKind,
+                    receiverHint = if (before.endsWith(".")) prevIdentifier else "",
+                    line = lineNumber,
+                    column = match.range.first + 1
+                )
+            }
+        }
+        return out
+    }
+
+    private fun declarationNamesInLine(line: String): Set<String> {
+        val out = linkedSetOf<String>()
+        Regex("""\b(?:fun|val|var|class|interface|object|typealias)\s+([A-Za-z_][A-Za-z0-9_]*)""")
+            .findAll(line)
+            .forEach { out += it.groupValues[1] }
+        return out
     }
 
     private fun initializeSchema(conn: Connection) {
@@ -1494,6 +2406,7 @@ object CodeUseTelemetryService {
                     ps.setLong(6, event.createdAtEpochMs)
                     ps.executeUpdate()
                 }
+                enqueueAnalysis(event.snippetId, event.source, event.sourceName, event.createdAtEpochMs, event.context.mode)
             }
 
             is CodeUseEvent.EvaluationResult -> {
@@ -1536,6 +2449,9 @@ object CodeUseTelemetryService {
                     ps.setString(5, event.exceptionJson)
                     ps.setLong(6, event.createdAtEpochMs)
                     ps.executeUpdate()
+                }
+                if (event.source.isNotBlank()) {
+                    enqueueAnalysis(event.snippetId, event.source, "", event.createdAtEpochMs, event.context.mode)
                 }
             }
         }
@@ -1660,8 +2576,118 @@ object CodeUseTelemetryService {
             DriverManager.getConnection("jdbc:sqlite:${databasePath.absolutePathString()}").use { conn ->
                 conn.autoCommit = true
                 initializeSchema(conn)
+                pruneNonSignalAnalysisRows(conn)
+                pruneLegacySourceIndexMatchRows(conn)
+                enqueueRecentSidecarCatchup(conn)
             }
             schemaReady = true
+        }
+    }
+
+    private fun enqueueRecentSidecarCatchup(conn: Connection) {
+        val health = semanticSidecarHealthStatus()
+        if (storeAnalyzerBackend(health) != "k2-sidecar") return
+        var queued = 0
+        val since = now() - 7L * 24L * 60L * 60L * 1000L
+        conn.prepareStatement(
+            """
+            SELECT s.id, s.source_name, s.created_at, s.mode, b.text
+            FROM snippets s
+            JOIN source_blobs b ON b.hash = s.source_hash
+            WHERE s.updated_at >= ?
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM symbol_uses su
+                  WHERE su.snippet_id = s.id
+                    AND su.confidence = 'k2-resolved'
+              )
+            ORDER BY s.updated_at DESC
+            LIMIT 1000
+            """.trimIndent()
+        ).use { ps ->
+            ps.setLong(1, since)
+            ps.executeQuery().use { rs ->
+                while (rs.next()) {
+                    enqueueAnalysis(
+                        snippetId = rs.getString("id").orEmpty(),
+                        source = rs.getString("text").orEmpty(),
+                        sourceName = rs.getString("source_name").orEmpty(),
+                        createdAtEpochMs = rs.getLong("created_at"),
+                        mode = rs.getString("mode").orEmpty()
+                    )
+                    queued++
+                }
+            }
+        }
+        if (queued > 0) {
+            lprintln("info,code-use", "queued $queued recent snippet(s) for semantic sidecar catch-up analysis")
+        }
+    }
+
+    private fun pruneNonSignalAnalysisRows(conn: Connection) {
+        val snippetIds = mutableListOf<String>()
+        conn.prepareStatement(
+            """
+            SELECT s.id, s.mode, b.text
+            FROM snippets s
+            LEFT JOIN source_blobs b ON b.hash = s.source_hash
+            WHERE s.id IN (SELECT snippet_id FROM symbol_uses UNION SELECT snippet_id FROM unresolved_uses)
+            """.trimIndent()
+        ).use { ps ->
+            ps.executeQuery().use { rs ->
+                while (rs.next()) {
+                    val source = rs.getString("text").orEmpty()
+                    val mode = rs.getString("mode").orEmpty()
+                    if (!isSignalBearingSource(source, mode)) snippetIds += rs.getString("id").orEmpty()
+                }
+            }
+        }
+        if (snippetIds.isEmpty()) return
+        conn.autoCommit = false
+        try {
+            conn.prepareStatement("DELETE FROM symbol_uses WHERE snippet_id = ?").use { ps ->
+                snippetIds.forEach {
+                    ps.setString(1, it)
+                    ps.addBatch()
+                }
+                ps.executeBatch()
+            }
+            conn.prepareStatement("DELETE FROM unresolved_uses WHERE snippet_id = ?").use { ps ->
+                snippetIds.forEach {
+                    ps.setString(1, it)
+                    ps.addBatch()
+                }
+                ps.executeBatch()
+            }
+            conn.commit()
+            lprintln("info,code-use", "pruned analyzer rows for ${snippetIds.size} import/preamble-only snippet(s)")
+        } catch (t: Throwable) {
+            runCatching { conn.rollback() }
+            lprintln("warning,code-use", "could not prune import/preamble-only analyzer rows: ${t.message ?: t.javaClass.name}")
+        } finally {
+            conn.autoCommit = true
+        }
+    }
+
+    private fun pruneLegacySourceIndexMatchRows(conn: Connection) {
+        var deleted = 0
+        conn.autoCommit = false
+        try {
+            conn.prepareStatement("DELETE FROM symbol_uses WHERE confidence = 'source-index-match'").use { ps ->
+                deleted = ps.executeUpdate()
+            }
+            conn.commit()
+            if (deleted > 0) {
+                lprintln(
+                    "info,code-use",
+                    "pruned $deleted legacy source-index-match analyzer row(s); future source-index rows require unique or qualified matches"
+                )
+            }
+        } catch (t: Throwable) {
+            runCatching { conn.rollback() }
+            lprintln("warning,code-use", "could not prune legacy source-index-match rows: ${t.message ?: t.javaClass.name}")
+        } finally {
+            conn.autoCommit = true
         }
     }
 
@@ -1680,6 +2706,35 @@ object CodeUseTelemetryService {
                 if (rs.next()) rs.getLong(1) else 0L
             }
         }
+
+    private fun confidenceSummary(conn: Connection): ConfidenceSummary {
+        conn.prepareStatement(
+            """
+            SELECT
+              COUNT(*) AS total,
+              SUM(CASE WHEN confidence = 'k2-resolved' THEN 1 ELSE 0 END) AS k2,
+              SUM(CASE WHEN confidence LIKE 'source-index-%' AND confidence <> 'source-index-match' THEN 1 ELSE 0 END) AS source_index,
+              SUM(CASE WHEN confidence LIKE 'textual%' THEN 1 ELSE 0 END) AS textual,
+              SUM(CASE WHEN COALESCE(confidence, '') = '' OR confidence = 'unknown' THEN 1 ELSE 0 END) AS unknown
+            FROM symbol_uses
+            WHERE COALESCE(confidence, '') <> 'source-index-match'
+            """.trimIndent()
+        ).use { ps ->
+            ps.executeQuery().use { rs ->
+                if (rs.next()) {
+                    return ConfidenceSummary(
+                        symbolUseEdges = rs.getLong("total"),
+                        k2ResolvedUseEdges = rs.getLong("k2"),
+                        sourceIndexUseEdges = rs.getLong("source_index"),
+                        textualUseEdges = rs.getLong("textual"),
+                        unknownUseEdges = rs.getLong("unknown"),
+                        unresolvedUseEdges = count(conn, "unresolved_uses")
+                    )
+                }
+            }
+        }
+        return ConfidenceSummary(unresolvedUseEdges = count(conn, "unresolved_uses"))
+    }
 
     private fun ResultSet.nullableBoolean(column: String): Boolean? {
         val value = getObject(column) ?: return null
@@ -1758,6 +2813,121 @@ object CodeUseTelemetryService {
             val createdAtEpochMs: Long
         ) : CodeUseEvent()
     }
+
+    private data class CodeUseAnalysisJob(
+        val snippetId: String,
+        val source: String,
+        val sourceName: String,
+        val createdAtEpochMs: Long
+    )
+
+    private data class CodeUseCandidate(
+        val text: String,
+        val useKind: String,
+        val receiverHint: String,
+        val line: Int,
+        val column: Int
+    )
+
+    private data class CodeUseAnalyzerUse(
+        val definition: KotlinDefinitionRecord,
+        val callableId: String = "",
+        val packageName: String = "",
+        val useKind: String,
+        val receiverType: String,
+        val line: Int,
+        val column: Int,
+        val confidence: String
+    )
+
+    private data class CodeUseAnalyzerUnresolved(
+        val text: String,
+        val line: Int,
+        val column: Int,
+        val reason: String
+    )
+
+    private data class SourceIndexMatchSelection(
+        val definitions: List<KotlinDefinitionRecord>,
+        val confidence: String,
+        val ambiguousCount: Int
+    )
+
+    private data class SourceIndexStaticMatch(
+        val definition: KotlinDefinitionRecord,
+        val confidence: String,
+        val evidence: String = ""
+    )
+
+    private data class ConfidenceSummary(
+        val symbolUseEdges: Long = 0,
+        val k2ResolvedUseEdges: Long = 0,
+        val sourceIndexUseEdges: Long = 0,
+        val textualUseEdges: Long = 0,
+        val unknownUseEdges: Long = 0,
+        val unresolvedUseEdges: Long = 0
+    )
+
+    private data class AnalyzedSource(
+        val resolved: List<CodeUseAnalyzerUse>,
+        val unresolved: List<CodeUseAnalyzerUnresolved>
+    )
+
+    private data class SemanticK2AnalyzerStatus(
+        val publicApiAvailable: Boolean,
+        val standaloneRuntimeAvailable: Boolean,
+        val message: String
+    ) {
+        companion object {
+            fun detect(): SemanticK2AnalyzerStatus {
+                val publicApiClasses = listOf(
+                    "org.jetbrains.kotlin.analysis.api.AnalyzeKt",
+                    "org.jetbrains.kotlin.analysis.api.session.KaSessionProvider"
+                )
+                val standaloneRuntimeClasses = listOf(
+                    "org.jetbrains.kotlin.analysis.api.standalone.StandaloneAnalysisAPISessionBuilderKt",
+                    "org.jetbrains.kotlin.analysis.api.standalone.base.projectStructure.StandaloneProjectFactory",
+                    "org.jetbrains.kotlin.analysis.api.fir.KaFirSessionProvider"
+                )
+                val publicResourcesAvailable = publicApiClasses.all(::hasClassResource)
+                val publicLoadResults = publicApiClasses.map { it to loadClassError(it) }
+                val publicApiAvailable = publicLoadResults.all { it.second == null }
+                val standaloneRuntimeAvailable = standaloneRuntimeClasses.any { loadClassError(it) == null }
+                val firstPublicLoadError = publicLoadResults.firstOrNull { it.second != null }
+                val message = when {
+                    publicApiAvailable && standaloneRuntimeAvailable ->
+                        "K2 Analysis API classes and a standalone/session runtime are visible; semantic backend can be enabled once wired."
+                    publicApiAvailable ->
+                        "K2 Analysis API public classes are visible, but no standalone/session provider runtime is on the classpath; using source-index analyzer."
+                    publicResourcesAvailable && firstPublicLoadError != null ->
+                        "K2 Analysis API jar resources are visible, but ${firstPublicLoadError.first} is not loadable (${firstPublicLoadError.second}); using source-index analyzer."
+                    else ->
+                        "K2 Analysis API classes are not visible; using source-index analyzer."
+                }
+                return SemanticK2AnalyzerStatus(publicApiAvailable, standaloneRuntimeAvailable, message)
+            }
+
+            private fun hasClassResource(name: String): Boolean {
+                val resourceName = name.replace('.', '/') + ".class"
+                return CodeUseTelemetryService::class.java.classLoader.getResource(resourceName) != null
+            }
+
+            private fun loadClassError(name: String): String? =
+                runCatching { Class.forName(name, false, CodeUseTelemetryService::class.java.classLoader) }
+                    .fold(
+                        onSuccess = { null },
+                        onFailure = { "${it.javaClass.simpleName}: ${it.message ?: name}" }
+                    )
+        }
+    }
+
+    private val analyzerNoiseTokens = setOf(
+        "package", "import", "class", "interface", "object", "fun", "val", "var", "for", "while", "if", "else",
+        "when", "return", "true", "false", "null", "this", "super", "is", "in", "as", "break", "continue",
+        "try", "catch", "finally", "throw", "new", "by", "where", "do", "constructor", "init", "override",
+        "private", "public", "protected", "internal", "open", "final", "abstract", "sealed", "data", "enum",
+        "inline", "suspend", "operator", "infix", "tailrec", "reified", "crossinline", "noinline", "get", "set"
+    )
 }
 
 private fun sha256(text: String): String = CodeUseTelemetryService.sha256(text)

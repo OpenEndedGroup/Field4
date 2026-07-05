@@ -308,19 +308,18 @@ class KotlinInterface2(
         return compileMutex.withLock {
             val code = SourceCodeImpl(id++, s)
             val snippetId = CodeUseTelemetryService.newSnippetKey()
+            val snippetKind = compileSnippetKind(s)
             val telemetryContext = CodeUseTelemetryService.captureBoxContext(
                 associatedBox as? Box,
                 property = sourceProperty,
-                mode = "compile"
+                mode = "compile:$snippetKind"
             )
             val snapshot = context.debugScripts.recordCompile(code.name ?: "snippet_${id - 1}", s)
 
             lprintln(
                 "info,kotlin,perf",
                 "\t\t compile request engine=KotlinInterface2 filePrefix=$filePrefix source=${code.name} kind=${
-                    compileSnippetKind(
-                        s
-                    )
+                    snippetKind
                 } length=${s.length} preview=${compileSnippetPreview(s)}"
             )
             lprintln("info,kotlin,perf", "\t\t compile code $s")

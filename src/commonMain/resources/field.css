@@ -2776,10 +2776,6 @@ body {
     pointer-events: none;
 }
 
-.box.selected {
-    border-color: var(--field-border-selected);
-}
-
 .closeBox + .hoverable {
     margin-left: 4.8px;
 }
@@ -3093,7 +3089,6 @@ body::-webkit-scrollbar {
 }
 
 .doubleClickToEdit {
-    backdrop-filter: blur(5px) brightness(0.72);
     padding: 8px;
     display: block;
     border-radius: 5px;
@@ -3103,7 +3098,7 @@ body::-webkit-scrollbar {
 .box.running-launching .doubleClickToEdit,
 .box.running-continued .doubleClickToEdit,
 .box.running-ending .doubleClickToEdit {
-    backdrop-filter: blur(5px) brightness(1);
+    backdrop-filter: none;
 }
 
 @keyframes flashInverted {
@@ -3792,6 +3787,38 @@ kbd {
     right: 0;
     z-index: 18;
     pointer-events: none;
+}
+
+.offscreen-connection-label-arrive {
+    animation: offscreen-connection-label-arrival 160ms ease-out;
+}
+
+.offscreen-connection-label-bg {
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    padding: 1px 5px 2px;
+    border-radius: 3px;
+    background: rgba(var(--field-base-rgb), 0.38);
+    backdrop-filter: blur(2px) brightness(1.04)  saturate(0.4);
+    -webkit-backdrop-filter: blur(2px) brightness(1.04) saturate(0.4);
+    font-family: "Iosevka Web", "Iosevka", monospace;
+    font-size: 10px;
+    font-weight: 300;
+    line-height: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    /*text-shadow: 0 1px 2px rgba(var(--field-black-rgb), 0.8);*/
+}
+
+@keyframes offscreen-connection-label-arrival {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
 }
 
 .nested-svg-stage {

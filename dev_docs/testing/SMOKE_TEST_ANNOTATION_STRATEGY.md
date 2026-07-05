@@ -221,6 +221,10 @@ uv run --project . --group backdoor python tools/discover_field_tests.py --outpu
 uv run --project . --group backdoor python tools/run_field_tests.py --refresh-catalog
 ```
 
+`tools/run_field_tests.py` has no top-level `--timeout` option. Set test duration
+with `timeoutSec` in the `FIELD_TEST` block; the generated catalog carries that
+value and the runner applies it when invoking the backdoor for each test.
+
 ## What To Annotate First
 
 Start with the low-ambiguity, already-runnable cases.

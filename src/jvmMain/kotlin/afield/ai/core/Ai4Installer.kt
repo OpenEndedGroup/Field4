@@ -268,7 +268,15 @@ fun installAi4() {
 
     data class FileRef(val document: String, val uid: String, val property: String)
 
-    fun documentName(): String = File(thisSessionInfo.get().filename).name
+    fun currentSessionInfoOrNull(): SessionInformation? =
+        runCatching { thisSessionInfo.get() }.getOrNull()
+
+    fun documentName(): String =
+        currentSessionInfoOrNull()
+            ?.filename
+            ?.takeIf { it.isNotBlank() }
+            ?.let { File(it).name }
+            ?: "global-chat"
 
     fun fileRefFor(docName: String, uid: String, property: String): String =
         "afield://$docName/$uid/$property"
@@ -1788,12 +1796,33 @@ fun installAi4() {
                     )
                 }
 
+                "semantic", "semantic-analyze", "semantic-analysis", "analyze-code", "semantic-references" -> {
+                    val analysis = CodeUseTelemetryService.semanticAnalyzeCode(
+                        CodeUseSemanticAnalyzeRequest(
+                            code = req.code,
+                            sourceName = req.sourceName,
+                            limit = limit.coerceAtMost(10),
+                            callersPerSymbol = req.callersPerSymbol,
+                            sourceRadiusLines = req.sourceRadiusLines
+                        )
+                    )
+                    CodeUseQueryResult(
+                        success = analysis.success,
+                        kind = "semantic-analyze",
+                        message = analysis.message,
+                        summary = CodeUseTelemetryService.summary(),
+                        references = analysis.references,
+                        relatedSources = analysis.relatedSources,
+                        semanticAnalysis = analysis
+                    )
+                }
+
                 "hot", "hot-symbols", "hot-source-symbols" -> {
                     val rows = CodeUseTelemetryService.hotSourceSymbols(req.window, limit)
                     CodeUseQueryResult(
                         success = true,
                         kind = "hot-symbols",
-                        message = "Returned ${rows.size} hot source symbol row(s) for window='${req.window}'.",
+                        message = "Returned ${rows.size} hot source symbol row(s) for window='${req.window}'. Confidence values are literal: k2-resolved is semantic; source-index values are conservative static matches; textual values are fallback evidence.",
                         summary = CodeUseTelemetryService.summary(),
                         hotSymbols = rows
                     )
@@ -1817,7 +1846,7 @@ fun installAi4() {
                 else -> CodeUseQueryResult(
                     success = false,
                     kind = kind,
-                    message = "Unknown kind '${req.kind}'. Use summary, failures, snippets, launches, symbols, unresolved, line-callers, references-for-code, related-source-for-code, hot-symbols, or early-document-symbols."
+                    message = "Unknown kind '${req.kind}'. Use summary, failures, snippets, launches, symbols, unresolved, line-callers, references-for-code, related-source-for-code, semantic-analyze, hot-symbols, or early-document-symbols."
                 )
             }
         }
@@ -2420,7 +2449,7 @@ fun installAi4() {
                     wrap = { it.trimEnd() },
                     unwrap = { it.trimEnd() }
                 )
-                val chatDocPath = runCatching { thisSessionInfo.get().filename }.getOrDefault("")
+                val chatDocPath = currentSessionInfoOrNull()?.filename.orEmpty()
                 val codeUseQuery: (CodeUseQueryRequest) -> CodeUseQueryResult = { req ->
                     val kind = req.kind.trim().lowercase().ifBlank { "failures" }
                     val limit = req.limit.coerceIn(1, 50)
@@ -2507,10 +2536,30 @@ fun installAi4() {
                                 sourceRadiusLines = req.sourceRadiusLines
                             )
                         )
+                        "semantic", "semantic-analyze", "semantic-analysis", "analyze-code", "semantic-references" -> {
+                            val analysis = CodeUseTelemetryService.semanticAnalyzeCode(
+                                CodeUseSemanticAnalyzeRequest(
+                                    code = req.code,
+                                    sourceName = req.sourceName,
+                                    limit = limit.coerceAtMost(10),
+                                    callersPerSymbol = req.callersPerSymbol,
+                                    sourceRadiusLines = req.sourceRadiusLines
+                                )
+                            )
+                            CodeUseQueryResult(
+                                success = analysis.success,
+                                kind = "semantic-analyze",
+                                message = analysis.message,
+                                summary = CodeUseTelemetryService.summary(),
+                                references = analysis.references,
+                                relatedSources = analysis.relatedSources,
+                                semanticAnalysis = analysis
+                            )
+                        }
                         "hot", "hot-symbols", "hot-source-symbols" -> CodeUseQueryResult(
                             success = true,
                             kind = "hot-symbols",
-                            message = "Returned hot source symbol rows.",
+                            message = "Returned hot source symbol rows. Confidence values are literal: k2-resolved is semantic; source-index values are conservative static matches; textual values are fallback evidence.",
                             summary = CodeUseTelemetryService.summary(),
                             hotSymbols = CodeUseTelemetryService.hotSourceSymbols(req.window, limit)
                         )
@@ -2524,7 +2573,7 @@ fun installAi4() {
                         else -> CodeUseQueryResult(
                             success = false,
                             kind = kind,
-                            message = "Unknown kind '${req.kind}'. Use summary, failures, snippets, launches, symbols, unresolved, line-callers, references-for-code, related-source-for-code, hot-symbols, or early-document-symbols."
+                            message = "Unknown kind '${req.kind}'. Use summary, failures, snippets, launches, symbols, unresolved, line-callers, references-for-code, related-source-for-code, semantic-analyze, hot-symbols, or early-document-symbols."
                         )
                     }
                 }

@@ -10,7 +10,12 @@ echo Starting Field4...
 echo ===================================
 echo.
 
-call gradlew runDesktop
+if exist "%SCRIPT_DIR%field.ps1" (
+    set AFIELD_FIELD_PS1_NO_PAUSE=1
+    powershell.exe -ExecutionPolicy Bypass -File "%SCRIPT_DIR%field.ps1"
+) else (
+    call gradlew runDesktop
+)
 
 if errorlevel 1 (
     echo.

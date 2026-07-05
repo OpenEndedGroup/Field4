@@ -87,7 +87,6 @@ private fun languageLabelCustomization(language: String?): String {
         return """
             |const existing = this.querySelector('[data-afield-language-label="true"]');
             |if (existing) existing.remove();
-            |this.style.border = "";
             |this.style.margin = "";
         """.trimMargin()
     }
@@ -110,7 +109,6 @@ private fun languageLabelCustomization(language: String?): String {
         |label.style.pointerEvents = "none";
         |label.style.userSelect = "none";
         |label.style.marginTop = "1px";
-        |this.style.border = "";
         |this.style.margin = "";
     """.trimMargin()
 }

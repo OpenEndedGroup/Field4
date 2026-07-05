@@ -21,37 +21,70 @@ import jep.python.PyObject
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
+import kotlinx.serialization.Serializable
 import org.jetbrains.kotlin.util.classNameAndMessage
+import java.io.File
 import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.nio.FloatBuffer
+import java.util.Locale
+import java.util.Properties
+import java.util.concurrent.TimeUnit
 
 var Box.isPythonRoot by Delegation<Boolean?>()
 var Box._pythonLocals by Delegation<LinkedHashMap<*,*>>(defaultValue = { LinkedHashMap<Any, Any>() })
 
+@Serializable
+data class PythonSettingsRequest(
+    val kind: String = "venv",
+    val path: String = "",
+)
 
-@RunsAt(early)
+@Serializable
+data class PythonSettingsStatus(
+    val configured: Boolean,
+    val source: String,
+    val kind: String,
+    val path: String,
+    val pythonExecutable: String? = null,
+    val pythonHome: String? = null,
+    val jepLibrary: String? = null,
+    val sitePackages: String? = null,
+    val configPath: String,
+    val message: String,
+    val restartRequired: Boolean = false,
+)
+
+
+@RunsAt(early, priority = -20)
 fun makeInterpreter() {
+    if (!PythonInterface.pythonConfigAvailable) {
+        return
+    }
     try {
         PythonExecution().interpreter(null)
     } catch (e: Throwable) {
-        lprintln("warning,python", "jep failed to initialize, more of a warning unless you plan to use Python support")
-        lprintln("warning,python", e.message ?: "unknown error")
+        lprintln("warning,python", "JEP failed to initialize from ${PythonInterface.pythonConfigSummary()}")
+        lprintln("warning,python", "${e.javaClass.simpleName}: ${e.message ?: "unknown error"}")
+        lprintln("warning,python", "Use /welcome Python settings to point Field at a venv or interpreter with `pip install jep`, then restart Field.")
+        PythonInterface.markPythonUnavailable("Python/JEP was found but failed to initialize: ${e.message ?: e.javaClass.simpleName}. Use /welcome Python settings to choose a working venv or interpreter, then restart Field.")
     }
 }
 
-@RunsAt(early)
+@RunsAt(early, priority = -10)
 fun installPython() {
     Box.ioPersistentProperties.add("isPythonRoot")
-    registerMainLanguageRuntime(
-        MainLanguageRuntime(
-            id = "python",
-            label = "Python",
-            runtimeClass = PythonExecution::class,
-            setLegacyRoot = { box, enabled -> box.isPythonRoot = enabled },
-            applyTopology = ::pythonTopologyNeedsUpdating,
-        ),
-    )
+    if (PythonInterface.pythonConfigAvailable) {
+        registerMainLanguageRuntime(
+            MainLanguageRuntime(
+                id = "python",
+                label = "Python",
+                runtimeClass = PythonExecution::class,
+                setLegacyRoot = { box, enabled -> box.isPythonRoot = enabled },
+                applyTopology = ::pythonTopologyNeedsUpdating,
+            ),
+        )
+    }
 }
 
 @RunsAt(plugins)
@@ -63,7 +96,7 @@ fun install() {
 fun pythonTopologyNeedsUpdating(values: Collection<Box>) {
     applyRuntimeToggle(
         boxes = values,
-        isRoot = { it.isPythonRoot == true || it.isMainLanguage("python") },
+        isRoot = { PythonInterface.pythonConfigAvailable && (it.isPythonRoot == true || it.isMainLanguage("python")) },
         runtimeClass = PythonExecution::class,
         newExecution = { _ -> PythonExecution() },
         language = "Python",
@@ -1158,6 +1191,94 @@ class PythonInterface {
         var resolvedVenvPath: String? = null
         /** The resolved python executable path, used by startup code for sys.executable */
         var resolvedPythonExecutable: String? = null
+        var pythonConfigAvailable: Boolean = false
+            private set
+        var pythonConfigMessage: String = "Python/JEP is not configured. Use /welcome Python settings to choose a venv or interpreter with `pip install jep`, then restart Field."
+            private set
+        private var resolvedPythonHome: String? = null
+        private var resolvedJepLibrary: String? = null
+        private var resolvedPythonSource: String = "none"
+
+        private data class PythonConfigChoice(
+            val kind: String,
+            val path: String,
+            val source: String,
+        )
+
+        private data class ResolvedPythonConfig(
+            val source: String,
+            val kind: String,
+            val path: String,
+            val pythonExecutable: String,
+            val pythonHome: String,
+            val jepLibrary: String,
+            val sitePackages: String?,
+            val venvPath: String?,
+        )
+
+        fun pythonConfigSummary(): String =
+            listOfNotNull(
+                "source=$resolvedPythonSource",
+                resolvedPythonExecutable?.let { "python=$it" },
+                resolvedPythonHome?.let { "home=$it" },
+                resolvedJepLibrary?.let { "jep=$it" },
+            ).joinToString(", ")
+
+        fun currentPythonSettingsStatus(): PythonSettingsStatus {
+            val persisted = readPersistedPythonChoice()
+            val path = persisted?.path.orEmpty()
+            return PythonSettingsStatus(
+                configured = pythonConfigAvailable,
+                source = resolvedPythonSource,
+                kind = persisted?.kind ?: "",
+                path = path,
+                pythonExecutable = resolvedPythonExecutable,
+                pythonHome = resolvedPythonHome,
+                jepLibrary = resolvedJepLibrary,
+                sitePackages = resolvedVenvSitePackagesPath,
+                configPath = pythonSettingsFile().absolutePath,
+                message = pythonConfigMessage,
+                restartRequired = false,
+            )
+        }
+
+        fun markPythonUnavailable(message: String) {
+            pythonConfigAvailable = false
+            pythonConfigMessage = message
+            resolvedPythonSource = "failed"
+        }
+
+        fun savePythonSettings(request: PythonSettingsRequest): PythonSettingsStatus {
+            val kind = request.kind.trim().lowercase(Locale.US).ifBlank { "venv" }
+            require(kind in setOf("venv", "executable")) { "Python kind must be `venv` or `executable`." }
+            val path = request.path.trim()
+            require(path.isNotBlank()) { "Python path is blank." }
+
+            val choice = PythonConfigChoice(kind, expandPath(path), "welcome")
+            val resolved = resolveChoice(choice)
+                ?: throw IllegalArgumentException("Could not resolve Python/JEP from $path. Choose a venv or interpreter where `pip install jep` has been run.")
+
+            val file = pythonSettingsFile()
+            file.parentFile?.mkdirs()
+            Properties().apply {
+                setProperty("kind", kind)
+                setProperty("path", choice.path)
+            }.store(file.outputStream(), "Field Python/JEP settings")
+
+            return PythonSettingsStatus(
+                configured = true,
+                source = "saved",
+                kind = kind,
+                path = choice.path,
+                pythonExecutable = resolved.pythonExecutable,
+                pythonHome = resolved.pythonHome,
+                jepLibrary = resolved.jepLibrary,
+                sitePackages = resolved.sitePackages,
+                configPath = file.absolutePath,
+                message = "Python settings saved. Restart Field for JEP to use this interpreter.",
+                restartRequired = true,
+            )
+        }
 
         /**
          * Resolve JEP configuration from a venv directory.
@@ -1171,113 +1292,189 @@ class PythonInterface {
          * - system property `-Dafield.python.venv=/path/to/.venv`
          * - env var `FIELD_PYTHON_VENV=/path/to/.venv`
          */
-        private fun resolveVenv(venvPath: java.io.File): Boolean {
-            lprintln("info,python", "resolving Python venv at: $venvPath")
-
-            if (!venvPath.isDirectory) {
-                lprintln("warning,python", "venv path is not a directory: $venvPath")
-                return false
-            }
-
-            // --- 1. Find the jep native library and site-packages in the venv ---
-            val libDir = java.io.File(venvPath, "lib")
-            if (!libDir.isDirectory) {
-                lprintln("warning,python", "venv has no lib/ directory")
-                return false
-            }
-
-            var venvSitePackages: java.io.File? = null
-            val jepLib = libDir.listFiles()
-                ?.filter { it.isDirectory && it.name.startsWith("python") }
-                ?.flatMap { pyDir ->
-                    val sitePackages = java.io.File(pyDir, "site-packages")
-                    val jepDir = java.io.File(sitePackages, "jep")
-                    val libs = jepDir.listFiles()?.filter { f ->
-                        f.name.startsWith("libjep") || (f.name.startsWith("jep") && f.name.endsWith(".dll"))
-                    }?.toList() ?: emptyList()
-                    if (libs.isNotEmpty() && venvSitePackages == null) {
-                        venvSitePackages = sitePackages
-                    }
-                    libs
-                }?.firstOrNull()
-
-            if (jepLib == null) {
-                lprintln("warning,python", "could not find libjep in $venvPath — did you run 'pip install jep'?")
-                return false
-            }
-
-            // --- 2. Find the python executable in the venv ---
-            val isWindows = System.getProperty("os.name").lowercase().contains("windows")
-            val venvBin = java.io.File(venvPath, if (isWindows) "Scripts" else "bin")
-            val pythonExe = if (isWindows) {
-                java.io.File(venvBin, "python.exe")
-            } else {
-                java.io.File(venvBin, "python3").takeIf { it.exists() } ?: java.io.File(venvBin, "python")
-            }
-
-            // --- 3. Configure JEP ---
-            // pythonHome must point to the base Python installation (where the
-            // stdlib lives — encodings, codecs, etc.).  A venv doesn't carry a
-            // full stdlib copy, so pointing pythonHome at the venv itself causes
-            // "failed to get the Python codec of the filesystem encoding".
-            //
-            // We resolve the base installation by following the python executable
-            // symlink back to its real location, then walking up to the prefix.
-            // The venv's site-packages are added via addIncludePaths so the
-            // venv's jep Python code is found before the base installation's.
-            val realPython = pythonExe.toPath().toRealPath().toFile()
-            // e.g. /opt/homebrew/Caskroom/miniconda/base/bin/python3.11
-            //   -> base prefix = /opt/homebrew/Caskroom/miniconda/base
-            val pythonHome = realPython.parentFile?.parentFile
-            lprintln("info,python", "venv python home (base): ${pythonHome?.absolutePath}")
-            lprintln("info,python", "venv jep library: ${jepLib.absolutePath}")
-            lprintln("info,python", "venv python exe:  ${pythonExe.absolutePath} -> ${realPython.absolutePath}")
-            lprintln("info,python", "venv site-packages: $venvSitePackages")
-
-            if (pythonHome == null || !pythonHome.isDirectory) {
-                lprintln("warning,python", "could not resolve base python home from $realPython")
-                return false
-            }
-
-            @Suppress("DEPRECATION")
-            MainInterpreter.setInitParams(PyConfig().setPythonHome(pythonHome.absolutePath))
-            MainInterpreter.setJepLibraryPath(jepLib.absolutePath)
-
-            if (venvSitePackages != null) {
-                conf.addIncludePaths(venvSitePackages.absolutePath)
-                resolvedVenvSitePackagesPath = venvSitePackages.absolutePath
-            }
-
-            resolvedVenvPath = venvPath.absolutePath
-            resolvedPythonExecutable = pythonExe.absolutePath
-            return true
+        init {
+            configurePythonFromBestCandidate()
         }
 
-        init {
-            lprintln("info,python", "set python config")
-
-            // Resolution order:
-            // 1. System property: -Dafield.python.venv=/path/to/.venv
-            // 2. Environment variable: FIELD_PYTHON_VENV=/path/to/.venv
-            // 3. Fallback to hardcoded miniconda paths (legacy)
-            val venvProp = System.getProperty("afield.python.venv")
-                ?: System.getenv("FIELD_PYTHON_VENV")
-
-            val resolved = if (venvProp != null) {
-                resolveVenv(java.io.File(venvProp))
-            } else {
-                false
-            }
-
-            if (!resolved) {
-                if (venvProp != null) {
-                    lprintln("warning,python", "venv resolution failed for $venvProp, falling back to hardcoded miniconda paths")
+        private fun configurePythonFromBestCandidate() {
+            val attempts = pythonConfigChoices()
+            val failures = mutableListOf<String>()
+            for (choice in attempts) {
+                val resolved = runCatching { resolveChoice(choice) }
+                    .onFailure { failures += "${choice.source}: ${it.message ?: it.javaClass.simpleName}" }
+                    .getOrNull()
+                if (resolved != null) {
+                    applyResolvedPython(resolved)
+                    pythonConfigAvailable = true
+                    pythonConfigMessage = "Python/JEP configured from ${resolved.source}: ${resolved.pythonExecutable}"
+                    lprintln("info,python", pythonConfigMessage)
+                    return
                 }
-                @Suppress("DEPRECATION")
-                MainInterpreter.setInitParams(PyConfig().setPythonHome("/opt/homebrew/Caskroom/miniconda/base/"))
-                MainInterpreter.setJepLibraryPath("/opt/homebrew/Caskroom/miniconda/base/lib/python3.11/site-packages/jep/libjep.jnilib")
-                resolvedPythonExecutable = "/opt/homebrew/Caskroom/miniconda/base/bin/python"
+                failures += "${choice.source}: no JEP library found for ${choice.path}"
             }
+            pythonConfigAvailable = false
+            pythonConfigMessage = buildString {
+                append("Python/JEP is not configured. Use /welcome Python settings to choose a venv or interpreter with `pip install jep`, then restart Field.")
+                if (failures.isNotEmpty()) append(" Tried: ").append(failures.take(4).joinToString("; "))
+            }
+            resolvedPythonSource = "none"
+            lprintln("info,python", pythonConfigMessage)
+        }
+
+        private fun applyResolvedPython(resolved: ResolvedPythonConfig) {
+            @Suppress("DEPRECATION")
+            MainInterpreter.setInitParams(PyConfig().setPythonHome(resolved.pythonHome))
+            MainInterpreter.setJepLibraryPath(resolved.jepLibrary)
+            resolved.sitePackages?.let {
+                conf.addIncludePaths(it)
+                resolvedVenvSitePackagesPath = it
+            }
+            resolvedVenvPath = resolved.venvPath
+            resolvedPythonExecutable = resolved.pythonExecutable
+            resolvedPythonHome = resolved.pythonHome
+            resolvedJepLibrary = resolved.jepLibrary
+            resolvedPythonSource = resolved.source
+        }
+
+        private fun pythonConfigChoices(): List<PythonConfigChoice> {
+            val choices = mutableListOf<PythonConfigChoice>()
+            fun add(kind: String, path: String?, source: String) {
+                val normalized = path?.trim()?.takeIf { it.isNotBlank() } ?: return
+                choices += PythonConfigChoice(kind, expandPath(normalized), source)
+            }
+            add("venv", System.getProperty("afield.python.venv"), "system property afield.python.venv")
+            add("executable", System.getProperty("afield.python.executable"), "system property afield.python.executable")
+            add("venv", System.getenv("FIELD_PYTHON_VENV"), "env FIELD_PYTHON_VENV")
+            add("executable", System.getenv("FIELD_PYTHON_EXECUTABLE"), "env FIELD_PYTHON_EXECUTABLE")
+            readPersistedPythonChoice()?.let { choices += it.copy(source = "welcome settings") }
+            add("venv", System.getenv("VIRTUAL_ENV"), "env VIRTUAL_ENV")
+            add("venv", System.getenv("CONDA_PREFIX"), "env CONDA_PREFIX")
+            add("executable", "python3", "PATH python3")
+            add("executable", "python", "PATH python")
+            return choices.distinctBy { it.kind to it.path }
+        }
+
+        private fun resolveChoice(choice: PythonConfigChoice): ResolvedPythonConfig? {
+            val python = when (choice.kind) {
+                "venv" -> pythonExecutableForVenv(File(choice.path)) ?: return null
+                "executable" -> File(choice.path)
+                else -> return null
+            }
+            return inspectPython(python.path, choice)
+        }
+
+        private fun pythonExecutableForVenv(venv: File): File? {
+            if (!venv.isDirectory) return null
+            val isWindows = System.getProperty("os.name").lowercase(Locale.US).contains("windows")
+            val bin = File(venv, if (isWindows) "Scripts" else "bin")
+            val names = if (isWindows) listOf("python.exe", "python3.exe") else listOf("python3", "python")
+            return names.asSequence().map { File(bin, it) }.firstOrNull { it.exists() && it.canExecute() }
+        }
+
+        private fun inspectPython(executable: String, choice: PythonConfigChoice): ResolvedPythonConfig? {
+            val script = """
+                import glob, os, site, sys, sysconfig
+                def emit(k, v):
+                    if v:
+                        print(k + "=" + str(v))
+                prefixes = []
+                for p in [getattr(sys, "base_prefix", None), getattr(sys, "prefix", None), sysconfig.get_config_var("base"), sysconfig.get_config_var("prefix")]:
+                    if p and p not in prefixes:
+                        prefixes.append(p)
+                site_paths = []
+                for fn in [getattr(site, "getsitepackages", None)]:
+                    if fn:
+                        try:
+                            site_paths.extend(fn())
+                        except Exception:
+                            pass
+                try:
+                    site_paths.append(site.getusersitepackages())
+                except Exception:
+                    pass
+                for p in list(sys.path):
+                    if p and ("site-packages" in p or "dist-packages" in p):
+                        site_paths.append(p)
+                libs = []
+                for sp in site_paths:
+                    for pat in ["libjep*", "jep*.dll"]:
+                        libs.extend(glob.glob(os.path.join(sp, "jep", pat)))
+                libs = [p for p in libs if os.path.isfile(p)]
+                jep_site = os.path.dirname(os.path.dirname(libs[0])) if libs else ""
+                emit("executable", sys.executable)
+                emit("home", prefixes[0] if prefixes else "")
+                emit("prefix", sys.prefix)
+                emit("basePrefix", getattr(sys, "base_prefix", ""))
+                emit("sitePackages", jep_site or (site_paths[0] if site_paths else ""))
+                emit("jepLibrary", libs[0] if libs else "")
+            """.trimIndent()
+            val process = ProcessBuilder(executable, "-c", script)
+                .redirectErrorStream(true)
+                .start()
+            if (!process.waitFor(6, TimeUnit.SECONDS)) {
+                process.destroyForcibly()
+                return null
+            }
+            if (process.exitValue() != 0) return null
+            val values = process.inputStream.bufferedReader().readLines()
+                .mapNotNull { line ->
+                    val idx = line.indexOf('=')
+                    if (idx <= 0) null else line.substring(0, idx) to line.substring(idx + 1)
+                }
+                .toMap()
+            val jep = values["jepLibrary"]?.takeIf { it.isNotBlank() } ?: return null
+            val home = values["home"]?.takeIf { it.isNotBlank() } ?: return null
+            val py = values["executable"]?.takeIf { it.isNotBlank() } ?: executable
+            val prefix = values["prefix"]?.takeIf { it.isNotBlank() }
+            val basePrefix = values["basePrefix"]?.takeIf { it.isNotBlank() }
+            val venvPath = when {
+                choice.kind == "venv" -> File(choice.path).absolutePath
+                prefix != null && basePrefix != null && prefix != basePrefix -> prefix
+                else -> null
+            }
+            return ResolvedPythonConfig(
+                source = choice.source,
+                kind = choice.kind,
+                path = choice.path,
+                pythonExecutable = py,
+                pythonHome = home,
+                jepLibrary = jep,
+                sitePackages = values["sitePackages"]?.takeIf { it.isNotBlank() },
+                venvPath = venvPath,
+            )
+        }
+
+        private fun readPersistedPythonChoice(): PythonConfigChoice? {
+            val file = pythonSettingsFile()
+            if (!file.exists()) return null
+            return runCatching {
+                val props = Properties().apply { file.inputStream().use(::load) }
+                val kind = props.getProperty("kind")?.trim()?.lowercase(Locale.US) ?: "venv"
+                val path = props.getProperty("path")?.trim()?.takeIf { it.isNotBlank() } ?: return null
+                PythonConfigChoice(kind, expandPath(path), "welcome settings")
+            }.getOrNull()
+        }
+
+        private fun pythonSettingsFile(): File =
+            File(fieldPythonConfigDir(), "python.properties")
+
+        private fun fieldPythonConfigDir(): File {
+            val osName = System.getProperty("os.name").lowercase(Locale.US)
+            return if (osName.contains("windows")) {
+                val appData = System.getenv("APPDATA")?.takeIf { it.isNotBlank() }
+                    ?: File(System.getProperty("user.home"), "AppData/Roaming").absolutePath
+                File(appData, "AField")
+            } else {
+                File(System.getProperty("user.home"), ".afield")
+            }
+        }
+
+        private fun expandPath(path: String): String {
+            if (path == "~") return System.getProperty("user.home")
+            if (path.startsWith("~/") || path.startsWith("~\\")) {
+                return File(System.getProperty("user.home"), path.substring(2)).path
+            }
+            return path
         }
 
         @JvmStatic

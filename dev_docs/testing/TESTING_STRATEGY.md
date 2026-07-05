@@ -5,6 +5,11 @@ verify a change, add regression coverage, or debug a failing automation run.
 
 Always run agent-facing Python tooling through the repo uv project. The
 backdoor, UI runner, and docs runner need the same dependency environment.
+Browser screenshots and UI regressions do not require the Python `playwright`
+package in that environment; they go through `tools/field_backdoor.py` and
+Field's JVM/server-owned Playwright instance. If `python -c "import playwright"`
+fails, that is not a valid reason to skip `--with-playwright`,
+`tools/run_ui_regressions.py`, or docs capture checks.
 
 ## Fast Command Matrix
 
@@ -16,6 +21,7 @@ backdoor, UI runner, and docs runner need the same dependency environment.
 | FIELD_TEST catalog | `uv run --project . --group backdoor python tools/run_field_tests.py --refresh-catalog` | Annotated examples and smoke tests still execute. |
 | Browser UI regressions | `uv run --project . --group backdoor python tools/run_ui_regressions.py --port 9490 --timeout 45` | Monaco, command palette, panels, controller outputs, focus, and screenshots. |
 | One UI regression | `uv run --project . --group backdoor python tools/run_ui_regressions.py --id macro-transcript-panel --port 9680 --timeout 45` | Focused browser workflow while iterating. |
+| One browser screenshot smoke | `uv run --project . --group backdoor python tools/field_backdoor.py --json --with-playwright --port 9477 --command 'new-box --name Visual' --command 'run @last --value "display(\"main\", \"<div>hello</div>\")"' --command 'screenshot-box @last /tmp/field-smoke.png'` | Server-owned Playwright can render and capture a box. |
 | Docs without captures | `FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --clean` | Zensical content renders without starting Field. |
 | Docs incremental captures | `FIELD_DOCS_RUNNER_MODE=incremental FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py` | Changed/missing examples recapture through Field. |
 | Docs strict recapture | `FIELD_DOCS_RUNNER_MODE=strict FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py` | Runner/API changes invalidate cached captures. |
@@ -52,6 +58,10 @@ The backdoor can:
 - run standalone JVM entrypoints with `run-jvm-main`
 - replay transcript macros for semantic document operations
 
+For screenshot and DOM commands, the Python script sends websocket requests to
+Field; the browser is owned by the running JVM. Do not install or probe Python
+Playwright unless you are working on a separate Python-only browser tool.
+
 Default command:
 
 ```bash
@@ -73,6 +83,11 @@ Run:
 ```bash
 uv run --project . --group backdoor python tools/run_field_tests.py --refresh-catalog
 ```
+
+`tools/run_field_tests.py` does not accept a top-level `--timeout` flag. Per-test
+timeouts come from each `FIELD_TEST` annotation's `timeoutSec` value, and the
+runner passes that value through to `tools/field_backdoor.py` for the individual
+test execution.
 
 Artifacts:
 - catalog: `build/field-tests/catalog.json`

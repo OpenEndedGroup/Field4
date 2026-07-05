@@ -26,6 +26,8 @@ This repository builds **Field·4**, a Kotlin-based live-coding environment for 
 
 Use `uv` for agent-facing Python tooling so the docs runner and the backdoor share the same dependency environment. This matters because `public/docs_hooks.py` runs `tools/field_backdoor.py` with the same Python interpreter that is building the docs.
 
+Do not use ambient `python`, `pip`, or a Python `playwright` import as the gate for browser screenshots. Field's screenshot and UI-regression path uses the repo `uv` environment plus the JVM/server-owned Playwright instance. The root `pyproject.toml` intentionally does not need the Python Playwright package for `tools/field_backdoor.py --with-playwright`, `tools/run_ui_regressions.py`, or docs captures.
+
 - Backdoor status:
 
 ```bash
@@ -64,6 +66,7 @@ the matrix below as the quick command crib.
 | Backdoor sanity check | `uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 --command status` | Verify the agent can start or attach to an isolated Field. |
 | Smoke catalog | `uv run --project . --group backdoor python tools/run_field_tests.py --refresh-catalog` | Exercise annotated Field examples through the backdoor. |
 | Browser UI regressions | `uv run --project . --group backdoor python tools/run_ui_regressions.py --port 9490 --timeout 45` | Run Playwright-backed UI workflows and retain screenshots under `build/ui-regressions/artifacts/`. |
+| One browser screenshot smoke | `uv run --project . --group backdoor python tools/field_backdoor.py --json --with-playwright --port 9477 --command 'new-box --name Visual' --command 'run @last --value "display(\"main\", \"<div>hello</div>\")"' --command 'screenshot-box @last /tmp/field-smoke.png'` | Capture a real browser screenshot without relying on Python Playwright. |
 | Docs HTML only | `FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --clean` | Rebuild Zensical docs without starting Field or recapturing assets. |
 | Docs author loop | `FIELD_DOCS_RUNNER_MODE=incremental FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py` | Reuse valid captures and run only changed or missing ones. |
 | Runner/API change | `FIELD_DOCS_RUNNER_MODE=strict FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py` | Invalidate captures when runner code or transcript behavior changes. |
@@ -98,6 +101,7 @@ Mac OS X
 ## Field Backdoor (Preferred for Agents)
 
 - When you need to verify Field behavior by actually running code, prefer `uv run --project . --group backdoor python tools/field_backdoor.py` over driving the browser manually.
+- When you need screenshots or DOM inspection, use `--with-playwright` or `tools/run_ui_regressions.py` through `uv run --project . --group backdoor`. Do not skip this because the current shell's Python environment lacks the `playwright` package; browser automation is provided by Field's JVM Playwright dependency and controlled through the backdoor.
 - When the thing you want to verify is a JVM entrypoint or smoke-style example, prefer the backdoor's `run-jvm-main` command over ad hoc `gradlew` `JavaExec`, temporary init scripts, or custom classpath launchers. Use transient scratch boxes for snippet-level checks and screenshots.
 - The backdoor attaches to an existing Field at `https://localhost:9092` or starts Field itself using the Gradle wrapper command above, opens a scratch document by default, and lets you create boxes, set code/shaders, run or launch them, stop them, and capture outputs/errors as JSON.
 - For agent automation, do not rely on the default port. Pass a custom high port such as `--port 9477` so the backdoor starts or reuses an isolated agent-owned Field instead of silently attaching to a stale dev server on `9092`.
@@ -233,6 +237,7 @@ uv run --project . --group backdoor python tools/run_field_tests.py --refresh-ca
 ```
 
 This regenerates `build/field-tests/catalog.json`, then runs each discovered `FIELD_TEST` entry one-by-one through `uv run --project . --group backdoor python tools/field_backdoor.py --json`.
+Do not pass `--timeout` to `tools/run_field_tests.py`; per-test timeouts come from `timeoutSec` in the `FIELD_TEST` annotation. The backdoor and UI regression runner have their own `--timeout` flags, but the smoke catalog runner does not.
 
 Browser UI regression runner:
 

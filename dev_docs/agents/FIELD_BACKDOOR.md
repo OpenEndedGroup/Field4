@@ -73,6 +73,7 @@ uv run --project . --group backdoor python tools/run_field_tests.py --refresh-ca
 
 That regenerates `build/field-tests/catalog.json` and then invokes `uv run --project . --group backdoor python tools/field_backdoor.py --json` once per test.
 For the phase-1 `jvm-main` entries, the backdoor command it uses is `run-jvm-main`, which asks the running Field JVM to execute the annotated entrypoint and return `exitCode`, `stdout`, and `stderr`.
+Do not pass `--timeout` to `tools/run_field_tests.py`; that flag belongs to `tools/field_backdoor.py`, `run-jvm-main`, and the UI regression runner. Smoke-test timeouts are configured with `timeoutSec` in the `FIELD_TEST` annotation.
 By default, `run-jvm-main` omits the full launched JVM command/classpath from the JSON payload because it is huge and rarely useful in agent transcripts. Add `--include-command` to the `run-jvm-main` command only when debugging launch or classpath construction.
 
 ## Browser UI Regression Suite
@@ -91,6 +92,12 @@ per-test `RUN`, heartbeat, `PASS`, and `FAIL` lines; use
 focused run, and `--json` when stdout must stay machine-readable. Screenshots
 are retained under `build/ui-regressions/artifacts/<test-id>/`, with
 `latest-pass.png`, `latest-failure.png`, and up to 5 recent passing screenshots.
+
+The `backdoor` uv group does not install Python Playwright, and it does not
+need to. Browser automation for screenshots and UI regressions is provided by
+Field's JVM/server-owned Playwright dependency; the Python backdoor only sends
+websocket commands to that server. A failed `import playwright` in Python is not
+a browser-smoke blocker.
 
 The long-term coverage checklist is `dev_docs/testing/UI_REGRESSION_ROADMAP.md`.
 
@@ -122,6 +129,11 @@ The root `pyproject.toml` defines two dependency groups:
 
 - `backdoor`: `websockets` and `PyYAML` for `tools/field_backdoor.py`.
 - `docs`: Zensical, the configured docs extensions, `pillow` for docs hooks, and the backdoor dependencies. The docs group intentionally includes the backdoor dependencies because `public/docs_hooks.py` launches `tools/field_backdoor.py` with the same Python interpreter that builds the docs.
+
+Neither group needs the Python `playwright` package for Field browser captures.
+Use `--with-playwright` through the backdoor or `tools/run_ui_regressions.py`;
+those commands target the server-owned Playwright browser in the running Field
+JVM.
 
 Use:
 
@@ -385,6 +397,9 @@ This command:
 - works for scratch sessions by attaching with the session key, not by opening a fresh named document
 - may take longer the first time on a machine because Playwright can download browser binaries on first use
 
+This is a JVM-side Playwright launch. Do not treat missing Python Playwright as
+evidence that this command cannot run.
+
 For agent/test flows, this Playwright browser is headless by default, so it should not steal desktop focus while it collects DOM state or screenshots. If you want to watch the browser while debugging, set `AFIELD_PLAYWRIGHT_VISIBLE=true` or JVM property `-Dafield.playwright.visible=true` before starting Field.
 
 If you know a run will create output areas that you want to inspect or capture later, prefer `--with-playwright` so the browser is attached before the run:
@@ -470,6 +485,15 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json \
 ### Capture Screenshots for Docs or Visual Tests
 
 Prefer `--with-playwright` for screenshot flows so the browser is attached before any `run` that creates output areas. Use `playwright-open` manually only when you intentionally want to delay browser startup.
+
+Minimal browser screenshot smoke:
+
+```bash
+uv run --project . --group backdoor python tools/field_backdoor.py --json --with-playwright --port 9477 \
+  --command 'new-box --name Visual' \
+  --command 'run @last --value "display(\"main\", \"<div>hello</div>\")"' \
+  --command 'screenshot-box @last /tmp/field-smoke.png'
+```
 
 Whole-window capture with the editor open on a specific box:
 

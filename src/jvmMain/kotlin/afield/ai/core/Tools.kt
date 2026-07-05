@@ -7,6 +7,7 @@ import afield.CodeUseSnippetRow
 import afield.CodeUseSnippetUseRow
 import afield.CodeUseSummary
 import afield.CodeUseRelatedSourceRow
+import afield.CodeUseSemanticAnalyzeResult
 import afield.CodeUseSourceReferenceRow
 import afield.CodeUseSourceTarget
 import afield.CodeUseSymbolRow
@@ -274,7 +275,7 @@ data class MacroRunResult(
 
 /** Code-use telemetry tools ------------------------------------------------- */
 
-@JsonClassDescription("Query Field's local code-use telemetry database. kind may be summary, failures, snippets, launches, symbols, unresolved, line-callers, references-for-code, hot-symbols, or early-document-symbols. Prefer kind=failures when looking for compiler errors/runtime exceptions that reveal API gaps, missing docs, or growth points. Optional document and box filters are case-insensitive substrings for row types that carry that metadata.")
+@JsonClassDescription("Query Field's local code-use telemetry database. kind may be summary, failures, snippets, launches, symbols, unresolved, line-callers, references-for-code, related-source-for-code, semantic-analyze, hot-symbols, or early-document-symbols. Prefer kind=failures when looking for compiler errors/runtime exceptions that reveal API gaps, missing docs, or growth points. Optional document and box filters are case-insensitive substrings for row types that carry that metadata.")
 data class CodeUseQueryRequest(
     val kind: String = "failures",
     val limit: Int = 20,
@@ -283,6 +284,7 @@ data class CodeUseQueryRequest(
     val sourcePath: String = "",
     val line: Int = 0,
     val code: String = "",
+    val sourceName: String = "AgentSnippet.kt",
     val window: String = "all",
     val earlyWindowMs: Long = 600000,
     val callersPerSymbol: Int = 5,
@@ -304,10 +306,11 @@ data class CodeUseQueryResult(
     val references: List<CodeUseSourceReferenceRow> = emptyList(),
     val hotSymbols: List<CodeUseHotSourceSymbolRow> = emptyList(),
     val earlySymbols: List<CodeUseEarlySourceSymbolRow> = emptyList(),
-    val relatedSources: List<CodeUseRelatedSourceRow> = emptyList()
+    val relatedSources: List<CodeUseRelatedSourceRow> = emptyList(),
+    val semanticAnalysis: CodeUseSemanticAnalyzeResult? = null
 )
 
-@JsonClassDescription("Given a source path and line inside src/, show recent Field box code snippets that appear to call the enclosing source symbol, with timestamps, compile/eval status, return types, and launch lifecycles. Uses resolved symbol edges when available, otherwise source-index/textual fallback.")
+@JsonClassDescription("Given a source path and line inside src/, show recent Field box code snippets that appear to call the enclosing source symbol, with timestamps, compile/eval status, return types, and launch lifecycles. Confidence values are literal: k2-resolved is semantic; source-index-* values are static source-index evidence; textual values are fallback evidence and must not be described as resolved.")
 data class CodeUseCallersForSourceLineRequest(
     val sourcePath: String,
     val line: Int,
@@ -320,7 +323,7 @@ data class CodeUseReferencesForCodeRequest(
     val limit: Int = 5
 )
 
-@JsonClassDescription("List hot Field source symbols by observed Field box usage. window may be all, week, day, or month. Uses resolved symbol edges when available, otherwise textual source-index fallback.")
+@JsonClassDescription("List hot Field source symbols by observed Field box usage. window may be all, week, day, or month. Report each row's confidence literally: k2-resolved is semantic; source-index-* values are static source-index evidence; textual values are fallback evidence. Do not call source-index or textual rows resolved.")
 data class CodeUseHotSymbolsRequest(
     val window: String = "all",
     val limit: Int = 20
@@ -336,6 +339,15 @@ data class CodeUseEarlyDocumentSymbolsRequest(
 @JsonClassDescription("Given Field box code, return the most relevant src/ routines with bounded source excerpts, observed call-site frequencies, return/lifecycle summaries, and other Field snippets that called the same routines. Prefer this when interrogating how box code maps onto Field source.")
 data class CodeUseRelatedSourceForCodeRequest(
     val code: String,
+    val limit: Int = 5,
+    val callersPerSymbol: Int = 5,
+    val sourceRadiusLines: Int = 24
+)
+
+@JsonClassDescription("Given Field box or inline Kotlin code, ask Field's optional semantic K2 sidecar to resolve the code against src/ and enrich the result with local code-use graph evidence: source excerpts, call-site frequencies, timestamps, and peer snippets. Falls back to the local source-index graph if the sidecar is not configured or unavailable.")
+data class CodeUseSemanticAnalyzeCodeRequest(
+    val code: String,
+    val sourceName: String = "AgentSnippet.kt",
     val limit: Int = 5,
     val callersPerSymbol: Int = 5,
     val sourceRadiusLines: Int = 24

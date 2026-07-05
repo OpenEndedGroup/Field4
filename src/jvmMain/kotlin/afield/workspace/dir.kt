@@ -1,6 +1,7 @@
 package afield
 
 import afield.logger.lprintln
+import afield.python.PythonSettingsStatus
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -244,6 +245,14 @@ data class WelcomeDocsResponse(
     val preferences: FieldPreferences = FieldPreferences(),
     val projects: List<ProjectEntry> = emptyList(),
     val runtimeInfo: RuntimeInfo = RuntimeInfo(),
+    val pythonSettings: PythonSettingsStatus = PythonSettingsStatus(
+        configured = false,
+        source = "not loaded",
+        kind = "",
+        path = "",
+        configPath = "",
+        message = "not loaded"
+    ),
     val completionDocPolish: CompletionDocPolishStatus = CompletionDocPolishStatus(),
     val aiToolUseImprovement: AiToolUseImprovementStatus = AiToolUseImprovementStatus(),
     val codeUse: CodeUseSummary = CodeUseSummary(

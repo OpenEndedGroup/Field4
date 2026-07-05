@@ -111,6 +111,7 @@ function filenameFromUrl(rawUrl) {
     const pathname = parsed.pathname.replace(/\/+$/, "");
     if (pathname.endsWith("/welcome")) return "welcome";
     if (pathname.endsWith("/dir")) return "/dir";
+    if (pathname.endsWith("/code-use")) return "Code Use";
     if (pathname.endsWith("/index.html")) return "document";
     if (parsed.hostname) return parsed.hostname;
   } catch (_) {

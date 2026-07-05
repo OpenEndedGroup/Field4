@@ -45,6 +45,12 @@ private fun connectionLabelFor(box: HTMLElement): String? {
     return uid?.takeIf { it.isNotEmpty() }
 }
 
+private fun elementUidOrNull(box: HTMLElement): String? {
+    val uid = box.unsafeCast<dynamic>().uid
+    if (uid == undefined || uid == null) return null
+    return uid.toString()
+}
+
 private var currentConnectionSelectedUids: Set<String> = emptySet()
 
 private fun proxyAnchorSelected(box: HTMLElement, terminal: ConnectionTerminalConfig): Boolean {
@@ -227,28 +233,73 @@ private fun connect_center_with_terminal(
         return
     }
 
-    val step = max(3.0, radius / 3.0) /2.0
-    val sampledStd = sampleDubinsPath(dubins, screenToStandard(startScreen), step)
-    val sampled = sampledStd.map { standardToScreen(it) }
-    val targetPoints = sampled.map { Point(it.x, it.y) }
-    val smoothedPoints = filterConnection(key, targetPoints)
-    var drawPoints = (if (smoothedPoints.isNotEmpty()) smoothedPoints else targetPoints)
-    if (drawPoints.size > MAX_SEGMENTS + 1) {
-        drawPoints = resamplePolyline(drawPoints, MAX_SEGMENTS + 1)
+    val scratch = connectionGeometryScratch
+    val step = max(3.0, radius / 3.0) / 2.0
+    sampleDubinsPathPoints(dubins, screenToStandard(startScreen), step, scratch.sampled)
+    val smoothedPoints = filterConnection(key, scratch.sampled, scratch)
+    val drawPoints = if (smoothedPoints.size > MAX_SEGMENTS + 1) {
+        resamplePolyline(smoothedPoints, MAX_SEGMENTS + 1, scratch.draw)
+        scratch.draw
+    } else {
+        smoothedPoints
     }
-    if (drawPoints.isEmpty()) return
-    val arrowPose = midPose(posesFromPolyline(drawPoints))
+    if (drawPoints.size == 0) return
+    val arrowPose = midPose(drawPoints)
 
     path {
-        moveTo(drawPoints.first().x, drawPoints.first().y)
-        drawPoints.drop(1).forEach { pose ->
-            lineTo(pose.x, pose.y)
+        moveTo(drawPoints.x(0), drawPoints.y(0))
+        for (idx in 1 until drawPoints.size) {
+            lineTo(drawPoints.x(idx), drawPoints.y(idx))
         }
         stroke = color
         strokeWidth = 1
         fill = "none"
         this.path.setAttribute("opacity", drawOpacity.toString())
         appendTo(svg)
+    }
+
+    val viewportRect = currentConnectionViewportRect
+    val offscreenLayer = currentFrontMarkerLayer
+    if (viewportRect != null && offscreenLayer != null && fromSelected != toSelected) {
+        val hiddenBox: HTMLElement?
+        val markerPoint: Point?
+        val offscreenColor: String
+        val directionKey: String
+        when {
+            fromSelected && !rectsOverlap(b_rect, viewportRect) -> {
+                hiddenBox = b_box
+                markerPoint = offscreenMarkerPointOnPolyline(drawPoints, viewportRect, forward = true)
+                offscreenColor = OUTGOING_CONNECTION_COLOR
+                directionKey = "out"
+            }
+            toSelected && !rectsOverlap(a_rect, viewportRect) -> {
+                hiddenBox = a_box
+                markerPoint = offscreenMarkerPointOnPolyline(drawPoints, viewportRect, forward = false)
+                offscreenColor = INCOMING_CONNECTION_COLOR
+                directionKey = "in"
+            }
+            else -> {
+                hiddenBox = null
+                markerPoint = null
+                offscreenColor = color
+                directionKey = ""
+            }
+        }
+        val label = hiddenBox?.let { connectionLabelFor(it) }
+        if (markerPoint != null && hiddenBox != null && !label.isNullOrBlank()) {
+            val labelKey = "$key-$directionKey-${elementUidOrNull(hiddenBox) ?: hiddenBox.hashCode()}"
+            val animate = seenOffscreenConnectionLabels.add(labelKey)
+            addOffscreenConnectionLabel(
+                offscreenLayer,
+                labelKey,
+                markerPoint,
+                viewportRect,
+                drawOpacity,
+                offscreenColor,
+                label,
+                animate
+            )
+        }
     }
 
     addArrowHead(svg, Point(arrowPose.x, arrowPose.y), arrowPose.heading, drawOpacity, color)
@@ -274,6 +325,10 @@ private const val NESTED_PROXY_LABEL_BG_PAD_X = 3.5
 private const val NESTED_PROXY_LABEL_BG_PAD_Y = 1.5
 private const val NESTED_PROXY_LABEL_BG_RADIUS = 2.5
 private const val NESTED_PROXY_LABEL_BG_FILL = "rgba(0,0,0,0.75)"
+private const val OFFSCREEN_CONNECTION_LABEL_FONT_SIZE = 10
+private const val OFFSCREEN_CONNECTION_LABEL_OFFSET = 8.0
+private const val OFFSCREEN_CONNECTION_INSET = 10.0
+private const val OFFSCREEN_CONNECTION_DOT_RADIUS = 2.75
 private const val MIN_CONNECTION_LENGTH = 6.0
 private const val NESTED_VIEWPORT_VISIBILITY_EPSILON = 1e-6
 private const val FRONT_CONNECTION_LAYER_ID = "overlaysvgfrontlayer"
@@ -288,14 +343,63 @@ private const val FILTER_ALPHA = 0.01
 private const val FILTER_EPS = 0.5
 private const val MAX_SEGMENTS = 128
 
-data class ConnectionFilterState(var filtered: List<Point> = emptyList())
+private data class PointBuffer(var coords: DoubleArray = DoubleArray(0), var size: Int = 0) {
+    fun ensureCapacity(points: Int) {
+        val required = points * 2
+        if (coords.size >= required) return
+        var capacity = max(16, coords.size)
+        while (capacity < required) capacity *= 2
+        coords = coords.copyOf(capacity)
+    }
+
+    fun clear() {
+        size = 0
+    }
+
+    fun add(x: Double, y: Double) {
+        ensureCapacity(size + 1)
+        val idx = size * 2
+        coords[idx] = x
+        coords[idx + 1] = y
+        size += 1
+    }
+
+    fun set(index: Int, x: Double, y: Double) {
+        val idx = index * 2
+        coords[idx] = x
+        coords[idx + 1] = y
+    }
+
+    fun x(index: Int): Double = coords[index * 2]
+    fun y(index: Int): Double = coords[index * 2 + 1]
+
+    fun allFinite(): Boolean {
+        for (i in 0 until size * 2) {
+            if (!coords[i].isFinite()) return false
+        }
+        return true
+    }
+}
+
+private data class ConnectionFilterState(val filtered: PointBuffer = PointBuffer())
+
+private data class ConnectionGeometryScratch(
+    val sampled: PointBuffer = PointBuffer(),
+    val filtered: PointBuffer = PointBuffer(),
+    val aligned: PointBuffer = PointBuffer(),
+    val resampled: PointBuffer = PointBuffer(),
+    val draw: PointBuffer = PointBuffer()
+)
 
 private val connectionFilterStates = mutableMapOf<String, ConnectionFilterState>()
+private val connectionGeometryScratch = ConnectionGeometryScratch()
 private var needsFilterFrame = false
 private var filterFrameScheduled = false
 private val currentFrameKeys = mutableSetOf<String>()
 private var currentFrontMarkerLayer: SVGElement? = null
 private var currentFrontMarkerDefs: SVGElement? = null
+private var currentConnectionViewportRect: DOMRect? = null
+private val seenOffscreenConnectionLabels = mutableSetOf<String>()
 
 private fun DOMRect.copyRect(): DOMRect = DOMRect(x, y, width, height)
 
@@ -471,6 +575,184 @@ private fun addTerminalLabel(
     layer.insertBefore(bg, textElement)
 }
 
+private fun addOffscreenConnectionLabel(
+    layer: SVGElement,
+    key: String,
+    point: Point,
+    viewportRect: DOMRect,
+    opacity: Double,
+    color: String,
+    text: String,
+    animate: Boolean
+) {
+    val group = document.createElementNS("http://www.w3.org/2000/svg", "g") as SVGElement
+    group.classList.add("offscreen-connection-label")
+    if (animate) group.classList.add("offscreen-connection-label-arrive")
+    group.setAttribute("opacity", opacity.toString())
+    group.setAttribute("pointer-events", "none")
+    group.setAttribute("data-offscreen-label-key", key)
+    layer.appendChild(group)
+
+    val marker = document.createElementNS("http://www.w3.org/2000/svg", "circle") as SVGElement
+    marker.setAttribute("cx", point.x.toString())
+    marker.setAttribute("cy", point.y.toString())
+    marker.setAttribute("r", OFFSCREEN_CONNECTION_DOT_RADIUS.toString())
+    marker.setAttribute("fill", color)
+    group.appendChild(marker)
+
+    val leftDist = abs(point.x - viewportRect.left)
+    val rightDist = abs(point.x - viewportRect.right)
+    val topDist = abs(point.y - viewportRect.top)
+    val bottomDist = abs(point.y - viewportRect.bottom)
+    val nearest = min(min(leftDist, rightDist), min(topDist, bottomDist))
+
+    var tx = point.x
+    var ty = point.y
+    var anchor = "middle"
+    when (nearest) {
+        leftDist -> {
+            tx += OFFSCREEN_CONNECTION_LABEL_OFFSET
+            anchor = "start"
+        }
+        rightDist -> {
+            tx -= OFFSCREEN_CONNECTION_LABEL_OFFSET
+            anchor = "end"
+        }
+        topDist -> {
+            ty += OFFSCREEN_CONNECTION_LABEL_OFFSET
+        }
+        else -> {
+            ty -= OFFSCREEN_CONNECTION_LABEL_OFFSET
+        }
+    }
+
+    val probe = document.createElementNS("http://www.w3.org/2000/svg", "text") as SVGElement
+    probe.setAttribute("x", "0")
+    probe.setAttribute("y", "0")
+    probe.setAttribute("text-anchor", "start")
+    probe.setAttribute("dominant-baseline", "middle")
+    probe.setAttribute("font-family", "\"Iosevka Web\", \"Iosevka\", monospace")
+    probe.setAttribute("font-size", OFFSCREEN_CONNECTION_LABEL_FONT_SIZE.toString())
+    probe.setAttribute("font-weight", "300")
+    probe.setAttribute("visibility", "hidden")
+    probe.textContent = text
+    group.appendChild(probe)
+
+    val bbox = try {
+        probe.asDynamic().getBBox()
+    } catch (t: dynamic) {
+        null
+    }
+    group.removeChild(probe)
+
+    val bw = ((bbox?.width as? Number)?.toDouble() ?: 0.0).coerceAtLeast(20.0)
+    val bh = ((bbox?.height as? Number)?.toDouble() ?: 0.0).coerceAtLeast(12.0)
+    val width = bw + 10.0
+    val height = bh + 6.0
+    val x = when (anchor) {
+        "start" -> tx
+        "end" -> tx - width
+        else -> tx - width * 0.5
+    }
+    val y = ty - height * 0.5
+
+    val foreign = document.createElementNS("http://www.w3.org/2000/svg", "foreignObject") as SVGElement
+    foreign.setAttribute("x", x.toString())
+    foreign.setAttribute("y", y.toString())
+    foreign.setAttribute("width", width.toString())
+    foreign.setAttribute("height", height.toString())
+
+    val pill = document.createElement("div") as HTMLElement
+    pill.classList.add("offscreen-connection-label-bg")
+    pill.style.color = color
+    pill.style.display = "inline-flex"
+    pill.style.alignItems = "center"
+    pill.style.justifyContent = "flex-start"
+    pill.style.width = "100%"
+    pill.style.height = "100%"
+    pill.textContent = text
+    foreign.appendChild(pill)
+    group.appendChild(foreign)
+}
+
+private fun pointInsideRect(x: Double, y: Double, rect: DOMRect): Boolean {
+    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
+}
+
+private fun rectsOverlap(a: DOMRect, b: DOMRect): Boolean {
+    return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top
+}
+
+private fun segmentViewportCrossing(
+    x0: Double,
+    y0: Double,
+    x1: Double,
+    y1: Double,
+    viewportRect: DOMRect
+): Point? {
+    val dx = x1 - x0
+    val dy = y1 - y0
+    if (abs(dx) < 1e-9 && abs(dy) < 1e-9) return null
+
+    var bestT = Double.POSITIVE_INFINITY
+    var best: Point? = null
+
+    fun addCandidate(t: Double, x: Double, y: Double) {
+        if (t <= 1e-6 || t > 1.0) return
+        if (x < viewportRect.left - 1e-6 || x > viewportRect.right + 1e-6) return
+        if (y < viewportRect.top - 1e-6 || y > viewportRect.bottom + 1e-6) return
+        if (t < bestT) {
+            bestT = t
+            best = Point(
+                x.coerceIn(viewportRect.left, viewportRect.right),
+                y.coerceIn(viewportRect.top, viewportRect.bottom)
+            )
+        }
+    }
+
+    if (abs(dx) > 1e-9) {
+        val leftT = (viewportRect.left - x0) / dx
+        addCandidate(leftT, viewportRect.left, y0 + leftT * dy)
+        val rightT = (viewportRect.right - x0) / dx
+        addCandidate(rightT, viewportRect.right, y0 + rightT * dy)
+    }
+    if (abs(dy) > 1e-9) {
+        val topT = (viewportRect.top - y0) / dy
+        addCandidate(topT, x0 + topT * dx, viewportRect.top)
+        val bottomT = (viewportRect.bottom - y0) / dy
+        addCandidate(bottomT, x0 + bottomT * dx, viewportRect.bottom)
+    }
+
+    return best
+}
+
+private fun offscreenMarkerPointOnPolyline(points: PointBuffer, viewportRect: DOMRect, forward: Boolean): Point? {
+    if (points.size < 2) return null
+    val range = if (forward) 1 until points.size else (points.size - 2 downTo 0)
+    var prevIndex = if (forward) 0 else points.size - 1
+    for (idx in range) {
+        val x0 = points.x(prevIndex)
+        val y0 = points.y(prevIndex)
+        val x1 = points.x(idx)
+        val y1 = points.y(idx)
+        val prevInside = pointInsideRect(x0, y0, viewportRect)
+        val nextInside = pointInsideRect(x1, y1, viewportRect)
+        if (prevInside && !nextInside) {
+            val crossing = segmentViewportCrossing(x0, y0, x1, y1, viewportRect) ?: return null
+            val len = hypot(crossing.x - x0, crossing.y - y0)
+            if (len < 1e-6) return crossing
+            val inset = min(OFFSCREEN_CONNECTION_INSET, len)
+            val f = (len - inset) / len
+            return Point(
+                x0 + (crossing.x - x0) * f,
+                y0 + (crossing.y - y0) * f
+            )
+        }
+        prevIndex = idx
+    }
+    return null
+}
+
 private fun drawFallbackBezier(a: ClippedResult, b: ClippedResult, svg: SVGElement, opacity: Double, color: String) {
     val sc = min(50.0, a.point.distance(b.point) / 3)
     path {
@@ -498,83 +780,118 @@ private fun drawFallbackBezier(a: ClippedResult, b: ClippedResult, svg: SVGEleme
     )
 }
 
-private fun filterConnection(key: String, target: List<Point>): List<Point> {
-    if (target.isEmpty()) return target
-    if (!target.all { it.isFinite() }) {
+private fun filterConnection(key: String, target: PointBuffer, scratch: ConnectionGeometryScratch): PointBuffer {
+    if (target.size == 0) return target
+    if (!target.allFinite()) {
         connectionFilterStates.remove(key)
         return target
     }
 
     val state = connectionFilterStates.getOrPut(key) { ConnectionFilterState() }
     val resampleCount = max(FILTER_RESAMPLE_COUNT, target.size)
-    val targetResampled = resamplePolyline(target, resampleCount)
-    if (!targetResampled.all { it.isFinite() }) {
+    resamplePolyline(target, resampleCount, scratch.resampled)
+    val targetResampled = scratch.resampled
+    if (!targetResampled.allFinite()) {
         connectionFilterStates.remove(key)
         return target
     }
 
-    if (state.filtered.isEmpty()) {
-        val straight = resamplePolyline(listOf(targetResampled.first(), targetResampled.last()), resampleCount)
-        state.filtered = straight
+    if (state.filtered.size == 0) {
+        state.filtered.ensureCapacity(resampleCount)
+        state.filtered.size = resampleCount
+        val x0 = targetResampled.x(0)
+        val y0 = targetResampled.y(0)
+        val x1 = targetResampled.x(targetResampled.size - 1)
+        val y1 = targetResampled.y(targetResampled.size - 1)
+        for (i in 0 until resampleCount) {
+            val f = if (resampleCount <= 1) 0.0 else i.toDouble() / (resampleCount - 1).toDouble()
+            state.filtered.set(i, x0 + (x1 - x0) * f, y0 + (y1 - y0) * f)
+        }
         needsFilterFrame = true
-        return straight
+        return state.filtered
     }
 
     val prev = state.filtered
-    val aligned = alignPolyline(prev, prev.first(), prev.last(), target.first(), target.last())
-    val alignedResampled = resamplePolyline(aligned, resampleCount)
-    if (!alignedResampled.all { it.isFinite() }) {
+    alignPolyline(
+        prev,
+        prev.x(0),
+        prev.y(0),
+        prev.x(prev.size - 1),
+        prev.y(prev.size - 1),
+        target.x(0),
+        target.y(0),
+        target.x(target.size - 1),
+        target.y(target.size - 1),
+        scratch.aligned
+    )
+    resamplePolyline(scratch.aligned, resampleCount, scratch.filtered)
+    val alignedResampled = scratch.filtered
+    if (!alignedResampled.allFinite()) {
         connectionFilterStates.remove(key)
         return target
     }
 
-    val blended = alignedResampled.mapIndexed { idx, prevPt ->
-        when (idx) {
-            0 -> targetResampled.first()
-            alignedResampled.lastIndex -> targetResampled.last()
-            else -> {
-                val t = targetResampled[idx]
-                Point(
-                    prevPt.x * (1 - FILTER_ALPHA) + t.x * FILTER_ALPHA,
-                    prevPt.y * (1 - FILTER_ALPHA) + t.y * FILTER_ALPHA
-                )
-            }
+    state.filtered.ensureCapacity(resampleCount)
+    state.filtered.size = resampleCount
+    for (idx in 0 until resampleCount) {
+        if (idx == 0 || idx == resampleCount - 1) {
+            state.filtered.set(idx, targetResampled.x(idx), targetResampled.y(idx))
+        } else {
+            val x = alignedResampled.x(idx) * (1 - FILTER_ALPHA) + targetResampled.x(idx) * FILTER_ALPHA
+            val y = alignedResampled.y(idx) * (1 - FILTER_ALPHA) + targetResampled.y(idx) * FILTER_ALPHA
+            state.filtered.set(idx, x, y)
         }
     }
 
-    if (!blended.all { it.isFinite() }) {
+    if (!state.filtered.allFinite()) {
         connectionFilterStates.remove(key)
         return target
     }
 
-    val maxDelta = blended.zip(targetResampled).maxOf { (a, b) -> hypot(a.x - b.x, a.y - b.y) }
+    var maxDelta = 0.0
+    for (idx in 0 until resampleCount) {
+        maxDelta = max(maxDelta, hypot(state.filtered.x(idx) - targetResampled.x(idx), state.filtered.y(idx) - targetResampled.y(idx)))
+    }
     if (maxDelta > FILTER_EPS) {
         needsFilterFrame = true
     }
 
-    state.filtered = blended
-    connectionFilterStates[key] = state
-    return blended
+    return state.filtered
 }
 
-private fun alignPolyline(points: List<Point>, oldStart: Point, oldEnd: Point, newStart: Point, newEnd: Point): List<Point> {
-    if (points.isEmpty()) return points
+private fun alignPolyline(
+    points: PointBuffer,
+    oldStartX: Double,
+    oldStartY: Double,
+    oldEndX: Double,
+    oldEndY: Double,
+    newStartX: Double,
+    newStartY: Double,
+    newEndX: Double,
+    newEndY: Double,
+    out: PointBuffer
+) {
+    out.clear()
+    if (points.size == 0) return
 
-    val oldDx = oldEnd.x - oldStart.x
-    val oldDy = oldEnd.y - oldStart.y
-    val newDx = newEnd.x - newStart.x
-    val newDy = newEnd.y - newStart.y
+    val oldDx = oldEndX - oldStartX
+    val oldDy = oldEndY - oldStartY
+    val newDx = newEndX - newStartX
+    val newDy = newEndY - newStartY
 
     val oldLen = hypot(oldDx, oldDy)
     val newLen = hypot(newDx, newDy)
+    out.ensureCapacity(points.size)
+    out.size = points.size
     if (oldLen < 1e-6 || newLen < 1e-6) {
-        return points.mapIndexed { idx, _ ->
+        for (idx in 0 until points.size) {
             when (idx) {
-                0 -> newStart
-                points.lastIndex -> newEnd
-                else -> newStart
+                0 -> out.set(idx, newStartX, newStartY)
+                points.size - 1 -> out.set(idx, newEndX, newEndY)
+                else -> out.set(idx, newStartX, newStartY)
             }
         }
+        return
     }
 
     val scale = newLen / oldLen
@@ -582,17 +899,16 @@ private fun alignPolyline(points: List<Point>, oldStart: Point, oldEnd: Point, n
     val cosA = cos(angle)
     val sinA = sin(angle)
 
-    val transformed = points.map { p ->
-        val px = (p.x - oldStart.x) * scale
-        val py = (p.y - oldStart.y) * scale
+    for (idx in 0 until points.size) {
+        val px = (points.x(idx) - oldStartX) * scale
+        val py = (points.y(idx) - oldStartY) * scale
         val rx = px * cosA - py * sinA
         val ry = px * sinA + py * cosA
-        Point(rx + newStart.x, ry + newStart.y)
-    }.toMutableList()
+        out.set(idx, rx + newStartX, ry + newStartY)
+    }
 
-    transformed[0] = newStart
-    transformed[transformed.lastIndex] = newEnd
-    return transformed
+    out.set(0, newStartX, newStartY)
+    out.set(out.size - 1, newEndX, newEndY)
 }
 
 private fun resamplePolyline(points: List<Point>, count: Int): List<Point> {
@@ -635,6 +951,53 @@ private fun resamplePolyline(points: List<Point>, count: Int): List<Point> {
     result[0] = points.first()
     result[result.lastIndex] = points.last()
     return result
+}
+
+private fun resamplePolyline(points: PointBuffer, count: Int, out: PointBuffer) {
+    out.clear()
+    if (points.size == 0) return
+    if (count <= 2) {
+        out.add(points.x(0), points.y(0))
+        out.add(points.x(points.size - 1), points.y(points.size - 1))
+        return
+    }
+
+    val lengths = DoubleArray(points.size)
+    for (i in 1 until points.size) {
+        lengths[i] = lengths[i - 1] + hypot(points.x(i) - points.x(i - 1), points.y(i) - points.y(i - 1))
+    }
+    val total = lengths[points.size - 1]
+    out.ensureCapacity(count)
+    out.size = count
+    if (total < 1e-6) {
+        for (idx in 0 until count) {
+            when (idx) {
+                0 -> out.set(idx, points.x(0), points.y(0))
+                count - 1 -> out.set(idx, points.x(points.size - 1), points.y(points.size - 1))
+                else -> out.set(idx, points.x(0), points.y(0))
+            }
+        }
+        return
+    }
+
+    val step = total / (count - 1)
+    var seg = 1
+    for (i in 0 until count) {
+        val targetDist = step * i
+        while (seg < lengths.size && lengths[seg] < targetDist) seg++
+        if (seg >= lengths.size) {
+            out.set(i, points.x(points.size - 1), points.y(points.size - 1))
+        } else {
+            val prevDist = lengths[seg - 1]
+            val nextDist = lengths[seg]
+            val ratio = if (nextDist - prevDist < 1e-9) 0.0 else (targetDist - prevDist) / (nextDist - prevDist)
+            val x = points.x(seg - 1) + (points.x(seg) - points.x(seg - 1)) * ratio
+            val y = points.y(seg - 1) + (points.y(seg) - points.y(seg - 1)) * ratio
+            out.set(i, x, y)
+        }
+    }
+    out.set(0, points.x(0), points.y(0))
+    out.set(out.size - 1, points.x(points.size - 1), points.y(points.size - 1))
 }
 
 private fun Point.isFinite(): Boolean = x.isFinite() && y.isFinite()
@@ -808,6 +1171,57 @@ fun sampleDubinsPath(path: DubinsPath, start: DubinsPose, step: Double = 2.0): L
     return poses
 }
 
+private fun sampleDubinsPathPoints(path: DubinsPath, start: DubinsPose, step: Double = 2.0, out: PointBuffer) {
+    out.clear()
+    var x = start.x
+    var y = start.y
+    var heading = start.heading
+    out.add(x, -y)
+
+    path.segments.forEach { seg ->
+        when (seg.type) {
+            DubinsSegmentType.S -> {
+                val dist = seg.length * path.radius
+                val count = max(1, ceil(dist / step).toInt())
+                val delta = dist / count
+                repeat(count) {
+                    x += delta * cos(heading)
+                    y += delta * sin(heading)
+                    out.add(x, -y)
+                }
+            }
+
+            DubinsSegmentType.L, DubinsSegmentType.R -> {
+                val dir = if (seg.type == DubinsSegmentType.L) 1.0 else -1.0
+                val angle = seg.length
+                val arcLen = angle * path.radius
+                val count = max(1, ceil(arcLen / step).toInt())
+                val centerX: Double
+                val centerY: Double
+                if (dir > 0) {
+                    centerX = x - path.radius * sin(heading)
+                    centerY = y + path.radius * cos(heading)
+                } else {
+                    centerX = x + path.radius * sin(heading)
+                    centerY = y - path.radius * cos(heading)
+                }
+                for (i in 1..count) {
+                    val newHeading = heading + dir * angle * (i.toDouble() / count.toDouble())
+                    if (dir > 0) {
+                        x = centerX + path.radius * sin(newHeading)
+                        y = centerY - path.radius * cos(newHeading)
+                    } else {
+                        x = centerX - path.radius * sin(newHeading)
+                        y = centerY + path.radius * cos(newHeading)
+                    }
+                    out.add(x, -y)
+                }
+                heading += dir * angle
+            }
+        }
+    }
+}
+
 fun screenToStandard(pose: DubinsPose) = DubinsPose(pose.x, -pose.y, -pose.heading)
 fun standardToScreen(pose: DubinsPose) = DubinsPose(pose.x, -pose.y, -pose.heading)
 
@@ -874,6 +1288,39 @@ fun midPose(sampled: List<DubinsPose>): DubinsPose {
     return sampled.last()
 }
 
+private fun midPose(sampled: PointBuffer): DubinsPose {
+    if (sampled.size == 0) error("Cannot compute mid pose from empty path")
+    if (sampled.size == 1) return DubinsPose(sampled.x(0), sampled.y(0), 0.0)
+
+    var total = 0.0
+    for (i in 1 until sampled.size) {
+        total += hypot(sampled.x(i) - sampled.x(i - 1), sampled.y(i) - sampled.y(i - 1))
+    }
+    if (total < 1e-6) return DubinsPose(sampled.x(0), sampled.y(0), 0.0)
+
+    val target = total / 2.0
+    var acc = 0.0
+    for (i in 1 until sampled.size) {
+        val x0 = sampled.x(i - 1)
+        val y0 = sampled.y(i - 1)
+        val x1 = sampled.x(i)
+        val y1 = sampled.y(i)
+        val seg = hypot(x1 - x0, y1 - y0)
+        if (acc + seg >= target) {
+            val f = (target - acc) / seg
+            val x = x0 + (x1 - x0) * f
+            val y = y0 + (y1 - y0) * f
+            val heading = if (seg < 1e-9) 0.0 else atan2(y1 - y0, x1 - x0)
+            return DubinsPose(x, y, heading)
+        }
+        acc += seg
+    }
+
+    val last = sampled.size - 1
+    val prev = max(0, last - 1)
+    return DubinsPose(sampled.x(last), sampled.y(last), atan2(sampled.y(last) - sampled.y(prev), sampled.x(last) - sampled.x(prev)))
+}
+
 
 class CanvasGestures(
     val launcher: (List<HTMLElement>) -> Unit,
@@ -904,6 +1351,8 @@ class CanvasGestures(
     private var cachedBoxByUid: Map<String, HTMLElement> = emptyMap()
     private var cachedWorldRects: Map<HTMLElement, DOMRect> = emptyMap()
     private var cachedDomBoxCount: Int = -1
+    private var connectionRebuildScheduled = false
+    private var pendingTranslationOnlyRebuild = true
 
     init {
         println("finding ${document.querySelector("#overlaycanvas")}")
@@ -980,6 +1429,18 @@ class CanvasGestures(
     fun invoke(name: String, builder: SVGElement.() -> Unit) {
         val circleLayer = getNamedSVGGroup(name)
         circleLayer.builder()
+    }
+
+    fun requestConnectionGroupRebuild(translationOnly: Boolean = false) {
+        pendingTranslationOnlyRebuild = pendingTranslationOnlyRebuild && translationOnly
+        if (connectionRebuildScheduled) return
+        connectionRebuildScheduled = true
+        window.requestAnimationFrame {
+            val scheduledTranslationOnly = pendingTranslationOnlyRebuild
+            connectionRebuildScheduled = false
+            pendingTranslationOnlyRebuild = true
+            rebuildConnectionGroup(translationOnly = scheduledTranslationOnly)
+        }
     }
 
 
@@ -1082,10 +1543,12 @@ class CanvasGestures(
                     addHintLine(x1, edgeY, x2, edgeY)
                 }
             }
-        }
+	        }
 
-        val mainViewportRect = DOMRect(-ox, -oy, vbw, vbh)
-        val nestedDisclosureSnapshotCache = mutableMapOf<String, NestedDisclosureSnapshot>()
+	        val mainViewportRect = DOMRect(-ox, -oy, vbw, vbh)
+	        currentConnectionViewportRect = mainViewportRect
+
+	        val nestedDisclosureSnapshotCache = mutableMapOf<String, NestedDisclosureSnapshot>()
         fun nestedDisclosureSnapshot(parentUid: String): NestedDisclosureSnapshot = nestedDisclosureSnapshotCache.getOrPut(parentUid) {
             val parentBox = cachedBoxByUid[parentUid] ?: return@getOrPut NestedDisclosureSnapshot(
                 isOpen = false,
@@ -1212,10 +1675,10 @@ class CanvasGestures(
                             // Re-check identity after potential proxy overrides
                             if (effectiveRenderedFrom == effectiveRenderedTo) return@forEach
 
-                            var o1 = 1.0
-                            if (to.asDynamic().offline ) o1 = 0.25
+	                            var o1 = 1.0
+	                            if (to.asDynamic().offline ) o1 = 0.25
 
-                            when {
+	                            when {
                                 effectiveFromProxy != null && effectiveToProxy != null -> {
                                     (knownProxyConnectionsBoth[connectionName] ?: knownConnections[connectionName])?.invoke(
                                         from,
@@ -1279,15 +1742,16 @@ class CanvasGestures(
 
         val obsolete = connectionFilterStates.keys - currentFrameKeys
         obsolete.forEach { connectionFilterStates.remove(it) }
-        currentConnectionSelectedUids = emptySet()
-        currentFrontMarkerLayer = null
-        currentFrontMarkerDefs = null
+	        currentConnectionSelectedUids = emptySet()
+	        currentFrontMarkerLayer = null
+	        currentFrontMarkerDefs = null
+	        currentConnectionViewportRect = null
 
         if (needsFilterFrame && !filterFrameScheduled) {
             filterFrameScheduled = true
             window.requestAnimationFrame {
                 filterFrameScheduled = false
-                rebuildConnectionGroup(translationOnly = translationOnly)
+                requestConnectionGroupRebuild(translationOnly = translationOnly)
             }
         }
     }

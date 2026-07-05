@@ -355,6 +355,56 @@ try {
 }
 """
 
+TOAST_RESTACK_JS = r"""
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const errors = [];
+const onError = (event) => errors.push(String(event.error && (event.error.stack || event.error.message) || event.message || event));
+window.addEventListener("error", onError);
+const waitFor = async (predicate, timeoutMs = 5000) => {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const value = predicate();
+    if (value) return value;
+    await delay(50);
+  }
+  return predicate();
+};
+const toastBottoms = () => [...document.querySelectorAll(".field-toast")]
+  .filter((node) => !node.classList.contains("field-toast-exit"))
+  .map((node) => Number.parseFloat(getComputedStyle(node).bottom || node.style.bottom || "0") || 0);
+try {
+  [...document.querySelectorAll(".bubble, .field-toast")].forEach((node) => node.remove());
+  if (typeof window.notify !== "function") return { ok: false, reason: "notify missing", errors };
+
+  for (let i = 0; i < 5; i++) {
+    window.notify(`toast ${i}`, `toast-${i}`);
+  }
+  await waitFor(() => toastBottoms().length >= 5, 2000);
+  await delay(300);
+  window.notify("toast 5", "toast-5");
+  await waitFor(() => toastBottoms().length >= 5, 2000);
+  await delay(350);
+
+  const bottoms = toastBottoms().sort((a, b) => a - b);
+  const first = bottoms[0] ?? 0;
+  const deltas = bottoms.slice(1).map((value, index) => value - bottoms[index]);
+  const result = {
+    count: bottoms.length,
+    bottoms,
+    first,
+    deltas,
+    errors,
+  };
+  result.ok = result.count >= 4 &&
+    Math.abs(first - 18) <= 1.5 &&
+    result.deltas.every((delta) => delta >= 8) &&
+    result.errors.length === 0;
+  return result;
+} finally {
+  window.removeEventListener("error", onError);
+}
+"""
+
 COMMAND_PALETTE_SMOKE_SWEEP_JS = r"""
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const errors = [];
@@ -951,6 +1001,131 @@ try {
     result.targetWidth > 0 &&
     result.targetHeight > 0 &&
     result.hasOutput &&
+    result.errors.length === 0;
+  return result;
+} finally {
+  window.removeEventListener("error", onError);
+}
+"""
+
+SELECTION_SUBTITLE_BOX_JS = r"""
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const errors = [];
+const onError = (event) => errors.push(String(event.error && (event.error.stack || event.error.message) || event.message || event));
+window.addEventListener("error", onError);
+const waitFor = async (predicate, timeoutMs = 3000) => {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const value = predicate();
+    if (value) return value;
+    await delay(75);
+  }
+  return predicate();
+};
+try {
+  const target =
+    [...document.querySelectorAll(".box")].find((candidate) => String(candidate.textContent || "").includes("SelectionSubtitleRegression")) ||
+    (window.selectedList && window.selectedList[0]) ||
+    null;
+  if (!target) return { ok: false, reason: "test box missing", boxCount: document.querySelectorAll(".box").length, errors };
+
+  if (typeof window.selectBox === "function") window.selectBox(target);
+  if (typeof window.selectionContextChanged === "function") window.selectionContextChanged();
+
+  const pathText = await waitFor(() => target.querySelector(".file-proxy-path")?.textContent?.trim() || "", 3000);
+  const selectedBefore = getComputedStyle(target, "::before");
+  const beforeBorderWidthPx = Number.parseFloat(selectedBefore.borderTopWidth || selectedBefore.borderWidth || "0") || 0;
+  const boxStyle = getComputedStyle(target);
+  const result = {
+    selected: target.classList.contains("selected"),
+    fileProxyBox: target.classList.contains("file-proxy-box"),
+    pathText,
+    beforeBorderColor: selectedBefore.borderColor,
+    beforeBorderWidth: selectedBefore.borderWidth,
+    beforeBorderWidthPx,
+    beforeIsSelectedColor: /72,\s*201,\s*255/.test(selectedBefore.borderColor),
+    boxBorderColor: boxStyle.borderColor,
+    boxIsSelectedColor: /72,\s*201,\s*255/.test(boxStyle.borderColor),
+    errors,
+  };
+  result.ok = result.selected &&
+    result.fileProxyBox &&
+    !!result.pathText &&
+    result.boxIsSelectedColor &&
+    !result.beforeIsSelectedColor &&
+    result.beforeBorderWidthPx >= 4 &&
+    result.errors.length === 0;
+  return result;
+} finally {
+  window.removeEventListener("error", onError);
+}
+"""
+
+LANGUAGE_SELECTION_CUSTOMIZATION_JS = r"""
+const title = this.querySelector('.box-title-stack') || this;
+let label = this.querySelector('[data-afield-language-label="true"]');
+if (!label) {
+    label = document.createElement('div');
+    label.setAttribute('data-afield-language-label', 'true');
+    title.appendChild(label);
+}
+label.textContent = "Python";
+label.style.fontSize = "9px";
+label.style.lineHeight = "1.1";
+label.style.opacity = "0.58";
+label.style.fontWeight = "500";
+label.style.letterSpacing = "0";
+label.style.textTransform = "none";
+label.style.pointerEvents = "none";
+label.style.userSelect = "none";
+label.style.marginTop = "1px";
+this.style.margin = "";
+"""
+
+LANGUAGE_SELECTION_BOX_JS = r"""
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const errors = [];
+const onError = (event) => errors.push(String(event.error && (event.error.stack || event.error.message) || event.message || event));
+window.addEventListener("error", onError);
+const waitFor = async (predicate, timeoutMs = 3000) => {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const value = predicate();
+    if (value) return value;
+    await delay(75);
+  }
+  return predicate();
+};
+try {
+  const target =
+    [...document.querySelectorAll(".box")].find((candidate) => String(candidate.textContent || "").includes("LanguageSelectionRegression")) ||
+    (window.selectedList && window.selectedList[0]) ||
+    null;
+  if (!target) return { ok: false, reason: "test box missing", boxCount: document.querySelectorAll(".box").length, errors };
+
+  await waitFor(() => target.querySelector('[data-afield-language-label="true"]')?.textContent?.trim() === "Python", 3000);
+  if (typeof window.selectBox === "function") window.selectBox(target);
+  if (typeof window.selectionContextChanged === "function") window.selectionContextChanged();
+
+  const selectedBefore = getComputedStyle(target, "::before");
+  const boxStyle = getComputedStyle(target);
+  const result = {
+    selected: target.classList.contains("selected"),
+    label: target.querySelector('[data-afield-language-label="true"]')?.textContent?.trim() || "",
+    borderStyle: boxStyle.borderTopStyle,
+    borderWidth: boxStyle.borderTopWidth,
+    borderColor: boxStyle.borderColor,
+    boxIsSelectedColor: /72,\s*201,\s*255/.test(boxStyle.borderColor),
+    beforeBorderColor: selectedBefore.borderColor,
+    beforeIsSelectedColor: /72,\s*201,\s*255/.test(selectedBefore.borderColor),
+    errors,
+  };
+  result.ok = result.selected &&
+    result.label === "Python" &&
+    result.borderStyle !== "none" &&
+    result.borderWidth !== "0px" &&
+    result.boxIsSelectedColor &&
+    !result.beforeIsSelectedColor &&
     result.errors.length === 0;
   return result;
 } finally {
@@ -1725,10 +1900,14 @@ def prepare_generated_files() -> dict[str, Path]:
         "editor_open_edit_sync_js": write_generated_file("editor-open-edit-sync.js", EDITOR_OPEN_EDIT_SYNC_JS),
         "insert_stack_marker_js": write_generated_file("insert-stack-marker.js", INSERT_STACK_MARKER_JS),
         "output_area_basics_js": write_generated_file("output-area-basics.js", OUTPUT_AREA_BASICS_JS),
+        "toast_restack_js": write_generated_file("toast-restack.js", TOAST_RESTACK_JS),
         "controllers_editable_lines_js": write_generated_file("controllers-editable-lines.js", CONTROLLERS_EDITABLE_LINES_JS),
         "controllers_static_lines_js": write_generated_file("controllers-static-lines.js", CONTROLLERS_STATIC_LINES_JS),
         "controllers_control_group_js": write_generated_file("controllers-control-group.js", CONTROLLERS_CONTROL_GROUP_JS),
         "selection_screenshot_backdoor_js": write_generated_file("selection-screenshot-backdoor.js", SELECTION_SCREENSHOT_BACKDOOR_JS),
+        "selection_subtitle_box_js": write_generated_file("selection-subtitle-box.js", SELECTION_SUBTITLE_BOX_JS),
+        "language_selection_customization_js": write_generated_file("language-selection-customization.js", LANGUAGE_SELECTION_CUSTOMIZATION_JS),
+        "language_selection_box_js": write_generated_file("language-selection-box.js", LANGUAGE_SELECTION_BOX_JS),
         "history_panel_open_js": write_generated_file("history-panel-open.js", HISTORY_PANEL_OPEN_JS),
         "history_panel_close_js": write_generated_file("history-panel-close.js", HISTORY_PANEL_CLOSE_JS),
         "macro_transcript_panel_js": write_generated_file("macro-transcript-panel.js", MACRO_TRANSCRIPT_PANEL_JS),
@@ -1806,6 +1985,15 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--uid", "@last", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="toast-restack",
+            description="Notification toasts restack to the bottom-left after older toasts expire.",
+            commands=[
+                "sleep 0.5",
+                shell_join(["page-eval", "--body", "--file", str(files["toast_restack_js"]), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="controllers-editable-lines-output",
             description="/controllers outputs render editable lines without resize/flicker feedback loops.",
             commands=[
@@ -1853,6 +2041,29 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 shell_join(["screenshot-editor", "@last", str(BUILD_ROOT / "scratch" / "selection-screenshot-backdoor-editor.png"), "--padding", "10", "--no-pan", "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--uid", "@last", "--with-editor", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="selection-highlight-file-proxy",
+            description="Selected file-proxy boxes keep the visible selection ring on the box outline even with a subtitle.",
+            commands=[
+                "new-box --name SelectionSubtitleRegression",
+                shell_join(["set", "@last", "file_proxy_mode", "absolute"]),
+                shell_join(["set", "@last", "file_proxy_path", "/tmp/selection-subtitle-regression.txt"]),
+                "sleep 0.5",
+                shell_join(["page-eval", "--body", "--file", str(files["selection_subtitle_box_js"]), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="selection-highlight-language-box",
+            description="Selected non-Kotlin language boxes keep the normal selection border while showing the language label.",
+            commands=[
+                "new-box --name LanguageSelectionRegression",
+                shell_join(["set", "@last", "customization", "--file", str(files["language_selection_customization_js"])]),
+                "sleep 0.5",
+                shell_join(["page-eval", "--body", "--file", str(files["language_selection_box_js"]), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
         ),
         UiRegression(
             id="history-panel",

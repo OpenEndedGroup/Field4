@@ -30,7 +30,7 @@ On macOS and Linux:
 On Windows:
 
 ```powershell
-.\gradlew.bat runDesktop
+.\field.ps1
 ```
 
 ## OpenAI Features
@@ -51,7 +51,7 @@ On Windows PowerShell:
 
 ```powershell
 $env:OPENAI_API_KEY = "sk-..."
-.\gradlew.bat runDesktop
+.\field.ps1
 ```
 
 For a persistent local setup, add the export line to your shell profile, such
@@ -102,6 +102,10 @@ Run browser UI regressions:
 ```bash
 uv run --project . --group backdoor python tools/run_ui_regressions.py --port 9490 --timeout 45
 ```
+
+Browser screenshots and UI regressions use Field's JVM/server-owned Playwright
+through the backdoor. The Python `playwright` package is not required in the
+repo `uv` environment for these checks.
 
 Build the documentation site without regenerating screenshots:
 

@@ -551,6 +551,9 @@ var canvasGestures = CanvasGestures(launcher = {
     w.rebuildConnectionGroup = { translationOnly: dynamic ->
         it.rebuildConnectionGroup((translationOnly as? Boolean) ?: false)
     }
+    w.requestConnectionGroupRebuild = { translationOnly: dynamic ->
+        it.requestConnectionGroupRebuild((translationOnly as? Boolean) ?: false)
+    }
 }
 
 var selected = mutableSetOf<HTMLElement>()
@@ -1850,7 +1853,7 @@ private fun applyViewportTranslation(
         )
     }
 
-    canvasGestures.rebuildConnectionGroup(translationOnly = true)
+    canvasGestures.requestConnectionGroupRebuild(translationOnly = true)
     repositionSlideNoteOverlayIfVisible()
     if (refreshSpatial && spatialNavActive) {
         refreshSpatialNavTargets()
@@ -3992,14 +3995,8 @@ suspend fun main() {
         clearFocusedEditorOutputs()
     }
 
-    var connectionGroupRebuildScheduled = false
     fun requestConnectionGroupRebuild() {
-        if (connectionGroupRebuildScheduled) return
-        connectionGroupRebuildScheduled = true
-        window.setTimeout({
-            connectionGroupRebuildScheduled = false
-            canvasGestures.rebuildConnectionGroup()
-        }, 0)
+        canvasGestures.requestConnectionGroupRebuild()
     }
 
     doubleTap["Shift"] = {
@@ -5179,7 +5176,7 @@ suspend fun main() {
 
             send(Message("set-viewport").payload(Set_rect(uid="root", property="viewport", Rect(x.toDouble(),y.toDouble(), window.innerWidth.toDouble(), window.innerHeight.toDouble()))))
 
-            canvasGestures.rebuildConnectionGroup(translationOnly = true)
+            canvasGestures.requestConnectionGroupRebuild(translationOnly = true)
             repositionSlideNoteOverlayIfVisible()
             if (spatialNavActive) {
                 refreshSpatialNavTargets()
@@ -5222,7 +5219,7 @@ suspend fun main() {
 
             send(Message("set-viewport").payload(Set_rect(uid="root", property="viewport", Rect(x.toDouble(),y.toDouble(), window.innerWidth.toDouble(), window.innerHeight.toDouble()))))
 
-            canvasGestures.rebuildConnectionGroup(translationOnly = true)
+            canvasGestures.requestConnectionGroupRebuild(translationOnly = true)
             repositionSlideNoteOverlayIfVisible()
             if (spatialNavActive) {
                 refreshSpatialNavTargets()
@@ -5731,13 +5728,14 @@ suspend fun main() {
                 event.target = reorient(it)
                 if (event.target) {
                     moveHandler(event)?.let { next ->
+                        applyFrameToBox(event.target as HTMLElement, next.value)
                         pending.add(next)
                     }
                 }
             }
             if (pending.isNotEmpty()) {
                 send(Message("set-rects").payload(Set_rects(pending)))
-                canvasGestures.rebuildConnectionGroup()
+                canvasGestures.requestConnectionGroupRebuild()
             }
         }
     }))
@@ -5947,7 +5945,7 @@ fun TagConsumer<HTMLElement>.createBox(
             position = Position.absolute
             color = rgb(255, 255, 255, 0.8)
             borderRadius = 5.px
-            backdropFilter = "blur(4px)"
+            backdropFilter = "blur(3px)"
             border = Border(1.px, BorderStyle.solid, rgb(255, 255, 255, 0.0))
             backgroundColor = rgb(50, 50, 50, 0.5)
             display = Display.flex

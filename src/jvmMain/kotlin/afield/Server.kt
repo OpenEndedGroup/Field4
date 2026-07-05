@@ -16,6 +16,8 @@ import afield.graphics.getFLineEditSession
 import afield.logger.lblock
 import afield.logger.lprint
 import afield.logger.lprintln
+import afield.python.PythonInterface
+import afield.python.PythonSettingsRequest
 import afield.server.refreshFileProxyBoxes
 import afield.server.installControllerRoutes
 import afield.server.broadcastControllerControlUpdates
@@ -734,9 +736,33 @@ private fun relaunchWithWorkspace(workspace: String) {
     if (wrapper.exists()) {
         val logFile = workspaceRestartLogFile()
         logFile.parentFile?.mkdirs()
+        val launcher = File(projectDir, "field.sh")
+        val powershellLauncher = File(projectDir, "field.ps1")
         val processBuilder = if (isWindows) {
-            ProcessBuilder("cmd", "/c", "start", "\"Field4\"", wrapper.absolutePath, "runDesktop")
-                .directory(projectDir)
+            if (powershellLauncher.exists()) {
+                ProcessBuilder(
+                    "cmd",
+                    "/c",
+                    "start",
+                    "\"Field4\"",
+                    "powershell.exe",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-File",
+                    powershellLauncher.absolutePath
+                ).directory(projectDir)
+            } else {
+                ProcessBuilder("cmd", "/c", "start", "\"Field4\"", wrapper.absolutePath, "runDesktop")
+                    .directory(projectDir)
+            }
+        } else if (launcher.exists()) {
+            ProcessBuilder(
+                "sh",
+                "-c",
+                "nohup ./field.sh >> \"\$1\" 2>&1 < /dev/null &",
+                "field4-relaunch",
+                logFile.absolutePath
+            ).directory(projectDir)
         } else {
             ProcessBuilder(
                 "sh",
@@ -777,11 +803,35 @@ private fun launchFieldDesktopFromProject(projectDir: File, reason: String) {
     if (!wrapper.exists()) {
         throw IllegalArgumentException("No Gradle wrapper found in ${canonicalProject.absolutePath}")
     }
+    val launcher = File(canonicalProject, "field.sh")
+    val powershellLauncher = File(canonicalProject, "field.ps1")
     val logFile = workspaceRestartLogFile()
     logFile.parentFile?.mkdirs()
     val processBuilder = if (isWindows) {
-        ProcessBuilder("cmd", "/c", "start", "\"Field4\"", wrapper.absolutePath, "runDesktop")
-            .directory(canonicalProject)
+        if (powershellLauncher.exists()) {
+            ProcessBuilder(
+                "cmd",
+                "/c",
+                "start",
+                "\"Field4\"",
+                "powershell.exe",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                powershellLauncher.absolutePath
+            ).directory(canonicalProject)
+        } else {
+            ProcessBuilder("cmd", "/c", "start", "\"Field4\"", wrapper.absolutePath, "runDesktop")
+                .directory(canonicalProject)
+        }
+    } else if (launcher.exists()) {
+        ProcessBuilder(
+            "sh",
+            "-c",
+            "nohup ./field.sh >> \"\$1\" 2>&1 < /dev/null &",
+            "field4-worktree-relaunch",
+            logFile.absolutePath
+        ).directory(canonicalProject)
     } else {
         ProcessBuilder(
             "sh",
@@ -2888,6 +2938,7 @@ class Server {
                                     preferences,
                                     projects,
                                     currentRuntimeInfo(),
+                                    PythonInterface.currentPythonSettingsStatus(),
                                     CompletionDocPolishMonitor.status(),
                                     AiToolUseImprovementMonitor.status(),
                                     CodeUseTelemetryService.summary()
@@ -3046,6 +3097,24 @@ class Server {
                             call.respond(CodeUseTelemetryService.unresolved(limit))
                         }
 
+                        post("/api/code-use/analyze") {
+                            try {
+                                val request = call.receive<CodeUseSemanticAnalyzeRequest>()
+                                call.respond(CodeUseTelemetryService.semanticAnalyzeCode(request))
+                            } catch (e: IllegalArgumentException) {
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf("error" to (e.message ?: "invalid code-use semantic analysis request"))
+                                )
+                            } catch (e: Exception) {
+                                lprintln("error,server", "Code-use semantic analysis failed: ${e.message}")
+                                call.respond(
+                                    HttpStatusCode.InternalServerError,
+                                    mapOf("error" to "Code-use semantic analysis failed")
+                                )
+                            }
+                        }
+
                         get("/api/maven-classpath") {
                             call.respond(MavenClasspathManager.status())
                         }
@@ -3180,6 +3249,30 @@ class Server {
                                 call.respond(
                                     HttpStatusCode.InternalServerError,
                                     mapOf("error" to "could not save AI settings")
+                                )
+                            }
+                        }
+
+                        get("/api/python-settings") {
+                            call.respond(PythonInterface.currentPythonSettingsStatus())
+                        }
+
+                        post("/api/python-settings") {
+                            try {
+                                val request = call.receive<PythonSettingsRequest>()
+                                call.respond(PythonInterface.savePythonSettings(request))
+                            } catch (e: IllegalArgumentException) {
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf("error" to (e.message ?: "invalid Python settings"))
+                                )
+                            } catch (e: SerializationException) {
+                                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "invalid Python settings payload"))
+                            } catch (e: Exception) {
+                                lprintln("error,server", "saving Python settings failed: ${e.message}")
+                                call.respond(
+                                    HttpStatusCode.InternalServerError,
+                                    mapOf("error" to "could not save Python settings")
                                 )
                             }
                         }

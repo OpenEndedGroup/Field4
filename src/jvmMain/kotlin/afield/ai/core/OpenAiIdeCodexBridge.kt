@@ -16,6 +16,8 @@ import com.openai.models.conversations.items.ItemCreateParams
 import com.openai.models.responses.*
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.ceil
+import kotlin.math.min
 
 class OpenAiIdeCodexBridge(
     private val runtimeConfig: AiProviderRuntimeConfig = activeAiProviderRuntimeConfig(),
@@ -37,6 +39,16 @@ class OpenAiIdeCodexBridge(
             .summary(Reasoning.Summary.DETAILED)
             .build()
     private val statelessHistory = ConcurrentHashMap<String, MutableList<ResponseInputItem>>()
+    private val maxRateLimitRetries: Int =
+        (System.getenv("AFIELD_AI_RATE_LIMIT_RETRIES") ?: System.getProperty("afield.ai.rateLimitRetries") ?: "4")
+            .toIntOrNull()
+            ?.coerceIn(0, 12)
+            ?: 4
+    private val maxRateLimitDelayMs: Long =
+        (System.getenv("AFIELD_AI_RATE_LIMIT_MAX_DELAY_MS") ?: System.getProperty("afield.ai.rateLimitMaxDelayMs") ?: "30000")
+            .toLongOrNull()
+            ?.coerceIn(250L, 300_000L)
+            ?: 30_000L
     private fun info(message: String) = log.log("info,ai.bridge", message)
     private fun warn(message: String) = log.log("warning,ai.bridge", message)
     private fun error(message: String) = log.log("error,ai.bridge", message)
@@ -601,7 +613,12 @@ class OpenAiIdeCodexBridge(
         client.conversations().items().create(conversationId, params)
     }
 
-    private fun createResponse(params: ResponseCreateParams, onTextDelta: ((String) -> Unit)?): Response {
+    private fun createResponse(params: ResponseCreateParams, onTextDelta: ((String) -> Unit)?): Response =
+        withRateLimitRetry("response-create") {
+            createResponseOnce(params, onTextDelta)
+        }
+
+    private fun createResponseOnce(params: ResponseCreateParams, onTextDelta: ((String) -> Unit)?): Response {
         if (onTextDelta == null) {
             return try {
                 client.responses().create(params)
@@ -623,6 +640,10 @@ class OpenAiIdeCodexBridge(
 
             acc.response()
         } catch (t: Throwable) {
+            if (rateLimitRetryDelayMs(t) != null) {
+                traceResponseError("streaming", t)
+                throw t
+            }
             val rendered = renderThrowableChain(t)
             warn(
                 "streaming response failed; falling back to non-streaming create. " +
@@ -636,6 +657,44 @@ class OpenAiIdeCodexBridge(
             }
         }
     }
+
+    private fun withRateLimitRetry(stage: String, block: () -> Response): Response {
+        var attempt = 0
+        var lastError: Throwable? = null
+        while (attempt <= maxRateLimitRetries) {
+            try {
+                return block()
+            } catch (t: Throwable) {
+                lastError = t
+                val delayMs = rateLimitRetryDelayMs(t)
+                if (delayMs == null || attempt >= maxRateLimitRetries) {
+                    if (delayMs != null) {
+                        warn(
+                            "$stage rate-limit retry budget exhausted after ${attempt + 1} attempt(s); " +
+                                "last suggested delay=${delayMs}ms"
+                        )
+                    }
+                    throw t
+                }
+                val boundedDelay = min(delayMs, maxRateLimitDelayMs)
+                warn(
+                    "$stage rate limited; retrying in ${boundedDelay}ms " +
+                        "(attempt ${attempt + 2}/${maxRateLimitRetries + 1}, suggested*1.5=${delayMs}ms)"
+                )
+                try {
+                    Thread.sleep(boundedDelay)
+                } catch (_: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                    throw t
+                }
+                attempt++
+            }
+        }
+        throw lastError ?: IllegalStateException("$stage failed without an exception")
+    }
+
+    private fun rateLimitRetryDelayMs(t: Throwable): Long? =
+        retryDelayMsForRateLimitMessage(renderThrowableChain(t), multiplier = 1.5)
 
     private fun traceResponseError(stage: String, error: Throwable) {
         val rendered = renderThrowableChain(error)
@@ -1113,6 +1172,18 @@ class OpenAiIdeCodexBridge(
                 )
             ) ?: throw IllegalStateException("CodeUseRelatedSourceForCode not available for this request.")
         }
+        tools.register(CodeUseSemanticAnalyzeCodeRequest::class.java) { ctx, req ->
+            ctx.codeUseQuery?.invoke(
+                CodeUseQueryRequest(
+                    kind = "semantic-analyze",
+                    code = req.code,
+                    sourceName = req.sourceName,
+                    limit = req.limit,
+                    callersPerSymbol = req.callersPerSymbol,
+                    sourceRadiusLines = req.sourceRadiusLines
+                )
+            ) ?: throw IllegalStateException("CodeUseSemanticAnalyzeCode not available for this request.")
+        }
         tools.register(CodeUseHotSymbolsRequest::class.java) { ctx, req ->
             ctx.codeUseQuery?.invoke(
                 CodeUseQueryRequest(
@@ -1157,6 +1228,37 @@ class OpenAiIdeCodexBridge(
     }
 
     companion object {
+        internal fun retryDelayMsForRateLimitMessage(message: String, multiplier: Double = 1.5): Long? {
+            if (!message.contains("429") && !message.contains("rate limit", ignoreCase = true)) return null
+            val hintedMs = retryHintMs(message) ?: return null
+            return ceil(hintedMs * multiplier).toLong().coerceAtLeast(1L)
+        }
+
+        private fun retryHintMs(message: String): Double? {
+            val ms = Regex("""(?i)(?:try\s+again\s+in|retry\s+after)\s+([0-9]+(?:\.[0-9]+)?)\s*ms\b""")
+                .find(message)
+                ?.groupValues
+                ?.getOrNull(1)
+                ?.toDoubleOrNull()
+            if (ms != null) return ms
+
+            val seconds = Regex("""(?i)(?:try\s+again\s+in|retry\s+after)\s+([0-9]+(?:\.[0-9]+)?)\s*s(?:ec(?:ond)?s?)?\b""")
+                .find(message)
+                ?.groupValues
+                ?.getOrNull(1)
+                ?.toDoubleOrNull()
+            if (seconds != null) return seconds * 1000.0
+
+            val retryAfterSeconds = Regex("""(?i)\bretry-after\s*[:=]\s*([0-9]+(?:\.[0-9]+)?)\b""")
+                .find(message)
+                ?.groupValues
+                ?.getOrNull(1)
+                ?.toDoubleOrNull()
+            if (retryAfterSeconds != null) return retryAfterSeconds * 1000.0
+
+            return null
+        }
+
         val defaultThreadInstructions: String = """
 You are an IDE-embedded code assistant working in a novel live-coding environment.
 Return only code for the current file in responses (no markdown fences, no diffs, no prose).

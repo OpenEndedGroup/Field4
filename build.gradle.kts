@@ -857,7 +857,11 @@ kotlin {
 
 //// include JS artifacts in any JAR we generate
 tasks.named<Jar>("jvmJar").configure {
-    val taskName = if (project.hasProperty("isProduction")
+    val productionJs = providers.gradleProperty("isProduction")
+        .map(String::toBoolean)
+        .orElse(false)
+        .get()
+    val taskName = if (productionJs
         || project.gradle.startParameter.taskNames.contains("installDist")
     ) {
         "jsBrowserProductionWebpack"

@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="color-scheme" content="dark">
     <title>Field Code Use</title>
+    <script>
+        document.title = "Field Code Use";
+    </script>
     <link rel="preload" href="/woff2/iosevka-regular.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/iosevka.css" as="style">
     <link rel="stylesheet" href="/iosevka.css">
@@ -89,8 +92,11 @@
 
         .summary-grid {
             display: grid;
-            grid-template-columns: repeat(6, minmax(0, 1fr));
+            grid-template-columns: repeat(8, minmax(0, 1fr));
             gap: 8px;
+            width: 100%;
+            min-width: 0;
+            padding: 0 5px;
         }
 
         .metric {
@@ -124,7 +130,7 @@
 
         .panel-header {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
+            grid-template-columns: auto minmax(0, 1fr);
             gap: 8px;
             align-items: center;
             margin-bottom: 10px;
@@ -135,6 +141,13 @@
             font-size: 15px;
             font-weight: 400;
             color: var(--cyan);
+            white-space: nowrap;
+        }
+
+        .panel-header .muted {
+            min-width: 0;
+            overflow-wrap: anywhere;
+            text-align: right;
         }
 
         .tabs {
@@ -180,10 +193,65 @@
         }
 
         td.code {
-            white-space: pre-wrap;
-            overflow-wrap: anywhere;
+            max-width: min(440px, 42vw);
+        }
+
+        .code-block {
+            margin: 0;
+            max-width: 100%;
+            max-height: 360px;
+            overflow: auto;
+            white-space: pre;
             color: rgba(235, 240, 246, 0.94);
-            max-width: 420px;
+            background: rgba(0, 0, 0, 0.24);
+            border-radius: 6px;
+            padding: 8px;
+        }
+
+        .code-block code {
+            display: block;
+            padding: 0;
+            background: transparent !important;
+            color: inherit;
+            white-space: pre;
+        }
+
+        .hljs {
+            color: #d7dce2;
+            background: transparent !important;
+        }
+
+        .hljs-keyword,
+        .hljs-built_in,
+        .hljs-selector-tag,
+        .hljs-type {
+            color: #7aa2f7;
+        }
+
+        .hljs-title,
+        .hljs-title.class_,
+        .hljs-title.function_ {
+            color: #d2a8ff;
+        }
+
+        .hljs-string,
+        .hljs-attr,
+        .hljs-regexp {
+            color: #8ccf7e;
+        }
+
+        .hljs-number,
+        .hljs-literal,
+        .hljs-variable,
+        .hljs-operator {
+            color: #79c0ff;
+        }
+
+        .hljs-comment,
+        .hljs-code,
+        .hljs-formula {
+            color: #7b8491;
+            font-style: italic;
         }
 
         .ok {
@@ -298,6 +366,12 @@
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
         }
+
+        @media (min-width: 921px) and (max-width: 1180px) {
+            .summary-grid {
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+            }
+        }
     </style>
 </head>
 <body>
@@ -305,7 +379,7 @@
     <section class="topbar">
         <div>
             <h1>Code-use telemetry</h1>
-            <div class="subtitle">Executed snippets, runtime outcomes, launch lifecycle, and the future K2 symbol index.</div>
+            <div class="subtitle">Executed snippets, runtime outcomes, launch lifecycle, and background symbol-use analysis.</div>
         </div>
         <div class="tabs" role="group" aria-label="Views">
             <button type="button" data-tab="timeline" aria-pressed="true">Timeline</button>
@@ -324,6 +398,33 @@
         <div class="metric"><span>Evals</span><strong id="metric-evals">0</strong></div>
         <div class="metric"><span>Lifecycle</span><strong id="metric-launches">0</strong></div>
         <div class="metric"><span>Dropped</span><strong id="metric-dropped">0</strong></div>
+        <div class="metric"><span>Analyzer</span><strong id="metric-analyzer">source-index</strong></div>
+        <div class="metric"><span>Evidence</span><strong id="metric-confidence">0% K2</strong></div>
+        <div class="metric"><span>Analysis Queue</span><strong id="metric-analysis-queue">0</strong></div>
+    </section>
+
+    <section class="panel" id="ai4-chat-panel">
+        <div class="panel-header">
+            <h2>AI4 Code-use Chat</h2>
+            <div id="chat-status" class="muted">disconnected</div>
+        </div>
+        <div class="chat-layout">
+            <div>
+                <div id="chat-log" class="chat-log" aria-live="polite">
+                    <div class="empty">Ask AI4 about the code-use database, semantic source lookup, hot symbols, failure evidence, or related Field source.</div>
+                </div>
+                <form id="chat-form" class="chat-input-row">
+                    <textarea id="chat-input" autocomplete="off" spellcheck="false" placeholder="Ask AI4 to inspect the code-use database..."></textarea>
+                    <button id="chat-send" type="submit">Send</button>
+                </form>
+            </div>
+            <div class="prompt-list" aria-label="Prompt starters">
+                <button type="button" data-prompt="Summarize the most recent compiler/runtime failures in the code-use telemetry. Which look like Field source or documentation growth points?">Recent failures</button>
+                <button type="button" data-prompt="What Field source symbols are hot this week? Include confidence and explain whether the result is resolved or textual fallback.">Hot this week</button>
+                <button type="button" data-prompt="Find symbols that appear early when documents open and then rarely afterward. What might they be doing?">Open-time helpers</button>
+                <button type="button" data-prompt="Show me how to use CodeUseSemanticAnalyzeCodeRequest on a Field box snippet, and explain how the sidecar and source-index fallback enrich the result with related src/ code and peer callers.">Semantic lookup</button>
+            </div>
+        </div>
     </section>
 
     <section class="panel" id="panel-timeline">
@@ -353,7 +454,7 @@
     <section class="panel" id="panel-symbols" hidden>
         <div class="panel-header">
             <h2>Symbol Browser</h2>
-            <div class="muted">populated by the planned K2/FIR analyzer pass</div>
+            <div id="analyzer-status" class="muted">source-index-backed symbol uses from the background analyzer</div>
         </div>
         <div id="symbols"></div>
     </section>
@@ -365,32 +466,9 @@
         </div>
         <div id="unresolved"></div>
     </section>
-
-    <section class="panel" id="ai4-chat-panel">
-        <div class="panel-header">
-            <h2>AI4 Code-use Chat</h2>
-            <div id="chat-status" class="muted">disconnected</div>
-        </div>
-        <div class="chat-layout">
-            <div>
-                <div id="chat-log" class="chat-log" aria-live="polite">
-                    <div class="empty">Ask AI4 about the code-use database, hot symbols, failure evidence, or related Field source.</div>
-                </div>
-                <form id="chat-form" class="chat-input-row">
-                    <textarea id="chat-input" autocomplete="off" spellcheck="false" placeholder="Ask AI4 to inspect the code-use database..."></textarea>
-                    <button id="chat-send" type="submit">Send</button>
-                </form>
-            </div>
-            <div class="prompt-list" aria-label="Prompt starters">
-                <button type="button" data-prompt="Summarize the most recent compiler/runtime failures in the code-use telemetry. Which look like Field source or documentation growth points?">Recent failures</button>
-                <button type="button" data-prompt="What Field source symbols are hot this week? Include confidence and explain whether the result is resolved or textual fallback.">Hot this week</button>
-                <button type="button" data-prompt="Find symbols that appear early when documents open and then rarely afterward. What might they be doing?">Open-time helpers</button>
-                <button type="button" data-prompt="Show me how to use CodeUseRelatedSourceForCodeRequest on a Field box snippet, and explain what each returned field means.">Related source workflow</button>
-            </div>
-        </div>
-    </section>
 </main>
 
+<script src="/highlight.min.js"></script>
 <script>
     const state = {
         activeTab: "timeline",
@@ -447,6 +525,27 @@
         return String(Number(value) || 0);
     }
 
+    function trimLeadingCodePadding(value) {
+        return String(value || "").replace(/^(?:[ \t]*\r?\n)+/, "");
+    }
+
+    function highlightedCode(value, language = "kotlin") {
+        const text = trimLeadingCodePadding(value);
+        if (!text.trim()) return "";
+        const escaped = escapeHtml(text);
+        return `<pre class="code-block"><code class="language-${language}">${escaped}</code></pre>`;
+    }
+
+    function highlightRenderedCode(root = document) {
+        if (!window.hljs || typeof window.hljs.highlightElement !== "function") return;
+        root.querySelectorAll("pre.code-block code:not([data-highlighted])").forEach((block) => {
+            try {
+                window.hljs.highlightElement(block);
+            } catch (_) {
+            }
+        });
+    }
+
     function renderSummary() {
         const s = state.summary || {};
         document.getElementById("metric-status").textContent = s.enabled ? "enabled" : "disabled";
@@ -454,7 +553,33 @@
         document.getElementById("metric-compiles").textContent = numberText(s.compileEvents);
         document.getElementById("metric-evals").textContent = numberText(s.evalEvents);
         document.getElementById("metric-launches").textContent = numberText(s.launchEvents);
-        document.getElementById("metric-dropped").textContent = numberText(s.droppedEvents);
+        document.getElementById("metric-dropped").textContent = numberText((s.droppedEvents || 0) + (s.droppedAnalysisJobs || 0));
+        document.getElementById("metric-analyzer").textContent = s.semanticBackend || s.analyzerBackend || "source-index";
+        document.getElementById("metric-analyzer").title = s.semanticMessage || s.analyzerMessage || "";
+        const totalEdges = s.symbolUseEdges || 0;
+        const k2Edges = s.k2ResolvedUseEdges || 0;
+        const sourceEdges = s.sourceIndexUseEdges || 0;
+        const textualEdges = s.textualUseEdges || 0;
+        const unknownEdges = s.unknownUseEdges || 0;
+        const unresolvedEdges = s.unresolvedUseEdges || 0;
+        const k2Percent = totalEdges ? Math.round((k2Edges / totalEdges) * 100) : 0;
+        const confidenceText = totalEdges ? `${k2Percent}% K2` : "no edges";
+        const confidenceTitle = [
+            `symbol edges: ${numberText(totalEdges)}`,
+            `k2-resolved: ${numberText(k2Edges)}`,
+            `source-index: ${numberText(sourceEdges)}`,
+            `textual: ${numberText(textualEdges)}`,
+            `unknown: ${numberText(unknownEdges)}`,
+            `unresolved: ${numberText(unresolvedEdges)}`
+        ].join(" | ");
+        document.getElementById("metric-confidence").textContent = confidenceText;
+        document.getElementById("metric-confidence").title = confidenceTitle;
+        document.getElementById("metric-analysis-queue").textContent = numberText(s.analyzerQueueSize);
+        document.getElementById("analyzer-status").textContent = [
+            s.semanticMessage || "",
+            s.analyzerMessage ? `Store analyzer: ${s.analyzerBackend || "source-index"}; ${s.analyzerMessage}` : "",
+            totalEdges || unresolvedEdges ? `Evidence: ${confidenceTitle}` : ""
+        ].filter(Boolean).join(" ");
         document.getElementById("database-path").textContent = s.message || s.databasePath || "";
         document.getElementById("metric-status").className = s.enabled ? "ok" : "bad";
     }
@@ -494,8 +619,8 @@
                             <td>${boolCell(row.lastCompileSuccess)}</td>
                             <td>${boolCell(row.lastEvalSuccess)}</td>
                             <td>${escapeHtml(row.lastReturnType || row.lastRuntimeClass || "")}</td>
-                            <td class="code">${escapeHtml(summarizeJsonText(row.lastException || row.lastCompileDiagnostics || row.lastEvalDiagnostics))}</td>
-                            <td class="code">${escapeHtml(row.sourcePreview || "")}</td>
+                            <td class="code">${highlightedCode(summarizeJsonText(row.lastException || row.lastCompileDiagnostics || row.lastEvalDiagnostics), "plaintext")}</td>
+                            <td class="code">${highlightedCode(row.sourcePreview || "", "kotlin")}</td>
                         </tr>
                     `).join("")}
                     </tbody>
@@ -532,8 +657,8 @@
                             <td>${escapeHtml(row.document || "")}</td>
                             <td>${escapeHtml(row.boxName || row.boxUid || "")}</td>
                             <td>${escapeHtml(row.property || "")}</td>
-                            <td class="code">${escapeHtml(summarizeJsonText(row.exceptionJson || row.diagnosticsJson || row.returnType || ""))}</td>
-                            <td class="code">${escapeHtml(row.sourcePreview || "")}</td>
+                            <td class="code">${highlightedCode(summarizeJsonText(row.exceptionJson || row.diagnosticsJson || row.returnType || ""), "plaintext")}</td>
+                            <td class="code">${highlightedCode(row.sourcePreview || "", "kotlin")}</td>
                         </tr>
                     `).join("")}
                     </tbody>
@@ -565,7 +690,7 @@
                             <td>${escapeHtml(row.property || "")}</td>
                             <td>${escapeHtml(row.strand || "")}</td>
                             <td>${escapeHtml(row.returnType || "")}</td>
-                            <td class="code">${escapeHtml(summarizeJsonText(row.exceptionJson || ""))}</td>
+                            <td class="code">${highlightedCode(summarizeJsonText(row.exceptionJson || ""), "plaintext")}</td>
                             <td>${escapeHtml(String(row.snippetId || "").slice(0, 12))}</td>
                         </tr>
                     `).join("")}
@@ -578,7 +703,8 @@
         const rows = state.symbols || [];
         const target = document.getElementById("symbols");
         if (!rows.length) {
-            target.innerHTML = `<div class="empty">No resolved symbols yet. The event store and schema are present; the K2/FIR analyzer worker is the next phase.</div>`;
+            const queue = Number((state.summary || {}).analyzerQueueSize || 0);
+            target.innerHTML = `<div class="empty">${queue > 0 ? `Analyzer queue has ${queue} pending item${queue === 1 ? "" : "s"}.` : "No symbols captured yet."} Run or launch Field box code, then refresh after the background analyzer has processed it.</div>`;
             return;
         }
         target.innerHTML = `
@@ -619,7 +745,7 @@
                     ${rows.map((row) => `
                         <tr>
                             <td>${escapeHtml(formatTime(row.createdAtEpochMs))}</td>
-                            <td class="code">${escapeHtml(row.text || "")}</td>
+                            <td class="code">${highlightedCode(row.text || "", "kotlin")}</td>
                             <td>${escapeHtml(row.line ?? "")}</td>
                             <td>${escapeHtml(row.column ?? "")}</td>
                             <td>${escapeHtml(row.reason || "")}</td>
@@ -645,6 +771,7 @@
         ["timeline", "failures", "launches", "symbols", "unresolved"].forEach((tab) => {
             document.getElementById(`panel-${tab}`).hidden = tab !== state.activeTab;
         });
+        highlightRenderedCode();
     }
 
     function wsUrl() {

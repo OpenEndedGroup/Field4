@@ -136,11 +136,12 @@ var notify = (text, cat = "") => {
                         a.classList.add("field-toast-stale");
                 }
 
-                if (q >= 5) {
-                        a.classList.add("field-toast-exit");
-                        setTimeout(function () {
+                        if (q >= 5) {
+                                a.classList.add("field-toast-exit");
+                                setTimeout(function () {
                                 if (a.parentNode)
                                         a.parentNode.removeChild(a)
+                                restackBubbles();
                         }, 220)
                         q--;
                 }
