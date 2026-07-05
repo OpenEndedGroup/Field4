@@ -32,6 +32,7 @@ private val defaultToolLogDir: Path = Paths.get(
 
 private data class ToolUseOptions(
     val logDir: Path = defaultToolLogDir,
+    val srcDir: Path = Paths.get("src"),
     val model: String = System.getenv("AFIELD_TOOL_USE_IMPROVEMENT_MODEL")
         ?.takeIf { it.isNotBlank() }
         ?: afield.ai.core.Ai4ModelDefaults.flagshipModel(),
@@ -74,12 +75,14 @@ fun main(args: Array<String>) {
     val options = parseOptions(args.toList()) ?: return
     val workspaceRoot = Paths.get("").toAbsolutePath().normalize()
     val logDir = options.logDir.toAbsolutePath().normalize()
+    val srcDir = workspaceRoot.resolve(options.srcDir).normalize()
     val reportFile = workspaceRoot.resolve(options.reportFile).normalize()
     val diffFile = workspaceRoot.resolve(options.diffFile).normalize()
-    val allowedFiles = allowedSourceFiles(workspaceRoot)
     val logFiles = recentToolLogs(logDir, options.maxLogFiles, options.maxLogChars)
+    val sourceManifest = buildSourceManifest(workspaceRoot, srcDir)
 
     println("AI tool I/O log dir: ${logDir.absolutePathString()}")
+    println("Source root: ${srcDir.absolutePathString()}")
     println("Recent logs: ${logFiles.size}")
     println("Model: ${options.model}")
     println("Report: ${reportFile.absolutePathString()}")
@@ -101,13 +104,19 @@ fun main(args: Array<String>) {
     }
 
     val summary = buildToolLogSummary(logDir, logFiles)
-    val manifest = buildEditableManifest(workspaceRoot, allowedFiles)
     val overlay = linkedMapOf<Path, String>()
     val dryRunDiffs = mutableListOf<String>()
 
     val attachments = buildList {
         add(ContextAttachment("tool-log-summary.md", "markdown", summary, "Digest of recent AI4 tool I/O JSONL logs."))
-        add(ContextAttachment("editable-files.txt", "text", manifest, "Prompt/tool-use files the task may inspect and edit."))
+        add(
+            ContextAttachment(
+                "src-manifest.txt",
+                "text",
+                sourceManifest,
+                "Editable source files under ${workspaceRoot.relativizeOrAbsolute(srcDir)}. Use AttachmentRequest with these paths to read full files."
+            )
+        )
         logFiles.forEach { log ->
             add(ContextAttachment(log.ref, "jsonl", "Use AttachmentRequest(\"${log.ref}\") to read this log.", "AI4 tool I/O log ${log.path.fileName}."))
         }
@@ -115,20 +124,20 @@ fun main(args: Array<String>) {
 
     val bridge = OpenAiIdeCodexBridge(model = options.model, log = CliLog(options.verbose))
     bridge.registerTool(ReplaceInFileRequest::class.java) { _, req ->
-        replaceInFile(workspaceRoot, allowedFiles, overlay, dryRunDiffs, req, options.dryRun)
+        replaceInFile(workspaceRoot, srcDir, overlay, dryRunDiffs, req, options.dryRun)
     }
 
     val instructions = buildString {
         appendLine(OpenAiIdeCodexBridge.defaultChatThreadInstructions.trim())
         appendLine()
         appendLine("You are running as a freestanding AField AI tool-use improvement task.")
-        appendLine("Your job is to learn from recent AI4 tool-call transcripts and improve Field's AI prompt/tool descriptions so future agents need fewer rounds and fewer risky probes.")
+        appendLine("Your job is to learn from recent AI4 tool-call transcripts and prototype Field source improvements so future agents need fewer rounds and fewer risky probes.")
         appendLine("Use AttachmentRequest for raw logs or source files when the digest is not enough.")
-        appendLine("You may edit only the files listed in editable-files.txt.")
-        appendLine("Prefer ReplaceInFileRequest for small exact prompt/tool-description changes. Use EditFile only if exact snippet replacement is impossible.")
-        appendLine("Prioritize changes that reduce repeated failed tool calls, stale Field API assumptions, bad macro target mapping, unclear tool-result interpretation, or maxToolRounds failures.")
+        appendLine("You may edit only files under src/ in this checkout. In apply mode this checkout is normally a generated git worktree, not the user's main checkout.")
+        appendLine("Prefer ReplaceInFileRequest for small exact source changes. Use EditFile only if exact snippet replacement is impossible.")
+        appendLine("Prioritize changes that reduce repeated failed tool calls, stale Field API assumptions, bad macro target mapping, unclear tool-result interpretation, maxToolRounds failures, or missing runtime diagnostics.")
         appendLine("Do not remove the guidance that the current Field box is `thisBox` and not `_`, `_.foo`, or bare `box`.")
-        appendLine("Do not make broad behavior changes. Keep edits small, reviewable, and grounded in specific log evidence.")
+        appendLine("Keep prototype edits small, reviewable, and grounded in specific log evidence. Prefer one coherent improvement per generated worktree.")
         if (options.dryRun) {
             appendLine("This is a dry run. ReplaceInFileRequest and EditFile update an in-memory overlay; no source files are written to disk.")
         }
@@ -143,7 +152,7 @@ fun main(args: Array<String>) {
     val ctx = ToolExecutionContext(
         attachments = attachments,
         resolveAttachment = { requested ->
-            resolveAttachment(workspaceRoot, allowedFiles, overlay, logFiles, summary, manifest, requested)
+            resolveAttachment(workspaceRoot, srcDir, overlay, logFiles, summary, sourceManifest, requested)
         },
         listFileContents = {
             ListContentsResult(
@@ -158,23 +167,21 @@ fun main(args: Array<String>) {
                             relation = "logs"
                         )
                     )
-                    allowedFiles.forEach { path ->
-                        add(
-                            ListContentEntry(
-                                fileRef = workspaceRoot.relativizeOrAbsolute(path),
-                                property = "source",
-                                language = languageFor(path),
-                                content = readTextWithOverlay(path, overlay),
-                                boxName = path.name,
-                                relation = "editable"
-                            )
+                    add(
+                        ListContentEntry(
+                            fileRef = "src-manifest.txt",
+                            property = "manifest",
+                            language = "text",
+                            content = sourceManifest,
+                            boxName = "Source manifest",
+                            relation = "editable"
                         )
-                    }
+                    )
                 }
             )
         },
         editOtherFile = { req ->
-            applyEdit(workspaceRoot, allowedFiles, overlay, dryRunDiffs, req, options.dryRun)
+            applyEdit(workspaceRoot, srcDir, overlay, dryRunDiffs, req, options.dryRun)
         },
         agentMemory = AgentMemoryState()
     )
@@ -182,7 +189,7 @@ fun main(args: Array<String>) {
     val prompt = options.promptFile
         ?.let { readTextIfExists(it.toAbsolutePath().normalize()) }
         ?.takeIf { it.isNotBlank() }
-        ?: defaultImprovementPrompt(logDir, logFiles, allowedFiles, workspaceRoot)
+        ?: defaultImprovementPrompt(logDir, logFiles, srcDir, workspaceRoot)
 
     val result = bridge.send(
         state = state,
@@ -224,6 +231,10 @@ private fun parseOptions(args: List<String>): ToolUseOptions? {
             }
             "--log-dir" -> {
                 options = options.copy(logDir = Paths.get(args.valueAfter(i, arg)))
+                i++
+            }
+            "--src-dir" -> {
+                options = options.copy(srcDir = Paths.get(args.valueAfter(i, arg)))
                 i++
             }
             "--model" -> {
@@ -279,6 +290,7 @@ Usage:
 
 Options:
   --log-dir <path>          AI4 tool I/O JSONL directory. Defaults to ~/.afield/logs/ai4_tool_io.
+  --src-dir <path>          Source tree writable by the task. Defaults to src.
   --model <model>           Model to use. Defaults to AFIELD_TOOL_USE_IMPROVEMENT_MODEL or AFIELD_AI_MODEL/flagship.
   --dry-run                 Let the model request edits, but do not write source files.
   --verbose                 Show bridge internals and per-tool progress.
@@ -296,37 +308,26 @@ Options:
 private fun defaultImprovementPrompt(
     logDir: Path,
     logs: List<ToolLogFile>,
-    allowedFiles: List<Path>,
+    srcDir: Path,
     workspaceRoot: Path
 ): String = buildString {
-    appendLine("Improve AField AI4 tool use from recent conversation/tool-call logs.")
+    appendLine("Prototype AField source improvements from recent conversation/tool-call logs.")
     appendLine()
     appendLine("Inputs:")
     appendLine("- Tool I/O log directory: ${logDir.absolutePathString()}")
     appendLine("- Recent log count: ${logs.size}")
     appendLine("- Log digest is attached as tool-log-summary.md.")
-    appendLine("- Editable files are attached in editable-files.txt.")
+    appendLine("- Source manifest is attached as src-manifest.txt.")
     appendLine()
-    appendLine("Editable files:")
-    allowedFiles.forEach { appendLine("- ${workspaceRoot.relativizeOrAbsolute(it)}") }
+    appendLine("Writable source root: ${workspaceRoot.relativizeOrAbsolute(srcDir)}")
     appendLine()
     appendLine("Task:")
     appendLine("1. Read the digest and inspect raw logs only when they contain evidence worth following.")
-    appendLine("2. Identify prompt/tool-description changes that would reduce round trips, repeated failed calls, stale syntax probes, or unclear macro/tool behavior.")
-    appendLine("3. Make at most a few small edits to the allowed source files. Prefer exact ReplaceInFileRequest patches.")
-    appendLine("4. Preserve existing style and all behavior unrelated to AI prompting/tool descriptions.")
-    appendLine("5. In your final answer, summarize the evidence, the changes made or proposed, and any follow-up instrumentation wanted.")
+    appendLine("2. Identify a small Field source improvement that would reduce round trips, repeated failed calls, stale syntax probes, unclear macro/tool behavior, or missing diagnostics.")
+    appendLine("3. Make at most a few small edits under src/. Prefer exact ReplaceInFileRequest patches.")
+    appendLine("4. Preserve existing style and avoid unrelated formatting churn.")
+    appendLine("5. In your final answer, summarize the evidence, the worktree-ready changes made or proposed, and any follow-up validation wanted.")
 }.trim()
-
-private fun allowedSourceFiles(workspaceRoot: Path): List<Path> =
-    listOf(
-        "src/jvmMain/kotlin/afield/ai/core/Instructions.kt",
-        "src/jvmMain/kotlin/afield/ai/core/Tools.kt",
-        "src/jvmMain/kotlin/afield/ai/core/IdeChatHelpers.kt",
-        "src/jvmMain/kotlin/afield/ai/core/OpenAiIdeCodexBridge.kt",
-        "src/jvmMain/kotlin/afield/ai/core/Ai4Installer.kt"
-    ).map { workspaceRoot.resolve(it).toAbsolutePath().normalize() }
-        .filter { Files.exists(it) }
 
 private fun recentToolLogs(logDir: Path, maxFiles: Int, maxChars: Int): List<ToolLogFile> {
     if (!Files.isDirectory(logDir)) return emptyList()
@@ -439,46 +440,68 @@ private fun extractJsonString(line: String, key: String): String {
         .replace("\\t", "\t")
 }
 
-private fun buildEditableManifest(workspaceRoot: Path, allowedFiles: List<Path>): String = buildString {
-    appendLine("Editable files for AI tool-use improvement.")
-    appendLine("Use AttachmentRequest with one of these file refs to read full content.")
-    appendLine()
-    allowedFiles.forEach { appendLine(workspaceRoot.relativizeOrAbsolute(it)) }
+private fun buildSourceManifest(workspaceRoot: Path, srcDir: Path): String {
+    if (!Files.isDirectory(srcDir)) return "Source directory not found: ${srcDir.absolutePathString()}\n"
+    val extensions = setOf(
+        "kt", "kts", "java", "js", "mjs", "ts", "html", "css",
+        "md", "txt", "json", "xml", "yaml", "yml",
+        "glsl", "vert", "frag", "comp", "mesh", "task"
+    )
+    val files = Files.walk(srcDir).use { stream ->
+        stream
+            .filter { Files.isRegularFile(it) }
+            .filter { path ->
+                val name = path.fileName.toString()
+                path.extension.lowercase() in extensions ||
+                    name.equals("AGENTS.md", ignoreCase = true)
+            }
+            .sorted()
+            .map { workspaceRoot.relativizeOrAbsolute(it.toAbsolutePath().normalize()) }
+            .toList()
+    }
+    return buildString {
+        appendLine("Editable source manifest for AI tool-use improvement.")
+        appendLine("Use AttachmentRequest with one of these file refs to read full content.")
+        appendLine("Edits are accepted only for paths under ${workspaceRoot.relativizeOrAbsolute(srcDir)}.")
+        appendLine()
+        files.forEach { appendLine(it) }
+    }
 }
 
 private fun resolveAttachment(
     workspaceRoot: Path,
-    allowedFiles: List<Path>,
+    srcDir: Path,
     overlay: Map<Path, String>,
     logs: List<ToolLogFile>,
     summary: String,
-    manifest: String,
+    sourceManifest: String,
     requested: String
 ): AttachmentResponse? {
     val normalized = requested.trim().replace('\\', '/')
     if (normalized == "tool-log-summary.md") {
         return AttachmentResponse(normalized, "markdown", summary)
     }
-    if (normalized == "editable-files.txt") {
-        return AttachmentResponse(normalized, "text", manifest)
+    if (normalized == "src-manifest.txt") {
+        return AttachmentResponse(normalized, "text", sourceManifest)
     }
     logs.firstOrNull { it.ref == normalized || it.path.fileName.toString() == normalized }?.let { log ->
         return AttachmentResponse(log.ref, "jsonl", log.text)
     }
-    val path = resolveAllowedPath(workspaceRoot, allowedFiles, normalized) ?: return null
+    val path = resolveAllowedPath(workspaceRoot, srcDir, normalized) ?: return null
+    if (!Files.isRegularFile(path) && path !in overlay) return null
     return AttachmentResponse(workspaceRoot.relativizeOrAbsolute(path), languageFor(path), readTextWithOverlay(path, overlay))
 }
 
 private fun replaceInFile(
     workspaceRoot: Path,
-    allowedFiles: List<Path>,
+    srcDir: Path,
     overlay: MutableMap<Path, String>,
     dryRunDiffs: MutableList<String>,
     req: ReplaceInFileRequest,
     dryRun: Boolean
 ): ReplaceInFileResponse {
-    val path = resolveAllowedPath(workspaceRoot, allowedFiles, req.file)
-        ?: return ReplaceInFileResponse(false, "File is not editable by this task: ${req.file}", req.file)
+    val path = resolveAllowedPath(workspaceRoot, srcDir, req.file)
+        ?: return ReplaceInFileResponse(false, "File is not editable by this task: ${req.file}. Only src/ is writable.", req.file)
     if (req.oldText.isEmpty()) {
         return ReplaceInFileResponse(false, "oldText must be non-empty.", workspaceRoot.relativizeOrAbsolute(path))
     }
@@ -505,14 +528,14 @@ private fun replaceInFile(
 
 private fun applyEdit(
     workspaceRoot: Path,
-    allowedFiles: List<Path>,
+    srcDir: Path,
     overlay: MutableMap<Path, String>,
     dryRunDiffs: MutableList<String>,
     req: EditFileRequest,
     dryRun: Boolean
 ): EditFileResponse {
-    val path = resolveAllowedPath(workspaceRoot, allowedFiles, req.file)
-        ?: return EditFileResponse(false, "File is not editable by this task: ${req.file}")
+    val path = resolveAllowedPath(workspaceRoot, srcDir, req.file)
+        ?: return EditFileResponse(false, "File is not editable by this task: ${req.file}. Only src/ is writable.")
     return applyContentChange(workspaceRoot, path, overlay, dryRunDiffs, req.newContent, dryRun, if (dryRun) "DRY RUN edit" else "Edited")
 }
 
@@ -537,24 +560,33 @@ private fun applyContentChange(
         }
         return EditFileResponse(true, "Dry run: accepted $file; no disk write; subsequent AttachmentRequest reads use the in-memory overlay.")
     }
+    Files.createDirectories(path.parent)
     Files.writeString(path, newContent, StandardCharsets.UTF_8)
     println("$action $file (${newContent.length} chars).")
     return EditFileResponse(true, "$action $file (${newContent.length} chars).")
 }
 
-private fun resolveAllowedPath(workspaceRoot: Path, allowedFiles: List<Path>, requested: String): Path? {
+private fun resolveAllowedPath(workspaceRoot: Path, srcDir: Path, requested: String): Path? {
     val trimmed = requested.trim()
     val candidate = when {
         trimmed.startsWith("/") -> Paths.get(trimmed)
         else -> workspaceRoot.resolve(trimmed)
     }.toAbsolutePath().normalize()
-    return allowedFiles.firstOrNull { it == candidate }
+    return candidate.takeIf { it.startsWith(srcDir) }
 }
 
 private fun languageFor(path: Path): String = when (path.extension.lowercase()) {
     "kt", "kts" -> "kotlin"
-    "jsonl" -> "jsonl"
+    "java" -> "java"
+    "js", "mjs" -> "javascript"
+    "ts" -> "typescript"
+    "html" -> "html"
+    "css" -> "css"
     "md" -> "markdown"
+    "json" -> "json"
+    "yaml", "yml" -> "yaml"
+    "glsl", "vert", "frag", "comp", "mesh", "task" -> "glsl"
+    "jsonl" -> "jsonl"
     else -> "text"
 }
 

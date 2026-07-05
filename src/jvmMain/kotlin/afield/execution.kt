@@ -1510,6 +1510,20 @@ class KotlinExecution : BoxExecution {
         val launchMode = ACTIVE_LAUNCH_MODE
         val pendingWatermark = inside.runGeneration.incrementAndGet(strand)
         inside.currentRunningStates[strand] = RunningState(pendingWatermark, pendingLaunchMode)
+        val telemetrySnippetId = CodeUseTelemetryService.newSnippetKey()
+        val telemetryContext = CodeUseTelemetryService.captureBoxContext(
+            inside,
+            property = execute.property,
+            mode = "launch",
+            strand = strand
+        )
+        CodeUseTelemetryService.recordLaunchLifecycle(
+            snippetId = telemetrySnippetId,
+            source = normalizedCode,
+            context = telemetryContext,
+            lifecycle = pendingLaunchMode,
+            watermark = pendingWatermark
+        )
         send(
             Message("is-running").payload(
                 IsRunning(execute.uid, true, pendingWatermark, strand, pendingLaunchMode)
@@ -1541,6 +1555,13 @@ class KotlinExecution : BoxExecution {
                             IsRunning(execute.uid, false, pendingWatermark, strand, pendingLaunchMode)
                         )
                     )
+                    CodeUseTelemetryService.recordLaunchLifecycle(
+                        snippetId = telemetrySnippetId,
+                        source = "",
+                        context = telemetryContext,
+                        lifecycle = "launch-prepare-finished",
+                        watermark = pendingWatermark
+                    )
                 }
             ) { returnValue ->
                 if (inside.currentRunningStates[strand]?.watermark == pendingWatermark) {
@@ -1551,6 +1572,14 @@ class KotlinExecution : BoxExecution {
                         )
                     )
                 }
+                CodeUseTelemetryService.recordLaunchLifecycle(
+                    snippetId = telemetrySnippetId,
+                    source = "",
+                    context = telemetryContext,
+                    lifecycle = "launch-return",
+                    watermark = pendingWatermark,
+                    returnType = returnValue?.javaClass?.name.orEmpty()
+                )
                 cacheLaunchReturnValue(inside, strand, normalizedCode, returnValue)
                 configureOutputProxies(inside, reply, originSession)
 
@@ -1564,6 +1593,18 @@ class KotlinExecution : BoxExecution {
                         Message("is-running").payload(
                             IsRunning(execute.uid, isRunning, watermark, strand, launchMode)
                         )
+                    )
+                    CodeUseTelemetryService.recordLaunchLifecycle(
+                        snippetId = telemetrySnippetId,
+                        source = "",
+                        context = CodeUseTelemetryService.captureBoxContext(
+                            inside,
+                            property = execute.property,
+                            mode = launchMode,
+                            strand = strand
+                        ),
+                        lifecycle = if (isRunning) "launch-running" else "launch-stopped",
+                        watermark = watermark
                     )
                 }
             }
@@ -1583,6 +1624,20 @@ class KotlinExecution : BoxExecution {
         val originSession = thisSession.get()
         val launchMode = "continue"
         lprintln("debug,execution", "continuing cached return value for ${inside.id} on strand $strand")
+        val telemetrySnippetId = CodeUseTelemetryService.newSnippetKey()
+        val telemetryContext = CodeUseTelemetryService.captureBoxContext(
+            inside,
+            property = execute.property,
+            mode = launchMode,
+            strand = strand
+        )
+        CodeUseTelemetryService.recordLaunchLifecycle(
+            snippetId = telemetrySnippetId,
+            source = normalizedCode,
+            context = telemetryContext,
+            lifecycle = "continue-start",
+            returnType = cached.returnValue.javaClass.name
+        )
         inMain {
             configureOutputProxies(inside, reply, originSession)
             launchReturnValue(inside, cached.returnValue, strand = strand) { isRunning, notifiedStrand, watermark ->
@@ -1595,6 +1650,19 @@ class KotlinExecution : BoxExecution {
                     Message("is-running").payload(
                         IsRunning(execute.uid, isRunning, watermark, notifiedStrand, launchMode)
                     )
+                )
+                CodeUseTelemetryService.recordLaunchLifecycle(
+                    snippetId = telemetrySnippetId,
+                    source = "",
+                    context = CodeUseTelemetryService.captureBoxContext(
+                        inside,
+                        property = execute.property,
+                        mode = launchMode,
+                        strand = notifiedStrand
+                    ),
+                    lifecycle = if (isRunning) "continue-running" else "continue-stopped",
+                    watermark = watermark,
+                    returnType = cached.returnValue.javaClass.name
                 )
             }
         }
@@ -1614,7 +1682,32 @@ class KotlinExecution : BoxExecution {
     ) {
 
         Box.withBoxContext(box) {
+            val telemetrySnippetId = CodeUseTelemetryService.newSnippetKey()
+            val telemetryContext = CodeUseTelemetryService.captureBoxContext(
+                box,
+                property = property,
+                mode = "execute"
+            )
+            CodeUseTelemetryService.recordLaunchLifecycle(
+                snippetId = telemetrySnippetId,
+                source = code,
+                context = telemetryContext,
+                lifecycle = "execute-start"
+            )
             var dur = code.split("\n").count()
+            var telemetryFinished = false
+            fun finishTelemetry(lifecycle: String, returnValue: Any? = null, exception: Throwable? = returnValue as? Throwable) {
+                if (telemetryFinished) return
+                telemetryFinished = true
+                CodeUseTelemetryService.recordLaunchLifecycle(
+                    snippetId = telemetrySnippetId,
+                    source = "",
+                    context = telemetryContext,
+                    lifecycle = lifecycle,
+                    returnType = returnValue?.javaClass?.name.orEmpty(),
+                    exception = exception
+                )
+            }
             try {
                 var hasError = false
                 var output = mutableListOf<String>("")
@@ -1778,6 +1871,7 @@ class KotlinExecution : BoxExecution {
                                     originSession = originSession
                                 )
                                 handleReturn(null)
+                                finishTelemetry("execute-finished")
                             }
 
                             is ResultValue.NotEvaluated -> {}
@@ -1798,6 +1892,7 @@ class KotlinExecution : BoxExecution {
                                     originSession = originSession
                                 )
                                 handleReturn(null)
+                                finishTelemetry("execute-error", returnValue.error)
                             }
 
                             is ResultValue.Value -> {
@@ -1817,6 +1912,7 @@ class KotlinExecution : BoxExecution {
                                             originSession = originSession
                                         )
                                         handleReturn(null)
+                                        finishTelemetry("execute-finished")
                                         return@forEach
                                     }
                                     val name = returnValue.name
@@ -1857,6 +1953,7 @@ class KotlinExecution : BoxExecution {
                                 } else audioPatch?.inlineSummaryTarget = null
 
                                 handleReturn(returnValue.value)
+                                finishTelemetry("execute-finished", returnValue.value)
                             }
 
                             null -> {
@@ -1873,6 +1970,7 @@ class KotlinExecution : BoxExecution {
                                     originSession = originSession
                                 )
                                 handleReturn(null)
+                                finishTelemetry("execute-finished")
                             }
 
                         }
@@ -1880,9 +1978,11 @@ class KotlinExecution : BoxExecution {
                     }
                 } else {
                     lprintln("error,execution", "execution finished with errors")
+                    finishTelemetry("execute-error")
                 }
             } catch (t: Throwable) {
                 if (t is CancellationException) throw t
+                finishTelemetry("execute-exception", t, t)
                 lprintln("error,execution", "uncaught exception while executing fragment inside box $box")
                 lprintln("error,execution", t.stackTraceToString())
                 dispatchExecutionOutput(
@@ -1898,6 +1998,7 @@ class KotlinExecution : BoxExecution {
                     originSession = originSession
                 )
             } finally {
+                finishTelemetry("execute-finished")
                 finishedHandler()
             }
         }

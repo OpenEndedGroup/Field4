@@ -46,7 +46,7 @@
             min-height: 0;
             margin: 0 auto;
             display: grid;
-            grid-template-rows: auto auto auto minmax(0, 1fr);
+            grid-template-rows: auto auto auto auto minmax(0, 1fr);
             gap: 12px;
         }
 
@@ -149,9 +149,57 @@
             color: var(--ok);
         }
 
-        .paths {
+        .paths,
+        .worktrees {
             display: grid;
             gap: 8px;
+        }
+
+        .worktree-list {
+            display: grid;
+            gap: 8px;
+        }
+
+        .worktree-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 10px;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            background: var(--panel-2);
+        }
+
+        .worktree-title {
+            display: flex;
+            gap: 8px;
+            align-items: baseline;
+            min-width: 0;
+        }
+
+        .worktree-id {
+            color: var(--accent);
+            white-space: nowrap;
+        }
+
+        .worktree-status {
+            color: var(--soft);
+        }
+
+        .worktree-path {
+            margin-top: 4px;
+            color: var(--soft);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .worktree-actions {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
         }
 
         .path-row {
@@ -223,6 +271,11 @@
         <div class="path-row"><span class="path-label">dry patch</span><span id="patch-path" class="path-value"></span></div>
     </section>
 
+    <section class="worktrees">
+        <div class="path-row"><span class="path-label">worktrees</span><span id="worktree-summary" class="path-value">none</span></div>
+        <div id="worktree-list" class="worktree-list"></div>
+    </section>
+
     <section class="activity">
         <div id="message">Ready.</div>
         <pre id="transcript">No task output yet.</pre>
@@ -251,6 +304,16 @@
         return `${(n / (1024 * 1024)).toFixed(1)} MB`;
     }
 
+    function escapeHtml(value) {
+        return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            "\"": "&quot;",
+            "'": "&#39;"
+        }[ch]));
+    }
+
     function render(status) {
         latestStatus = status || {};
         const logs = latestStatus.logs || {};
@@ -268,6 +331,7 @@
         document.getElementById("log-dir").textContent = logs.logDir || "";
         document.getElementById("report-path").textContent = logs.reportPath || "";
         document.getElementById("patch-path").textContent = logs.dryRunPatchPath || "";
+        renderWorktrees(latestStatus.worktrees || []);
 
         const recent = Number(logs.recentLogCount) || 0;
         const reviewButton = document.getElementById("run-review");
@@ -281,6 +345,40 @@
         if (wasNearBottom || latestStatus.running) {
             transcript.scrollTop = transcript.scrollHeight;
         }
+    }
+
+    function renderWorktrees(worktrees) {
+        const summary = document.getElementById("worktree-summary");
+        const list = document.getElementById("worktree-list");
+        const proposals = Array.isArray(worktrees) ? worktrees : [];
+        summary.textContent = proposals.length ? countLabel(proposals.length, "proposal") : "none";
+        list.innerHTML = proposals.map((proposal) => {
+            const id = escapeHtml(proposal.id || "");
+            const label = escapeHtml(proposal.label || proposal.taskName || "generated proposal");
+            const status = escapeHtml(proposal.status || "created");
+            const branch = escapeHtml(proposal.branch || "");
+            const path = escapeHtml(proposal.path || "");
+            const message = escapeHtml(proposal.message || "");
+            const canMerge = status !== "merged";
+            return `
+                <div class="worktree-row">
+                    <div>
+                        <div class="worktree-title">
+                            <span class="worktree-id">${id}</span>
+                            <span>${label}</span>
+                            <span class="worktree-status">${status}</span>
+                        </div>
+                        <div class="worktree-path">${path}</div>
+                        <div class="worktree-path">${branch}${message ? ` · ${message}` : ""}</div>
+                    </div>
+                    <div class="worktree-actions">
+                        <button type="button" data-worktree-action="restart" data-worktree-id="${id}">Try</button>
+                        <button type="button" data-worktree-action="merge" data-worktree-id="${id}" ${canMerge ? "" : "disabled"}>Merge</button>
+                        <button type="button" data-worktree-action="delete" data-worktree-id="${id}">Delete</button>
+                    </div>
+                </div>
+            `;
+        }).join("");
     }
 
     async function refresh() {
@@ -306,7 +404,7 @@
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 cache: "no-store",
-                body: JSON.stringify({ dryRun: !!dryRun })
+                body: JSON.stringify({ dryRun: !!dryRun, proposalCount: 1 })
             });
             const payload = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
@@ -316,6 +414,30 @@
                 ...(latestStatus || {}),
                 status: "failed",
                 message: error?.message || "Could not start AI tool-use improvement."
+            });
+        }
+    }
+
+    async function worktreeAction(action, id) {
+        if (!id) return;
+        if (action === "delete" && !window.confirm(`Delete generated worktree ${id}?`)) return;
+        if (action === "merge" && !window.confirm(`Fast-forward merge generated worktree ${id} into this checkout?`)) return;
+        if (action === "restart" && !window.confirm(`Restart Field from generated worktree ${id}?`)) return;
+        try {
+            const response = await fetch(`/api/agent-worktrees/${encodeURIComponent(action)}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                body: JSON.stringify({ id })
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.message || payload.error || `HTTP ${response.status}`);
+            await refresh();
+        } catch (error) {
+            render({
+                ...(latestStatus || {}),
+                status: "failed",
+                message: error?.message || `Could not ${action} generated worktree.`
             });
         }
     }
@@ -340,6 +462,11 @@
 
     document.getElementById("run-review").addEventListener("click", () => run(true));
     document.getElementById("run-apply").addEventListener("click", () => run(false));
+    document.getElementById("worktree-list").addEventListener("click", (event) => {
+        const button = event.target.closest("[data-worktree-action]");
+        if (!button) return;
+        worktreeAction(button.getAttribute("data-worktree-action") || "", button.getAttribute("data-worktree-id") || "");
+    });
     refresh();
     connectEvents();
     setInterval(refresh, REFRESH_MS);

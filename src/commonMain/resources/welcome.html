@@ -352,7 +352,8 @@
         }
 
         #completion-doc-polish-state,
-        #ai-tool-use-improvement-state {
+        #ai-tool-use-improvement-state,
+        #code-use-state {
             color: var(--field-cyan);
             text-align: right;
             overflow-wrap: anywhere;
@@ -441,6 +442,7 @@
         #ai-settings-status,
         #completion-doc-polish-status,
         #ai-tool-use-improvement-status,
+        #code-use-status,
         #preferences-status,
         #osc-settings-status {
             min-height: 1.2em;
@@ -454,6 +456,7 @@
         #ai-settings-status.error,
         #completion-doc-polish-status.error,
         #ai-tool-use-improvement-status.error,
+        #code-use-status.error,
         #preferences-status.error,
         #osc-settings-status.error {
             color: var(--field-danger);
@@ -1394,6 +1397,7 @@
             #ai-settings-state,
             #completion-doc-polish-state,
             #ai-tool-use-improvement-state,
+            #code-use-state,
             #preferences-state,
             #osc-settings-state {
                 white-space: normal;
@@ -1653,6 +1657,16 @@
                             </div>
                             <div id="ai-tool-use-improvement-status" aria-live="polite"></div>
                         </div>
+                        <div class="ai-docs-panel">
+                            <div class="ai-docs-header">
+                                <span class="ai-docs-label">Code-use telemetry</span>
+                                <span id="code-use-state">checking</span>
+                            </div>
+                            <div class="ai-docs-actions">
+                                <button id="open-code-use-browser" type="button">Open browser</button>
+                            </div>
+                            <div id="code-use-status" aria-live="polite"></div>
+                        </div>
                         <div id="ai-settings-status" aria-live="polite"></div>
                     </div>
                 </details>
@@ -1838,6 +1852,18 @@
             dryRun: true,
             message: "",
             logTail: ""
+        },
+        codeUse: {
+            enabled: false,
+            databasePath: "",
+            queueSize: 0,
+            droppedEvents: 0,
+            snippets: 0,
+            compileEvents: 0,
+            evalEvents: 0,
+            launchEvents: 0,
+            sourceBlobs: 0,
+            message: ""
         },
         savingAiSettings: false,
         preferences: {
@@ -2380,6 +2406,7 @@
         if (button) button.disabled = state.savingAiSettings;
         renderCompletionDocPolish();
         renderAiToolUseImprovement();
+        renderCodeUse();
     }
 
     function formatCount(value, singular, plural = `${singular}s`) {
@@ -2450,6 +2477,35 @@
             ? (task.message || logs.message || "")
             : (task.status === "succeeded" ? (logs.reportPath ? `report: ${logs.reportPath}` : task.message || "") : "");
         setAiToolUseImprovementStatus(message, task.status === "failed");
+    }
+
+    function setCodeUseStatus(text, isError = false) {
+        const node = document.getElementById("code-use-status");
+        if (!node) return;
+        node.textContent = text || "";
+        node.classList.toggle("error", !!isError);
+    }
+
+    function renderCodeUse() {
+        const summary = state.codeUse || {};
+        const stateNode = document.getElementById("code-use-state");
+        const openButton = document.getElementById("open-code-use-browser");
+        const snippets = Number(summary.snippets) || 0;
+        const launches = Number(summary.launchEvents) || 0;
+        const dropped = Number(summary.droppedEvents) || 0;
+
+        if (stateNode) {
+            stateNode.textContent = summary.enabled
+                ? `${formatCount(snippets, "snippet")} / ${formatCount(launches, "lifecycle")}`
+                : "disabled";
+        }
+        if (openButton) openButton.disabled = false;
+
+        const details = [];
+        if (summary.databasePath) details.push(summary.databasePath);
+        if (dropped > 0) details.push(`${formatCount(dropped, "dropped event")}`);
+        if (summary.message) details.push(summary.message);
+        setCodeUseStatus(details.join(" · "), !summary.enabled);
     }
 
     function formatMs(value) {
@@ -3589,6 +3645,7 @@
             state.aiSettings = payload.aiSettings || state.aiSettings;
             state.completionDocPolish = payload.completionDocPolish || state.completionDocPolish;
             state.aiToolUseImprovement = payload.aiToolUseImprovement || state.aiToolUseImprovement;
+            state.codeUse = payload.codeUse || state.codeUse;
             state.preferences = payload.preferences || state.preferences;
             state.runtimeInfo = payload.runtimeInfo || state.runtimeInfo || {};
             try {
@@ -3621,6 +3678,11 @@
                     ...((state.aiToolUseImprovement || {}).logs || {}),
                     message: "Could not load AI tool-use improvement state."
                 }
+            };
+            state.codeUse = {
+                ...(state.codeUse || {}),
+                enabled: false,
+                message: "Could not load code-use telemetry state."
             };
             renderWorkspaceControls();
             renderProjectManagement();
@@ -4082,6 +4144,10 @@
         }
     }
 
+    function openCodeUseBrowser() {
+        window.open("/code-use.html", "_blank", "noopener");
+    }
+
     async function learnOscAddress(targetId) {
         const target = document.getElementById(targetId);
         const port = Number.parseInt(document.getElementById("osc-editor-port")?.value || "9000", 10) || 9000;
@@ -4327,6 +4393,7 @@
         const runCompletionDocPolishButton = document.getElementById("run-completion-doc-polish");
         const runAiToolUseReviewButton = document.getElementById("run-ai-tool-use-review");
         const runAiToolUseApplyButton = document.getElementById("run-ai-tool-use-apply");
+        const openCodeUseBrowserButton = document.getElementById("open-code-use-browser");
         const stickinessButtons = document.querySelectorAll("[data-stickiness-value]");
         const importClassBlacklistInput = document.getElementById("pref-import-class-blacklist");
         const oscInputs = [
@@ -4470,6 +4537,7 @@
         runCompletionDocPolishButton?.addEventListener("click", runCompletionDocPolish);
         runAiToolUseReviewButton?.addEventListener("click", () => runAiToolUseImprovement(true));
         runAiToolUseApplyButton?.addEventListener("click", () => runAiToolUseImprovement(false));
+        openCodeUseBrowserButton?.addEventListener("click", openCodeUseBrowser);
 
         openAiKeyInput?.addEventListener("keydown", (event) => {
             if (event.key !== "Enter") return;

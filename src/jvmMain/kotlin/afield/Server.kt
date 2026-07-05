@@ -770,6 +770,34 @@ private fun relaunchWithWorkspace(workspace: String) {
     lprintln("info,server", "relaunching Field via current Java command; restart log: ${logFile.absolutePath}")
 }
 
+private fun launchFieldDesktopFromProject(projectDir: File, reason: String) {
+    val canonicalProject = projectDir.canonicalFile
+    val isWindows = System.getProperty("os.name").lowercase(Locale.US).contains("windows")
+    val wrapper = File(canonicalProject, if (isWindows) "gradlew.bat" else "gradlew")
+    if (!wrapper.exists()) {
+        throw IllegalArgumentException("No Gradle wrapper found in ${canonicalProject.absolutePath}")
+    }
+    val logFile = workspaceRestartLogFile()
+    logFile.parentFile?.mkdirs()
+    val processBuilder = if (isWindows) {
+        ProcessBuilder("cmd", "/c", "start", "\"Field4\"", wrapper.absolutePath, "runDesktop")
+            .directory(canonicalProject)
+    } else {
+        ProcessBuilder(
+            "sh",
+            "-c",
+            "nohup ./gradlew runDesktop >> \"\$1\" 2>&1 < /dev/null &",
+            "field4-worktree-relaunch",
+            logFile.absolutePath
+        ).directory(canonicalProject)
+    }
+    processBuilder.start()
+    lprintln(
+        "info,server",
+        "launching Field from ${canonicalProject.absolutePath} ($reason); restart log: ${logFile.absolutePath}"
+    )
+}
+
 val preferSystemBrowser: Boolean = (System.getenv("AFIELD_SYSTEM_BROWSER")
     ?: System.getProperty("afield.systemBrowser") ?: "true").lowercase() != "false"
 val visibleBackdoorPlaywright: Boolean = (System.getenv("AFIELD_PLAYWRIGHT_VISIBLE")
@@ -2861,7 +2889,8 @@ class Server {
                                     projects,
                                     currentRuntimeInfo(),
                                     CompletionDocPolishMonitor.status(),
-                                    AiToolUseImprovementMonitor.status()
+                                    AiToolUseImprovementMonitor.status(),
+                                    CodeUseTelemetryService.summary()
                                 )
                             )
                         }
@@ -2892,12 +2921,90 @@ class Server {
                             try {
                                 val request = runCatching { call.receive<AiToolUseImprovementRunRequest>() }
                                     .getOrElse { AiToolUseImprovementRunRequest() }
-                                call.respond(AiToolUseImprovementMonitor.start(request.dryRun))
+                                call.respond(AiToolUseImprovementMonitor.start(request.dryRun, request.proposalCount))
                             } catch (e: Exception) {
                                 lprintln("error,server", "AI tool-use improvement launch failed: ${e.message}")
                                 call.respond(
                                     HttpStatusCode.InternalServerError,
                                     mapOf("error" to "AI tool-use improvement launch failed")
+                                )
+                            }
+                        }
+
+                        get("/api/agent-worktrees") {
+                            call.respond(AgentWorktreeManager.listProposals(File(app).canonicalFile))
+                        }
+
+                        post("/api/agent-worktrees/delete") {
+                            try {
+                                val request = call.receive<AgentWorktreeActionRequest>()
+                                val response = AgentWorktreeManager.deleteProposal(File(app).canonicalFile, request.id)
+                                call.respond(if (response.success) HttpStatusCode.OK else HttpStatusCode.BadRequest, response)
+                                if (response.success) broadcastWelcomeEvent("agent-worktree-deleted")
+                            } catch (e: Exception) {
+                                lprintln("error,server", "agent worktree delete failed: ${e.message}")
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    AgentWorktreeActionResponse(false, message = e.message ?: "delete failed")
+                                )
+                            }
+                        }
+
+                        post("/api/agent-worktrees/merge") {
+                            try {
+                                val request = call.receive<AgentWorktreeActionRequest>()
+                                val response = AgentWorktreeManager.mergeProposal(File(app).canonicalFile, request.id)
+                                call.respond(if (response.success) HttpStatusCode.OK else HttpStatusCode.BadRequest, response)
+                                if (response.success) broadcastWelcomeEvent("agent-worktree-merged")
+                            } catch (e: Exception) {
+                                lprintln("error,server", "agent worktree merge failed: ${e.message}")
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    AgentWorktreeActionResponse(false, message = e.message ?: "merge failed")
+                                )
+                            }
+                        }
+
+                        post("/api/agent-worktrees/restart") {
+                            try {
+                                val request = call.receive<AgentWorktreeActionRequest>()
+                                val proposal = AgentWorktreeManager.proposal(File(app).canonicalFile, request.id)
+                                    ?: throw IllegalArgumentException("Unknown generated worktree '${request.id}'")
+                                val projectDir = File(proposal.path).canonicalFile
+                                if (!projectDir.isDirectory) {
+                                    throw IllegalArgumentException("Generated worktree is missing: ${proposal.path}")
+                                }
+                                call.respond(
+                                    AgentWorktreeActionResponse(
+                                        true,
+                                        proposal,
+                                        "Restarting Field from generated worktree ${proposal.id}."
+                                    )
+                                )
+
+                                thread(name = "field-agent-worktree-switch", isDaemon = false) {
+                                    try {
+                                        Thread.sleep(200)
+                                    } catch (_: InterruptedException) {
+                                    }
+                                    val launched = runCatching {
+                                        launchFieldDesktopFromProject(projectDir, "agent worktree ${proposal.id}")
+                                    }.onFailure {
+                                        lprintln("error,server", "agent worktree restart failed: ${it.message}")
+                                    }
+                                    if (launched.isFailure) return@thread
+                                    runCatching {
+                                        if (this@Companion::ourServer.isInitialized) {
+                                            ourServer.stop(500, 2000)
+                                        }
+                                    }
+                                    exitProcess(0)
+                                }
+                            } catch (e: Exception) {
+                                lprintln("error,server", "agent worktree restart failed: ${e.message}")
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    AgentWorktreeActionResponse(false, message = e.message ?: "restart failed")
                                 )
                             }
                         }
@@ -2908,6 +3015,35 @@ class Server {
                                 readWelcomeChangelog(limit)
                             }
                             call.respond(response)
+                        }
+
+                        get("/api/code-use/summary") {
+                            call.respond(CodeUseTelemetryService.summary())
+                        }
+
+                        get("/api/code-use/snippets") {
+                            val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 100
+                            call.respond(CodeUseTelemetryService.recentSnippets(limit))
+                        }
+
+                        get("/api/code-use/launches") {
+                            val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 100
+                            call.respond(CodeUseTelemetryService.recentLaunches(limit))
+                        }
+
+                        get("/api/code-use/failures") {
+                            val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 100
+                            call.respond(CodeUseTelemetryService.failures(limit))
+                        }
+
+                        get("/api/code-use/symbols") {
+                            val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 100
+                            call.respond(CodeUseTelemetryService.symbols(limit))
+                        }
+
+                        get("/api/code-use/unresolved") {
+                            val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 100
+                            call.respond(CodeUseTelemetryService.unresolved(limit))
                         }
 
                         get("/api/maven-classpath") {
@@ -3355,6 +3491,15 @@ class Server {
                             handle {
                                 val originalContent =
                                     File("./src/commonMain/resources/welcome.html").readText(Charsets.UTF_8)
+                                val modifiedContent = filter(originalContent)
+                                call.respondText(modifiedContent, ContentType.Text.Html)
+                            }
+                        }
+
+                        route("/code-use") {
+                            handle {
+                                val originalContent =
+                                    File("./src/commonMain/resources/code-use.html").readText(Charsets.UTF_8)
                                 val modifiedContent = filter(originalContent)
                                 call.respondText(modifiedContent, ContentType.Text.Html)
                             }

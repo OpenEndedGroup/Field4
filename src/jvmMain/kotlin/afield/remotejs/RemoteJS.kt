@@ -5,7 +5,10 @@ package afield.remotejs
 import afield.*
 import afield.logger.lprintln
 import afield.runtime.TopologyWatcher
+import afield.runtime.MainLanguageRuntime
 import afield.runtime.applyRuntimeToggle
+import afield.runtime.isMainLanguage
+import afield.runtime.registerMainLanguageRuntime
 import afield.stdlib.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -26,11 +29,11 @@ var lastBoxExec : Box? = null
 fun topologyNeedsUpdating(values: Collection<Box>) {
     applyRuntimeToggle(
         boxes = values,
-        isRoot = { it.isRemoteJSRoot },
+        isRoot = { it.isRemoteJSRoot == true || it.isMainLanguage("remotejs") },
         runtimeClass = RemoteJSExectution::class,
         newExecution = { _ -> RemoteJSExectution() },
         language = "Javascript",
-        customization = """this.style.border = "1px dashed #8B4000"; this.style.margin = "-5px" """,
+        customization = "",
         notifyCategory = "remotejs"
     )
 }
@@ -123,6 +126,20 @@ fun install() {
 
     TopologyWatcher("remotejs") { topologyNeedsUpdating(it) }.start()
 
+}
+
+@RunsAt(early)
+fun installRemoteJSMainLanguage() {
+    Box.ioPersistentProperties.add("isRemoteJSRoot")
+    registerMainLanguageRuntime(
+        MainLanguageRuntime(
+            id = "remotejs",
+            label = "Javascript",
+            runtimeClass = RemoteJSExectution::class,
+            setLegacyRoot = { box, enabled -> box.isRemoteJSRoot = enabled },
+            applyTopology = ::topologyNeedsUpdating,
+        ),
+    )
 }
 
 @OptIn(DelicateCoroutinesApi::class)

@@ -2218,6 +2218,16 @@ fun registerBuiltinCommands() {
                 newBox()
             }
         },{
+            id:'set-main-language',
+            label:"Set Main Language",
+            detail:"Choose the language used by child boxes of the selected language root",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                if (typeof window.openFieldCommandPalette === 'function') {
+                    window.openFieldCommandPalette({ includeEditor: false, editor: window.globalEditor, query: 'Set Main Language:' })
+                }
+            }
+        },{
             id:'macro-transcript-panel',
             label:"Macro: Recorder Panel",
             detail:"Open the macro recorder and browser",

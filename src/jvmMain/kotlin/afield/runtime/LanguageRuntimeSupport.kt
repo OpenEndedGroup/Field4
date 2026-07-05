@@ -61,7 +61,7 @@ fun applyRuntimeToggle(
                     return@forEach
                 }
                 child.ke = newExecution(child)
-                child.customization = customization
+                child.customization = languageLabelCustomization(language)
                 child.code_language = language
                 child.offline = false
                 onAttach(child)
@@ -72,7 +72,7 @@ fun applyRuntimeToggle(
                 if (runtimeClass.isInstance(child.ke)) {
                     onDetach(child)
                     child.ke = KotlinExecution()
-                    child.customization = """this.style.border = """""
+                    child.customization = languageLabelCustomization(null)
                     child.code_language = "Kotlin"
                     notify("'${child.name}' no longer $targetLanguage", notifyCategory)
                 }
@@ -80,3 +80,55 @@ fun applyRuntimeToggle(
         }
     }
 }
+
+private fun languageLabelCustomization(language: String?): String {
+    val trimmed = language?.trim().orEmpty()
+    if (trimmed.isBlank() || trimmed.equals("kotlin", ignoreCase = true)) {
+        return """
+            |const existing = this.querySelector('[data-afield-language-label="true"]');
+            |if (existing) existing.remove();
+            |this.style.border = "";
+            |this.style.margin = "";
+        """.trimMargin()
+    }
+
+    return """
+        |const title = this.querySelector('.box-title-stack') || this;
+        |let label = this.querySelector('[data-afield-language-label="true"]');
+        |if (!label) {
+        |    label = document.createElement('div');
+        |    label.setAttribute('data-afield-language-label', 'true');
+        |    title.appendChild(label);
+        |}
+        |label.textContent = ${jsString(trimmed)};
+        |label.style.fontSize = "9px";
+        |label.style.lineHeight = "1.1";
+        |label.style.opacity = "0.58";
+        |label.style.fontWeight = "500";
+        |label.style.letterSpacing = "0";
+        |label.style.textTransform = "none";
+        |label.style.pointerEvents = "none";
+        |label.style.userSelect = "none";
+        |label.style.marginTop = "1px";
+        |this.style.border = "";
+        |this.style.margin = "";
+    """.trimMargin()
+}
+
+private fun jsString(value: String): String =
+    buildString {
+        append('"')
+        value.forEach { c ->
+            append(
+                when (c) {
+                    '\\' -> "\\\\"
+                    '"' -> "\\\""
+                    '\n' -> "\\n"
+                    '\r' -> "\\r"
+                    '\t' -> "\\t"
+                    else -> c
+                },
+            )
+        }
+        append('"')
+    }

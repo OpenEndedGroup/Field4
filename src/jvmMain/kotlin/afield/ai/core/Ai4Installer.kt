@@ -1648,6 +1648,180 @@ fun installAi4() {
             macroRunToolResult(docPath, req, targets)
         }
 
+        val codeUseQuery: (CodeUseQueryRequest) -> CodeUseQueryResult = codeUseQuery@{ req ->
+            val kind = req.kind.trim().lowercase().ifBlank { "failures" }
+            val limit = req.limit.coerceIn(1, 50)
+            val fetchLimit = (limit * 5).coerceIn(limit, 500)
+            val documentFilter = req.document.trim()
+            val boxFilter = req.box.trim()
+
+            fun matches(document: String, boxUid: String, boxName: String): Boolean {
+                if (documentFilter.isNotBlank() && !document.contains(documentFilter, ignoreCase = true)) return false
+                if (boxFilter.isNotBlank()) {
+                    val hit = boxUid.contains(boxFilter, ignoreCase = true) ||
+                        boxName.contains(boxFilter, ignoreCase = true)
+                    if (!hit) return false
+                }
+                return true
+            }
+
+            when (kind) {
+                "summary", "status" -> {
+                    val summary = CodeUseTelemetryService.summary()
+                    CodeUseQueryResult(
+                        success = summary.enabled,
+                        kind = "summary",
+                        message = if (summary.enabled) {
+                            "Code-use telemetry is enabled; snippets=${summary.snippets}, failures available via kind=failures."
+                        } else {
+                            summary.message.ifBlank { "Code-use telemetry is disabled." }
+                        },
+                        summary = summary
+                    )
+                }
+
+                "failure", "failures", "error", "errors", "exceptions" -> {
+                    val rows = CodeUseTelemetryService.failures(fetchLimit)
+                        .filter { matches(it.document, it.boxUid, it.boxName) }
+                        .take(limit)
+                    CodeUseQueryResult(
+                        success = true,
+                        kind = "failures",
+                        message = "Returned ${rows.size} retained compiler/runtime failure row(s).",
+                        summary = CodeUseTelemetryService.summary(),
+                        failures = rows
+                    )
+                }
+
+                "snippet", "snippets", "timeline" -> {
+                    val rows = CodeUseTelemetryService.recentSnippets(fetchLimit)
+                        .filter { matches(it.document, it.boxUid, it.boxName) }
+                        .take(limit)
+                    CodeUseQueryResult(
+                        success = true,
+                        kind = "snippets",
+                        message = "Returned ${rows.size} recent snippet row(s).",
+                        summary = CodeUseTelemetryService.summary(),
+                        snippets = rows
+                    )
+                }
+
+                "launch", "launches", "lifecycle", "lifecycles" -> {
+                    val rows = CodeUseTelemetryService.recentLaunches(fetchLimit)
+                        .filter { matches(it.document, it.boxUid, it.boxName) }
+                        .take(limit)
+                    CodeUseQueryResult(
+                        success = true,
+                        kind = "launches",
+                        message = "Returned ${rows.size} launch lifecycle row(s).",
+                        summary = CodeUseTelemetryService.summary(),
+                        launches = rows
+                    )
+                }
+
+                "symbol", "symbols" -> {
+                    val rows = CodeUseTelemetryService.symbols(limit)
+                    CodeUseQueryResult(
+                        success = true,
+                        kind = "symbols",
+                        message = "Returned ${rows.size} symbol row(s). Symbol rows are populated once the analyzer has resolved uses.",
+                        summary = CodeUseTelemetryService.summary(),
+                        symbols = rows
+                    )
+                }
+
+                "unresolved" -> {
+                    val rows = CodeUseTelemetryService.unresolved(limit)
+                    CodeUseQueryResult(
+                        success = true,
+                        kind = "unresolved",
+                        message = "Returned ${rows.size} unresolved analyzer row(s).",
+                        summary = CodeUseTelemetryService.summary(),
+                        unresolved = rows
+                    )
+                }
+
+                "line-callers", "callers", "callers-for-source-line", "source-line-callers" -> {
+                    val (target, rows) = CodeUseTelemetryService.callersForSourceLine(
+                        sourcePath = req.sourcePath,
+                        line = req.line,
+                        limit = limit
+                    )
+                    CodeUseQueryResult(
+                        success = target != null,
+                        kind = "line-callers",
+                        message = if (target != null) {
+                            "Returned ${rows.size} recent Field snippet caller row(s) for ${target.symbolName} at ${target.sourceFile}:${target.line}."
+                        } else {
+                            "Could not resolve a source symbol for '${req.sourcePath}:${req.line}'."
+                        },
+                        summary = CodeUseTelemetryService.summary(),
+                        target = target,
+                        callers = rows
+                    )
+                }
+
+                "references", "references-for-code", "code-references", "refs" -> {
+                    val rows = CodeUseTelemetryService.referencesForCode(req.code, limit.coerceAtMost(10))
+                    CodeUseQueryResult(
+                        success = true,
+                        kind = "references-for-code",
+                        message = "Returned ${rows.size} likely Field source reference row(s).",
+                        summary = CodeUseTelemetryService.summary(),
+                        references = rows
+                    )
+                }
+
+                "related-source", "related-source-for-code", "source-bundle", "source-context" -> {
+                    val rows = CodeUseTelemetryService.relatedSourceForCode(
+                        code = req.code,
+                        symbolLimit = limit.coerceAtMost(10),
+                        callersPerSymbol = req.callersPerSymbol,
+                        sourceRadiusLines = req.sourceRadiusLines
+                    )
+                    CodeUseQueryResult(
+                        success = true,
+                        kind = "related-source-for-code",
+                        message = "Returned ${rows.size} related Field source bundle row(s) with excerpts, usage counts, and peer callers.",
+                        summary = CodeUseTelemetryService.summary(),
+                        relatedSources = rows
+                    )
+                }
+
+                "hot", "hot-symbols", "hot-source-symbols" -> {
+                    val rows = CodeUseTelemetryService.hotSourceSymbols(req.window, limit)
+                    CodeUseQueryResult(
+                        success = true,
+                        kind = "hot-symbols",
+                        message = "Returned ${rows.size} hot source symbol row(s) for window='${req.window}'.",
+                        summary = CodeUseTelemetryService.summary(),
+                        hotSymbols = rows
+                    )
+                }
+
+                "early", "early-document-symbols", "open-time", "open-only" -> {
+                    val rows = CodeUseTelemetryService.earlyDocumentSymbols(
+                        document = req.document,
+                        earlyWindowMs = req.earlyWindowMs,
+                        limit = limit
+                    )
+                    CodeUseQueryResult(
+                        success = true,
+                        kind = "early-document-symbols",
+                        message = "Returned ${rows.size} source symbol row(s) used early in a document and rarely afterward.",
+                        summary = CodeUseTelemetryService.summary(),
+                        earlySymbols = rows
+                    )
+                }
+
+                else -> CodeUseQueryResult(
+                    success = false,
+                    kind = kind,
+                    message = "Unknown kind '${req.kind}'. Use summary, failures, snippets, launches, symbols, unresolved, line-callers, references-for-code, related-source-for-code, hot-symbols, or early-document-symbols."
+                )
+            }
+        }
+
         val vectorStoreIds = buildList {
             KotlinSourceIndex.currentVectorStoreId()?.let { add(it) }
             addAll(GlslIncludeLibraryIndex.currentVectorStoreIdsFor(exec.property, expandedExtraPrompt + "\n" + exec.prompt))
@@ -1898,6 +2072,7 @@ fun installAi4() {
                             readMacro = readMacro,
                             writeMacro = writeMacro,
                             runMacro = runMacro,
+                            codeUseQuery = codeUseQuery,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             visualVerificationEnabled = visualVerificationAvailable(),
@@ -1960,6 +2135,7 @@ fun installAi4() {
                             readMacro = readMacro,
                             writeMacro = writeMacro,
                             runMacro = runMacro,
+                            codeUseQuery = codeUseQuery,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             visualVerificationEnabled = visualVerificationAvailable(),
@@ -2004,6 +2180,7 @@ fun installAi4() {
                             readMacro = readMacro,
                             writeMacro = writeMacro,
                             runMacro = runMacro,
+                            codeUseQuery = codeUseQuery,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             visualVerificationEnabled = visualVerificationAvailable(),
@@ -2032,6 +2209,7 @@ fun installAi4() {
                             readMacro = readMacro,
                             writeMacro = writeMacro,
                             runMacro = runMacro,
+                            codeUseQuery = codeUseQuery,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             visualVerificationEnabled = visualVerificationAvailable(),
@@ -2060,6 +2238,7 @@ fun installAi4() {
                             readMacro = readMacro,
                             writeMacro = writeMacro,
                             runMacro = runMacro,
+                            codeUseQuery = codeUseQuery,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             visualVerificationEnabled = visualVerificationAvailable(),
@@ -2242,6 +2421,113 @@ fun installAi4() {
                     unwrap = { it.trimEnd() }
                 )
                 val chatDocPath = runCatching { thisSessionInfo.get().filename }.getOrDefault("")
+                val codeUseQuery: (CodeUseQueryRequest) -> CodeUseQueryResult = { req ->
+                    val kind = req.kind.trim().lowercase().ifBlank { "failures" }
+                    val limit = req.limit.coerceIn(1, 50)
+                    when (kind) {
+                        "summary", "status" -> {
+                            val summary = CodeUseTelemetryService.summary()
+                            CodeUseQueryResult(
+                                success = summary.enabled,
+                                kind = "summary",
+                                message = if (summary.enabled) "Code-use telemetry is enabled." else summary.message,
+                                summary = summary
+                            )
+                        }
+                        "failure", "failures", "error", "errors", "exceptions" -> CodeUseQueryResult(
+                            success = true,
+                            kind = "failures",
+                            message = "Returned retained compiler/runtime failure rows.",
+                            summary = CodeUseTelemetryService.summary(),
+                            failures = CodeUseTelemetryService.failures(limit)
+                        )
+                        "snippet", "snippets", "timeline" -> CodeUseQueryResult(
+                            success = true,
+                            kind = "snippets",
+                            message = "Returned recent snippet rows.",
+                            summary = CodeUseTelemetryService.summary(),
+                            snippets = CodeUseTelemetryService.recentSnippets(limit)
+                        )
+                        "launch", "launches", "lifecycle", "lifecycles" -> CodeUseQueryResult(
+                            success = true,
+                            kind = "launches",
+                            message = "Returned launch lifecycle rows.",
+                            summary = CodeUseTelemetryService.summary(),
+                            launches = CodeUseTelemetryService.recentLaunches(limit)
+                        )
+                        "symbol", "symbols" -> CodeUseQueryResult(
+                            success = true,
+                            kind = "symbols",
+                            message = "Returned symbol rows.",
+                            summary = CodeUseTelemetryService.summary(),
+                            symbols = CodeUseTelemetryService.symbols(limit)
+                        )
+                        "unresolved" -> CodeUseQueryResult(
+                            success = true,
+                            kind = "unresolved",
+                            message = "Returned unresolved analyzer rows.",
+                            summary = CodeUseTelemetryService.summary(),
+                            unresolved = CodeUseTelemetryService.unresolved(limit)
+                        )
+                        "line-callers", "callers", "callers-for-source-line", "source-line-callers" -> {
+                            val (target, rows) = CodeUseTelemetryService.callersForSourceLine(
+                                sourcePath = req.sourcePath,
+                                line = req.line,
+                                limit = limit
+                            )
+                            CodeUseQueryResult(
+                                success = target != null,
+                                kind = "line-callers",
+                                message = if (target != null) {
+                                    "Returned ${rows.size} recent Field snippet caller row(s)."
+                                } else {
+                                    "Could not resolve a source symbol for '${req.sourcePath}:${req.line}'."
+                                },
+                                summary = CodeUseTelemetryService.summary(),
+                                target = target,
+                                callers = rows
+                            )
+                        }
+                        "references", "references-for-code", "code-references", "refs" -> CodeUseQueryResult(
+                            success = true,
+                            kind = "references-for-code",
+                            message = "Returned likely Field source reference rows.",
+                            summary = CodeUseTelemetryService.summary(),
+                            references = CodeUseTelemetryService.referencesForCode(req.code, limit.coerceAtMost(10))
+                        )
+                        "related-source", "related-source-for-code", "source-bundle", "source-context" -> CodeUseQueryResult(
+                            success = true,
+                            kind = "related-source-for-code",
+                            message = "Returned related Field source bundle rows with excerpts, usage counts, and peer callers.",
+                            summary = CodeUseTelemetryService.summary(),
+                            relatedSources = CodeUseTelemetryService.relatedSourceForCode(
+                                code = req.code,
+                                symbolLimit = limit.coerceAtMost(10),
+                                callersPerSymbol = req.callersPerSymbol,
+                                sourceRadiusLines = req.sourceRadiusLines
+                            )
+                        )
+                        "hot", "hot-symbols", "hot-source-symbols" -> CodeUseQueryResult(
+                            success = true,
+                            kind = "hot-symbols",
+                            message = "Returned hot source symbol rows.",
+                            summary = CodeUseTelemetryService.summary(),
+                            hotSymbols = CodeUseTelemetryService.hotSourceSymbols(req.window, limit)
+                        )
+                        "early", "early-document-symbols", "open-time", "open-only" -> CodeUseQueryResult(
+                            success = true,
+                            kind = "early-document-symbols",
+                            message = "Returned source symbol rows used early in a document and rarely afterward.",
+                            summary = CodeUseTelemetryService.summary(),
+                            earlySymbols = CodeUseTelemetryService.earlyDocumentSymbols(req.document, req.earlyWindowMs, limit)
+                        )
+                        else -> CodeUseQueryResult(
+                            success = false,
+                            kind = kind,
+                            message = "Unknown kind '${req.kind}'. Use summary, failures, snippets, launches, symbols, unresolved, line-callers, references-for-code, related-source-for-code, hot-symbols, or early-document-symbols."
+                        )
+                    }
+                }
                 val result = chatHelpers!!.chatGeneral(
                     state = state,
                     code = "",
@@ -2263,6 +2549,7 @@ fun installAi4() {
                     runMacro = { req ->
                         macroRunToolResult(chatDocPath, req, req.targetBoxes.filter { it.isNotBlank() })
                     },
+                    codeUseQuery = codeUseQuery,
                     agentMemory = agentMemory
                 )
                 

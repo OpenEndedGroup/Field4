@@ -41,6 +41,7 @@ import java.net.URL
 import java.net.URLClassLoader
 import java.util.Collections
 import java.util.IdentityHashMap
+import java.util.WeakHashMap
 import java.util.concurrent.Executors
 import kotlin.reflect.*
 import kotlin.reflect.full.companionObject
@@ -118,6 +119,7 @@ class KotlinInterface2(
     // K2 can compile different REPL states concurrently, but a single
     // K2ReplCompilationState is not safe to enter from overlapping snippets.
     private val compileMutex = Mutex()
+    private val codeUseSnippetIds = Collections.synchronizedMap(WeakHashMap<Any, String>())
 
     private val resolver = CompoundDependenciesResolver(FileSystemDependenciesResolver(), MavenDependenciesResolver())
 
@@ -305,6 +307,12 @@ class KotlinInterface2(
     suspend fun compile(s: String): ResultWithDiagnostics<LinkedSnippet<CompiledScript>> {
         return compileMutex.withLock {
             val code = SourceCodeImpl(id++, s)
+            val snippetId = CodeUseTelemetryService.newSnippetKey()
+            val telemetryContext = CodeUseTelemetryService.captureBoxContext(
+                associatedBox as? Box,
+                property = sourceProperty,
+                mode = "compile"
+            )
             val snapshot = context.debugScripts.recordCompile(code.name ?: "snippet_${id - 1}", s)
 
             lprintln(
@@ -342,8 +350,21 @@ class KotlinInterface2(
             if (r is ResultWithDiagnostics.Failure) {
                 context.debugScripts.discard(snapshot)
             }
+            val result = r!!
+            if (result is ResultWithDiagnostics.Success) {
+                codeUseSnippetIds[result.value] = snippetId
+            }
+            CodeUseTelemetryService.recordCompileResult(
+                snippetId = snippetId,
+                source = s,
+                sourceName = code.name ?: "",
+                context = telemetryContext,
+                success = result is ResultWithDiagnostics.Success,
+                diagnostics = result.reports.map { "${it.severity}: ${it.message} ${it.location ?: ""}".trim() },
+                elapsedMs = ns / 1_000_000.0
+            )
 
-            r!!
+            result
         }
     }
 
@@ -353,6 +374,9 @@ class KotlinInterface2(
     ): ResultWithDiagnostics<LinkedSnippet<KJvmEvaluatedSnippet>> {
         return Box.withBoxContext(resolveBoxContext()) {
             var r: ResultWithDiagnostics<LinkedSnippet<KJvmEvaluatedSnippet>>
+            var runtimeClass = ""
+            var returnType = ""
+            var exception: Throwable? = null
             val ns = measureNanoTime {
 
                 val evalConfig = ScriptEvaluationConfiguration {
@@ -363,12 +387,27 @@ class KotlinInterface2(
 
                 r = evaluator.eval(e, evalConfig)
                 if (r is ResultWithDiagnostics.Success) {
-                    val scriptInstance = r.value.get().result.scriptInstance
+                    val evalResult = r.value.get().result
+                    val scriptInstance = evalResult.scriptInstance
+                    returnType = runtimeReturnType(evalResult)
+                    if (evalResult is ResultValue.Error) exception = evalResult.error
+                    runtimeClass = scriptInstance?.javaClass?.name ?: evalResult.javaClass.name
                     context.debugScripts.attachLatestRuntimeClass(scriptInstance?.javaClass?.name)
                 }
                 if (updateContext) contextUpdater.update()
             }
             lprintln("info,kotlin,perf", "\t\tTIME<" + (ns / 1_000_000.0) + "ms> = evaluate")
+            val success = r is ResultWithDiagnostics.Success && r.value.get().result !is ResultValue.Error
+            CodeUseTelemetryService.recordEvaluationResult(
+                snippetId = codeUseSnippetIds[e] ?: CodeUseTelemetryService.newSnippetKey(),
+                context = CodeUseTelemetryService.captureBoxContext(associatedBox as? Box, property = sourceProperty, mode = "evaluate"),
+                success = success,
+                runtimeClass = runtimeClass,
+                returnType = returnType,
+                exception = exception,
+                diagnostics = r.reports.map { "${it.severity}: ${it.message} ${it.location ?: ""}".trim() },
+                elapsedMs = ns / 1_000_000.0
+            )
             r
         }
     }
@@ -378,6 +417,9 @@ class KotlinInterface2(
     ): ResultWithDiagnostics<LinkedSnippet<KJvmEvaluatedSnippet>> {
         return Box.withBoxContext(resolveBoxContext(implicits)) {
             var r: ResultWithDiagnostics<LinkedSnippet<KJvmEvaluatedSnippet>>
+            var runtimeClass = ""
+            var returnType = ""
+            var exception: Throwable? = null
             val ns = measureNanoTime {
 
                 val evalConfig = ScriptEvaluationConfiguration {
@@ -389,15 +431,40 @@ class KotlinInterface2(
 
                 r = evaluator.eval(e, evalConfig)
                 if (r is ResultWithDiagnostics.Success) {
-                    val scriptInstance = r.value.get().result.scriptInstance
+                    val evalResult = r.value.get().result
+                    val scriptInstance = evalResult.scriptInstance
+                    returnType = runtimeReturnType(evalResult)
+                    if (evalResult is ResultValue.Error) exception = evalResult.error
+                    runtimeClass = scriptInstance?.javaClass?.name ?: evalResult.javaClass.name
                     context.debugScripts.attachLatestRuntimeClass(scriptInstance?.javaClass?.name)
                 }
                 if (updateContext) contextUpdater.update()
             }
             lprintln("info,kotlin,perf", "\t\tTIME<" + (ns / 1_000_000.0) + "ms> = evaluate")
+            val boxContext = (implicits.firstOrNull { it is Box } as? Box) ?: associatedBox as? Box
+            val success = r is ResultWithDiagnostics.Success && r.value.get().result !is ResultValue.Error
+            CodeUseTelemetryService.recordEvaluationResult(
+                snippetId = codeUseSnippetIds[e] ?: CodeUseTelemetryService.newSnippetKey(),
+                context = CodeUseTelemetryService.captureBoxContext(boxContext, property = sourceProperty, mode = "evaluate"),
+                success = success,
+                runtimeClass = runtimeClass,
+                returnType = returnType,
+                exception = exception,
+                diagnostics = r.reports.map { "${it.severity}: ${it.message} ${it.location ?: ""}".trim() },
+                elapsedMs = ns / 1_000_000.0
+            )
             r
         }
     }
+
+    private fun runtimeReturnType(value: ResultValue?): String =
+        when (value) {
+            is ResultValue.Value -> value.type.ifBlank { value.value?.javaClass?.name.orEmpty() }
+            is ResultValue.Unit -> "kotlin.Unit"
+            is ResultValue.Error -> value.error.javaClass.name
+            is ResultValue.NotEvaluated -> "not-evaluated"
+            null -> ""
+        }
 
     fun String.findNthSubstring(s: String, n: Int, start: Int = 0): Int {
         if (n < 1 || start == -1) return -1

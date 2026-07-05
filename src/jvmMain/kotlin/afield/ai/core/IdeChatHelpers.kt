@@ -49,6 +49,7 @@ class IdeChatHelpers(
         readMacro: ((MacroReadRequest) -> MacroReadResult)? = null,
         writeMacro: ((MacroWriteRequest) -> MacroWriteResult)? = null,
         runMacro: ((MacroRunRequest) -> MacroRunResult)? = null,
+        codeUseQuery: ((CodeUseQueryRequest) -> CodeUseQueryResult)? = null,
         agentMemory: AgentMemoryState? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
         visualVerificationEnabled: Boolean = false,
@@ -72,6 +73,7 @@ class IdeChatHelpers(
             readMacro = readMacro,
             writeMacro = writeMacro,
             runMacro = runMacro,
+            codeUseQuery = codeUseQuery,
             agentMemory = agentMemory,
             workspaceSymbolSearch = workspaceSymbolSearch,
             visualVerificationEnabled = visualVerificationEnabled
@@ -128,6 +130,7 @@ class IdeChatHelpers(
         readMacro: ((MacroReadRequest) -> MacroReadResult)? = null,
         writeMacro: ((MacroWriteRequest) -> MacroWriteResult)? = null,
         runMacro: ((MacroRunRequest) -> MacroRunResult)? = null,
+        codeUseQuery: ((CodeUseQueryRequest) -> CodeUseQueryResult)? = null,
         agentMemory: AgentMemoryState? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
         visualVerificationEnabled: Boolean = imageUrls.isNotEmpty(),
@@ -154,6 +157,7 @@ class IdeChatHelpers(
             readMacro = readMacro,
             writeMacro = writeMacro,
             runMacro = runMacro,
+            codeUseQuery = codeUseQuery,
             agentMemory = agentMemory,
             workspaceSymbolSearch = workspaceSymbolSearch,
             visualVerificationEnabled = visualVerificationEnabled || imageUrls.isNotEmpty()
@@ -211,6 +215,7 @@ class IdeChatHelpers(
         readMacro: ((MacroReadRequest) -> MacroReadResult)? = null,
         writeMacro: ((MacroWriteRequest) -> MacroWriteResult)? = null,
         runMacro: ((MacroRunRequest) -> MacroRunResult)? = null,
+        codeUseQuery: ((CodeUseQueryRequest) -> CodeUseQueryResult)? = null,
         agentMemory: AgentMemoryState? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
         visualVerificationEnabled: Boolean = false,
@@ -234,6 +239,7 @@ class IdeChatHelpers(
             readMacro = readMacro,
             writeMacro = writeMacro,
             runMacro = runMacro,
+            codeUseQuery = codeUseQuery,
             agentMemory = agentMemory,
             workspaceSymbolSearch = workspaceSymbolSearch,
             visualVerificationEnabled = visualVerificationEnabled
@@ -293,6 +299,7 @@ class IdeChatHelpers(
         readMacro: ((MacroReadRequest) -> MacroReadResult)? = null,
         writeMacro: ((MacroWriteRequest) -> MacroWriteResult)? = null,
         runMacro: ((MacroRunRequest) -> MacroRunResult)? = null,
+        codeUseQuery: ((CodeUseQueryRequest) -> CodeUseQueryResult)? = null,
         agentMemory: AgentMemoryState? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
         visualVerificationEnabled: Boolean = false,
@@ -316,6 +323,7 @@ class IdeChatHelpers(
             readMacro = readMacro,
             writeMacro = writeMacro,
             runMacro = runMacro,
+            codeUseQuery = codeUseQuery,
             agentMemory = agentMemory,
             workspaceSymbolSearch = workspaceSymbolSearch,
             visualVerificationEnabled = visualVerificationEnabled

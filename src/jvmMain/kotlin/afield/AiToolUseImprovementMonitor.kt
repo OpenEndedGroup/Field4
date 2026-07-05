@@ -33,13 +33,13 @@ object AiToolUseImprovementMonitor {
     private var lastBroadcastEpochMs = 0L
 
     fun status(): AiToolUseImprovementStatus =
-        synchronized(lock) { runState.toStatus(logSummary()) }
+        synchronized(lock) { runState.toStatus(logSummary(), worktreeSummary()) }
 
-    fun start(dryRun: Boolean = true): AiToolUseImprovementStatus {
+    fun start(dryRun: Boolean = true, proposalCount: Int = 1): AiToolUseImprovementStatus {
         synchronized(lock) {
             if (runState.running) {
                 return runState.copy(message = "AI tool-use improvement task is already running.")
-                    .toStatus(logSummary())
+                    .toStatus(logSummary(), worktreeSummary())
             }
 
             val logs = logSummary()
@@ -49,7 +49,7 @@ object AiToolUseImprovementMonitor {
                     dryRun = dryRun,
                     message = logs.message.ifBlank { "No AI tool I/O logs are ready to review." }
                 )
-                return runState.toStatus(logs)
+                return runState.toStatus(logs, worktreeSummary())
             }
 
             val taskName = if (dryRun) "improveAiToolUseDryRun" else "improveAiToolUse"
@@ -65,49 +65,116 @@ object AiToolUseImprovementMonitor {
                 taskName = taskName,
                 dryRun = dryRun,
                 startedAtEpochMs = Instant.now().toEpochMilli(),
-                message = "Starting $taskName..."
+                proposalCount = if (dryRun) 1 else proposalCount.coerceIn(1, 8),
+                message = if (dryRun) "Starting $taskName..." else "Starting $taskName in generated worktree(s)..."
             )
             process = null
             appendLogLocked("Starting ./gradlew $taskName --args=\"$appArgs\"\n")
             broadcastWelcomeEvent("ai-tool-use-improvement")
             thread(name = "ai-tool-use-improvement-monitor", isDaemon = true) {
-                runProcess(taskName, appArgs)
+                runProcess(taskName, appArgs, runState.proposalCount)
             }
-            return runState.toStatus(logs)
+            return runState.toStatus(logs, worktreeSummary())
         }
     }
 
-    private fun runProcess(taskName: String, appArgs: String) {
-        val command = listOf(gradleWrapperCommand(), taskName, "--args=$appArgs")
+    private fun runProcess(taskName: String, appArgs: String, proposalCount: Int) {
+        val projectRoot = File(".").canonicalFile
+        val totalRuns = if (taskName == "improveAiToolUseDryRun") 1 else proposalCount.coerceIn(1, 8)
+        var failureCount = 0
+        var completedCount = 0
         try {
-            val startedProcess = ProcessBuilder(command)
-                .directory(File(".").canonicalFile)
-                .redirectErrorStream(true)
-                .start()
-            synchronized(lock) {
-                process = startedProcess
-                runState = runState.copy(message = "$taskName is running.")
-            }
-            broadcastWelcomeEvent("ai-tool-use-improvement")
-
-            startedProcess.inputStream.reader(StandardCharsets.UTF_8).use { reader ->
-                val buffer = CharArray(2048)
-                while (true) {
-                    val read = reader.read(buffer)
-                    if (read < 0) break
-                    appendLog(String(buffer, 0, read))
+            repeat(totalRuns) { index ->
+                val proposal = if (taskName == "improveAiToolUse") {
+                    val created = AgentWorktreeManager.createProposal(
+                        projectRoot = projectRoot,
+                        taskName = "ai-tool-use",
+                        label = "AI tool-use proposal ${index + 1}"
+                    )
+                    synchronized(lock) {
+                        runState = runState.copy(
+                            proposalIds = runState.proposalIds + created.id,
+                            message = "$taskName will run in ${created.path}."
+                        )
+                    }
+                    appendLog("Generated worktree ${created.id}: ${created.path}\n")
+                    created
+                } else null
+                val runDirectory = proposal?.path?.let { File(it).canonicalFile } ?: projectRoot
+                val command = listOf(gradleWrapperCommand(runDirectory), taskName, "--args=$appArgs")
+                val startedProcess = ProcessBuilder(command)
+                    .directory(runDirectory)
+                    .redirectErrorStream(true)
+                    .start()
+                synchronized(lock) {
+                    process = startedProcess
+                    runState = runState.copy(
+                        message = if (proposal == null) {
+                            "$taskName is running."
+                        } else {
+                            "$taskName is running in generated worktree ${proposal.id}."
+                        }
+                    )
                 }
-            }
+                proposal?.let {
+                    AgentWorktreeManager.updateProposal(
+                        projectRoot,
+                        it.id,
+                        "running",
+                        "$taskName is running."
+                    )
+                }
+                broadcastWelcomeEvent("ai-tool-use-improvement")
 
-            val exitCode = startedProcess.waitFor()
+                startedProcess.inputStream.reader(StandardCharsets.UTF_8).use { reader ->
+                    val buffer = CharArray(2048)
+                    while (true) {
+                        val read = reader.read(buffer)
+                        if (read < 0) break
+                        appendLog(String(buffer, 0, read))
+                    }
+                }
+
+                val exitCode = startedProcess.waitFor()
+                completedCount++
+                synchronized(lock) {
+                    process = null
+                }
+                proposal?.let {
+                    AgentWorktreeManager.updateProposal(
+                        projectRoot,
+                        it.id,
+                        if (exitCode == 0) "ready" else "failed",
+                        if (exitCode == 0) "$taskName finished in this generated worktree." else "$taskName exited with $exitCode.",
+                        reportPath = File(runDirectory, "build/ai-tool-use-improvement-report.md").absolutePath,
+                        dryRunPatchPath = File(runDirectory, "build/ai-tool-use-improvement-dry-run.patch").absolutePath
+                    )
+                }
+                if (exitCode != 0) failureCount++
+                synchronized(lock) {
+                    runState = runState.copy(
+                        exitCode = exitCode,
+                        message = if (exitCode == 0) {
+                            "$taskName finished run $completedCount of $totalRuns."
+                        } else {
+                            "$taskName run $completedCount of $totalRuns exited with $exitCode."
+                        }
+                    )
+                    trimLogLocked()
+                }
+                broadcastWelcomeEvent("ai-tool-use-improvement")
+            }
             synchronized(lock) {
                 process = null
                 runState = runState.copy(
                     running = false,
-                    status = if (exitCode == 0) "succeeded" else "failed",
+                    status = if (failureCount == 0) "succeeded" else "failed",
                     finishedAtEpochMs = Instant.now().toEpochMilli(),
-                    exitCode = exitCode,
-                    message = if (exitCode == 0) "$taskName finished." else "$taskName exited with $exitCode."
+                    message = if (failureCount == 0) {
+                        "$taskName finished."
+                    } else {
+                        "$taskName finished with $failureCount failed run(s)."
+                    }
                 )
                 trimLogLocked()
             }
@@ -195,8 +262,15 @@ object AiToolUseImprovementMonitor {
         )
     }
 
-    private fun gradleWrapperCommand(): String =
-        if (System.getProperty("os.name").lowercase().contains("windows")) ".\\gradlew.bat" else "./gradlew"
+    private fun worktreeSummary(): List<AgentWorktreeProposal> =
+        runCatching { AgentWorktreeManager.listProposals(File(".").canonicalFile) }.getOrDefault(emptyList())
+
+    private fun gradleWrapperCommand(projectRoot: File): String =
+        if (System.getProperty("os.name").lowercase().contains("windows")) {
+            File(projectRoot, "gradlew.bat").path
+        } else {
+            File(projectRoot, "gradlew").path
+        }
 
     private data class MutableRunState(
         val running: Boolean = false,
@@ -204,15 +278,18 @@ object AiToolUseImprovementMonitor {
         val runId: String = "",
         val taskName: String = "",
         val dryRun: Boolean = true,
+        val proposalCount: Int = 1,
+        val proposalIds: List<String> = emptyList(),
         val startedAtEpochMs: Long = 0,
         val finishedAtEpochMs: Long = 0,
         val exitCode: Int? = null,
         val message: String = "",
         val log: StringBuilder = StringBuilder()
     ) {
-        fun toStatus(logs: AiToolUseLogSummary): AiToolUseImprovementStatus =
+        fun toStatus(logs: AiToolUseLogSummary, worktrees: List<AgentWorktreeProposal>): AiToolUseImprovementStatus =
             AiToolUseImprovementStatus(
                 logs = logs,
+                worktrees = worktrees,
                 running = running,
                 status = status,
                 runId = runId,

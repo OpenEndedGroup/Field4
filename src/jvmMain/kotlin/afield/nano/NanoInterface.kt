@@ -3,7 +3,10 @@ package afield.nano
 import afield.*
 import afield.logger.lprintln
 import afield.runtime.TopologyWatcher
+import afield.runtime.MainLanguageRuntime
 import afield.runtime.applyRuntimeToggle
+import afield.runtime.isMainLanguage
+import afield.runtime.registerMainLanguageRuntime
 import afield.stdlib.Delegation
 import afield.stdlib.Inheritance
 import io.ktor.websocket.WebSocketSession
@@ -497,6 +500,15 @@ var Box.nanoMemoryAfter by Delegation<List<Int>?>()
 @RunsAt(early)
 fun installNano() {
     Box.ioPersistentProperties.addAll(setOf("isNanoRoot", "nanoLaunchDelayMs", "nanoMemoryInit"))
+    registerMainLanguageRuntime(
+        MainLanguageRuntime(
+            id = "nano",
+            label = "Nano",
+            runtimeClass = NanoExecution::class,
+            setLegacyRoot = { box, enabled -> box.isNanoRoot = enabled },
+            applyTopology = ::nanoTopologyNeedsUpdating,
+        ),
+    )
 }
 
 @RunsAt(plugins)
@@ -507,11 +519,11 @@ fun installNanoPlugin() {
 fun nanoTopologyNeedsUpdating(values: Collection<Box>) {
     applyRuntimeToggle(
         boxes = values,
-        isRoot = { it.isNanoRoot },
+        isRoot = { it.isNanoRoot == true || it.isMainLanguage("nano") },
         runtimeClass = NanoExecution::class,
         newExecution = { child -> NanoExecution(child) },
         language = "Nano",
-        customization = """this.style.border = "1px dashed #1a6b3a"; this.style.margin = "-5px" """,
+        customization = "",
         notifyCategory = "nano"
     )
 }

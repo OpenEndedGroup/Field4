@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="color-scheme" content="dark">
+    <title>Field Code Use</title>
+    <link rel="preload" href="/woff2/iosevka-regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/iosevka.css" as="style">
+    <link rel="stylesheet" href="/iosevka.css">
+    <style>
+        :root {
+            --bg: #141414;
+            --panel: #222;
+            --panel-strong: #171717;
+            --border: rgba(72, 201, 255, 0.22);
+            --border-strong: rgba(72, 201, 255, 0.48);
+            --cyan: rgb(72, 201, 255);
+            --text: rgba(225, 238, 244, 0.96);
+            --soft: rgba(164, 193, 210, 0.92);
+            --danger: #ff7979;
+            --ok: #86efac;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            min-height: 100%;
+            background: var(--bg);
+            color: var(--text);
+            font-family: "Iosevka Web", system-ui, sans-serif;
+            font-size: 13px;
+        }
+
+        body {
+            padding: 16px;
+        }
+
+        button {
+            font: inherit;
+            color: var(--text);
+            background: rgba(0, 0, 0, 0.46);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 7px 9px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            border-color: var(--border-strong);
+        }
+
+        .shell {
+            width: min(1280px, calc(100vw - 32px));
+            margin: 0 auto;
+            display: grid;
+            gap: 12px;
+        }
+
+        .topbar,
+        .panel {
+            border: 5px solid #000;
+            border-radius: 10px;
+            background: var(--panel);
+        }
+
+        .topbar {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 12px;
+            align-items: center;
+            padding: 12px;
+        }
+
+        h1 {
+            margin: 0;
+            color: var(--cyan);
+            font-size: 22px;
+            font-weight: 400;
+        }
+
+        .subtitle,
+        .muted {
+            color: var(--soft);
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .metric {
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            background: var(--panel-strong);
+            padding: 9px;
+            min-width: 0;
+        }
+
+        .metric span {
+            display: block;
+            color: var(--soft);
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        .metric strong {
+            display: block;
+            margin-top: 5px;
+            color: var(--cyan);
+            font-size: 18px;
+            font-weight: 400;
+            overflow-wrap: anywhere;
+        }
+
+        .panel {
+            padding: 12px;
+            min-width: 0;
+        }
+
+        .panel-header {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .panel-header h2 {
+            margin: 0;
+            font-size: 15px;
+            font-weight: 400;
+            color: var(--cyan);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .tabs button[aria-pressed="true"] {
+            border-color: var(--border-strong);
+            color: var(--cyan);
+            background: rgba(72, 201, 255, 0.10);
+        }
+
+        .table-wrap {
+            overflow: auto;
+            max-height: calc(100vh - 270px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 860px;
+        }
+
+        th,
+        td {
+            padding: 8px 9px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            position: sticky;
+            top: 0;
+            background: #111;
+            color: var(--soft);
+            font-weight: 400;
+            z-index: 1;
+        }
+
+        td.code {
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            color: rgba(235, 240, 246, 0.94);
+            max-width: 420px;
+        }
+
+        .ok {
+            color: var(--ok);
+        }
+
+        .bad {
+            color: var(--danger);
+        }
+
+        .empty {
+            padding: 18px;
+            color: var(--soft);
+            border: 1px dashed rgba(255, 255, 255, 0.16);
+            border-radius: 8px;
+        }
+
+        .chat-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 260px;
+            gap: 12px;
+            align-items: start;
+        }
+
+        .chat-log {
+            min-height: 220px;
+            max-height: 420px;
+            overflow: auto;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            background: var(--panel-strong);
+            padding: 10px;
+        }
+
+        .chat-turn {
+            display: grid;
+            gap: 5px;
+            padding: 9px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .chat-turn:last-child {
+            border-bottom: 0;
+        }
+
+        .chat-role {
+            color: var(--cyan);
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        .chat-text {
+            line-height: 1.45;
+            overflow-wrap: anywhere;
+        }
+
+        .chat-text pre,
+        .chat-text code {
+            white-space: pre-wrap;
+        }
+
+        .chat-input-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 78px;
+            resize: vertical;
+            font: inherit;
+            color: var(--text);
+            background: rgba(0, 0, 0, 0.46);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 9px;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--border-strong);
+        }
+
+        .prompt-list {
+            display: grid;
+            gap: 8px;
+        }
+
+        .prompt-list button {
+            text-align: left;
+        }
+
+        .db-path {
+            overflow-wrap: anywhere;
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+
+        @media (max-width: 920px) {
+            .topbar,
+            .panel-header,
+            .chat-layout,
+            .chat-input-row {
+                grid-template-columns: 1fr;
+            }
+
+            .summary-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+<main class="shell">
+    <section class="topbar">
+        <div>
+            <h1>Code-use telemetry</h1>
+            <div class="subtitle">Executed snippets, runtime outcomes, launch lifecycle, and the future K2 symbol index.</div>
+        </div>
+        <div class="tabs" role="group" aria-label="Views">
+            <button type="button" data-tab="timeline" aria-pressed="true">Timeline</button>
+            <button type="button" data-tab="failures" aria-pressed="false">Failures</button>
+            <button type="button" data-tab="launches" aria-pressed="false">Launches</button>
+            <button type="button" data-tab="symbols" aria-pressed="false">Symbols</button>
+            <button type="button" data-tab="unresolved" aria-pressed="false">Unresolved</button>
+            <button id="refresh" type="button">Refresh</button>
+        </div>
+    </section>
+
+    <section class="summary-grid" aria-label="Summary">
+        <div class="metric"><span>Status</span><strong id="metric-status">checking</strong></div>
+        <div class="metric"><span>Snippets</span><strong id="metric-snippets">0</strong></div>
+        <div class="metric"><span>Compiles</span><strong id="metric-compiles">0</strong></div>
+        <div class="metric"><span>Evals</span><strong id="metric-evals">0</strong></div>
+        <div class="metric"><span>Lifecycle</span><strong id="metric-launches">0</strong></div>
+        <div class="metric"><span>Dropped</span><strong id="metric-dropped">0</strong></div>
+    </section>
+
+    <section class="panel" id="panel-timeline">
+        <div class="panel-header">
+            <h2>Recent Snippets</h2>
+            <div id="database-path" class="muted db-path"></div>
+        </div>
+        <div id="timeline"></div>
+    </section>
+
+    <section class="panel" id="panel-failures" hidden>
+        <div class="panel-header">
+            <h2>Compiler And Runtime Failures</h2>
+            <div class="muted">failed snippets are kept as design evidence</div>
+        </div>
+        <div id="failures"></div>
+    </section>
+
+    <section class="panel" id="panel-launches" hidden>
+        <div class="panel-header">
+            <h2>Launch Lifecycle</h2>
+            <div class="muted">execute, launch, continue, and running-state transitions</div>
+        </div>
+        <div id="launches"></div>
+    </section>
+
+    <section class="panel" id="panel-symbols" hidden>
+        <div class="panel-header">
+            <h2>Symbol Browser</h2>
+            <div class="muted">populated by the planned K2/FIR analyzer pass</div>
+        </div>
+        <div id="symbols"></div>
+    </section>
+
+    <section class="panel" id="panel-unresolved" hidden>
+        <div class="panel-header">
+            <h2>Unresolved Calls</h2>
+            <div class="muted">analyzer debugging queue</div>
+        </div>
+        <div id="unresolved"></div>
+    </section>
+
+    <section class="panel" id="ai4-chat-panel">
+        <div class="panel-header">
+            <h2>AI4 Code-use Chat</h2>
+            <div id="chat-status" class="muted">disconnected</div>
+        </div>
+        <div class="chat-layout">
+            <div>
+                <div id="chat-log" class="chat-log" aria-live="polite">
+                    <div class="empty">Ask AI4 about the code-use database, hot symbols, failure evidence, or related Field source.</div>
+                </div>
+                <form id="chat-form" class="chat-input-row">
+                    <textarea id="chat-input" autocomplete="off" spellcheck="false" placeholder="Ask AI4 to inspect the code-use database..."></textarea>
+                    <button id="chat-send" type="submit">Send</button>
+                </form>
+            </div>
+            <div class="prompt-list" aria-label="Prompt starters">
+                <button type="button" data-prompt="Summarize the most recent compiler/runtime failures in the code-use telemetry. Which look like Field source or documentation growth points?">Recent failures</button>
+                <button type="button" data-prompt="What Field source symbols are hot this week? Include confidence and explain whether the result is resolved or textual fallback.">Hot this week</button>
+                <button type="button" data-prompt="Find symbols that appear early when documents open and then rarely afterward. What might they be doing?">Open-time helpers</button>
+                <button type="button" data-prompt="Show me how to use CodeUseRelatedSourceForCodeRequest on a Field box snippet, and explain what each returned field means.">Related source workflow</button>
+            </div>
+        </div>
+    </section>
+</main>
+
+<script>
+    const state = {
+        activeTab: "timeline",
+        summary: {},
+        snippets: [],
+        failures: [],
+        launches: [],
+        symbols: [],
+        unresolved: []
+    };
+
+    const chatState = {
+        ws: null,
+        connected: false,
+        pendingCallback: "",
+        reconnectTimer: 0,
+        turnCount: 0
+    };
+
+    const escapeHtml = (value) => String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+
+    function formatTime(epochMs) {
+        const ms = Number(epochMs) || 0;
+        if (!ms) return "";
+        return new Date(ms).toLocaleString();
+    }
+
+    function boolCell(value) {
+        if (value === true) return `<span class="ok">ok</span>`;
+        if (value === false) return `<span class="bad">failed</span>`;
+        return `<span class="muted">n/a</span>`;
+    }
+
+    function summarizeJsonText(value) {
+        const text = String(value || "").trim();
+        if (!text) return "";
+        try {
+            const parsed = JSON.parse(text);
+            if (Array.isArray(parsed)) return parsed.filter(Boolean).join("\n");
+            if (parsed && typeof parsed === "object") {
+                return [parsed.type, parsed.message, parsed.stack].filter(Boolean).join("\n");
+            }
+        } catch (_) {
+        }
+        return text;
+    }
+
+    function numberText(value) {
+        return String(Number(value) || 0);
+    }
+
+    function renderSummary() {
+        const s = state.summary || {};
+        document.getElementById("metric-status").textContent = s.enabled ? "enabled" : "disabled";
+        document.getElementById("metric-snippets").textContent = numberText(s.snippets);
+        document.getElementById("metric-compiles").textContent = numberText(s.compileEvents);
+        document.getElementById("metric-evals").textContent = numberText(s.evalEvents);
+        document.getElementById("metric-launches").textContent = numberText(s.launchEvents);
+        document.getElementById("metric-dropped").textContent = numberText(s.droppedEvents);
+        document.getElementById("database-path").textContent = s.message || s.databasePath || "";
+        document.getElementById("metric-status").className = s.enabled ? "ok" : "bad";
+    }
+
+    function renderTimeline() {
+        const rows = state.snippets || [];
+        const target = document.getElementById("timeline");
+        if (!rows.length) {
+            target.innerHTML = `<div class="empty">No snippets captured yet. Run or launch code in Field, then refresh.</div>`;
+            return;
+        }
+        target.innerHTML = `
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Mode</th>
+                        <th>Document</th>
+                        <th>Box</th>
+                        <th>Property</th>
+                            <th>Compile</th>
+                            <th>Eval</th>
+                            <th>Return</th>
+                            <th>Problem</th>
+                            <th>Preview</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    ${rows.map((row) => `
+                        <tr>
+                            <td>${escapeHtml(formatTime(row.createdAtEpochMs))}</td>
+                            <td>${escapeHtml(row.mode || "")}</td>
+                            <td>${escapeHtml(row.document || "")}</td>
+                            <td>${escapeHtml(row.boxName || row.boxUid || "")}</td>
+                            <td>${escapeHtml(row.property || "")}</td>
+                            <td>${boolCell(row.lastCompileSuccess)}</td>
+                            <td>${boolCell(row.lastEvalSuccess)}</td>
+                            <td>${escapeHtml(row.lastReturnType || row.lastRuntimeClass || "")}</td>
+                            <td class="code">${escapeHtml(summarizeJsonText(row.lastException || row.lastCompileDiagnostics || row.lastEvalDiagnostics))}</td>
+                            <td class="code">${escapeHtml(row.sourcePreview || "")}</td>
+                        </tr>
+                    `).join("")}
+                    </tbody>
+                </table>
+            </div>`;
+    }
+
+    function renderFailures() {
+        const rows = state.failures || [];
+        const target = document.getElementById("failures");
+        if (!rows.length) {
+            target.innerHTML = `<div class="empty">No compiler or runtime failures captured yet.</div>`;
+            return;
+        }
+        target.innerHTML = `
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Kind</th>
+                        <th>Document</th>
+                        <th>Box</th>
+                        <th>Property</th>
+                        <th>Problem</th>
+                        <th>Preview</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    ${rows.map((row) => `
+                        <tr>
+                            <td>${escapeHtml(formatTime(row.createdAtEpochMs))}</td>
+                            <td>${escapeHtml(row.lifecycle || row.kind || "")}</td>
+                            <td>${escapeHtml(row.document || "")}</td>
+                            <td>${escapeHtml(row.boxName || row.boxUid || "")}</td>
+                            <td>${escapeHtml(row.property || "")}</td>
+                            <td class="code">${escapeHtml(summarizeJsonText(row.exceptionJson || row.diagnosticsJson || row.returnType || ""))}</td>
+                            <td class="code">${escapeHtml(row.sourcePreview || "")}</td>
+                        </tr>
+                    `).join("")}
+                    </tbody>
+                </table>
+            </div>`;
+    }
+
+    function renderLaunches() {
+        const rows = state.launches || [];
+        const target = document.getElementById("launches");
+        if (!rows.length) {
+            target.innerHTML = `<div class="empty">No launch lifecycle events captured yet.</div>`;
+            return;
+        }
+        target.innerHTML = `
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                    <tr><th>Time</th><th>Lifecycle</th><th>Watermark</th><th>Document</th><th>Box</th><th>Property</th><th>Strand</th><th>Return</th><th>Exception</th><th>Snippet</th></tr>
+                    </thead>
+                    <tbody>
+                    ${rows.map((row) => `
+                        <tr>
+                            <td>${escapeHtml(formatTime(row.createdAtEpochMs))}</td>
+                            <td>${escapeHtml(row.lifecycle || "")}</td>
+                            <td>${escapeHtml(row.watermark ?? "")}</td>
+                            <td>${escapeHtml(row.document || "")}</td>
+                            <td>${escapeHtml(row.boxName || row.boxUid || "")}</td>
+                            <td>${escapeHtml(row.property || "")}</td>
+                            <td>${escapeHtml(row.strand || "")}</td>
+                            <td>${escapeHtml(row.returnType || "")}</td>
+                            <td class="code">${escapeHtml(summarizeJsonText(row.exceptionJson || ""))}</td>
+                            <td>${escapeHtml(String(row.snippetId || "").slice(0, 12))}</td>
+                        </tr>
+                    `).join("")}
+                    </tbody>
+                </table>
+            </div>`;
+    }
+
+    function renderSymbols() {
+        const rows = state.symbols || [];
+        const target = document.getElementById("symbols");
+        if (!rows.length) {
+            target.innerHTML = `<div class="empty">No resolved symbols yet. The event store and schema are present; the K2/FIR analyzer worker is the next phase.</div>`;
+            return;
+        }
+        target.innerHTML = `
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                    <tr><th>Symbol</th><th>Kind</th><th>Uses</th><th>Snippets</th><th>Source</th></tr>
+                    </thead>
+                    <tbody>
+                    ${rows.map((row) => `
+                        <tr>
+                            <td>${escapeHtml(row.fqName || row.callableId || "")}</td>
+                            <td>${escapeHtml(row.kind || "")}</td>
+                            <td>${escapeHtml(row.useCount ?? 0)}</td>
+                            <td>${escapeHtml(row.uniqueSnippetCount ?? 0)}</td>
+                            <td>${escapeHtml([row.sourceFile, row.line ? `:${row.line}` : ""].join(""))}</td>
+                        </tr>
+                    `).join("")}
+                    </tbody>
+                </table>
+            </div>`;
+    }
+
+    function renderUnresolved() {
+        const rows = state.unresolved || [];
+        const target = document.getElementById("unresolved");
+        if (!rows.length) {
+            target.innerHTML = `<div class="empty">No unresolved analyzer records yet.</div>`;
+            return;
+        }
+        target.innerHTML = `
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                    <tr><th>Time</th><th>Text</th><th>Line</th><th>Column</th><th>Reason</th><th>Snippet</th></tr>
+                    </thead>
+                    <tbody>
+                    ${rows.map((row) => `
+                        <tr>
+                            <td>${escapeHtml(formatTime(row.createdAtEpochMs))}</td>
+                            <td class="code">${escapeHtml(row.text || "")}</td>
+                            <td>${escapeHtml(row.line ?? "")}</td>
+                            <td>${escapeHtml(row.column ?? "")}</td>
+                            <td>${escapeHtml(row.reason || "")}</td>
+                            <td>${escapeHtml(String(row.snippetId || "").slice(0, 12))}</td>
+                        </tr>
+                    `).join("")}
+                    </tbody>
+                </table>
+            </div>`;
+    }
+
+    function render() {
+        renderSummary();
+        renderTimeline();
+        renderFailures();
+        renderLaunches();
+        renderSymbols();
+        renderUnresolved();
+        document.querySelectorAll("[data-tab]").forEach((button) => {
+            const active = button.getAttribute("data-tab") === state.activeTab;
+            button.setAttribute("aria-pressed", active ? "true" : "false");
+        });
+        ["timeline", "failures", "launches", "symbols", "unresolved"].forEach((tab) => {
+            document.getElementById(`panel-${tab}`).hidden = tab !== state.activeTab;
+        });
+    }
+
+    function wsUrl() {
+        const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+        return `${proto}//${window.location.host}/ws`;
+    }
+
+    function setChatStatus(text, bad = false) {
+        const target = document.getElementById("chat-status");
+        target.textContent = text;
+        target.className = bad ? "bad" : "muted";
+    }
+
+    function ensureChatPlaceholder() {
+        const log = document.getElementById("chat-log");
+        const empty = log.querySelector(".empty");
+        if (empty) empty.remove();
+    }
+
+    function appendChatTurn(role, html, options = {}) {
+        ensureChatPlaceholder();
+        const log = document.getElementById("chat-log");
+        const turn = document.createElement("div");
+        turn.className = "chat-turn";
+        if (options.id) turn.id = options.id;
+
+        const label = document.createElement("div");
+        label.className = "chat-role";
+        label.textContent = role;
+
+        const body = document.createElement("div");
+        body.className = "chat-text";
+        if (options.rawHtml) {
+            body.innerHTML = html || "";
+        } else {
+            body.textContent = html || "";
+        }
+
+        turn.append(label, body);
+        log.append(turn);
+        log.scrollTop = log.scrollHeight;
+        return body;
+    }
+
+    function connectChat() {
+        if (chatState.ws && (chatState.ws.readyState === WebSocket.OPEN || chatState.ws.readyState === WebSocket.CONNECTING)) {
+            return;
+        }
+        setChatStatus("connecting");
+        const ws = new WebSocket(wsUrl());
+        chatState.ws = ws;
+        ws.addEventListener("open", () => {
+            chatState.connected = true;
+            setChatStatus("connected");
+        });
+        ws.addEventListener("close", () => {
+            chatState.connected = false;
+            setChatStatus("disconnected", true);
+            if (!chatState.reconnectTimer) {
+                chatState.reconnectTimer = window.setTimeout(() => {
+                    chatState.reconnectTimer = 0;
+                    connectChat();
+                }, 1500);
+            }
+        });
+        ws.addEventListener("error", () => {
+            chatState.connected = false;
+            setChatStatus("connection error", true);
+        });
+        ws.addEventListener("message", (event) => {
+            let message = null;
+            try {
+                message = JSON.parse(event.data);
+            } catch (error) {
+                console.warn("Ignoring non-JSON chat websocket message", error);
+                return;
+            }
+            const matchesPending = !chatState.pendingCallback ||
+                message.name === chatState.pendingCallback ||
+                message.replyTo === chatState.pendingCallback ||
+                message.originalName === "chat_input" ||
+                message.name === "chat_input";
+            if (!matchesPending) return;
+            const payload = message.payload || {};
+            if (payload.phase === 1) {
+                let pending = document.getElementById("chat-pending");
+                if (!pending) {
+                    appendChatTurn("AI4", payload.value || "Thinking...", { rawHtml: true, id: "chat-pending" });
+                } else {
+                    const body = pending.querySelector(".chat-text");
+                    if (body) body.innerHTML = payload.value || "Thinking...";
+                }
+                setChatStatus("thinking");
+                return;
+            }
+            if (payload.phase === 20 || payload.value) {
+                const pending = document.getElementById("chat-pending");
+                if (pending) pending.remove();
+                appendChatTurn("AI4", payload.value || "", { rawHtml: true });
+                chatState.pendingCallback = "";
+                document.getElementById("chat-send").disabled = false;
+                setChatStatus(chatState.connected ? "connected" : "disconnected", !chatState.connected);
+            }
+        });
+    }
+
+    function sendChatPrompt(prompt) {
+        const text = String(prompt || "").trim();
+        if (!text) return;
+        connectChat();
+        if (!chatState.ws || chatState.ws.readyState !== WebSocket.OPEN) {
+            appendChatTurn("System", "Chat is still connecting. Try again in a moment.");
+            return;
+        }
+        chatState.turnCount += 1;
+        const callback = `code_use_chat_${Date.now()}_${chatState.turnCount}`;
+        chatState.pendingCallback = callback;
+        appendChatTurn("You", text);
+        document.getElementById("chat-send").disabled = true;
+        setChatStatus("sent");
+        chatState.ws.send(JSON.stringify({
+            name: "chat_input",
+            uid: `code-use-chat-${Date.now()}-${chatState.turnCount}`,
+            replyTo: callback,
+            originalName: null,
+            payload: {
+                value: text,
+                phase: 0,
+                images: []
+            }
+        }));
+    }
+
+    async function fetchJson(path) {
+        const response = await fetch(path, { cache: "no-store" });
+        if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`);
+        return response.json();
+    }
+
+    async function load() {
+        try {
+            const [summary, snippets, failures, launches, symbols, unresolved] = await Promise.all([
+                fetchJson("/api/code-use/summary"),
+                fetchJson("/api/code-use/snippets?limit=100"),
+                fetchJson("/api/code-use/failures?limit=100"),
+                fetchJson("/api/code-use/launches?limit=100"),
+                fetchJson("/api/code-use/symbols?limit=100"),
+                fetchJson("/api/code-use/unresolved?limit=100")
+            ]);
+            state.summary = summary || {};
+            state.snippets = Array.isArray(snippets) ? snippets : [];
+            state.failures = Array.isArray(failures) ? failures : [];
+            state.launches = Array.isArray(launches) ? launches : [];
+            state.symbols = Array.isArray(symbols) ? symbols : [];
+            state.unresolved = Array.isArray(unresolved) ? unresolved : [];
+        } catch (error) {
+            console.error("Could not load code-use telemetry", error);
+            state.summary = {
+                enabled: false,
+                message: error?.message || "Could not load code-use telemetry."
+            };
+            state.snippets = [];
+            state.failures = [];
+            state.launches = [];
+            state.symbols = [];
+            state.unresolved = [];
+        }
+        render();
+    }
+
+    document.querySelectorAll("[data-tab]").forEach((button) => {
+        button.addEventListener("click", () => {
+            state.activeTab = button.getAttribute("data-tab") || "timeline";
+            render();
+        });
+    });
+    document.getElementById("refresh").addEventListener("click", load);
+    document.getElementById("chat-form").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const input = document.getElementById("chat-input");
+        const text = input.value;
+        input.value = "";
+        sendChatPrompt(text);
+    });
+    document.querySelectorAll("[data-prompt]").forEach((button) => {
+        button.addEventListener("click", () => {
+            const input = document.getElementById("chat-input");
+            input.value = button.getAttribute("data-prompt") || "";
+            input.focus();
+        });
+    });
+    connectChat();
+    load();
+</script>
+</body>
+</html>

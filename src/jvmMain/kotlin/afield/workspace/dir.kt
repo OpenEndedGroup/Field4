@@ -171,8 +171,38 @@ data class AiToolUseLogSummary(
 )
 
 @Serializable
+data class AgentWorktreeProposal(
+    val id: String,
+    val label: String = "",
+    val path: String = "",
+    val branch: String = "",
+    val baseBranch: String = "",
+    val baseCommit: String = "",
+    val createdAtEpochMs: Long = 0,
+    val updatedAtEpochMs: Long = 0,
+    val status: String = "created",
+    val taskName: String = "",
+    val reportPath: String = "",
+    val dryRunPatchPath: String = "",
+    val message: String = ""
+)
+
+@Serializable
+data class AgentWorktreeActionRequest(
+    val id: String
+)
+
+@Serializable
+data class AgentWorktreeActionResponse(
+    val success: Boolean,
+    val proposal: AgentWorktreeProposal? = null,
+    val message: String = ""
+)
+
+@Serializable
 data class AiToolUseImprovementStatus(
     val logs: AiToolUseLogSummary = AiToolUseLogSummary(),
+    val worktrees: List<AgentWorktreeProposal> = emptyList(),
     val running: Boolean = false,
     val status: String = "idle",
     val runId: String = "",
@@ -187,7 +217,8 @@ data class AiToolUseImprovementStatus(
 
 @Serializable
 data class AiToolUseImprovementRunRequest(
-    val dryRun: Boolean = true
+    val dryRun: Boolean = true,
+    val proposalCount: Int = 1
 )
 
 val defaultImportClassBlacklist = listOf(
@@ -214,7 +245,14 @@ data class WelcomeDocsResponse(
     val projects: List<ProjectEntry> = emptyList(),
     val runtimeInfo: RuntimeInfo = RuntimeInfo(),
     val completionDocPolish: CompletionDocPolishStatus = CompletionDocPolishStatus(),
-    val aiToolUseImprovement: AiToolUseImprovementStatus = AiToolUseImprovementStatus()
+    val aiToolUseImprovement: AiToolUseImprovementStatus = AiToolUseImprovementStatus(),
+    val codeUse: CodeUseSummary = CodeUseSummary(
+        enabled = false,
+        databasePath = "",
+        queueSize = 0,
+        droppedEvents = 0,
+        message = "not loaded"
+    )
 )
 
 @Serializable

@@ -6,7 +6,10 @@ import afield.*
 import afield.Box
 import afield.logger.lprintln
 import afield.runtime.TopologyWatcher
+import afield.runtime.MainLanguageRuntime
 import afield.runtime.applyRuntimeToggle
+import afield.runtime.isMainLanguage
+import afield.runtime.registerMainLanguageRuntime
 import afield.stdlib.Delegation
 import clojure.java.api.Clojure
 import clojure.lang.*
@@ -546,16 +549,25 @@ var Box.isClojureRoot by Delegation<Boolean?>()
 @RunsAt(early)
 fun installClojure() {
     Box.ioPersistentProperties.add("isClojureRoot")
+    registerMainLanguageRuntime(
+        MainLanguageRuntime(
+            id = "clojure",
+            label = "Clojure",
+            runtimeClass = ClojureExecution::class,
+            setLegacyRoot = { box, enabled -> box.isClojureRoot = enabled },
+            applyTopology = ::clojureTopologyNeedsUpdating,
+        ),
+    )
 }
 
 fun clojureTopologyNeedsUpdating(values: Collection<Box>) {
     applyRuntimeToggle(
         boxes = values,
-        isRoot = { it.isClojureRoot },
+        isRoot = { it.isClojureRoot == true || it.isMainLanguage("clojure") },
         runtimeClass = ClojureExecution::class,
         newExecution = { child -> ClojureExecution(child) },
         language = "Clojure",
-        customization = """this.style.border = "1px dashed #8B4000"; this.style.margin = "-5px" """,
+        customization = "",
         notifyCategory = "clojure"
     )
 }

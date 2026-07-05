@@ -1079,6 +1079,59 @@ class OpenAiIdeCodexBridge(
             ctx.runMacro?.invoke(req)
                 ?: throw IllegalStateException("MacroRun not available for this request.")
         }
+        tools.register(CodeUseQueryRequest::class.java) { ctx, req ->
+            ctx.codeUseQuery?.invoke(req)
+                ?: throw IllegalStateException("CodeUseQuery not available for this request.")
+        }
+        tools.register(CodeUseCallersForSourceLineRequest::class.java) { ctx, req ->
+            ctx.codeUseQuery?.invoke(
+                CodeUseQueryRequest(
+                    kind = "line-callers",
+                    sourcePath = req.sourcePath,
+                    line = req.line,
+                    limit = req.limit
+                )
+            ) ?: throw IllegalStateException("CodeUseCallersForSourceLine not available for this request.")
+        }
+        tools.register(CodeUseReferencesForCodeRequest::class.java) { ctx, req ->
+            ctx.codeUseQuery?.invoke(
+                CodeUseQueryRequest(
+                    kind = "references-for-code",
+                    code = req.code,
+                    limit = req.limit
+                )
+            ) ?: throw IllegalStateException("CodeUseReferencesForCode not available for this request.")
+        }
+        tools.register(CodeUseRelatedSourceForCodeRequest::class.java) { ctx, req ->
+            ctx.codeUseQuery?.invoke(
+                CodeUseQueryRequest(
+                    kind = "related-source-for-code",
+                    code = req.code,
+                    limit = req.limit,
+                    callersPerSymbol = req.callersPerSymbol,
+                    sourceRadiusLines = req.sourceRadiusLines
+                )
+            ) ?: throw IllegalStateException("CodeUseRelatedSourceForCode not available for this request.")
+        }
+        tools.register(CodeUseHotSymbolsRequest::class.java) { ctx, req ->
+            ctx.codeUseQuery?.invoke(
+                CodeUseQueryRequest(
+                    kind = "hot-symbols",
+                    window = req.window,
+                    limit = req.limit
+                )
+            ) ?: throw IllegalStateException("CodeUseHotSymbols not available for this request.")
+        }
+        tools.register(CodeUseEarlyDocumentSymbolsRequest::class.java) { ctx, req ->
+            ctx.codeUseQuery?.invoke(
+                CodeUseQueryRequest(
+                    kind = "early-document-symbols",
+                    document = req.document,
+                    earlyWindowMs = req.earlyWindowMs,
+                    limit = req.limit
+                )
+            ) ?: throw IllegalStateException("CodeUseEarlyDocumentSymbols not available for this request.")
+        }
         tools.register(ScratchpadReadRequest::class.java) { ctx, _ ->
             ctx.agentMemory?.readScratchpad()
                 ?: throw IllegalStateException("Scratchpad not available for this request.")

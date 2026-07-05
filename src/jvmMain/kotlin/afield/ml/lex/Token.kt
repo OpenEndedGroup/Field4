@@ -1,0 +1,51 @@
+package afield.ml.lex
+
+import afield.ml.diag.SourceRange
+
+enum class TokenKind {
+    LET,
+    TYPE,
+    IN,
+    IF,
+    THEN,
+    ELSE,
+    FUN,
+    MATCH,
+    WITH,
+    TRUE,
+    FALSE,
+    IDENT,
+    INT,
+    FLOAT,
+    STRING,
+    LPAREN,
+    RPAREN,
+    LBRACKET,
+    RBRACKET,
+    LBRACE,
+    RBRACE,
+    COMMA,
+    SEMICOLON,
+    BAR,
+    PIPE_FORWARD,
+    DOT,
+    ARROW,
+    EQ,
+    EQEQ,
+    NEQ,
+    PLUS,
+    MINUS,
+    STAR,
+    SLASH,
+    LT,
+    LTE,
+    GT,
+    GTE,
+    EOF,
+}
+
+data class Token(
+    val kind: TokenKind,
+    val text: String,
+    val range: SourceRange,
+)

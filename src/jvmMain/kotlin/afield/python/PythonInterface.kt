@@ -10,7 +10,10 @@ import afield.python.PythonInterface.Companion.inited
 import afield.python.PythonInterface.Companion.thisBox
 import afield.python.PythonInterface.Companion.thisLineOffset
 import afield.runtime.TopologyWatcher
+import afield.runtime.MainLanguageRuntime
 import afield.runtime.applyRuntimeToggle
+import afield.runtime.isMainLanguage
+import afield.runtime.registerMainLanguageRuntime
 import afield.stdlib.Delegation
 import jep.*
 import jep.python.PyCallable
@@ -40,6 +43,15 @@ fun makeInterpreter() {
 @RunsAt(early)
 fun installPython() {
     Box.ioPersistentProperties.add("isPythonRoot")
+    registerMainLanguageRuntime(
+        MainLanguageRuntime(
+            id = "python",
+            label = "Python",
+            runtimeClass = PythonExecution::class,
+            setLegacyRoot = { box, enabled -> box.isPythonRoot = enabled },
+            applyTopology = ::pythonTopologyNeedsUpdating,
+        ),
+    )
 }
 
 @RunsAt(plugins)
@@ -51,11 +63,11 @@ fun install() {
 fun pythonTopologyNeedsUpdating(values: Collection<Box>) {
     applyRuntimeToggle(
         boxes = values,
-        isRoot = { it.isPythonRoot },
+        isRoot = { it.isPythonRoot == true || it.isMainLanguage("python") },
         runtimeClass = PythonExecution::class,
         newExecution = { _ -> PythonExecution() },
         language = "Python",
-        customization = """this.style.border = "1px dashed #40008B"; this.style.margin = "-5px" """,
+        customization = "",
         notifyCategory = "python"
     )
 }

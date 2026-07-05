@@ -1,4 +1,16 @@
 package afield.ai.core
+import afield.CodeUseFailureRow
+import afield.CodeUseEarlySourceSymbolRow
+import afield.CodeUseHotSourceSymbolRow
+import afield.CodeUseLaunchRow
+import afield.CodeUseSnippetRow
+import afield.CodeUseSnippetUseRow
+import afield.CodeUseSummary
+import afield.CodeUseRelatedSourceRow
+import afield.CodeUseSourceReferenceRow
+import afield.CodeUseSourceTarget
+import afield.CodeUseSymbolRow
+import afield.CodeUseUnresolvedRow
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.openai.models.responses.ResponseCreateParams
@@ -260,6 +272,75 @@ data class MacroRunResult(
     val errors: List<String> = emptyList()
 )
 
+/** Code-use telemetry tools ------------------------------------------------- */
+
+@JsonClassDescription("Query Field's local code-use telemetry database. kind may be summary, failures, snippets, launches, symbols, unresolved, line-callers, references-for-code, hot-symbols, or early-document-symbols. Prefer kind=failures when looking for compiler errors/runtime exceptions that reveal API gaps, missing docs, or growth points. Optional document and box filters are case-insensitive substrings for row types that carry that metadata.")
+data class CodeUseQueryRequest(
+    val kind: String = "failures",
+    val limit: Int = 20,
+    val document: String = "",
+    val box: String = "",
+    val sourcePath: String = "",
+    val line: Int = 0,
+    val code: String = "",
+    val window: String = "all",
+    val earlyWindowMs: Long = 600000,
+    val callersPerSymbol: Int = 5,
+    val sourceRadiusLines: Int = 24
+)
+
+data class CodeUseQueryResult(
+    val success: Boolean,
+    val kind: String,
+    val message: String,
+    val summary: CodeUseSummary? = null,
+    val target: CodeUseSourceTarget? = null,
+    val failures: List<CodeUseFailureRow> = emptyList(),
+    val snippets: List<CodeUseSnippetRow> = emptyList(),
+    val launches: List<CodeUseLaunchRow> = emptyList(),
+    val symbols: List<CodeUseSymbolRow> = emptyList(),
+    val unresolved: List<CodeUseUnresolvedRow> = emptyList(),
+    val callers: List<CodeUseSnippetUseRow> = emptyList(),
+    val references: List<CodeUseSourceReferenceRow> = emptyList(),
+    val hotSymbols: List<CodeUseHotSourceSymbolRow> = emptyList(),
+    val earlySymbols: List<CodeUseEarlySourceSymbolRow> = emptyList(),
+    val relatedSources: List<CodeUseRelatedSourceRow> = emptyList()
+)
+
+@JsonClassDescription("Given a source path and line inside src/, show recent Field box code snippets that appear to call the enclosing source symbol, with timestamps, compile/eval status, return types, and launch lifecycles. Uses resolved symbol edges when available, otherwise source-index/textual fallback.")
+data class CodeUseCallersForSourceLineRequest(
+    val sourcePath: String,
+    val line: Int,
+    val limit: Int = 20
+)
+
+@JsonClassDescription("Given Kotlin code, rank the most interesting files/properties/methods inside src/ that the code appears to refer to. This is useful for grounding a Field box or inline chat request in Field source.")
+data class CodeUseReferencesForCodeRequest(
+    val code: String,
+    val limit: Int = 5
+)
+
+@JsonClassDescription("List hot Field source symbols by observed Field box usage. window may be all, week, day, or month. Uses resolved symbol edges when available, otherwise textual source-index fallback.")
+data class CodeUseHotSymbolsRequest(
+    val window: String = "all",
+    val limit: Int = 20
+)
+
+@JsonClassDescription("Find source symbols used early in a document's observed code-use timeline and then rarely afterward. Use this to spot initialization/open-time helpers. document is an optional case-insensitive substring.")
+data class CodeUseEarlyDocumentSymbolsRequest(
+    val document: String = "",
+    val earlyWindowMs: Long = 600000,
+    val limit: Int = 20
+)
+
+@JsonClassDescription("Given Field box code, return the most relevant src/ routines with bounded source excerpts, observed call-site frequencies, return/lifecycle summaries, and other Field snippets that called the same routines. Prefer this when interrogating how box code maps onto Field source.")
+data class CodeUseRelatedSourceForCodeRequest(
+    val code: String,
+    val limit: Int = 5,
+    val callersPerSymbol: Int = 5,
+    val sourceRadiusLines: Int = 24
+)
+
 /** Long-running task tools -------------------------------------------------- */
 
 @JsonClassDescription("Read the persistent scratchpad for this chat. Use it to recover durable notes, decisions, constraints, and handoff context from earlier turns.")
@@ -516,6 +597,7 @@ data class ToolExecutionContext(
     val readMacro: ((MacroReadRequest) -> MacroReadResult)? = null,
     val writeMacro: ((MacroWriteRequest) -> MacroWriteResult)? = null,
     val runMacro: ((MacroRunRequest) -> MacroRunResult)? = null,
+    val codeUseQuery: ((CodeUseQueryRequest) -> CodeUseQueryResult)? = null,
 
     val agentMemory: AgentMemoryState? = null,
 

@@ -1598,6 +1598,7 @@ function openFieldCommandPalette(options = {}) {
                 hint: includeEditor ? `Press ${shortcut} again for document-level commands.` : "",
                 items,
                 matchMode: "substring",
+                query: options.query || "",
         })
 }
 window.openFieldCommandPalette = openFieldCommandPalette

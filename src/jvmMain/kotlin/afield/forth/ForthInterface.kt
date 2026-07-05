@@ -3,7 +3,10 @@ package afield.forth
 import afield.*
 import afield.logger.lprintln
 import afield.runtime.TopologyWatcher
+import afield.runtime.MainLanguageRuntime
 import afield.runtime.applyRuntimeToggle
+import afield.runtime.isMainLanguage
+import afield.runtime.registerMainLanguageRuntime
 import afield.stdlib.Delegation
 import io.ktor.websocket.WebSocketSession
 
@@ -256,6 +259,15 @@ var Box.isForthRoot by Delegation<Boolean?>()
 @RunsAt(early)
 fun installForth() {
     Box.ioPersistentProperties.add("isForthRoot")
+    registerMainLanguageRuntime(
+        MainLanguageRuntime(
+            id = "forth",
+            label = "Forth",
+            runtimeClass = ForthExecution::class,
+            setLegacyRoot = { box, enabled -> box.isForthRoot = enabled },
+            applyTopology = ::forthTopologyNeedsUpdating,
+        ),
+    )
 }
 
 @RunsAt(plugins)
@@ -266,11 +278,11 @@ fun installForthPlugin() {
 fun forthTopologyNeedsUpdating(values: Collection<Box>) {
     applyRuntimeToggle(
         boxes = values,
-        isRoot = { it.isForthRoot },
+        isRoot = { it.isForthRoot == true || it.isMainLanguage("forth") },
         runtimeClass = ForthExecution::class,
         newExecution = { child -> ForthExecution(child) },
         language = "Forth",
-        customization = """this.style.border = "1px dashed #006400"; this.style.margin = "-5px" """,
+        customization = "",
         notifyCategory = "forth"
     )
 }

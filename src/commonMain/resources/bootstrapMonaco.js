@@ -42,7 +42,7 @@ window.require(["vs/editor/editor.main"], function (e, is) {
         });
         window.require(["vs/basic-languages/markdown/markdown"], function (e, is) {
         });
-        window.require(["bithero/glsl", "bithero/slang", "bithero/forth", "bithero/languageExtensions", "bithero/stacksl", "bithero/nano"], function () {
+        window.require(["bithero/glsl", "bithero/slang", "bithero/forth", "bithero/fieldml", "bithero/languageExtensions", "bithero/stacksl", "bithero/nano"], function () {
                 initMonaco()
                 window.require(["vs/platform/quickinput/common/quickInput"], function (is) {
                         initQuickPick(is)

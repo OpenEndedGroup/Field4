@@ -113,6 +113,9 @@ fun buildDynamicInstructions(
         toolAds += "- MacroRunRequest: run or undo a saved macro. Empty targetBoxes replays recorded box ids literally; targetBoxes remaps the macro's first recorded source box to each named/uid target."
         toolAds += "- MacroWriteRequest: create or replace a macro YAML file only when the user asked for a new/edited macro or a failed run shows the existing macro needs adaptation."
     }
+    if (ctx.codeUseQuery != null) {
+        toolAds += "- CodeUseQueryRequest plus CodeUseRelatedSourceForCodeRequest / CodeUseCallersForSourceLineRequest / CodeUseReferencesForCodeRequest / CodeUseHotSymbolsRequest / CodeUseEarlyDocumentSymbolsRequest: query local code-use telemetry. Prefer related-source-for-code when interrogating Field box code: it returns relevant src/ excerpts, call-site frequencies, and peer Field snippets. Use failures for retained compiler/runtime errors; line callers for who uses a src/ line; hot-symbols for usage heat; early-document-symbols for open-time helpers."
+    }
 
     val hasGlslIncludeManifest = ctx.attachments.any { it.fileName == "afield://glsl-includes/manifest" }
     val includeGuidance = if (hasGlslIncludeManifest || lang.name.startsWith("GLSL", ignoreCase = true)) {
@@ -144,6 +147,7 @@ fun buildDynamicInstructions(
     val guidance = if (mode == InstructionMode.Chat) {
         """
 - Prefer calling tools over guessing (definitions, other file contents, attachments).
+- When recent compiler errors or runtime exceptions might explain the user's request or suggest Field API/documentation gaps, call CodeUseQueryRequest with kind=failures before guessing. When interrogating Field box code against Field source, call CodeUseRelatedSourceForCodeRequest first so you get src/ excerpts, observed call frequencies, and other snippets that called the same routines. Use the other targeted code-use tools for "who calls this src line?", "what is hot?", and "what is only used at document open?" questions.
 - For multi-step or long-running work, read the Checklist and Scratchpad early when they might contain prior context. Update the Scratchpad with durable constraints, decisions, and handoff notes. Update the Checklist as task status changes.
 - If a symbol or behavior is mentioned, use WorkspaceSymbolSearch to locate definitions and ground the answer.
 - If the current box may span multiple text properties (for example Kotlin plus shaders), call ListContents early so you can inspect them directly.
@@ -170,6 +174,7 @@ $includeGuidance
     } else {
         """
 - Prefer calling tools over guessing (definitions, other file contents, attachments).
+- When recent compiler errors or runtime exceptions might explain the user's request or suggest Field API/documentation gaps, call CodeUseQueryRequest with kind=failures before guessing. When interrogating Field box code against Field source, call CodeUseRelatedSourceForCodeRequest first so you get src/ excerpts, observed call frequencies, and other snippets that called the same routines. Use the other targeted code-use tools for "who calls this src line?", "what is hot?", and "what is only used at document open?" questions.
 - For multi-step or long-running work, read the Checklist and Scratchpad early when they might contain prior context. Update the Scratchpad with durable constraints, decisions, and handoff notes. Update the Checklist as task status changes.
 - Field boxes form a graph. ListContents and attachments may include connected parent/child boxes. For visual requests, inspect connected boxes too: a compute box can export positions or buffers while a connected render box owns the vertex/fragment shader that actually draws the result.
 - Read preamble hints carefully. `Box.foo by Inheritance...` or `Box.foo by InheritanceFromContext...` is a graph-relevant inherited Field property and is a strong reason to inspect parent/child boxes that mention `foo`; common setup/context properties are weaker clues than domain-specific names like `outputPositions`. Shader-generated `Mesh.foo`, `ComputeMesh.foo`, `MeshMesh.foo`, `ModulePointer.foo`, or `Structure.foo` bindings usually describe shader push constants/uniform helpers, not cross-box ownership by themselves.
