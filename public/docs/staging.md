@@ -6,7 +6,7 @@ The order here is meant to help you choose where to go next.
 
 ## Reproducible docs and transcript automation
 
-The examples in this staging area are increasingly built from the same machinery that automates Field itself. A docs page can contain a runnable code block, the MkDocs build can launch Field through the backdoor, and the resulting box output, editor region, window, or native graphics frame can be captured back into the page.
+The examples in this staging area are increasingly built from the same machinery that automates Field itself. A docs page can contain a runnable code block, the docs build can launch Field through the backdoor, and the resulting box output, editor region, window, or native graphics frame can be captured back into the page.
 
 For simple examples, the runner creates a scratch box, runs the code, waits for output, and clips a browser screenshot. For graphics examples, the runner now uses a reusable `OperationTranscript` path:
 

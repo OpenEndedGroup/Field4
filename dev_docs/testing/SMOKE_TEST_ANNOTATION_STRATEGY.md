@@ -76,7 +76,7 @@ println("hello world")
 ```
 ````
 
-For public MkDocs pages, prefer `diffstatic {data-lang=...}` for visible static examples and `diffstatic_runner {data-lang=...}` for executable/captured examples. Avoid plain public `kotlin`, `bash`, or `text` fences unless the page is intentionally demonstrating raw Markdown.
+For public docs pages, prefer `diffstatic {data-lang=...}` for visible static examples and `diffstatic_runner {data-lang=...}` for executable/captured examples. Avoid plain public `kotlin`, `bash`, or `text` fences unless the page is intentionally demonstrating raw Markdown.
 
 This gives us:
 

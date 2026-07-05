@@ -280,7 +280,7 @@ private fun formatMarkdownResponse(markdown: String): String {
 
 ### Documentation Browser
 - Seamlessly integrates with existing documentation browser (Ctrl+/)
-- Same iframe used for mkdocs documentation and history views
+- Same iframe used for built documentation and history views
 - Consistent navigation experience
 - No additional window management
 
@@ -304,7 +304,7 @@ private fun formatMarkdownResponse(markdown: String): String {
 Potential improvements for future versions:
 
 - **GitHub Integration**: Search across issues and PRs
-- **Documentation Indexing**: Include mkdocs content in vector store
+- **Documentation Indexing**: Include public docs content in vector store
 - **Code Navigation**: Click to open files in Field4
 - **Search History**: Recently searched queries
 - **Bookmarks**: Save useful search results

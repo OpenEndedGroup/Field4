@@ -24,7 +24,7 @@ This repository builds **Field·4**, a Kotlin-based live-coding environment for 
 
 ### Python / uv recipes for agents
 
-Use `uv` for agent-facing Python tooling so MkDocs and the backdoor share the same dependency environment. This matters because `public/docs_hooks.py` runs `tools/field_backdoor.py` with the same Python interpreter that is running MkDocs.
+Use `uv` for agent-facing Python tooling so the docs runner and the backdoor share the same dependency environment. This matters because `public/docs_hooks.py` runs `tools/field_backdoor.py` with the same Python interpreter that is building the docs.
 
 - Backdoor status:
 
@@ -49,8 +49,9 @@ FIELD_DOCS_RUNNER_MODE=never \
 - Iterating docs locally:
 
 ```bash
-cd public && FIELD_DOCS_RUNNER_MODE=incremental FIELD_DOCS_RUNNER_PORT=9477 \
-  uv run --project .. --group docs mkdocs serve
+FIELD_DOCS_RUNNER_MODE=incremental FIELD_DOCS_RUNNER_PORT=9477 \
+  uv run --project . --group docs python tools/build_zensical_docs.py --skip-build
+cd public && uv run --project .. --group docs zensical serve -f zensical.generated.yml
 ```
 
 Docs/test intent matrix:
@@ -253,11 +254,11 @@ Current testing layers and commands are summarized in `dev_docs/testing/TESTING_
 ## Autonomous Docs/Test Loop
 
 - Agents are expected to make code changes, API changes, documentation fixes, and test-runner fixes autonomously when the docs/test pipeline exposes a real problem.
-- The default repair loop is: run `uv run --project . --group backdoor python tools/run_field_tests.py --refresh-catalog`, run `cd public && FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project .. --group docs mkdocs build` (or `uv run --project .. --group docs mkdocs serve` while iterating), inspect the first concrete failing example, fix it in code or docs, and rerun until clean.
+- The default repair loop is: run `uv run --project . --group backdoor python tools/run_field_tests.py --refresh-catalog`, run `FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py --clean`, inspect the first concrete failing example, fix it in code or docs, and rerun until clean.
 - Use `FIELD_DOCS_RUNNER_MODE=incremental` for fast local iteration against an already-clean cache.
 - Use `FIELD_DOCS_RUNNER_MODE=strict` when runner logic changes should invalidate cached captures through `public/docs_hooks.py` digest changes.
 - Use `FIELD_DOCS_RUNNER_MODE=always` when you need every screenshot/video to be regenerated regardless of cache state.
-- Use `FIELD_DOCS_RUNNER_MODE=never` when you want MkDocs to skip all capture execution entirely and just use whatever screenshot/video files already exist on disk.
+- Use `FIELD_DOCS_RUNNER_MODE=never` when you want the docs build to skip all capture execution entirely and just use whatever screenshot/video files already exist on disk.
 - For graphics-context captures, the docs runner now takes ownership of `FIELD_DOCS_RUNNER_PORT`: if a stale Field is already serving that port, the runner asks it to shut down and starts a fresh runner-owned Field before launching the renderer transcript. Use a dedicated high port for docs runs.
 - When docs screenshots show the red Field error marker or empty/incorrect output, treat that as a real failure: capture the compiler/runtime error from the backdoor/test runner, fix the snippet or runtime, and rerun the docs page.
 - If a backdoor or smoke-suite run times out and later probes stop reaching `is-running`, restart the managed Field JVM before trusting subsequent failures; a wedged snippet can poison later manual debugging runs.
@@ -549,19 +550,18 @@ The default mapping is in `Box.ioSeparateProperties` (`src/jvmMain/kotlin/afield
 
 ---
 
-## Documentation (MkDocs + Read-Only EDN Viewer)
+## Documentation (Zensical + Read-Only EDN Viewer)
 
-### MkDocs site (human docs)
+### Zensical site (human docs)
 
-- Config: `public/mkdocs.yml` (Material theme)
-- Source content: `public/docs/` (Markdown; notebooks supported via `mkdocs-jupyter`)
-- Output: `public/field4/` (`site_dir: field4` in `public/mkdocs.yml`)
+- Source content: `public/docs/` (Markdown; notebooks supported)
+- Output: `public/field4/`
 - Typical loop:
-  - Build docs: `cd public && uv run --project .. --group docs mkdocs build`
-  - Fast incremental docs build: `cd public && FIELD_DOCS_RUNNER_MODE=incremental FIELD_DOCS_RUNNER_PORT=9477 uv run --project .. --group docs mkdocs build`
-  - Strict docs build that re-runs screenshots even after runner changes: `cd public && FIELD_DOCS_RUNNER_MODE=strict FIELD_DOCS_RUNNER_PORT=9477 uv run --project .. --group docs mkdocs build`
-  - Full recapture build that bypasses the screenshot/video cache entirely: `cd public && FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project .. --group docs mkdocs build`
-  - No-capture docs build that reuses existing assets without starting Field: `cd public && FIELD_DOCS_RUNNER_MODE=never uv run --project .. --group docs mkdocs build`
+  - Build docs: `FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --clean`
+  - Fast incremental docs build: `FIELD_DOCS_RUNNER_MODE=incremental FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py`
+  - Strict docs build that re-runs screenshots even after runner changes: `FIELD_DOCS_RUNNER_MODE=strict FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py`
+  - Full recapture build that bypasses the screenshot/video cache entirely: `FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py --clean`
+  - No-capture docs build that reuses existing assets without starting Field: `FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --clean`
   - Serve built site (matches Field’s default docs iframe URL): `cd public && python3 -m http.server 8000`
   - Browse: `http://localhost:8000/field4/`
 
@@ -574,7 +574,7 @@ The default mapping is in `Box.ioSeparateProperties` (`src/jvmMain/kotlin/afield
 
 ### Exporting docs from a live Field document
 
-- `src/jvmMain/kotlin/afield/docs/doc.kt` contains `exportToDocumentation(...)`, which walks boxes with metadata and emits MkDocs-ready Markdown plus captured assets (screenshots/video).
+- `src/jvmMain/kotlin/afield/docs/doc.kt` contains `exportToDocumentation(...)`, which walks boxes with metadata and emits docs-ready Markdown plus captured assets (screenshots/video).
 
 ### Read-only viewer for `.edn` documents (offline viewer)
 

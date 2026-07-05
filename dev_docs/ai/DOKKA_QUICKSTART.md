@@ -6,7 +6,7 @@ This guide will help you quickly generate and view API documentation for Field4.
 
 - Java 24 (configured in the project)
 - Gradle (via the provided gradlew wrapper)
-- Python with MkDocs (for building the documentation site)
+- Python docs dependencies installed through the repo `uv` project
 
 ## Generating Documentation
 
@@ -47,12 +47,13 @@ The generated HTML files are in `build/dokka/html/`. Open `build/dokka/html/inde
 
 > Note: Dokka Gradle plugin v2 only supports HTML and Javadoc outputs. Markdown/GFM is no longer supported.
 
-### Build and Preview the MkDocs Site
+### Build and Preview the Zensical Site
 
 ```bash
+FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --clean
+FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --skip-build
 cd public
-mkdocs build    # Generates site in public/field4/
-mkdocs serve    # Starts local server at http://localhost:8000
+uv run --project .. --group docs zensical serve -f zensical.generated.yml
 ```
 
 Then open http://localhost:8000 and navigate to "API Documentation" in the menu.
@@ -119,7 +120,7 @@ Field4/
 ├── dev_docs/
 │   └── API_DOCUMENTATION.md      # Full documentation
 ├── public/
-│   ├── mkdocs.yml                # MkDocs config (includes API docs)
+│   ├── docs/                     # Public docs source
 │   └── docs/
 │       └── api/
 │           ├── .gitignore        # Ignores generated files

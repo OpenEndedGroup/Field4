@@ -128,7 +128,7 @@ Roadmap and test IDs: `dev_docs/testing/UI_REGRESSION_ROADMAP.md`.
 Public docs are a testing surface. Examples using `diffstatic_runner` execute
 through Field and can regenerate screenshots/videos during docs builds.
 
-Zensical currently does not run MkDocs `hooks:` directly, so use
+Zensical currently does not run Python page hooks directly, so use
 `tools/build_zensical_docs.py`. The wrapper preprocesses Markdown through
 `public/docs_hooks.py`, writes generated sources under `public/.zensical-generated/`,
 and then runs `zensical build`.
@@ -218,7 +218,7 @@ Add or update `tools/run_ui_regressions.py` when:
 - `/controllers`, iframes, resizing, output DOM, or screenshots are the risk
 - representative screenshots should be retained across passing runs
 
-Add or update MkDocs executable examples when:
+Add or update executable docs examples when:
 - the behavior is part of user-facing documentation
 - the screenshot/video is documentation and regression evidence
 - the example should stay visible on the public docs page

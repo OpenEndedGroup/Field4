@@ -35,13 +35,12 @@ The HTML output will be available in `build/dokka/html/`. You can open `build/do
 
 > Note: Dokka Gradle plugin v2 only supports HTML and Javadoc outputs. Markdown/GFM is no longer supported.
 
-## Building the MkDocs Site
+## Building the Zensical Site
 
-After generating the HTML documentation, you can build the complete MkDocs site (the API docs page can link to the HTML output):
+After generating the HTML documentation, you can build the complete Zensical site (the API docs page can link to the HTML output):
 
 ```bash
-cd public
-mkdocs build
+FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --clean
 ```
 
 The site will be generated in `public/field4/` and can be deployed to a web server.
@@ -49,8 +48,9 @@ The site will be generated in `public/field4/` and can be deployed to a web serv
 To preview the site locally:
 
 ```bash
-cd public  
-mkdocs serve
+FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --skip-build
+cd public
+uv run --project .. --group docs zensical serve -f zensical.generated.yml
 ```
 
 Then open http://localhost:8000 in your browser.
@@ -73,9 +73,9 @@ dokka {
 }
 ```
 
-### MkDocs Configuration
+### Site Configuration
 
-The MkDocs navigation is configured in `public/mkdocs.yml` and includes the API documentation under the "API Documentation" section.
+The public docs navigation is configured with the site build configuration and includes the API documentation under the "API Documentation" section.
 
 ## Adding Documentation
 
@@ -124,10 +124,9 @@ You can integrate documentation generation into your CI/CD pipeline:
 - name: Generate API Documentation
   run: ./gradlew generateApiDocs
 
-- name: Build MkDocs Site
+- name: Build Zensical Site
   run: |
-    cd public
-    mkdocs build
+    FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --clean
     
 - name: Deploy Documentation
   # ... deploy public/field4/ to web server ...
@@ -164,5 +163,3 @@ Add your package pattern if it's not covered.
 
 - [Dokka Documentation](https://kotlinlang.org/docs/dokka-introduction.html)
 - [KDoc Syntax](https://kotlinlang.org/docs/kotlin-doc.html)
-- [MkDocs](https://www.mkdocs.org/)
-- [MkDocs Material Theme](https://squidfunk.github.io/mkdocs-material/)

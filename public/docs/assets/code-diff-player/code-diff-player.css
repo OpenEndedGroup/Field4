@@ -1,4 +1,4 @@
-/* Minimal mkdocs-friendly diff player skin */
+/* Minimal docs-friendly diff player skin */
 :root {
   --diff-bg: #0f1115;
   --diff-panel: #1b1c1f;
@@ -189,7 +189,7 @@
 .code-diff-pre.flash-insert { box-shadow: 0 0 0 2px rgba(91, 208, 255, 0.35); }
 .code-diff-pre.flash-delete { box-shadow: 0 0 0 2px rgba(255, 90, 95, 0.35); }
 
-/* mkdocs-like syntax colours */
+/* docs syntax colours */
 .code-diff-pre .hljs,
 .code-diff-pre .hljs * {
   color: #d7dce2;

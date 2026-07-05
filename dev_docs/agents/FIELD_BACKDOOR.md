@@ -94,22 +94,22 @@ are retained under `build/ui-regressions/artifacts/<test-id>/`, with
 
 The long-term coverage checklist is `dev_docs/testing/UI_REGRESSION_ROADMAP.md`.
 
-For docs work, treat the smoke suite and the MkDocs runner as one loop:
+For docs work, treat the smoke suite and the Zensical docs runner as one loop:
 
 ```bash
 uv run --project . --group backdoor python tools/run_field_tests.py --refresh-catalog
-cd public && FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 \
-  uv run --project .. --group docs mkdocs build
+FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 \
+  uv run --project . --group docs python tools/build_zensical_docs.py --clean
 ```
 
 When you only need to rebuild the HTML around already-generated captures, use:
 
 ```bash
-cd public && FIELD_DOCS_RUNNER_MODE=never \
-  uv run --project .. --group docs mkdocs build
+FIELD_DOCS_RUNNER_MODE=never \
+  uv run --project . --group docs python tools/build_zensical_docs.py --clean
 ```
 
-Public MkDocs pages should use Field's code-fence renderers, not plain Markdown code fences, for user-facing examples:
+Public docs pages should use Field's code-fence renderers, not plain Markdown code fences, for user-facing examples:
 
 - Use `diffstatic {data-lang=kotlin}` for static Field/Kotlin examples.
 - Use `diffstatic {data-lang=bash}` for visible command examples.
@@ -121,7 +121,7 @@ Public MkDocs pages should use Field's code-fence renderers, not plain Markdown 
 The root `pyproject.toml` defines two dependency groups:
 
 - `backdoor`: `websockets` and `PyYAML` for `tools/field_backdoor.py`.
-- `docs`: MkDocs, the configured MkDocs plugins, `pillow` for docs hooks, and the backdoor dependencies. The docs group intentionally includes the backdoor dependencies because `public/docs_hooks.py` launches `tools/field_backdoor.py` with the same Python interpreter that runs MkDocs.
+- `docs`: Zensical, the configured docs extensions, `pillow` for docs hooks, and the backdoor dependencies. The docs group intentionally includes the backdoor dependencies because `public/docs_hooks.py` launches `tools/field_backdoor.py` with the same Python interpreter that builds the docs.
 
 Use:
 
@@ -132,11 +132,16 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --port
 and:
 
 ```bash
-cd public && FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 \
-  uv run --project .. --group docs mkdocs build
+FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 \
+  uv run --project . --group docs python tools/build_zensical_docs.py --clean
 ```
 
-That skips all screenshot/video execution and uses whatever assets already exist on disk.
+Use this no-capture form when you only need to rebuild HTML around assets that already exist on disk:
+
+```bash
+FIELD_DOCS_RUNNER_MODE=never \
+  uv run --project . --group docs python tools/build_zensical_docs.py --clean
+```
 
 If either step exposes a compile error, runtime error, empty capture, or obviously broken screenshot/video, fix the underlying code or documentation and rerun.
 If a timed-out snippet leaves later probes stuck before they emit `is-running`, restart the managed Field JVM and retry the repro once from a clean server before chasing secondary failures.

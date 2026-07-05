@@ -123,7 +123,7 @@ See `LICENSE`.
   runtime support
 - `src/jsMain`: browser UI, canvas/editor integration, output areas, and
   commands
-- `public/docs`: MkDocs source for the user documentation
+- `public/docs`: Zensical source for the user documentation
 - `metadata_store` and `templates`: example documents and document templates
 - `tools`: automation utilities for Agents, including the Field backdoor test runner
 - `dev_docs`: internal design notes and agent-facing development notes

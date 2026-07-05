@@ -1,7 +1,7 @@
 
-# Code Diff Player for MkDocs
+# Code Diff Player
 
-The diff player assets are included site-wide via `mkdocs.yml`, so you only need the markup. The player is styled to match the Material dark theme gutter and line numbers.
+The diff player assets are included site-wide by the docs build, so you only need the markup. The player is styled to match the dark theme gutter and line numbers.
 
 ## Quick start
 - Use the `diff` fence for animated before/after, and `diffstatic` for a single snippet.

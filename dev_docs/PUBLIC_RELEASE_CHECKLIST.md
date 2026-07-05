@@ -38,8 +38,8 @@ source release.
 
 - Run `./gradlew compileKotlinJvm`.
 - Run `python3 tools/run_field_tests.py --refresh-catalog`.
-- Run `cd public && FIELD_DOCS_RUNNER_MODE=never mkdocs build`.
-- Before tagging, run `cd public && FIELD_DOCS_RUNNER_MODE=always mkdocs build`
+- Run `FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --clean`.
+- Before tagging, run `FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py --clean`
   to regenerate documentation captures from source.
 - Record the exact Java, Gradle, Kotlin, and Node versions used for the release
   candidate.

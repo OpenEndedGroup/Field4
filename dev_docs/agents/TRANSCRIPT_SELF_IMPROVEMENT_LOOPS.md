@@ -10,7 +10,7 @@ Useful evidence should come from the paths that already exercise Field semantica
 
 - `OperationTranscript` YAML macros that create boxes, edit properties, connect graphs, launch code, stop code, and undo changes.
 - Backdoor JSON runs that include command results, stdout/stderr, output events, timeout status, and screenshot/capture paths.
-- MkDocs runner captures, especially examples using `graphics-context=true`, because those validate real renderer topology rather than pasted screenshots.
+- Docs runner captures, especially examples using `graphics-context=true`, because those validate real renderer topology rather than pasted screenshots.
 - `FIELD_TEST` catalog runs through `tools/run_field_tests.py`.
 - User-reported workflows converted into small transcript examples under `dev_docs/agents/transcripts/`.
 
@@ -65,7 +65,7 @@ Examples:
 
 These loops should not silently rewrite user work. Agents should use scratch sessions or explicitly named test documents unless the user asks to operate on a real document.
 
-Generated suggestions are not commits. They are evidence-backed proposals. A change should still pass the normal gates: focused diff review, Kotlin compile when relevant, Python syntax checks for runner/backdoor changes, and an appropriate MkDocs build mode.
+Generated suggestions are not commits. They are evidence-backed proposals. A change should still pass the normal gates: focused diff review, Kotlin compile when relevant, Python syntax checks for runner/backdoor changes, and an appropriate docs build mode.
 
 The automation should make failure messages better, not merely longer. A useful failure says which operation failed, which box was running, what Field emitted, where the logs are, and what replay command reproduces it.
 
