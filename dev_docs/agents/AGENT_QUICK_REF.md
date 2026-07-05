@@ -1,5 +1,8 @@
 # Field4 Quick Reference for AI Agents
 
+For the consolidated testing strategy and command matrix, start with
+`dev_docs/testing/TESTING_STRATEGY.md`.
+
 ## TL;DR: How to Work with Field4
 
 ### Preferred for Running Field Code
@@ -9,7 +12,7 @@ If you need to actually run Field code, capture stdout, inspect compile/runtime 
 Minimum hello world:
 
 ```bash
-python3 tools/field_backdoor.py --json \
+uv run --project . --group backdoor python tools/field_backdoor.py --json \
   --command 'new-box --name Hello' \
   --command 'run @last --value "println(\"hello world\")"'
 ```
@@ -17,7 +20,7 @@ python3 tools/field_backdoor.py --json \
 Preferred no-escaping variant:
 
 ```bash
-cat <<'EOF' | python3 tools/field_backdoor.py --json \
+cat <<'EOF' | uv run --project . --group backdoor python tools/field_backdoor.py --json \
   --command 'new-box --name Hello' \
   --command 'run @last --file -'
 println("hello world")
@@ -35,10 +38,14 @@ Use this workflow for:
 Phase-1 smoke suite:
 
 ```bash
-python3 tools/run_field_tests.py --refresh-catalog
+uv run --project . --group backdoor python tools/run_field_tests.py --refresh-catalog
 ```
 
-That regenerates `build/field-tests/catalog.json` and runs each catalog entry through `python3 tools/field_backdoor.py --json`.
+That regenerates `build/field-tests/catalog.json` and runs each catalog entry through `uv run --project . --group backdoor python tools/field_backdoor.py --json`.
+
+If a public docs page seems to need a visible "verification" or backdoor command section, check the `FIELD_TEST` catalog first. For example, RectSL user docs are covered by source annotations in `src/jvmMain/kotlin/afield/examples/rectsl/`:
+`rectsl.examples.smoke`, `rectsl.language.workout`, and `rectsl.editor-extension.workout`.
+Keep those commands in the smoke suite/dev docs, not in rendered user-facing pages.
 
 Graph connection command:
 
@@ -53,6 +60,7 @@ Playwright command:
 ```text
 playwright-open [--timeout seconds]
 editor-open <box> [--property code] [--timeout seconds]
+input-key press <key> [--selector <css>] [--wait-ms milliseconds]
 ```
 
 Prefer the global flag when screenshots or output-area DOM are part of the same run:
@@ -69,6 +77,14 @@ Prefer this flag when child test boxes need inherited graphics context from a la
 
 That makes the backdoor create and launch a parent box called `renderer`, wait briefly, and auto-connect later `new-box` boxes beneath it so `renderer` is valid in your snippet code. Prefer scratch when you want that setup to stay disposable.
 
+For transcript-driven graphics setup, run `dev_docs/agents/transcripts/graphics_renderer_launch.yaml`, then use:
+
+```text
+wait-native-renderer agent_graphics_context --frames 3
+```
+
+This checks the native renderer/window path directly. A `println(...)` marker is not enough to prove that a render loop is alive.
+
 That opens or reuses Playwright immediately after the backdoor attaches to its current session, and again after any later `open ...` command. Use `playwright-open` when you intentionally want to defer browser startup.
 That Playwright browser is headless by default so it should not steal focus during tests. Set `AFIELD_PLAYWRIGHT_VISIBLE=true` only when you want to watch it.
 Screenshot commands wait for page reconnect/render now, but they still cannot capture output DOM that only existed before the browser attached, so prefer `--with-playwright` when the run creates the visual state.
@@ -79,14 +95,23 @@ Screenshot commands:
 ```text
 screenshot-window <path> [--uid <box>] [--with-editor] [--open-outputs]
 screenshot-editor <box> <path> [--padding 10]
-screenshot-box <box> <path> [--padding 16]
+screenshot-box <box> <path> [--padding 16] [--open-outputs]
+native-screenshot <path> [--wait-frames 4]
+wait-native-renderer [box] [--frames 3]
 ```
 
 Use:
 - `screenshot-window /tmp/with-editor.png --uid @last --with-editor --open-outputs` for a whole-window capture with Monaco visible.
 - `screenshot-window /tmp/without-editor.png --uid @last --open-outputs` for a whole-window capture without Monaco.
 - `editor-open @last --property code`, then `screenshot-editor @last /tmp/editor.png --padding 10`, for inline histogram / piano-roll decorations.
-- `screenshot-box @last /tmp/box.png --padding 16` for a clipped box image with its outputs opened.
+- `screenshot-box @last /tmp/box.png --padding 16` for a clipped box image with its outputs opened. `--open-outputs` is accepted, but box screenshots already open outputs internally.
+
+Capture and DOM-probe sharp edges:
+- Attach Playwright with `--with-playwright` before the `run` or `launch` that creates output DOM.
+- Use `input-key press Escape --selector .afield-palette-input` for focused keyboard contracts. Selector-targeted keys preserve the intended focused control better than page-level key presses.
+- Use a fresh scratch session or fresh custom port for each final screenshot/video asset unless you intentionally want several boxes in one canvas.
+- Put nontrivial `page-eval` JavaScript in a file and call `page-eval --file <path>`. Use `--body` only when the script contains statements and an explicit `return`.
+- Inspect the generated PNG/MP4, not only the JSON `clip`; screenshot clips are CSS pixels and output files may be device-scale.
 
 Use the sidecar file workflow below when you want persistent workspace files on disk.
 

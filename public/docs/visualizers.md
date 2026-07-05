@@ -94,7 +94,7 @@ expect:
     kind: editor
     padding: 10
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-inline-live-history.png" video="assets/visualizers-inline-live-history.mp4" wait="5.0" capture="editor" padding="10" execution="launch" duration="5" fps="30" embed=true name="inline-live-history"}
+```diffstatic_runner {data-lang=kotlin video="assets/visualizers-inline-live-history.mp4" wait="5.0" capture="editor" padding="10" execution="launch" duration="5" fps="30" embed=true name="inline-live-history"}
 :::static
 println("live history launched")
 
@@ -199,7 +199,7 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-display-html.png" wait="2.5" capture="box" embed=true name="display-html"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-display-html.png" wait="4.0" capture="box" open-outputs="true" embed=true name="display-html"}
 :::static
 val tiny = linkedMapOf(
     "tempo" to 122,
@@ -248,7 +248,7 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-display-browsers.png" wait="2.5" capture="box" embed=true name="display-browsers"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-display-browsers.png" wait="3.0" capture="box" open-outputs="true" w="1200" h="260" embed=true name="display-browsers"}
 :::static
 val scene = linkedMapOf(
     "camera" to linkedMapOf(
@@ -332,7 +332,7 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-controls.png" wait="0.5" capture="box" embed=true name="controls"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-controls.png" wait="1.0" capture="box" open-outputs="true" w="1200" h="180" embed=true name="controls"}
 :::static
 controlGroup("controls") {
     slider("gain", min = 0.0, max = 1.0, step = 0.01, initialValue = 0.35) { }
@@ -357,24 +357,9 @@ Available pieces include:
 
 The `vec2Control(...)` is the “xy thing” in the nicest sense: an XY pad with a vector line, magnitude, and angle readout.
 
-If you want the control to mutate a property on the current box automatically, use `syncToProperty(...)`:
-
-```diffstatic {data-lang=kotlin}
-:::static
-syncToProperty("gain", 0.35, label = "gain")
-syncToProperty("enabled", true)
-syncToProperty("nickname", "hello")
-syncToProperty("offset", org.joml.Vector2f(0.2f, -0.4f))
-syncToProperty("accent", org.joml.Vector4f(0.9f, 0.4f, 0.2f, 1.0f))
-```
-
-That is especially nice when you are turning a sketch into a reusable little instrument.
-
 ### Build one surface with mixed control types
 
-`controlGroup(...)` is the easiest way to build a compact surface for one box.
-
-Use it when several parameters belong together and should land in one disclosure channel.
+`controlGroup(...)` is the easiest way to build a compact surface for one box. Pair it with a normal display channel when the controls need a readable status or preview panel.
 
 <!--
 FIELD_TEST
@@ -392,22 +377,26 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-mixed-controls.png" wait="0.5" capture="box" embed=true name="mixed-controls"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-mixed-controls.png" wait="1.0" capture="box" open-outputs="true" w="1200" h="180" embed=true name="mixed-controls"}
 :::static
 import org.joml.Vector2f
 import org.joml.Vector4f
 
-var velocity = Vector2f(0.35f, -0.2f)
-var enabled = true
-var label = "Orbit A"
-var tint = Vector4f(0.95f, 0.45f, 0.15f, 0.85f)
+var wind = Vector2f(-0.45f, 0.32f)
+var bloom = 0.62
+var trails = true
+var label = "wake field"
+var tint = Vector4f(0.25f, 0.75f, 1.0f, 0.9f)
 
 controlGroup("surface") {
-    vec2Control("velocity", initialValue = velocity, xRange = -1.0 to 1.0, yRange = -1.0 to 1.0, step = 0.05) {
-        velocity = it
+    slider("bloom", min = 0.0, max = 1.0, step = 0.01, initialValue = bloom) {
+        bloom = it
     }
-    checkbox("enabled", initialValue = enabled) {
-        enabled = it
+    vec2Control("wind", initialValue = wind, xRange = -1.0 to 1.0, yRange = -1.0 to 1.0, step = 0.05) {
+        wind = it
+    }
+    checkbox("trails", initialValue = trails) {
+        trails = it
     }
     stringInput("label", initialValue = label) {
         label = it
@@ -417,43 +406,29 @@ controlGroup("surface") {
     }
 }
 
+display(
+    "preview",
+    """
+    <div style="width:620px;padding:18px;background:#07131b;border:1px solid #164a63;color:#83e6ff">
+      <div style="font-size:20px;letter-spacing:0.08em;text-transform:uppercase">$label</div>
+      <div style="margin-top:12px;height:96px;background:
+        radial-gradient(circle at 35% 45%, rgba(64,190,255,0.65), transparent 22%),
+        linear-gradient(135deg, rgba(255,120,40,0.18), rgba(40,210,255,0.20));
+        border:1px solid rgba(131,230,255,0.35)"></div>
+      <div style="margin-top:10px">wind=(${wind.x}, ${wind.y}) bloom=$bloom trails=$trails</div>
+    </div>
+    """.trimIndent()
+)
+
 println("mixed controls ready")
 ```
 
-This pattern is good for:
+This pattern is good for surfaces that combine parameter editing with a compact readout:
 
 - small simulation controls
 - animation parameters
 - quick scene presets
 - reusable demo boxes
-
-### Sync controls to persistent properties
-
-`syncToProperty(...)` is the short path from “I want a control” to “I want a control that survives document reloads”.
-
-It chooses a control type from the initial value and writes changes back to the current box with resync enabled.
-
-Supported value types include:
-
-- `Double`
-- `Boolean`
-- `String`
-- `Vector2f`
-- `Vector4f`
-
-```diffstatic {data-lang=kotlin}
-:::static
-import org.joml.Vector2f
-import org.joml.Vector4f
-
-syncToProperty("gain", 0.35, label = "gain")
-syncToProperty("enabled", true)
-syncToProperty("nickname", "hello")
-syncToProperty("offset", Vector2f(0.2f, -0.4f))
-syncToProperty("accent", Vector4f(0.9f, 0.4f, 0.2f, 1.0f))
-```
-
-Use explicit `slider(...)`, `vec2Control(...)`, `checkbox(...)`, `stringInput(...)`, or `colorPicker(...)` when you want full control over ranges and behavior. Use `syncToProperty(...)` when the main goal is a persistent editable parameter.
 
 ### Choosing the right control
 
@@ -487,15 +462,39 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-signal-panels.png" wait="1.5" capture="box" embed=true name="signal-panels"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-signal-panels.png" wait="1.0" capture="box" open-outputs="true" padding="8" w="1200" h="180" embed=true name="signal-panels"}
 :::static
-val patch = audio(gain = 0.1f) { saw / FreeVerb() }
+import afield.four.synth.*
+
+val sampleRate = 48_000f
+val frames = 512
+val cycles = 16
+val out = FloatArray(frames)
+
+fun renderSignal(signal: Signal) {
+    repeat(cycles) {
+        signal.render(out, frames, SynthContext(sampleRate, frames))
+    }
+}
+
+val audioScope = (saw / FreeVerb()).scope()
+renderSignal(audioScope)
+
 val monoScope = (saw / MoogLadder(cutoff = 900.p)).scope()
+renderSignal(monoScope)
+
+val g = Gate().also { it.open() }
+val env = ADSR(gate = g, release = 0.4.p)
+renderSignal(env)
+g.close()
+renderSignal(env)
+
 val comp = Compressor(threshold = (-18).p, ratio = 6.p)
-val env = ADSR(gate = gate.also { it.open() }, release = 0.4.p)
+comp.input = saw * 0.35
+renderSignal(comp)
 
 display("status", "<div style=\"padding:18px;background:#111827;color:#f9c74f\">signal visualizers ready</div>")
-display("audio", patch.summaryHtml(widthPx = 560, waveformHeightPx = 72, spectrumHeightPx = 72))
+display("audio", audioScope.summaryHtml(widthPx = 560, waveformHeightPx = 72, spectrumHeightPx = 72))
 display("scope", monoScope.summaryHtml(widthPx = 560, waveformHeightPx = 72, spectrumHeightPx = 72))
 display("env", env.stateSvg())
 display("comp", comp.stateSvg())

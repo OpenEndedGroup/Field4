@@ -1314,6 +1314,13 @@ function fieldPalette() {
         return fieldPaletteController
 }
 
+window.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape" && event.key !== "Esc") return
+        if (!fieldPaletteController || !fieldPaletteController.root) return
+        if (fieldPaletteController.root.style.display === "none") return
+        fieldPaletteController.closeFromKeyboard(event)
+}, true)
+
 function openAnywherePalette() {
         ensureEditor()
         fieldPalette().open({

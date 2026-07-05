@@ -1,0 +1,247 @@
+# Field Testing Strategy
+
+This is the canonical testing map for Field. Start here when deciding how to
+verify a change, add regression coverage, or debug a failing automation run.
+
+Always run agent-facing Python tooling through the repo uv project. The
+backdoor, UI runner, and MkDocs hooks need the same dependency environment.
+
+## Fast Command Matrix
+
+| Situation | Command | What it proves |
+| --- | --- | --- |
+| Kotlin/JVM compile check | `./gradlew compileKotlinJvm` | Source compiles without starting the full app UI. |
+| Backdoor can start/attach Field | `uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 --command status` | Field server, websocket, scratch setup, and logs are reachable. |
+| One runtime snippet | `uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 --command 'new-box --name Test' --command 'run @last --file path/to/snippet.kt'` | Live-code execution, stdout, display events, and runtime errors. |
+| FIELD_TEST catalog | `uv run --project . --group backdoor python tools/run_field_tests.py --refresh-catalog` | Annotated examples and smoke tests still execute. |
+| Browser UI regressions | `uv run --project . --group backdoor python tools/run_ui_regressions.py --port 9490 --timeout 45` | Monaco, command palette, panels, controller outputs, focus, and screenshots. |
+| One UI regression | `uv run --project . --group backdoor python tools/run_ui_regressions.py --id macro-transcript-panel --port 9680 --timeout 45` | Focused browser workflow while iterating. |
+| Docs without captures | `cd public && FIELD_DOCS_RUNNER_MODE=never uv run --project .. --group docs mkdocs build` | MkDocs content renders without starting Field. |
+| Docs incremental captures | `cd public && FIELD_DOCS_RUNNER_MODE=incremental FIELD_DOCS_RUNNER_PORT=9477 uv run --project .. --group docs mkdocs build` | Changed/missing examples recapture through Field. |
+| Docs strict recapture | `cd public && FIELD_DOCS_RUNNER_MODE=strict FIELD_DOCS_RUNNER_PORT=9477 uv run --project .. --group docs mkdocs build` | Runner/API changes invalidate cached captures. |
+| Full docs recapture | `cd public && FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project .. --group docs mkdocs build` | Every docs screenshot/video is regenerated. |
+| Offline asset check | `uv run python tools/check_offline_assets.py` | Canonical offline viewer assets are present and generated copies are not tracked. |
+
+Use custom high ports for automation. Avoid the default `9092` unless you
+explicitly want to attach to a developer-owned Field.
+
+## Testing Layers
+
+### 1. Compile and Static Sanity
+
+Use `./gradlew compileKotlinJvm` for ordinary Kotlin/JVM compile confidence.
+For frontend-sensitive work, remember that the UI is Kotlin/JS plus resource
+JavaScript; a compile pass does not prove browser behavior.
+
+Known local Gradle failure modes and daemon cleanup rules live in `AGENTS.md`.
+Do not replace runtime checks with Gradle-only checks when the change affects
+websocket RPC, live-code execution, Monaco, output areas, or rendering.
+
+### 2. Field Backdoor Runtime Checks
+
+Use `tools/field_backdoor.py` when you need to prove behavior in a real Field
+server session without manually driving the browser.
+
+The backdoor can:
+- start or attach to Field on a custom port
+- create scratch boxes and set properties
+- run or launch snippets
+- inspect stdout, display events, runtime errors, and running state
+- open the server-owned Playwright browser with `--with-playwright`
+- capture window, editor, box, native-window screenshots, and videos
+- run standalone JVM entrypoints with `run-jvm-main`
+- replay transcript macros for semantic document operations
+
+Default command:
+
+```bash
+uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 --command status
+```
+
+Use `--json` for automation, read `events` for output/errors, and inspect
+`.field-backdoor/logs/` when behavior is confusing.
+
+Detailed reference: `dev_docs/agents/FIELD_BACKDOOR.md`.
+
+### 3. FIELD_TEST Smoke Catalog
+
+Use the smoke catalog for examples and runtime checks that can be annotated
+near their source with a `FIELD_TEST` block.
+
+Run:
+
+```bash
+uv run --project . --group backdoor python tools/run_field_tests.py --refresh-catalog
+```
+
+Artifacts:
+- catalog: `build/field-tests/catalog.json`
+- results: `build/field-tests/results.json`
+- generated snippets: `build/field-tests/generated/`
+- captures: `build/field-tests/captures/`
+
+Supported runner shapes include:
+- `jvm-main` for standalone smoke entrypoints
+- `backdoor-box` for scratch-box snippets
+- `backdoor-document` for saved documents/templates
+
+Add a `FIELD_TEST` when the behavior is primarily code/runtime correctness,
+example health, stdout/event assertions, or a simple capture connected to a
+snippet. Keep the annotation explicit and stable; discovery is marker-based,
+not filename-based.
+
+Annotation reference: `dev_docs/testing/SMOKE_TEST_ANNOTATION_STRATEGY.md`.
+
+### 4. Browser UI Regression Suite
+
+Use `tools/run_ui_regressions.py` when the risk lives in the frontend workflow:
+Monaco, command palette dispatch, focus, keyboard routing, panels, controller
+iframes, output resizing, or screenshot capture behavior.
+
+Run:
+
+```bash
+uv run --project . --group backdoor python tools/run_ui_regressions.py --port 9490 --timeout 45
+```
+
+The runner uses the backdoor plus server-owned Playwright internally. Non-JSON
+mode prints `RUN`, heartbeat, `PASS`, and `FAIL` lines; tune progress output
+with `--heartbeat-interval <seconds>`.
+
+Artifacts:
+- generated fixtures: `build/ui-regressions/generated/`
+- results: `build/ui-regressions/results.json`
+- per-test artifacts: `build/ui-regressions/artifacts/<test-id>/`
+- newest passing screenshot: `latest-pass.png`
+- newest failure screenshot: `latest-failure.png`
+- rolling pass history: `passes/` with the most recent 5 passing screenshots
+
+Current coverage includes command palette binding/smoke tests, editor sync,
+insert stack mark, output areas, `/controllers` editable/static lines and
+control widgets, screenshot selection, history panel, macro/transcript panel,
+inline visualizers, and focus/keyboard contracts.
+
+Roadmap and test IDs: `dev_docs/testing/UI_REGRESSION_ROADMAP.md`.
+
+### 5. MkDocs Executable Documentation
+
+Public docs are a testing surface. Examples using `diffstatic_runner` execute
+through Field and can regenerate screenshots/videos during MkDocs builds.
+
+Modes:
+- `FIELD_DOCS_RUNNER_MODE=never`: build HTML only; reuse existing assets
+- `FIELD_DOCS_RUNNER_MODE=incremental`: rerun changed or missing captures
+- `FIELD_DOCS_RUNNER_MODE=strict`: invalidate captures when runner logic changes
+- `FIELD_DOCS_RUNNER_MODE=always`: regenerate every capture
+
+Use `FIELD_DOCS_RUNNER_PORT=<high-port>` for capture runs. The docs runner owns
+that port and may restart stale Field sessions before graphics captures.
+
+Treat broken docs captures as real failures. If a screenshot is blank, red,
+tiny, stale, or visually wrong, inspect the backdoor events/logs and fix the
+example or capture path rather than hand-editing generated assets.
+
+### 6. Graphics and Native Rendering Checks
+
+Graphics checks often need more than "the snippet printed something." Use the
+backdoor's graphics helpers when renderer topology matters:
+- `--graphics-context` for disposable scratch setup with a launched renderer
+- transcript macros such as `dev_docs/agents/transcripts/graphics_renderer_launch.yaml`
+- `wait-native-renderer <box> --frames 3` to prove frames are advancing
+- `native-screenshot <path> --wait-frames 4` for native-window evidence
+
+For coroutine-based graphics examples, resolve contextual dependencies before
+leaving the executing context. In practice, capture `val renderer: Renderer =
+fromContext()` before `start(...)` and pass it into async helpers explicitly.
+
+### 7. Transcript and Macro Regression Checks
+
+Use transcript macros when a test should describe semantic Field document
+operations instead of low-level browser gestures. The backdoor should remain the
+transport/capture harness; the transcript should own the durable operation
+sequence.
+
+Useful references:
+- `dev_docs/agents/transcripts/README.md`
+- `dev_docs/agents/TRANSCRIPT_SELF_IMPROVEMENT_LOOPS.md`
+
+The UI regression suite already covers the macro/transcript panel itself. Add
+new transcript files when the reusable workflow matters outside one test.
+
+### 8. Offline Viewer and Asset Ownership
+
+The offline viewer has generated copies of Monaco/fonts/docs assets. Verify
+ownership with:
+
+```bash
+uv run python tools/check_offline_assets.py
+```
+
+Refresh generated copies only when needed:
+
+```bash
+uv run python tools/sync_offline_assets.py --target public --target dev_docs --no-docs
+```
+
+Do not track generated duplicates unless the owning docs explicitly require it.
+
+### 9. Specialized Manual References
+
+Some older feature notes are still useful as manual checklists or as source
+material for future automation. Treat this guide as the index, and promote
+high-value checks from these notes into `FIELD_TEST`, UI regressions, or
+executable docs when they start catching real regressions.
+
+Current specialized references:
+- `dev_docs/HISTORY_TESTING_GUIDE.md`: manual document-history workflow details. The browser UI regression suite now has automated `history-panel` coverage for the panel smoke path.
+- `dev_docs/FileWatchManager_Testing.md`: manual external sidecar edit, internal save, rapid edit, and watcher cleanup scenarios.
+- `dev_docs/LAYERS_TESTING.md`: manual layer visibility, active-layer frame persistence, animated transitions, and connection visibility scenarios.
+- `dev_docs/TEST_VALUE_VISUALIZER.md`: value visualizer usage examples; candidates for future `FIELD_TEST` or docs-runner coverage.
+- `dev_docs/manual_tests/test-offline-viewer.html`: manual offline viewer fixture.
+
+## Choosing Where to Add Coverage
+
+Add or update a `FIELD_TEST` when:
+- the assertion is mostly runtime/code behavior
+- stdout, display events, or a simple screenshot are enough evidence
+- the test belongs near an example or documented snippet
+- the browser UI is incidental
+
+Add or update `tools/run_ui_regressions.py` when:
+- the regression depends on real Monaco/editor state
+- command palette `this` binding, focus, keyboard behavior, or panel lifecycle matters
+- `/controllers`, iframes, resizing, output DOM, or screenshots are the risk
+- representative screenshots should be retained across passing runs
+
+Add or update MkDocs executable examples when:
+- the behavior is part of user-facing documentation
+- the screenshot/video is documentation and regression evidence
+- the example should stay visible on the public docs page
+
+Use a one-off backdoor command when:
+- you are diagnosing a bug
+- the repro is not yet stable enough to promote
+- you need to inspect events/logs before deciding on permanent coverage
+
+## Failure Triage
+
+1. Check the first concrete failure, not the last cascade.
+2. For backdoor failures, read JSON `events`, `timedOut`, and the newest
+   `.field-backdoor/logs/*.managed-server.log`.
+3. For UI regression failures, inspect `latest-failure.png` and
+   `build/ui-regressions/results.json`.
+4. For docs failures, rerun the smallest affected page/mode when possible, then
+   inspect the generated screenshot/video and backdoor logs.
+5. If a snippet timeout wedges later `is-running` probes, restart the managed
+   Field JVM or choose a fresh high port before trusting follow-on failures.
+6. If Playwright output DOM is missing, attach with `--with-playwright` before
+   the `run` or `launch` that creates the output.
+7. If keyboard tests miss their target, use selector-targeted input such as
+   `input-key press Escape --selector .afield-palette-input --wait-ms 250`.
+
+## Long-Term Rule
+
+Every regression that costs real debugging time should end up in one of these
+three durable places: `FIELD_TEST`, the browser UI regression suite, or an
+executable docs example. Keep the one-off command in the bug transcript only
+long enough to understand which durable layer owns it.

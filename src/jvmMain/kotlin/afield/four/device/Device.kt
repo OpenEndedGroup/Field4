@@ -10,8 +10,8 @@ import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil.memGetAddress
 import org.lwjgl.system.MemoryUtil.memPutAddress
 import org.lwjgl.vulkan.*
-import org.lwjgl.vulkan.EXTCalibratedTimestamps.VK_TIME_DOMAIN_CLOCK_MONOTONIC_KHR
-import org.lwjgl.vulkan.EXTCalibratedTimestamps.VK_TIME_DOMAIN_DEVICE_KHR
+import org.lwjgl.vulkan.EXTCalibratedTimestamps.VK_TIME_DOMAIN_CLOCK_MONOTONIC_EXT
+import org.lwjgl.vulkan.EXTCalibratedTimestamps.VK_TIME_DOMAIN_DEVICE_EXT
 import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VK11
 import org.lwjgl.vulkan.VK11.vkGetPhysicalDeviceProperties2
@@ -34,6 +34,8 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
     val supportsExtendedDynamicState3: Boolean
     val supportsExtendedDynamicState: Boolean
     val supportsMaintenance7: Boolean
+    val supportsMaintenance11: Boolean
+    val supportsDynamicRenderingUnusedAttachments: Boolean
     val supportsMultiview: Boolean
     val supportsRayTracing: Boolean
     val supportsRayQuery: Boolean
@@ -93,6 +95,29 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 VK11.vkGetPhysicalDeviceFeatures2(physicalDevice.vkPhysicalDevice, m7FeatureProbe)
                 m7Features.maintenance7()
             } else false
+            val hasMaintenance11 = hasExt(KHRMaintenance11.VK_KHR_MAINTENANCE_11_EXTENSION_NAME)
+            supportsMaintenance11 = if (hasMaintenance11) {
+                val m11Features = VkPhysicalDeviceMaintenance11FeaturesKHR.calloc(stack)
+                    .sType(KHRMaintenance11.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_11_FEATURES_KHR)
+                val m11FeatureProbe = VkPhysicalDeviceFeatures2.calloc(stack).apply {
+                    sType(VK12.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2)
+                    pNext(m11Features.address())
+                }
+                VK11.vkGetPhysicalDeviceFeatures2(physicalDevice.vkPhysicalDevice, m11FeatureProbe)
+                m11Features.maintenance11()
+            } else false
+            val hasDynamicRenderingUnusedAttachments =
+                hasExt(EXTDynamicRenderingUnusedAttachments.VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME)
+            supportsDynamicRenderingUnusedAttachments = if (hasDynamicRenderingUnusedAttachments) {
+                val unusedAttachmentFeatures = VkPhysicalDeviceDynamicRenderingUnusedAttachmentsFeaturesEXT.calloc(stack)
+                    .sType(EXTDynamicRenderingUnusedAttachments.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_FEATURES_EXT)
+                val unusedAttachmentFeatureProbe = VkPhysicalDeviceFeatures2.calloc(stack).apply {
+                    sType(VK12.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2)
+                    pNext(unusedAttachmentFeatures.address())
+                }
+                VK11.vkGetPhysicalDeviceFeatures2(physicalDevice.vkPhysicalDevice, unusedAttachmentFeatureProbe)
+                unusedAttachmentFeatures.dynamicRenderingUnusedAttachments()
+            } else false
             supportsExtendedDynamicState = hasExtDynamicState
             supportsExtendedDynamicState3 = hasExtDynamicState3
             supportsMultiview = hasExt(KHRMultiview.VK_KHR_MULTIVIEW_EXTENSION_NAME)
@@ -111,6 +136,10 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 addIfSupported(KHRSeparateDepthStencilLayouts.VK_KHR_SEPARATE_DEPTH_STENCIL_LAYOUTS_EXTENSION_NAME)
                 addIfSupported(KHRPushDescriptor.VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME)
                 if (supportsMaintenance7) add(KHRMaintenance7.VK_KHR_MAINTENANCE_7_EXTENSION_NAME)
+                if (supportsMaintenance11) add(KHRMaintenance11.VK_KHR_MAINTENANCE_11_EXTENSION_NAME)
+                if (supportsDynamicRenderingUnusedAttachments) {
+                    add(EXTDynamicRenderingUnusedAttachments.VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME)
+                }
 
                 addIfSupported(KHR16bitStorage.VK_KHR_16BIT_STORAGE_EXTENSION_NAME)
 
@@ -261,6 +290,20 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 memPutAddress(tail + VkBaseOutStructure.PNEXT, m7.address()); tail = m7.address()
             }
 
+            if (supportsMaintenance11) {
+                val m11 = VkPhysicalDeviceMaintenance11FeaturesKHR.calloc(stack)
+                    .sType(KHRMaintenance11.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_11_FEATURES_KHR)
+                    .maintenance11(true)
+                memPutAddress(tail + VkBaseOutStructure.PNEXT, m11.address()); tail = m11.address()
+            }
+
+            if (supportsDynamicRenderingUnusedAttachments) {
+                val unusedAttachments = VkPhysicalDeviceDynamicRenderingUnusedAttachmentsFeaturesEXT.calloc(stack)
+                    .sType(EXTDynamicRenderingUnusedAttachments.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_FEATURES_EXT)
+                    .dynamicRenderingUnusedAttachments(true)
+                memPutAddress(tail + VkBaseOutStructure.PNEXT, unusedAttachments.address()); tail = unusedAttachments.address()
+            }
+
             // Optional: mesh shader + present features (Windows path).
             if (enableMeshShading) {
                 val mesh = VkPhysicalDeviceMeshShaderFeaturesEXT.calloc(stack)
@@ -382,6 +425,10 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 "info,device",
                 "Device ray tracing: pipeline=$supportsRayTracing, rayQuery=$supportsRayQuery, limits=$rayTracingLimits"
             )
+            lprintln(
+                "info,device",
+                "Device maintenance: m7=$supportsMaintenance7, m11=$supportsMaintenance11, dynamicRenderingUnusedAttachments=$supportsDynamicRenderingUnusedAttachments"
+            )
         }
     }
 
@@ -494,8 +541,8 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
             var hasMono = false
             for (i in 0 until count) {
                 when (domains[i]) {
-                    VK_TIME_DOMAIN_DEVICE_KHR -> hasDevice = true
-                    VK_TIME_DOMAIN_CLOCK_MONOTONIC_KHR -> hasMono = true
+                    VK_TIME_DOMAIN_DEVICE_EXT -> hasDevice = true
+                    VK_TIME_DOMAIN_CLOCK_MONOTONIC_EXT -> hasMono = true
                 }
             }
             return hasDevice && hasMono
@@ -511,13 +558,13 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
             "VK_EXT_calibrated_timestamps not enabled"
         }
         MemoryStack.stackPush().use { stack ->
-            val infos = VkCalibratedTimestampInfoKHR.calloc(2, stack)
+            val infos = VkCalibratedTimestampInfoEXT.calloc(2, stack)
             infos[0]
-                .sType(KHRCalibratedTimestamps.VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_KHR)
-                .timeDomain(VK_TIME_DOMAIN_DEVICE_KHR)
+                .sType(EXTCalibratedTimestamps.VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_EXT)
+                .timeDomain(VK_TIME_DOMAIN_DEVICE_EXT)
             infos[1]
-                .sType(KHRCalibratedTimestamps.VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_KHR)
-                .timeDomain(VK_TIME_DOMAIN_CLOCK_MONOTONIC_KHR)
+                .sType(EXTCalibratedTimestamps.VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_EXT)
+                .timeDomain(VK_TIME_DOMAIN_CLOCK_MONOTONIC_EXT)
 
             val timestamps = stack.mallocLong(2)
             val maxDeviation = stack.mallocLong(1)

@@ -1,5 +1,8 @@
 # Smoke Test Annotation Strategy
 
+Canonical testing map: `dev_docs/testing/TESTING_STRATEGY.md`. This document is
+the detailed reference for `FIELD_TEST` annotations and the smoke catalog.
+
 This document defines a pragmatic way to mark executable examples and smoke tests so they can be:
 
 - discovered procedurally
@@ -57,7 +60,7 @@ object GraphConnectivitySmokeTest {
 
 For Markdown docs, use an HTML comment immediately before the code fence:
 
-```html
+````html
 <!--
 FIELD_TEST
 id: docs.kotlin-overview.hello-world
@@ -68,10 +71,12 @@ expect:
   outputContains:
     - "hello world"
 -->
-```kotlin
+```diffstatic_runner {data-lang=kotlin screenshot="assets/hello-world.png" capture="box"}
 println("hello world")
 ```
-```
+````
+
+For public MkDocs pages, prefer `diffstatic {data-lang=...}` for visible static examples and `diffstatic_runner {data-lang=...}` for executable/captured examples. Avoid plain public `kotlin`, `bash`, or `text` fences unless the page is intentionally demonstrating raw Markdown.
 
 This gives us:
 
@@ -211,9 +216,9 @@ The phase-1 runner lives at `tools/run_field_tests.py`.
 Examples:
 
 ```bash
-python3 tools/discover_field_tests.py --pretty
-python3 tools/discover_field_tests.py --output build/field-tests/catalog.json --pretty
-python3 tools/run_field_tests.py --refresh-catalog
+uv run --project . --group backdoor python tools/discover_field_tests.py --pretty
+uv run --project . --group backdoor python tools/discover_field_tests.py --output build/field-tests/catalog.json --pretty
+uv run --project . --group backdoor python tools/run_field_tests.py --refresh-catalog
 ```
 
 ## What To Annotate First
@@ -224,6 +229,9 @@ Start with the low-ambiguity, already-runnable cases.
 
 These are already close to runnable:
 
+- `src/jvmMain/kotlin/afield/examples/rectsl/RectSLExamples.kt`
+- `src/jvmMain/kotlin/afield/examples/rectsl/RectSLWorkout.kt`
+- `src/jvmMain/kotlin/afield/examples/rectsl/RectSLEditorExtensionWorkout.kt`
 - `src/jvmMain/kotlin/afield/examples/stdlib/GraphConnectivitySmokeTest.kt`
 - `src/jvmMain/kotlin/afield/examples/stdlib/SmileStdlibSmokeTest.kt`
 - `src/jvmMain/kotlin/afield/examples/graphics/FLineInstructionTrajectoryTrackerSmokeTest.kt`
@@ -232,6 +240,12 @@ These are already close to runnable:
 - a few non-example but similar files such as `CompiledSnippetTest.kt` and `PlyLoaderUnitTest.kt`
 
 These should use `runner: jvm-main`.
+
+RectSL is the model for keeping user docs clean while preserving executable coverage. The public `rectsl_examples.md` page should show the RectSL language examples, not a visible backdoor command. The executable coverage lives in the source `FIELD_TEST` blocks:
+
+- `rectsl.examples.smoke` compiles the public-facing example programs from `RectSLExamples`.
+- `rectsl.language.workout` exercises the larger RectSL parser/geometry/material/operator surface from `RectSLWorkout`.
+- `rectsl.editor-extension.workout` checks the RectSL editor/language-extension support.
 
 Reason:
 
@@ -288,6 +302,7 @@ Rules:
 - opt-in only
 - one `FIELD_TEST` block per runnable docs snippet
 - prefer snippets that are stable, representative, and useful for docs screenshots
+- do not add visible "verification" or "smoke command" sections to public docs pages just to expose internal coverage
 
 Do not attempt "every fenced Kotlin block in docs is executable". That will create noise and constant breakage.
 

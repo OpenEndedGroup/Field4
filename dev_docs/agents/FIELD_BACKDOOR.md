@@ -1,6 +1,7 @@
 # Field Backdoor for Agents
 
 `tools/field_backdoor.py` is the preferred way for agents to run Field code and inspect the result without using the browser UI.
+For the full testing decision tree, start with `dev_docs/testing/TESTING_STRATEGY.md`.
 
 Use it when you need to:
 - run a snippet and capture stdout
@@ -34,7 +35,7 @@ The session logs store truncated previews of large websocket payloads rather tha
 Run this from the repo root:
 
 ```bash
-uv run --group backdoor python tools/field_backdoor.py --json --port 9477 \
+uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 \
   --command 'new-box --name Hello' \
   --command 'run @last --value "println(\"hello world\")"'
 ```
@@ -52,7 +53,7 @@ What this does:
 Before doing anything more involved, run:
 
 ```bash
-uv run --group backdoor python tools/field_backdoor.py --json --port 9477 --command status
+uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 --command status
 ```
 
 This tells you:
@@ -67,17 +68,36 @@ This tells you:
 Run the current `FIELD_TEST` catalog through the backdoor with:
 
 ```bash
-python3 tools/run_field_tests.py --refresh-catalog
+uv run --project . --group backdoor python tools/run_field_tests.py --refresh-catalog
 ```
 
-That regenerates `build/field-tests/catalog.json` and then invokes `python3 tools/field_backdoor.py --json` once per test.
+That regenerates `build/field-tests/catalog.json` and then invokes `uv run --project . --group backdoor python tools/field_backdoor.py --json` once per test.
 For the phase-1 `jvm-main` entries, the backdoor command it uses is `run-jvm-main`, which asks the running Field JVM to execute the annotated entrypoint and return `exitCode`, `stdout`, and `stderr`.
 By default, `run-jvm-main` omits the full launched JVM command/classpath from the JSON payload because it is huge and rarely useful in agent transcripts. Add `--include-command` to the `run-jvm-main` command only when debugging launch or classpath construction.
+
+## Browser UI Regression Suite
+
+Use `tools/run_ui_regressions.py` when the behavior depends on the browser UI,
+Monaco, command palette actions, Field panels, or retained screenshots:
+
+```bash
+uv run --project . --group backdoor python tools/run_ui_regressions.py --port 9490 --timeout 45
+```
+
+The runner uses `tools/field_backdoor.py --with-playwright` internally and must
+run through the repo uv project with the `backdoor` group. By default it prints
+per-test `RUN`, heartbeat, `PASS`, and `FAIL` lines; use
+`--heartbeat-interval <seconds>` to adjust telemetry, `--id <test-id>` for a
+focused run, and `--json` when stdout must stay machine-readable. Screenshots
+are retained under `build/ui-regressions/artifacts/<test-id>/`, with
+`latest-pass.png`, `latest-failure.png`, and up to 5 recent passing screenshots.
+
+The long-term coverage checklist is `dev_docs/testing/UI_REGRESSION_ROADMAP.md`.
 
 For docs work, treat the smoke suite and the MkDocs runner as one loop:
 
 ```bash
-python3 tools/run_field_tests.py --refresh-catalog
+uv run --project . --group backdoor python tools/run_field_tests.py --refresh-catalog
 cd public && FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 \
   uv run --project .. --group docs mkdocs build
 ```
@@ -89,6 +109,13 @@ cd public && FIELD_DOCS_RUNNER_MODE=never \
   uv run --project .. --group docs mkdocs build
 ```
 
+Public MkDocs pages should use Field's code-fence renderers, not plain Markdown code fences, for user-facing examples:
+
+- Use `diffstatic {data-lang=kotlin}` for static Field/Kotlin examples.
+- Use `diffstatic {data-lang=bash}` for visible command examples.
+- Use `diffstatic_runner {data-lang=kotlin ...}` when the block should execute or produce a screenshot/video.
+- Keep plain fences only for literal Markdown examples or internal `dev_docs` prose where the rendered public style is irrelevant.
+
 ## uv Dependency Recipes
 
 The root `pyproject.toml` defines two dependency groups:
@@ -99,7 +126,7 @@ The root `pyproject.toml` defines two dependency groups:
 Use:
 
 ```bash
-uv run --group backdoor python tools/field_backdoor.py --json --port 9477 --command status
+uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 --command status
 ```
 
 and:
@@ -119,7 +146,7 @@ If a timed-out snippet leaves later probes stuck before they emit `is-running`, 
 Start the REPL:
 
 ```bash
-python3 tools/field_backdoor.py
+uv run --project . --group backdoor python tools/field_backdoor.py
 ```
 
 Then type commands like:
@@ -136,7 +163,7 @@ Useful when you want to iterate on one scratch session.
 Batch mode is better for agents because it is deterministic and easy to script:
 
 ```bash
-python3 tools/field_backdoor.py --json \
+uv run --project . --group backdoor python tools/field_backdoor.py --json \
   --command 'new-box --name Demo' \
   --command 'set @last code "println(\"one\")"' \
   --command 'run @last'
@@ -149,7 +176,7 @@ Each `--command` runs in order. `@last` means “the most recently created box i
 Use `macro` or `transcript` commands when you want durable semantic automation:
 
 ```bash
-python3 tools/field_backdoor.py --json --port 9477 \
+uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 \
   --command 'macro list' \
   --command 'macro run my_macro --selection @last'
 ```
@@ -157,7 +184,7 @@ python3 tools/field_backdoor.py --json --port 9477 \
 Write a macro from a YAML file:
 
 ```bash
-python3 tools/field_backdoor.py --json --port 9477 \
+uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 \
   --command 'macro write cleanup_demo --file /tmp/cleanup_demo.yaml' \
   --command 'macro run cleanup_demo'
 ```
@@ -180,7 +207,7 @@ operations:
 Curated reusable examples live in `dev_docs/agents/transcripts/`. Start there before inventing a new automation shape:
 
 ```bash
-uv run --group backdoor python tools/field_backdoor.py --json --port 9477 \
+uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 \
   --command 'macro write agent_hello_display --file dev_docs/agents/transcripts/hello_display.yaml' \
   --command 'macro run agent_hello_display'
 ```
@@ -205,7 +232,7 @@ For agents, `--file -` is usually the best option because it avoids shell escapi
 Read code from stdin with a heredoc:
 
 ```bash
-cat <<'EOF' | python3 tools/field_backdoor.py --json \
+cat <<'EOF' | uv run --project . --group backdoor python tools/field_backdoor.py --json \
   --command 'new-box --name StdinDemo' \
   --command 'run @last --file -'
 println("hello from stdin")
@@ -221,7 +248,7 @@ cat > /tmp/demo.kt <<'EOF'
 println("hello from a file")
 EOF
 
-python3 tools/field_backdoor.py --json \
+uv run --project . --group backdoor python tools/field_backdoor.py --json \
   --command 'new-box --name FileDemo' \
   --command 'run @last --file /tmp/demo.kt'
 ```
@@ -233,7 +260,7 @@ This avoids shell-escaping problems.
 Use `--graphics-context` when the snippet needs a live `afield.four.Renderer` inherited from a parent box:
 
 ```bash
-python3 tools/field_backdoor.py --json --graphics-context --port 9477 \
+uv run --project . --group backdoor python tools/field_backdoor.py --json --graphics-context --port 9477 \
   --command 'new-box --name GraphicsSmoke' \
   --command 'run @last --value "println(renderer)"'
 ```
@@ -249,6 +276,8 @@ This mode:
 That makes inherited context variables such as `renderer` and `window` valid in child test snippets, which is the preferred setup for testing `afield.four` from the backdoor or from `graphicsContext: true` smoke/docs runners. Prefer scratch when you want that setup to stay disposable.
 
 This is a topology contract. A graphics snippet does not have a usable `Renderer` unless it is running in a box connected beneath the launched renderer parent. For OperationTranscript-driven automation, use `dev_docs/agents/transcripts/graphics_renderer_launch.yaml`, then create the example box and connect `agent_graphics_context -> example_box` before running the example.
+
+After running the renderer transcript, use `wait-native-renderer agent_graphics_context --frames 3` to prove that the native `afield.four` window exists and has advanced a few frames. Do not wait on `println(...)` output as a renderer readiness signal; output routing and render-loop liveness are different systems.
 
 For launched or coroutine-based graphics code, capture context before the async boundary:
 
@@ -271,19 +300,19 @@ If you see `must pass in a value for context parameter afield.four.Renderer`, de
 Scratch is the default:
 
 ```bash
-python3 tools/field_backdoor.py --json --command status
+uv run --project . --group backdoor python tools/field_backdoor.py --json --command status
 ```
 
 Attach to a real document:
 
 ```bash
-python3 tools/field_backdoor.py --json --document firstDocument --command snapshot
+uv run --project . --group backdoor python tools/field_backdoor.py --json --document firstDocument --command snapshot
 ```
 
 Or explicitly open one from the REPL/batch command list:
 
 ```bash
-python3 tools/field_backdoor.py --json \
+uv run --project . --group backdoor python tools/field_backdoor.py --json \
   --command 'open firstDocument' \
   --command 'boxes'
 ```
@@ -301,13 +330,13 @@ Rules:
 ### Create a Box
 
 ```bash
-python3 tools/field_backdoor.py --json --command 'new-box --name Test'
+uv run --project . --group backdoor python tools/field_backdoor.py --json --command 'new-box --name Test'
 ```
 
 ### Set Code on a Box
 
 ```bash
-python3 tools/field_backdoor.py --json \
+uv run --project . --group backdoor python tools/field_backdoor.py --json \
   --command 'new-box --name Test' \
   --command 'set @last code "println(\"updated\")"'
 ```
@@ -325,14 +354,14 @@ The first uid is the parent. Every remaining uid becomes a child of that parent.
 Example:
 
 ```bash
-python3 tools/field_backdoor.py --json \
+uv run --project . --group backdoor python tools/field_backdoor.py --json \
   --command 'connect parent-box-id child-box-id'
 ```
 
 To remove the same edge:
 
 ```bash
-python3 tools/field_backdoor.py --json \
+uv run --project . --group backdoor python tools/field_backdoor.py --json \
   --command 'disconnect parent-box-id child-box-id'
 ```
 
@@ -341,7 +370,7 @@ python3 tools/field_backdoor.py --json \
 Use this when you need real DOM state or screenshots from the current backdoor session:
 
 ```bash
-python3 tools/field_backdoor.py --json --command 'playwright-open'
+uv run --project . --group backdoor python tools/field_backdoor.py --json --command 'playwright-open'
 ```
 
 This command:
@@ -356,7 +385,7 @@ For agent/test flows, this Playwright browser is headless by default, so it shou
 If you know a run will create output areas that you want to inspect or capture later, prefer `--with-playwright` so the browser is attached before the run:
 
 ```bash
-cat <<'EOF' | python3 tools/field_backdoor.py --json \
+cat <<'EOF' | uv run --project . --group backdoor python tools/field_backdoor.py --json \
   --with-playwright \
   --command 'new-box --name Visual' \
   --command 'run @last --file -'
@@ -372,14 +401,44 @@ The JSON result from `playwright-open` includes the effective `url`, whether it 
 Use `page-eval` when you need DOM state from the current Playwright page without relying on screenshots:
 
 ```bash
-python3 tools/field_backdoor.py --json --with-playwright \
+uv run --project . --group backdoor python tools/field_backdoor.py --json --with-playwright \
   --command 'page-eval "document.title"'
 ```
 
-The expression runs in the page and returns JSON-serializable data under `data.result`. For multi-line code, pass `--body --file -` and use `return`:
+The expression runs in the page and returns JSON-serializable data under `data.result`. Keep inline expressions tiny. If the JavaScript contains spaces, quotes, braces, or selectors, put it in a file and pass `--file`; otherwise the backdoor command parser and shell quoting become the thing you are debugging.
+
+Use `input-key` when you need a real Playwright keyboard event instead of a
+synthetic DOM event. For focused controls, pass a CSS selector so the key is
+sent to the intended element:
 
 ```bash
-cat <<'EOF' | python3 tools/field_backdoor.py --json --with-playwright \
+uv run --project . --group backdoor python tools/field_backdoor.py --json --with-playwright \
+  --command 'input-key press Escape --selector .afield-palette-input --wait-ms 250'
+```
+
+For expression mode, the file contents must be one JavaScript expression:
+
+```bash
+cat >/tmp/field_probe.js <<'EOF'
+Array.from(document.querySelectorAll("iframe")).map((frame) => ({
+  src: frame.getAttribute("src"),
+  rect: frame.getBoundingClientRect().toJSON?.() || {
+    x: frame.getBoundingClientRect().x,
+    y: frame.getBoundingClientRect().y,
+    width: frame.getBoundingClientRect().width,
+    height: frame.getBoundingClientRect().height
+  }
+}))
+EOF
+
+uv run --project . --group backdoor python tools/field_backdoor.py --json --with-playwright \
+  --command 'page-eval --file /tmp/field_probe.js'
+```
+
+For multi-line statement bodies, pass `--body --file -` and use `return`:
+
+```bash
+cat <<'EOF' | uv run --project . --group backdoor python tools/field_backdoor.py --json --with-playwright \
   --command 'page-eval --body --file -'
 const widgets = [...document.querySelectorAll(".quick-input-widget")];
 return widgets.map(w => ({
@@ -389,14 +448,14 @@ return widgets.map(w => ({
 EOF
 ```
 
-Return plain JSON-friendly values. DOM nodes are summarized, `undefined` returns `null`, and cyclic objects fail with a serialization error.
+Return plain JSON-friendly values. DOM nodes are summarized, `undefined` returns `null`, and cyclic objects fail with a serialization error. If you use `--body` and forget `return`, the result will be `null` even if the probe did useful work.
 
 ### Wait Between Commands
 
 Use `sleep` when the current scratch session needs a beat before the next command:
 
 ```bash
-python3 tools/field_backdoor.py --json \
+uv run --project . --group backdoor python tools/field_backdoor.py --json \
   --command 'new-box --name Demo' \
   --command 'run @last --value "display(\"main\", \"<div>hello</div>\")"' \
   --command 'sleep 1.0' \
@@ -410,28 +469,28 @@ Prefer `--with-playwright` for screenshot flows so the browser is attached befor
 Whole-window capture with the editor open on a specific box:
 
 ```bash
-python3 tools/field_backdoor.py --json --with-playwright \
+uv run --project . --group backdoor python tools/field_backdoor.py --json --with-playwright \
   --command 'screenshot-window /tmp/with-editor.png --uid @last --with-editor --open-outputs'
 ```
 
 Whole-window capture without the editor:
 
 ```bash
-python3 tools/field_backdoor.py --json --with-playwright \
+uv run --project . --group backdoor python tools/field_backdoor.py --json --with-playwright \
   --command 'screenshot-window /tmp/without-editor.png --uid @last --open-outputs'
 ```
 
 Editor-only capture for inline Monaco visualizers:
 
 ```bash
-python3 tools/field_backdoor.py --json --with-playwright \
+uv run --project . --group backdoor python tools/field_backdoor.py --json --with-playwright \
   --command 'screenshot-editor @last /tmp/editor.png --padding 10'
 ```
 
 Clipped capture of just one box, with its output areas opened and a little padding:
 
 ```bash
-python3 tools/field_backdoor.py --json --with-playwright \
+uv run --project . --group backdoor python tools/field_backdoor.py --json --with-playwright \
   --command 'screenshot-box @last /tmp/box.png --padding 16'
 ```
 
@@ -442,13 +501,20 @@ What each command does:
 - `screenshot-editor` selects the target box, shows Monaco, and saves only the visible editor pane. Use this for inline histogram, history, piano-roll, or other editor decorations.
 - For inline Monaco visualizers, the reliable sequence is `editor-open -> run/launch -> optional sleep -> screenshot-editor`.
 - `screenshot-box` hides Monaco, opens nested/output disclosures for the target box, computes a padded clip, and saves only that region.
+- `screenshot-box --open-outputs` is accepted for symmetry with `screenshot-window`, but box screenshots already open nested/output disclosures internally.
 - `--open-outputs` tells `screenshot-window` to open all output disclosures on the target box before capture.
 - `--no-pan` disables the automatic centering step if you want the current viewport as-is.
+
+Important capture habits:
+- Use a fresh scratch session or fresh custom port for each final asset when captures overlap on the canvas. Multiple boxes created at the same default position can ghost into later screenshots or affect crop/viewport calculations.
+- Do not trust the numeric `clip` alone. Browser screenshots can be device-scale, so a `clip` width of `564` CSS pixels may produce a `1128` pixel-wide PNG. Inspect the actual PNG when visual correctness matters.
+- If an output iframe looks empty or too small, probe the parent page, not just the iframe document. Check the iframe rect, its `.disclosure-content` parent rect/style, and `data-afield-intrinsic-width` / `data-afield-intrinsic-height`. A full iframe document can still render as `0 x 0` if its disclosure was measured while closed.
+- If a docs example needs output areas, attach Playwright before running it with `--with-playwright`; output DOM that predates the browser page might not be capturable later.
 
 End-to-end example for documentation capture:
 
 ```bash
-cat <<'EOF' | python3 tools/field_backdoor.py --json \
+cat <<'EOF' | uv run --project . --group backdoor python tools/field_backdoor.py --json \
   --with-playwright \
   --command 'new-box --name Visual' \
   --command 'run @last --file -' \
@@ -477,7 +543,7 @@ Video recording uses CDP screencast to capture frames from the Playwright page, 
 Record the whole window:
 
 ```bash
-python3 tools/field_backdoor.py --json --with-playwright \
+uv run --project . --group backdoor python tools/field_backdoor.py --json --with-playwright \
   --command 'new-box --name AnimBox' \
   --command 'launch @last --value "var t=0.0; loop { t+=0.016; display(\"main\",\"<div style=padding:24px;background:hsl(\${(t*60)%360},70%,60%)>frame \$t</div>\") }"' \
   --command 'sleep 1' \
@@ -488,21 +554,21 @@ python3 tools/field_backdoor.py --json --with-playwright \
 Record with the editor visible:
 
 ```bash
-python3 tools/field_backdoor.py --json --with-playwright \
+uv run --project . --group backdoor python tools/field_backdoor.py --json --with-playwright \
   --command 'record-window /tmp/with-editor.mp4 --uid @last --with-editor --duration 5'
 ```
 
 Record only the editor pane:
 
 ```bash
-python3 tools/field_backdoor.py --json --with-playwright \
+uv run --project . --group backdoor python tools/field_backdoor.py --json --with-playwright \
   --command 'record-editor @last /tmp/editor.mp4 --padding 10 --duration 5'
 ```
 
 Record just a box and its outputs:
 
 ```bash
-python3 tools/field_backdoor.py --json --with-playwright \
+uv run --project . --group backdoor python tools/field_backdoor.py --json --with-playwright \
   --command 'record-box @last /tmp/box.mp4 --padding 16 --duration 3 --fps 30'
 ```
 
@@ -522,7 +588,7 @@ All three commands return JSON with:
 ### Run a Box
 
 ```bash
-python3 tools/field_backdoor.py --json \
+uv run --project . --group backdoor python tools/field_backdoor.py --json \
   --command 'new-box --name Test' \
   --command 'run @last --value "println(\"run output\")"'
 ```
@@ -532,7 +598,7 @@ python3 tools/field_backdoor.py --json \
 ### Launch a Box
 
 ```bash
-python3 tools/field_backdoor.py --json \
+uv run --project . --group backdoor python tools/field_backdoor.py --json \
   --command 'new-box --name Test' \
   --command 'launch @last --value "while(true) { Thread.sleep(1000) }" --timeout 5'
 ```
@@ -542,14 +608,14 @@ python3 tools/field_backdoor.py --json \
 ### Stop a Box
 
 ```bash
-python3 tools/field_backdoor.py --json \
+uv run --project . --group backdoor python tools/field_backdoor.py --json \
   --command 'stop @last --timeout 5'
 ```
 
 ### Read Captured Output
 
 ```bash
-python3 tools/field_backdoor.py --json \
+uv run --project . --group backdoor python tools/field_backdoor.py --json \
   --command 'new-box --name Test' \
   --command 'run @last --value "println(\"hi\")"' \
   --command 'output @last --kind all'
@@ -597,7 +663,7 @@ If the backdoor launched Field itself, it also writes:
 Always check `status` first if you need the exact paths:
 
 ```bash
-python3 tools/field_backdoor.py --json --command status
+uv run --project . --group backdoor python tools/field_backdoor.py --json --command status
 ```
 
 The session log records:

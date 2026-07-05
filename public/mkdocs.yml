@@ -21,7 +21,6 @@ nav:
         - afield.four Graphics: afield_four_graphics.md
         - Interactive Guides: interactive_guides.md
         - Guide Chat: guide_chat.md
-        - VR Drawing Sketch: vr_sketch2.md
       - Small Languages:
         - Forth Examples: forth_examples.md
         - StackSL Cheatsheet: stacksl_cheatsheet.md

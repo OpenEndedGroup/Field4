@@ -64,6 +64,15 @@ KOTLIN_SNIPPET_RE = re.compile(
 DIFF_SECTION_NAMES = {"before", "after", "static"}
 DIFF_FENCE_KINDS = {"diff", "diff_runner"}
 DIFFSTATIC_FENCE_KINDS = {"diffstatic", "diffstatic_runner"}
+FABRICATE_DOCS_SCENES = {
+    "default-scene": ("renderDefaultScene", "fabricate default scene ready"),
+    "shiny-torii-checkerboard": ("renderShinyToriCheckerboard", "fabricate shiny checkerboard scene ready"),
+    "camera-depth-study": ("renderCheckerboardCameraDepthStudy", "fabricate camera depth study ready"),
+    "shader-generated-checkerboard": ("renderShaderGeneratedCheckerboard", "fabricate shader checkerboard scene ready"),
+    "metalness": ("renderMetalnessComparison", "fabricate metalness comparison ready"),
+    "shadows": ("renderShadowComparison", "fabricate shadow comparison ready"),
+    "ambient-occlusion": ("renderAoComparison", "fabricate ao comparison ready"),
+}
 
 
 @dataclass
@@ -366,6 +375,57 @@ def language_from_fence_info(info: str, *, default: str) -> str:
     return default
 
 
+def fence_attr(info: str, *names: str) -> str | None:
+    for name in names:
+        pattern = rf"""(?x)
+            (?:^|\s)
+            {re.escape(name)}
+            \s*=\s*
+            (?:
+                "([^"]*)"
+              | '([^']*)'
+              | ([^\s}}]+)
+            )
+        """
+        match = re.search(pattern, info)
+        if match:
+            return next(value for value in match.groups() if value is not None)
+    return None
+
+
+def annotation_image_path(annotation: dict[str, Any]) -> str | None:
+    expect = annotation.get("expect")
+    if not isinstance(expect, dict):
+        return None
+    image = expect.get("image")
+    if not isinstance(image, dict):
+        return None
+    path = image.get("path")
+    return str(path) if path else None
+
+
+def fabricate_docs_harness_code(*, scene: str, output_path: str) -> str:
+    if scene not in FABRICATE_DOCS_SCENES:
+        supported = ", ".join(sorted(FABRICATE_DOCS_SCENES))
+        raise ParseError(f"unsupported fabricate-scene '{scene}', expected one of: {supported}")
+    method_name, ready_message = FABRICATE_DOCS_SCENES[scene]
+    output_literal = json.dumps(output_path)
+    ready_literal = json.dumps(ready_message)
+    return f"""
+import afield.four.Renderer
+import afield.four.fabricated.StandardRendererDocsHarness
+import afield.four.modules.fromContext
+
+val renderer: Renderer = fromContext()
+
+val captureScene: suspend () -> Unit = {{
+    StandardRendererDocsHarness.{method_name}({output_literal}, renderer = renderer)
+    println({ready_literal})
+}}
+start(captureScene)
+""".strip()
+
+
 def split_markdown_sections(body: str, *, body_start_line: int) -> dict[str, dict[str, Any]]:
     sections: dict[str, dict[str, Any]] = {}
     current_name: str | None = None
@@ -478,6 +538,24 @@ def bind_markdown_fence(path: Path, text: str, block: AnnotationBlock, annotatio
             body_stripped = body_line.lstrip()
             if body_stripped.startswith(fence_delimiter):
                 raw_body = "".join(body_lines)
+                fabricate_scene = fence_attr(fence_info, "fabricate-scene", "fabricate_scene", "fabricateScene")
+                if fabricate_scene:
+                    output_path = (
+                        fence_attr(fence_info, "source-image", "source_image", "native-image", "native_image")
+                        or annotation_image_path(annotation)
+                    )
+                    if not output_path:
+                        raise ParseError(
+                            f"{path}:{block.line_no}: fabricate-scene fences require source-image or expect.image.path"
+                        )
+                    return {
+                        "snippet": fabricate_docs_harness_code(scene=fabricate_scene, output_path=output_path),
+                        "snippetLanguage": str(annotation.get("language") or language_from_fence_info(fence_info, default="text")),
+                        "snippetSourceLine": body_start_line,
+                        "snippetSourceKind": "markdown-fence",
+                        "snippetFenceInfo": fence_info,
+                        "snippetSection": "fabricate-scene",
+                    }
                 sections = split_markdown_sections(raw_body, body_start_line=body_start_line)
                 fence_kind = first_fence_token(fence_info)
                 if sections:

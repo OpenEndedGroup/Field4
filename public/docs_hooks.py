@@ -34,7 +34,7 @@ RUNNER_FENCES = {"diffstatic_runner", "diff_runner"}
 DIFF_FENCES = {"diff", "diff_runner"}
 STATIC_FENCES = {"diffstatic", "diffstatic_runner"}
 FENCE_NAMES = sorted(RUNNER_TARGETS, key=len, reverse=True)
-SCRIPT_VERSION = 12
+SCRIPT_VERSION = 16
 RUNNER_RETRIES = 3
 RUNNER_SUBPROCESS_GRACE_SEC = 5.0
 RUNNER_MODE_ENV = "FIELD_DOCS_RUNNER_MODE"
@@ -74,6 +74,37 @@ RUNNER_DIGEST_SOURCE_FILES = (
     "tools/run_field_tests.py",
 )
 
+FABRICATE_DOCS_SCENES = {
+    "default-scene": (
+        "renderDefaultScene",
+        "fabricate default scene ready",
+    ),
+    "shiny-torii-checkerboard": (
+        "renderShinyToriCheckerboard",
+        "fabricate shiny checkerboard scene ready",
+    ),
+    "camera-depth-study": (
+        "renderCheckerboardCameraDepthStudy",
+        "fabricate camera depth study ready",
+    ),
+    "shader-generated-checkerboard": (
+        "renderShaderGeneratedCheckerboard",
+        "fabricate shader checkerboard scene ready",
+    ),
+    "metalness": (
+        "renderMetalnessComparison",
+        "fabricate metalness comparison ready",
+    ),
+    "shadows": (
+        "renderShadowComparison",
+        "fabricate shadow comparison ready",
+    ),
+    "ambient-occlusion": (
+        "renderAoComparison",
+        "fabricate ao comparison ready",
+    ),
+}
+
 
 @dataclass(frozen=True)
 class RunnerOptions:
@@ -97,7 +128,9 @@ class RunnerOptions:
     macro_file: str | None
     macro_name: str | None
     macro_selection: tuple[str, ...]
+    fabricate_scene: str | None
     native_wait_frames: int
+    trim_native: bool
     box_name: str
     box_x: float
     box_y: float
@@ -144,6 +177,15 @@ class RunnerState:
         self.runner_source_digest = compute_runner_source_digest(self.repo_root)
         self.cache, self.cache_metadata = self._load_cache()
         self.dirty = False
+        self.started_at = time.monotonic()
+        self.summary_logged = False
+        self.screenshots_run = 0
+        self.videos_run = 0
+        self.cache_hits = 0
+        self.assets_reused = 0
+        self.missing_assets = 0
+        self.server_starts = 0
+        self.server_restarts = 0
         LOG.info("Field docs runner mode: %s", self.runner_mode)
         LOG.info("Field docs runner continue on error: %s", self.continue_on_error)
         if self.runner_mode != "never":
@@ -209,6 +251,7 @@ class RunnerState:
         LOG.info("Field docs runner starting shared Field server on port %s", self.backdoor_port)
         self._shared_field_process = subprocess.Popen(cmd, **popen_kwargs)
         self._shared_field_started_by_runner = True
+        self.server_starts += 1
 
         deadline = time.monotonic() + 120.0
         while time.monotonic() < deadline:
@@ -229,6 +272,37 @@ class RunnerState:
             f"Field docs runner timed out waiting for shared Field server on port {self.backdoor_port}. "
             f"See {self.shared_log_path}"
         )
+
+    def _ensure_runner_owned_field_server(self, *, reason: str) -> None:
+        if self._shared_field_started_by_runner and self._http_health_ok(self.backdoor_port):
+            return
+
+        if self._shared_field_started_by_runner:
+            self._stop_shared_field_server()
+            self._ensure_shared_field_server()
+            return
+
+        if self._http_health_ok(self.backdoor_port):
+            LOG.warning(
+                "Field docs runner needs a fresh runner-owned Field server for %s; "
+                "requesting shutdown of existing server on port %s",
+                reason,
+                self.backdoor_port,
+            )
+            self._request_shared_field_shutdown()
+            deadline = time.monotonic() + 12.0
+            while time.monotonic() < deadline:
+                if not self._http_health_ok(self.backdoor_port, timeout=0.5):
+                    break
+                time.sleep(0.25)
+            if self._http_health_ok(self.backdoor_port, timeout=0.5):
+                raise RuntimeError(
+                    "Field docs runner could not take ownership of the Field server on "
+                    f"port {self.backdoor_port} for {reason}. Stop the stale Field process "
+                    "or choose a fresh FIELD_DOCS_RUNNER_PORT."
+                )
+
+        self._ensure_shared_field_server()
 
     def _stop_shared_field_server(self) -> None:
         if not self._shared_field_started_by_runner:
@@ -276,6 +350,7 @@ class RunnerState:
         if not self._shared_field_started_by_runner:
             return
         LOG.warning("Field docs runner restarting shared Field server: %s", reason)
+        self.server_restarts += 1
         self._stop_shared_field_server()
         self._ensure_shared_field_server()
 
@@ -336,8 +411,33 @@ class RunnerState:
         if self._closed:
             return
         self._closed = True
+        self.log_summary()
         self.save()
         self._stop_shared_field_server()
+
+    def log_summary(self) -> None:
+        if self.summary_logged:
+            return
+        self.summary_logged = True
+        elapsed = time.monotonic() - self.started_at
+        regenerated = self.screenshots_run + self.videos_run
+        skipped = self.cache_hits + self.assets_reused + self.missing_assets + len(self.failures)
+        LOG.info(
+            "Field docs runner summary: regenerated=%s (screenshots=%s videos=%s), "
+            "skipped=%s (cache_hits=%s reused_existing=%s missing=%s failures=%s), "
+            "server_starts=%s server_restarts=%s elapsed=%.1fs",
+            regenerated,
+            self.screenshots_run,
+            self.videos_run,
+            skipped,
+            self.cache_hits,
+            self.assets_reused,
+            self.missing_assets,
+            len(self.failures),
+            self.server_starts,
+            self.server_restarts,
+            elapsed,
+        )
 
     def ensure_video(self, *, code: str, options: RunnerOptions, page_path: Path, block_index: int) -> None:
         """Record a short video clip instead of taking a screenshot."""
@@ -368,6 +468,7 @@ class RunnerState:
         cached_metadata = self.cache_metadata.get(cache_key)
         if cache_allowed and not options.force and video_path.exists() and cached_digest == digest:
             LOG.info("Field docs runner cache hit (video): %s", video_path)
+            self.cache_hits += 1
             return
         if reuse_existing_asset_for_incremental(
             runner_mode=self.runner_mode,
@@ -377,6 +478,7 @@ class RunnerState:
             current_metadata=cache_metadata,
         ):
             LOG.info("Field docs runner using existing video asset after runner-only cache change: %s", video_path)
+            self.assets_reused += 1
             self.cache[cache_key] = digest
             self.cache_metadata[cache_key] = cache_metadata
             self.dirty = True
@@ -384,6 +486,7 @@ class RunnerState:
             return
         if cache_allowed and not options.force and self.runner_mode == "incremental" and video_path.exists() and cached_digest is None:
             LOG.info("Field docs runner using existing checked-in video asset without cache entry: %s", video_path)
+            self.assets_reused += 1
             self.cache[cache_key] = digest
             self.cache_metadata[cache_key] = cache_metadata
             self.dirty = True
@@ -404,6 +507,10 @@ class RunnerState:
                 runner_mode=self.runner_mode,
             ),
         )
+        if video_options.graphics_context:
+            self._ensure_runner_owned_field_server(
+                reason=f"graphics-context video for {page_path.name} -> {video_path}"
+            )
         command = build_backdoor_command(
             repo_root=self.repo_root,
             page_path=page_path,
@@ -503,6 +610,7 @@ class RunnerState:
         self.cache[cache_key] = digest
         self.cache_metadata[cache_key] = cache_metadata
         self.dirty = True
+        self.videos_run += 1
         self.save()
 
     def ensure_screenshot(self, *, code: str, options: RunnerOptions, page_path: Path, block_index: int) -> None:
@@ -529,6 +637,7 @@ class RunnerState:
         cached_metadata = self.cache_metadata.get(cache_key)
         if cache_allowed and not options.force and screenshot_path.exists() and cached_digest == digest:
             LOG.info("Field docs runner cache hit: %s", screenshot_path)
+            self.cache_hits += 1
             return
         if reuse_existing_asset_for_incremental(
             runner_mode=self.runner_mode,
@@ -538,6 +647,7 @@ class RunnerState:
             current_metadata=cache_metadata,
         ):
             LOG.info("Field docs runner using existing screenshot asset after runner-only cache change: %s", screenshot_path)
+            self.assets_reused += 1
             self.cache[cache_key] = digest
             self.cache_metadata[cache_key] = cache_metadata
             self.dirty = True
@@ -545,6 +655,7 @@ class RunnerState:
             return
         if cache_allowed and not options.force and self.runner_mode == "incremental" and screenshot_path.exists() and cached_digest is None:
             LOG.info("Field docs runner using existing checked-in screenshot asset without cache entry: %s", screenshot_path)
+            self.assets_reused += 1
             self.cache[cache_key] = digest
             self.cache_metadata[cache_key] = cache_metadata
             self.dirty = True
@@ -579,6 +690,10 @@ class RunnerState:
                     source_image_path.unlink()
                 except FileNotFoundError:
                     pass
+        if options.graphics_context:
+            self._ensure_runner_owned_field_server(
+                reason=f"graphics-context capture for {page_path.name} -> {screenshot_path}"
+            )
         command = build_backdoor_command(
             repo_root=self.repo_root,
             page_path=page_path,
@@ -686,6 +801,7 @@ class RunnerState:
                 timeout_sec=options.timeout,
                 min_mtime=source_image_min_mtime,
             )
+        trim_native_graphics_screenshot(screenshot_path=screenshot_path, options=options)
         visual_gap = validate_screenshot_pixels(screenshot_path=screenshot_path, options=options)
         if visual_gap is not None:
             raise RuntimeError(
@@ -696,6 +812,7 @@ class RunnerState:
         self.cache[cache_key] = digest
         self.cache_metadata[cache_key] = cache_metadata
         self.dirty = True
+        self.screenshots_run += 1
         self.save()
         if options.graphics_context:
             self._restart_shared_field_server(
@@ -799,6 +916,7 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                 fence_name=fence_name,
                 page_path=page_path,
                 line_number=start_line,
+                options=options,
             )
             code = wrap_runnable_code_for_language(code=code, language_key=language_key)
             options = maybe_enable_output_wait(options=options, code=code)
@@ -814,6 +932,10 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                 screenshot_path = resolve_output_path(page_path, options.screenshot)
                 if state.runner_mode == "never":
                     screenshot_succeeded = screenshot_path.exists()
+                    if screenshot_succeeded:
+                        state.assets_reused += 1
+                    else:
+                        state.missing_assets += 1
                     LOG.info(
                         "Field docs runner mode=never: %s screenshot asset %s",
                         "using existing" if screenshot_succeeded else "skipping missing",
@@ -833,6 +955,10 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                 video_path = resolve_output_path(page_path, options.video)
                 if state.runner_mode == "never":
                     video_succeeded = video_path.exists()
+                    if video_succeeded:
+                        state.assets_reused += 1
+                    else:
+                        state.missing_assets += 1
                     LOG.info(
                         "Field docs runner mode=never: %s video asset %s",
                         "using existing" if video_succeeded else "skipping missing",
@@ -949,7 +1075,14 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
         macro_file=first_attr(attrs, "macro-file", "macro_file", "transcript-file", "transcript_file", "transcript"),
         macro_name=first_attr(attrs, "macro-name", "macro_name", "transcript-name", "transcript_name"),
         macro_selection=parse_box_list(first_attr(attrs, "macro-selection", "macro_selection", "selection")),
+        fabricate_scene=parse_fabricate_scene(
+            first_attr(attrs, "fabricate-scene", "fabricate_scene", "fabricateScene"),
+            source_image=source_image,
+            page_path=page_path,
+            line_number=line_number,
+        ),
         native_wait_frames=int(parse_float(first_attr(attrs, "native-wait-frames", "native_wait_frames"), default=30.0)),
+        trim_native=parse_bool(first_attr(attrs, "trim-native", "trim_native", "native-trim", "native_trim", "auto-trim", "auto_trim"), default=False),
         box_name=first_attr(attrs, "name") or f"{page_path.stem}-{block_index}",
         box_x=parse_float(first_attr(attrs, "x"), default=24.0),
         box_y=parse_float(first_attr(attrs, "y"), default=24.0),
@@ -1100,7 +1233,50 @@ def forth_source_likely_produces_svg(source: str) -> bool:
     return any(token in lowered for token in direct_tokens)
 
 
-def extract_runnable_code(*, lines: list[str], fence_name: str, page_path: Path, line_number: int) -> str:
+def parse_fabricate_scene(
+    raw_scene: str | None,
+    *,
+    source_image: str | None,
+    page_path: Path,
+    line_number: int,
+) -> str | None:
+    if raw_scene is None or not raw_scene.strip():
+        return None
+    scene = raw_scene.strip()
+    if scene not in FABRICATE_DOCS_SCENES:
+        supported = ", ".join(sorted(FABRICATE_DOCS_SCENES))
+        raise RuntimeError(f"{page_path}:{line_number} unsupported fabricate-scene={scene!r}; expected one of: {supported}")
+    if not source_image:
+        raise RuntimeError(f"{page_path}:{line_number} fabricate-scene requires source-image=\"...\"")
+    return scene
+
+
+def fabricate_docs_harness_code(*, scene: str, output_path: Path) -> str:
+    method_name, ready_message = FABRICATE_DOCS_SCENES[scene]
+    output_literal = json.dumps(str(output_path))
+    ready_literal = json.dumps(ready_message)
+    return f"""
+import afield.four.Renderer
+import afield.four.fabricated.StandardRendererDocsHarness
+import afield.four.modules.fromContext
+
+val renderer: Renderer = fromContext()
+
+val captureScene: suspend () -> Unit = {{
+    StandardRendererDocsHarness.{method_name}({output_literal}, renderer = renderer)
+    println({ready_literal})
+}}
+start(captureScene)
+""".strip() + "\n"
+
+
+def extract_runnable_code(*, lines: list[str], fence_name: str, page_path: Path, line_number: int, options: RunnerOptions) -> str:
+    if options.fabricate_scene:
+        assert options.source_image is not None
+        return fabricate_docs_harness_code(
+            scene=options.fabricate_scene,
+            output_path=resolve_auxiliary_output_path(page_path, options.source_image),
+        )
     if fence_name == "diff_runner":
         code = extract_diff_after_code(lines=lines, page_path=page_path, line_number=line_number)
     else:
@@ -1302,7 +1478,9 @@ def options_digest_payload(options: RunnerOptions) -> dict[str, Any]:
         "macroFile": options.macro_file,
         "macroName": options.macro_name,
         "macroSelection": list(options.macro_selection),
+        "fabricateScene": options.fabricate_scene,
         "nativeWaitFrames": options.native_wait_frames,
+        "trimNative": options.trim_native,
         "boxName": options.box_name,
         "boxX": options.box_x,
         "boxY": options.box_y,
@@ -1760,6 +1938,93 @@ def validate_screenshot_pixels(*, screenshot_path: Path, options: RunnerOptions)
     return None
 
 
+def trim_native_graphics_screenshot(*, screenshot_path: Path, options: RunnerOptions) -> None:
+    if not options.trim_native or not options.graphics_context or effective_capture_mode(options) != "native-window" or options.source_image:
+        return
+    try:
+        from PIL import Image, ImageChops, ImageStat
+    except Exception:
+        LOG.warning("Field docs runner skipped native screenshot trim; Pillow is unavailable")
+        return
+
+    try:
+        with Image.open(screenshot_path) as source:
+            image = source.copy()
+    except Exception as exc:
+        LOG.warning("Field docs runner could not open native screenshot for trimming %s: %s", screenshot_path, exc)
+        return
+
+    if image.width <= 4 or image.height <= 4:
+        return
+
+    rgb = image.convert("RGB")
+    sample = max(1, min(32, image.width // 12, image.height // 12))
+    corner_boxes = (
+        (0, 0, sample, sample),
+        (image.width - sample, 0, image.width, sample),
+        (0, image.height - sample, sample, image.height),
+        (image.width - sample, image.height - sample, image.width, image.height),
+    )
+    corner_medians: list[tuple[int, int, int]] = []
+    for box in corner_boxes:
+        stat = ImageStat.Stat(rgb.crop(box))
+        median = stat.median
+        corner_medians.append((int(median[0]), int(median[1]), int(median[2])))
+
+    def median_channel(index: int) -> int:
+        values = sorted(sample[index] for sample in corner_medians)
+        return values[len(values) // 2]
+
+    background = (median_channel(0), median_channel(1), median_channel(2))
+    diff = ImageChops.difference(rgb, Image.new("RGB", rgb.size, background))
+    red, green, blue = diff.split()
+    max_diff = ImageChops.lighter(ImageChops.lighter(red, green), blue)
+    tolerance = 6
+    mask = max_diff.point(lambda value: 255 if value > tolerance else 0)
+    bbox = mask.getbbox()
+    if bbox is None:
+        return
+
+    left, top, right, bottom = bbox
+    margin = max(16, min(96, int(round(max(image.width, image.height) * 0.015))))
+    left = max(0, left - margin)
+    top = max(0, top - margin)
+    right = min(image.width, right + margin)
+    bottom = min(image.height, bottom + margin)
+    crop_width = right - left
+    crop_height = bottom - top
+    if crop_width <= 4 or crop_height <= 4:
+        return
+
+    original_area = image.width * image.height
+    crop_area = crop_width * crop_height
+    if crop_area >= original_area * 0.96:
+        return
+
+    try:
+        image.crop((left, top, right, bottom)).save(screenshot_path)
+    except Exception as exc:
+        LOG.warning("Field docs runner failed to trim native screenshot %s: %s", screenshot_path, exc)
+        return
+    LOG.info(
+        "Field docs runner trimmed native screenshot: %s (%dx%d -> %dx%d)",
+        screenshot_path,
+        image.width,
+        image.height,
+        crop_width,
+        crop_height,
+    )
+
+    LOG.info(
+        "Field docs runner trimmed native graphics screenshot %s: %sx%s -> %sx%s",
+        screenshot_path,
+        image.width,
+        image.height,
+        crop_width,
+        crop_height,
+    )
+
+
 def parse_codegen_expectation(*, code: str, key: str) -> bool | None:
     match = re.search(rf"{re.escape(key)}:\s*(true|false)", code, re.IGNORECASE)
     if match is None:
@@ -1958,10 +2223,9 @@ def build_backdoor_command(
             "--timeout", str(options.timeout),
         ]))
         backdoor_commands.append(shlex.join([
-            "wait-output",
+            "wait-native-renderer",
             "agent_graphics_context",
-            "--kind", "inline",
-            "--contains", "agent graphics renderer ready",
+            "--frames", "3",
             "--timeout", str(options.timeout),
         ]))
     if options.macro_file:

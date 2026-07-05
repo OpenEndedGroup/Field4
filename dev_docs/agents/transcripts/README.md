@@ -1,6 +1,7 @@
 # Agent Transcript Corpus
 
 This directory is a small, curated corpus of `OperationTranscript` YAML macros for agents. These are examples to copy, run, and adapt when automating Field documents through the backdoor.
+For the consolidated testing strategy, start with `dev_docs/testing/TESTING_STRATEGY.md`.
 
 Use server macros when the automation changes Field state semantically: boxes, properties, frames, graph connections, execution, launch, stop, and undo. Use backdoor replay transcripts when the procedure also needs agent-side capture steps such as screenshots or output-event collection.
 
@@ -9,7 +10,7 @@ Use server macros when the automation changes Field state semantically: boxes, p
 From the repository root:
 
 ```bash
-uv run --group backdoor python tools/field_backdoor.py --json --port 9477 \
+uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 \
   --command 'macro write agent_hello_display --file dev_docs/agents/transcripts/hello_display.yaml' \
   --command 'macro run agent_hello_display'
 ```
@@ -19,14 +20,14 @@ For multi-box construction macros, run without `--selection`. The macro runner m
 Use `macro undo <name>` to reverse supported operations:
 
 ```bash
-uv run --group backdoor python tools/field_backdoor.py --json --port 9477 \
+uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 \
   --command 'macro undo agent_hello_display'
 ```
 
 Backdoor replay transcripts run directly from the YAML and can include capture operations:
 
 ```bash
-uv run --group backdoor python tools/field_backdoor.py --json --with-playwright --port 9477 \
+uv run --project . --group backdoor python tools/field_backdoor.py --json --with-playwright --port 9477 \
   --command 'replay-operations dev_docs/agents/transcripts/hello_display_capture.yaml'
 ```
 
@@ -62,7 +63,7 @@ Use `wait-output` before `screenshot` when the screenshot is meant to include di
 Use this sequence for new graphics automation:
 
 1. Run `graphics_renderer_launch.yaml`.
-2. Wait for inline output from `agent_graphics_context` containing `agent graphics renderer ready`.
+2. Wait for renderer liveness with `wait-native-renderer agent_graphics_context --frames 3`.
 3. Create the example box with a stable id.
 4. Connect `agent_graphics_context` as parent and the example box as child.
 5. In example code, resolve `val renderer: Renderer = fromContext()` at top level before calling `start(...)` or launching suspend work.
@@ -87,6 +88,6 @@ Keep examples small and agent-useful:
 
 - prefer stable ids over generated ids;
 - use event waits such as `wait-output` where possible, and reserve fixed `wait` entries for launch-dependent timing;
-- for native graphics, launch `graphics_renderer_launch.yaml` first, wait for `agent graphics renderer ready`, and then launch child boxes;
+- for native graphics, launch `graphics_renderer_launch.yaml` first, run `wait-native-renderer agent_graphics_context --frames 3`, and then launch child boxes;
 - keep browser capture operations in backdoor replay transcripts, not server macros;
 - add a short comment in this README when an example depends on hardware, Vulkan, audio, or external services.

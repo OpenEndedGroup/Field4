@@ -9,7 +9,6 @@ Start with the fabric of the network. Same wire count, different cost profile: b
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sorting_networks_examples/topology_compare.png" wait="1.0" capture="box"}
 :::static
 import afield.graphics.FLine
-import afield.stdlib.*
 
 val bubble = SortingNetwork.bubble(10)
 val merge = SortingNetwork.oddEvenMerge(10)
@@ -55,7 +54,6 @@ Structure is only half the story. The behavioral question is how quickly a fixed
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sorting_networks_examples/disorder_decay.png" wait="1.0" capture="box"}
 :::static
 import afield.graphics.FLine
-import afield.stdlib.*
 
 val n = 12
 val meanSamples = 180
@@ -172,7 +170,6 @@ This picture is about synthesis rather than execution. `SortingNetwork.anneal(..
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sorting_networks_examples/anneal_search.png" wait="1.0" capture="box" timeout="70"}
 :::static
 import afield.graphics.FLine
-import afield.stdlib.*
 
 val baseline = SortingNetwork.bubble(8)
 val history = mutableListOf<Pair<Int, SortingNetwork>>()
@@ -256,7 +253,6 @@ One annealing run is anecdote. A more useful picture broadens the configuration 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sorting_networks_examples/anneal_regimes.png" wait="1.0" capture="box" timeout="90"}
 :::static
 import afield.graphics.FLine
-import afield.stdlib.*
 
 data class RunConfig(
     val family: String,

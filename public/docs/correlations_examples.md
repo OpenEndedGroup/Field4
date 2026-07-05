@@ -9,9 +9,6 @@ Two signals can clearly belong together without forming a straight-line relation
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/correlations_examples/rolling_dependence.png" wait="1.0" capture="box" open-outputs="true"}
 :::static
 import afield.graphics.FLine
-import afield.stdlib.*
-import kotlin.math.PI
-import kotlin.math.sin
 
 val rollingD = RollingDistanceCorrelation(windowSize = 84)
 val rollingXi = RollingXiCorrelation(windowSize = 84)
@@ -66,7 +63,6 @@ Sometimes you need a fast comparison of several metrics on one dataset. Which me
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/correlations_examples/metric_profile.png" wait="1.0" capture="box" open-outputs="true"}
 :::static
 import afield.graphics.FLine
-import afield.stdlib.*
 
 val n = 320
 val x = DoubleArray(n) { i -> i.toDouble() / (n - 1).toDouble() * 2.0 - 1.0 }

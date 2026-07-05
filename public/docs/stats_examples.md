@@ -9,9 +9,6 @@ The buffer can already report median and quartiles. The histogram shows the shap
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/stats_examples/histogram_fline.png" wait="1.0" capture="window" open-outputs="true"}
 :::static
 import afield.graphics.FLine
-import afield.stdlib.*
-import kotlin.math.PI
-import kotlin.math.sin
 
 val buffer = SummaryStatsBuffer(maxSize = 300)
 for (i in 0 until 520) {
@@ -73,10 +70,6 @@ Many live systems produce points, trajectories, and clouds: cursor motion, body 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/stats_examples/vec2_stats_fline.png" wait="1.0" capture="box"}
 :::static
 import afield.graphics.FLine
-import afield.stdlib.*
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
 
 val vbuf = Vec2SummaryStatsBuffer(maxSize = 260)
 for (i in 0 until 420) {

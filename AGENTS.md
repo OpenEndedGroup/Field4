@@ -29,7 +29,7 @@ Use `uv` for agent-facing Python tooling so MkDocs and the backdoor share the sa
 - Backdoor status:
 
 ```bash
-uv run --group backdoor python tools/field_backdoor.py --json --port 9477 --command status
+uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 --command status
 ```
 
 - Full MkDocs build with all Field screenshots/videos regenerated:
@@ -53,6 +53,22 @@ cd public && FIELD_DOCS_RUNNER_MODE=incremental FIELD_DOCS_RUNNER_PORT=9477 \
   uv run --project .. --group docs mkdocs serve
 ```
 
+Docs/test intent matrix:
+
+The consolidated testing guide is `dev_docs/testing/TESTING_STRATEGY.md`; use
+the matrix below as the quick command crib.
+
+| Situation | Command | Intent |
+| --- | --- | --- |
+| Backdoor sanity check | `uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 --command status` | Verify the agent can start or attach to an isolated Field. |
+| Smoke catalog | `uv run --project . --group backdoor python tools/run_field_tests.py --refresh-catalog` | Exercise annotated Field examples through the backdoor. |
+| Browser UI regressions | `uv run --project . --group backdoor python tools/run_ui_regressions.py --port 9490 --timeout 45` | Run Playwright-backed UI workflows and retain screenshots under `build/ui-regressions/artifacts/`. |
+| Docs HTML only | `cd public && FIELD_DOCS_RUNNER_MODE=never uv run --project .. --group docs mkdocs build` | Rebuild MkDocs without starting Field or recapturing assets. |
+| Docs author loop | `cd public && FIELD_DOCS_RUNNER_MODE=incremental FIELD_DOCS_RUNNER_PORT=9477 uv run --project .. --group docs mkdocs build` | Reuse valid captures and run only changed or missing ones. |
+| Runner/API change | `cd public && FIELD_DOCS_RUNNER_MODE=strict FIELD_DOCS_RUNNER_PORT=9477 uv run --project .. --group docs mkdocs build` | Invalidate captures when runner code or transcript behavior changes. |
+| Full recapture | `cd public && FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project .. --group docs mkdocs build` | Regenerate every screenshot and video through Field. |
+| Offline asset ownership | `uv run python tools/check_offline_assets.py` | Verify canonical Monaco/font/offline assets exist and generated copies are not tracked. |
+
 ### Gradle hygiene for agents
 
 - On Windows, agents should use the checked-in Gradle wrapper directly for compile checks:
@@ -74,13 +90,13 @@ Mac OS X, aarch64
 Mac OS X
 ```
 
-  In this state, do not keep waiting, do not retry `./gradlew --status`, and do not start more Gradle tasks. Run `killall -9 java`, then report the compile as unverified. Prefer a targeted verification path such as `uv run --group backdoor python tools/field_backdoor.py --json --port <custom-port> --command 'run-jvm-main ...'` when it fits the change.
+  In this state, do not keep waiting, do not retry `./gradlew --status`, and do not start more Gradle tasks. Run `killall -9 java`, then report the compile as unverified. Prefer a targeted verification path such as `uv run --project . --group backdoor python tools/field_backdoor.py --json --port <custom-port> --command 'run-jvm-main ...'` when it fits the change.
 - If Gradle appears hung or reports a lock error, run `killall -9 java` before retrying Gradle.
 - Use an isolated `GRADLE_USER_HOME` / `--project-cache-dir` only as a fallback when there is a confirmed cache-lock conflict that cannot be cleared without disrupting the user's running work. The isolated path is expected to be much slower because it loses the warm project caches.
 
 ## Field Backdoor (Preferred for Agents)
 
-- When you need to verify Field behavior by actually running code, prefer `uv run --group backdoor python tools/field_backdoor.py` over driving the browser manually.
+- When you need to verify Field behavior by actually running code, prefer `uv run --project . --group backdoor python tools/field_backdoor.py` over driving the browser manually.
 - When the thing you want to verify is a JVM entrypoint or smoke-style example, prefer the backdoor's `run-jvm-main` command over ad hoc `gradlew` `JavaExec`, temporary init scripts, or custom classpath launchers. Use transient scratch boxes for snippet-level checks and screenshots.
 - The backdoor attaches to an existing Field at `https://localhost:9092` or starts Field itself using the Gradle wrapper command above, opens a scratch document by default, and lets you create boxes, set code/shaders, run or launch them, stop them, and capture outputs/errors as JSON.
 - For agent automation, do not rely on the default port. Pass a custom high port such as `--port 9477` so the backdoor starts or reuses an isolated agent-owned Field instead of silently attaching to a stale dev server on `9092`.
@@ -92,19 +108,19 @@ Mac OS X
 - Session logs are debugging artifacts, not durable state. They now store truncated previews of very large websocket payloads, and it is safe to clear `.field-backdoor/logs/` if runaway visualizer output fills the disk during automation.
 - `run-jvm-main` omits the full launched JVM command/classpath from JSON output by default to keep agent context small. Add `--include-command` only when debugging launch/classpath construction.
 - For semantic document automation, prefer `OperationTranscript` macro YAML over one-off command chains. Reusable agent examples live in `dev_docs/agents/transcripts/`; write them into the current document with `macro write <name> --file <path>`, then run them with `macro run <name>`.
-- For `afield.four` graphics automation, treat renderer access as graph topology. Run `dev_docs/agents/transcripts/graphics_renderer_launch.yaml`, create the example box, connect `agent_graphics_context -> example_box`, then run the example. If code starts coroutine work with `start(...)`, resolve `val renderer: Renderer = fromContext()` before `start(...)` and pass it into async helpers explicitly.
+- For `afield.four` graphics automation, treat renderer access as graph topology. Run `dev_docs/agents/transcripts/graphics_renderer_launch.yaml`, wait with `wait-native-renderer agent_graphics_context --frames 3`, create the example box, connect `agent_graphics_context -> example_box`, then run the example. If code starts coroutine work with `start(...)`, resolve `val renderer: Renderer = fromContext()` before `start(...)` and pass it into async helpers explicitly.
 
 Minimum hello world:
 
 ```bash
-uv run --group backdoor python tools/field_backdoor.py --json --port 9477 \
+uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 \
   --command 'new-box --name Hello' \
   --command 'run @last --value "println(\"hello world\")"'
 ```
 
 Recommended agent workflow:
 
-1. Pick a custom high port and start with `uv run --group backdoor python tools/field_backdoor.py --json --port 9477 --command status` to see whether it started Field, whether `managedServer` is true, and where the logs are.
+1. Pick a custom high port and start with `uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 --command status` to see whether it started Field, whether `managedServer` is true, and where the logs are.
 2. If you unexpectedly connect to an existing server or suspect stale code, do not keep retrying on the same default port. Pick a new custom port and start a fresh managed Field there.
 3. For quick execution checks, stay in scratch mode and use `new-box`, `connect`, `disconnect`, `set`, `run`, `launch`, `stop`, and `output`.
 4. For larger snippets, prefer `--file -` with a heredoc or pipe. Use `--file <path>` when the code already lives in a file.
@@ -119,7 +135,7 @@ By default this Playwright browser is headless, so screenshot/DOM tests do not s
 Stdin example:
 
 ```bash
-cat <<'EOF' | python3 tools/field_backdoor.py --json \
+cat <<'EOF' | uv run --project . --group backdoor python tools/field_backdoor.py --json \
   --command 'new-box --name Hello' \
   --command 'run @last --file -'
 println("hello from stdin")
@@ -137,7 +153,7 @@ This matches the frontend `g` action: the first uid is the parent, and the remai
 Playwright example:
 
 ```bash
-cat <<'EOF' | python3 tools/field_backdoor.py --json \
+cat <<'EOF' | uv run --project . --group backdoor python tools/field_backdoor.py --json \
   --with-playwright \
   --command 'new-box --name Visual' \
   --command 'run @last --file -'
@@ -152,7 +168,7 @@ The first call on a machine can take longer because Playwright may download brow
 Screenshot examples:
 
 ```bash
-cat <<'EOF' | python3 tools/field_backdoor.py --json \
+cat <<'EOF' | uv run --project . --group backdoor python tools/field_backdoor.py --json \
   --with-playwright \
   --command 'new-box --name Visual' \
   --command 'run @last --file -' \
@@ -168,12 +184,19 @@ Use:
 - `screenshot-window <path> --uid <box> --with-editor --open-outputs` for a whole-window capture with that box selected and Monaco visible.
 - `screenshot-window <path> --uid <box> --open-outputs` for a whole-window capture of the same state without Monaco.
 - `editor-open <box> --property code` before `run`/`launch`, then `screenshot-editor <box> <path> --padding 10`, for inline histogram / history / piano-roll style visualizers.
-- `screenshot-box <box> <path> --padding 16` for a clipped image of just that box, with nested/output disclosures opened and a little padding added for documentation or visual diffing.
+- `screenshot-box <box> <path> --padding 16` for a clipped image of just that box, with nested/output disclosures opened and a little padding added for documentation or visual diffing. `--open-outputs` is accepted for symmetry, but box screenshots already open outputs internally.
+
+Screenshot and DOM-probe troubleshooting:
+- Attach Playwright with `--with-playwright` before the `run` or `launch` that creates output DOM. Attaching after a run cannot recreate output DOM that never existed in that browser page.
+- Use one fresh scratch session or fresh custom port per final screenshot/video asset unless the example intentionally needs multiple boxes visible. Overlapping default-position boxes can ghost into later captures or distort crop calculations.
+- For `page-eval`, keep inline expressions tiny. Put anything with spaces, quotes, braces, selectors, or multiple statements in a file and call `page-eval --file <path>`. Use `--body` only with an explicit `return`; otherwise the result is `null`.
+- Inspect the actual PNG/MP4 before deciding a capture is good. JSON `clip` values are CSS pixels and can be half the generated image dimensions on high-DPI browser contexts.
+- If an iframe output is blank or tiny, probe the parent page as well as the iframe document. Check the iframe rect, `.disclosure-content` rect/style, and `data-afield-intrinsic-width` / `data-afield-intrinsic-height`; stale intrinsic sizes can make a full iframe document render into a tiny disclosure.
 
 Video recording examples:
 
 ```bash
-cat <<'EOF' | python3 tools/field_backdoor.py --json \
+cat <<'EOF' | uv run --project . --group backdoor python tools/field_backdoor.py --json \
   --with-playwright \
   --command 'new-box --name AnimBox' \
   --command 'launch @last --file -' \
@@ -205,19 +228,37 @@ Detailed reference:
 Phase-1 smoke test runner:
 
 ```bash
-python3 tools/run_field_tests.py --refresh-catalog
+uv run --project . --group backdoor python tools/run_field_tests.py --refresh-catalog
 ```
 
-This regenerates `build/field-tests/catalog.json`, then runs each discovered `FIELD_TEST` entry one-by-one through `python3 tools/field_backdoor.py --json`.
+This regenerates `build/field-tests/catalog.json`, then runs each discovered `FIELD_TEST` entry one-by-one through `uv run --project . --group backdoor python tools/field_backdoor.py --json`.
+
+Browser UI regression runner:
+
+```bash
+uv run --project . --group backdoor python tools/run_ui_regressions.py --port 9490 --timeout 45
+```
+
+This runs browser-level regressions through `tools/field_backdoor.py` and the server-owned Playwright browser. It prints `RUN`, heartbeat, `PASS`, and `FAIL` lines by default; use `--heartbeat-interval <seconds>` to tune long-run telemetry and `--json` when machine-readable stdout matters. Screenshots are retained under `build/ui-regressions/artifacts/<test-id>/`, with `latest-pass.png`, `latest-failure.png`, and the most recent 5 passing screenshots in `passes/`.
+
+Target one regression while iterating:
+
+```bash
+uv run --project . --group backdoor python tools/run_ui_regressions.py \
+  --id macro-transcript-panel --port 9680 --timeout 45
+```
+
+Current testing layers and commands are summarized in `dev_docs/testing/TESTING_STRATEGY.md`. Browser UI coverage details are tracked in `dev_docs/testing/UI_REGRESSION_ROADMAP.md`: command palette, editor sync, insert stack mark, output areas, `/controllers` lines/control widgets, screenshot selection, history panel, macro/transcript panel, inline visualizers, and focus/keyboard contracts.
 
 ## Autonomous Docs/Test Loop
 
 - Agents are expected to make code changes, API changes, documentation fixes, and test-runner fixes autonomously when the docs/test pipeline exposes a real problem.
-- The default repair loop is: run `python3 tools/run_field_tests.py --refresh-catalog`, run `cd public && FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project .. --group docs mkdocs build` (or `uv run --project .. --group docs mkdocs serve` while iterating), inspect the first concrete failing example, fix it in code or docs, and rerun until clean.
+- The default repair loop is: run `uv run --project . --group backdoor python tools/run_field_tests.py --refresh-catalog`, run `cd public && FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project .. --group docs mkdocs build` (or `uv run --project .. --group docs mkdocs serve` while iterating), inspect the first concrete failing example, fix it in code or docs, and rerun until clean.
 - Use `FIELD_DOCS_RUNNER_MODE=incremental` for fast local iteration against an already-clean cache.
 - Use `FIELD_DOCS_RUNNER_MODE=strict` when runner logic changes should invalidate cached captures through `public/docs_hooks.py` digest changes.
 - Use `FIELD_DOCS_RUNNER_MODE=always` when you need every screenshot/video to be regenerated regardless of cache state.
 - Use `FIELD_DOCS_RUNNER_MODE=never` when you want MkDocs to skip all capture execution entirely and just use whatever screenshot/video files already exist on disk.
+- For graphics-context captures, the docs runner now takes ownership of `FIELD_DOCS_RUNNER_PORT`: if a stale Field is already serving that port, the runner asks it to shut down and starts a fresh runner-owned Field before launching the renderer transcript. Use a dedicated high port for docs runs.
 - When docs screenshots show the red Field error marker or empty/incorrect output, treat that as a real failure: capture the compiler/runtime error from the backdoor/test runner, fix the snippet or runtime, and rerun the docs page.
 - If a backdoor or smoke-suite run times out and later probes stop reaching `is-running`, restart the managed Field JVM before trusting subsequent failures; a wedged snippet can poison later manual debugging runs.
 - Prefer fixing the underlying example or capture behavior rather than hand-editing generated assets.
@@ -540,7 +581,8 @@ The default mapping is in `Box.ioSeparateProperties` (`src/jvmMain/kotlin/afield
 - Source: `src/commonMain/resources/offline.html`, `src/commonMain/resources/offline-viewer.js`, `src/commonMain/resources/edn-parser.js`
 - Canonical vendored assets: `src/jsMain/resources/monaco/min`, `src/jsMain/resources/woff2`, `src/jsMain/resources/iosevka.css`
 - Build script: `build-offline-docs.sh` → outputs `dist/offline-viewer/`
-- Static copies under `public/` and `dev_docs/` are generated/ignored; refresh them with `python3 tools/sync_offline_assets.py --target public --target dev_docs --no-docs`.
+- Static copies under `public/` and `dev_docs/` are generated/ignored; refresh them with `uv run python tools/sync_offline_assets.py --target public --target dev_docs --no-docs`.
+- Sanity check: `uv run python tools/check_offline_assets.py` verifies the canonical files are present and the generated copies have not become tracked again.
 - Embedding docs: `src/commonMain/resources/embed-example.html` shows how to iframe `offline.html?file=...` for read-only document display.
 
 ---

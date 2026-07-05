@@ -9,7 +9,6 @@ Stepping hue changes the colors, but perceived weight can drift: one swatch shou
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/colors_examples/hsl_okhsl_sets.png" wait="1.0" capture="box"}
 :::static
 import afield.graphics.FLine
-import afield.stdlib.*
 
 fun swatchRow(y0: Double, colors: List<Vec4>, h: Double): List<FLine> = colors.mapIndexed { i, c ->
     val x0 = 40.0 + i * 90.0
@@ -52,10 +51,6 @@ A palette can look fine in isolation and fail against a real background. This co
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/colors_examples/palette_background_paths.png" wait="1.0" capture="box" open-outputs="true"}
 :::static
 import afield.graphics.FLine
-import afield.stdlib.*
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
 
 val bg = rgb(0.06, 0.08, 0.11, 1.0)
 val palette = paletteForBackground(bg, count = 7, saturation = 0.78, lightness = 0.63, minContrast = 3.5)

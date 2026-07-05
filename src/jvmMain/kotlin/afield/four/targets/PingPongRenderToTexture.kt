@@ -355,6 +355,7 @@ open class PingPongRenderToTexture(
                 )
                 .format(colorFormats[attachment])
                 .mipLevels(mipLevels)
+                .aliasSingleLayerDescriptors(this.parameters.forceColorArrayView)
         }
 
         fun createAdditionalFrame(attachment: Int): PingFrameResources {

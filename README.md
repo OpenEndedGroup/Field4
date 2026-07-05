@@ -94,15 +94,23 @@ Compile the JVM sources:
 Run the Field smoke-test catalog:
 
 ```bash
-python3 tools/run_field_tests.py --refresh-catalog
+uv run --project . --group backdoor python tools/run_field_tests.py --refresh-catalog
+```
+
+Run browser UI regressions:
+
+```bash
+uv run --project . --group backdoor python tools/run_ui_regressions.py --port 9490 --timeout 45
 ```
 
 Build the documentation site without regenerating screenshots:
 
 ```bash
 cd public
-FIELD_DOCS_RUNNER_MODE=never mkdocs build
+FIELD_DOCS_RUNNER_MODE=never uv run --project .. --group docs mkdocs build
 ```
+
+The consolidated testing guide is `dev_docs/testing/TESTING_STRATEGY.md`.
 
 ## License
 

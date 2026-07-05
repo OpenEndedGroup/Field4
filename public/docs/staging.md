@@ -11,7 +11,7 @@ The examples in this staging area are increasingly built from the same machinery
 For simple examples, the runner creates a scratch box, runs the code, waits for output, and clips a browser screenshot. For graphics examples, the runner now uses a reusable `OperationTranscript` path:
 
 - launch a renderer box from a YAML transcript;
-- wait until that renderer reports that it is actually running;
+- wait until the native renderer window can advance and capture frames;
 - create the example box;
 - connect the renderer box as the example's parent, so `fromContext<Renderer>()` works the same way it does in a normal Field document;
 - run or launch the example;
@@ -19,14 +19,30 @@ For simple examples, the runner creates a scratch box, runs the code, waits for 
 
 That topology step matters. A graphics box is not supposed to find a renderer by accident or by sleeping long enough. It should inherit a live renderer from its parent, just like user-authored Field graphs do. This means docs captures double as real integration tests for the box graph, context lookup, Kotlin execution, Vulkan renderer startup, and screenshot plumbing.
 
+For graphics captures, the docs runner also takes ownership of the configured `FIELD_DOCS_RUNNER_PORT`. If a stale Field process is already serving that port, the runner asks it to shut down and starts a fresh one before it launches the transcript. That keeps renderer topology from accumulating across repeated docs builds.
+
+Native graphics screenshots can opt into background trimming with `trim-native=true` on the runner fence. Use it for `capture="native-window"` examples where the renderer produces a small subject inside a large black window.
+
 The current build modes are:
 
-```bash
+```diffstatic {data-lang=bash}
 cd public && FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 \
   uv run --project .. --group docs mkdocs build
 ```
 
 Use `always` when every screenshot or video should be regenerated. Use `incremental` while writing normal docs, `strict` when runner changes should invalidate cached captures, and `never` when you only want to rebuild the site HTML from already-generated assets.
+
+The practical test matrix is:
+
+| Situation | Command | What it checks |
+| --- | --- | --- |
+| HTML-only docs build | `FIELD_DOCS_RUNNER_MODE=never uv run --project .. --group docs mkdocs build` | Markdown, navigation, links, and checked-in/generated assets, without launching Field. |
+| Normal docs authoring | `FIELD_DOCS_RUNNER_MODE=incremental FIELD_DOCS_RUNNER_PORT=9477 uv run --project .. --group docs mkdocs build` | Changed captures are run through Field; unchanged captures use the cache. |
+| Runner or transcript changes | `FIELD_DOCS_RUNNER_MODE=strict FIELD_DOCS_RUNNER_PORT=9477 uv run --project .. --group docs mkdocs build` | Capture behavior changes invalidate the cache. |
+| Full recapture | `FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project .. --group docs mkdocs build` | Every screenshot and video is regenerated from a live Field session. |
+| Offline asset ownership | `uv run python tools/check_offline_assets.py` from the repository root | Monaco, Iosevka, and offline viewer sources are present; generated public copies are not checked in twice. |
+
+At the end of a build, the runner prints a compact summary with regenerated captures, skipped captures, failures, server starts/restarts, and elapsed time. That line is the first place to look when a docs build feels suspiciously fast, slow, or quiet.
 
 Reusable transcript examples live under `dev_docs/agents/transcripts/`. The most important graphics one is `graphics_renderer_launch.yaml`; it builds and launches the renderer parent that native graphics docs attach their examples to. The public result is modest but important: when a page shows a rendered triangle, buffer example, material test, or ray-traced image, that image was produced by Field during the docs build rather than pasted in by hand.
 
@@ -37,7 +53,6 @@ Reusable transcript examples live under `dev_docs/agents/transcripts/`. The most
 - [Ray Tracing Examples](ray_tracing_examples.md) uses the same graphics-context capture route for Vulkan ray tracing examples.
 - [Interactive Guides](interactive_guides.md) shows how boxes can teach a document: slide notes, selections, callbacks, templated values, chat, and callout lines.
 - [Guide Chat](guide_chat.md) covers the optional chat service used by slideshow steps.
-- [VR Drawing Sketch](vr_sketch2.md) is a first OpenXR drawing exercise, built around the `field.sketch2` templates.
 
 ## Small languages
 

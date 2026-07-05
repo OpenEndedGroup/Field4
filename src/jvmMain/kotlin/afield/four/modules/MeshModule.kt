@@ -575,7 +575,7 @@ class MeshModule(val parameters: Parameters) : Renderable {
                 renderInfo
                     .colorAttachmentCount(colorCount)
                     .pColorAttachmentFormats(colorAttachmentFormats)
-                    .depthAttachmentFormat(if (parameters.depth > 0) parameters.depthFormat else VK_FORMAT_UNDEFINED)
+                    .depthAttachmentFormat(parameters.depthFormat)
                     .stencilAttachmentFormat(0)
                     .viewMask(parameters.viewMask)
 

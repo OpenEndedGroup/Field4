@@ -11,6 +11,10 @@
     --mono-text-faint: rgba(255, 255, 255, 0.4);
     --mono-accent: rgba(255, 255, 255, 0.6);
     --mono-border: rgba(255, 255, 255, 0.12);
+    --mono-border-soft: rgba(255, 255, 255, 0.08);
+    --mono-code-table-bg: rgba(255, 255, 255, 0.022);
+    --mono-code-table-cell: rgba(255, 255, 255, 0.06);
+    --mono-code-table-text: rgba(236, 238, 241, 0.82);
     --nav-font-size: 0.64rem;
     --nav-line-height: 1.02;
     --nav-item-gap: 0.03rem;
@@ -234,7 +238,7 @@ code {
 }
 
 .md-typeset .stacksl-reference td {
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
     word-break: normal;
 }
 
@@ -317,6 +321,161 @@ code {
 .md-typeset table th,
 .md-typeset table td {
     border-bottom: 1px solid var(--mono-border);
+}
+
+.md-typeset .md-typeset__scrollwrap:has(table td code),
+.md-typeset .md-typeset__table:has(table td code) {
+    display: block;
+    margin: 0.4rem 0 1rem 1.35rem;
+    padding: 0;
+    overflow: visible;
+    background: transparent !important;
+}
+
+.md-typeset table:has(td code),
+.md-typeset table:not([class]):has(td code) {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
+    border: 0 !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+.md-typeset table:has(td code) thead {
+    display: none;
+}
+
+.md-typeset table:has(td code) tbody {
+    display: grid;
+    gap: 0;
+}
+
+.md-typeset table:has(td code) tr {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content;
+    grid-template-areas:
+        "term meta"
+        "body body";
+    column-gap: 0.85rem;
+    row-gap: 0.44rem;
+    padding: 0.68rem 0 0.74rem;
+    border: 0;
+    background: transparent;
+}
+
+.md-typeset table:has(td code) tr::after {
+    content: "";
+    grid-column: 1 / -1;
+    grid-row: 1;
+    align-self: end;
+    transform: translateY(0.22rem);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.md-typeset table:has(td code) tr:has(td:nth-child(2):last-child) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+        "term"
+        "body";
+}
+
+.md-typeset table:has(td code) tbody tr:nth-child(even) {
+    background: transparent;
+}
+
+.md-typeset table:has(td code) td {
+    display: block;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.68rem;
+    line-height: 1.46;
+}
+
+.md-typeset table:has(td code) th {
+    padding: 0 !important;
+    border: 0 !important;
+}
+
+.md-typeset table:has(td code) td:first-child {
+    grid-area: term;
+    align-self: baseline;
+    padding-left: 0.42rem !important;
+    color: rgba(255, 255, 255, 0.94);
+    font-size: 0.94rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.md-typeset table:has(td code) td:nth-child(2) {
+    grid-area: meta;
+    justify-self: end;
+    align-self: start;
+    max-width: 22rem;
+    color: rgba(255, 255, 255, 0.58);
+    font-size: 0.61rem;
+    line-height: 1.28;
+    text-align: right;
+}
+
+.md-typeset table:has(td code) td:nth-child(3) {
+    grid-area: body;
+    max-width: 44rem;
+    padding-left: 0.42rem !important;
+}
+
+.md-typeset table:has(td code) tr:has(td:nth-child(2):last-child) td:nth-child(2) {
+    grid-area: body;
+    justify-self: stretch;
+    max-width: 44rem;
+    padding-left: 0.42rem !important;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.68rem;
+    line-height: 1.46;
+    text-align: left;
+}
+
+.md-typeset table:has(td code) td code,
+.md-typeset table:has(td code) th code {
+    display: inline;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0.02rem 0.16rem 0.03rem;
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: normal;
+    border: 0;
+    border-radius: 3px;
+    background: var(--mono-code-table-cell);
+    color: #adf;
+    font-size: 0.61rem;
+    line-height: inherit;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+}
+
+.md-typeset table:has(td code) td:first-child code,
+.md-typeset table:has(td code) th:first-child code {
+    padding: 0;
+    background: transparent;
+    color: #adf;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.md-typeset table:has(td code) td:nth-child(2) code {
+    color: #adf;
+}
+
+@media screen and (min-width: 76.234375em) {
+    .md-grid:has(.md-typeset table td code) {
+        max-width: 64rem;
+    }
 }
 
 .md-typeset hr {

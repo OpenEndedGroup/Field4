@@ -1,5 +1,9 @@
 # Testing Guide for Document History Feature
 
+Canonical testing map: `dev_docs/testing/TESTING_STRATEGY.md`. This file is a
+feature-specific manual checklist; the automated history panel smoke path lives
+in the browser UI regression suite.
+
 ## Prerequisites
 - Field4 server running (`./gradlew jvmRun`)
 - A document with at least a few saved versions

@@ -26,7 +26,6 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interaction_nets_examples/beta_bridge.png" wait="2.0" capture="box" open-outputs="true" embed=true name="interaction-beta-bridge" w="1240" padding="12"}
 :::static
 import afield.Rect
-import afield.stdlib.*
 
 val reducer = Reducer(Lambda.rules())
 val net = net {
@@ -105,7 +104,6 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interaction_nets_examples/energy_scheduler.png" wait="2.0" capture="box" open-outputs="true" embed=true name="interaction-energy-scheduler" w="1240" padding="12"}
 :::static
 import afield.Rect
-import afield.stdlib.*
 
 val reducer = Reducer(Lambda.rules(), order = ActivationOrder.HIGHEST_PAIR_ENERGY)
 val net = net {
@@ -189,7 +187,6 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interaction_nets_examples/duplication.png" wait="2.0" capture="box" open-outputs="true" embed=true name="interaction-duplication" w="1240" padding="12"}
 :::static
 import afield.Rect
-import afield.stdlib.*
 
 val reducer = Reducer(Lambda.rules(), order = ActivationOrder.HIGHEST_PAIR_ENERGY)
 val net = Lambda.duplicatedConstantDemo()
@@ -255,7 +252,6 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interaction_nets_examples/erase.png" wait="2.0" capture="box" open-outputs="true" embed=true name="interaction-erase" w="1240" padding="12"}
 :::static
 import afield.Rect
-import afield.stdlib.*
 
 val reducer = Reducer(Lambda.rules())
 val net = Lambda.eraseApplicationDemo()

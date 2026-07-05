@@ -9,7 +9,6 @@ Start with the smallest interesting network. `toggleNetwork()` has only two node
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_networks_examples/toggle_state_space.png" wait="1.0" capture="box"}
 :::static
 import afield.graphics.FLine
-import afield.stdlib.*
 
 val net = toggleNetwork()
 val attrs = net.findAttractors()
@@ -53,7 +52,6 @@ Small synthetic networks are good for intuition. Multiple attractors make the pi
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_networks_examples/segment_basins.png" wait="1.0" capture="box"}
 :::static
 import afield.graphics.FLine
-import afield.stdlib.*
 
 val net = segmentPolarityNetwork()
 val attrs = net.findAttractors().sortedByDescending { it.basin.size }
@@ -104,7 +102,6 @@ This experiment steps away from one hand-made network and asks a population ques
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_networks_examples/kauffman_sweep.png" wait="1.0" capture="box"}
 :::static
 import afield.graphics.FLine
-import afield.stdlib.*
 
 data class SweepRow(val k: Int, val attractors: Double, val period: Double, val fixed: Double)
 
@@ -204,7 +201,6 @@ Once you have a limit cycle, you have a rhythm. You can treat each node as a lan
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_networks_examples/rhythm_cycles.png" wait="1.0" capture="box"}
 :::static
 import afield.graphics.FLine
-import afield.stdlib.*
 
 data class RhythmCandidate(val seed: Int, val net: BooleanNetwork, val attr: Attractor, val score: Double)
 

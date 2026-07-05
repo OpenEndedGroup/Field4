@@ -75,6 +75,7 @@ class ImageReducer(
     // Cached dimensions
     private var cachedWidth: Int = 0
     private var cachedHeight: Int = 0
+    private var cachedSourceViewType: Int = 0
     private var workgroupCountX: Int = 0
     private var workgroupCountY: Int = 0
 
@@ -177,15 +178,28 @@ class ImageReducer(
 
         val width = underlyingImage.imageData.width
         val height = underlyingImage.imageData.height
+        val sourceViewType = imageView.imageView.imageViewData.viewType
+        val sourceIsArrayView = sourceViewType == VK10.VK_IMAGE_VIEW_TYPE_2D_ARRAY
+        val inputImageDeclaration = if (sourceIsArrayView) {
+            "layout(set = 0, binding = 0) uniform sampler2DArray inputImage;"
+        } else {
+            "layout(set = 0, binding = 0) uniform sampler2D inputImage;"
+        }
+        val inputImageFetch = if (sourceIsArrayView) {
+            "texelFetch(inputImage, ivec3(pixelCoord, 0), 0)"
+        } else {
+            "texelFetch(inputImage, pixelCoord, 0)"
+        }
 
         // Check if we need to reinitialize
-        if (width == cachedWidth && height == cachedHeight &&
+        if (width == cachedWidth && height == cachedHeight && sourceViewType == cachedSourceViewType &&
             firstPassModule != null && secondPassModule != null) {
             return
         }
 
         cachedWidth = width
         cachedHeight = height
+        cachedSourceViewType = sourceViewType
 
         // Calculate workgroup counts
         workgroupCountX = ceil(width.toFloat() / LOCAL_SIZE_X).toInt()
@@ -227,7 +241,7 @@ class ImageReducer(
 
             layout(local_size_x = $LOCAL_SIZE_X, local_size_y = $LOCAL_SIZE_Y, local_size_z = 1) in;
 
-            layout(set = 0, binding = 0) uniform sampler2D inputImage;
+            $inputImageDeclaration
 
             layout(set = 0, binding = 1) buffer IntermediateResults {
                 float values[];
@@ -263,7 +277,7 @@ class ImageReducer(
                 vec4 pixel = vec4(0.0);
                 bool validPixel = false;
                 if (pixelCoord.x < pc.imageDimensionsX && pixelCoord.y < pc.imageDimensionsY) {
-                    pixel = texelFetch(inputImage, pixelCoord, 0);
+                    pixel = $inputImageFetch;
                     validPixel = true;
                 }
 

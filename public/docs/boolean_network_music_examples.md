@@ -17,7 +17,6 @@ The first useful test is simple: take a small attractor, map rising edges to pit
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_network_music_examples/noteprocess_roll.png" wait="1.0" capture="box"}
 :::static
 import afield.four.synth.*
-import afield.stdlib.*
 
 data class Candidate(val seed: Int, val net: BooleanNetwork, val attr: Attractor)
 
@@ -77,7 +76,6 @@ Pitched notes are only one interpretation. The same timing layer can carry Dirt 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_network_music_examples/dirt_token_roll.png" wait="1.0" capture="box"}
 :::static
 import afield.four.synth.*
-import afield.stdlib.*
 
 val net = kauffmanNetwork(n = 5, k = 2, seed = 27L)
 val attr = net.findAttractors().maxByOrNull { it.period }!!
@@ -126,7 +124,6 @@ Once the network can produce timed notes, the next step is layering. This exampl
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_network_music_examples/braided_rhythm.png" wait="1.0" capture="box"}
 :::static
 import afield.four.synth.*
-import afield.stdlib.*
 
 fun <T> Iterator<T>.collectAll(): List<T> {
     val out = mutableListOf<T>()
@@ -227,9 +224,6 @@ Not every useful rhythm has to come from a free-running attractor. Sometimes the
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_network_music_examples/oscillator_driven.png" wait="1.0" capture="box"}
 :::static
 import afield.four.synth.*
-import afield.stdlib.*
-import kotlin.math.PI
-import kotlin.math.sin
 
 fun <T> Iterator<T>.collectAll(): List<T> {
     val out = mutableListOf<T>()
@@ -314,7 +308,6 @@ The live bridge is the launchable responder. `respondAhead(...)` clocks the Bool
 
 ```diffstatic {data-lang=kotlin}
 import afield.four.synth.*
-import afield.stdlib.*
 
 val clock = musicClock().reset(started = true)
 val net = kauffmanNetwork(n = 5, k = 2, seed = 27L)

@@ -1,5 +1,8 @@
 # Layers System Testing Guide
 
+Canonical testing map: `dev_docs/testing/TESTING_STRATEGY.md`. This file is a
+feature-specific manual checklist for layer behavior.
+
 ## Overview
 The layers system allows boxes to be organized into multiple presentation layers, with control over visibility and frame positioning per layer.
 

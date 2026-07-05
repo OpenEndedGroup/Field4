@@ -9,10 +9,6 @@ One point cloud can support several plausible graphs. Some are generous scaffold
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/geometric_families.png" wait="1.0" capture="window" open-outputs="true"}
 :::static
 import afield.graphics.FLine
-import afield.stdlib.*
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
 
 val points = List(140) { i ->
     val a = i / 140.0 * PI * 2.0
@@ -75,10 +71,6 @@ Projected drawings are fine until the point cloud wants depth. Once points coil,
 :::static
 import afield.graphics.FLine
 import afield.graphics.threeLines
-import afield.stdlib.*
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
 
 val points = List(170) { i ->
     val t = i / 170.0 * PI * 7.0
@@ -138,7 +130,6 @@ A graph becomes more useful once you ask it to do something: cover a space from 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/path_cover_astar.png" wait="1.0" capture="box"}
 :::static
 import afield.graphics.FLine
-import afield.stdlib.*
 
 val points = List(110) { vec(80.0 + random() * 940.0, 80.0 + random() * 560.0) }
 val base = vec2KnnGraph(points, k = 4)

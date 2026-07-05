@@ -265,8 +265,14 @@ function disclosureInterface(container) {
         function iframeIntrinsicSize(iframe) {
                 if (!(iframe instanceof HTMLIFrameElement)) return { width: 0, height: 0 };
 
-                let width = parsePixels(iframe.getAttribute("width") || "");
-                let height = parsePixels(iframe.getAttribute("height") || "");
+                let width = Math.max(
+                        parsePixels(iframe.getAttribute("width") || ""),
+                        parsePixels(iframe.style.width || "")
+                );
+                let height = Math.max(
+                        parsePixels(iframe.getAttribute("height") || ""),
+                        parsePixels(iframe.style.height || "")
+                );
                 width = Math.max(width, parsePixels(iframe.dataset.afieldIntrinsicWidth || ""));
                 height = Math.max(height, parsePixels(iframe.dataset.afieldIntrinsicHeight || ""));
 

@@ -675,7 +675,6 @@ This is especially handy when the methods you’re calling don’t return the ob
 ```diffstatic {data-lang=kotlin}
 :::static
 import afield.graphics.*
-import afield.stdlib.*
 
 // These three are equivalent: they all build the same FLine.
 

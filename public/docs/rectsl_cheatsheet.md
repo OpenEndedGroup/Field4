@@ -4,7 +4,7 @@ RectSL is Field's rectangle scene language. It creates animated rectangle geomet
 
 A RectSL string starts with `#rectsl` when embedded in Kotlin:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 import afield.rectsl.*
 
 val source = """
@@ -126,7 +126,7 @@ Material StackSL receives rect/material data from the generated shader harness. 
 
 Track quotes are flat `time value` pairs:
 
-```text
+```diffstatic {data-lang=text}
 '( 0 -1  2 0  4 1 ) linear
 ```
 
@@ -229,15 +229,3 @@ Track quotes are flat `time value` pairs:
 | `<`, `lt`, `<=`, `lte`, `>`, `gt`, `>=`, `gte`, `=`, `eq`, `!=`, `<>`, `neq` | `a b -- bool` | Numeric/string comparisons where supported. |
 | `and`, `or`, `not` | `bool... -- bool` | Boolean operators using nonzero truth. |
 | `pi`, `tau` | `-- number` | Constants. |
-
-## Verification
-
-Focused checks:
-
-```bash
-./gradlew compileKotlinJvm
-python3 tools/field_backdoor.py --json --port 9478 \
-  --command 'run-jvm-main afield.examples.rectsl.RectSLWorkout'
-python3 tools/field_backdoor.py --json --port 9479 \
-  --command 'run-jvm-main afield.examples.rectsl.RectSLExamples'
-```

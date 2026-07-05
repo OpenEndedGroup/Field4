@@ -25,6 +25,14 @@ class Image(private val device: Device, val imageData: ImageData) {
 
             val imageCreateInfo = VkImageCreateInfo.calloc(stack)
                 .sType(VK10.VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO)
+                .flags(
+                    imageData.flags or
+                        if (imageData.aliasSingleLayerDescriptors && device.supportsMaintenance11) {
+                            KHRMaintenance11.VK_IMAGE_CREATE_ALIAS_SINGLE_LAYER_DESCRIPTOR_BIT_KHR
+                        } else {
+                            0
+                        }
+                )
                 .imageType(VK10.VK_IMAGE_TYPE_2D)
                 .format(format)
                 .extent { it: VkExtent3D ->
@@ -106,7 +114,9 @@ class Image(private val device: Device, val imageData: ImageData) {
     class ImageData {
         var arrayLayers: Int = 1
         internal var format: Int
+        var flags: Int = 0
         var height: Int = 0
+        var aliasSingleLayerDescriptors: Boolean = false
         var mipLevels: Int = 1
         var memoryPropertyFlags: Int = VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
         var sampleCount: Int = 1
@@ -127,8 +137,18 @@ class Image(private val device: Device, val imageData: ImageData) {
             return this
         }
 
+        fun flags(flags: Int): ImageData {
+            this.flags = flags
+            return this
+        }
+
         fun height(height: Int): ImageData {
             this.height = height
+            return this
+        }
+
+        fun aliasSingleLayerDescriptors(aliasSingleLayerDescriptors: Boolean = true): ImageData {
+            this.aliasSingleLayerDescriptors = aliasSingleLayerDescriptors
             return this
         }
 

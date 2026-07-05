@@ -156,7 +156,7 @@ data class Parameters(
         this@Parameters.color = colorFormats.size
         this@Parameters.colorFormats = colorFormats
         this@Parameters.depth = if (parameters.useDepth) 1 else 0
-        this@Parameters.depthFormat = parameters.depthFormat
+        this@Parameters.depthFormat = if (parameters.useDepth) parameters.depthFormat else VK_FORMAT_UNDEFINED
         this@Parameters.viewportCount = parameters.viewports.size.coerceAtLeast(1)
         this@Parameters.viewMask = parameters.multiviewViewMask
     }
@@ -166,7 +166,7 @@ data class Parameters(
         this@Parameters.color = 1
         this@Parameters.colorFormats = listOf(resolvedColorFormat)
         this@Parameters.depth = if (parameters.useDepth) 1 else 0
-        this@Parameters.depthFormat = parameters.depthFormat
+        this@Parameters.depthFormat = if (parameters.useDepth) parameters.depthFormat else VK_FORMAT_UNDEFINED
         this@Parameters.viewportCount = parameters.viewports.size.coerceAtLeast(1)
         this@Parameters.viewMask = parameters.multiviewViewMask
     }
@@ -862,7 +862,7 @@ class Module(val parameters: Parameters) : Renderable {
                 colorAttachmentFormats.flip()
 
                 renderInfo.colorAttachmentCount(colorCount).pColorAttachmentFormats(colorAttachmentFormats)
-                    .depthAttachmentFormat(if (parameters.depth > 0) parameters.depthFormat else VK_FORMAT_UNDEFINED)
+                    .depthAttachmentFormat(parameters.depthFormat)
                     .stencilAttachmentFormat(0)
                     .viewMask(parameters.viewMask)
 
@@ -1015,7 +1015,7 @@ class Module(val parameters: Parameters) : Renderable {
                 colorAttachmentFormats.flip()
 
                 renderInfo.colorAttachmentCount(colorCount).pColorAttachmentFormats(colorAttachmentFormats)
-                    .depthAttachmentFormat(if (parameters.depth > 0) parameters.depthFormat else VK_FORMAT_UNDEFINED)
+                    .depthAttachmentFormat(parameters.depthFormat)
                     .stencilAttachmentFormat(0)
                     .viewMask(parameters.viewMask)
 

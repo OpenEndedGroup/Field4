@@ -989,6 +989,7 @@ import afield.four.buffers.*
 import afield.four.texture.*
 import afield.graphics.*
 import org.joml.*
+import kotlin.math.*
 import kotlinx.coroutines.yield
 import kotlinx.coroutines.runBlocking
 """

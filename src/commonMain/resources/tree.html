@@ -446,7 +446,12 @@
                         }
 
                         const first = treeEl.querySelector('.row');
-                        if (first) selectRow(first);
+                        if (first) {
+                                selectRow(first);
+                                if (document.documentElement.dataset.afieldOutputIframe === "true") {
+                                        await expandRow(first);
+                                }
+                        }
                 }
 
                 function showError(err){

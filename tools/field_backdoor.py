@@ -229,6 +229,9 @@ def canonical_operation_verb(verb: str) -> str:
         "native-screenshot": "native-screenshot",
         "native-window-screenshot": "native-screenshot",
         "capture-native-window": "native-screenshot",
+        "wait-native-renderer": "wait-native-renderer",
+        "wait-renderer": "wait-native-renderer",
+        "wait-native-window": "wait-native-renderer",
         "output": "capture-output",
         "capture-output": "capture-output",
         "collect-output": "capture-output",
@@ -922,6 +925,7 @@ class FieldBackdoor:
         action: str,
         timeout: float,
         key: str | None = None,
+        selector: str | None = None,
         uid: str | None = None,
         dx: float = 0.0,
         dy: float = 0.0,
@@ -937,6 +941,7 @@ class FieldBackdoor:
             "playwright_input_start",
             action=action,
             key=key,
+            selector=selector,
             uid=resolved_uid,
             dx=dx,
             dy=dy,
@@ -953,6 +958,7 @@ class FieldBackdoor:
             {
                 "action": action,
                 "key": key,
+                "selector": selector,
                 "uid": resolved_uid,
                 "dx": dx,
                 "dy": dy,
@@ -1084,6 +1090,72 @@ class FieldBackdoor:
             raise BackdoorError("agent-native-window-screenshot returned an invalid payload")
         self.logger.log("native_window_screenshot_complete", payload=payload)
         return payload
+
+    async def wait_native_renderer(
+        self,
+        *,
+        uid: str | None,
+        frames: int,
+        timeout: float,
+    ) -> dict[str, Any]:
+        safe_frames = max(1, int(frames))
+        deadline = time.monotonic() + timeout
+        wait_path = LOG_ROOT / f"{self.session_id}-native-renderer-ready.png"
+        last_payload: dict[str, Any] | None = None
+        last_error: str | None = None
+        attempts = 0
+        wait_path.parent.mkdir(parents=True, exist_ok=True)
+        self.logger.log(
+            "wait_native_renderer_start",
+            uid=uid,
+            frames=safe_frames,
+            timeout=timeout,
+            path=str(wait_path),
+        )
+
+        while time.monotonic() < deadline:
+            attempts += 1
+            remaining = max(0.25, deadline - time.monotonic())
+            try:
+                payload = await self.native_window_screenshot(
+                    path=str(wait_path),
+                    wait_frames=safe_frames,
+                    timeout=remaining,
+                )
+                last_payload = payload
+                if payload.get("ok") and wait_path.exists() and wait_path.stat().st_size > 0:
+                    result = {
+                        "ok": True,
+                        "uid": self.resolve_uid(uid) if uid else None,
+                        "frames": safe_frames,
+                        "attempts": attempts,
+                        "path": str(wait_path),
+                        "message": "",
+                        "screenshot": payload,
+                    }
+                    self.logger.log("wait_native_renderer_complete", **result)
+                    return result
+                last_error = str(payload.get("message") or "native renderer screenshot was not ready")
+            except Exception as exc:
+                last_error = str(exc)
+                self.logger.log(
+                    "wait_native_renderer_attempt_error",
+                    attempt=attempts,
+                    error=last_error,
+                )
+            await asyncio.sleep(0.05)
+
+        result = {
+            "ok": False,
+            "uid": self.resolve_uid(uid) if uid else None,
+            "frames": safe_frames,
+            "attempts": attempts,
+            "path": str(wait_path),
+            "message": last_error or "Timed out waiting for native renderer",
+            "screenshot": last_payload,
+        }
+        self.logger.log("wait_native_renderer_timeout", **result)
+        return result
 
     async def record_window(
         self,
@@ -1920,6 +1992,19 @@ class FieldBackdoor:
                 )
             return summary
 
+        if verb == "wait-native-renderer":
+            uid_value = first_present(payload, "box", "uid", "id", "target")
+            uid = self.resolve_replay_box(uid_value, dry_run=dry_run) if uid_value is not None else None
+            frames = int(float(first_present(payload, "frames", "waitFrames", "wait-frames") or 3))
+            summary.update({"uid": uid, "frames": frames})
+            if not dry_run:
+                summary["result"] = await self.wait_native_renderer(
+                    uid=uid,
+                    frames=frames,
+                    timeout=timeout,
+                )
+            return summary
+
         if verb == "capture-output":
             box = self.resolve_replay_box(first_present(payload, "box", "uid", "id", "target") or "@last", dry_run=dry_run)
             channel_value = first_present(payload, "channel")
@@ -2494,6 +2579,7 @@ def build_command_parser() -> argparse.ArgumentParser:
     screenshot_box.add_argument("uid")
     screenshot_box.add_argument("path")
     screenshot_box.add_argument("--padding", type=float, default=12.0)
+    screenshot_box.add_argument("--open-outputs", action="store_true")
     screenshot_box.add_argument("--no-pan", action="store_true")
     screenshot_box.add_argument("--timeout", type=float)
 
@@ -2501,6 +2587,11 @@ def build_command_parser() -> argparse.ArgumentParser:
     native_screenshot.add_argument("path")
     native_screenshot.add_argument("--wait-frames", type=int, default=30)
     native_screenshot.add_argument("--timeout", type=float)
+
+    wait_native_renderer = subparsers.add_parser("wait-native-renderer", add_help=False)
+    wait_native_renderer.add_argument("uid", nargs="?")
+    wait_native_renderer.add_argument("--frames", type=int, default=3)
+    wait_native_renderer.add_argument("--timeout", type=float)
 
     record_window = subparsers.add_parser("record-window", add_help=False)
     record_window.add_argument("path")
@@ -2536,6 +2627,7 @@ def build_command_parser() -> argparse.ArgumentParser:
     input_key = subparsers.add_parser("input-key", add_help=False)
     input_key.add_argument("mode", choices=("press", "down", "up"))
     input_key.add_argument("key")
+    input_key.add_argument("--selector")
     input_key.add_argument("--wait-ms", type=float, default=0.0)
     input_key.add_argument("--timeout", type=float)
 
@@ -2853,6 +2945,18 @@ async def dispatch_command(
         data = await client.native_window_screenshot(
             path=args.path,
             wait_frames=args.wait_frames,
+            timeout=timeout,
+        )
+        ok = bool(data.get("ok"))
+        result = command_result(command_line, ok, data=data, events=[])
+        client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
+        return result
+
+    if args.command == "wait-native-renderer":
+        timeout = command_timeout(args.timeout, client.default_timeout)
+        data = await client.wait_native_renderer(
+            uid=args.uid,
+            frames=args.frames,
             timeout=timeout,
         )
         ok = bool(data.get("ok"))
@@ -3178,7 +3282,7 @@ async def dispatch_command(
             "down": "keyDown",
             "up": "keyUp",
         }[args.mode]
-        data = await client.playwright_input(action=action, key=args.key, timeout=timeout, wait_ms=args.wait_ms)
+        data = await client.playwright_input(action=action, key=args.key, selector=args.selector, timeout=timeout, wait_ms=args.wait_ms)
         ok = bool(data.get("ok"))
         result = command_result(command_line, ok, data=data, events=[])
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
@@ -3335,7 +3439,7 @@ async def repl(
             return 0
         if line == "help":
             client.logger.log("repl_help")
-            print("Commands: open, status, snapshot, boxes, sleep, playwright-open, editor-open, page-eval, screenshot-window, screenshot-editor, screenshot-box, native-screenshot, record-window, record-editor, record-box, new-box, connect, disconnect, set, macro, transcript, replay-operations, play-operations, run, launch, continue, stop, wait-file, output, wait-output, raw-send, run-jvm-main, exit")
+            print("Commands: open, status, snapshot, boxes, sleep, playwright-open, editor-open, page-eval, screenshot-window, screenshot-editor, screenshot-box, native-screenshot, wait-native-renderer, record-window, record-editor, record-box, new-box, connect, disconnect, set, macro, transcript, replay-operations, play-operations, run, launch, continue, stop, wait-file, output, wait-output, raw-send, run-jvm-main, exit")
             continue
         try:
             parsed = parse_command(line)

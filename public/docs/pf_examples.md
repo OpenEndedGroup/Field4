@@ -9,13 +9,6 @@ This is the smallest useful shape: one hidden point evolves through a nonlinear 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/pf_examples/ukf_mackey_glass.png" wait="1.0" capture="box" open-outputs="true" padding="20"}
 :::static
 import afield.darkMode
-import afield.stdlib.*
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.ln
-import kotlin.math.pow
-import kotlin.math.sin
-import kotlin.math.sqrt
 import kotlin.random.Random
 import space.kscience.plotly.*
 
@@ -116,13 +109,6 @@ When the system itself is uncertain, use `UKFParticleFilter`. Here each particle
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/pf_examples/ukf_particle_filter_mackey_glass.png" wait="1.0" capture="box" open-outputs="true" padding="20"}
 :::static
 import afield.darkMode
-import afield.stdlib.*
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.ln
-import kotlin.math.pow
-import kotlin.math.sin
-import kotlin.math.sqrt
 import kotlin.random.Random
 import space.kscience.plotly.*
 import space.kscience.plotly.models.ScatterMode

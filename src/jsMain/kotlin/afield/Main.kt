@@ -1033,6 +1033,18 @@ private fun hasStyledBox(element: HTMLElement): Boolean {
     return hasBackground || borderWidth > 0.0
 }
 
+private fun directText(element: HTMLElement): String {
+    val pieces = mutableListOf<String>()
+    val children = element.childNodes
+    for (index in 0 until children.length) {
+        val node = children.item(index) ?: continue
+        if (node.nodeType == Node.TEXT_NODE) {
+            pieces.add(node.textContent.orEmpty())
+        }
+    }
+    return pieces.joinToString("").trim()
+}
+
 private fun disclosureBodyClientRect(disclosure: HTMLElement): Rect? {
     val content = disclosure.querySelector(".disclosure-content") as? HTMLElement ?: return null
     if (!isOverlayVisible(content)) return null
@@ -1053,7 +1065,7 @@ private fun disclosureBodyClientRect(disclosure: HTMLElement): Rect? {
                 is HTMLVideoElement -> rect
 
                 is HTMLElement -> {
-                    val text = element.textContent?.trim().orEmpty()
+                    val text = directText(element)
                     val include = element.children.length == 0 ||
                         hasStyledBox(element) ||
                         text.isNotEmpty()
@@ -1079,10 +1091,20 @@ private fun collectOutputScreenshotRects(box: HTMLElement): List<Rect> {
             if (rect.w <= 2.0 || rect.h <= 2.0) return@mapNotNull null
             element
         }
+
+    fun disclosureHasControls(disclosure: HTMLElement): Boolean {
+        val content = disclosure.querySelector(".disclosure-content") as? HTMLElement ?: return false
+        return content.querySelector(".field-control, input, textarea, select, button") != null
+    }
+
     fun disclosureScreenshotRect(disclosure: HTMLElement): Rect? {
         val disclosureRect = domRectToRect(disclosure.getBoundingClientRect())
         if (disclosureRect.w <= 2.0 || disclosureRect.h <= 2.0) return null
         val disclosureTitleRect = disclosureTitleClientRect(disclosure)
+        if (disclosureHasControls(disclosure)) {
+            val bodyRect = disclosureBodyClientRect(disclosure) ?: disclosureRect
+            return if (disclosureTitleRect == null) bodyRect else unionRects(listOf(disclosureTitleRect, bodyRect)) ?: bodyRect
+        }
         val svgRects = disclosure.querySelectorAll("svg").asList()
             .mapNotNull { node ->
                 val svg = node as? SVGElement ?: return@mapNotNull null
@@ -1111,6 +1133,10 @@ private fun collectOutputScreenshotRects(box: HTMLElement): List<Rect> {
     }
 
     val disclosureTitleRect = disclosureElements.firstOrNull()?.let(::disclosureTitleClientRect)
+    disclosureElements.firstOrNull()
+        ?.takeIf(::disclosureHasControls)
+        ?.let(::disclosureScreenshotRect)
+        ?.let { return listOf(it) }
 
     val svgRects = outputArea.querySelectorAll("svg").asList()
         .mapNotNull { node ->
@@ -1512,6 +1538,8 @@ private fun iframeOutputRectForScreenshot(
 
     openNestedDisclosuresForScreenshot(box)
     openAllOutputDisclosures(outputArea)
+    fitOutputDisclosuresForScreenshot(outputArea)
+    fitBoxWidthToOutputsForScreenshot(box, outputArea)
 
     fun visibleDisclosureRects(): List<Rect> =
         outputArea.querySelectorAll(".disclosure").asList()

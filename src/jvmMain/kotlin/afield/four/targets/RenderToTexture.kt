@@ -518,6 +518,7 @@ open class RenderToTexture(
                     )
                     .format(fmt)
                     .mipLevels(mipLevels)
+                    .aliasSingleLayerDescriptors(forceColorArrayView)
 
                 val img = Image(renderer.device, data)
                 val ivd = ImageViewData()
@@ -567,6 +568,7 @@ open class RenderToTexture(
                 .usage(depthUsage)
                 .format(this.parameters.depthFormat)
                 .mipLevels(1)
+                .aliasSingleLayerDescriptors(this.parameters.depthSampled && colorLayerCount > 1)
 
             depthImage = Image(renderer.device, depthImageData)
 

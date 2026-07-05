@@ -448,7 +448,7 @@ fun Box.tree(channel: String = "debug", a : Any?) {
     val aa = a ?: "null"
     val ln = Inspector.linkFor(aa, "/tree")
     display(channel, """
-<iframe src='${ln}' style='border:none;padding:0;margin:0'>
+<iframe src='${ln}' style='border:none;padding:0;margin:0;display:block;width:560px;height:220px;'></iframe>
 """)
 }
 
@@ -456,7 +456,7 @@ fun Box.column(channel: String = "debug", a : Any?) {
     val aa = a ?: "null"
     val ln = Inspector.linkFor(aa, "/browse")
     display(channel, """
-<iframe src='${ln}' style='border:none;padding:0;margin:0'>
+<iframe src='${ln}' style='border:none;padding:0;margin:0;display:block;width:560px;height:220px;'></iframe>
 """)
 }
 

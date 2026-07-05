@@ -653,6 +653,10 @@
                                 const mapped = (resp.entries || []).map(pair => ({ name: pair[0], id: pair[1] }));
                                 renderDir({ id: resp.id, heading: resp.heading || 'Root', entries: mapped }, undefined);
                                 if (resp.id) fireAndForget('open', { id: resp.id, watch: true });
+                                if (document.documentElement.dataset.afieldOutputIframe === "true") {
+                                        const first = columnsEl.querySelector('.column .item');
+                                        if (first) first.click();
+                                }
                         } else if (resp.type === 'leaf') {
                                 renderLeaf({ id: resp.nodeId, html: resp.html ?? resp.value, title: 'Root' }, undefined);
                                 if (resp.nodeId) fireAndForget('open', { id: resp.nodeId, watch: true });

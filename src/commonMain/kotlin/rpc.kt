@@ -534,6 +534,7 @@ data class AgentOpenEditorResponse(
 data class AgentPlaywrightInputRequest(
     val action: String,
     val key: String? = null,
+    val selector: String? = null,
     val uid: String? = null,
     val dx: Double = 0.0,
     val dy: Double = 0.0,

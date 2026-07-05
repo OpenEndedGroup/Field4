@@ -1,5 +1,8 @@
 # Value Visualizer Test Examples
 
+Canonical testing map: `dev_docs/testing/TESTING_STRATEGY.md`. This file is a
+feature-specific example list and candidate source for future automated coverage.
+
 This document shows how to use the new Value Visualizer system in Field4.
 
 ## Basic Usage

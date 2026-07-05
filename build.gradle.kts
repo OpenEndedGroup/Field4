@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import javax.imageio.ImageIO
 import javax.net.ssl.*
 
-val lwjglVersion = "3.4.0"
+val lwjglVersion = "3.4.2-SNAPSHOT"
 val jomlVersion = "1.10.7"
 val `joml-primitivesVersion` = "1.10.0"
 

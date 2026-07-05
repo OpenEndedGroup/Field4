@@ -9,9 +9,6 @@ The question is not whether three filters can be stacked. The question is whethe
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/timeseries_examples/filter_chains.png" wait="1.0" capture="box" open-outputs="true" padding="20"}
 :::static
 import afield.graphics.FLine
-import afield.stdlib.*
-import kotlin.math.PI
-import kotlin.math.sin
 
 fun drawSeries(values: List<Float>, color: Vec4, yBias: Double = 0.0, yScale: Double = 120.0): FLine {
     val f = FLine()
@@ -79,9 +76,6 @@ Cleaning is only one job. Event detectors answer a different question: did somet
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/timeseries_examples/distribution_events.png" wait="1.0" capture="box"}
 :::static
 import afield.graphics.FLine
-import afield.stdlib.*
-import kotlin.math.PI
-import kotlin.math.sin
 
 val gammaEvents = GammaEventDetector(windowSize = 64, tailProbabilityThreshold = 0.03f, influence = 0.15f)
 val betaEvents = BetaEventDetector(windowSize = 64, supportMin = -1f, supportMax = 1f, lowerTailThreshold = 0.04f, upperTailThreshold = 0.04f)

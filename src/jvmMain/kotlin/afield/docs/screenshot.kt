@@ -186,11 +186,15 @@ private fun postProcessScreenshot(path: Path) {
     page.evaluate(
       """
       () => {
-        if (document.body && document.body.focus) {
-        document.body.focus();
-        }
         if (window.focus) {
-        window.focus();
+          window.focus();
+        }
+        const active = document.activeElement;
+        const hasSpecificFocus = active &&
+          active !== document.body &&
+          active !== document.documentElement;
+        if (!hasSpecificFocus && document.body && document.body.focus) {
+          document.body.focus();
         }
         return true;
       }
@@ -253,17 +257,23 @@ private fun postProcessScreenshot(path: Path) {
     when (request.action) {
       "keyPress" -> {
         val key = request.key ?: error("keyPress requires a key")
-        focusFieldPage(page)
-        page.keyboard().press(key)
+        val selector = request.selector
+        if (!selector.isNullOrBlank()) page.locator(selector).press(key) else page.keyboard().press(key)
       }
       "keyDown" -> {
         val key = request.key ?: error("keyDown requires a key")
-        focusFieldPage(page)
+        val selector = request.selector
+        if (!selector.isNullOrBlank()) {
+          page.locator(selector).focus()
+        }
         page.keyboard().down(key)
       }
       "keyUp" -> {
         val key = request.key ?: error("keyUp requires a key")
-        focusFieldPage(page)
+        val selector = request.selector
+        if (!selector.isNullOrBlank()) {
+          page.locator(selector).focus()
+        }
         page.keyboard().up(key)
       }
       "clickBox" -> {

@@ -9,7 +9,6 @@ There is more than one kind of "nearby". Sometimes you want the closest `k` thin
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/smile_neighbors_examples/query_edges.png" wait="1.0" capture="window" open-outputs="true"}
 :::static
 import afield.graphics.FLine
-import afield.stdlib.*
 
 val points = List(220) {
     vec(80.0 + random() * 900.0, 70.0 + random() * 550.0)
@@ -76,7 +75,6 @@ Approximate search becomes real when you tune it. Bucket width, projection count
 ```diff_runner {data-lang=kotlin screenshot="assets/smile_neighbors_examples/lsh_tuning.png" wait="1.0" capture="box"}
 :::before
 import afield.graphics.FLine
-import afield.stdlib.*
 
 val points = List(260) { vec(50.0 + random() * 1000.0, 50.0 + random() * 600.0) }
 val q = vec(550.0, 330.0)
@@ -92,7 +90,6 @@ val dots = fline { points.forEach { p -> moveTo(p.x, p.y) }; pointed = true; poi
 lines(listOf(dots, edges), channel = "neighbors-lsh", w = 1120.0, h = 720.0, fitToSize = true)
 :::after
 import afield.graphics.FLine
-import afield.stdlib.*
 
 val points = List(260) { vec(50.0 + random() * 1000.0, 50.0 + random() * 600.0) }
 val q = vec(550.0, 330.0)

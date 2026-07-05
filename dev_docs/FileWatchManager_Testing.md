@@ -1,5 +1,8 @@
 # Testing Guide for FileWatchManager
 
+Canonical testing map: `dev_docs/testing/TESTING_STRATEGY.md`. This file is a
+feature-specific manual checklist for external sidecar edit behavior.
+
 ## Prerequisites
 - Field4 server running
 - A workspace with at least one box containing code or shader properties

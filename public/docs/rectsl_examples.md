@@ -4,7 +4,7 @@ RectSL is meant to be small enough to mutate live, but concrete enough that the 
 
 ## Two mirrored rectangles
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 import afield.rectsl.*
 
 val rectsl = """
@@ -34,7 +34,7 @@ val mesh = lowerSampledScene(mid)
 
 ## Named tracks and draw layers
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 import afield.rectsl.*
 
 val rectsl = """
@@ -68,7 +68,7 @@ The template rect owns the common geometry and tracks. The loop clones it eight 
 
 ## Groups, selections, and StackSL material
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 import afield.rectsl.*
 
 val rectsl = """
@@ -112,7 +112,7 @@ The group creates a small hierarchy, `descendants` expands the selection, `tagge
 
 ## Rendering JPG frames
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 import afield.rectsl.*
 
 val settings = RectSLRenderSettings(
@@ -132,12 +132,3 @@ frames {
 ```
 
 Use `includeFinalFrame = false` when you want a looping sequence without duplicating the first frame at the end.
-
-## Main-tree smoke examples
-
-The checked-in examples live in `afield.examples.rectsl.RectSLExamples`, and the larger operator workout lives in `afield.examples.rectsl.RectSLWorkout`.
-
-```bash
-python3 tools/field_backdoor.py --json --port 9479 \
-  --command 'run-jvm-main afield.examples.rectsl.RectSLExamples'
-```

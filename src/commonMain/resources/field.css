@@ -1143,7 +1143,17 @@ body {
     border-radius: 10px;
     padding: 8px 10px;
     margin: 1px 0;
+    box-sizing: border-box;
     /*box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);*/
+}
+
+.control-group {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 4px;
+    width: min(520px, calc(100vw - 64px));
+    min-width: 0;
+    max-width: 520px;
 }
 
 .field-header {
@@ -1183,6 +1193,9 @@ body {
     flex: 0 0 auto;
     min-width: 48px;
     text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .field-slider-visual {
@@ -1252,6 +1265,10 @@ body {
     align-items: center;
     justify-content: center;
     padding: 6px 8px 12px 8px;
+    width: 100%;
+    min-width: 0;
+    min-height: 178px;
+    box-sizing: border-box;
 }
 
 .vec2-shell .vec2-visual {
@@ -1606,6 +1623,7 @@ body {
     display: flex;
     gap: 12px;
     align-items: center;
+    min-width: 0;
 }
 
 .color-swatch {
@@ -1633,9 +1651,15 @@ body {
 
 .alpha-column {
     flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 6px;
+}
+
+.field-color .field-header .field-value {
+    min-width: 0;
+    max-width: 280px;
 }
 
 .alpha-row {
