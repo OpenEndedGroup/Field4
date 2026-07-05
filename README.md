@@ -106,8 +106,7 @@ uv run --project . --group backdoor python tools/run_ui_regressions.py --port 94
 Build the documentation site without regenerating screenshots:
 
 ```bash
-cd public
-FIELD_DOCS_RUNNER_MODE=never uv run --project .. --group docs mkdocs build
+FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --clean
 ```
 
 The consolidated testing guide is `dev_docs/testing/TESTING_STRATEGY.md`.

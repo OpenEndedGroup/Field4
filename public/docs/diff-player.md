@@ -141,13 +141,13 @@ fun greet() {
 These render into the same player automatically (via `fence-upgrade.js`), so you don’t have to write the HTML wrapper yourself.
 
 ## Screenshot runner
-`diffstatic_runner` uses the same rendered code block, but during `mkdocs build` it also runs the snippet through `tools/field_backdoor.py` and saves a screenshot.
+`diffstatic_runner` uses the same rendered code block, but during the docs build it also runs the snippet through `tools/field_backdoor.py` and saves a screenshot.
 
 `diff_runner` does the same thing for animated `diff` fences, except it executes only the `:::after` section for the screenshot while leaving the rendered block as a normal before/after diff.
 
 Use `screenshot="..."` to choose where the image lands, relative to the current markdown file. The build keeps execution in a scratch session, waits briefly, and then captures either the box or the whole window.
 
-The MkDocs hook also has an execution mode:
+The docs runner also has an execution mode:
 
 - `FIELD_DOCS_RUNNER_MODE=incremental` is the default and is the right choice while writing docs. It reuses an existing screenshot when the source page has not changed since that screenshot was written, and it skips rerunning a fence when the runnable code and capture options still match the cache.
 - `FIELD_DOCS_RUNNER_MODE=strict` is the testing mode. It invalidates screenshots when the runner itself changes and forces a fresh end-to-end render.

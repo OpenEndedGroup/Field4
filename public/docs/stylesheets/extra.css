@@ -16,8 +16,8 @@
     --mono-code-table-cell: rgba(255, 255, 255, 0.06);
     --mono-code-table-text: rgba(236, 238, 241, 0.82);
     --nav-font-size: 0.64rem;
-    --nav-line-height: 1.02;
-    --nav-item-gap: 0.03rem;
+    --nav-line-height: 1.22;
+    --nav-item-gap: 0.075rem;
     --nav-sidebar-offset: 2.5rem;
 
     --md-text-font: "IBM Plex Sans Condensed", sans-serif;
@@ -620,11 +620,17 @@ html[data-field-homepage="true"] .md-content__inner {
     color: var(--mono-text-muted) !important;
     font-weight: 400;
     opacity: 0.6;
-    letter-spacing: 0.02em;
+    letter-spacing: 0;
     font-size: var(--nav-font-size);
     line-height: var(--nav-line-height);
     padding-top: var(--nav-item-gap);
     padding-bottom: var(--nav-item-gap);
+    min-height: calc((var(--nav-font-size) * var(--nav-line-height)) + (2 * var(--nav-item-gap)));
+    align-items: center;
+}
+
+.md-nav__link .md-ellipsis {
+    line-height: inherit;
 }
 
 .md-nav--secondary > .md-nav__list > .md-nav__item > .md-nav__link,

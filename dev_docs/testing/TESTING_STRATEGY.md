@@ -4,7 +4,7 @@ This is the canonical testing map for Field. Start here when deciding how to
 verify a change, add regression coverage, or debug a failing automation run.
 
 Always run agent-facing Python tooling through the repo uv project. The
-backdoor, UI runner, and MkDocs hooks need the same dependency environment.
+backdoor, UI runner, and docs runner need the same dependency environment.
 
 ## Fast Command Matrix
 
@@ -16,10 +16,10 @@ backdoor, UI runner, and MkDocs hooks need the same dependency environment.
 | FIELD_TEST catalog | `uv run --project . --group backdoor python tools/run_field_tests.py --refresh-catalog` | Annotated examples and smoke tests still execute. |
 | Browser UI regressions | `uv run --project . --group backdoor python tools/run_ui_regressions.py --port 9490 --timeout 45` | Monaco, command palette, panels, controller outputs, focus, and screenshots. |
 | One UI regression | `uv run --project . --group backdoor python tools/run_ui_regressions.py --id macro-transcript-panel --port 9680 --timeout 45` | Focused browser workflow while iterating. |
-| Docs without captures | `cd public && FIELD_DOCS_RUNNER_MODE=never uv run --project .. --group docs mkdocs build` | MkDocs content renders without starting Field. |
-| Docs incremental captures | `cd public && FIELD_DOCS_RUNNER_MODE=incremental FIELD_DOCS_RUNNER_PORT=9477 uv run --project .. --group docs mkdocs build` | Changed/missing examples recapture through Field. |
-| Docs strict recapture | `cd public && FIELD_DOCS_RUNNER_MODE=strict FIELD_DOCS_RUNNER_PORT=9477 uv run --project .. --group docs mkdocs build` | Runner/API changes invalidate cached captures. |
-| Full docs recapture | `cd public && FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project .. --group docs mkdocs build` | Every docs screenshot/video is regenerated. |
+| Docs without captures | `FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --clean` | Zensical content renders without starting Field. |
+| Docs incremental captures | `FIELD_DOCS_RUNNER_MODE=incremental FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py` | Changed/missing examples recapture through Field. |
+| Docs strict recapture | `FIELD_DOCS_RUNNER_MODE=strict FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py` | Runner/API changes invalidate cached captures. |
+| Full docs recapture | `FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py --clean` | Every docs screenshot/video is regenerated. |
 | Offline asset check | `uv run python tools/check_offline_assets.py` | Canonical offline viewer assets are present and generated copies are not tracked. |
 
 Use custom high ports for automation. Avoid the default `9092` unless you
@@ -123,10 +123,15 @@ inline visualizers, and focus/keyboard contracts.
 
 Roadmap and test IDs: `dev_docs/testing/UI_REGRESSION_ROADMAP.md`.
 
-### 5. MkDocs Executable Documentation
+### 5. Zensical Executable Documentation
 
 Public docs are a testing surface. Examples using `diffstatic_runner` execute
-through Field and can regenerate screenshots/videos during MkDocs builds.
+through Field and can regenerate screenshots/videos during docs builds.
+
+Zensical currently does not run MkDocs `hooks:` directly, so use
+`tools/build_zensical_docs.py`. The wrapper preprocesses Markdown through
+`public/docs_hooks.py`, writes generated sources under `public/.zensical-generated/`,
+and then runs `zensical build`.
 
 Modes:
 - `FIELD_DOCS_RUNNER_MODE=never`: build HTML only; reuse existing assets

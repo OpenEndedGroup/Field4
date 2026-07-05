@@ -32,18 +32,18 @@ Use `uv` for agent-facing Python tooling so MkDocs and the backdoor share the sa
 uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 --command status
 ```
 
-- Full MkDocs build with all Field screenshots/videos regenerated:
+- Full Zensical docs build with all Field screenshots/videos regenerated:
 
 ```bash
-cd public && FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 \
-  uv run --project .. --group docs mkdocs build
+FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 \
+  uv run --project . --group docs python tools/build_zensical_docs.py --clean
 ```
 
 - Fast docs build using existing captures:
 
 ```bash
-cd public && FIELD_DOCS_RUNNER_MODE=never \
-  uv run --project .. --group docs mkdocs build
+FIELD_DOCS_RUNNER_MODE=never \
+  uv run --project . --group docs python tools/build_zensical_docs.py --clean
 ```
 
 - Iterating docs locally:
@@ -63,10 +63,10 @@ the matrix below as the quick command crib.
 | Backdoor sanity check | `uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 --command status` | Verify the agent can start or attach to an isolated Field. |
 | Smoke catalog | `uv run --project . --group backdoor python tools/run_field_tests.py --refresh-catalog` | Exercise annotated Field examples through the backdoor. |
 | Browser UI regressions | `uv run --project . --group backdoor python tools/run_ui_regressions.py --port 9490 --timeout 45` | Run Playwright-backed UI workflows and retain screenshots under `build/ui-regressions/artifacts/`. |
-| Docs HTML only | `cd public && FIELD_DOCS_RUNNER_MODE=never uv run --project .. --group docs mkdocs build` | Rebuild MkDocs without starting Field or recapturing assets. |
-| Docs author loop | `cd public && FIELD_DOCS_RUNNER_MODE=incremental FIELD_DOCS_RUNNER_PORT=9477 uv run --project .. --group docs mkdocs build` | Reuse valid captures and run only changed or missing ones. |
-| Runner/API change | `cd public && FIELD_DOCS_RUNNER_MODE=strict FIELD_DOCS_RUNNER_PORT=9477 uv run --project .. --group docs mkdocs build` | Invalidate captures when runner code or transcript behavior changes. |
-| Full recapture | `cd public && FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project .. --group docs mkdocs build` | Regenerate every screenshot and video through Field. |
+| Docs HTML only | `FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --clean` | Rebuild Zensical docs without starting Field or recapturing assets. |
+| Docs author loop | `FIELD_DOCS_RUNNER_MODE=incremental FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py` | Reuse valid captures and run only changed or missing ones. |
+| Runner/API change | `FIELD_DOCS_RUNNER_MODE=strict FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py` | Invalidate captures when runner code or transcript behavior changes. |
+| Full recapture | `FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py --clean` | Regenerate every screenshot and video through Field. |
 | Offline asset ownership | `uv run python tools/check_offline_assets.py` | Verify canonical Monaco/font/offline assets exist and generated copies are not tracked. |
 
 ### Gradle hygiene for agents

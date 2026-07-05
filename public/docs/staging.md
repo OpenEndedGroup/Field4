@@ -26,8 +26,8 @@ Native graphics screenshots can opt into background trimming with `trim-native=t
 The current build modes are:
 
 ```diffstatic {data-lang=bash}
-cd public && FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 \
-  uv run --project .. --group docs mkdocs build
+FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 \
+  uv run --project . --group docs python tools/build_zensical_docs.py --clean
 ```
 
 Use `always` when every screenshot or video should be regenerated. Use `incremental` while writing normal docs, `strict` when runner changes should invalidate cached captures, and `never` when you only want to rebuild the site HTML from already-generated assets.
@@ -36,10 +36,10 @@ The practical test matrix is:
 
 | Situation | Command | What it checks |
 | --- | --- | --- |
-| HTML-only docs build | `FIELD_DOCS_RUNNER_MODE=never uv run --project .. --group docs mkdocs build` | Markdown, navigation, links, and checked-in/generated assets, without launching Field. |
-| Normal docs authoring | `FIELD_DOCS_RUNNER_MODE=incremental FIELD_DOCS_RUNNER_PORT=9477 uv run --project .. --group docs mkdocs build` | Changed captures are run through Field; unchanged captures use the cache. |
-| Runner or transcript changes | `FIELD_DOCS_RUNNER_MODE=strict FIELD_DOCS_RUNNER_PORT=9477 uv run --project .. --group docs mkdocs build` | Capture behavior changes invalidate the cache. |
-| Full recapture | `FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project .. --group docs mkdocs build` | Every screenshot and video is regenerated from a live Field session. |
+| HTML-only docs build | `FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --clean` from the repository root | Markdown, navigation, links, and checked-in/generated assets, without launching Field. |
+| Normal docs authoring | `FIELD_DOCS_RUNNER_MODE=incremental FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py` from the repository root | Changed captures are run through Field; unchanged captures use the cache. |
+| Runner or transcript changes | `FIELD_DOCS_RUNNER_MODE=strict FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py` from the repository root | Capture behavior changes invalidate the cache. |
+| Full recapture | `FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py --clean` from the repository root | Every screenshot and video is regenerated from a live Field session. |
 | Offline asset ownership | `uv run python tools/check_offline_assets.py` from the repository root | Monaco, Iosevka, and offline viewer sources are present; generated public copies are not checked in twice. |
 
 At the end of a build, the runner prints a compact summary with regenerated captures, skipped captures, failures, server starts/restarts, and elapsed time. That line is the first place to look when a docs build feels suspiciously fast, slow, or quiet.
