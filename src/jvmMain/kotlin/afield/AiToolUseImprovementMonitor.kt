@@ -6,6 +6,8 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import java.util.UUID
 import kotlin.concurrent.thread
 import kotlin.io.path.absolutePathString
@@ -17,6 +19,8 @@ object AiToolUseImprovementMonitor {
     private const val MAX_ARTIFACT_CHARS = 220_000
     private const val BROADCAST_MIN_INTERVAL_MS = 220L
     private const val RECENT_LOG_COUNT = 12
+    private val archiveFormatter: DateTimeFormatter =
+        DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneOffset.UTC)
 
     private val lock = Any()
     private val logDir: Path = Paths.get(
@@ -77,6 +81,54 @@ object AiToolUseImprovementMonitor {
             }
             return runState.toStatus(logs, worktreeSummary())
         }
+    }
+
+    fun clearReviewed(recentOnly: Boolean = true): AiToolUseImprovementStatus {
+        synchronized(lock) {
+            if (runState.running) {
+                return runState.copy(message = "AI tool-use improvement task is running; logs were not moved.")
+                    .toStatus(logSummary(), worktreeSummary())
+            }
+            if (!Files.isDirectory(logDir)) {
+                runState = runState.copy(message = "No AI tool I/O log directory found.")
+                return runState.toStatus(logSummary(), worktreeSummary())
+            }
+            val candidates = logFiles().let { files ->
+                if (recentOnly) {
+                    files.sortedByDescending { runCatching { it.getLastModifiedTime().toMillis() }.getOrDefault(0) }
+                        .take(RECENT_LOG_COUNT)
+                } else {
+                    files
+                }
+            }
+            if (candidates.isEmpty()) {
+                runState = runState.copy(message = "No AI tool I/O logs to move.")
+                return runState.toStatus(logSummary(), worktreeSummary())
+            }
+
+            val archiveDir = logDir
+                .resolve("archived-reviewed")
+                .resolve(archiveFormatter.format(Instant.now()))
+                .toAbsolutePath()
+                .normalize()
+            Files.createDirectories(archiveDir)
+            var moved = 0
+            candidates.forEach { source ->
+                val target = uniqueArchiveTarget(archiveDir, source.fileName.toString())
+                runCatching {
+                    Files.move(source, target)
+                    moved += 1
+                }
+            }
+            runState = runState.copy(
+                status = "idle",
+                message = "Moved $moved reviewed AI tool I/O log(s) to ${archiveDir.absolutePathString()}."
+            )
+            runState.log.clear()
+            appendLogLocked(runState.message + "\n")
+        }
+        broadcastWelcomeEvent("ai-tool-use-improvement")
+        return status()
     }
 
     private fun runProcess(taskName: String, appArgs: String, proposalCount: Int) {
@@ -141,17 +193,33 @@ object AiToolUseImprovementMonitor {
                 synchronized(lock) {
                     process = null
                 }
+                val proposalFinalize = if (proposal != null && exitCode == 0) {
+                    AgentWorktreeManager.finalizeProposalChanges(projectRoot, proposal.id)
+                        .also { result ->
+                            appendLog(
+                                if (result.success) {
+                                    "Committed generated worktree ${proposal.id}: ${result.message}\n"
+                                } else {
+                                    "Could not commit generated worktree ${proposal.id}: ${result.message}\n"
+                                }
+                            )
+                        }
+                } else null
                 proposal?.let {
                     AgentWorktreeManager.updateProposal(
                         projectRoot,
                         it.id,
-                        if (exitCode == 0) "ready" else "failed",
-                        if (exitCode == 0) "$taskName finished in this generated worktree." else "$taskName exited with $exitCode.",
+                        if (exitCode == 0 && proposalFinalize?.success != false) "ready" else "failed",
+                        if (exitCode == 0) {
+                            proposalFinalize?.message ?: "$taskName finished in this generated worktree."
+                        } else {
+                            "$taskName exited with $exitCode."
+                        },
                         reportPath = File(runDirectory, "build/ai-tool-use-improvement-report.md").absolutePath,
                         dryRunPatchPath = File(runDirectory, "build/ai-tool-use-improvement-dry-run.patch").absolutePath
                     )
                 }
-                if (exitCode != 0) failureCount++
+                if (exitCode != 0 || proposalFinalize?.success == false) failureCount++
                 synchronized(lock) {
                     runState = runState.copy(
                         exitCode = exitCode,
@@ -228,14 +296,7 @@ object AiToolUseImprovementMonitor {
             )
         }
 
-        val files = runCatching {
-            Files.list(logDir).use { stream ->
-                stream
-                    .filter { Files.isRegularFile(it) }
-                    .filter { it.fileName.toString().endsWith(".jsonl", ignoreCase = true) }
-                    .toList()
-            }
-        }.getOrDefault(emptyList())
+        val files = logFiles()
         if (files.isEmpty()) {
             return AiToolUseLogSummary(
                 logDir = logDir.absolutePathString(),
@@ -265,6 +326,31 @@ object AiToolUseImprovementMonitor {
 
     private fun worktreeSummary(): List<AgentWorktreeProposal> =
         runCatching { AgentWorktreeManager.listProposals(File(".").canonicalFile) }.getOrDefault(emptyList())
+
+    private fun logFiles(): List<Path> =
+        runCatching {
+            if (!Files.isDirectory(logDir)) return@runCatching emptyList()
+            Files.list(logDir).use { stream ->
+                stream
+                    .filter { Files.isRegularFile(it) }
+                    .filter { it.fileName.toString().endsWith(".jsonl", ignoreCase = true) }
+                    .toList()
+            }
+        }.getOrDefault(emptyList())
+
+    private fun uniqueArchiveTarget(directory: Path, fileName: String): Path {
+        var candidate = directory.resolve(fileName)
+        if (!Files.exists(candidate)) return candidate
+        val dot = fileName.lastIndexOf('.')
+        val stem = if (dot > 0) fileName.substring(0, dot) else fileName
+        val suffix = if (dot > 0) fileName.substring(dot) else ""
+        var index = 1
+        while (Files.exists(candidate)) {
+            candidate = directory.resolve("$stem-$index$suffix")
+            index += 1
+        }
+        return candidate
+    }
 
     private fun artifactText(path: Path): String =
         runCatching {

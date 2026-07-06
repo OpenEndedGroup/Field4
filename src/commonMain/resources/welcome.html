@@ -1727,6 +1727,7 @@
                             <div class="ai-docs-actions two">
                                 <button id="run-ai-tool-use-review" type="button">Review logs</button>
                                 <button id="run-ai-tool-use-apply" type="button">Generate proposal</button>
+                                <button id="clear-ai-tool-use-reviewed" type="button">Mark reviewed</button>
                             </div>
                             <div id="ai-tool-use-improvement-status" aria-live="polite"></div>
                         </div>
@@ -2555,13 +2556,14 @@
         const stateNode = document.getElementById("ai-tool-use-improvement-state");
         const reviewButton = document.getElementById("run-ai-tool-use-review");
         const applyButton = document.getElementById("run-ai-tool-use-apply");
+        const clearButton = document.getElementById("clear-ai-tool-use-reviewed");
 
         if (stateNode) {
             stateNode.textContent = task.running
                 ? "running"
                 : (recent > 0 ? `${recent} recent / ${formatCount(total, "log")}` : (logs.exists ? "empty" : "no logs"));
         }
-        [reviewButton, applyButton].forEach((button) => {
+        [reviewButton, applyButton, clearButton].forEach((button) => {
             if (!button) return;
             button.disabled = !!task.running || recent <= 0;
         });
@@ -4446,6 +4448,33 @@
         }
     }
 
+    async function clearAiToolUseReviewedLogs() {
+        const task = state.aiToolUseImprovement || {};
+        const logs = task.logs || {};
+        const recent = Number(logs.recentLogCount) || 0;
+        if (recent <= 0) return;
+        if (!window.confirm(`Move the ${recent} most recent reviewed AI tool I/O log(s) into an archive folder?`)) return;
+        setAiToolUseImprovementStatus("Moving reviewed tool-use logs...");
+
+        try {
+            const response = await fetch("/api/ai-tool-use-improvement/clear-reviewed", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                body: JSON.stringify({ recentOnly: true })
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(payload.error || `HTTP ${response.status}`);
+            }
+            state.aiToolUseImprovement = payload || state.aiToolUseImprovement;
+            renderAiToolUseImprovement();
+        } catch (error) {
+            console.error("Failed to move reviewed AI tool-use logs", error);
+            setAiToolUseImprovementStatus(error?.message || "Could not move reviewed AI tool-use logs.", true);
+        }
+    }
+
     function openCodeUseBrowser() {
         window.open("/code-use", "_blank", "noopener");
     }
@@ -4699,6 +4728,7 @@
         const runCompletionDocPolishButton = document.getElementById("run-completion-doc-polish");
         const runAiToolUseReviewButton = document.getElementById("run-ai-tool-use-review");
         const runAiToolUseApplyButton = document.getElementById("run-ai-tool-use-apply");
+        const clearAiToolUseReviewedButton = document.getElementById("clear-ai-tool-use-reviewed");
         const openCodeUseBrowserButton = document.getElementById("open-code-use-browser");
         const stickinessButtons = document.querySelectorAll("[data-stickiness-value]");
         const importClassBlacklistInput = document.getElementById("pref-import-class-blacklist");
@@ -4845,6 +4875,7 @@
         runCompletionDocPolishButton?.addEventListener("click", runCompletionDocPolish);
         runAiToolUseReviewButton?.addEventListener("click", () => runAiToolUseImprovement(true));
         runAiToolUseApplyButton?.addEventListener("click", () => runAiToolUseImprovement(false));
+        clearAiToolUseReviewedButton?.addEventListener("click", clearAiToolUseReviewedLogs);
         openCodeUseBrowserButton?.addEventListener("click", openCodeUseBrowser);
 
         openAiKeyInput?.addEventListener("keydown", (event) => {

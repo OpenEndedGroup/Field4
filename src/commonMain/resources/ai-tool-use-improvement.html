@@ -345,6 +345,7 @@
         <div class="header-actions">
             <button id="run-review" type="button">Review logs</button>
             <button id="run-apply" type="button">Generate proposal</button>
+            <button id="clear-reviewed" type="button">Mark reviewed</button>
             <a class="button" href="/welcome">Welcome</a>
         </div>
     </header>
@@ -541,8 +542,10 @@
         const recent = Number(logs.recentLogCount) || 0;
         const reviewButton = document.getElementById("run-review");
         const applyButton = document.getElementById("run-apply");
+        const clearButton = document.getElementById("clear-reviewed");
         reviewButton.disabled = !!latestStatus.running || recent <= 0;
         applyButton.disabled = !!latestStatus.running || recent <= 0;
+        clearButton.disabled = !!latestStatus.running || recent <= 0;
         reviewButton.textContent = latestStatus.running && latestStatus.dryRun ? "Reviewing..." : "Review logs";
         applyButton.textContent = latestStatus.running && !latestStatus.dryRun ? "Generating..." : "Generate proposal";
 
@@ -623,6 +626,32 @@
         }
     }
 
+    async function clearReviewedLogs() {
+        const logs = latestStatus?.logs || {};
+        const recent = Number(logs.recentLogCount) || 0;
+        if (recent <= 0) return;
+        if (!window.confirm(`Move the ${recent} most recent reviewed AI tool I/O log(s) into an archive folder?`)) return;
+        const button = document.getElementById("clear-reviewed");
+        button.disabled = true;
+        try {
+            const response = await fetch("/api/ai-tool-use-improvement/clear-reviewed", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                body: JSON.stringify({ recentOnly: true })
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+            render(payload);
+        } catch (error) {
+            render({
+                ...(latestStatus || {}),
+                status: "failed",
+                message: error?.message || "Could not move reviewed AI tool I/O logs."
+            });
+        }
+    }
+
     async function worktreeAction(action, id) {
         if (!id) return;
         if (action === "delete" && !window.confirm(`Delete generated worktree ${id}?`)) return;
@@ -667,6 +696,7 @@
 
     document.getElementById("run-review").addEventListener("click", () => run(true));
     document.getElementById("run-apply").addEventListener("click", () => run(false));
+    document.getElementById("clear-reviewed").addEventListener("click", clearReviewedLogs);
     document.getElementById("show-report").addEventListener("click", () => {
         artifactMode = "report";
         renderArtifacts(latestStatus || {});

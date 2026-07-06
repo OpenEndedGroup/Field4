@@ -624,19 +624,26 @@ fun virtualFilesToAttachments(files: List<afield.ai.VirtualTextFile>): List<Cont
 internal class ToolRegistry {
     private data class Handler<T : Any>(
         val cls: Class<T>,
+        val available: (ToolExecutionContext) -> Boolean,
         val fn: (ToolExecutionContext, T) -> Any
     )
 
     private val handlers = ConcurrentHashMap<String, Handler<*>>()
 
-    fun <T : Any> register(toolClass: Class<T>, handler: (ToolExecutionContext, T) -> Any) {
-        handlers[toolClass.simpleName] = Handler(toolClass, handler)
+    fun <T : Any> register(
+        toolClass: Class<T>,
+        available: (ToolExecutionContext) -> Boolean = { true },
+        handler: (ToolExecutionContext, T) -> Any
+    ) {
+        handlers[toolClass.simpleName] = Handler(toolClass, available, handler)
     }
 
-    fun addAllTo(builder: ResponseCreateParams.Builder) {
+    fun addAllTo(builder: ResponseCreateParams.Builder, ctx: ToolExecutionContext) {
         handlers.values.forEach { h ->
-            @Suppress("UNCHECKED_CAST")
-            builder.addTool(h.cls as Class<Any>)
+            if (h.available(ctx)) {
+                @Suppress("UNCHECKED_CAST")
+                builder.addTool(h.cls as Class<Any>)
+            }
         }
     }
 

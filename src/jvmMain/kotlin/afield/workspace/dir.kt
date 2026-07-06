@@ -224,6 +224,11 @@ data class AiToolUseImprovementRunRequest(
     val proposalCount: Int = 1
 )
 
+@Serializable
+data class AiToolUseImprovementClearRequest(
+    val recentOnly: Boolean = true
+)
+
 val defaultImportClassBlacklist = listOf(
     "com.sun.*",
     "sun.*",

@@ -3045,6 +3045,20 @@ class Server {
                             }
                         }
 
+                        post("/api/ai-tool-use-improvement/clear-reviewed") {
+                            try {
+                                val request = runCatching { call.receive<AiToolUseImprovementClearRequest>() }
+                                    .getOrElse { AiToolUseImprovementClearRequest() }
+                                call.respond(AiToolUseImprovementMonitor.clearReviewed(request.recentOnly))
+                            } catch (e: Exception) {
+                                lprintln("error,server", "AI tool-use log clear failed: ${e.message}")
+                                call.respond(
+                                    HttpStatusCode.InternalServerError,
+                                    mapOf("error" to "AI tool-use log clear failed")
+                                )
+                            }
+                        }
+
                         get("/api/agent-worktrees") {
                             call.respond(AgentWorktreeManager.listProposals(File(app).canonicalFile))
                         }
