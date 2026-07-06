@@ -23,6 +23,9 @@ const TAB_WINDOW_CONTROL_INSET = process.platform === "win32" ? 150 : 12;
 const SHELL_BACKGROUND = "#000000";
 const TAB_STRIP_BACKGROUND = "#2a2b2f";
 const WELCOME_BACKGROUND = "rgb(20, 20, 20)";
+const ZOOM_LEVEL_STEP = 0.5;
+const MIN_ZOOM_LEVEL = -8;
+const MAX_ZOOM_LEVEL = 8;
 const TAB_STRIP_ASSET_BASE_URL = pathToFileURL(
   path.join(__dirname, "..", "public") + path.sep,
 ).toString();
@@ -490,6 +493,48 @@ function installAppMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+function clampZoomLevel(level) {
+  return Math.min(MAX_ZOOM_LEVEL, Math.max(MIN_ZOOM_LEVEL, level));
+}
+
+function installZoomShortcuts(webContents) {
+  if (process.platform === "darwin") return;
+  webContents.on("before-input-event", (event, input) => {
+    if (input.type !== "keyDown") return;
+    if (!(input.control || input.meta)) return;
+    if (input.alt || input.shift) return;
+
+    const key = String(input.key || "");
+    const code = String(input.code || "");
+    const isZoomIn =
+      key === "+" ||
+      key === "=" ||
+      code === "Equal" ||
+      code === "NumpadAdd";
+    const isZoomOut =
+      key === "-" ||
+      code === "Minus" ||
+      code === "NumpadSubtract";
+    const isReset =
+      key === "0" ||
+      code === "Digit0" ||
+      code === "Numpad0";
+
+    if (!isZoomIn && !isZoomOut && !isReset) return;
+    event.preventDefault();
+
+    if (isReset) {
+      webContents.setZoomLevel(0);
+      return;
+    }
+
+    const delta = isZoomIn ? ZOOM_LEVEL_STEP : -ZOOM_LEVEL_STEP;
+    webContents.setZoomLevel(
+      clampZoomLevel(webContents.getZoomLevel() + delta),
+    );
+  });
+}
+
 function installDockIcon() {
   if (process.platform !== "darwin") return;
   if (!app.dock || typeof app.dock.setIcon !== "function") return;
@@ -786,6 +831,7 @@ function createMainWindow() {
     };
     setViewBackground(tab.view, colorForUrl(normalizedUrl));
     installPageBackgroundGuard(tab);
+    installZoomShortcuts(tab.view.webContents);
 
     const updateTitle = (url = tab.view.webContents.getURL() || tab.url) => {
       tab.url = url || tab.url;
@@ -875,7 +921,11 @@ function createMainWindow() {
   const onTabActivate = onlyFromStrip((tabId) => activateTab(tabId));
   const onTabClose = onlyFromStrip((tabId) => closeTab(tabId));
   const onOpenWelcomeTab = onlyFromStrip(() => {
-    if (tabs.some((tab) => isWelcomeUrl(tab.url))) return;
+    const existing = tabs.find((tab) => isWelcomeUrl(tab.url));
+    if (existing) {
+      activateTab(existing.id);
+      return;
+    }
     openTab(welcomeUrl, { activate: true });
   });
   const onRevealTabs = onlyFromChrome(() => revealTabs());

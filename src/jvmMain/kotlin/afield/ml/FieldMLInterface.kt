@@ -7,6 +7,7 @@ import afield.Completion
 import afield.CompletionRequest
 import afield.Execute
 import afield.ExecuteSymbol
+import afield.HasOutput
 import afield.IsRunning
 import afield.Message
 import afield.Metadata
@@ -61,22 +62,25 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
 
                 val core = compileResult.core!!
                 try {
-                    val value = Evaluator(FieldMLRuntimePrelude.values(inside.output)).evaluate(core)
+                    val output = TrackingOutput(inside.output)
+                    val value = Evaluator(FieldMLRuntimePrelude.values(output)).evaluate(core)
                     val typeText = afield.ml.type.TypePrinter().print(compileResult.typed!!.type)
                     val valueText = renderFieldMLValue(value)
-                    dispatchExecutionOutput(
-                        inside,
-                        reply,
-                        Output(
-                            uid = inside.id,
-                            line = execute.line + code.lines().lastIndex,
-                            kind = "normal",
-                            property = execute.property,
-                            html = renderInlineResult(valueText, typeText),
-                            frame = Runloop.runLoop.frame.toInt(),
-                        ),
-                        originSession = originSession,
-                    )
+                    if (!output.printed) {
+                        dispatchExecutionOutput(
+                            inside,
+                            reply,
+                            Output(
+                                uid = inside.id,
+                                line = execute.line + code.lines().lastIndex,
+                                kind = "normal",
+                                property = execute.property,
+                                html = renderInlineResult(valueText, typeText),
+                                frame = Runloop.runLoop.frame.toInt(),
+                            ),
+                            originSession = originSession,
+                        )
+                    }
                     if (inside.currentRunningStates[strand]?.watermark == generation) {
                         inside.currentRunningStates.remove(strand)
                     }
@@ -182,22 +186,25 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
             try {
                 val result = FieldMLCompiler.compile(execute.code)
                 if (!reportDiagnostics(inside, execute, result, originSession, reply)) {
-                    val value = Evaluator(FieldMLRuntimePrelude.values(inside.output)).evaluate(result.core!!)
+                    val output = TrackingOutput(inside.output)
+                    val value = Evaluator(FieldMLRuntimePrelude.values(output)).evaluate(result.core!!)
                     val typeText = afield.ml.type.TypePrinter().print(result.typed!!.type)
                     val valueText = renderFieldMLValue(value)
-                    dispatchExecutionOutput(
-                        inside,
-                        reply,
-                        Output(
-                            uid = inside.id,
-                            line = execute.line + execute.code.lines().lastIndex,
-                            kind = "normal",
-                            property = execute.property,
-                            html = renderInlineResult(valueText, typeText),
-                            frame = Runloop.runLoop.frame.toInt(),
-                        ),
-                        originSession = originSession,
-                    )
+                    if (!output.printed) {
+                        dispatchExecutionOutput(
+                            inside,
+                            reply,
+                            Output(
+                                uid = inside.id,
+                                line = execute.line + execute.code.lines().lastIndex,
+                                kind = "normal",
+                                property = execute.property,
+                                html = renderInlineResult(valueText, typeText),
+                                frame = Runloop.runLoop.frame.toInt(),
+                            ),
+                            originSession = originSession,
+                        )
+                    }
                 }
             } catch (t: Throwable) {
                 inside.output.error(t.message ?: t.javaClass.simpleName, execute.property, execute.line)
@@ -348,6 +355,33 @@ fun fieldMLTopologyNeedsUpdating(values: Collection<Box>) {
         customization = "",
         notifyCategory = "fieldml",
     )
+}
+
+private class TrackingOutput(private val delegate: HasOutput) : HasOutput {
+    var printed: Boolean = false
+        private set
+
+    override fun print(message: Any?) {
+        printed = true
+        delegate.print(message)
+    }
+
+    override fun println(message: Any?) {
+        printed = true
+        delegate.println(message)
+    }
+
+    override fun display(message: Any?) {
+        delegate.display(message)
+    }
+
+    override fun display(channel: String, message: Any?) {
+        delegate.display(channel, message)
+    }
+
+    override fun error(message: Any?, property: String, line: Int) {
+        delegate.error(message, property, line)
+    }
 }
 
 internal fun renderInlineResult(value: String, type: String): String =

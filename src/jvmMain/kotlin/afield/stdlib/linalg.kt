@@ -497,6 +497,9 @@ val Vector4fc.yy: Vector2fc
 val Vector4fc.zz: Vector2fc
     get() = Vector2f(this.z(), this.z())
 
+/**
+ * Creates a mutable 2D [Vec2] from numeric coordinates, converting each component to [Float].
+ */
 fun vec(x: Number, y: Number) = Vector2f(x.toFloat(), y.toFloat())
 fun vec(x: Number, y: Number, z: Number) = Vector3f(x.toFloat(), y.toFloat(), z.toFloat())
 fun vec(x: Number, y: Number, z: Number, w: Number) = Vector4f(x.toFloat(), y.toFloat(), z.toFloat(), w.toFloat())

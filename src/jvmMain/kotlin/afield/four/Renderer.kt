@@ -778,6 +778,7 @@ class Renderer(
         windows.forEach { it.associatedRenderer = null }
     }
 
+    /** Monotonic frame id incremented after each completed [render] call. */
     var frameCounter = 0L
     private var lastVertexUploadStatsLogNs = 0L
     private var lastRunFpsLogNs = 0L

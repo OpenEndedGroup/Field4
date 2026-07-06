@@ -221,6 +221,12 @@ class Vec3NNIndex internal constructor(
         points.indices.sortedBy { idx -> squaredDistance(points[idx], query) }
 }
 
+/**
+ * Builds a 2D nearest-neighbor index from a non-empty list of finite points.
+ *
+ * The points are copied before indexing. [mode] chooses the exposed lookup strategy;
+ * [options] controls validation and LSH/KD-tree build settings, including duplicate handling.
+ */
 fun vec2NN(
     points: List<Vec2>,
     mode: VecNNMode = VecNNMode.APPROXIMATE,
