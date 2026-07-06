@@ -213,7 +213,9 @@ data class AiToolUseImprovementStatus(
     val finishedAtEpochMs: Long = 0,
     val exitCode: Int? = null,
     val message: String = "",
-    val logTail: String = ""
+    val logTail: String = "",
+    val reportMarkdown: String = "",
+    val dryRunPatch: String = ""
 )
 
 @Serializable

@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="color-scheme" content="dark">
     <title>AI Tool Use Improvement</title>
+    <script>
+        document.title = "AI Tool Use Improvement";
+    </script>
     <link rel="preload" href="/woff2/iosevka-regular.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/iosevka.css" as="style">
     <link rel="stylesheet" href="/iosevka.css">
@@ -46,7 +49,7 @@
             min-height: 0;
             margin: 0 auto;
             display: grid;
-            grid-template-rows: auto auto auto auto minmax(0, 1fr);
+            grid-template-rows: auto auto auto auto minmax(210px, 0.9fr) minmax(180px, 0.7fr);
             gap: 12px;
         }
 
@@ -224,6 +227,94 @@
             gap: 8px;
         }
 
+        .artifacts {
+            min-height: 0;
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr);
+            gap: 8px;
+            padding: 12px;
+        }
+
+        .artifact-header {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .artifact-tabs {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .artifact-tabs button.active {
+            border-color: var(--border-strong);
+            color: var(--accent);
+        }
+
+        #artifact-body {
+            min-height: 0;
+            overflow: auto;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: rgb(6, 6, 6);
+            padding: 14px;
+            font-size: 12px;
+            line-height: 1.45;
+        }
+
+        #artifact-body.empty {
+            color: var(--soft);
+        }
+
+        .markdown h1,
+        .markdown h2,
+        .markdown h3 {
+            margin: 0.8em 0 0.35em;
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        .markdown h1:first-child,
+        .markdown h2:first-child,
+        .markdown h3:first-child,
+        .markdown p:first-child {
+            margin-top: 0;
+        }
+
+        .markdown p {
+            margin: 0.5em 0;
+        }
+
+        .markdown ul {
+            margin: 0.4em 0 0.7em 1.4em;
+            padding: 0;
+        }
+
+        .markdown code {
+            color: var(--accent);
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 4px;
+            padding: 0 3px;
+        }
+
+        .markdown pre,
+        .patch-view {
+            margin: 0;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            color: var(--text);
+        }
+
+        .markdown pre {
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            background: var(--panel-2);
+        }
+
         #message {
             color: var(--soft);
         }
@@ -253,7 +344,7 @@
         </div>
         <div class="header-actions">
             <button id="run-review" type="button">Review logs</button>
-            <button id="run-apply" type="button">Apply polish</button>
+            <button id="run-apply" type="button">Generate proposal</button>
             <a class="button" href="/welcome">Welcome</a>
         </div>
     </header>
@@ -276,6 +367,20 @@
         <div id="worktree-list" class="worktree-list"></div>
     </section>
 
+    <section class="artifacts">
+        <div class="artifact-header">
+            <div>
+                <h2>review output</h2>
+                <div id="next-step" class="path-label">Run a review to generate a report and patch.</div>
+            </div>
+            <div class="artifact-tabs">
+                <button id="show-report" type="button" class="active">Report</button>
+                <button id="show-patch" type="button">Patch</button>
+            </div>
+        </div>
+        <div id="artifact-body" class="empty">No report yet.</div>
+    </section>
+
     <section class="activity">
         <div id="message">Ready.</div>
         <pre id="transcript">No task output yet.</pre>
@@ -286,6 +391,7 @@
     const REFRESH_MS = 1200;
     let latestStatus = null;
     let socket = null;
+    let artifactMode = "report";
 
     function websocketUrl() {
         const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -314,6 +420,104 @@
         }[ch]));
     }
 
+    function inlineMarkdown(text) {
+        return escapeHtml(text)
+            .replace(/`([^`]+)`/g, "<code>$1</code>")
+            .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    }
+
+    function renderMarkdown(markdown) {
+        const lines = String(markdown || "").split(/\r?\n/);
+        const parts = [];
+        let list = [];
+        let code = [];
+        let inCode = false;
+
+        function flushList() {
+            if (!list.length) return;
+            parts.push(`<ul>${list.map((item) => `<li>${inlineMarkdown(item)}</li>`).join("")}</ul>`);
+            list = [];
+        }
+
+        function flushCode() {
+            if (!code.length) return;
+            parts.push(`<pre><code>${escapeHtml(code.join("\n"))}</code></pre>`);
+            code = [];
+        }
+
+        lines.forEach((line) => {
+            const trimmed = line.trim();
+            if (trimmed.startsWith("```")) {
+                if (inCode) {
+                    inCode = false;
+                    flushCode();
+                } else {
+                    flushList();
+                    inCode = true;
+                }
+                return;
+            }
+            if (inCode) {
+                code.push(line);
+                return;
+            }
+            if (!trimmed) {
+                flushList();
+                return;
+            }
+            const heading = /^(#{1,3})\s+(.+)$/.exec(trimmed);
+            if (heading) {
+                flushList();
+                const level = heading[1].length;
+                parts.push(`<h${level}>${inlineMarkdown(heading[2])}</h${level}>`);
+                return;
+            }
+            const bullet = /^[-*]\s+(.+)$/.exec(trimmed);
+            if (bullet) {
+                list.push(bullet[1]);
+                return;
+            }
+            flushList();
+            parts.push(`<p>${inlineMarkdown(trimmed)}</p>`);
+        });
+        flushList();
+        if (inCode || code.length) flushCode();
+        return parts.join("") || "<p>No report text.</p>";
+    }
+
+    function renderArtifacts(status) {
+        const body = document.getElementById("artifact-body");
+        const next = document.getElementById("next-step");
+        const reportButton = document.getElementById("show-report");
+        const patchButton = document.getElementById("show-patch");
+        const report = status?.reportMarkdown || "";
+        const patch = status?.dryRunPatch || "";
+        reportButton.classList.toggle("active", artifactMode === "report");
+        patchButton.classList.toggle("active", artifactMode === "patch");
+
+        if (status?.running) {
+            next.textContent = status.dryRun
+                ? "Review is running. The report and patch will appear here when it finishes."
+                : "A proposal worktree is running. When it is ready, review it below and use Merge to apply it.";
+        } else if ((status?.worktrees || []).some((proposal) => proposal.status === "ready")) {
+            next.textContent = "Next: inspect the ready proposal below, then use Merge to apply it to a clean checkout.";
+        } else if (report || patch) {
+            next.textContent = "Next: use Generate proposal for a real worktree, or apply the dry-run patch manually from the path above.";
+        } else {
+            next.textContent = "Run Review logs to generate a formatted report and dry-run patch.";
+        }
+
+        if (artifactMode === "patch") {
+            body.className = patch ? "" : "empty";
+            body.innerHTML = patch
+                ? `<pre class="patch-view">${escapeHtml(patch)}</pre>`
+                : "No dry-run patch yet.";
+        } else {
+            body.className = report ? "markdown" : "empty";
+            body.innerHTML = report ? renderMarkdown(report) : "No report yet.";
+        }
+    }
+
     function render(status) {
         latestStatus = status || {};
         const logs = latestStatus.logs || {};
@@ -332,6 +536,7 @@
         document.getElementById("report-path").textContent = logs.reportPath || "";
         document.getElementById("patch-path").textContent = logs.dryRunPatchPath || "";
         renderWorktrees(latestStatus.worktrees || []);
+        renderArtifacts(latestStatus);
 
         const recent = Number(logs.recentLogCount) || 0;
         const reviewButton = document.getElementById("run-review");
@@ -339,7 +544,7 @@
         reviewButton.disabled = !!latestStatus.running || recent <= 0;
         applyButton.disabled = !!latestStatus.running || recent <= 0;
         reviewButton.textContent = latestStatus.running && latestStatus.dryRun ? "Reviewing..." : "Review logs";
-        applyButton.textContent = latestStatus.running && !latestStatus.dryRun ? "Applying..." : "Apply polish";
+        applyButton.textContent = latestStatus.running && !latestStatus.dryRun ? "Generating..." : "Generate proposal";
 
         transcript.textContent = latestStatus.logTail || "No task output yet.";
         if (wasNearBottom || latestStatus.running) {
@@ -462,6 +667,14 @@
 
     document.getElementById("run-review").addEventListener("click", () => run(true));
     document.getElementById("run-apply").addEventListener("click", () => run(false));
+    document.getElementById("show-report").addEventListener("click", () => {
+        artifactMode = "report";
+        renderArtifacts(latestStatus || {});
+    });
+    document.getElementById("show-patch").addEventListener("click", () => {
+        artifactMode = "patch";
+        renderArtifacts(latestStatus || {});
+    });
     document.getElementById("worktree-list").addEventListener("click", (event) => {
         const button = event.target.closest("[data-worktree-action]");
         if (!button) return;

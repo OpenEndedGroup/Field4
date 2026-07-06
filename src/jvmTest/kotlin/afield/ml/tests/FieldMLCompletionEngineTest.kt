@@ -2,6 +2,7 @@ package afield.ml.tests
 
 import afield.Completion
 import afield.CompletionRequest
+import afield.SymbolContextRequest
 import afield.ml.FieldMLCompletionEngine
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -93,6 +94,63 @@ class FieldMLCompletionEngineTest {
         assertEquals("values", item.category)
     }
 
+    @Test
+    fun describesPreludeSymbolContext() {
+        val response = contextAt("fline", "fline")
+
+        assertEquals("fline", response.symbol)
+        assertTrue(response.html.contains("fline :"), response.html)
+        assertTrue(response.html.contains("FieldML graphics prelude"), response.html)
+    }
+
+    @Test
+    fun describesLocalBindingSymbolContext() {
+        val response = contextAt(
+            """
+            let samples = [1, 2, 3]
+            samples
+            """,
+            "samples",
+            occurrence = 2,
+        )
+
+        assertEquals("samples", response.symbol)
+        assertTrue(response.html.contains("samples : [Int]"), response.html)
+        assertTrue(response.html.contains("local FieldML binding"), response.html)
+    }
+
+    @Test
+    fun describesRecordFieldSymbolContext() {
+        val response = contextAt(
+            """
+            let model = { label = "run", active = true, count = 4 }
+            model.label
+            """,
+            "label",
+            occurrence = 2,
+        )
+
+        assertEquals("label", response.symbol)
+        assertTrue(response.html.contains("model.label : String"), response.html)
+        assertTrue(response.html.contains("record field"), response.html)
+    }
+
+    @Test
+    fun describesConstructorsFromLocalTypeDeclarations() {
+        val response = contextAt(
+            """
+            type Option a = None | Some a
+
+            Some 1
+            """,
+            "Some",
+            occurrence = 2,
+        )
+
+        assertEquals("Some", response.symbol)
+        assertTrue(response.html.contains("FieldML constructor"), response.html)
+    }
+
     private fun complete(source: String): Completion {
         val code = source.trimIndent()
         return assertNotNull(
@@ -108,6 +166,27 @@ class FieldMLCompletionEngineTest {
             ),
             "Expected completions for:\n$code",
         )
+    }
+
+    private fun contextAt(source: String, symbol: String, occurrence: Int = 1) =
+        FieldMLCompletionEngine.describeSymbolContext(
+            SymbolContextRequest(
+                uid = "test",
+                line = 1,
+                allCode = source.trimIndent(),
+                column = 1,
+                position = occurrenceIndexOf(source.trimIndent(), symbol, occurrence) + symbol.length,
+                property = "code",
+            ),
+        )
+
+    private fun occurrenceIndexOf(source: String, symbol: String, occurrence: Int): Int {
+        var index = -1
+        repeat(occurrence) {
+            index = source.indexOf(symbol, startIndex = index + 1)
+            require(index >= 0) { "Missing occurrence $occurrence of '$symbol' in:\n$source" }
+        }
+        return index
     }
 
     private fun assertHas(completion: Completion, displayText: String) =

@@ -76,6 +76,8 @@ interface BoxExecution {
 
     fun complete(inside: Box, completionRequest: CompletionRequest, reply: ((Message) -> Unit))
 
+    fun describeSymbolContext(inside: Box, request: SymbolContextRequest): SymbolContextResponse = SymbolContextResponse()
+
     val languageName: String
 }
 
@@ -2274,13 +2276,13 @@ class KotlinExecution : BoxExecution {
         return tags
     }
 
-    fun describeSymbolContext(box: Box, request: SymbolContextRequest): SymbolContextResponse {
+    override fun describeSymbolContext(inside: Box, request: SymbolContextRequest): SymbolContextResponse {
         val cacheKey = SymbolContextCacheKey(
             property = request.property,
             codeHash = request.allCode.hashCode(),
             codeLength = request.allCode.length,
             cursor = request.position,
-            contextGeneration = box.ki.context.generation
+            contextGeneration = inside.ki.context.generation
         )
         if (!request.forceRefresh) {
             KotlinSymbolContextCache.get(cacheKey)?.let { return it }
@@ -2297,14 +2299,14 @@ class KotlinExecution : BoxExecution {
 
         val symbol = bounds.text
         if (request.forceRefresh) {
-            val runtimeOnly = fallbackRuntimeSymbolContext(box, symbol)
+            val runtimeOnly = fallbackRuntimeSymbolContext(inside, symbol)
             if (runtimeOnly.html.isNotBlank()) {
                 return runtimeOnly
             }
         }
 
         val response = runCatching {
-            when (val completion = runBlocking { isolatedSymbolContextComplete(box, request.allCode, bounds.end) }) {
+            when (val completion = runBlocking { isolatedSymbolContextComplete(inside, request.allCode, bounds.end) }) {
                 is CompletionResult.Success -> {
                     val bestVariant = completion.metadata
                         .firstOrNull { completionCandidateName(it) == symbol }
@@ -2315,22 +2317,22 @@ class KotlinExecution : BoxExecution {
                         symbolContextResponse(
                             symbol = symbol,
                             html = buildSymbolContextHtml(
-                                box = box,
+                                box = inside,
                                 descriptor = descriptor,
                                 fallbackDisplay = bestVariant.displayText,
                                 fallbackDocumentation = bestVariant.tail,
-                                runtimeVariableInfo = box.ki.context.vars[symbol]
+                                runtimeVariableInfo = inside.ki.context.vars[symbol]
                             )
                         )
                     } else {
-                        fallbackRuntimeSymbolContext(box, symbol)
+                        fallbackRuntimeSymbolContext(inside, symbol)
                     }
                 }
 
-                else -> fallbackRuntimeSymbolContext(box, symbol)
+                else -> fallbackRuntimeSymbolContext(inside, symbol)
             }
         }.getOrElse {
-            fallbackRuntimeSymbolContext(box, symbol)
+            fallbackRuntimeSymbolContext(inside, symbol)
         }
 
         if (!request.forceRefresh && !response.isLiveValue) {

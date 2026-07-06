@@ -14,6 +14,8 @@ import afield.ReturnValueRegistry
 import afield.RunningState
 import afield.Runloop
 import afield.RunsAt
+import afield.SymbolContextRequest
+import afield.SymbolContextResponse
 import afield.clearRunningStates
 import afield.configureOutputProxies
 import afield.dispatchExecutionOutput
@@ -148,6 +150,9 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
             reply(Message("complete").payload(it))
         }
     }
+
+    override fun describeSymbolContext(inside: Box, request: SymbolContextRequest): SymbolContextResponse =
+        FieldMLCompletionEngine.describeSymbolContext(request)
 
     override val languageName: String get() = "fieldml"
 

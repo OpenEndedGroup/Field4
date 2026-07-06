@@ -3,6 +3,8 @@ package afield.ml
 import afield.Completion
 import afield.CompletionRequest
 import afield.Metadata
+import afield.SymbolContextRequest
+import afield.SymbolContextResponse
 import afield.ai.KotlinSourceIndex
 import afield.ml.ast.ConstructorDecl
 import afield.ml.ast.ETypeDecl
@@ -66,6 +68,86 @@ object FieldMLCompletionEngine {
         return completion(bounds.first, bounds.second, items)
     }
 
+    fun describeSymbolContext(request: SymbolContextRequest): SymbolContextResponse {
+        hostTapTargetContext(request.allCode, request.position)?.let { context ->
+            val exact = indexedKotlinFunctions().firstOrNull { it.qualifiedName == context.prefix }
+            if (exact != null) {
+                return SymbolContextResponse(
+                    symbol = exact.qualifiedName,
+                    html = symbolHtml(
+                        declaration = exact.signature.ifBlank { exact.qualifiedName },
+                        detail = "indexed Kotlin function",
+                        documentation = exact.kdoc.orEmpty(),
+                    ),
+                )
+            }
+        }
+
+        recordFieldContext(request.allCode, request.position)?.let { context ->
+            val type = typedVisibleNames(context.sourceForTypes, context.sourceForTypes.length)[context.receiver] as? TRecord
+            val fieldType = type?.fields?.get(context.prefix)
+            if (fieldType != null) {
+                return SymbolContextResponse(
+                    symbol = context.prefix,
+                    html = symbolHtml(
+                        declaration = "${context.receiver}.${context.prefix} : ${TypePrinter().print(fieldType)}",
+                        detail = "record field",
+                        documentation = "",
+                    ),
+                )
+            }
+        }
+
+        val bounds = symbolBoundsAt(request.allCode, request.position) ?: return SymbolContextResponse()
+        val symbol = bounds.text
+        val locals = typedVisibleNames(request.allCode, request.position)
+        locals[symbol]?.let { type ->
+            return SymbolContextResponse(
+                symbol = symbol,
+                html = symbolHtml(
+                    declaration = "$symbol : ${TypePrinter().print(type)}",
+                    detail = "local FieldML binding",
+                    documentation = "",
+                ),
+            )
+        }
+
+        FieldMLTypePrelude.schemes[symbol]?.let { scheme ->
+            return SymbolContextResponse(
+                symbol = symbol,
+                html = symbolHtml(
+                    declaration = "$symbol : ${TypePrinter().print(scheme.body)}",
+                    detail = if (symbol in graphicsPrelude) "FieldML graphics prelude" else "FieldML prelude",
+                    documentation = docs[symbol].orEmpty(),
+                ),
+            )
+        }
+
+        constructorDecls(request.allCode).firstOrNull { it.name == symbol }?.let {
+            return SymbolContextResponse(
+                symbol = symbol,
+                html = symbolHtml(
+                    declaration = it.name,
+                    detail = "FieldML constructor",
+                    documentation = "Constructor from this box's algebraic data type declaration.",
+                ),
+            )
+        }
+
+        if (symbol in keywords) {
+            return SymbolContextResponse(
+                symbol = symbol,
+                html = symbolHtml(
+                    declaration = symbol,
+                    detail = "FieldML keyword",
+                    documentation = docs[symbol].orEmpty(),
+                ),
+            )
+        }
+
+        return SymbolContextResponse()
+    }
+
     private fun completion(boundsStart: Int, boundsEnd: Int, items: List<Metadata>): Completion? =
         if (items.isEmpty()) null else Completion(boundsStart = boundsStart, boundsEnd = boundsEnd, metadata = items)
 
@@ -75,6 +157,22 @@ object FieldMLCompletionEngine {
         var end = cursor
         while (end < code.length && isIdentifierPart(code[end])) end++
         return start to end
+    }
+
+    private fun symbolBoundsAt(code: String, cursor: Int): SymbolBounds? {
+        if (code.isEmpty()) return null
+        val safe = cursor.coerceIn(0, code.length)
+        val probe = when {
+            safe < code.length && isIdentifierPart(code[safe]) -> safe
+            safe > 0 && isIdentifierPart(code[safe - 1]) -> safe - 1
+            else -> return null
+        }
+        var start = probe
+        while (start > 0 && isIdentifierPart(code[start - 1])) start--
+        var end = probe + 1
+        while (end < code.length && isIdentifierPart(code[end])) end++
+        if (end <= start) return null
+        return SymbolBounds(start, end, code.substring(start, end))
     }
 
     private fun isIdentifierPart(ch: Char): Boolean = ch.isLetterOrDigit() || ch == '_' || ch == '\''
@@ -597,10 +695,43 @@ object FieldMLCompletionEngine {
         return -1
     }
 
+    private fun symbolHtml(
+        declaration: String,
+        detail: String,
+        documentation: String,
+    ): String {
+        val doc = documentation.trim()
+        return buildString {
+            append("<div style='display:inline-block; max-width: 620px;'>")
+            append("<div style='color:#ddd; overflow-wrap:anywhere;'><code>")
+            append(escapeHtml(declaration))
+            append("</code></div>")
+            if (detail.isNotBlank()) {
+                append("<div style='color:#777;'>")
+                append(escapeHtml(detail))
+                append("</div>")
+            }
+            if (doc.isNotBlank()) {
+                append("<div style='margin-top:4px; color:#aaa; max-width:620px;'>")
+                append(escapeHtml(doc))
+                append("</div>")
+            }
+            append("</div>")
+        }
+    }
+
+    private fun escapeHtml(text: String): String =
+        text
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;")
+
     private data class RankedMetadata(val rank: Int, val metadata: Metadata) {
         val text: String get() = metadata.text
     }
 
+    private data class SymbolBounds(val start: Int, val end: Int, val text: String)
     private data class Snippet(val label: String, val insertText: String, val documentation: String)
     private data class StringContext(val prefix: String, val boundsStart: Int, val boundsEnd: Int)
     private data class RecordFieldContext(

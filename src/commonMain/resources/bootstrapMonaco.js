@@ -540,7 +540,7 @@ const buildSymbolContextRequest = (editor, resolveContext, options = {}) => {
         const allowUnfocused = !!options.allowUnfocused
         if (!editor || (!allowUnfocused && typeof editor.hasTextFocus === "function" && !editor.hasTextFocus())) return null
         const model = editor.getModel && editor.getModel()
-        if (!model || model.getLanguageId() !== "kotlin") return null
+        if (!model || !["kotlin", "fieldml"].includes(model.getLanguageId())) return null
 
         const context = resolveContext ? resolveContext(editor) : null
         if (!context || !context.uid || !context.property) return null
@@ -554,7 +554,7 @@ const buildSymbolContextRequest = (editor, resolveContext, options = {}) => {
         if (!bounds || !bounds.text) return null
 
         return {
-                key: `${context.uid}::${context.property}::${model.getVersionId()}::${bounds.start}:${bounds.end}`,
+                key: `${model.getLanguageId()}::${context.uid}::${context.property}::${model.getVersionId()}::${bounds.start}:${bounds.end}`,
                 editor,
                 payload: {
                         uid: context.uid,

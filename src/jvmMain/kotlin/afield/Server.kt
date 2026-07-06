@@ -62,6 +62,7 @@ import java.io.File
 import java.lang.management.ManagementFactory
 import java.net.BindException
 import java.net.URI
+import java.net.ServerSocket
 import java.net.URLEncoder
 import java.nio.file.Paths
 import java.security.KeyStore
@@ -841,11 +842,35 @@ private fun launchFieldDesktopFromProject(projectDir: File, reason: String) {
             logFile.absolutePath
         ).directory(canonicalProject)
     }
+    configureAgentWorktreeLaunchEnvironment(processBuilder)
     processBuilder.start()
     lprintln(
         "info,server",
         "launching Field from ${canonicalProject.absolutePath} ($reason); restart log: ${logFile.absolutePath}"
     )
+}
+
+private fun configureAgentWorktreeLaunchEnvironment(processBuilder: ProcessBuilder) {
+    val env = processBuilder.environment()
+    val fieldPort = chooseAvailableLocalPort()
+    val httpPort = chooseAvailableLocalPort(excluding = setOf(fieldPort))
+    env["PORT"] = fieldPort.toString()
+    env["AFIELD_HTTP_PORT"] = httpPort.toString()
+    env["AFIELD_PORT_FALLBACK_COUNT"] = "1"
+
+    // A generated worktree needs its own semantic sidecar. Inheriting the parent
+    // server's sidecar URL/port can point at the wrong checkout or collide with
+    // the launcher-managed sidecar port derived from the worktree path.
+    env.remove("AFIELD_CODE_USE_SEMANTIC_SIDECAR_URL")
+    env.remove("AFIELD_CODE_USE_SEMANTIC_SIDECAR_PORT")
+}
+
+private fun chooseAvailableLocalPort(excluding: Set<Int> = emptySet()): Int {
+    repeat(16) {
+        val port = ServerSocket(0).use { socket -> socket.localPort }
+        if (port !in excluding) return port
+    }
+    throw IllegalStateException("Could not allocate a local port for generated worktree launch.")
 }
 
 val preferSystemBrowser: Boolean = (System.getenv("AFIELD_SYSTEM_BROWSER")
@@ -2038,9 +2063,7 @@ class Server {
                 val box = box(exec.uid)
 
                 GlobalScope.launch(Dispatchers.Default) {
-                    val result = (box.ke as? KotlinExecution)
-                        ?.describeSymbolContext(box, exec)
-                        ?: SymbolContextResponse()
+                    val result = box.ke.describeSymbolContext(box, exec)
                     reply(Message("symbol-context").payload(result))
                 }
 

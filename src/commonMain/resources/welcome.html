@@ -1726,7 +1726,7 @@
                             </div>
                             <div class="ai-docs-actions two">
                                 <button id="run-ai-tool-use-review" type="button">Review logs</button>
-                                <button id="run-ai-tool-use-apply" type="button">Apply polish</button>
+                                <button id="run-ai-tool-use-apply" type="button">Generate proposal</button>
                             </div>
                             <div id="ai-tool-use-improvement-status" aria-live="polite"></div>
                         </div>
@@ -2566,7 +2566,7 @@
             button.disabled = !!task.running || recent <= 0;
         });
         if (reviewButton) reviewButton.textContent = task.running && task.dryRun ? "Reviewing..." : "Review logs";
-        if (applyButton) applyButton.textContent = task.running && !task.dryRun ? "Applying..." : "Apply polish";
+        if (applyButton) applyButton.textContent = task.running && !task.dryRun ? "Generating..." : "Generate proposal";
 
         const message = task.running || task.status === "failed" || recent <= 0
             ? (task.message || logs.message || "")
@@ -4425,7 +4425,7 @@
 
     async function runAiToolUseImprovement(dryRun = true) {
         window.open("/ai-tool-use-improvement.html", "_blank", "noopener");
-        setAiToolUseImprovementStatus(dryRun ? "Starting tool-use review..." : "Starting tool-use polish...");
+        setAiToolUseImprovementStatus(dryRun ? "Starting tool-use review..." : "Starting tool-use proposal...");
 
         try {
             const response = await fetch("/api/ai-tool-use-improvement", {

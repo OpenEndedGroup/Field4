@@ -14,6 +14,7 @@ import kotlin.io.path.getLastModifiedTime
 
 object AiToolUseImprovementMonitor {
     private const val MAX_LOG_CHARS = 180_000
+    private const val MAX_ARTIFACT_CHARS = 220_000
     private const val BROADCAST_MIN_INTERVAL_MS = 220L
     private const val RECENT_LOG_COUNT = 12
 
@@ -265,6 +266,17 @@ object AiToolUseImprovementMonitor {
     private fun worktreeSummary(): List<AgentWorktreeProposal> =
         runCatching { AgentWorktreeManager.listProposals(File(".").canonicalFile) }.getOrDefault(emptyList())
 
+    private fun artifactText(path: Path): String =
+        runCatching {
+            if (!Files.isRegularFile(path)) return@runCatching ""
+            val text = Files.readString(path, StandardCharsets.UTF_8)
+            if (text.length <= MAX_ARTIFACT_CHARS) {
+                text
+            } else {
+                text.take(MAX_ARTIFACT_CHARS) + "\n\n[truncated ${text.length - MAX_ARTIFACT_CHARS} chars]"
+            }
+        }.getOrDefault("")
+
     private fun gradleWrapperCommand(projectRoot: File): String =
         if (System.getProperty("os.name").lowercase().contains("windows")) {
             File(projectRoot, "gradlew.bat").path
@@ -299,7 +311,9 @@ object AiToolUseImprovementMonitor {
                 finishedAtEpochMs = finishedAtEpochMs,
                 exitCode = exitCode,
                 message = message,
-                logTail = log.toString()
+                logTail = log.toString(),
+                reportMarkdown = artifactText(reportPath),
+                dryRunPatch = artifactText(dryRunPatchPath)
             )
     }
 }
