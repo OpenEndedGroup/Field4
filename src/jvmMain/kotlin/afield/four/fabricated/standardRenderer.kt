@@ -162,23 +162,23 @@ object StandardRenderer {
 			return MeshPair(g, s)
 		}
 
-		/**
-		 * Add the off-screen passes to one of the renderer's RenderTargets so they run before the swapchain
-		 * render. This simply wires the passes into preTargets in the right order.
-		 */
-			fun attachTo(renderer: Renderer, windowIndex: Int = 0): RenderTarget {
-				val rt = renderer.renderTargetFor(windowIndex)
-				rt.preTargets["std-gbuffer"] = gBuffer
-					rt.preTargets["std-shadow"] = shadowMap
-					rt.preTargets["std-ao"] = ao
-					rt.preTargets["std-lighting"] = lighting
-					rt.preTargets["std-motion-blur"] = motionBlur
-					rt.preTargets["std-aa"] = antiAlias
-					return rt
-				}
+			/**
+			 * Return an ordered, inspectable frame graph for these off-screen passes. Use this
+			 * when you want to insert or replace post-processing passes before attaching the
+			 * graph to a RenderTarget.
+			 */
+			fun frameGraph(): FabricateFrameGraph = FabricateFrameGraph(this)
+
+			/**
+			 * Add the off-screen passes to one of the renderer's RenderTargets so they run before the swapchain
+			 * render. This preserves the historical convenience API while delegating ordering to
+			 * [FabricateFrameGraph].
+			 */
+			fun attachTo(renderer: Renderer, windowIndex: Int = 0): RenderTarget =
+				frameGraph().attachTo(renderer, windowIndex)
 
 			fun attachTo(renderer: Renderer, window: Window): RenderTarget =
-				attachTo(renderer, renderer.windowIndex(window))
+				frameGraph().attachTo(renderer, window)
 
 			/** Present the anti-aliased lighting RTT to the swapchain with optional grading and viewport. */
 			fun present(
