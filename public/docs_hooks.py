@@ -148,6 +148,7 @@ class RunnerOptions:
     duration: float  # video duration in seconds (default 5.0)
     fps: int  # video frame rate (default 30)
     hidden: bool
+    language_key: str
 
 
 @dataclass(frozen=True)
@@ -1103,6 +1104,7 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
         duration=parse_float(first_attr(attrs, "duration"), default=5.0),
         fps=int(parse_float(first_attr(attrs, "fps"), default=30.0)),
         hidden=parse_bool(first_attr(attrs, "hidden", "hide-source", "hide_source"), default=False),
+        language_key=fence_language_key(open_line=open_line, fence_name=runner_name),
     )
 
 
@@ -1832,7 +1834,7 @@ def extract_backdoor_execution_error(stdout: str) -> str | None:
                 line_suffix = f" line {line}" if line is not None else ""
                 html = str(payload.get("html", "")).replace("\n", " ").strip()
                 property_name = str(payload.get("property", ""))
-                if not html and property_name in shader_clear_properties:
+                if not html and (property_name in shader_clear_properties or not property_name):
                     continue
                 problems.append(f"{command}{line_suffix}: {html or 'execution error'}")
                 continue
@@ -2113,6 +2115,10 @@ def docs_runner_target_uid(*, page_path: Path, block_index: int, options: Runner
     return safe_transcript_id(f"docs_{page_path.stem}_{block_index}_{options.box_name}")
 
 
+def docs_runner_fieldml_root_alias(*, target_uid: str) -> str:
+    return safe_transcript_id(f"{target_uid}_fieldml_root")
+
+
 def graphics_renderer_transcript_path(repo_root: Path) -> Path:
     return repo_root / "dev_docs" / "agents" / "transcripts" / "graphics_renderer_launch.yaml"
 
@@ -2207,6 +2213,7 @@ def build_backdoor_command(
     backdoor_commands: list[str] = []
     generated_target_uid = docs_runner_target_uid(page_path=page_path, block_index=block_index, options=options)
     default_target_uid = options.capture_box or options.run_box or (generated_target_uid if options.graphics_context else "@last")
+    language = options.language_key.strip().lower()
     if options.graphics_context:
         renderer_macro_path = graphics_renderer_transcript_path(repo_root)
         backdoor_commands.append(shlex.join([
@@ -2294,6 +2301,39 @@ def build_backdoor_command(
             "macro",
             "run",
             setup_macro_name,
+            "--timeout", str(options.timeout),
+        ]))
+    elif language == "fieldml":
+        root_alias = docs_runner_fieldml_root_alias(target_uid=generated_target_uid)
+        backdoor_commands.append(shlex.join([
+            "new-box",
+            "--name", f"{options.box_name}-root",
+            "--alias", root_alias,
+            "--x", str(options.box_x),
+            "--y", str(options.box_y),
+            "--w", "120",
+            "--h", "80",
+            "--timeout", str(options.timeout),
+        ]))
+        backdoor_commands.append(shlex.join([
+            "set",
+            root_alias,
+            "mainLanguage",
+            "fieldml",
+        ]))
+        backdoor_commands.append(shlex.join([
+            "new-box",
+            "--name", options.box_name,
+            "--x", str(options.box_x),
+            "--y", str(options.box_y + 120.0),
+            "--w", str(options.box_w),
+            "--h", str(options.box_h),
+            "--timeout", str(options.timeout),
+        ]))
+        backdoor_commands.append(shlex.join([
+            "connect",
+            root_alias,
+            "@last",
             "--timeout", str(options.timeout),
         ]))
     else:

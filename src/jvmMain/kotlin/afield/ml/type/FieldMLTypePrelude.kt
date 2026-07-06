@@ -13,10 +13,12 @@ object FieldMLTypePrelude {
 
     val schemes: Map<String, Scheme> = linkedMapOf(
         "Unit" to Scheme(emptySet(), TUnit),
+        "thisBox" to Scheme(emptySet(), hostAny),
         "print" to Scheme(setOf(-1), fn(any, any)),
         "println" to Scheme(setOf(-1), fn(any, any)),
         "display" to Scheme(setOf(-1), fn(TString, fn(any, any))),
         "show" to Scheme(setOf(-1), fn(any, TString)),
+        "tap" to Scheme(setOf(-1, -2), fn(fn(TVar(-1), TVar(-2)), fn(TVar(-1), TVar(-1)))),
 
         "vec2" to numericScheme(-10, -11, body = fn(number(-10), number(-11), vec2)),
         "vec3" to numericScheme(-12, -13, -14, body = fn(number(-12), number(-13), number(-14), vec3)),
@@ -46,11 +48,15 @@ object FieldMLTypePrelude {
         "pointed" to Scheme(emptySet(), fn(TBool, fn(fline, fline))),
         "pointSize" to Scheme(emptySet(), fn(TFloat, fn(fline, fline))),
 
+        "hostInput" to Scheme(emptySet(), hostAny),
         "hostClass" to Scheme(emptySet(), fn(TString, hostAny)),
         "hostNew0" to Scheme(emptySet(), fn(hostAny, hostAny)),
         "hostCall0" to Scheme(setOf(-2), fn(TString, fn(TVar(-2), hostAny))),
         "hostCall1" to Scheme(setOf(-3, -4), fn(TString, fn(TVar(-3), fn(TVar(-4), hostAny)))),
         "hostCall2" to Scheme(setOf(-5, -6, -7), fn(TString, fn(TVar(-5), fn(TVar(-6), fn(TVar(-7), hostAny))))),
+        "hostStaticCall" to Scheme(setOf(-38), fn(TString, fn(TVar(-38), fn(hostAny, hostAny)))),
+        "hostStaticTap" to Scheme(setOf(-39, -40), fn(TString, fn(TVar(-39), fn(hostAny, fn(TVar(-40), TVar(-40)))))),
+        "hostTap" to Scheme(setOf(-41, -42), fn(TString, fn(TVar(-41), fn(TVar(-42), TVar(-42))))),
         "hostGet" to Scheme(setOf(-8), fn(TString, fn(TVar(-8), hostAny))),
         "hostSet" to Scheme(setOf(-9, -37), fn(TString, fn(TVar(-9), fn(TVar(-37), hostAny)))),
     )

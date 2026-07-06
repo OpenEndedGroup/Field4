@@ -199,15 +199,14 @@ class FieldMLCompilerTest {
     }
 
     @Test
-    fun emitsKotlinForSimpleArithmetic() {
+    fun evaluatesSimpleArithmetic() {
         val result = compileOk("10 + 32")
 
-        assertTrue(result.kotlin!!.contains("fun runFieldML(): Any?"))
-        assertTrue(result.kotlin.contains("+"))
+        assertEquals("42", renderFieldMLValue(Evaluator().evaluate(result.core!!)))
     }
 
     @Test
-    fun emitsKotlinForFunctions() {
+    fun evaluatesFunctions() {
         val result = compileOk(
             """
             let scale x =
@@ -216,12 +215,11 @@ class FieldMLCompilerTest {
             """.trimIndent(),
         )
 
-        assertTrue(result.kotlin!!.contains("{ x: Any? ->"))
-        assertTrue(result.kotlin.contains("as (Any?) -> Any?"))
+        assertEquals("42.0", renderFieldMLValue(Evaluator().evaluate(result.core!!)))
     }
 
     @Test
-    fun emitsKotlinForRecords() {
+    fun evaluatesRecords() {
         val result = compileOk(
             """
             let p = {
@@ -235,8 +233,26 @@ class FieldMLCompilerTest {
             """.trimIndent(),
         )
 
-        assertTrue(result.kotlin!!.contains("data class FRecord"))
-        assertTrue(result.kotlin.contains("\"x\" to"))
+        assertEquals("{x = 20.0, y = 40.0}", renderFieldMLValue(Evaluator().evaluate(result.core!!)))
+    }
+
+    @Test
+    fun typedProgramRangeEndsAtFinalExpressionBeforeTrailingBlankLines() {
+        val result = compileOk(
+            """
+            let point = {
+              x = 10.0
+              y = 20.0
+              label = "seed"
+            }
+
+            (point.label, point.x + point.y)
+
+
+            """.trimIndent(),
+        )
+
+        assertEquals(7, result.typed!!.range.end.line)
     }
 
     @Test
@@ -339,7 +355,7 @@ class FieldMLCompilerTest {
     }
 
     @Test
-    fun emitsKotlinForAdtsAndMatch() {
+    fun evaluatesAdtsAndMatch() {
         val result = compileOk(
             """
             type Option a = None | Some a
@@ -349,9 +365,7 @@ class FieldMLCompilerTest {
             """.trimIndent(),
         )
 
-        assertTrue(result.kotlin!!.contains("data class FAdt"))
-        assertTrue(result.kotlin.contains("FAdt(\"Some\""))
-        assertTrue(result.kotlin.contains("tag == \"Some\""))
+        assertEquals("10", renderFieldMLValue(Evaluator().evaluate(result.core!!)))
     }
 
     @Test
@@ -369,12 +383,10 @@ class FieldMLCompilerTest {
     }
 
     @Test
-    fun emitsKotlinForTuplesAndLists() {
+    fun evaluatesTuplesAndLists() {
         val result = compileOk("(1, [2, 3])")
 
-        assertTrue(result.kotlin!!.contains("data class FTuple"))
-        assertTrue(result.kotlin.contains("FTuple(listOf"))
-        assertTrue(result.kotlin.contains("listOf(2, 3)"))
+        assertEquals("(1, [2, 3])", renderFieldMLValue(Evaluator().evaluate(result.core!!)))
     }
 
     private fun parse(source: String) =
@@ -387,6 +399,5 @@ class FieldMLCompilerTest {
             assertTrue(it.successful, it.diagnostics.joinToString("\n") { diagnostic -> diagnostic.message })
             assertNotNull(it.typed)
             assertNotNull(it.core)
-            assertNotNull(it.kotlin)
         }
 }

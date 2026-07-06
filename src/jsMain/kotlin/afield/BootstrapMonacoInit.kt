@@ -166,17 +166,11 @@ private fun disposePropertySwitchActions(previous: dynamic) {
 
 internal fun monacoInstallPropertySwitchActions(monaco: dynamic, ed: dynamic) {
     val w = js("window")
-    val labels = monacoPropertyNames.mapIndexed { i, propName ->
-        computePropertyActionLabel(w, "Edit: " + monacoPropertyDescriptions[i], propName)
-    }
-    val signature = labels.joinToString("\u0000")
-    if ((ed.afieldPropertySwitchActionsInstalled as? Boolean) == true &&
-        ed.afieldPropertySwitchActionSignature == signature
-    ) return
+    if ((ed.afieldPropertySwitchActionsInstalled as? Boolean) == true) return
 
-    ed.afieldPropertySwitchActionsInstalled = true
-    ed.afieldPropertySwitchActionSignature = signature
+    disposePropertySwitchActions(ed.afieldPropertyActionDisposables)
     disposePropertySwitchActions(w.propertyActionDisposables)
+    ed.afieldPropertySwitchActionsInstalled = true
 
     val keyCodes = arrayOf(
         monaco.KeyCode.KeyM,
@@ -194,7 +188,7 @@ internal fun monacoInstallPropertySwitchActions(monaco: dynamic, ed: dynamic) {
 
         val action = js("{}")
         action.id = actionId
-        action.label = labels[i]
+        action.label = "Edit: " + monacoPropertyDescriptions[i]
         action.contextMenuGroupId = "navigation"
         action.contextMenuOrder = 2.0
 
@@ -213,7 +207,9 @@ internal fun monacoInstallPropertySwitchActions(monaco: dynamic, ed: dynamic) {
         disposables.add(handle)
     }
 
-    w.propertyActionDisposables = disposables.toTypedArray()
+    val handles = disposables.toTypedArray()
+    ed.afieldPropertyActionDisposables = handles
+    w.propertyActionDisposables = handles
 }
 
 internal fun monacoApplyPropertySelection(monaco: dynamic, editor: dynamic, index: Int) {

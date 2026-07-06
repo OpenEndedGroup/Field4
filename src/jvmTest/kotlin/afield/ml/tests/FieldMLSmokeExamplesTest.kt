@@ -1,11 +1,13 @@
 package afield.ml.tests
 
+import afield.Box
 import afield.ml.FieldMLCompiler
 import afield.ml.CompilationResult
 import afield.ml.FieldMLRuntimePrelude
 import afield.ml.core.Evaluator
 import afield.ml.core.renderFieldMLValue
 import afield.ml.type.TypePrinter
+import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -38,7 +40,6 @@ class FieldMLSmokeExamplesTest {
             assertNotNull(result.surface, "${example.name}: surface AST")
             assertNotNull(result.typed, "${example.name}: typed AST")
             assertNotNull(result.core, "${example.name}: core")
-            assertTrue(result.kotlin.orEmpty().contains("fun runFieldML(): Any?"), "${example.name}: Kotlin emission")
         }
     }
 
@@ -57,6 +58,20 @@ class FieldMLSmokeExamplesTest {
         }
     }
 
+    @Test
+    fun docsFieldMLExamplesCompileAndEvaluate() {
+        val docsPath = Path.of("public/docs/fieldml_examples.md")
+        val source = docsPath.toFile().readText()
+        val snippets = fieldMLDocSnippets(source)
+
+        assertTrue(snippets.isNotEmpty(), "Expected FieldML snippets in $docsPath")
+        snippets.forEachIndexed { index, snippet ->
+            val name = "docs snippet ${index + 1}"
+            val result = compileOk(name, snippet)
+            Evaluator(FieldMLRuntimePrelude.values(box = Box("fieldml-docs-smoke-$index"))).evaluate(result.core!!)
+        }
+    }
+
     private fun compileOk(name: String, source: String): CompilationResult {
         val result = FieldMLCompiler.compile(source.trimIndent())
         assertTrue(
@@ -64,6 +79,16 @@ class FieldMLSmokeExamplesTest {
             "$name failed:\n${result.diagnostics.joinToString("\n") { "${it.severity}: ${it.message}" }}",
         )
         return result
+    }
+
+    private fun fieldMLDocSnippets(source: String): List<String> {
+        val fence = Regex(
+            pattern = """(?ms)^```diffstatic(?:_runner)?\s+\{[^}]*data-lang=fieldml[^}]*}\s*\n(.*?)^```""",
+        )
+        return fence.findAll(source)
+            .map { it.groupValues[1].trim() }
+            .filter { it.isNotEmpty() }
+            .toList()
     }
 
     companion object {

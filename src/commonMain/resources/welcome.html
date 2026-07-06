@@ -830,6 +830,20 @@
             gap: 6px 10px;
         }
 
+        .preference-section {
+            display: grid;
+            gap: 6px;
+        }
+
+        .preference-section-title {
+            color: var(--field-text-soft);
+            font-size: 11px;
+        }
+
+        .preference-grid-single {
+            grid-template-columns: 1fr;
+        }
+
         .preference-toggle {
             display: flex;
             align-items: center;
@@ -1735,27 +1749,35 @@
                         <span id="preferences-summary" class="changelog-count">loading</span>
                     </summary>
                     <div class="preferences-body">
-                        <div class="preference-grid">
-                            <label class="preference-toggle"><input id="pref-profiling" type="checkbox"> profiling</label>
-                            <label class="preference-toggle"><input id="pref-frame-presentation-log" type="checkbox"> frame presentation log</label>
-                            <label class="preference-toggle"><input id="pref-log-shaderc-source" type="checkbox"> log shader source</label>
-                            <label class="preference-toggle"><input id="pref-enable-vr" type="checkbox"> enableVR</label>
-                            <label class="preference-toggle"><input id="pref-enable-hdr" type="checkbox"> enableHDR</label>
-                            <label class="preference-toggle"><input id="pref-openxr-debug-input" type="checkbox"> openXRDebugInput</label>
-                            <label class="preference-toggle"><input id="pref-validate" type="checkbox"> validate</label>
-                            <label class="preference-toggle"><input id="pref-auto-open-last" type="checkbox"> auto-open last document</label>
-                        </div>
-                        <div class="preferences-controls">
-                            <span class="preference-select-label">track edited property</span>
-                            <div class="segmented-control" role="group" aria-label="track edited property">
-                                <button class="segmented-button stickiness-segment" type="button" data-stickiness-value="none" aria-pressed="true">never</button>
-                                <button class="segmented-button stickiness-segment" type="button" data-stickiness-value="per-box" aria-pressed="false">per-box</button>
-                                <button class="segmented-button stickiness-segment" type="button" data-stickiness-value="global" aria-pressed="false">globally</button>
+                        <div class="preference-section">
+                            <div class="preference-section-title">Graphics system</div>
+                            <div class="preference-grid">
+                                <label class="preference-toggle"><input id="pref-profiling" type="checkbox"> profiling</label>
+                                <label class="preference-toggle"><input id="pref-frame-presentation-log" type="checkbox"> frame presentation log</label>
+                                <label class="preference-toggle"><input id="pref-log-shaderc-source" type="checkbox"> log shader source</label>
+                                <label class="preference-toggle"><input id="pref-enable-vr" type="checkbox"> enableVR</label>
+                                <label class="preference-toggle"><input id="pref-enable-hdr" type="checkbox"> enableHDR</label>
+                                <label class="preference-toggle"><input id="pref-openxr-debug-input" type="checkbox"> openXRDebugInput</label>
+                                <label class="preference-toggle"><input id="pref-validate" type="checkbox"> validate</label>
                             </div>
-                            <label class="preference-textarea-field" for="pref-import-class-blacklist">
-                                <span>import class blacklist</span>
-                                <textarea id="pref-import-class-blacklist" rows="5" spellcheck="false" autocomplete="off" placeholder="com.sun.*&#10;sun.*&#10;*awt*"></textarea>
-                            </label>
+                        </div>
+                        <div class="preference-section">
+                            <div class="preference-section-title">Other</div>
+                            <div class="preference-grid preference-grid-single">
+                                <label class="preference-toggle"><input id="pref-auto-open-last" type="checkbox"> auto-open last document</label>
+                            </div>
+                            <div class="preferences-controls">
+                                <span class="preference-select-label">track edited property</span>
+                                <div class="segmented-control" role="group" aria-label="track edited property">
+                                    <button class="segmented-button stickiness-segment" type="button" data-stickiness-value="none" aria-pressed="true">never</button>
+                                    <button class="segmented-button stickiness-segment" type="button" data-stickiness-value="per-box" aria-pressed="false">per-box</button>
+                                    <button class="segmented-button stickiness-segment" type="button" data-stickiness-value="global" aria-pressed="false">globally</button>
+                                </div>
+                                <label class="preference-textarea-field" for="pref-import-class-blacklist">
+                                    <span>import class blacklist</span>
+                                    <textarea id="pref-import-class-blacklist" rows="5" spellcheck="false" autocomplete="off" placeholder="com.sun.*&#10;sun.*&#10;*awt*"></textarea>
+                                </label>
+                            </div>
                         </div>
                         <div id="preferences-status" aria-live="polite"></div>
                     </div>

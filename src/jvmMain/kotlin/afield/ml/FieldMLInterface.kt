@@ -63,7 +63,7 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
                 val core = compileResult.core!!
                 try {
                     val output = TrackingOutput(inside.output)
-                    val value = Evaluator(FieldMLRuntimePrelude.values(output)).evaluate(core)
+                    val value = Evaluator(FieldMLRuntimePrelude.values(output, inside)).evaluate(core)
                     val typeText = afield.ml.type.TypePrinter().print(compileResult.typed!!.type)
                     val valueText = renderFieldMLValue(value)
                     if (!output.printed) {
@@ -72,7 +72,7 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
                             reply,
                             Output(
                                 uid = inside.id,
-                                line = execute.line + code.lines().lastIndex,
+                                line = fieldMLResultLine(execute.line, compileResult),
                                 kind = "normal",
                                 property = execute.property,
                                 html = renderInlineResult(valueText, typeText),
@@ -187,7 +187,7 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
                 val result = FieldMLCompiler.compile(execute.code)
                 if (!reportDiagnostics(inside, execute, result, originSession, reply)) {
                     val output = TrackingOutput(inside.output)
-                    val value = Evaluator(FieldMLRuntimePrelude.values(output)).evaluate(result.core!!)
+                    val value = Evaluator(FieldMLRuntimePrelude.values(output, inside)).evaluate(result.core!!)
                     val typeText = afield.ml.type.TypePrinter().print(result.typed!!.type)
                     val valueText = renderFieldMLValue(value)
                     if (!output.printed) {
@@ -196,7 +196,7 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
                             reply,
                             Output(
                                 uid = inside.id,
-                                line = execute.line + execute.code.lines().lastIndex,
+                                line = fieldMLResultLine(execute.line, result),
                                 kind = "normal",
                                 property = execute.property,
                                 html = renderInlineResult(valueText, typeText),
@@ -212,6 +212,11 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
                 send(Message("is-running").payload(IsRunning(execute.uid, false, watermark, "__fragment__")))
             }
         }
+    }
+
+    private fun fieldMLResultLine(executeLine: Int, result: CompilationResult): Int {
+        val sourceLine = result.typed?.range?.end?.line ?: result.surface?.range?.end?.line
+        return sourceLine?.let { executeLine + it } ?: executeLine
     }
 
     private fun reportDiagnostics(
@@ -275,10 +280,12 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
 
         private val fieldMLBuiltins = listOf(
             "Unit",
+            "thisBox",
             "print",
             "println",
             "display",
             "show",
+            "tap",
             "vec2",
             "vec3",
             "vec4",
@@ -297,11 +304,15 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
             "stroked",
             "pointed",
             "pointSize",
+            "hostInput",
             "hostClass",
             "hostNew0",
             "hostCall0",
             "hostCall1",
             "hostCall2",
+            "hostStaticCall",
+            "hostStaticTap",
+            "hostTap",
             "hostGet",
             "hostSet",
         )
@@ -316,10 +327,16 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
             "display" to "display \"channel\" value sends a value to a Field output panel and returns it.",
             "print" to "Print a value and return it, useful as a pipe tap.",
             "println" to "Print a value plus newline and return it, useful as a pipe tap.",
+            "tap" to "Apply a function for its effect and return the original value.",
             "fline" to "Create an FLine host value.",
             "moveTo" to "moveTo x y line adds a move instruction and returns the FLine.",
             "lineTo" to "lineTo x y line adds a line instruction and returns the FLine.",
             "hostCall1" to "Generic opaque host bridge: hostCall1 \"method\" arg target.",
+            "thisBox" to "Current Field Box as a host value.",
+            "hostInput" to "Placeholder for the piped value in hostStaticTap argument templates.",
+            "hostStaticCall" to "Generic opaque host bridge: hostStaticCall \"method\" args class.",
+            "hostStaticTap" to "Build a pipe-friendly static JVM call that substitutes hostInput and returns the piped value.",
+            "hostTap" to "Build a pipe-friendly JVM call from indexed Kotlin source metadata and named argument overrides.",
         )
     }
 }

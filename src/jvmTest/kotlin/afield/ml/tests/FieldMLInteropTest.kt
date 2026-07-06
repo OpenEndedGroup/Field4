@@ -1,5 +1,6 @@
 package afield.ml.tests
 
+import afield.Box
 import afield.HasOutput
 import afield.ml.CompilationResult
 import afield.ml.FieldMLCompiler
@@ -84,16 +85,117 @@ class FieldMLInteropTest {
         assertEquals("7.0", renderFieldMLValue(xValue))
     }
 
-    private fun evaluate(source: String, output: HasOutput? = null): FieldMLValue {
+    @Test
+    fun hostStaticCallCanReachKotlinBoxLinesExtension() {
+        val box = Box("fieldml-host-static-test")
+        val displays = mutableListOf<Pair<String, Any?>>()
+        box.output.displayProxy = { channel, message -> displays += channel to message }
+
+        val value = evaluate(
+            """
+            let lines channel line =
+              let _ = hostStaticCall "lines" (thisBox, [line], channel, 120.0, 80.0, false, false, false, false) (hostClass "afield.graphics.SomeSkikoKt") in line
+
+            fline
+              |> moveTo 0.0 0.0
+              |> lineTo 80.0 40.0
+              |> lines "foo"
+            """,
+            box = box,
+        )
+
+        assertIs<FLine>(assertIs<FieldMLValue.HostValue>(value).value)
+        assertEquals("foo", displays.single().first)
+        assertTrue(displays.single().second.toString().contains("data-afield-lines-output=\"true\""))
+    }
+
+    @Test
+    fun tapCanSequenceHostInteropAndReturnInput() {
+        val box = Box("fieldml-tap-host-test")
+        val displays = mutableListOf<Pair<String, Any?>>()
+        box.output.displayProxy = { channel, message -> displays += channel to message }
+
+        val value = evaluate(
+            """
+            let lines channel line =
+              line |> tap (fun line ->
+                hostStaticCall "lines" (thisBox, [line], channel, 120.0, 80.0, false, false, false, false) (hostClass "afield.graphics.SomeSkikoKt")
+              )
+
+            fline
+              |> moveTo 0.0 0.0
+              |> lineTo 80.0 40.0
+              |> lines "foo"
+            """,
+            box = box,
+        )
+
+        assertIs<FLine>(assertIs<FieldMLValue.HostValue>(value).value)
+        assertEquals("foo", displays.single().first)
+        assertTrue(displays.single().second.toString().contains("data-afield-lines-output=\"true\""))
+    }
+
+    @Test
+    fun hostStaticTapBuildsPipeFriendlyJvmInteropWrappers() {
+        val box = Box("fieldml-host-static-tap-test")
+        val displays = mutableListOf<Pair<String, Any?>>()
+        box.output.displayProxy = { channel, message -> displays += channel to message }
+
+        val value = evaluate(
+            """
+            let lines channel =
+              hostStaticTap "lines" (thisBox, [hostInput], channel, 120.0, 80.0, false, false, false, false) (hostClass "afield.graphics.SomeSkikoKt")
+
+            fline
+              |> moveTo 0.0 0.0
+              |> lineTo 80.0 40.0
+              |> lines "foo"
+            """,
+            box = box,
+        )
+
+        assertIs<FLine>(assertIs<FieldMLValue.HostValue>(value).value)
+        assertEquals("foo", displays.single().first)
+        assertTrue(displays.single().second.toString().contains("data-afield-lines-output=\"true\""))
+    }
+
+    @Test
+    fun hostTapBuildsJvmInteropWrappersFromIndexedSourceMetadata() {
+        val box = Box("fieldml-host-tap-test")
+        val displays = mutableListOf<Pair<String, Any?>>()
+        box.output.displayProxy = { channel, message -> displays += channel to message }
+
+        val value = evaluate(
+            """
+            let lines channel =
+              hostTap "afield.graphics.lines" { channel = channel, w = 120.0, h = 80.0 }
+
+            fline
+              |> moveTo 0.0 0.0
+              |> lineTo 80.0 40.0
+              |> lines "foo"
+            """,
+            box = box,
+        )
+
+        assertIs<FLine>(assertIs<FieldMLValue.HostValue>(value).value)
+        assertEquals("foo", displays.single().first)
+        assertTrue(displays.single().second.toString().contains("data-afield-lines-output=\"true\""))
+    }
+
+    private fun evaluate(source: String, output: HasOutput? = null, box: Box? = null): FieldMLValue {
         val result = compileOk(source)
-        return Evaluator(FieldMLRuntimePrelude.values(output)).evaluate(result.core!!)
+        return Evaluator(FieldMLRuntimePrelude.values(output, box)).evaluate(result.core!!)
     }
 
     private fun compileOk(source: String): CompilationResult {
         val result = FieldMLCompiler.compile(source.trimIndent())
         assertTrue(
             result.successful,
-            result.diagnostics.joinToString("\n") { "${it.severity}: ${it.message}" },
+            result.diagnostics.joinToString("\n") {
+                val range = it.range?.start?.let { start -> "${start.line}:${start.column}" } ?: "?:?"
+                "${it.severity}@$range: ${it.message}"
+            },
         )
         return result
     }

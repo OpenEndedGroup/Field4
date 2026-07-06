@@ -1,8 +1,11 @@
 package afield.ml
 
+import afield.Box
 import afield.HasOutput
+import afield.ai.KotlinSourceIndex
 import afield.graphics.FLine
 import afield.ml.core.FieldMLValue
+import afield.ml.core.applyFieldMLFunction
 import afield.ml.core.fieldMLValueToHost
 import afield.ml.core.hostToFieldMLValue
 import afield.ml.core.renderFieldMLValue
@@ -17,11 +20,17 @@ import org.joml.Vector3f
 import org.joml.Vector4f
 import java.lang.reflect.Field
 import java.lang.reflect.Method
+import java.lang.reflect.Modifier
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.Paths
+import kotlin.io.path.isRegularFile
 
 object FieldMLRuntimePrelude {
-    fun values(output: HasOutput? = null): Map<String, FieldMLValue> =
+    fun values(output: HasOutput? = null, box: Box? = null): Map<String, FieldMLValue> =
         linkedMapOf(
             "Unit" to FieldMLValue.UnitValue,
+            "thisBox" to FieldMLValue.HostValue(box),
             "print" to native1("print") { value ->
                 output?.print(renderFieldMLValue(value))
                 value
@@ -35,6 +44,10 @@ object FieldMLRuntimePrelude {
                 value
             },
             "show" to native1("show") { value -> FieldMLValue.StringValue(renderFieldMLValue(value)) },
+            "tap" to native2("tap") { effect, value ->
+                applyFieldMLFunction(effect, value)
+                value
+            },
 
             "vec2" to native2("vec2") { x, y -> FieldMLValue.HostValue(Vector2f(x.asFloat("x"), y.asFloat("y"))) },
             "vec3" to native3("vec3") { x, y, z ->
@@ -95,6 +108,7 @@ object FieldMLRuntimePrelude {
                 FieldMLValue.HostValue(line.asFLine("pointSize").also { it.pointSize = amount.asDouble("amount") })
             },
 
+            "hostInput" to FieldMLValue.HostValue(HostInputPlaceholder),
             "hostClass" to native1("hostClass") { name -> FieldMLValue.HostValue(Class.forName(name.asString("class name"))) },
             "hostNew0" to native1("hostNew0") { klass ->
                 val javaClass = klass.asHost("hostNew0") as? Class<*> ?: error("hostNew0 expects a Class host value")
@@ -108,6 +122,21 @@ object FieldMLRuntimePrelude {
             },
             "hostCall2" to native4("hostCall2") { name, a, b, target ->
                 callHostMethod(name.asString("method name"), target.asHost("target"), listOf(fieldMLValueToHost(a), fieldMLValueToHost(b)))
+            },
+            "hostStaticCall" to native3("hostStaticCall") { name, arguments, klass ->
+                val javaClass = klass.asHost("hostStaticCall class") as? Class<*> ?: error("hostStaticCall expects a Class host value")
+                val args = arguments.asHostArguments("hostStaticCall arguments")
+                callHostStaticMethod(name.asString("method name"), javaClass, args)
+            },
+            "hostStaticTap" to native4("hostStaticTap") { name, arguments, klass, input ->
+                val javaClass = klass.asHost("hostStaticTap class") as? Class<*> ?: error("hostStaticTap expects a Class host value")
+                val args = arguments.substituteHostInput(input).asHostArguments("hostStaticTap arguments")
+                callHostStaticMethod(name.asString("method name"), javaClass, args)
+                input
+            },
+            "hostTap" to native3("hostTap") { target, arguments, input ->
+                callIndexedHostTap(target.asString("hostTap target"), arguments.asRecord("hostTap arguments"), input, box)
+                input
             },
             "hostGet" to native2("hostGet") { name, target ->
                 getHostMember(name.asString("member name"), target.asHost("target"))
@@ -180,6 +209,25 @@ object FieldMLRuntimePrelude {
     private fun FieldMLValue.asHost(name: String): Any =
         (this as? FieldMLValue.HostValue)?.value ?: error("Expected host $name, found ${renderFieldMLValue(this)}")
 
+    private fun FieldMLValue.asRecord(name: String): Map<String, FieldMLValue> =
+        (this as? FieldMLValue.RecordValue)?.fields ?: error("Expected record $name, found ${renderFieldMLValue(this)}")
+
+    private fun FieldMLValue.asHostArguments(name: String): List<Any?> =
+        when (this) {
+            is FieldMLValue.ListValue -> elements.map(::fieldMLValueToHost)
+            is FieldMLValue.TupleValue -> elements.map(::fieldMLValueToHost)
+            else -> error("Expected tuple or list $name, found ${renderFieldMLValue(this)}")
+        }
+
+    private fun FieldMLValue.substituteHostInput(input: FieldMLValue): FieldMLValue =
+        when (this) {
+            is FieldMLValue.HostValue -> if (value === HostInputPlaceholder) input else this
+            is FieldMLValue.TupleValue -> copy(elements = elements.map { it.substituteHostInput(input) })
+            is FieldMLValue.ListValue -> copy(elements = elements.map { it.substituteHostInput(input) })
+            is FieldMLValue.RecordValue -> copy(fields = fields.mapValues { (_, value) -> value.substituteHostInput(input) })
+            else -> this
+        }
+
     private fun FieldMLValue.asFLine(name: String): FLine =
         asHost(name) as? FLine ?: error("Expected FLine for $name, found ${renderFieldMLValue(this)}")
 
@@ -198,6 +246,259 @@ object FieldMLRuntimePrelude {
         val coerced = args.zip(method.parameterTypes.toList()).map { (arg, type) -> coerceHostArgument(type, arg) }.toTypedArray()
         return hostToFieldMLValue(method.invoke(target, *coerced))
     }
+
+    private fun callHostStaticMethod(name: String, target: Class<*>, args: List<Any?>): FieldMLValue {
+        val method = target.methods
+            .asSequence()
+            .filter { it.name == name && Modifier.isStatic(it.modifiers) && it.parameterCount == args.size }
+            .firstOrNull { method -> args.zip(method.parameterTypes.toList()).all { (arg, type) -> isCompatible(type, arg) } }
+            ?: error("No compatible static method '$name/${args.size}' on ${target.name}")
+        val coerced = args.zip(method.parameterTypes.toList()).map { (arg, type) -> coerceHostArgument(type, arg) }.toTypedArray()
+        return hostToFieldMLValue(method.invoke(null, *coerced))
+    }
+
+    private fun callIndexedHostTap(
+        target: String,
+        namedArguments: Map<String, FieldMLValue>,
+        input: FieldMLValue,
+        box: Box?,
+    ) {
+        val candidates = indexedHostFunctions(target)
+        if (candidates.isEmpty()) error("No indexed Kotlin function found for '$target'")
+        val errors = mutableListOf<String>()
+        for (candidate in candidates) {
+            val built = candidate.buildArguments(namedArguments, input, box)
+            if (built != null) {
+                val javaClass = Class.forName(candidate.ownerClassName)
+                val result = runCatching { callHostStaticMethod(candidate.name, javaClass, built) }
+                if (result.isSuccess) return
+                errors += "${candidate.ownerClassName}.${candidate.name}: ${result.exceptionOrNull()?.message}"
+            }
+        }
+        error(
+            "No compatible indexed hostTap target '$target'. Tried: " +
+                (errors.ifEmpty { candidates.map { "${it.ownerClassName}.${it.name}" } }).joinToString("; "),
+        )
+    }
+
+    private fun IndexedHostFunction.buildArguments(
+        namedArguments: Map<String, FieldMLValue>,
+        input: FieldMLValue,
+        box: Box?,
+    ): List<Any?>? {
+        val remaining = namedArguments.keys.toMutableSet()
+        val out = mutableListOf<Any?>()
+        if (receiverType == "Box" || receiverType == "afield.Box") {
+            out += box ?: error("hostTap target '$qualifiedName' needs a current Field box")
+        } else if (receiverType != null) {
+            return null
+        }
+        var usedInput = false
+        for (parameter in parameters) {
+            val value = namedArguments[parameter.name]
+            if (value != null) {
+                remaining -= parameter.name
+                out += fieldMLValueToHost(value)
+            } else if (!parameter.hasDefault) {
+                if (usedInput) return null
+                out += if (parameter.isVararg || parameter.type.startsWith("List<")) {
+                    listOf(fieldMLValueToHost(input))
+                } else {
+                    fieldMLValueToHost(input)
+                }
+                usedInput = true
+            } else {
+                out += parameter.defaultValue ?: return null
+            }
+        }
+        if (remaining.isNotEmpty()) return null
+        return out.takeIf { usedInput }
+    }
+
+    private fun indexedHostFunctions(target: String): List<IndexedHostFunction> {
+        val simpleName = target.substringAfterLast('.')
+        val requestedPackage = target.substringBeforeLast('.', missingDelimiterValue = "")
+        val root = Paths.get(System.getProperty("user.dir")).normalize()
+        val indexedFiles = (KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex())
+            ?.definitions
+            ?.filter { it.kind == "fun" && it.name.substringAfterLast('.') == simpleName }
+            ?.map { root.resolve(it.filePath).normalize() }
+            ?.distinct()
+            .orEmpty()
+
+        val sourceFiles = if (indexedFiles.isNotEmpty()) {
+            indexedFiles
+        } else {
+            listOf(root.resolve("src/jvmMain/kotlin"), root.resolve("src/personal/kotlin"))
+                .filter { Files.exists(it) }
+                .flatMap { sourceRoot ->
+                    Files.walk(sourceRoot).use { stream ->
+                        stream.filter { it.isRegularFile() && it.toString().endsWith(".kt") }.toList()
+                    }
+                }
+        }
+
+        return sourceFiles.flatMap { file ->
+            val text = runCatching { Files.readString(file) }.getOrNull() ?: return@flatMap emptyList()
+            val pkg = Regex("""(?m)^\s*package\s+([A-Za-z_][A-Za-z0-9_.]*)""")
+                .find(text)
+                ?.groupValues
+                ?.getOrNull(1)
+                .orEmpty()
+            if (requestedPackage.isNotEmpty() && pkg != requestedPackage) return@flatMap emptyList()
+            parseIndexedHostFunctions(text, file, pkg).filter { it.name == simpleName }
+        }
+    }
+
+    private fun parseIndexedHostFunctions(text: String, file: Path, pkg: String): List<IndexedHostFunction> {
+        val out = mutableListOf<IndexedHostFunction>()
+        val regex = Regex("""(?m)(?:^|\n)\s*(?:public\s+|internal\s+)?fun\s+([A-Za-z_][A-Za-z0-9_.<>?]*)\.([A-Za-z_][A-Za-z0-9_]*)\s*\(""")
+        for (match in regex.findAll(text)) {
+            val receiver = match.groupValues[1].substringBefore("<").removeSuffix("?")
+            val name = match.groupValues[2]
+            val openParen = match.range.last
+            val closeParen = findMatchingParen(text, openParen) ?: continue
+            val parameters = parseIndexedParameters(text.substring(openParen + 1, closeParen))
+            val owner = topLevelOwnerClassName(pkg, file)
+            out += IndexedHostFunction(
+                qualifiedName = listOf(pkg, name).filter { it.isNotBlank() }.joinToString("."),
+                ownerClassName = owner,
+                name = name,
+                receiverType = receiver,
+                parameters = parameters,
+            )
+        }
+        return out
+    }
+
+    private fun parseIndexedParameters(text: String): List<IndexedHostParameter> =
+        splitTopLevel(text, ',').mapNotNull { raw ->
+            val segment = raw.trim().takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            val withoutAnnotations = segment.replace(Regex("""^@[A-Za-z_][A-Za-z0-9_.]*(\([^)]*\))?\s*"""), "")
+            val isVararg = withoutAnnotations.startsWith("vararg ")
+            val cleaned = withoutAnnotations.removePrefix("vararg ").trim()
+            val colon = cleaned.indexOf(':')
+            if (colon <= 0) return@mapNotNull null
+            val name = cleaned.substring(0, colon).trim()
+            val afterColon = cleaned.substring(colon + 1).trim()
+            val equals = topLevelIndexOf(afterColon, '=')
+            val type = (if (equals >= 0) afterColon.substring(0, equals) else afterColon).trim()
+            val defaultSource = if (equals >= 0) afterColon.substring(equals + 1).trim() else null
+            IndexedHostParameter(
+                name = name,
+                type = type,
+                isVararg = isVararg,
+                hasDefault = defaultSource != null,
+                defaultValue = defaultSource?.let(::parseHostDefaultLiteral),
+            )
+        }
+
+    private fun parseHostDefaultLiteral(source: String): Any? {
+        val s = source.trim().removeSuffix(",")
+        return when {
+            s == "true" -> true
+            s == "false" -> false
+            s.startsWith("\"") && s.endsWith("\"") -> s.removeSurrounding("\"")
+            s.toIntOrNull() != null -> s.toInt()
+            s.toDoubleOrNull() != null -> s.toDouble()
+            else -> null
+        }
+    }
+
+    private fun findMatchingParen(text: String, openIndex: Int): Int? {
+        var depth = 0
+        var inString = false
+        var escaped = false
+        for (i in openIndex until text.length) {
+            val ch = text[i]
+            if (inString) {
+                escaped = ch == '\\' && !escaped
+                if (ch == '"' && !escaped) inString = false
+                if (ch != '\\') escaped = false
+                continue
+            }
+            when (ch) {
+                '"' -> inString = true
+                '(' -> depth++
+                ')' -> {
+                    depth--
+                    if (depth == 0) return i
+                }
+            }
+        }
+        return null
+    }
+
+    private fun splitTopLevel(text: String, delimiter: Char): List<String> {
+        val parts = mutableListOf<String>()
+        var start = 0
+        var paren = 0
+        var angle = 0
+        var bracket = 0
+        var inString = false
+        for (i in text.indices) {
+            val ch = text[i]
+            if (ch == '"') inString = !inString
+            if (!inString) {
+                when (ch) {
+                    '(' -> paren++
+                    ')' -> if (paren > 0) paren--
+                    '<' -> angle++
+                    '>' -> if (angle > 0) angle--
+                    '[' -> bracket++
+                    ']' -> if (bracket > 0) bracket--
+                    delimiter -> if (paren == 0 && angle == 0 && bracket == 0) {
+                        parts += text.substring(start, i)
+                        start = i + 1
+                    }
+                }
+            }
+        }
+        parts += text.substring(start)
+        return parts
+    }
+
+    private fun topLevelIndexOf(text: String, target: Char): Int {
+        var paren = 0
+        var angle = 0
+        var inString = false
+        for (i in text.indices) {
+            val ch = text[i]
+            if (ch == '"') inString = !inString
+            if (!inString) {
+                when (ch) {
+                    '(' -> paren++
+                    ')' -> if (paren > 0) paren--
+                    '<' -> angle++
+                    '>' -> if (angle > 0) angle--
+                    target -> if (paren == 0 && angle == 0) return i
+                }
+            }
+        }
+        return -1
+    }
+
+    private fun topLevelOwnerClassName(pkg: String, file: Path): String {
+        val base = file.fileName.toString().removeSuffix(".kt")
+            .replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() } + "Kt"
+        return if (pkg.isBlank()) base else "$pkg.$base"
+    }
+
+    private data class IndexedHostFunction(
+        val qualifiedName: String,
+        val ownerClassName: String,
+        val name: String,
+        val receiverType: String?,
+        val parameters: List<IndexedHostParameter>,
+    )
+
+    private data class IndexedHostParameter(
+        val name: String,
+        val type: String,
+        val isVararg: Boolean,
+        val hasDefault: Boolean,
+        val defaultValue: Any?,
+    )
 
     private fun getHostMember(name: String, target: Any): FieldMLValue {
         if (target is Map<*, *>) return hostToFieldMLValue(target[name])
@@ -268,4 +569,8 @@ object FieldMLRuntimePrelude {
             java.lang.Character.TYPE -> Char::class.javaObjectType
             else -> type
         }
+
+    private object HostInputPlaceholder {
+        override fun toString(): String = "<hostInput>"
+    }
 }

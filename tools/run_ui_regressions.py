@@ -355,6 +355,75 @@ try {
 }
 """
 
+MONACO_CONTEXT_MENU_ACTIONS_JS = r"""
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const errors = [];
+const onError = (event) => errors.push(String(event.error && (event.error.stack || event.error.message) || event.message || event));
+window.addEventListener("error", onError);
+try {
+  await delay(200);
+  const labels = [...document.querySelectorAll(".context-view .action-label, .monaco-menu .action-label")]
+    .filter((node) => {
+      const rect = node.getBoundingClientRect();
+      const style = getComputedStyle(node);
+      return rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.display !== "none";
+    })
+    .map((node) => node.textContent.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+
+  const counts = new Map();
+  for (const label of labels) counts.set(label, (counts.get(label) || 0) + 1);
+  const duplicates = [...counts.entries()]
+    .filter(([label, count]) => count > 1 && (label === "Go to Paired Shader Definition" || label.startsWith("Edit: ")))
+    .map(([label, count]) => ({ label, count }));
+  const editLabels = labels.filter((label) => label.startsWith("Edit: "));
+  const ed = window.globalEditor;
+  const propertyIds = [
+    "code", "vertex", "fragment", "stackSL", "vertex_fragment", "compute", "task", "mesh",
+    "raygen", "miss", "closesthit", "anyhit", "intersection", "callable",
+    "vertex_s", "fragment_s", "compute_s", "task_s", "mesh_s", "raygen_s", "miss_s",
+    "closesthit_s", "anyhit_s", "intersection_s", "callable_s",
+    "preamble", "introduction", "attic", "notes", "metadata", "contents"
+  ].map((property) => `switch-property-${property}`);
+  const fieldActionIds = ["paired-shader-definition", ...propertyIds];
+  const fieldActions = ed && typeof ed.getAction === "function"
+    ? fieldActionIds
+      .map((id) => {
+        const action = ed.getAction(id);
+        return action ? { requestedId: id, id: String(action.id || ""), label: String(action.label || "") } : null;
+      })
+      .filter(Boolean)
+    : [];
+  const actionCounts = new Map();
+  for (const action of fieldActions) actionCounts.set(action.requestedId, (actionCounts.get(action.requestedId) || 0) + 1);
+  const actionDuplicates = [...actionCounts.entries()]
+    .filter(([_id, count]) => count > 1)
+    .map(([id, count]) => ({ id, count }));
+  const propertyHandleCount = ed && ed.afieldPropertyActionDisposables
+    ? ed.afieldPropertyActionDisposables.length
+    : 0;
+  const result = {
+    labels: labels.slice(0, 80),
+    editLabelCount: editLabels.length,
+    duplicates,
+    fieldActionCount: fieldActions.length,
+    missingActions: fieldActionIds.filter((id) => !actionCounts.has(id)),
+    propertyHandleCount,
+    actionDuplicates,
+    errors,
+  };
+  result.ok = duplicates.length === 0 &&
+    actionDuplicates.length === 0 &&
+    fieldActions.length === fieldActionIds.length &&
+    propertyHandleCount === propertyIds.length &&
+    errors.length === 0;
+  if (!result.ok && fieldActions.length === 0) result.reason = "Monaco editor actions were not available";
+  return result;
+} finally {
+  window.removeEventListener("error", onError);
+}
+"""
+
 OUTPUT_AREA_BASICS_JS = r"""
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const errors = [];
@@ -474,16 +543,26 @@ try {
   const bottoms = toastBottoms().sort((a, b) => a - b);
   const first = bottoms[0] ?? 0;
   const deltas = bottoms.slice(1).map((value, index) => value - bottoms[index]);
+  const loading = document.createElement("div");
+  loading.className = "field-startup-progress";
+  loading.innerHTML = '<div class="field-startup-progress-title">Loading document</div><div class="field-startup-progress-detail"></div><div class="field-startup-progress-track"><div class="field-startup-progress-bar"></div></div>';
+  document.body.appendChild(loading);
+  const loadingStyle = getComputedStyle(loading);
   const result = {
     count: bottoms.length,
     bottoms,
     first,
     deltas,
+    loadingLeft: Number.parseFloat(loadingStyle.left || "0") || 0,
+    loadingBottom: Number.parseFloat(loadingStyle.bottom || "0") || 0,
     errors,
   };
+  loading.remove();
   result.ok = result.count >= 4 &&
     Math.abs(first - 10) <= 1.5 &&
     result.deltas.every((delta) => delta >= 6) &&
+    Math.abs(result.loadingLeft - 10) <= 1.5 &&
+    Math.abs(result.loadingBottom - 10) <= 1.5 &&
     result.errors.length === 0;
   return result;
 } finally {
@@ -2071,6 +2150,7 @@ def prepare_generated_files() -> dict[str, Path]:
         "editor_sync_initial_snippet": write_generated_file("editor-sync-initial.kt", EDITOR_SYNC_INITIAL_SNIPPET),
         "output_area_basics_snippet": write_generated_file("output-area-basics.kt", OUTPUT_AREA_BASICS_SNIPPET),
         "this_binding_js": write_generated_file("command-palette-this-binding.js", COMMAND_PALETTE_THIS_BINDING_JS),
+        "monaco_context_menu_actions_js": write_generated_file("monaco-context-menu-actions.js", MONACO_CONTEXT_MENU_ACTIONS_JS),
         "palette_smoke_sweep_js": write_generated_file("command-palette-smoke-sweep.js", COMMAND_PALETTE_SMOKE_SWEEP_JS),
         "editor_open_edit_sync_js": write_generated_file("editor-open-edit-sync.js", EDITOR_OPEN_EDIT_SYNC_JS),
         "insert_stack_marker_js": write_generated_file("insert-stack-marker.js", INSERT_STACK_MARKER_JS),
@@ -2121,6 +2201,19 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 "editor-open @last --property code",
                 "sleep 0.5",
                 shell_join(["page-eval", "--body", "--file", str(files["palette_smoke_sweep_js"]), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--uid", "@last", "--with-editor", "--no-pan", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="monaco-context-menu-actions",
+            description="Monaco context menu shows one copy of each Field editor action after repeated editor refreshes.",
+            commands=[
+                "new-box --name MonacoContextMenuRegression",
+                shell_join(["set", "@last", "code", "println(\"context menu regression\")"]),
+                "editor-open @last --property code",
+                "sleep 0.5",
+                shell_join(["page-eval", "--body", "const ed = window.globalEditor; if (!ed) return { ok: false, reason: 'globalEditor missing' }; for (let i = 0; i < 5; i++) { if (typeof window.selectionContextChanged === 'function') window.selectionContextChanged(); await new Promise(resolve => setTimeout(resolve, 80)); } ed.focus(); ed.setPosition({ lineNumber: 1, column: 1 }); return { ok: true };", "--timeout", pw_timeout]),
+                shell_join(["page-eval", "--body", "--file", str(files["monaco_context_menu_actions_js"]), "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--uid", "@last", "--with-editor", "--no-pan", "--timeout", pw_timeout]),
         ),
