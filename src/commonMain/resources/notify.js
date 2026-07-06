@@ -70,16 +70,16 @@ var notify = (text, cat = "") => {
         function restackBubbles() {
                 const bubbles = Array.from(document.getElementsByClassName("bubble"));
                 if (bubbles.length === 0) return;
-                let base = 18;
+                let base = 10;
                 const startup = document.querySelector(".field-startup-progress:not(.field-startup-progress-done)");
                 if (startup) {
-                        base += startup.getBoundingClientRect().height + 8;
+                        base += startup.getBoundingClientRect().height + 6;
                 }
                 for (const node of bubbles) {
                         if (!document.body.contains(node)) continue;
                         const rect = node.getBoundingClientRect();
                         node.style.bottom = `${base}px`;
-                        base += rect.height + 8;
+                        base += rect.height + 6;
                 }
         }
 

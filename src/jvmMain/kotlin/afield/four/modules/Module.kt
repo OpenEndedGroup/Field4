@@ -14,6 +14,7 @@ import afield.four.texture.HasDefaultTextureSampler
 import afield.four.texture.HasImageView
 import afield.four.texture.HasImageViewArray
 import afield.four.texture.ImageView
+import afield.four.texture.PreparesSampledImages
 import afield.four.texture.TextureSampler
 import afield.four.util.AutoDisposer
 import afield.four.util.FIELD_PROBE_BUFFER_NAME
@@ -180,12 +181,17 @@ data class Parameters(
                     override val imageViewArray = listOf(found)
                 }
                 val sampler = (found as? HasDefaultTextureSampler)?.defaultSampler ?: TextureSampler(
-                    renderer = fromContext(), found.imageView.imageViewData.mipLevels, true
+                    renderer = fromContext(), sampledTextureMipLevels(found), true
                 )
                 provider to sampler
             } else null
         }
     }
+}
+
+private fun sampledTextureMipLevels(view: HasImageView): Int {
+    return (view as? RenderToTexture)?.mipLevels
+        ?: view.imageView.imageViewData.mipLevels
 }
 
 fun parameters(renderer: Renderer = fromContext(), build: Parameters.() -> Unit): Parameters {
@@ -221,7 +227,25 @@ private fun sampledImageLayout(view: HasImageView): Int {
     else VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 }
 
+internal fun prepareSampledImagesForUniforms(
+    uniforms: Iterable<UpdatesDescriptorSet>,
+    command: CommandBuffer
+) {
+    uniforms.forEach { uniform ->
+        when (uniform) {
+            is Module.TexturePointer -> (uniform.texture as? PreparesSampledImages)?.prepareSampledImagesFor(command)
+            is Module.TextureArrayPointer -> (uniform.texture as? PreparesSampledImages)?.prepareSampledImagesFor(command)
+        }
+    }
+}
+
 class ModulePointer(var current: Module) : Renderable {
+    fun prepareSampledImagesFor(command: CommandBuffer) {
+        if (current.valid && current.enabled) {
+            prepareSampledImagesForUniforms(current.uniforms.values, command)
+        }
+    }
+
     override fun render(command: CommandBuffer, bounds: Rectanglef) {
         if (current.valid && current.enabled) current.render(command, bounds)
         else {
@@ -397,6 +421,9 @@ class Module(val parameters: Parameters) : Renderable {
         override fun pushDescriptorSet(
             command: CommandBuffer, pipelineLayout: Long, bindPoint: Int
         ) {
+            if (!command.inRenderPassInstance) {
+                (texture as? PreparesSampledImages)?.prepareSampledImagesFor(command)
+            }
             MemoryStack.stackPush().use { stack ->
                 val views = texture.imageViewArray
                 require(views.isNotEmpty()) { "TexturePointer ${name} has no image views" }
@@ -427,6 +454,9 @@ class Module(val parameters: Parameters) : Renderable {
         override fun pushDescriptorSet(
             command: CommandBuffer, pipelineLayout: Long, bindPoint: Int
         ) {
+            if (!command.inRenderPassInstance) {
+                (texture as? PreparesSampledImages)?.prepareSampledImagesFor(command)
+            }
             MemoryStack.stackPush().use { stack ->
                 val views = texture.imageViewArray
                 require(views.isNotEmpty()) { "TextureArrayPointer ${name} has no image views" }

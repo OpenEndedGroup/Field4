@@ -1,6 +1,7 @@
 package afield
 
 import afield.logger.lprintln
+import kotlinx.coroutines.runBlocking
 import org.yaml.snakeyaml.Yaml
 import java.io.File
 import java.time.Instant
@@ -73,6 +74,20 @@ object OperationTranscript {
         val scope: String,
         val projectName: String,
         val dir: File
+    )
+
+    private data class MacroReplayContext(
+        val macroName: String = "",
+        val operationIndex: Int = -1,
+        val operationCount: Int = -1,
+        val launchIndex: Int = -1,
+        val launchCount: Int = -1
+    )
+
+    private data class MacroLaunchRequest(
+        val target: Box,
+        val exec: Execute,
+        val context: MacroReplayContext
     )
 
     private val states = java.util.concurrent.ConcurrentHashMap<String, DocumentState>()
@@ -294,6 +309,7 @@ object OperationTranscript {
         val normalizedDirection = if (direction.equals("undo", ignoreCase = true)) "undo" else "do"
         val ordered = if (normalizedDirection == "undo") operations.asReversed() else operations
         val targets = targetBoxes.filter { it.isNotBlank() }.ifEmpty { listOf("") }
+        val launchCount = ordered.count { operationVerb(it) in launchVerbs }
         val errors = mutableListOf<String>()
         var applied = 0
         var skipped = 0
@@ -301,9 +317,47 @@ object OperationTranscript {
         targets.forEach { target ->
             val primarySource = firstOperationBox(operations)
             val boxMap = if (target.isNotBlank() && primarySource != null) mapOf(primarySource to target) else emptyMap()
-            ordered.forEach { op ->
+            var launchIndex = 0
+            var index = 0
+            while (index < ordered.size) {
+                if (normalizedDirection == "do" && operationVerb(ordered[index]) in launchVerbs) {
+                    val launchGroup = mutableListOf<Pair<Map<String, Any?>, MacroReplayContext>>()
+                    while (index < ordered.size && operationVerb(ordered[index]) in launchVerbs) {
+                        val op = ordered[index]
+                        launchGroup += op to MacroReplayContext(
+                            macroName = cleanName,
+                            operationIndex = index + 1,
+                            operationCount = ordered.size,
+                            launchIndex = ++launchIndex,
+                            launchCount = launchCount
+                        )
+                        index++
+                    }
+                    val result = runCatching {
+                        applyMacroLaunchGroup(launchGroup, boxMap)
+                    }
+                    if (result.isSuccess) {
+                        val (groupApplied, groupSkipped) = result.getOrThrow()
+                        applied += groupApplied
+                        skipped += groupSkipped
+                    } else {
+                        skipped += launchGroup.size
+                        errors += result.exceptionOrNull()?.message ?: "Unknown macro launch group failure."
+                    }
+                    continue
+                }
+
+                val op = ordered[index]
+                val verb = operationVerb(op)
+                val context = MacroReplayContext(
+                    macroName = cleanName,
+                    operationIndex = index + 1,
+                    operationCount = ordered.size,
+                    launchIndex = if (verb in launchVerbs) ++launchIndex else -1,
+                    launchCount = launchCount
+                )
                 val result = runCatching {
-                    applyMacroOperation(op, boxMap, normalizedDirection, strict)
+                    applyMacroOperation(op, boxMap, normalizedDirection, strict, context)
                 }
                 if (result.isSuccess) {
                     if (result.getOrDefault(false)) applied++ else skipped++
@@ -311,6 +365,7 @@ object OperationTranscript {
                     skipped++
                     errors += result.exceptionOrNull()?.message ?: "Unknown macro operation failure."
                 }
+                index++
             }
         }
         if (applied > 0) runCatching { doResync() }
@@ -1116,11 +1171,17 @@ object OperationTranscript {
             }
             .firstOrNull()
 
+    private val launchVerbs = setOf("launch", "launch-all", "launch-fragment")
+
+    private fun operationVerb(operation: Map<String, Any?>): String =
+        operation.keys.firstOrNull()?.lowercase().orEmpty()
+
     private fun applyMacroOperation(
         operation: Map<String, Any?>,
         boxMap: Map<String, String>,
         direction: String,
-        strict: Boolean
+        strict: Boolean,
+        context: MacroReplayContext = MacroReplayContext()
     ): Boolean {
         val verb = operation.keys.firstOrNull()?.lowercase() ?: return false
         val payload = operation.values.firstOrNull() as? Map<*, *> ?: return false
@@ -1221,10 +1282,8 @@ object OperationTranscript {
                     target.ke.stop(target)
                     return true
                 }
-                val exec = executeFromPayload(target.id, payload, fallbackType = payload["type"]?.toString() ?: "launch")
-                send(Message("clear-editor-outputs").payload(ClearEditorOutputs(target.id)))
-                target.ke.launchAll(target, exec, exec.code, strand = exec.strand, reply = { send(it) })
-                true
+                val (applied, _) = applyMacroLaunchGroup(listOf(operation to context), boxMap)
+                applied > 0
             }
             "stop", "stop-all", "stop-box" -> {
                 if (direction == "undo") return false
@@ -1249,6 +1308,88 @@ object OperationTranscript {
             else -> false
         }
     }
+
+    private fun applyMacroLaunchGroup(
+        operations: List<Pair<Map<String, Any?>, MacroReplayContext>>,
+        boxMap: Map<String, String>
+    ): Pair<Int, Int> {
+        val launches = operations.mapNotNull { (operation, context) ->
+            macroLaunchRequest(operation, boxMap, context)
+        }
+        if (launches.isEmpty()) return 0 to operations.size
+
+        val cleared = mutableSetOf<String>()
+        launches.forEach { launch ->
+            if (cleared.add(launch.target.id)) {
+                send(Message("clear-editor-outputs").payload(ClearEditorOutputs(launch.target.id)))
+            }
+            notifyMacroLaunch(launch.target, launch.exec, launch.context)
+        }
+
+        val requests = launches.map { it.target to it.exec }
+        if (requests.all { (target, _) -> target.ke is KotlinExecution }) {
+            runBlocking {
+                KotlinExecution.launchBatchAndWait(requests) { send(it) }
+            }
+        } else {
+            requests.forEach { (target, exec) ->
+                target.ke.launchAll(target, exec, exec.code, strand = exec.strand, reply = { send(it) })
+            }
+        }
+
+        return launches.size to (operations.size - launches.size)
+    }
+
+    private fun macroLaunchRequest(
+        operation: Map<String, Any?>,
+        boxMap: Map<String, String>,
+        context: MacroReplayContext
+    ): MacroLaunchRequest? {
+        val verb = operation.keys.firstOrNull()?.lowercase() ?: return null
+        if (verb !in launchVerbs) return null
+        val payload = operation.values.firstOrNull() as? Map<*, *> ?: return null
+        val raw = (payload["box"] ?: payload["uid"] ?: payload["id"] ?: payload["target"])?.toString() ?: return null
+        val mapped = boxMap[raw] ?: raw
+        val target = runCatching { box(mapped, createIfMissing = false) }.getOrNull() ?: return null
+        val exec = executeFromPayload(target.id, payload, fallbackType = payload["type"]?.toString() ?: "launch")
+        return MacroLaunchRequest(target, exec, context)
+    }
+
+    private fun notifyMacroLaunch(target: Box, execute: Execute, context: MacroReplayContext) {
+        val macro = context.macroName.ifBlank { "macro" }
+        val launchProgress = if (context.launchIndex > 0 && context.launchCount > 0) {
+            " ${context.launchIndex}/${context.launchCount}"
+        } else {
+            ""
+        }
+        val operationProgress = if (context.operationIndex > 0 && context.operationCount > 0) {
+            " op ${context.operationIndex}/${context.operationCount}"
+        } else {
+            ""
+        }
+        val strand = execute.strand.ifBlank { "default" }
+        val property = execute.property.ifBlank { "code" }
+        val label = target.name.ifBlank { target.id.take(8) }
+        val message = "Macro '${escapeNotifyText(macro)}' launch$launchProgress$operationProgress: " +
+            "${escapeNotifyText(label)}.${escapeNotifyText(property)} strand ${escapeNotifyText(strand)}"
+        val notifyMessage = Message("notify").payload(Notify(message, "macro-launch"))
+        val documentPath = documentPathFor(target)
+        if (documentPath == null) {
+            notify(message, "macro-launch")
+        } else {
+            _send(notifyMessage, document = Regex.escape(documentPath))
+        }
+        lprintln(
+            "info,operation-transcript",
+            "macro launch name=$macro launchIndex=${context.launchIndex}/${context.launchCount} " +
+                "op=${context.operationIndex}/${context.operationCount} box=${target.id} property=$property strand=$strand"
+        )
+    }
+
+    private fun escapeNotifyText(text: String): String =
+        text.replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
 
     private fun tombstoneBox(target: Box) {
         if (target.id == "root" || target.id == METAROOT_ID) return

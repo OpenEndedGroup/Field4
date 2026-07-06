@@ -56,6 +56,9 @@ private const val AGENT_GRAPHICS_CONTEXT_ID = "agent_graphics_context"
 private const val AGENT_GRAPHICS_CONTEXT_NAME = "renderer"
 private const val INITIAL_FRAME_PREVIEW_PAINT_PAUSE_MS = 100L
 
+private fun escapeNotifyText(text: String): String =
+    text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
 private fun String.isHttpUrl(): Boolean =
     startsWith("http://", ignoreCase = true) || startsWith("https://", ignoreCase = true)
 
@@ -209,6 +212,13 @@ internal fun attachDocumentSession(
                 )
                 Thread.sleep(INITIAL_FRAME_PREVIEW_PAINT_PAUSE_MS)
             }
+
+            sendDocumentLoadStatus(
+                session,
+                phase = "metadata-started",
+                message = "loading metadata",
+                completed = 0
+            )
 
             // Phase 1: Load boxes without triggering KotlinInterface init.
             // Box creation and property deserialization is fast; the heavy
@@ -373,6 +383,49 @@ internal fun attachDocumentSession(
     }
 
     return info
+}
+
+internal fun launchDocumentSessionAttach(
+    session: WebSocketSession,
+    documentName: String?,
+    username: String = "agent",
+    scratch: Boolean = false,
+    sessionKey: String? = null
+) {
+    agentBackdoorScope.launch {
+        thisSession.set(session)
+        try {
+            attachDocumentSession(
+                session = session,
+                documentName = documentName,
+                username = username,
+                scratch = scratch,
+                sessionKey = sessionKey
+            )
+        } catch (t: Throwable) {
+            lprintln("error,agent_backdoor", "document attach failed for ${documentName ?: sessionKey ?: "<scratch>"}: ${t.message}")
+            lprintln("error,agent_backdoor", t.stackTraceToString())
+            _send(
+                session,
+                Message("notify").payload(
+                    Notify("Could not load document: ${escapeNotifyText(t.message ?: t.javaClass.simpleName)}", "setup")
+                )
+            )
+            _send(
+                session,
+                Message("document-load-status").payload(
+                    DocumentLoadStatus(
+                        phase = "error",
+                        message = "document load failed",
+                        terminal = true
+                    )
+                )
+            )
+        } finally {
+            thisSession.remove()
+            thisSessionInfo.remove()
+        }
+    }
 }
 
 private fun loadableBoxes(info: SessionInformation): List<Box> {

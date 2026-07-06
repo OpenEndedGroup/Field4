@@ -78,6 +78,44 @@ private fun renderDefinedInHtml(definedInRaw: String, currentUid: String): Strin
     }
 }
 
+private val generatedFieldSourceRegex = Regex("""\b([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})__([A-Za-z0-9_]+)_${'$'}\d+(?:\.(?:kts?|java))?(?::(\d+))?""")
+
+private fun formatGeneratedFieldSourceLinksHtml(raw: String): String? {
+    var changed = false
+    val formatted = generatedFieldSourceRegex.replace(raw) { match ->
+        val uid = match.groupValues[1]
+        val property = match.groupValues[2].ifBlank { "code" }
+        val line = match.groupValues.getOrNull(3)?.toIntOrNull()
+        val boxName = findBoxNameByUid(uid)?.takeIf { it.isNotBlank() } ?: uid.take(8)
+        val escapedUid = escapeHtml(uid)
+        val escapedProperty = escapeHtml(property)
+        val label = buildString {
+            append(boxName)
+            append(":")
+            append(property)
+            if (line != null) append(":").append(line)
+        }
+        val href = buildString {
+            append("#box:")
+            append(escapedUid)
+            append("?property=")
+            append(escapedProperty)
+            if (line != null) append("&line=").append(line)
+        }
+        changed = true
+        "<a class=\"field-error-box-link\" href=\"$href\" data-box-uid=\"$escapedUid\" data-box-property=\"$escapedProperty\"${line?.let { " data-box-scroll-to-line=\"$it\" data-box-highlight-line=\"$it\"" } ?: ""} title=\"${escapeHtml(match.value)}\">${escapeHtml(label)}</a>"
+    }
+    return if (changed) formatted else null
+}
+
+private fun formatErrorOutputHtml(html: String, uid: String): String {
+    return formatKotlinCompilerErrorHtml(html, uid)
+        ?: formatKotlinTypeMismatchHtml(html)
+        ?: formatKotlinSingleLineErrorHtml(html, uid)
+        ?: formatGeneratedFieldSourceLinksHtml(html)
+        ?: html
+}
+
 private fun formatKotlinCompilerErrorHtml(raw: String, currentUid: String): String? {
     val normalized = raw.replace("\r\n", "\n")
     val lines = normalized.split("\n")
@@ -420,10 +458,7 @@ fun routeMonacoOutput(payload: Output, uidOverride: String = ""): Boolean {
                 if (html.isEmpty()) {
                     clearErrors(w.globalEditor)
                 } else {
-                    val formatted = formatKotlinCompilerErrorHtml(html, uid)
-                        ?: formatKotlinTypeMismatchHtml(html)
-                        ?: formatKotlinSingleLineErrorHtml(html, uid)
-                        ?: html
+                    val formatted = formatErrorOutputHtml(html, uid)
                     addOutput(w.globalEditor, formatted, line, "error", annotation, frameMarker, startColumn, endLine, endColumn)
                     setStackTraceHints(w.globalEditor, stackLocationsFor(payload, uid, property))
                     w.lastErrorIs = arrayOf(line - 1, html)
@@ -433,10 +468,7 @@ fun routeMonacoOutput(payload: Output, uidOverride: String = ""): Boolean {
                 if (html.isEmpty()) {
                     clearErrors(embeddedEditor.editor)
                 } else {
-                    val formatted = formatKotlinCompilerErrorHtml(html, uid)
-                        ?: formatKotlinTypeMismatchHtml(html)
-                        ?: formatKotlinSingleLineErrorHtml(html, uid)
-                        ?: html
+                    val formatted = formatErrorOutputHtml(html, uid)
                     addOutput(embeddedEditor.editor, formatted, line, "error", annotation, frameMarker, startColumn, endLine, endColumn)
                     setStackTraceHints(embeddedEditor.editor, stackLocationsFor(payload, uid, property))
                 }

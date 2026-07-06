@@ -88,10 +88,12 @@ open class LoadedTexture protected constructor(
         val imageData: ImageData = ImageData().width(width).height(height)
             .usage(VK10.VK_IMAGE_USAGE_TRANSFER_DST_BIT or VK10.VK_IMAGE_USAGE_SAMPLED_BIT).format(imageFormat)
             .mipLevels(mipLevels)
+            .debugName("LoadedTexture ${sourceName.substringAfterLast('/')} ${width}x${height}")
 
         image = Image(renderer.device, imageData)
         val imageViewData: ImageViewData =
             ImageViewData().format(image.format).aspectMask(VK10.VK_IMAGE_ASPECT_COLOR_BIT).mipLevels(mipLevels)
+                .debugName("LoadedTextureView ${sourceName.substringAfterLast('/')} ${width}x${height}")
         imageView = ImageView(renderer.device, image, imageViewData)
     }
 
@@ -793,10 +795,12 @@ class MappedMonochromeTexture(
             .usage(usage)
             .format(VK_FORMAT_R8_UNORM)
             .mipLevels(desiredMips)
+            .debugName("LazyLoadedTexture ${fileName.substringAfterLast('/')} ${header.width}x${header.height}")
 
         image = Image(renderer.device, imageData)
         val imageViewData: ImageViewData =
             ImageViewData().format(image.format).aspectMask(VK10.VK_IMAGE_ASPECT_COLOR_BIT).mipLevels(desiredMips)
+                .debugName("LazyLoadedTextureView ${fileName.substringAfterLast('/')} ${header.width}x${header.height}")
         imageView = ImageView(renderer.device, image, imageViewData)
 
         width = header.width

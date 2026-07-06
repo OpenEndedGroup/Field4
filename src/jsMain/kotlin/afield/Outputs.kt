@@ -993,6 +993,10 @@ fun addInlineOutput(
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun addExecutionMarker(editor: dynamic, startLine: Int, endLine: Int): String {
+    return addExecutionMarker(editor, startLine, endLine, markerKey = null)
+}
+
+private fun addExecutionMarker(editor: dynamic, startLine: Int, endLine: Int, markerKey: String?): String {
     if (executionsCollection == null) {
         executionsCollection = editor.createDecorationsCollection(emptyArray<Any>())
     }
@@ -1007,7 +1011,7 @@ fun addExecutionMarker(editor: dynamic, startLine: Int, endLine: Int): String {
     val range = newRange(startLine, 1, endLine, 1)
     val found = mutableListOf<Int>()
     executionDecorations.forEachIndexed { index, _ ->
-        val rangeNow = executionsCollection.getRange(index)
+        val rangeNow = executionsCollection.getRange(index) ?: return@forEachIndexed
         if (range.intersectRanges(rangeNow) as? Boolean == true) {
             found.add(0, index)
         }
@@ -1024,7 +1028,8 @@ fun addExecutionMarker(editor: dynamic, startLine: Int, endLine: Int): String {
     val decoration = js("{}")
     decoration.range = range
     decoration.options = options
-    decoration._sourceClassname = className
+    decoration._sourceClassname = markerKey ?: className
+    decoration._visualClassname = className
 
     executionsCollection.append(arrayOf(decoration))
     executionDecorations.add(decoration)
@@ -1033,15 +1038,44 @@ fun addExecutionMarker(editor: dynamic, startLine: Int, endLine: Int): String {
 
 @OptIn(ExperimentalJsExport::class)
 @JsExport
-fun setStatusForExecutionMarker(className: String, running: Boolean, mode: String) {
-    executionDecorations.forEachIndexed { index, decor ->
-        if (decor._sourceClassname == className) {
-            decor.options.linesDecorationsClassName =
-                if (running) "$className ${executionMarkerStateClass(mode)}" else className
-            decor.range = executionsCollection.getRange(index)
+fun ensureExecutionMarkerForLaunch(editor: dynamic, markerKey: String, startLine: Int, endLine: Int): Boolean {
+    val key = markerKey.ifBlank { "default" }
+    if (executionsCollection != null) {
+        executionDecorations.forEachIndexed { index, decor ->
+            if (decor._sourceClassname == key && executionsCollection.getRange(index) != null) return true
         }
     }
-    executionsCollection?.set(executionDecorations.toTypedArray())
+    addExecutionMarker(editor, startLine, endLine, markerKey = key)
+    return true
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun setStatusForExecutionMarker(className: String, running: Boolean, mode: String): Boolean {
+    val collection = executionsCollection ?: return false
+    var found = false
+    val stale = mutableListOf<Int>()
+    executionDecorations.forEachIndexed { index, decor ->
+        if (decor._sourceClassname == className) {
+            val range = collection.getRange(index)
+            if (range == null) {
+                stale.add(0, index)
+                return@forEachIndexed
+            }
+            val visualClassName = decor._visualClassname as? String ?: className
+            decor.options.linesDecorationsClassName =
+                if (running) "$visualClassName ${executionMarkerStateClass(mode)}" else visualClassName
+            decor.range = range
+            found = true
+        }
+    }
+    for (idx in stale) {
+        executionDecorations.removeAt(idx)
+    }
+    if (found || stale.isNotEmpty()) {
+        collection.set(executionDecorations.toTypedArray())
+    }
+    return found
 }
 
 @OptIn(ExperimentalJsExport::class)
@@ -1335,6 +1369,7 @@ fun addOutput(
         domNode.className = ""
         domNode.classList.add("execution_output")
         domNode.classList.add(extraClass)
+        (found.domNodeInner as? HTMLElement)?.classList?.toggle("copyable-error-output", extraClass == "error")
         domNode.style.asDynamic().overflow = if (replaceRichHtml) "hidden" else "scroll"
         domNode.style.zIndex = "11"
         if (shouldPulse) {
@@ -1398,6 +1433,9 @@ fun addOutput(
 
             domNodeInner.onmousedown = { _: dynamic -> }
             domNodeInner.classList.add("inner_output")
+            if (extraClass == "error") {
+                domNodeInner.classList.add("copyable-error-output")
+            }
             domNodeInner.style.background = "rgba(0,0,0,1)"
             domNodeInner.style.borderRadius = "8px"
             domNodeInner.style.width = "calc( 100% - 8px )"
@@ -1448,12 +1486,14 @@ fun addOutput(
             zone.domNode = domNode
             zone.marginDomNode = domNodeControl
 
-            for (i in 0 until domNodeInner.children.length) {
-                val child = domNodeInner.children.item(i)
-                child?.addEventListener("mousemove", { e: dynamic ->
-                    e.stopPropagation()
-                    e.stopImmediatePropagation()
-                })
+            if (extraClass != "error") {
+                for (i in 0 until domNodeInner.children.length) {
+                    val child = domNodeInner.children.item(i)
+                    child?.addEventListener("mousemove", { e: dynamic ->
+                        e.stopPropagation()
+                        e.stopImmediatePropagation()
+                    })
+                }
             }
 
             val id = changeAccessor.addZone(zone)

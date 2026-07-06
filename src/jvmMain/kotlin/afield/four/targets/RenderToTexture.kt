@@ -28,6 +28,7 @@ import org.lwjgl.vulkan.KHRDynamicRendering.VK_STRUCTURE_TYPE_RENDERING_INFO_KHR
 import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VK13.*
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.atomic.AtomicInteger
 
 data class RTTParameters(
     var width: Int = 1024,
@@ -64,7 +65,8 @@ data class RTTParameters(
     var clearStencil: Int = 0,
     var depthLoadOp: Int = VK_ATTACHMENT_LOAD_OP_CLEAR,
     var depthStoreOp: Int = VK_ATTACHMENT_STORE_OP_STORE,
-    var depthSampled: Boolean = false               // set true only if you intend to sample the depth later
+    var depthSampled: Boolean = false,              // set true only if you intend to sample the depth later
+    var debugName: String = ""
 )
 
 /**
@@ -74,10 +76,11 @@ data class RTTParameters(
 open class RenderToTexture(
     val renderer: Renderer = fromContext(),
     parameters: RTTParameters.() -> Unit = {}
-) : Target, HasImageView, HasImageViewArray, HasDefaultTextureSampler {
+) : Target, HasImageView, HasImageViewArray, HasDefaultTextureSampler, PreparesSampledImages {
 
     var parameters = RTTParameters().apply(parameters)
     override var defaultSampler: TextureSampler? = null
+    private val debugName = parametersDebugName()
 
     fun setDefaultSampler(
         anisotropyEnable: Boolean = true,
@@ -120,9 +123,10 @@ open class RenderToTexture(
     val colorImageRefs: MutableList<Image?>          // null when external view has no underlying Image
     val colorImageHandles: MutableList<Long>         // always the underlying VkImage handle
     protected val mutableImageViewArray: MutableList<HasImageView>
+    private val sampledMip0ImageViewArray: MutableList<HasImageView>
     protected val attachmentImageViews: MutableList<ImageView>
     override val imageViewArray: List<HasImageView>
-        get() = mutableImageViewArray
+        get() = if (usesFullSampledMipChain()) mutableImageViewArray else sampledMip0ImageViewArray
     val colorFormats: List<Int>
     val colorLayerCount: Int
 
@@ -151,6 +155,15 @@ open class RenderToTexture(
     val height: Int get() = parameters.height
     val mipLevels: Int get() = parameters.mipLevels
 
+    private fun usesFullSampledMipChain(): Boolean {
+        if (mipLevels <= 1) return true
+        if (!parameters.generateColorMipmaps) return false
+        return colorImageHandles.indices.all { idx ->
+            colorMipsInitialized.getOrElse(idx) { false } &&
+                    colorFormatCanBlit.getOrElse(idx) { false }
+        }
+    }
+
     var modules = mutableMapOf<String, ModulePointer>()
 
     private data class FileSaveRequest(
@@ -170,6 +183,37 @@ open class RenderToTexture(
 
     private val fileSaveLock = Any()
     private val pendingFileSaves = ArrayDeque<FileSaveRequest>()
+
+    private fun parametersDebugName(): String {
+        val explicit = parameters.debugName.trim()
+        if (explicit.isNotEmpty()) return explicit
+        return "RenderToTexture#${nextRttDebugId.getAndIncrement()}@${allocationSite()}"
+    }
+
+    private fun allocationSite(): String {
+        val ignoredPrefixes = listOf(
+            "java.",
+            "jdk.",
+            "kotlin.",
+            "afield.four.targets.RenderToTexture"
+        )
+        val frame = Throwable().stackTrace.firstOrNull { st ->
+            ignoredPrefixes.none { st.className.startsWith(it) }
+        } ?: return "unknown"
+        return "${frame.fileName ?: frame.className}:${frame.lineNumber}"
+    }
+
+    private fun imageDebugName(kind: String, attachment: Int? = null): String =
+        buildString {
+            append(debugName)
+            append(" ")
+            append(kind)
+            if (attachment != null) append("[").append(attachment).append("]")
+            append(" ")
+            append(width)
+            append("x")
+            append(height)
+        }
 
     /**
      * Queue a non-blocking save of a color attachment to JPEG.
@@ -330,6 +374,39 @@ open class RenderToTexture(
             else -> VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT to 0L
         }
 
+    override fun prepareSampledImagesFor(command: CommandBuffer) {
+        if (!parameters.colorSampled) return
+        if (colorImageHandles.isEmpty()) return
+
+        MemoryStack.stackPush().use { stack ->
+            colorImageHandles.forEachIndexed { idx, _ ->
+                if (colorLayout.getOrElse(idx) { VK_IMAGE_LAYOUT_UNDEFINED } != VK_IMAGE_LAYOUT_UNDEFINED) {
+                    return@forEachIndexed
+                }
+
+                val range = VkImageSubresourceRange.calloc(stack)
+                    .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                    .baseMipLevel(0)
+                    .levelCount(1)
+                    .baseArrayLayer(0)
+                    .layerCount(colorLayerCount.coerceAtLeast(1))
+
+                transitionColorAttachment(
+                    command = command,
+                    attachment = idx,
+                    srcStage = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
+                    dstStage = sampledReadStageMask,
+                    srcAccess = 0L,
+                    dstAccess = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
+                    oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                    newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                    range = range
+                )
+                colorLayout[idx] = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+            }
+        }
+    }
+
     private fun transitionColorAttachment(
         command: CommandBuffer,
         attachment: Int,
@@ -462,6 +539,7 @@ open class RenderToTexture(
         }
 
         val tmpViews = MutableList<HasImageView?>(colorFormats.size) { null }
+        val tmpSampledMip0Views = MutableList<HasImageView?>(colorFormats.size) { null }
         val tmpAttachmentViews = MutableList<ImageView?>(colorFormats.size) { null }
         val tmpImageRefs = MutableList<Image?>(colorFormats.size) { null }
         val tmpImageHandles = MutableList<Long>(colorFormats.size) { 0L }
@@ -484,12 +562,26 @@ open class RenderToTexture(
                             .baseArrayLayer(external.imageView.imageViewData.baseArrayLayer)
                             .layerCount(colorLayerCount.coerceAtLeast(1))
                             .mipLevels(external.imageView.imageViewData.mipLevels)
+                            .debugName(imageDebugName("sampled-array-view", idx))
                             .viewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY)
                         ImageView(renderer.device, external.imageView.image, ivd)
                     } else {
                         external.imageView
-                    }
+                }
                 tmpViews[idx] = sampledView
+                tmpSampledMip0Views[idx] =
+                    if (sampledView.imageView.imageViewData.mipLevels == 1) sampledView
+                    else {
+                        val ivd = ImageViewData()
+                            .format(fmt)
+                            .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                            .baseArrayLayer(sampledView.imageView.imageViewData.baseArrayLayer)
+                            .layerCount(colorLayerCount.coerceAtLeast(1))
+                            .mipLevels(1)
+                            .debugName(imageDebugName("sampled-mip0-view", idx))
+                            .viewType(sampledView.imageView.imageViewData.viewType)
+                        ImageView(renderer.device, external.imageView.image, ivd)
+                    }
 
                 val attachmentView =
                     if (mipLevels == 1 && !forceColorArrayView) external.imageView
@@ -500,6 +592,7 @@ open class RenderToTexture(
                             .baseArrayLayer(external.imageView.imageViewData.baseArrayLayer)
                             .layerCount(colorLayerCount.coerceAtLeast(1))
                             .mipLevels(1)
+                            .debugName(imageDebugName("attachment-view", idx))
                         if (ivd.layerCount > 1 || forceColorArrayView) ivd.viewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY)
                         ImageView(renderer.device, external.imageView.image, ivd)
                     }
@@ -518,6 +611,7 @@ open class RenderToTexture(
                     )
                     .format(fmt)
                     .mipLevels(mipLevels)
+                    .debugName(imageDebugName("color", idx))
                     .aliasSingleLayerDescriptors(forceColorArrayView)
 
                 val img = Image(renderer.device, data)
@@ -526,10 +620,23 @@ open class RenderToTexture(
                     .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
                     .layerCount(data.arrayLayers)
                     .mipLevels(mipLevels)
+                    .debugName(imageDebugName("sampled-view", idx))
                 if (ivd.layerCount > 1 || forceColorArrayView) ivd.viewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY)
 
                 val view = ImageView(renderer.device, img, ivd)
                 tmpViews[idx] = view
+                tmpSampledMip0Views[idx] =
+                    if (mipLevels == 1) view
+                    else {
+                        val svd = ImageViewData()
+                            .format(data.format)
+                            .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                            .layerCount(data.arrayLayers)
+                            .mipLevels(1)
+                            .debugName(imageDebugName("sampled-mip0-view", idx))
+                        if (svd.layerCount > 1 || forceColorArrayView) svd.viewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY)
+                        ImageView(renderer.device, img, svd)
+                    }
                 tmpImageRefs[idx] = img
                 tmpImageHandles[idx] = img.vkImage
 
@@ -541,6 +648,7 @@ open class RenderToTexture(
                             .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
                             .layerCount(data.arrayLayers)
                             .mipLevels(1)
+                            .debugName(imageDebugName("attachment-view", idx))
                         if (avd.layerCount > 1 || forceColorArrayView) avd.viewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY)
                         ImageView(renderer.device, img, avd)
                     }
@@ -549,6 +657,7 @@ open class RenderToTexture(
         }
 
         mutableImageViewArray = tmpViews.map { requireNotNull(it) }.toMutableList()
+        sampledMip0ImageViewArray = tmpSampledMip0Views.map { requireNotNull(it) }.toMutableList()
         attachmentImageViews = tmpAttachmentViews.map { requireNotNull(it) }.toMutableList()
         colorImageRefs = tmpImageRefs
         colorImageHandles = tmpImageHandles
@@ -568,6 +677,7 @@ open class RenderToTexture(
                 .usage(depthUsage)
                 .format(this.parameters.depthFormat)
                 .mipLevels(1)
+                .debugName(imageDebugName("depth"))
                 .aliasSingleLayerDescriptors(this.parameters.depthSampled && colorLayerCount > 1)
 
             depthImage = Image(renderer.device, depthImageData)
@@ -579,6 +689,7 @@ open class RenderToTexture(
                 .aspectMask(depthAspect)
                 .layerCount(depthImageData.arrayLayers)
                 .mipLevels(1)
+                .debugName(imageDebugName("depth-view"))
             if (depthViewData.layerCount > 1) depthViewData.viewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY)
 
             depthImageView = ImageView(renderer.device, depthImage!!, depthViewData)
@@ -589,6 +700,7 @@ open class RenderToTexture(
                         .aspectMask(VK_IMAGE_ASPECT_DEPTH_BIT)
                         .layerCount(depthImageData.arrayLayers)
                         .mipLevels(1)
+                        .debugName(imageDebugName("depth-sampled-view"))
                     if (depthOnlyViewData.layerCount > 1) depthOnlyViewData.viewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY)
                     ImageView(
                         renderer.device,
@@ -665,9 +777,13 @@ open class RenderToTexture(
         require(attachment in imageViewArray.indices) {
             "attachment $attachment is out of range for RenderToTexture with ${imageViewArray.size} color attachments"
         }
-        val sourceProvider = object : HasImageViewArray {
+        val sourceProvider = object : HasImageViewArray, PreparesSampledImages {
             override val imageViewArray: List<HasImageView>
                 get() = listOf(this@RenderToTexture.imageViewArray[attachment])
+
+            override fun prepareSampledImagesFor(command: CommandBuffer) {
+                this@RenderToTexture.prepareSampledImagesFor(command)
+            }
         }
         return blitImageToScreen(
             sourceProvider = sourceProvider,
@@ -1255,6 +1371,10 @@ open class RenderToTexture(
             // Allow subclasses to enqueue additional transfers/uploads before rendering begins.
             prepareAdditionalResources(command, index)
 
+            // Texture providers may need layout transitions before descriptors are pushed.
+            // Dynamic rendering does not allow image barriers inside the rendering instance.
+            modules.values.forEach { it.prepareSampledImagesFor(command) }
+
             command.inRenderPassInstance = true
             KHRDynamicRendering.vkCmdBeginRenderingKHR(command.vkCommandBuffer, renderInfo)
 
@@ -1295,42 +1415,26 @@ open class RenderToTexture(
                     colorMipsInitialized[idx] = true
                     colorLayout[idx] = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL // after mipgen all mips are SRV
                 } else if (parameters.colorSampled) {
-                    // No mip gen: transition ALL mips to SRV so samplers see a consistent layout
-                    val allLevelsRange = MemoryStack.stackGet().let { st ->
-                        VkImageSubresourceRange.calloc(st)
-                            .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-                            .baseMipLevel(0)
-                            .levelCount(mipLevels)
-                            .baseArrayLayer(0)
-                            .layerCount(VK_REMAINING_ARRAY_LAYERS)
-                    }
+                    // No mip generation: only mip 0 was rendered. Keep descriptors on a mip-0 view
+                    // and transition exactly that subresource to the sampled layout.
+                    val baseLevelRange = VkImageSubresourceRange.calloc(stack)
+                        .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                        .baseMipLevel(0)
+                        .levelCount(1)
+                        .baseArrayLayer(0)
+                        .layerCount(colorLayerCount.coerceAtLeast(1))
 
-                    val imgRef = colorImageRefs.getOrElse(idx) { null }
-                    if (imgRef != null) {
-                        image_layout_transition(
-                            command.vkCommandBuffer,
-                            imgRef,
-                            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                            sampledReadStageMask,
-                            VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-                            VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
-                            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                            allLevelsRange
-                        )
-                    } else {
-                        image_layout_transition(
-                            command.vkCommandBuffer,
-                            img,
-                            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                            sampledReadStageMask,
-                            VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-                            VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
-                            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                            allLevelsRange
-                        )
-                    }
+                    transitionColorAttachment(
+                        command = command,
+                        attachment = idx,
+                        srcStage = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                        dstStage = sampledReadStageMask,
+                        srcAccess = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                        dstAccess = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
+                        oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                        newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                        range = baseLevelRange
+                    )
                     colorLayout[idx] = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
                 } else {
                     // Not sampling: keep mip 0 as color attachment
@@ -1629,6 +1733,8 @@ open class RenderToTexture(
         }
     }
 }
+
+private val nextRttDebugId = AtomicInteger(1)
 
 // --- helpers ---
 

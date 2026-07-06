@@ -322,6 +322,7 @@ open class PingPongRenderToTexture(
         val sampledView: ImageView,
         val attachmentView: ImageView
     )
+    private var additionalFrameBuildIndex: Int = 0
 
     init {
         require(colorImageHandles.isNotEmpty()) { "PingPongRenderToTexture requires at least one color attachment" }
@@ -355,10 +356,12 @@ open class PingPongRenderToTexture(
                 )
                 .format(colorFormats[attachment])
                 .mipLevels(mipLevels)
+                .debugName(pingDebugName("color", attachment))
                 .aliasSingleLayerDescriptors(this.parameters.forceColorArrayView)
         }
 
         fun createAdditionalFrame(attachment: Int): PingFrameResources {
+            val frame = additionalFrameBuildIndex
             val imageData = imageDataFor(attachment)
             val image = Image(renderer.device, imageData)
             val viewData = ImageViewData()
@@ -366,6 +369,7 @@ open class PingPongRenderToTexture(
                 .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
                 .layerCount(imageData.arrayLayers)
                 .mipLevels(mipLevels)
+                .debugName(pingDebugName("sampled-view", attachment, frame))
             if (viewData.layerCount > 1 || this.parameters.forceColorArrayView) {
                 viewData.viewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY)
             }
@@ -379,6 +383,7 @@ open class PingPongRenderToTexture(
                         .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
                         .layerCount(imageData.arrayLayers)
                         .mipLevels(1)
+                        .debugName(pingDebugName("attachment-view", attachment, frame))
                     if (avd.layerCount > 1 || this.parameters.forceColorArrayView) {
                         avd.viewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY)
                     }
@@ -389,7 +394,10 @@ open class PingPongRenderToTexture(
         }
 
         val additionalFrames = (0 until pingAttachmentCount).map { attachment ->
-            (1 until this.frameCount).map { createAdditionalFrame(attachment) }
+            (1 until this.frameCount).map { frame ->
+                additionalFrameBuildIndex = frame
+                createAdditionalFrame(attachment)
+            }
         }
 
         pingImages = (0 until pingAttachmentCount).map { attachment ->
@@ -408,6 +416,11 @@ open class PingPongRenderToTexture(
         }
 
         initializePingImagesNow(idleLayout)
+    }
+
+    private fun pingDebugName(kind: String, attachment: Int, frame: Int = additionalFrameBuildIndex): String {
+        val prefix = parameters.debugName.trim().ifEmpty { "PingPongRenderToTexture" }
+        return "$prefix ping[$frame] $kind[$attachment] ${width}x${height}"
     }
 
     private fun recordIdleImageInitialization(command: CommandBuffer, image: Image, finalLayout: Int) {

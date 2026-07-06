@@ -8,6 +8,7 @@ const DEFAULT_LANGUAGES = new Set([
   "slang",
   "forth",
   "nano",
+  "bend",
   "yaml",
 ]);
 const MAX_VISIBLE_ITEMS = 80;

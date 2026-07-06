@@ -12,6 +12,7 @@ import org.w3c.dom.asList
 import org.w3c.dom.events.MouseEvent
 import web.url.URL
 import kotlin.js.Date
+import kotlin.js.Promise
 import kotlin.math.abs
 
 var lastMouse = 0.0 to 0.0
@@ -728,6 +729,56 @@ private fun macroPanelRequest(
     )
 }
 
+private fun macroPaletteList(): Promise<dynamic> =
+    Promise { resolve, reject ->
+        sendMacroTranscriptCommand(
+            MacroTranscriptCommandRequest(command = "state", scope = "document"),
+            announce = false
+        ) { response ->
+            if (!response.success) {
+                reject(Throwable(response.message))
+                return@sendMacroTranscriptCommand
+            }
+            val items = js("[]")
+            fun add(scope: String, names: List<String>) {
+                names.forEach { name ->
+                    val item = js("{}")
+                    item.name = name
+                    item.scope = scope
+                    item.projectName = if (scope == "project") response.projectName else ""
+                    item.operationCount = response.operationCount
+                    items.push(item)
+                }
+            }
+            add("document", response.documentMacros.ifEmpty { response.macros })
+            add("project", response.projectMacros)
+            add("workspace", response.workspaceMacros)
+            resolve(items)
+        }
+    }
+
+private fun macroPaletteRun(name: String, scope: String, projectName: String = ""): Promise<dynamic> =
+    Promise { resolve, reject ->
+        val normalizedScope = scope.ifBlank { "document" }
+        sendMacroTranscriptCommand(
+            MacroTranscriptCommandRequest(
+                command = "run",
+                name = name,
+                label = name,
+                selection = getSelectedIds(),
+                scope = normalizedScope,
+                projectName = if (normalizedScope == "project") projectName else ""
+            ),
+            announce = true
+        ) { response ->
+            if (response.success) {
+                resolve(response.asDynamic())
+            } else {
+                reject(Throwable(response.message))
+            }
+        }
+    }
+
 private fun ensureMacroPanel(): HTMLElement {
     macroPanelElement?.let { return it }
     val panel = document.createElement("div") as HTMLElement
@@ -1310,6 +1361,7 @@ fun deleteSelectedBoxes() {
         it.parentElement?.removeChild(it)
     }
     canvasGestures.rebuildConnectionGroup()
+    updateEmptyDocumentWelcome()
 }
 
 @OptIn(ExperimentalJsExport::class)
@@ -2202,6 +2254,8 @@ fun registerBuiltinCommands() {
     w.macroTranscriptRunOnSelection = ::macroTranscriptRunOnSelection
     w.macroTranscriptUndoOnSelection = ::macroTranscriptUndoOnSelection
     w.macroTranscriptPanel = ::macroTranscriptPanel
+    w.macroPaletteList = ::macroPaletteList
+    w.macroPaletteRun = ::macroPaletteRun
 
     allActions.builtin = eval(
         """

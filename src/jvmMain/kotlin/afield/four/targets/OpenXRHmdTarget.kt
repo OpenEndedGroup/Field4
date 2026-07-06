@@ -2106,6 +2106,11 @@ class OpenXRHmdTarget(
                         }
                     }
 
+                    // Texture providers may need layout transitions before descriptors are pushed.
+                    // Dynamic rendering does not allow image barriers inside the rendering instance.
+                    modules.forEach { (_, mp) -> mp.prepareSampledImagesFor(cmd) }
+                    meshModules.forEach { (_, mp) -> mp.prepareSampledImagesFor(cmd) }
+
                     cmd.inRenderPassInstance = true
                     KHRDynamicRendering.vkCmdBeginRenderingKHR(cmd.vkCommandBuffer, renderInfo)
 

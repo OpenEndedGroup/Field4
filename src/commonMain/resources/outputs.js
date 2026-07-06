@@ -8,6 +8,7 @@ import {
         toggleArea,
         addInlineOutput,
         addExecutionMarker,
+        ensureExecutionMarkerForLaunch,
         setStatusForExecutionMarker,
         clearAllDecorations,
         setOutputScrollTail,
@@ -29,6 +30,7 @@ window.removeArea = removeArea;
 window.toggleArea = toggleArea;
 window.addInlineOutput = addInlineOutput;
 window.addExecutionMarker = addExecutionMarker;
+window.ensureExecutionMarkerForLaunch = ensureExecutionMarkerForLaunch;
 window.setStatusForExecutionMarker = setStatusForExecutionMarker;
 window.clearAllDecorations = clearAllDecorations;
 window.setOutputScrollTail = setOutputScrollTail;

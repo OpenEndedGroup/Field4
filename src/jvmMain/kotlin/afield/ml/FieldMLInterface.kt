@@ -2,6 +2,7 @@ package afield.ml
 
 import afield.Box
 import afield.BoxExecution
+import afield.CachedLaunchReturn
 import afield.Completion
 import afield.CompletionRequest
 import afield.Execute
@@ -10,14 +11,17 @@ import afield.IsRunning
 import afield.Message
 import afield.Metadata
 import afield.Output
+import afield.ReturnValueRegistry
+import afield.RunningState
 import afield.Runloop
 import afield.RunsAt
+import afield.clearRunningStates
 import afield.configureOutputProxies
 import afield.dispatchExecutionOutput
-import afield.displayOpen
 import afield.early
 import afield.inMain
 import afield.ml.core.Evaluator
+import afield.ml.core.fieldMLValueToHost
 import afield.ml.core.renderFieldMLValue
 import afield.payload
 import afield.plugins
@@ -30,13 +34,12 @@ import afield.send
 import afield.stdlib.Delegation
 import afield.thisSession
 import io.ktor.websocket.WebSocketSession
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.yield
+import kotlinx.coroutines.CancellationException
+
+private const val FIELDML_PENDING_LAUNCH_MODE = "launching"
+private const val FIELDML_ACTIVE_LAUNCH_MODE = "launch"
 
 class FieldMLExecution(private val owner: Box) : BoxExecution {
-    private val launchJobs = mutableMapOf<String, Job>()
-
     override fun executeFragment(inside: Box, execute: Execute, reply: (Message) -> Unit) {
         executeOnce(inside, execute, reply, fragment = true)
     }
@@ -48,44 +51,67 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
     override fun launchAll(inside: Box, execute: Execute, code: String, strand: String, reply: (Message) -> Unit) {
         val originSession = thisSession.get()
         inMain {
-            launchJobs[strand]?.cancel()
             configureOutputProxies(inside, reply, originSession)
             val compileResult = FieldMLCompiler.compile(code)
             if (!reportDiagnostics(inside, execute, compileResult, originSession, reply)) {
                 val generation = inside.runGeneration.getOrPut(strand) { -1 } + 1
                 inside.runGeneration[strand] = generation
-                send(Message("is-running").payload(IsRunning(execute.uid, true, generation, strand)))
-                inside.displayOpen("fieldml")
-                inside.displayOpen("kotlin")
+                inside.currentRunningStates[strand] = RunningState(generation, FIELDML_PENDING_LAUNCH_MODE)
+                send(Message("is-running").payload(IsRunning(execute.uid, true, generation, strand, FIELDML_PENDING_LAUNCH_MODE)))
 
                 val core = compileResult.core!!
-                val typeText = afield.ml.type.TypePrinter().print(compileResult.typed!!.type)
-                val kotlin = compileResult.kotlin.orEmpty()
-
-                val job = inMain {
-                    try {
-                        while (inside.runGeneration[strand] == generation) {
-                            val value = Evaluator(FieldMLRuntimePrelude.values(inside.output)).evaluate(core)
-                            inside.output.display(
-                                "fieldml",
-                                renderRunReport(
-                                    value = renderFieldMLValue(value),
-                                    type = typeText,
-                                    mode = "launch:$strand",
-                                    diagnostics = emptyList(),
-                                ),
-                            )
-                            inside.output.display("kotlin", "<pre><code>${escapeHtml(kotlin)}</code></pre>")
-                            delay(33)
-                            yield()
-                        }
-                    } catch (t: Throwable) {
-                        inside.output.error(t.message ?: t.javaClass.simpleName, execute.property, execute.line)
-                    } finally {
-                        send(Message("is-running").payload(IsRunning(execute.uid, false, generation, strand)))
+                try {
+                    val value = Evaluator(FieldMLRuntimePrelude.values(inside.output)).evaluate(core)
+                    val typeText = afield.ml.type.TypePrinter().print(compileResult.typed!!.type)
+                    val valueText = renderFieldMLValue(value)
+                    dispatchExecutionOutput(
+                        inside,
+                        reply,
+                        Output(
+                            uid = inside.id,
+                            line = execute.line + code.lines().lastIndex,
+                            kind = "normal",
+                            property = execute.property,
+                            html = renderInlineResult(valueText, typeText),
+                            frame = Runloop.runLoop.frame.toInt(),
+                        ),
+                        originSession = originSession,
+                    )
+                    if (inside.currentRunningStates[strand]?.watermark == generation) {
+                        inside.currentRunningStates.remove(strand)
                     }
+                    send(Message("is-running").payload(IsRunning(execute.uid, false, generation, strand, FIELDML_PENDING_LAUNCH_MODE)))
+
+                    val hostValue = fieldMLValueToHost(value)
+                    if (hostValue == null) {
+                        inside.cachedLaunchReturns.remove(strand)
+                    } else {
+                        inside.cachedLaunchReturns[strand] = CachedLaunchReturn(code, hostValue)
+                    }
+
+                    val consumed = ReturnValueRegistry.launchWithGeneration(inside, hostValue, strand, generation) { isRunning, notifiedStrand, watermark ->
+                        if (isRunning) {
+                            inside.currentRunningStates[notifiedStrand] = RunningState(watermark, FIELDML_ACTIVE_LAUNCH_MODE)
+                        } else if (inside.currentRunningStates[notifiedStrand]?.watermark == watermark) {
+                            inside.currentRunningStates.remove(notifiedStrand)
+                        }
+                        send(Message("is-running").payload(IsRunning(execute.uid, isRunning, watermark, notifiedStrand, FIELDML_ACTIVE_LAUNCH_MODE)))
+                    }
+                    if (!consumed) {
+                        inside.cachedLaunchReturns.remove(strand)
+                    }
+                } catch (_: CancellationException) {
+                    if (inside.currentRunningStates[strand]?.watermark == generation) {
+                        inside.currentRunningStates.remove(strand)
+                    }
+                    send(Message("is-running").payload(IsRunning(execute.uid, false, generation, strand, FIELDML_PENDING_LAUNCH_MODE)))
+                } catch (t: Throwable) {
+                    if (inside.currentRunningStates[strand]?.watermark == generation) {
+                        inside.currentRunningStates.remove(strand)
+                    }
+                    send(Message("is-running").payload(IsRunning(execute.uid, false, generation, strand, FIELDML_PENDING_LAUNCH_MODE)))
+                    inside.output.error(t.message ?: t.javaClass.simpleName, execute.property, execute.line)
                 }
-                launchJobs[strand] = job
             }
         }
     }
@@ -106,11 +132,13 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
     }
 
     override fun stop(inside: Box) {
-        launchJobs.forEach { (_, job) -> job.cancel() }
-        launchJobs.clear()
         inside.runGeneration.keys.toList().forEach { strand ->
             inside.runGeneration[strand] = (inside.runGeneration[strand] ?: 0) + 1
         }
+        val jobsToCancel = inside.jobs.toList()
+        inside.jobs.clear()
+        inside.clearRunningStates()
+        jobsToCancel.forEach { it.cancel() }
     }
 
     override fun complete(inside: Box, completionRequest: CompletionRequest, reply: (Message) -> Unit) {
@@ -165,23 +193,11 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
                             line = execute.line + execute.code.lines().lastIndex,
                             kind = "normal",
                             property = execute.property,
-                            html = "${escapeHtml(valueText)} <span style='color:#888'>: ${escapeHtml(typeText)}</span>",
+                            html = renderInlineResult(valueText, typeText),
                             frame = Runloop.runLoop.frame.toInt(),
                         ),
                         originSession = originSession,
                     )
-                    inside.displayOpen("fieldml")
-                    inside.displayOpen("kotlin")
-                    inside.output.display(
-                        "fieldml",
-                        renderRunReport(
-                            value = valueText,
-                            type = typeText,
-                            mode = if (fragment) "fragment" else "all",
-                            diagnostics = result.diagnostics.map { it.message },
-                        ),
-                    )
-                    inside.output.display("kotlin", "<pre><code>${escapeHtml(result.kotlin.orEmpty())}</code></pre>")
                 }
             } catch (t: Throwable) {
                 inside.output.error(t.message ?: t.javaClass.simpleName, execute.property, execute.line)
@@ -220,46 +236,8 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
             val line = diagnostic.range?.start?.line?.let { execute.line + it - 1 } ?: execute.line
             inside.output.error(diagnostic.message, execute.property, line)
         }
-        inside.displayOpen("fieldml")
-        inside.output.display(
-            "fieldml",
-            renderRunReport(
-                value = null,
-                type = null,
-                mode = "diagnostics",
-                diagnostics = errors.map { it.message },
-            ),
-        )
         return true
     }
-
-    private fun renderRunReport(value: String?, type: String?, mode: String, diagnostics: List<String>): String =
-        buildString {
-            append("<div style='font: 13px/1.45 system-ui, sans-serif; color:#ddd;'>")
-            append("<div style='color:#8ac6ff; font-weight:600;'>FieldML ")
-            append(escapeHtml(mode))
-            append("</div>")
-            if (value != null) {
-                append("<div><b>value</b> <code>")
-                append(escapeHtml(value))
-                append("</code></div>")
-            }
-            if (type != null) {
-                append("<div><b>type</b> <code>")
-                append(escapeHtml(type))
-                append("</code></div>")
-            }
-            if (diagnostics.isNotEmpty()) {
-                append("<ul>")
-                diagnostics.forEach {
-                    append("<li>")
-                    append(escapeHtml(it))
-                    append("</li>")
-                }
-                append("</ul>")
-            }
-            append("</div>")
-        }
 
     private fun constructorNames(code: String): List<String> =
         Regex("""\btype\s+\w+(?:\s+\w+)*\s*=\s*([^\n]+)""")
@@ -372,17 +350,5 @@ fun fieldMLTopologyNeedsUpdating(values: Collection<Box>) {
     )
 }
 
-private fun escapeHtml(text: String): String =
-    buildString(text.length) {
-        text.forEach { c ->
-            append(
-                when (c) {
-                    '<' -> "&lt;"
-                    '>' -> "&gt;"
-                    '&' -> "&amp;"
-                    '"' -> "&quot;"
-                    else -> c
-                },
-            )
-        }
-    }
+internal fun renderInlineResult(value: String, type: String): String =
+    if (type.isBlank()) value else "$value : $type"

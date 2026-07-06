@@ -1657,7 +1657,11 @@ class Server {
             handlers["macro-transcript-command"] = mutableSetOf({ message, reply ->
                 val request = Json.decodeFromJsonElement<MacroTranscriptCommandRequest>(message.payload!!)
                 val documentPath = thisSessionInfo.get().filename
-                val result = when (request.command.trim().lowercase()) {
+                val command = request.command.trim().lowercase()
+                val session = thisSession.get()
+                val sessionInfo = thisSessionInfo.get()
+
+                fun macroResultForRequest(): OperationTranscript.MacroResult = when (command) {
                     "state", "status" -> OperationTranscript.macroState(documentPath, request.scope, request.projectName)
                     "start", "mark-start" -> OperationTranscript.markStart(request.label, request.selection)
                     "end", "save", "mark-end", "end-and-save" ->
@@ -1761,39 +1765,75 @@ class Server {
                     }
                     else -> OperationTranscript.MacroResult(false, "Unknown macro command '${request.command}'.")
                 }
-                val detail = result.errors.firstOrNull()?.let { " First error: $it" }.orEmpty()
-                notify(result.message + detail, if (result.success) "macro" else "error")
-                reply(
-                    Message("macro-transcript-command").payload(
-                        MacroTranscriptCommandResponse(
-                            success = result.success,
-                            message = result.message,
-                            name = result.name,
-                            path = result.path,
-                            operationCount = result.operationCount,
-                            macros = result.macros,
-                            content = result.content,
-                            recording = result.recording,
-                            draft = result.draft,
-                            selection = result.selection,
-                            documentMacros = result.documentMacros,
-                            projectMacros = result.projectMacros,
-                            workspaceMacros = result.workspaceMacros,
-                            projectName = result.projectName,
-                            scope = result.scope,
-                            direction = result.direction,
-                            applied = result.applied,
-                            skipped = result.skipped,
-                            errors = result.errors,
-                            entries = result.entries,
-                            offset = result.offset,
-                            limit = result.limit,
-                            total = result.total,
-                            hasMore = result.hasMore,
-                            prompt = result.prompt
+
+                fun sendMacroResult(result: OperationTranscript.MacroResult) {
+                    val detail = result.errors.firstOrNull()?.let { " First error: $it" }.orEmpty()
+                    notify(result.message + detail, if (result.success) "macro" else "error")
+                    reply(
+                        Message("macro-transcript-command").payload(
+                            MacroTranscriptCommandResponse(
+                                success = result.success,
+                                message = result.message,
+                                name = result.name,
+                                path = result.path,
+                                operationCount = result.operationCount,
+                                macros = result.macros,
+                                content = result.content,
+                                recording = result.recording,
+                                draft = result.draft,
+                                selection = result.selection,
+                                documentMacros = result.documentMacros,
+                                projectMacros = result.projectMacros,
+                                workspaceMacros = result.workspaceMacros,
+                                projectName = result.projectName,
+                                scope = result.scope,
+                                direction = result.direction,
+                                applied = result.applied,
+                                skipped = result.skipped,
+                                errors = result.errors,
+                                entries = result.entries,
+                                offset = result.offset,
+                                limit = result.limit,
+                                total = result.total,
+                                hasMore = result.hasMore,
+                                prompt = result.prompt
+                            )
                         )
                     )
-                )
+                }
+
+                fun macroNotifyText(text: String): String =
+                    text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+                if (command == "run" || command == "undo") {
+                    notify("${if (command == "undo") "Undoing" else "Running"} macro '${macroNotifyText(request.name)}'...", "macro")
+                    GlobalScope.launch(Dispatchers.IO) {
+                        thisSession.set(session)
+                        thisSessionInfo.set(sessionInfo)
+                        try {
+                            sendMacroResult(macroResultForRequest())
+                        } catch (t: Throwable) {
+                            lprintln("error,operation-transcript", "Macro command '${request.command}' failed: ${t.message}")
+                            lprintln("error,operation-transcript", t.stackTraceToString())
+                            sendMacroResult(
+                                OperationTranscript.MacroResult(
+                                    false,
+                                    "Macro '${request.name}' failed: ${t.message ?: t.javaClass.simpleName}.",
+                                    name = request.name,
+                                    scope = request.scope,
+                                    projectName = request.projectName,
+                                    errors = listOf(t.message ?: t.javaClass.name)
+                                )
+                            )
+                        } finally {
+                            thisSession.remove()
+                            thisSessionInfo.remove()
+                        }
+                    }
+                    return@mutableSetOf Handled.yes
+                }
+
+                sendMacroResult(macroResultForRequest())
                 Handled.yes
             })
 
@@ -1801,7 +1841,7 @@ class Server {
             handlers["hello"] = mutableSetOf({ message, reply ->
                 val hello = Json.decodeFromJsonElement<Hello>(message.payload!!)
                 lprintln("info,server", "adding a session for $hello to ${thisSession.get()}")
-                attachDocumentSession(
+                launchDocumentSessionAttach(
                     session = thisSession.get(),
                     documentName = hello.filename,
                     username = hello.username,

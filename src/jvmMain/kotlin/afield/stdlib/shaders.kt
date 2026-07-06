@@ -3436,18 +3436,29 @@ fun fromViews(
     sampler: TextureSampler? = null
 ): Pair<HasImageViewArray, TextureSampler> {
     require(views.isNotEmpty()) { "No image views found for texture $name" }
-    val provider = object : HasImageViewArray {
+    val provider = object : HasImageViewArray, PreparesSampledImages {
         override val imageViewArray = views
+
+        override fun prepareSampledImagesFor(command: afield.four.device.CommandBuffer) {
+            views.forEach { view ->
+                (view as? PreparesSampledImages)?.prepareSampledImagesFor(command)
+            }
+        }
     }
     val defaultSampler = views.asSequence()
         .mapNotNull { (it as? HasDefaultTextureSampler)?.defaultSampler }
         .firstOrNull()
     val sampler0 = sampler ?: defaultSampler ?: TextureSampler(
         renderer = fromContext(),
-        views.first().imageView.imageViewData.mipLevels,
+        sampledTextureMipLevels(views.first()),
         true
     )
     return provider to sampler0
+}
+
+private fun sampledTextureMipLevels(view: HasImageView): Int {
+    return (view as? RenderToTexture)?.mipLevels
+        ?: view.imageView.imageViewData.mipLevels
 }
 
 fun fromViews(
@@ -3456,7 +3467,30 @@ fun fromViews(
     sampler: TextureSampler? = null
 ): Pair<HasImageViewArray, TextureSampler> {
     val providerSampler = (provider as? HasDefaultTextureSampler)?.defaultSampler
-    return fromViews(provider.imageViewArray, name, sampler ?: providerSampler)
+    val views = provider.imageViewArray
+    require(views.isNotEmpty()) { "No image views found for texture $name" }
+    val sampler0 = sampler ?: providerSampler ?: TextureSampler(
+        renderer = fromContext(),
+        sampledTextureMipLevels(provider, views.first()),
+        true
+    )
+    val forwardingProvider = object : HasImageViewArray, PreparesSampledImages {
+        override val imageViewArray: List<HasImageView>
+            get() = provider.imageViewArray
+
+        override fun prepareSampledImagesFor(command: afield.four.device.CommandBuffer) {
+            (provider as? PreparesSampledImages)?.prepareSampledImagesFor(command)
+            provider.imageViewArray.forEach { view ->
+                (view as? PreparesSampledImages)?.prepareSampledImagesFor(command)
+            }
+        }
+    }
+    return forwardingProvider to sampler0
+}
+
+private fun sampledTextureMipLevels(provider: HasImageViewArray, firstView: HasImageView): Int {
+    return (provider as? RenderToTexture)?.mipLevels
+        ?: sampledTextureMipLevels(firstView)
 }
 
 private fun Box.textureResolverFor(previousResolver: (Introspected.Texture) -> Pair<HasImageViewArray, TextureSampler>?): (Introspected.Texture) -> Pair<HasImageViewArray, TextureSampler> =

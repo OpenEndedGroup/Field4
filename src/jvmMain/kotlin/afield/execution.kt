@@ -779,12 +779,42 @@ internal fun dispatchExecutionOutput(
     originSession: WebSocketSession? = thisSession.get()
 ) {
     val normalized = if (output.uid.isBlank()) output.copy(uid = box.id) else output
+    logErrorOutputToTerminal(box, normalized)
     reply?.invoke(Message("output").payload(normalized))
     _sendToPeerSessions(
         Message("peer-output").payload(normalized),
         sessionInfo = box.inside,
         current = originSession
     )
+}
+
+private fun logErrorOutputToTerminal(box: Box, output: Output) {
+    if (output.kind != "error" && output.kind != "err") return
+    val text = terminalTextForOutputHtml(output.html).trim()
+    if (text.isEmpty()) return
+
+    val location = buildString {
+        append(box.name.ifBlank { box.id })
+        append(" ")
+        append(output.property.ifBlank { "code" })
+        if (output.line > 0) append(":").append(output.line)
+    }
+    lprintln("error,execution.ui", "$location\n$text")
+}
+
+private fun terminalTextForOutputHtml(html: String): String {
+    return html
+        .replace(Regex("(?i)<br\\s*/?>"), "\n")
+        .replace(Regex("(?i)</(p|div|li|summary|details|pre|code|h[1-6])>"), "\n")
+        .replace(Regex("<[^>]+>"), "")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&#39;", "'")
+        .replace("&apos;", "'")
+        .replace("&amp;", "&")
+        .lines()
+        .joinToString("\n") { it.trimEnd() }
 }
 
 fun configureOutputProxies(box: Box, reply: (Message) -> Unit, originSession: WebSocketSession? = thisSession.get()) {
@@ -865,7 +895,25 @@ class KotlinExecution : BoxExecution {
             if (requests.isEmpty()) return
 
             val originSession = thisSession.get()
-            val pending = requests.map { (box, exec) ->
+            val pending = prepareBatchLaunchRequests(requests, originSession)
+
+            GlobalScope.launch(Dispatchers.Default) {
+                runPreparedBatchLaunches(pending, reply)
+            }
+        }
+
+        suspend fun launchBatchAndWait(requests: List<Pair<Box, Execute>>, reply: (Message) -> Unit) {
+            if (requests.isEmpty()) return
+            val originSession = thisSession.get()
+            val pending = prepareBatchLaunchRequests(requests, originSession)
+            runPreparedBatchLaunches(pending, reply)
+        }
+
+        private fun prepareBatchLaunchRequests(
+            requests: List<Pair<Box, Execute>>,
+            originSession: WebSocketSession?
+        ): List<BatchLaunchRequest> =
+            requests.map { (box, exec) ->
                 val strand = exec.strand
                 val normalizedCode = normalizedLaunchCodeFor(exec)
 
@@ -882,7 +930,12 @@ class KotlinExecution : BoxExecution {
                 BatchLaunchRequest(box, exec, normalizedCode, strand, watermark, originSession)
             }
 
-            GlobalScope.launch(Dispatchers.Default) {
+        private suspend fun runPreparedBatchLaunches(
+            pending: List<BatchLaunchRequest>,
+            reply: (Message) -> Unit
+        ) {
+            if (pending.isEmpty()) return
+            withContext(Dispatchers.Default) {
                 val expanded = pending.map { request ->
                     expandBatchLaunch(request, reply)
                 }
@@ -894,21 +947,28 @@ class KotlinExecution : BoxExecution {
                 }.awaitAll()
 
                 inMain {
-                    var evaluatedAny = false
-                    prepared.forEach { launch ->
-                        if (launch.snippets.isEmpty()) {
-                            clearPendingLaunch(launch.request)
-                            return@forEach
-                        }
+                    evaluateBatchLaunchesInOrder(prepared, reply)
+                }.join()
+            }
+        }
 
-                        if (evaluatedAny) {
-                            repeat(BATCH_LAUNCH_INTER_BOX_YIELDS) { yield() }
-                        }
-                        evaluatedAny = true
-
-                        evaluatePreparedBatchLaunch(launch, reply)
-                    }
+        private suspend fun evaluateBatchLaunchesInOrder(
+            prepared: List<PreparedBatchLaunch>,
+            reply: (Message) -> Unit
+        ) {
+            var evaluatedAny = false
+            prepared.forEach { launch ->
+                if (launch.snippets.isEmpty()) {
+                    clearPendingLaunch(launch.request)
+                    return@forEach
                 }
+
+                if (evaluatedAny) {
+                    repeat(BATCH_LAUNCH_INTER_BOX_YIELDS) { yield() }
+                }
+                evaluatedAny = true
+
+                evaluatePreparedBatchLaunch(launch, reply)
             }
         }
 

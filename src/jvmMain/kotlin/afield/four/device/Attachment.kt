@@ -13,8 +13,10 @@ class Attachment(device: Device, width: Int, height: Int, format: Int, usage: In
     var isDepthAttachment: Boolean = false
 
     init {
+        val role = if ((usage and VK10.VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) > 0) "DepthAttachment" else "Attachment"
         val imageData =
             ImageData().width(width).height(height).usage(usage).format(format)
+                .debugName("$role image ${width}x${height}")
         image = Image(device, imageData)
 
         var aspectMask = 0
@@ -28,6 +30,7 @@ class Attachment(device: Device, width: Int, height: Int, format: Int, usage: In
         }
 
         val imageViewData = ImageViewData().format(image.format).aspectMask(aspectMask)
+            .debugName("$role view ${width}x${height}")
         imageView = ImageView(device, image.vkImage, imageViewData).source(image)
     }
 

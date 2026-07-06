@@ -1,5 +1,6 @@
 package afield.four.texture
 
+import afield.four.device.nameObject
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
 import afield.four.device.Device
@@ -82,6 +83,9 @@ class Image(private val device: Device, val imageData: ImageData) {
                 "Failed to bind image memory"
             )
         }
+        imageData.debugName.takeIf { it.isNotBlank() }?.let {
+            device.nameObject(vkImage, VK10.VK_OBJECT_TYPE_IMAGE, it)
+        }
         autoDisposeToken.updateCleanup(snapshotCleanup())
     }
 
@@ -117,6 +121,7 @@ class Image(private val device: Device, val imageData: ImageData) {
         var flags: Int = 0
         var height: Int = 0
         var aliasSingleLayerDescriptors: Boolean = false
+        var debugName: String = ""
         var mipLevels: Int = 1
         var memoryPropertyFlags: Int = VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
         var sampleCount: Int = 1
@@ -144,6 +149,11 @@ class Image(private val device: Device, val imageData: ImageData) {
 
         fun height(height: Int): ImageData {
             this.height = height
+            return this
+        }
+
+        fun debugName(debugName: String): ImageData {
+            this.debugName = debugName
             return this
         }
 

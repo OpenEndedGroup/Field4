@@ -7,6 +7,7 @@ import afield.ml.FieldMLRuntimePrelude
 import afield.ml.core.Evaluator
 import afield.ml.core.FieldMLValue
 import afield.ml.core.renderFieldMLValue
+import afield.ml.renderInlineResult
 import afield.stdlib.color
 import afield.stdlib.thickness
 import afield.graphics.FLine
@@ -16,6 +17,12 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class FieldMLInteropTest {
+    @Test
+    fun inlineResultIsPlainTextForMonacoDecorations() {
+        assertEquals("42 : Int", renderInlineResult("42", "Int"))
+        assertEquals("42", renderInlineResult("42", ""))
+    }
+
     @Test
     fun outputBuiltinsArePipeFriendlyTaps() {
         val output = CapturingOutput()

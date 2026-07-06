@@ -21,6 +21,12 @@ import org.lwjgl.vulkan.VK13.*
 import java.nio.ByteBuffer
 
 class MeshModulePointer(var current: MeshModule) : Renderable {
+    fun prepareSampledImagesFor(command: CommandBuffer) {
+        if (current.valid && current.enabled) {
+            prepareSampledImagesForUniforms(current.uniforms.values, command)
+        }
+    }
+
     override fun render(command: CommandBuffer, bounds: Rectanglef) {
         if (current.valid && current.enabled) current.render(command, bounds)
         else lprintln("warning,graphics", "module '${current.parameters.name}' not valid / not rendering")

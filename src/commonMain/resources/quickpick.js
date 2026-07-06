@@ -351,6 +351,63 @@ function bootstrapAnywhereProviders() {
                 qpLog("[anywhere] box-prop enumeration", { boxes: boxes.length, props: propertyNames.length, results: results.length, query: q })
                 return results
         })
+
+        let macroCache = null
+        let macroCacheAt = 0
+        const macroCacheTtlMs = 750
+        const loadMacrosForPalette = () => {
+                const now = Date.now()
+                if (macroCache && now - macroCacheAt < macroCacheTtlMs) return Promise.resolve(macroCache)
+                if (typeof window.macroPaletteList !== "function") return Promise.resolve([])
+                return Promise.resolve(window.macroPaletteList())
+                        .then((items) => {
+                                macroCache = Array.from(items || [])
+                                macroCacheAt = Date.now()
+                                return macroCache
+                        })
+                        .catch((error) => {
+                                console.warn("macro palette list failed", error)
+                                return []
+                        })
+        }
+
+        registerAnywhereProvider("macro", (query) => {
+                const q = (query || "").trim().toLowerCase()
+                return loadMacrosForPalette().then((macros) => {
+                        const selectedCount = paletteSelectedBoxes().length
+                        return macros.map((macro) => {
+                                const name = String(macro.name || "")
+                                const scope = String(macro.scope || "document")
+                                const projectName = String(macro.projectName || "")
+                                const hay = `${name} ${scope} macro run`.toLowerCase()
+                                if (q && !hay.includes(q)) return null
+                                const exact = q && name.toLowerCase() === q
+                                const starts = q && name.toLowerCase().startsWith(q)
+                                return {
+                                        id: `macro-${scope}-${projectName}-${name}`,
+                                        label: `Run macro: ${name}`,
+                                        description: `${scope}${projectName ? ` · ${projectName}` : ""}`,
+                                        detail: selectedCount > 0 ? `Runs against ${selectedCount} selected box${selectedCount === 1 ? "" : "es"}` : "Runs in the current document",
+                                        scope,
+                                        projectName,
+                                        macroName: name,
+                                        score: 18 + (exact ? 12 : starts ? 6 : 0),
+                                        run: () => {
+                                                if (typeof window.macroPaletteRun !== "function") {
+                                                        console.warn("macroPaletteRun unavailable")
+                                                        return
+                                                }
+                                                Promise.resolve(window.macroPaletteRun(name, scope, projectName))
+                                                        .catch((error) => {
+                                                                const message = error && (error.message || String(error)) || "Macro run failed"
+                                                                if (typeof window.notify === "function") window.notify(message, "error")
+                                                                else console.warn(message)
+                                                        })
+                                        }
+                                }
+                        }).filter(Boolean)
+                })
+        })
 }
 window.bootstrapAnywhereProviders = bootstrapAnywhereProviders
 bootstrapAnywhereProviders()
@@ -454,6 +511,7 @@ const paletteProviderTitle = (provider) => {
                 "box-prop": "Properties",
                 "field": "Field",
                 "editor": "Editor",
+                "macro": "Macros",
                 "option": "Options",
         }
         return titles[provider] || String(provider || "Other").replace(/[-_]+/g, " ").replace(/\b\w/g, (m) => m.toUpperCase())
@@ -461,6 +519,7 @@ const paletteProviderTitle = (provider) => {
 
 const paletteIconFor = (item) => {
         if (item.icon) return item.icon
+        if (item.provider === "macro") return "ma"
         if (item.property) return "pr"
         if (item.boxId) return "bx"
         if (item.category === "Editor") return "ed"
@@ -911,6 +970,15 @@ const paletteBoxLabel = (uid) => {
 
 const palettePreviewForAnywhere = (item) => {
         if (!item) return ""
+        if (item.provider === "macro") {
+                const bits = [
+                        `<div class="afield-palette-doc-title">${paletteEscapeHtml(item.macroName || item.label || "")}</div>`,
+                        `<div class="afield-palette-doc-meta">${paletteEscapeHtml(item.scope || "document")} macro${item.projectName ? ` · ${paletteEscapeHtml(item.projectName)}` : ""}</div>`,
+                ]
+                if (item.detail) bits.push(`<p>${paletteEscapeHtml(item.detail)}</p>`)
+                bits.push(`<p class="afield-palette-doc-muted">Press Enter to run this macro.</p>`)
+                return bits.join("")
+        }
         const box = item.boxId ? selectBoxByUid(item.boxId) : null
         const title = item.boxId ? paletteBoxLabel(item.boxId) : item.label
         const bits = [
@@ -1337,13 +1405,18 @@ function openAnywherePalette() {
                                                 qpLog("[anywhere] provider result", p.id, items && items.length)
                                                 return (items || []).map((it, idx) => ({
                                                         provider: p.id,
-                                                        category: paletteProviderTitle(p.id),
+                                                        category: it.category || paletteProviderTitle(p.id),
                                                         id: it.id || `${p.id}-${idx}-${it.label}`,
                                                         label: it.label,
                                                         description: it.description || "",
                                                         detail: it.detail || "",
+                                                        icon: it.icon || "",
                                                         boxId: it.boxId,
                                                         property: it.property,
+                                                        scope: it.scope || "",
+                                                        projectName: it.projectName || "",
+                                                        macroName: it.macroName || "",
+                                                        operationCount: it.operationCount || 0,
                                                         score: it.score || 0,
                                                         runSource: it.run,
                                                 }))

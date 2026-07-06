@@ -345,7 +345,6 @@ private fun ensureEmptyDocumentWelcome(): HTMLElement? {
         border-radius: 8px;
         background: rgba(18, 20, 24, 0.42);
         backdrop-filter: blur(10px);
-        box-shadow: 0 18px 55px rgba(0, 0, 0, 0.24);
         opacity: 0;
         transition: opacity 180ms ease, transform 180ms ease;
         user-select: none;
@@ -360,7 +359,7 @@ private fun ensureEmptyDocumentWelcome(): HTMLElement? {
     return root
 }
 
-private fun updateEmptyDocumentWelcome() {
+internal fun updateEmptyDocumentWelcome() {
     val welcome = ensureEmptyDocumentWelcome() ?: return
     val show = LoadingTracker.isFinished() && liveDocumentBoxCount() == 0
     if (show) {
@@ -3975,9 +3974,13 @@ suspend fun main() {
         val uid = link.getAttribute("data-box-uid")?.trim()?.takeIf { it.isNotBlank() }
             ?: link.getAttribute("href")?.removePrefix("#box:")?.trim()?.takeIf { it.isNotBlank() }
             ?: return@addEventListener
+        val property = link.getAttribute("data-box-property")?.trim()?.takeIf { it.isNotBlank() }
+            ?: link.getAttribute("data-property")?.trim()?.takeIf { it.isNotBlank() }
+        val scrollToLine = link.getAttribute("data-box-scroll-to-line")?.trim()?.toIntOrNull()
+        val highlightLine = link.getAttribute("data-box-highlight-line")?.trim()?.toIntOrNull()
         event.preventDefault()
         event.stopPropagation()
-        navigateToBoxProperty(uid)
+        navigateToBoxProperty(uid, property ?: "code", scrollToLine, highlightLine)
     })
 
     // Initialize the box snapping system

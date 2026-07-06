@@ -154,8 +154,94 @@ operations:
       properties:
         code: |
           println("macro panel fixture")
+  - launch:
+      box: ui_regression_macro_box
+      property: code
+      line: 0
+      code: |
+        println("macro panel fixture launch")
+      singleLine: false
+      type: launch
+      strand: default
   - wait:
       frames: 1
+"""
+
+MACRO_TRANSCRIPT_PANEL_SLOW_MACRO = """\
+name: ui-regression-panel-slow
+description: Browser regression fixture for macro playback progress delivery.
+operations:
+  - create:
+      box: ui_regression_macro_slow_box
+      name: UI Regression Slow Macro Box
+      frame:
+        x: 420.0
+        y: 120.0
+        w: 260.0
+        h: 120.0
+      properties:
+        code: |
+          println("slow macro fixture")
+  - launch:
+      box: ui_regression_macro_slow_box
+      property: code
+      line: 0
+      code: |
+        println("slow macro fixture launch")
+      singleLine: false
+      type: launch
+      strand: default
+  - wait:
+      millis: 3000
+"""
+
+MACRO_TRANSCRIPT_PANEL_BATCH_MACRO = """\
+name: ui-regression-panel-batch
+description: Browser regression fixture for macro launch batch completion.
+operations:
+  - create:
+      box: ui_regression_macro_batch_a
+      name: UI Regression Batch Macro A
+      frame:
+        x: 120.0
+        y: 280.0
+        w: 260.0
+        h: 120.0
+      properties:
+        code: |
+          println("batch macro fixture a")
+  - create:
+      box: ui_regression_macro_batch_b
+      name: UI Regression Batch Macro B
+      frame:
+        x: 420.0
+        y: 280.0
+        w: 260.0
+        h: 120.0
+      properties:
+        code: |
+          println("batch macro fixture b")
+  - launch:
+      box: ui_regression_macro_batch_a
+      property: code
+      line: 0
+      code: |
+        Thread.sleep(1200)
+        println("batch macro launch a")
+      singleLine: false
+      type: launch
+      strand: default
+  - launch:
+      box: ui_regression_macro_batch_b
+      property: code
+      line: 0
+      code: |
+        println("batch macro launch b")
+      singleLine: false
+      type: launch
+      strand: default
+  - wait:
+      millis: 1
 """
 
 INLINE_VISUALIZERS_SNIPPET = """\
@@ -396,8 +482,8 @@ try {
     errors,
   };
   result.ok = result.count >= 4 &&
-    Math.abs(first - 18) <= 1.5 &&
-    result.deltas.every((delta) => delta >= 8) &&
+    Math.abs(first - 10) <= 1.5 &&
+    result.deltas.every((delta) => delta >= 6) &&
     result.errors.length === 0;
   return result;
 } finally {
@@ -1354,8 +1440,18 @@ try {
       .find((button) => button.getAttribute("data-macro-name") === "ui-regression-panel"),
     12000
   );
+  const slowButton = await waitFor(() =>
+    [...panel.querySelectorAll("[data-role='document-list'] button")]
+      .find((button) => button.getAttribute("data-macro-name") === "ui-regression-panel-slow"),
+    12000
+  );
+  const batchButton = await waitFor(() =>
+    [...panel.querySelectorAll("[data-role='document-list'] button")]
+      .find((button) => button.getAttribute("data-macro-name") === "ui-regression-panel-batch"),
+    12000
+  );
 
-  if (!rowReady || !seedButton) {
+  if (!rowReady || !seedButton || !slowButton || !batchButton) {
     return {
       ok: false,
       reason: "macro panel did not render seeded transcript/macro state",
@@ -1395,6 +1491,67 @@ try {
     const text = panel.querySelector("[data-role='content']")?.value || "";
     return text.includes("ui-regression-panel") && text.includes("operations:");
   }, 5000);
+  const macroLaunchToast = [...document.querySelectorAll(".field-toast, .bubble")]
+    .some((node) => String(node.textContent || "").includes("Macro 'ui-regression-panel' launch"));
+
+  let macroPaletteHasBatch = false;
+  if (typeof window.openAnywherePalette === "function") {
+    window.openAnywherePalette();
+    const paletteInput = await waitFor(() => document.querySelector(".afield-palette-input"), 3000);
+    if (paletteInput) {
+      paletteInput.value = "ui-regression-panel-batch";
+      paletteInput.dispatchEvent(new Event("input", { bubbles: true }));
+      macroPaletteHasBatch = !!(await waitFor(() =>
+        [...document.querySelectorAll(".afield-palette-row")]
+          .some((row) => String(row.textContent || "").includes("Run macro: ui-regression-panel-batch")),
+        8000
+      ));
+      paletteInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+      await delay(150);
+    }
+  }
+
+  const batchButtonForRun = await waitFor(() =>
+    [...panel.querySelectorAll("[data-role='document-list'] button")]
+      .find((button) => button.getAttribute("data-macro-name") === "ui-regression-panel-batch"),
+    5000
+  );
+  if (batchButtonForRun) batchButtonForRun.click();
+  const batchContentLoaded = await waitFor(() => {
+    const text = panel.querySelector("[data-role='content']")?.value || "";
+    return text.includes("ui-regression-panel-batch") && text.includes("Thread.sleep(1200)");
+  }, 5000);
+  const batchRunButton = panel.querySelector("[data-action='run']");
+  const batchRunStart = Date.now();
+  if (batchRunButton) batchRunButton.click();
+  const batchMacroFeedbackAt = await waitFor(() => {
+    const text = panel.querySelector("[data-role='feedback']")?.textContent?.trim() || "";
+    return text.includes("Ran macro 'ui-regression-panel-batch'") ? Date.now() : 0;
+  }, 8000);
+  const batchMacroElapsedMs = batchMacroFeedbackAt ? batchMacroFeedbackAt - batchRunStart : -1;
+  const batchMacroAwaitedLaunchGroup = batchMacroElapsedMs >= 900;
+
+  const slowButtonForRun = await waitFor(() =>
+    [...panel.querySelectorAll("[data-role='document-list'] button")]
+      .find((button) => button.getAttribute("data-macro-name") === "ui-regression-panel-slow"),
+    5000
+  );
+  if (slowButtonForRun) slowButtonForRun.click();
+  const slowContentLoaded = await waitFor(() => {
+    const text = panel.querySelector("[data-role='content']")?.value || "";
+    return text.includes("ui-regression-panel-slow") && text.includes("millis: 3000");
+  }, 5000);
+  const runButton = panel.querySelector("[data-action='run']");
+  const slowRunStart = Date.now();
+  if (runButton) runButton.click();
+  const slowMacroLaunchToastAt = await waitFor(() => {
+    const hit = [...document.querySelectorAll(".field-toast, .bubble")]
+      .some((node) => String(node.textContent || "").includes("Macro 'ui-regression-panel-slow' launch"));
+    return hit ? Date.now() : 0;
+  }, 1500);
+  const slowMacroFeedbackAtToast = panel.querySelector("[data-role='feedback']")?.textContent?.trim() || "";
+  const slowMacroLaunchToastQuick = !!slowMacroLaunchToastAt && slowMacroLaunchToastAt - slowRunStart < 1500;
+  const slowMacroReplyPendingAtToast = !slowMacroFeedbackAtToast.includes("Ran macro 'ui-regression-panel-slow'");
 
   const rowSummaries = [...panel.querySelectorAll(".macro-recorder-transcript-summary")]
     .map((node) => String(node.textContent || "").trim())
@@ -1430,6 +1587,15 @@ try {
     contentLoaded: !!contentLoaded,
     contentHasFixture: contentText.includes("ui-regression-panel"),
     previewHasFixture: previewText.includes("ui-regression-panel") || previewText.includes("create"),
+    macroLaunchToast,
+    macroPaletteHasBatch,
+    batchContentLoaded: !!batchContentLoaded,
+    batchMacroElapsedMs,
+    batchMacroAwaitedLaunchGroup,
+    slowContentLoaded: !!slowContentLoaded,
+    slowMacroLaunchToastQuick,
+    slowMacroReplyPendingAtToast,
+    slowMacroFeedbackAtToast,
     detailOpen: !!(details && details.open),
     savedSelectionMacro: !!savedButton,
     width: Math.round(rect.width || 0),
@@ -1447,6 +1613,13 @@ try {
     result.contentLoaded &&
     result.contentHasFixture &&
     result.previewHasFixture &&
+    result.macroLaunchToast &&
+    result.macroPaletteHasBatch &&
+    result.batchContentLoaded &&
+    result.batchMacroAwaitedLaunchGroup &&
+    result.slowContentLoaded &&
+    result.slowMacroLaunchToastQuick &&
+    result.slowMacroReplyPendingAtToast &&
     result.width > 0 &&
     result.height > 0 &&
     result.closed &&
@@ -1892,6 +2065,8 @@ def prepare_generated_files() -> dict[str, Path]:
         "history_panel_snippet": write_generated_file("history-panel.kt", HISTORY_PANEL_SNIPPET),
         "macro_transcript_panel_snippet": write_generated_file("macro-transcript-panel.kt", MACRO_TRANSCRIPT_PANEL_SNIPPET),
         "macro_transcript_panel_macro": write_generated_file("macro-transcript-panel.yaml", MACRO_TRANSCRIPT_PANEL_MACRO),
+        "macro_transcript_panel_slow_macro": write_generated_file("macro-transcript-panel-slow.yaml", MACRO_TRANSCRIPT_PANEL_SLOW_MACRO),
+        "macro_transcript_panel_batch_macro": write_generated_file("macro-transcript-panel-batch.yaml", MACRO_TRANSCRIPT_PANEL_BATCH_MACRO),
         "inline_visualizers_snippet": write_generated_file("inline-visualizers.kt", INLINE_VISUALIZERS_SNIPPET),
         "editor_sync_initial_snippet": write_generated_file("editor-sync-initial.kt", EDITOR_SYNC_INITIAL_SNIPPET),
         "output_area_basics_snippet": write_generated_file("output-area-basics.kt", OUTPUT_AREA_BASICS_SNIPPET),
@@ -2089,6 +2264,9 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 shell_join(["transcript", "start", "--label", "ui-regression-start", "--timeout", timeout_text]),
                 shell_join(["run", "@last", "--file", str(files["macro_transcript_panel_snippet"]), "--timeout", timeout_text]),
                 shell_join(["macro", "write", "ui-regression-panel", "--file", str(files["macro_transcript_panel_macro"]), "--scope", "document", "--timeout", timeout_text]),
+                shell_join(["macro", "write", "ui-regression-panel-slow", "--file", str(files["macro_transcript_panel_slow_macro"]), "--scope", "document", "--timeout", timeout_text]),
+                shell_join(["macro", "write", "ui-regression-panel-batch", "--file", str(files["macro_transcript_panel_batch_macro"]), "--scope", "document", "--timeout", timeout_text]),
+                shell_join(["macro", "run", "ui-regression-panel", "--scope", "document", "--timeout", timeout_text]),
                 "editor-open @last --property code",
                 "sleep 1.0",
                 shell_join(["page-eval", "--body", "--file", str(files["macro_transcript_panel_js"]), "--timeout", pw_timeout]),

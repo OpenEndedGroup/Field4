@@ -1,5 +1,7 @@
 package afield.four.texture
 
+import afield.four.device.CommandBuffer
+import afield.four.device.nameObject
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10
 import org.lwjgl.vulkan.VkImageSubresourceRange
@@ -14,6 +16,10 @@ interface HasImageView {
 
 interface HasImageViewArray {
     val imageViewArray: List<HasImageView>
+}
+
+interface PreparesSampledImages {
+    fun prepareSampledImagesFor(command: CommandBuffer)
 }
 
 interface HasDefaultTextureSampler {
@@ -62,6 +68,9 @@ class ImageView(private val device: Device, val image: Long, val imageViewData: 
             )
             vkImageView = lp[0]
         }
+        imageViewData.debugName.takeIf { it.isNotBlank() }?.let {
+            device.nameObject(vkImageView, VK10.VK_OBJECT_TYPE_IMAGE_VIEW, it)
+        }
         autoDisposeToken.updateCleanup(snapshotCleanup())
     }
 
@@ -92,6 +101,7 @@ class ImageView(private val device: Device, val image: Long, val imageViewData: 
         var mipLevels: Int = 1
         var viewType: Int
         var flags: Int = 0
+        var debugName: String = ""
 
         init {
             this.viewType = VK10.VK_IMAGE_VIEW_TYPE_2D
@@ -119,6 +129,11 @@ class ImageView(private val device: Device, val image: Long, val imageViewData: 
 
         fun flags(flags: Int): ImageViewData {
             this.flags = flags
+            return this
+        }
+
+        fun debugName(debugName: String): ImageViewData {
+            this.debugName = debugName
             return this
         }
 
