@@ -9,6 +9,7 @@ const DEFAULT_LANGUAGES = new Set([
   "forth",
   "nano",
   "bend",
+  "fieldml",
   "yaml",
 ]);
 const MAX_VISIBLE_ITEMS = 80;

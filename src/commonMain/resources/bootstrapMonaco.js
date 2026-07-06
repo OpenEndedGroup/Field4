@@ -1326,6 +1326,7 @@ const initMonaco = () => {
         monaco.languages.registerCompletionItemProvider("forth", completionProvider)
         monaco.languages.registerCompletionItemProvider("nano", completionProvider)
         monaco.languages.registerCompletionItemProvider("bend", completionProvider)
+        monaco.languages.registerCompletionItemProvider("fieldml", completionProvider)
         monaco.languages.registerCompletionItemProvider("yaml", completionProvider)
 
 
