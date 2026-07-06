@@ -72,6 +72,10 @@ FABRICATE_DOCS_SCENES = {
     "metalness": ("renderMetalnessComparison", "fabricate metalness comparison ready"),
     "shadows": ("renderShadowComparison", "fabricate shadow comparison ready"),
     "ambient-occlusion": ("renderAoComparison", "fabricate ao comparison ready"),
+    "frame-graph-ao-pass-toggle": (
+        "renderFrameGraphAoPassToggleComparison",
+        "fabricate frame graph ao pass toggle ready",
+    ),
 }
 
 

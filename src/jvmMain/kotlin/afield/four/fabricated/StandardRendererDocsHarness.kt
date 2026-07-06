@@ -135,6 +135,37 @@ object StandardRendererDocsHarness {
         }
     }
 
+    suspend fun renderFrameGraphAoPassToggleComparison(
+        outputPath: String,
+        renderer: Renderer = rendererFromContextOrDocument(),
+        window: Window = renderer.window
+    ): File {
+        val bundle = StandardRenderer.build(renderer)
+        val frameGraph = bundle.frameGraph()
+        frameGraph.attachTo(renderer)
+        configureGroundedTorusScene(bundle, renderer)
+        bundle.present(renderer = renderer)
+
+        val aoPass = frameGraph.remove(FabricateFrameGraph.PASS_AO)
+            ?: error("standard frame graph missing ${FabricateFrameGraph.PASS_AO}")
+
+        val aoOff = captureScene(tempPng("fabricate-frame-graph-ao-off"), bundle, renderer) {
+            frameGraph.attachTo(renderer)
+        }
+
+        val aoOn = captureScene(tempPng("fabricate-frame-graph-ao-on"), bundle, renderer) {
+            frameGraph.insertBefore(FabricateFrameGraph.PASS_AO, FabricateFrameGraph.PASS_LIGHTING, aoPass)
+            frameGraph.attachTo(renderer)
+        }
+
+        return try {
+            composeHorizontal(aoOff, aoOn, File(outputPath))
+        } finally {
+            aoOff.delete()
+            aoOn.delete()
+        }
+    }
+
     suspend fun renderShinyToriCheckerboard(
         outputPath: String,
         renderer: Renderer = rendererFromContextOrDocument(),

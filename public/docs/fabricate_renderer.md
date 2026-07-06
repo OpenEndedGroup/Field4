@@ -313,3 +313,43 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-ao.png" source-image="/tmp/docs-fabricate-ao-native.png" wait="30.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-ao" hidden=true fabricate-scene="ambient-occlusion"}
 ```
+
+## Frame Graph Pass Management
+
+`bundle.frameGraph()` exposes the ordered pass contract behind `bundle.attachTo(renderer)`. This lets you inspect pass order, remove one pass, and then reinsert it at a precise anchor.
+
+In this comparison the left half removes `std-ao` from the pass graph; the right half reinserts `std-ao` before lighting:
+
+```diffstatic {data-lang=kotlin}
+val frameGraph = bundle.frameGraph()
+frameGraph.attachTo(renderer)
+
+val aoPass = frameGraph.remove(FabricateFrameGraph.PASS_AO)!!
+frameGraph.attachTo(renderer)
+// capture AO-off result
+
+frameGraph.insertBefore(FabricateFrameGraph.PASS_AO, FabricateFrameGraph.PASS_LIGHTING, aoPass)
+frameGraph.attachTo(renderer)
+// capture AO-on result
+```
+
+<!--
+FIELD_TEST
+id: docs.fabricate.frame-graph-ao-pass-toggle
+runner: backdoor-box
+graphicsContext: true
+tags: [docs, fabricate, renderer, graphics, frame-graph, pass-order, ao]
+timeoutSec: 180
+execution: launch
+waitSec: 30.0
+expect:
+  allowMissingOutput: true
+  image:
+    path: /tmp/docs-fabricate-frame-graph-ao-toggle-native.png
+    regionsDifferent:
+      - a: [0.24, 0.58, 0.12, 0.12]
+        b: [0.74, 0.58, 0.12, 0.12]
+        meanAbsDiffGt: 4
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-frame-graph-ao-toggle.png" source-image="/tmp/docs-fabricate-frame-graph-ao-toggle-native.png" wait="30.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-frame-graph-ao-pass-toggle" hidden=true fabricate-scene="frame-graph-ao-pass-toggle"}
+```

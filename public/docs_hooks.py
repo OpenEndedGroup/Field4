@@ -103,6 +103,10 @@ FABRICATE_DOCS_SCENES = {
         "renderAoComparison",
         "fabricate ao comparison ready",
     ),
+    "frame-graph-ao-pass-toggle": (
+        "renderFrameGraphAoPassToggleComparison",
+        "fabricate frame graph ao pass toggle ready",
+    ),
 }
 
 
