@@ -134,6 +134,7 @@ data class SemanticRetrievalQueryRequest(
     val query: String,
     val limit: Int = 10,
     val corpus: String = "",
+    val corpora: List<String> = emptyList(),
     val pathPrefix: String = "",
     val kinds: List<String> = emptyList(),
     val documentName: String = "",
@@ -306,6 +307,7 @@ object SemanticRetrievalService {
     private const val INTENT_VECTOR = "intentVector"
     private const val IMPLEMENTATION_VECTOR = "implementationVector"
     private const val META_FILE = "field-semantic-search.meta"
+    val availableCorpora: List<String> = listOf("field-internals", "workspace-sidecars", "documentation")
 
     private val cacheRoot: Path = Paths.get(
         System.getProperty("afield.semanticSearch.cacheRoot")
@@ -547,9 +549,10 @@ object SemanticRetrievalService {
 
         val limit = request.limit.coerceIn(1, 50)
         val currentEmbedder = loadEmbedder()
+        val requestedCorpora = request.normalizedCorpora()
         val requestedKinds = request.kinds.map { it.trim().lowercase(Locale.ROOT) }.filter { it.isNotBlank() }.toSet()
         val filter: (Document) -> Boolean = { doc ->
-            val corpusOk = request.corpus.isBlank() || doc.get("corpus").equals(request.corpus, ignoreCase = true)
+            val corpusOk = requestedCorpora.isEmpty() || doc.get("corpus").orEmpty().lowercase(Locale.ROOT) in requestedCorpora
             val pathOk = request.pathPrefix.isBlank() || doc.get("path").orEmpty().startsWith(request.pathPrefix)
             val kindOk = requestedKinds.isEmpty() || doc.get("kind").orEmpty().lowercase(Locale.ROOT) in requestedKinds
             val documentOk = request.documentName.isBlank() ||
@@ -583,9 +586,14 @@ object SemanticRetrievalService {
                     }.orEmpty()
 
                     val fused = fuseRanks(searcher, vector, bm25, symbol, limit, request)
+                    val scope = if (requestedCorpora.isEmpty()) {
+                        "all corpora"
+                    } else {
+                        requestedCorpora.joinToString(",")
+                    }
                     SemanticRetrievalQueryResult(
                         success = true,
-                        message = "Returned ${fused.size} semantic retrieval hit(s). Vector backend=${currentEmbedder?.backend ?: "disabled"}; capsule backend=source-index-capsules.",
+                        message = "Returned ${fused.size} semantic retrieval hit(s) from $scope. Vector backend=${currentEmbedder?.backend ?: "disabled"}; capsule backend=source-index-capsules.",
                         status = status(),
                         results = fused
                     )
@@ -1262,6 +1270,22 @@ object SemanticRetrievalService {
         )
 
     private fun rrf(rank: Int?, k: Int = 60): Double = if (rank == null || rank <= 0) 0.0 else 1.0 / (k + rank)
+
+    private fun SemanticRetrievalQueryRequest.normalizedCorpora(): Set<String> =
+        (corpora + corpus.split(',', ';', '|'))
+            .map { normalizeCorpusName(it) }
+            .filter { it.isNotBlank() }
+            .filter { it != "all" }
+            .toSet()
+
+    private fun normalizeCorpusName(raw: String): String =
+        when (raw.trim().lowercase(Locale.ROOT)) {
+            "", "*", "all", "any" -> "all"
+            "field", "fields", "field4", "internals", "source", "src", "code", "field-internal", "field-internals" -> "field-internals"
+            "workspace", "workspace-sidecar", "workspace-sidecars", "sidecar", "sidecars", "document", "documents", "current-document" -> "workspace-sidecars"
+            "doc", "docs", "documentation", "manual", "manuals" -> "documentation"
+            else -> raw.trim().lowercase(Locale.ROOT)
+        }
 
     private data class RankedDoc(val docId: Int, val rank: Int, val score: Float)
 

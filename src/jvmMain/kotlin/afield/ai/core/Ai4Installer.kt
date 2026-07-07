@@ -1859,8 +1859,12 @@ fun installAi4() {
                     query = req.query,
                     limit = req.limit,
                     corpus = req.corpus,
+                    corpora = req.corpora,
                     pathPrefix = req.pathPrefix,
                     kinds = req.kinds,
+                    documentName = req.documentName,
+                    boxId = req.boxId,
+                    property = req.property,
                     includeCapsule = req.includeCapsule,
                     includeSource = req.includeSource
                 )
@@ -1870,16 +1874,19 @@ fun installAi4() {
                 message = result.message,
                 status = result.status,
                 model = SemanticRetrievalService.modelInfo(),
+                availableCorpora = SemanticRetrievalService.availableCorpora,
                 results = result.results
             )
         }
 
         val semanticRetrievalStatus: () -> SemanticRetrievalToolResult = {
+            val status = SemanticRetrievalService.status()
             SemanticRetrievalToolResult(
                 success = true,
-                message = SemanticRetrievalService.status().message,
-                status = SemanticRetrievalService.status(),
-                model = SemanticRetrievalService.modelInfo()
+                message = status.message,
+                status = status,
+                model = SemanticRetrievalService.modelInfo(),
+                availableCorpora = SemanticRetrievalService.availableCorpora
             )
         }
 
@@ -1889,7 +1896,8 @@ fun installAi4() {
                 success = result.success,
                 message = result.message,
                 status = result.status,
-                model = SemanticRetrievalService.modelInfo()
+                model = SemanticRetrievalService.modelInfo(),
+                availableCorpora = SemanticRetrievalService.availableCorpora
             )
         }
 
@@ -2640,8 +2648,12 @@ fun installAi4() {
                             query = req.query,
                             limit = req.limit,
                             corpus = req.corpus,
+                            corpora = req.corpora,
                             pathPrefix = req.pathPrefix,
                             kinds = req.kinds,
+                            documentName = req.documentName,
+                            boxId = req.boxId,
+                            property = req.property,
                             includeCapsule = req.includeCapsule,
                             includeSource = req.includeSource
                         )
@@ -2651,6 +2663,7 @@ fun installAi4() {
                         message = result.message,
                         status = result.status,
                         model = SemanticRetrievalService.modelInfo(),
+                        availableCorpora = SemanticRetrievalService.availableCorpora,
                         results = result.results
                     )
                 }
@@ -2660,7 +2673,8 @@ fun installAi4() {
                         success = true,
                         message = status.message,
                         status = status,
-                        model = SemanticRetrievalService.modelInfo()
+                        model = SemanticRetrievalService.modelInfo(),
+                        availableCorpora = SemanticRetrievalService.availableCorpora
                     )
                 }
                 val semanticRetrievalRebuild: () -> SemanticRetrievalToolResult = {
@@ -2669,7 +2683,8 @@ fun installAi4() {
                         success = build.success,
                         message = build.message,
                         status = build.status,
-                        model = SemanticRetrievalService.modelInfo()
+                        model = SemanticRetrievalService.modelInfo(),
+                        availableCorpora = SemanticRetrievalService.availableCorpora
                     )
                 }
                 val result = chatHelpers!!.chatGeneral(

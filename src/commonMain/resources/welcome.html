@@ -1349,10 +1349,20 @@
             padding-left: 8px;
         }
 
+        .search-match.semantic {
+            border-left-color: rgba(114, 230, 168, 0.42);
+        }
+
         .search-match-meta {
             font-size: 10px;
             color: var(--field-text-soft);
             text-transform: lowercase;
+        }
+
+        .search-match-source {
+            display: inline-block;
+            margin-right: 5px;
+            color: rgba(114, 230, 168, 0.95);
         }
 
         .search-match-snippet {
@@ -1991,6 +2001,13 @@
         searchQuery: "",
         searchResults: [],
         searchTruncated: false,
+        searchSemantic: {
+            hitCount: 0,
+            message: "",
+            error: false,
+            stale: false,
+            skipped: false
+        },
         lastOpened: "welcome",
         defaultDocument: "welcome",
         allTags: [],
@@ -3890,6 +3907,7 @@
         const docs = state.searchResults;
         const query = state.searchQuery.trim();
         const statusNode = document.getElementById("recent-search-status");
+        const semanticState = state.searchSemantic || {};
 
         countNode.textContent = docs.length === 1 ? "1 match" : `${docs.length} matches`;
 
@@ -3899,8 +3917,8 @@
                     No workspace matches for <code>${escapeHtml(query)}</code>.
                 </div>
             `;
-            statusNode.textContent = "no matches";
-            statusNode.classList.remove("error");
+            statusNode.textContent = semanticState.error ? "no matches · semantic failed" : "no matches";
+            statusNode.classList.toggle("error", !!semanticState.error);
             return;
         }
 
@@ -3913,9 +3931,13 @@
                 const matches = Array.isArray(doc.matches) ? doc.matches : [];
                 const matchHtml = matches.map((match) => {
                     const linePart = match.line > 0 ? ` line ${match.line}` : "";
+                    const source = match.source === "semantic" ? `<span class="search-match-source">semantic</span>` : "";
+                    const score = match.source === "semantic" && Number.isFinite(Number(match.score))
+                        ? ` · ${Number(match.score).toFixed(3)}`
+                        : "";
                     return `
-                        <div class="search-match">
-                            <div class="search-match-meta">${escapeHtml(match.boxName || doc.filename)} · ${escapeHtml(match.property || "project")}${escapeHtml(linePart)}</div>
+                        <div class="search-match ${match.source === "semantic" ? "semantic" : ""}">
+                            <div class="search-match-meta">${source}${escapeHtml(match.boxName || doc.filename)} · ${escapeHtml(match.property || "project")}${escapeHtml(linePart)}${escapeHtml(score)}</div>
                             <div class="search-match-snippet">${highlightQuery(match.snippet || "", query)}</div>
                         </div>
                     `;
@@ -3944,9 +3966,14 @@
             const matchHtml = matches.map((match) => {
                 const property = match.property === "document" ? "document name" : match.property;
                 const linePart = match.line > 0 ? ` line ${match.line}` : "";
+                const languagePart = match.language ? ` · ${match.language}` : "";
+                const source = match.source === "semantic" ? `<span class="search-match-source">semantic</span>` : "";
+                const score = match.source === "semantic" && Number.isFinite(Number(match.score))
+                    ? ` · ${Number(match.score).toFixed(3)}`
+                    : "";
                 return `
-                    <div class="search-match">
-                        <div class="search-match-meta">${escapeHtml(match.boxName || "(unnamed box)")} · ${escapeHtml(property)}${escapeHtml(linePart)}</div>
+                    <div class="search-match ${match.source === "semantic" ? "semantic" : ""}">
+                        <div class="search-match-meta">${source}${escapeHtml(match.boxName || "(unnamed box)")} · ${escapeHtml(property)}${escapeHtml(languagePart)}${escapeHtml(linePart)}${escapeHtml(score)}</div>
                         <div class="search-match-snippet">${highlightQuery(match.snippet || "", query)}</div>
                     </div>
                 `;
@@ -3972,10 +3999,15 @@
         installDocumentListHandlers(listNode);
 
         const matchCount = docs.reduce((sum, doc) => sum + ((doc.matches || []).length), 0);
+        const semanticDetails = [];
+        if (semanticState.hitCount) semanticDetails.push(`${semanticState.hitCount} semantic`);
+        if (semanticState.stale) semanticDetails.push("semantic index stale");
+        if (semanticState.error) semanticDetails.push("semantic failed");
+        const semanticText = semanticDetails.length ? ` · ${semanticDetails.join(" · ")}` : "";
         statusNode.textContent = state.searchTruncated
-            ? `${matchCount}+ matches shown`
-            : `${matchCount} matches`;
-        statusNode.classList.remove("error");
+            ? `${matchCount}+ matches shown${semanticText}`
+            : `${matchCount} matches${semanticText}`;
+        statusNode.classList.toggle("error", !!semanticState.error && !semanticState.hitCount);
     }
 
     function renderList() {
@@ -4176,15 +4208,20 @@
                 maxMatchesPerDocument: "5",
                 maxScanMillis: "3000"
             });
-            const response = await fetch(`/api/workspace-search?${params.toString()}`, {
+            const workspaceRequest = fetch(`/api/workspace-search?${params.toString()}`, {
                 cache: "no-store",
                 signal: searchController.signal
+            }).then(async (response) => {
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.json();
             });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const payload = await response.json();
+            const semanticRequest = runWelcomeSemanticSearch(query, searchController.signal);
+            const [payload, semanticPayload] = await Promise.all([workspaceRequest, semanticRequest]);
             if (requestSerial !== searchRequestSerial) return;
-            state.searchResults = Array.isArray(payload.documents) ? payload.documents : [];
+            const textResults = Array.isArray(payload.documents) ? payload.documents : [];
+            state.searchResults = mergeWelcomeSemanticSearch(textResults, semanticPayload);
             state.searchTruncated = !!payload.truncated;
+            state.searchSemantic = semanticPayload.state;
             renderList();
         } catch (error) {
             if (error?.name === "AbortError") return;
@@ -4192,6 +4229,13 @@
             console.error("Workspace search failed", error);
             state.searchResults = [];
             state.searchTruncated = false;
+            state.searchSemantic = {
+                hitCount: 0,
+                message: "",
+                error: false,
+                stale: false,
+                skipped: true
+            };
             renderList();
             statusNode.textContent = "search failed";
             statusNode.classList.add("error");
@@ -4211,6 +4255,7 @@
             }
             state.searchResults = [];
             state.searchTruncated = false;
+            state.searchSemantic = initialSemanticSearchState({ skipped: true });
             renderList();
             return;
         }
@@ -4732,6 +4777,160 @@
 
     function openCodeUseBrowser() {
         window.open("/code-use", "_blank", "noopener");
+    }
+
+    function initialSemanticSearchState(overrides = {}) {
+        return {
+            hitCount: 0,
+            message: "",
+            error: false,
+            stale: false,
+            skipped: false,
+            ...overrides
+        };
+    }
+
+    function semanticSnippet(hit) {
+        const raw = String(hit.sourcePreview || hit.capsule || hit.symbol || hit.title || hit.path || "").trim();
+        if (!raw) return "";
+        const lines = raw
+            .split(/\r?\n/)
+            .map((line) => line.trimEnd())
+            .filter((line) => line.trim().length > 0)
+            .slice(0, 5)
+            .join("\n");
+        return lines.length > 520 ? `${lines.slice(0, 520)}...` : lines;
+    }
+
+    async function runWelcomeSemanticSearch(query, signal) {
+        const semantic = state.semanticSearch || {};
+        const config = semantic.config || {};
+        const status = semantic.status || {};
+        if (config.enabled === false || !status.indexExists) {
+            return {
+                hits: [],
+                state: initialSemanticSearchState({ skipped: true, stale: !!status.indexStale })
+            };
+        }
+
+        try {
+            const semanticController = new AbortController();
+            let timeoutId = setTimeout(() => semanticController.abort(), 2200);
+            if (signal) {
+                if (signal.aborted) semanticController.abort();
+                else signal.addEventListener("abort", () => semanticController.abort(), { once: true });
+            }
+            const response = await fetch("/api/semantic-search/query", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                signal: semanticController.signal,
+                body: JSON.stringify({
+                    query,
+                    limit: 16,
+                    corpus: "workspace-sidecars",
+                    rebuildIfEmpty: false,
+                    includeSource: true
+                })
+            }).finally(() => {
+                clearTimeout(timeoutId);
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+            const hits = payload.success === false ? [] : (Array.isArray(payload.results) ? payload.results : []);
+            const stale = !!payload.status?.indexStale || !!status.indexStale;
+            return {
+                hits,
+                state: initialSemanticSearchState({
+                    hitCount: hits.length,
+                    message: payload.message || "",
+                    error: false,
+                    stale,
+                    skipped: payload.success === false
+                })
+            };
+        } catch (error) {
+            if (error?.name === "AbortError") {
+                return {
+                    hits: [],
+                    state: initialSemanticSearchState({
+                        message: "semantic search timed out",
+                        error: false,
+                        stale: !!status.indexStale,
+                        skipped: true
+                    })
+                };
+            }
+            console.warn("Semantic welcome search failed", error);
+            return {
+                hits: [],
+                state: initialSemanticSearchState({
+                    message: error?.message || "semantic search failed",
+                    error: true,
+                    stale: !!status.indexStale
+                })
+            };
+        }
+    }
+
+    function mergeWelcomeSemanticSearch(textResults, semanticPayload) {
+        const merged = (Array.isArray(textResults) ? textResults : []).map((doc) => ({
+            ...doc,
+            matches: Array.isArray(doc.matches) ? [...doc.matches] : []
+        }));
+        const byFilename = new Map(merged.map((doc) => [doc.filename, doc]));
+        const recentByFilename = new Map(state.documents.map((doc) => [doc.filename, doc]));
+        const seen = new Set();
+        merged.forEach((doc) => {
+            (doc.matches || []).forEach((match) => {
+                seen.add(`${doc.filename}\u0000${match.boxName || ""}\u0000${match.property || ""}\u0000${match.line || 0}\u0000${match.snippet || ""}`);
+            });
+        });
+
+        (semanticPayload?.hits || []).forEach((hit) => {
+            const filename = String(hit.documentName || "").trim() || String(hit.path || "").split("/")[0] || "workspace";
+            let doc = byFilename.get(filename);
+            if (!doc) {
+                const summary = recentByFilename.get(filename) || {};
+                doc = {
+                    filename,
+                    numBoxes: Number(summary.numBoxes) || 0,
+                    lastModifiedEpochMs: Number(summary.lastModifiedEpochMs) || 0,
+                    lastModifiedAgoMs: Number(summary.lastModifiedAgoMs) || 0,
+                    tags: Array.isArray(summary.tags) ? summary.tags : [],
+                    matches: [],
+                    kind: "document"
+                };
+                byFilename.set(filename, doc);
+                merged.push(doc);
+            }
+
+            const score = Number(hit.score);
+            const match = {
+                boxName: hit.boxName || hit.title || hit.symbol || "",
+                boxId: hit.boxId || "",
+                property: hit.property || hit.kind || "semantic",
+                language: hit.language || "",
+                line: Number(hit.line) || 0,
+                snippet: semanticSnippet(hit),
+                source: "semantic",
+                score: Number.isFinite(score) ? score : 0,
+                path: hit.path || ""
+            };
+            const key = `${filename}\u0000${match.boxName}\u0000${hit.property || ""}\u0000${match.line}\u0000${match.snippet}`;
+            if (seen.has(key)) return;
+            seen.add(key);
+            doc.matches.push(match);
+        });
+
+        merged.forEach((doc) => {
+            doc.matches = (doc.matches || []).sort((a, b) => {
+                const semanticDelta = (b.source === "semantic" ? 1 : 0) - (a.source === "semantic" ? 1 : 0);
+                if (semanticDelta !== 0) return semanticDelta;
+                return (Number(b.score) || 0) - (Number(a.score) || 0);
+            }).slice(0, 8);
+        });
+        return merged;
     }
 
     function semanticSearchRequestBody() {

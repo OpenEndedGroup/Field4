@@ -91,9 +91,27 @@ object SemanticRetrievalSmokeTest {
         require(docsResult.success) { docsResult.message }
         require(docsResult.results.isNotEmpty()) { "expected documentation search results" }
 
+        val combinedResult = SemanticRetrievalService.query(
+            SemanticRetrievalQueryRequest(
+                query = "random wiggly line browser screenshot smoke",
+                limit = 12,
+                corpora = listOf("workspace-sidecars", "documentation"),
+                includeSource = true
+            )
+        )
+        require(combinedResult.success) { combinedResult.message }
+        require(combinedResult.results.isNotEmpty()) { "expected combined corpus search results" }
+        require(combinedResult.results.all { it.corpus in setOf("workspace-sidecars", "documentation") }) {
+            "combined corpus filter leaked unexpected corpora: ${combinedResult.results.map { it.corpus }}"
+        }
+        require(combinedResult.results.any { it.corpus == "workspace-sidecars" }) {
+            "expected workspace-sidecars in combined corpus results"
+        }
+
         val managerHits = SemanticSearchManager().findTopK(
             query = "random wiggly line",
             k = 5,
+            corpora = listOf("field-internals", "workspace-sidecars"),
             includeSource = true
         )
         require(managerHits.isNotEmpty()) { "expected manager facade search results" }
