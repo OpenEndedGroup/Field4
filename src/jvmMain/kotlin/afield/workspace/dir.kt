@@ -1,6 +1,8 @@
 package afield
 
 import afield.logger.lprintln
+import afield.ai.SemanticRetrievalSettingsStatus
+import afield.ai.SemanticRetrievalService
 import afield.python.PythonSettingsStatus
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.Serializable
@@ -268,7 +270,8 @@ data class WelcomeDocsResponse(
         queueSize = 0,
         droppedEvents = 0,
         message = "not loaded"
-    )
+    ),
+    val semanticSearch: SemanticRetrievalSettingsStatus = SemanticRetrievalService.settingsStatus()
 )
 
 @Serializable

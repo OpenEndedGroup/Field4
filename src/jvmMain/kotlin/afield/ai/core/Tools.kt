@@ -12,6 +12,9 @@ import afield.CodeUseSourceReferenceRow
 import afield.CodeUseSourceTarget
 import afield.CodeUseSymbolRow
 import afield.CodeUseUnresolvedRow
+import afield.ai.SemanticRetrievalHit
+import afield.ai.SemanticRetrievalModelInfo
+import afield.ai.SemanticRetrievalStatus
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.openai.models.responses.ResponseCreateParams
@@ -353,6 +356,33 @@ data class CodeUseSemanticAnalyzeCodeRequest(
     val sourceRadiusLines: Int = 24
 )
 
+/** Semantic retrieval tools ------------------------------------------------ */
+
+@JsonClassDescription("Search Field's native Lucene semantic retrieval index across Kotlin declarations and documentation sections. This is natural-language to code/docs retrieval, not compiler resolution. Results include BM25/symbol/vector ranks when available; vector search is active only when the local ONNX embedder is configured.")
+data class SemanticRetrievalSearchRequest(
+    val query: String,
+    val limit: Int = 10,
+    val corpus: String = "",
+    val pathPrefix: String = "",
+    val kinds: List<String> = emptyList(),
+    val includeCapsule: Boolean = false,
+    val includeSource: Boolean = false
+)
+
+@JsonClassDescription("Return status for Field's native Lucene semantic retrieval index, including capsule backend and ONNX/vector availability.")
+data class SemanticRetrievalStatusRequest(val unused: Int = 0)
+
+@JsonClassDescription("Rebuild Field's native Lucene semantic retrieval index from current source-index declarations and documentation sections. Use sparingly; normal searches rebuild automatically if the index is missing.")
+data class SemanticRetrievalRebuildRequest(val unused: Int = 0)
+
+data class SemanticRetrievalToolResult(
+    val success: Boolean,
+    val message: String,
+    val status: SemanticRetrievalStatus,
+    val model: SemanticRetrievalModelInfo? = null,
+    val results: List<SemanticRetrievalHit> = emptyList()
+)
+
 /** Long-running task tools -------------------------------------------------- */
 
 @JsonClassDescription("Read the persistent scratchpad for this chat. Use it to recover durable notes, decisions, constraints, and handoff context from earlier turns.")
@@ -610,6 +640,9 @@ data class ToolExecutionContext(
     val writeMacro: ((MacroWriteRequest) -> MacroWriteResult)? = null,
     val runMacro: ((MacroRunRequest) -> MacroRunResult)? = null,
     val codeUseQuery: ((CodeUseQueryRequest) -> CodeUseQueryResult)? = null,
+    val semanticRetrievalSearch: ((SemanticRetrievalSearchRequest) -> SemanticRetrievalToolResult)? = null,
+    val semanticRetrievalStatus: (() -> SemanticRetrievalToolResult)? = null,
+    val semanticRetrievalRebuild: (() -> SemanticRetrievalToolResult)? = null,
 
     val agentMemory: AgentMemoryState? = null,
 

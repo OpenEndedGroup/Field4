@@ -67,6 +67,24 @@ object Options {
         "afield.four.secondaryGraphicsCommandBuffers",
         System.getenv("AFIELD_FOUR_SECONDARY_GRAPHICS_COMMAND_BUFFERS") ?: "true"
     ).toBoolean()
+    var captureCompatibility = System.getProperty(
+        "afield.four.captureCompatibility",
+        System.getenv("AFIELD_FOUR_CAPTURE_COMPAT") ?: "false"
+    ).toBoolean()
+    // vkGetPhysicalDeviceToolPropertiesEXT crosses into injected tooling/layer code and
+    // has crashed JVM startup under Nsight; keep it opt-in.
+    var dumpToolingInfo = !captureCompatibility && System.getProperty(
+        "afield.four.dumpToolingInfo",
+        System.getenv("AFIELD_FOUR_DUMP_TOOLING_INFO") ?: "false"
+    ).toBoolean()
+    var debugObjectNames = !captureCompatibility && System.getProperty(
+        "afield.four.debugObjectNames",
+        System.getenv("AFIELD_FOUR_DEBUG_OBJECT_NAMES") ?: "true"
+    ).toBoolean()
+    var debugLabels = !captureCompatibility && System.getProperty(
+        "afield.four.debugLabels",
+        System.getenv("AFIELD_FOUR_DEBUG_LABELS") ?: "true"
+    ).toBoolean()
     var enableVR = false
 
     fun doVulkanSDK() {
@@ -142,8 +160,8 @@ object Options {
         System.getenv("AFIELD_VALIDATE")
     )?.trim()?.takeIf { it.isNotEmpty() }?.toBooleanStrictOrNull()
 
-    var validate = validateOverride ?: true
-    var shaderDebugPrintf = System.getProperty(
+    var validate = if (captureCompatibility) false else validateOverride ?: true
+    var shaderDebugPrintf = !captureCompatibility && System.getProperty(
         "afield.four.shaderDebugPrintf",
         System.getenv("AFIELD_FOUR_SHADER_DEBUG_PRINTF") ?: "false"
     ).toBoolean()

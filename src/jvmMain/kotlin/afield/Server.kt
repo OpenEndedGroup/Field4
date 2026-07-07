@@ -9,6 +9,11 @@ import afield.ai.core.AiSettingsSaveRequest
 import afield.ai.core.aiProviderStatus
 import afield.ai.core.saveAiSettings
 import afield.ai.core.completion.Ai4KotlinAutocomplete
+import afield.ai.SemanticRetrievalQueryRequest
+import afield.ai.SemanticRetrievalService
+import afield.ai.SemanticRetrievalConfigSaveRequest
+import afield.ai.SemanticRetrievalDeleteCacheRequest
+import afield.ai.SemanticRetrievalDownloadRequest
 import afield.debug.RuntimeDebugProbeService
 import afield.four.util.FramePresentationLog
 import afield.four.util.Options
@@ -634,13 +639,13 @@ private fun normalizeFieldPreferences(preferences: FieldPreferences): FieldPrefe
 
 private fun applyFieldPreferences(preferences: FieldPreferences) {
     val framePresentationLogWasEnabled = Options.framePresentationLog
-    Options.profiling = preferences.profiling
+    Options.profiling = if (Options.captureCompatibility) false else preferences.profiling
     Options.framePresentationLog = preferences.framePresentationLog
     Options.logShadercSource = preferences.logShadercSource
     Options.enableVR = preferences.enableVR
     Options.enableHDR = preferences.enableHDR
     Options.openXRDebugInput = preferences.openXRDebugInput
-    Options.validate = Options.validateOverride ?: preferences.validate
+    Options.validate = if (Options.captureCompatibility) false else Options.validateOverride ?: preferences.validate
     if (preferences.framePresentationLog && !framePresentationLogWasEnabled) {
         FramePresentationLog.start(
             outputPath = Options.framePresentationLogPath,
@@ -3004,7 +3009,8 @@ class Server {
                                     PythonInterface.currentPythonSettingsStatus(),
                                     CompletionDocPolishMonitor.status(),
                                     AiToolUseImprovementMonitor.status(),
-                                    CodeUseTelemetryService.summary()
+                                    CodeUseTelemetryService.summary(),
+                                    SemanticRetrievalService.settingsStatus()
                                 )
                             )
                         }
@@ -3188,6 +3194,102 @@ class Server {
                                 call.respond(
                                     HttpStatusCode.InternalServerError,
                                     mapOf("error" to "Code-use semantic analysis failed")
+                                )
+                            }
+                        }
+
+                        get("/api/semantic-search/status") {
+                            call.respond(SemanticRetrievalService.status())
+                        }
+
+                        get("/api/semantic-search/model") {
+                            call.respond(SemanticRetrievalService.modelInfo())
+                        }
+
+                        get("/api/semantic-search/settings") {
+                            call.respond(SemanticRetrievalService.settingsStatus())
+                        }
+
+                        post("/api/semantic-search/settings") {
+                            try {
+                                val request = call.receive<SemanticRetrievalConfigSaveRequest>()
+                                call.respond(SemanticRetrievalService.saveConfig(request))
+                            } catch (e: IllegalArgumentException) {
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf("error" to (e.message ?: "invalid semantic search settings"))
+                                )
+                            } catch (e: Exception) {
+                                lprintln("error,server", "Semantic search settings save failed: ${e.message}")
+                                call.respond(
+                                    HttpStatusCode.InternalServerError,
+                                    mapOf("error" to "Semantic search settings save failed")
+                                )
+                            }
+                        }
+
+                        post("/api/semantic-search/download") {
+                            try {
+                                val request = call.receive<SemanticRetrievalDownloadRequest>()
+                                call.respond(SemanticRetrievalService.downloadPreset(request))
+                            } catch (e: IllegalArgumentException) {
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf("error" to (e.message ?: "invalid semantic search download request"))
+                                )
+                            } catch (e: Exception) {
+                                lprintln("error,server", "Semantic search model download failed: ${e.message}")
+                                call.respond(
+                                    HttpStatusCode.InternalServerError,
+                                    mapOf("error" to (e.message ?: "Semantic search model download failed"))
+                                )
+                            }
+                        }
+
+                        post("/api/semantic-search/cache/delete") {
+                            try {
+                                val request = call.receive<SemanticRetrievalDeleteCacheRequest>()
+                                call.respond(SemanticRetrievalService.deleteCache(request))
+                            } catch (e: IllegalArgumentException) {
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf("error" to (e.message ?: "invalid semantic search cache request"))
+                                )
+                            } catch (e: Exception) {
+                                lprintln("error,server", "Semantic search cache delete failed: ${e.message}")
+                                call.respond(
+                                    HttpStatusCode.InternalServerError,
+                                    mapOf("error" to "Semantic search cache delete failed")
+                                )
+                            }
+                        }
+
+                        post("/api/semantic-search/rebuild") {
+                            try {
+                                call.respond(SemanticRetrievalService.rebuild())
+                            } catch (e: Exception) {
+                                lprintln("error,server", "Semantic retrieval rebuild failed: ${e.message}")
+                                call.respond(
+                                    HttpStatusCode.InternalServerError,
+                                    mapOf("error" to "Semantic retrieval rebuild failed")
+                                )
+                            }
+                        }
+
+                        post("/api/semantic-search/query") {
+                            try {
+                                val request = call.receive<SemanticRetrievalQueryRequest>()
+                                call.respond(SemanticRetrievalService.query(request))
+                            } catch (e: IllegalArgumentException) {
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf("error" to (e.message ?: "invalid semantic retrieval query"))
+                                )
+                            } catch (e: Exception) {
+                                lprintln("error,server", "Semantic retrieval query failed: ${e.message}")
+                                call.respond(
+                                    HttpStatusCode.InternalServerError,
+                                    mapOf("error" to "Semantic retrieval query failed")
                                 )
                             }
                         }

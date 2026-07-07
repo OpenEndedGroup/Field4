@@ -34,7 +34,7 @@ RUNNER_FENCES = {"diffstatic_runner", "diff_runner"}
 DIFF_FENCES = {"diff", "diff_runner"}
 STATIC_FENCES = {"diffstatic", "diffstatic_runner"}
 FENCE_NAMES = sorted(RUNNER_TARGETS, key=len, reverse=True)
-SCRIPT_VERSION = 16
+SCRIPT_VERSION = 17
 RUNNER_RETRIES = 3
 RUNNER_SUBPROCESS_GRACE_SEC = 5.0
 RUNNER_MODE_ENV = "FIELD_DOCS_RUNNER_MODE"
@@ -67,6 +67,7 @@ RUNNER_DIGEST_SOURCE_FILES = (
     "src/jvmMain/kotlin/afield/docs/screenshot.kt",
     "src/jvmMain/kotlin/afield/graphics/FLine.kt",
     "src/jvmMain/kotlin/afield/graphics/FLineGeometry.kt",
+    "src/jvmMain/kotlin/afield/four/fabricated/StandardRendererDocsHarness.kt",
     "src/jvmMain/kotlin/afield/nano/NanoVisualization.kt",
     "src/jvmMain/kotlin/afield/graphics/someSkiko.kt",
     "src/commonMain/resources/outputareas2.js",
@@ -102,6 +103,14 @@ FABRICATE_DOCS_SCENES = {
     "ambient-occlusion": (
         "renderAoComparison",
         "fabricate ao comparison ready",
+    ),
+    "blended-transparency": (
+        "renderBlendedTransparency",
+        "fabricate blended transparency ready",
+    ),
+    "post-stack-vignette": (
+        "renderPostStackVignette",
+        "fabricate post stack vignette ready",
     ),
 }
 

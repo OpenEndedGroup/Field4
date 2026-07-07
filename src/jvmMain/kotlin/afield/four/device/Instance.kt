@@ -21,6 +21,8 @@ import org.lwjgl.vulkan.VK10.VK_INCOMPLETE
 import org.lwjgl.vulkan.VK10.VK_SUCCESS
 import java.nio.ByteBuffer
 import java.nio.IntBuffer
+import java.nio.charset.CodingErrorAction
+import java.nio.charset.StandardCharsets
 
 class Instance(validate: Boolean) {
 
@@ -799,27 +801,48 @@ class Instance(validate: Boolean) {
                 return if (out.isEmpty()) "none" else out.joinToString("|")
             }
 
+            fun boundedUtf8(buf: ByteBuffer): String {
+                val view = buf.duplicate()
+                val start = view.position()
+                val end = (start until view.limit()).firstOrNull { view.get(it).toInt() == 0 } ?: view.limit()
+                view.limit(end)
+                val bytes = view.slice()
+                return StandardCharsets.UTF_8.newDecoder()
+                    .onMalformedInput(CodingErrorAction.REPLACE)
+                    .onUnmappableCharacter(CodingErrorAction.REPLACE)
+                    .decode(bytes)
+                    .toString()
+            }
+
             if (instance.capabilities.vkGetPhysicalDeviceToolPropertiesEXT != 0L) {
+                val capacity = 64
                 val pCount = stack.mallocInt(1)
-                var res = EXTToolingInfo.vkGetPhysicalDeviceToolPropertiesEXT(
-                    phys, pCount, null as VkPhysicalDeviceToolPropertiesEXT.Buffer?
-                )
+                pCount.put(0, capacity)
+                // Allocate a little extra space without advertising it to the driver/layers.
+                // This keeps a minor overrun by a broken tool from immediately corrupting
+                // the surrounding stack frame while still preserving the Vulkan contract.
+                val props = VkPhysicalDeviceToolPropertiesEXT.calloc(capacity + 4, stack)
+                for (i in 0 until capacity) {
+                    props[i]
+                        .sType(EXTToolingInfo.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TOOL_PROPERTIES_EXT)
+                        .pNext(MemoryUtil.NULL)
+                }
+                val res = EXTToolingInfo.vkGetPhysicalDeviceToolPropertiesEXT(phys, pCount, props)
                 if (res == VK_SUCCESS || res == VK_INCOMPLETE) {
-                    val count = pCount[0]
-                    if (count > 0) {
-                        val props = VkPhysicalDeviceToolPropertiesEXT.calloc(count, stack)
-                        res = EXTToolingInfo.vkGetPhysicalDeviceToolPropertiesEXT(phys, pCount, props)
-                        if (res == VK_SUCCESS) {
-                            lprintln("info,vulkan", "== Tooling (physical device) ==")
-                            for (i in 0 until count) {
-                                val t = props[i]
-                                lprintln("info,vulkan", " - ${t.nameString()} ${t.versionString()}")
-                                lprintln("info,vulkan", "    layer='${t.layerString()}'")
-                                lprintln("info,vulkan", "    desc='${t.descriptionString()}'")
-                                lprintln("info,vulkan", "    purposes=${purposes(t.purposes())}")
-                            }
-                        }
+                    val written = pCount[0].coerceIn(0, capacity)
+                    lprintln("info,vulkan", "== Tooling (physical device) ==")
+                    if (res == VK_INCOMPLETE) {
+                        lprintln("warning,vulkan", "Tooling query returned VK_INCOMPLETE; showing first $written tools")
                     }
+                    for (i in 0 until written) {
+                        val t = props[i]
+                        lprintln("info,vulkan", " - ${boundedUtf8(t.name())} ${boundedUtf8(t.version())}")
+                        lprintln("info,vulkan", "    layer='${boundedUtf8(t.layer())}'")
+                        lprintln("info,vulkan", "    desc='${boundedUtf8(t.description())}'")
+                        lprintln("info,vulkan", "    purposes=${purposes(t.purposes())}")
+                    }
+                } else {
+                    lprintln("warning,vulkan", "Tooling query failed with VkResult $res")
                 }
             }
         }

@@ -1203,6 +1203,18 @@ class OpenAiIdeCodexBridge(
                 )
             ) ?: throw IllegalStateException("CodeUseEarlyDocumentSymbols not available for this request.")
         }
+        tools.register(SemanticRetrievalSearchRequest::class.java, { ctx -> ctx.semanticRetrievalSearch != null }) { ctx, req ->
+            ctx.semanticRetrievalSearch?.invoke(req)
+                ?: throw IllegalStateException("SemanticRetrievalSearch not available for this request.")
+        }
+        tools.register(SemanticRetrievalStatusRequest::class.java, { ctx -> ctx.semanticRetrievalStatus != null }) { ctx, _ ->
+            ctx.semanticRetrievalStatus?.invoke()
+                ?: throw IllegalStateException("SemanticRetrievalStatus not available for this request.")
+        }
+        tools.register(SemanticRetrievalRebuildRequest::class.java, { ctx -> ctx.semanticRetrievalRebuild != null }) { ctx, _ ->
+            ctx.semanticRetrievalRebuild?.invoke()
+                ?: throw IllegalStateException("SemanticRetrievalRebuild not available for this request.")
+        }
         tools.register(ScratchpadReadRequest::class.java, { ctx -> ctx.agentMemory != null }) { ctx, _ ->
             ctx.agentMemory?.readScratchpad()
                 ?: throw IllegalStateException("Scratchpad not available for this request.")
