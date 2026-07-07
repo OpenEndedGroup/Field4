@@ -2860,7 +2860,7 @@
         details.push(status.indexExists ? `index ${formatBytes(indexSize)}` : "no index");
         if (status.indexStale) details.push("stale: rebuild needed");
         if (capsules) details.push(formatCount(capsules, "capsule"));
-        if (workspaceSidecars) details.push(`${formatCount(workspaceSidecars, "workspace sidecar")} in ${formatCount(workspaceDocuments, "document")}`);
+        if (workspaceSidecars) details.push(`${formatCount(workspaceSidecars, "workspace file")} in ${formatCount(workspaceDocuments, "document")}`);
         if (vectorReady) details.push(`vectors ${model.backend} ${model.dimension || status.embeddingDimension || config.dimension || "?"}d`);
         details.push(modelSize ? `models ${formatBytes(modelSize)}` : "no model cache");
         if (semantic.modelFile?.exists) details.push(`model ${formatBytes(semantic.modelFile.sizeBytes)}`);
@@ -4828,7 +4828,7 @@
                 body: JSON.stringify({
                     query,
                     limit: 16,
-                    corpus: "workspace-sidecars",
+                    corpus: "workspace",
                     rebuildIfEmpty: false,
                     includeSource: true
                 })

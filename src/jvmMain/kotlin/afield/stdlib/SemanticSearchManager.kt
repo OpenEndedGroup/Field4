@@ -199,7 +199,7 @@ class SemanticSearchManager {
         findTopK(
             query = query,
             k = k,
-            corpus = "workspace-sidecars",
+            corpus = "workspace",
             documentName = documentName,
             boxId = boxId,
             property = property,

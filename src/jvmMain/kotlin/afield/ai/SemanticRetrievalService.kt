@@ -307,7 +307,7 @@ object SemanticRetrievalService {
     private const val INTENT_VECTOR = "intentVector"
     private const val IMPLEMENTATION_VECTOR = "implementationVector"
     private const val META_FILE = "field-semantic-search.meta"
-    val availableCorpora: List<String> = listOf("field-internals", "workspace-sidecars", "documentation")
+    val availableCorpora: List<String> = listOf("field-internals", "workspace", "documentation")
 
     private val cacheRoot: Path = Paths.get(
         System.getProperty("afield.semanticSearch.cacheRoot")
@@ -519,7 +519,7 @@ object SemanticRetrievalService {
             "capsules=${capsules.size}",
             "embedder=${currentEmbedder?.backend ?: "disabled"}",
             "dimension=${currentEmbedder?.dimension ?: 0}",
-            "capsuleBackend=source-index+workspace-sidecars",
+            "capsuleBackend=source-index+workspace",
             "workspaceDocuments=${build.workspaceDocuments}",
             "workspaceSidecarFiles=${build.workspaceSidecarFiles}",
             "corpusFingerprint=${build.corpusFingerprint}"
@@ -552,7 +552,7 @@ object SemanticRetrievalService {
         val requestedCorpora = request.normalizedCorpora()
         val requestedKinds = request.kinds.map { it.trim().lowercase(Locale.ROOT) }.filter { it.isNotBlank() }.toSet()
         val filter: (Document) -> Boolean = { doc ->
-            val corpusOk = requestedCorpora.isEmpty() || doc.get("corpus").orEmpty().lowercase(Locale.ROOT) in requestedCorpora
+            val corpusOk = requestedCorpora.isEmpty() || normalizeCorpusName(doc.get("corpus").orEmpty()) in requestedCorpora
             val pathOk = request.pathPrefix.isBlank() || doc.get("path").orEmpty().startsWith(request.pathPrefix)
             val kindOk = requestedKinds.isEmpty() || doc.get("kind").orEmpty().lowercase(Locale.ROOT) in requestedKinds
             val documentOk = request.documentName.isBlank() ||
@@ -636,7 +636,7 @@ object SemanticRetrievalService {
             indexExists = exists,
             indexedDocuments = documents,
             indexedCapsules = meta["capsules"]?.toIntOrNull() ?: documents,
-            capsuleBackend = meta["capsuleBackend"] ?: "source-index+workspace-sidecars",
+            capsuleBackend = displayCorpusName(meta["capsuleBackend"] ?: "source-index+workspace"),
             embedderBackend = if (!config.enabled) "disabled" else embedder?.backend ?: meta["embedder"] ?: "disabled",
             embeddingDimension = embedder?.dimension ?: meta["dimension"]?.toIntOrNull() ?: 0,
             lastBuildEpochMs = meta["builtAtEpochMs"]?.toLongOrNull() ?: 0L,
@@ -779,6 +779,18 @@ object SemanticRetrievalService {
         val modifiedEpochMs: Long
     )
 
+    private data class WorkspaceSourceFragment(
+        val scale: String,
+        val kind: String,
+        val symbol: String,
+        val title: String,
+        val line: Int,
+        val endLine: Int,
+        val signature: String,
+        val metadata: String = "",
+        val source: String
+    )
+
     private fun buildCapsules(): CapsuleBuild {
         val root = Paths.get(System.getProperty("user.dir")).toAbsolutePath().normalize()
         val index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex()
@@ -808,21 +820,22 @@ object SemanticRetrievalService {
     }
 
     private fun workspaceSidecarCapsules(records: List<WorkspaceSidecarRecord>): List<SemanticCapsule> {
-        return records.mapNotNull { record ->
+        return records.flatMap { record ->
             val source = runCatching { Files.readString(record.file, StandardCharsets.UTF_8) }.getOrNull()
                 ?.take(80_000)
-                ?: return@mapNotNull null
-            if (source.isBlank()) return@mapNotNull null
+                ?: return@flatMap emptyList()
+            if (source.isBlank()) return@flatMap emptyList()
             val firstLine = source.lineSequence().firstOrNull { it.trim().isNotBlank() }?.trim().orEmpty()
             val hash = source.sha256Id()
             val lineCount = source.count { it == '\n' } + 1
+            val propertyId = "workspace:${record.documentName}:${record.boxId}:${record.property}:$hash".sha256Id()
             val symbol = listOf(record.documentName, record.boxName.ifBlank { record.boxId }, record.property)
                 .filter { it.isNotBlank() }
                 .joinToString(" / ")
-            SemanticCapsule(
-                id = "workspace:${record.documentName}:${record.boxId}:${record.property}:$hash".sha256Id(),
-                scale = "declaration",
-                corpus = "workspace-sidecars",
+            val propertyCapsule = SemanticCapsule(
+                id = propertyId,
+                scale = "container",
+                corpus = "workspace",
                 kind = "sidecar-${record.property}",
                 symbol = symbol,
                 title = "${record.boxName.ifBlank { record.boxId }}.${record.property}",
@@ -848,8 +861,235 @@ object SemanticRetrievalService {
                 }.trim(),
                 source = source
             )
+            val fragments = workspaceSourceFragments(record, source)
+                .mapIndexed { index, fragment ->
+                    SemanticCapsule(
+                        id = "workspace-fragment:$propertyId:${fragment.kind}:${fragment.line}:${fragment.symbol}:$index".sha256Id(),
+                        scale = fragment.scale,
+                        corpus = "workspace",
+                        kind = fragment.kind,
+                        symbol = fragment.symbol.ifBlank { symbol },
+                        title = fragment.title.ifBlank { "${record.boxName.ifBlank { record.boxId }}.${record.property}" },
+                        path = record.relativePath,
+                        line = fragment.line,
+                        endLine = fragment.endLine,
+                        parentId = propertyId,
+                        documentName = record.documentName,
+                        boxName = record.boxName,
+                        boxId = record.boxId,
+                        property = record.property,
+                        language = record.language,
+                        signature = fragment.signature,
+                        metadata = buildString {
+                            appendLine("document: ${record.documentName}")
+                            appendLine("box: ${record.boxName}")
+                            appendLine("box_uid: ${record.boxId}")
+                            appendLine("property: ${record.property}")
+                            appendLine("language: ${record.language}")
+                            appendLine("parent_property_id: $propertyId")
+                            if (fragment.metadata.isNotBlank()) appendLine(fragment.metadata)
+                        }.trim(),
+                        source = fragment.source
+                    )
+                }
+            listOf(propertyCapsule) + fragments
         }
     }
+
+    private fun workspaceSourceFragments(record: WorkspaceSidecarRecord, source: String): List<WorkspaceSourceFragment> {
+        val language = record.language.lowercase(Locale.ROOT)
+        val structured = when {
+            language in setOf("kotlin", "kt", "kts") -> kotlinWorkspaceFragments(source)
+            language in setOf("python", "py") -> pythonWorkspaceFragments(source)
+            language in setOf("javascript", "typescript", "js", "ts") -> javascriptWorkspaceFragments(source)
+            language in setOf("glsl", "slang", "stacksl") -> shaderWorkspaceFragments(source)
+            language in setOf("markdown", "md") -> markdownWorkspaceFragments(source)
+            else -> emptyList()
+        }
+        return (structured.ifEmpty { fallbackWorkspaceFragments(source) }).take(64)
+    }
+
+    private fun kotlinWorkspaceFragments(source: String): List<WorkspaceSourceFragment> {
+        val lines = source.lines()
+        val decl = Regex("""^\s*(?:[\w\s@().<>"]+\s+)?(fun|val|var|class|interface|object)\s+([A-Za-z_][A-Za-z0-9_.]*)""")
+        return lines.mapIndexedNotNull { index, line ->
+            if (line.leadingWhitespace() > 4) return@mapIndexedNotNull null
+            val match = decl.find(line) ?: return@mapIndexedNotNull null
+            val kind = match.groupValues[1]
+            val symbol = match.groupValues[2]
+            val body = declarationSource(lines, index, maxLines = 180).ifBlank { line.trim() }
+            val calls = extractCallNames(body).take(24)
+            WorkspaceSourceFragment(
+                scale = "declaration",
+                kind = kind,
+                symbol = symbol,
+                title = symbol.substringAfterLast('.'),
+                line = index + 1,
+                endLine = index + body.lines().size,
+                signature = line.trim(),
+                metadata = if (calls.isEmpty()) "" else buildString {
+                    appendLine("calls:")
+                    calls.forEach { appendLine("- $it") }
+                }.trim(),
+                source = body
+            )
+        }
+    }
+
+    private fun pythonWorkspaceFragments(source: String): List<WorkspaceSourceFragment> {
+        val lines = source.lines()
+        val decl = Regex("""^\s*((?:async\s+)?def|class)\s+([A-Za-z_][A-Za-z0-9_]*)\b""")
+        return lines.mapIndexedNotNull { index, line ->
+            if (line.leadingWhitespace() > 4) return@mapIndexedNotNull null
+            val match = decl.find(line) ?: return@mapIndexedNotNull null
+            val keyword = match.groupValues[1]
+            val symbol = match.groupValues[2]
+            val body = indentationBlockSource(lines, index, maxLines = 180).ifBlank { line.trim() }
+            WorkspaceSourceFragment(
+                scale = "declaration",
+                kind = if (keyword.contains("def")) "function" else "class",
+                symbol = symbol,
+                title = symbol,
+                line = index + 1,
+                endLine = index + body.lines().size,
+                signature = line.trim(),
+                source = body
+            )
+        }
+    }
+
+    private fun javascriptWorkspaceFragments(source: String): List<WorkspaceSourceFragment> {
+        val lines = source.lines()
+        val functionDecl = Regex("""^\s*(?:export\s+)?(?:async\s+)?function\s+([A-Za-z_$][A-Za-z0-9_$]*)\b""")
+        val classDecl = Regex("""^\s*(?:export\s+)?class\s+([A-Za-z_$][A-Za-z0-9_$]*)\b""")
+        val arrowDecl = Regex("""^\s*(?:export\s+)?(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*(?:async\s*)?(?:\([^)]*\)|[A-Za-z_$][A-Za-z0-9_$]*)\s*=>""")
+        return lines.mapIndexedNotNull { index, line ->
+            if (line.leadingWhitespace() > 4) return@mapIndexedNotNull null
+            val kind: String
+            val symbol: String
+            when {
+                functionDecl.find(line) != null -> {
+                    kind = "function"
+                    symbol = functionDecl.find(line)!!.groupValues[1]
+                }
+                classDecl.find(line) != null -> {
+                    kind = "class"
+                    symbol = classDecl.find(line)!!.groupValues[1]
+                }
+                arrowDecl.find(line) != null -> {
+                    kind = "function"
+                    symbol = arrowDecl.find(line)!!.groupValues[1]
+                }
+                else -> return@mapIndexedNotNull null
+            }
+            val body = declarationSource(lines, index, maxLines = 180).ifBlank { line.trim() }
+            WorkspaceSourceFragment(
+                scale = "declaration",
+                kind = kind,
+                symbol = symbol,
+                title = symbol,
+                line = index + 1,
+                endLine = index + body.lines().size,
+                signature = line.trim(),
+                source = body
+            )
+        }
+    }
+
+    private fun shaderWorkspaceFragments(source: String): List<WorkspaceSourceFragment> {
+        val lines = source.lines()
+        val structDecl = Regex("""^\s*struct\s+([A-Za-z_][A-Za-z0-9_]*)\b""")
+        val functionDecl = Regex("""^\s*(?:[A-Za-z_][A-Za-z0-9_<>]*\s+){1,5}([A-Za-z_][A-Za-z0-9_]*)\s*\([^;]*\)\s*(?:\{|$)""")
+        val controlWords = setOf("if", "for", "while", "switch")
+        return lines.mapIndexedNotNull { index, line ->
+            if (line.leadingWhitespace() > 4) return@mapIndexedNotNull null
+            val struct = structDecl.find(line)
+            val function = functionDecl.find(line)
+            val kind: String
+            val symbol: String
+            when {
+                struct != null -> {
+                    kind = "struct"
+                    symbol = struct.groupValues[1]
+                }
+                function != null && function.groupValues[1] !in controlWords -> {
+                    kind = "shader-function"
+                    symbol = function.groupValues[1]
+                }
+                else -> return@mapIndexedNotNull null
+            }
+            val body = declarationSource(lines, index, maxLines = 180).ifBlank { line.trim() }
+            WorkspaceSourceFragment(
+                scale = "declaration",
+                kind = kind,
+                symbol = symbol,
+                title = symbol,
+                line = index + 1,
+                endLine = index + body.lines().size,
+                signature = line.trim(),
+                source = body
+            )
+        }
+    }
+
+    private fun markdownWorkspaceFragments(source: String): List<WorkspaceSourceFragment> =
+        markdownSections(source.lines()).map { section ->
+            WorkspaceSourceFragment(
+                scale = "fragment",
+                kind = "markdown-section",
+                symbol = section.title,
+                title = section.title,
+                line = section.line,
+                endLine = section.endLine,
+                signature = section.title,
+                metadata = "markdown_heading_level: ${section.level}",
+                source = section.body
+            )
+        }
+
+    private fun fallbackWorkspaceFragments(source: String): List<WorkspaceSourceFragment> {
+        val lines = source.lines()
+        if (lines.size <= 180 && source.length <= 16_000) return emptyList()
+        val chunkSize = 120
+        val overlap = 20
+        val step = chunkSize - overlap
+        val out = mutableListOf<WorkspaceSourceFragment>()
+        var start = 0
+        while (start < lines.size && out.size < 16) {
+            val endExclusive = (start + chunkSize).coerceAtMost(lines.size)
+            val chunk = lines.subList(start, endExclusive).joinToString("\n").trim()
+            if (chunk.isNotBlank()) {
+                val firstLine = chunk.lineSequence().firstOrNull { it.trim().isNotBlank() }?.trim().orEmpty()
+                out += WorkspaceSourceFragment(
+                    scale = "fragment",
+                    kind = "text-fragment",
+                    symbol = "lines ${start + 1}-$endExclusive",
+                    title = "lines ${start + 1}-$endExclusive",
+                    line = start + 1,
+                    endLine = endExclusive,
+                    signature = firstLine,
+                    metadata = "chunk_lines: ${start + 1}-$endExclusive",
+                    source = chunk
+                )
+            }
+            start += step
+        }
+        return out
+    }
+
+    private fun indentationBlockSource(lines: List<String>, start: Int, maxLines: Int = 180): String {
+        val baseIndent = lines[start].leadingWhitespace()
+        val out = mutableListOf<String>()
+        for (idx in start until (start + maxLines).coerceAtMost(lines.size)) {
+            val line = lines[idx]
+            if (idx > start && line.isNotBlank() && line.leadingWhitespace() <= baseIndent) break
+            out += line
+        }
+        return out.joinToString("\n").trimEnd()
+    }
+
+    private fun String.leadingWhitespace(): Int =
+        takeWhile { it == ' ' || it == '\t' }.sumOf { if (it == '\t') 4 else 1 }
 
     private fun workspaceSidecarRecords(): List<WorkspaceSidecarRecord> {
         val root = workspaceRootPath() ?: return emptyList()
@@ -1245,7 +1485,7 @@ object SemanticRetrievalService {
         SemanticRetrievalHit(
             id = doc.get("id").orEmpty(),
             scale = doc.get("scale").orEmpty(),
-            corpus = doc.get("corpus").orEmpty(),
+            corpus = displayCorpusName(doc.get("corpus").orEmpty()),
             kind = doc.get("kind").orEmpty(),
             symbol = doc.get("symbol").orEmpty(),
             title = doc.get("title").orEmpty(),
@@ -1282,10 +1522,13 @@ object SemanticRetrievalService {
         when (raw.trim().lowercase(Locale.ROOT)) {
             "", "*", "all", "any" -> "all"
             "field", "fields", "field4", "internals", "source", "src", "code", "field-internal", "field-internals" -> "field-internals"
-            "workspace", "workspace-sidecar", "workspace-sidecars", "sidecar", "sidecars", "document", "documents", "current-document" -> "workspace-sidecars"
+            "workspace", "workspace-sidecar", "workspace-sidecars", "sidecar", "sidecars", "document", "documents", "current-document" -> "workspace"
             "doc", "docs", "documentation", "manual", "manuals" -> "documentation"
             else -> raw.trim().lowercase(Locale.ROOT)
         }
+
+    private fun displayCorpusName(raw: String): String =
+        raw.replace("workspace-sidecars", "workspace")
 
     private data class RankedDoc(val docId: Int, val rank: Int, val score: Float)
 

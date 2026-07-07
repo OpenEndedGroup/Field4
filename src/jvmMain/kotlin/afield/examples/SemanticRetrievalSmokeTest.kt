@@ -45,6 +45,10 @@ object SemanticRetrievalSmokeTest {
             fun drawRandomWigglyLine() {
                 println("current workspace sidecar curve")
             }
+
+            fun unrelatedWorkspaceHelper() {
+                println("unrelated workspace helper")
+            }
             """.trimIndent()
         )
         Files.writeString(
@@ -95,23 +99,45 @@ object SemanticRetrievalSmokeTest {
             SemanticRetrievalQueryRequest(
                 query = "random wiggly line browser screenshot smoke",
                 limit = 12,
-                corpora = listOf("workspace-sidecars", "documentation"),
+                corpora = listOf("workspace", "documentation"),
                 includeSource = true
             )
         )
         require(combinedResult.success) { combinedResult.message }
         require(combinedResult.results.isNotEmpty()) { "expected combined corpus search results" }
-        require(combinedResult.results.all { it.corpus in setOf("workspace-sidecars", "documentation") }) {
+        require(combinedResult.results.all { it.corpus in setOf("workspace", "documentation") }) {
             "combined corpus filter leaked unexpected corpora: ${combinedResult.results.map { it.corpus }}"
         }
-        require(combinedResult.results.any { it.corpus == "workspace-sidecars" }) {
-            "expected workspace-sidecars in combined corpus results"
+        require(combinedResult.results.any { it.corpus == "workspace" }) {
+            "expected workspace in combined corpus results"
+        }
+
+        val workspaceFunctionResult = SemanticRetrievalService.query(
+            SemanticRetrievalQueryRequest(
+                query = "draw random wiggly line function",
+                limit = 10,
+                corpus = "workspace",
+                documentName = "wiggleDocument",
+                includeSource = true
+            )
+        )
+        require(workspaceFunctionResult.success) { workspaceFunctionResult.message }
+        require(workspaceFunctionResult.results.any {
+            it.scale == "declaration" &&
+                    it.kind == "fun" &&
+                    it.symbol == "drawRandomWigglyLine" &&
+                    it.documentName == "wiggleDocument" &&
+                    it.boxName == "Wiggly Line Box" &&
+                    it.property == "code" &&
+                    it.line > 0
+        }) {
+            "expected workspace Kotlin function sub-capsule, got ${workspaceFunctionResult.results.map { "${it.scale}:${it.kind}:${it.symbol}:${it.line}" }}"
         }
 
         val managerHits = SemanticSearchManager().findTopK(
             query = "random wiggly line",
             k = 5,
-            corpora = listOf("field-internals", "workspace-sidecars"),
+            corpora = listOf("field-internals", "workspace"),
             includeSource = true
         )
         require(managerHits.isNotEmpty()) { "expected manager facade search results" }

@@ -421,7 +421,7 @@ function bootstrapAnywhereProviders() {
                 const q = String(query || "").trim()
                 if (q.length < 3) return []
                 return paletteSemanticSearch(q, {
-                        corpus: "workspace-sidecars",
+                        corpus: "workspace",
                         documentName: currentDocumentNameForSemantic(),
                         limit: 12,
                         includeSource: true,
@@ -1792,7 +1792,7 @@ const similarCodeCommandItem = () => ({
         id: "find-similar-code",
         label: "Find similar code",
         description: "Semantic search from the current cursor context",
-        detail: "Searches current document, workspace sidecars, Field internals, and indexed documentation.",
+        detail: "Searches current document, workspace, Field internals, and indexed documentation.",
         category: "Search",
         icon: "se",
         score: 30,
@@ -1854,7 +1854,7 @@ async function openSimilarCodePalette() {
                                 .filter((hit) => !(hit.boxId === context.boxId && hit.property === context.property && Math.abs((Number(hit.line) || 1) - context.line) <= 2))
                                 .map((hit, index) => paletteItemForSemanticHit(hit, {
                                         prefix: "similar-code",
-                                        category: hit.corpus === "workspace-sidecars"
+                                        category: hit.corpus === "workspace"
                                                 ? (hit.documentName === context.documentName ? "Similar in Current Document" : "Similar in Workspace")
                                                 : (hit.corpus === "documentation" ? "Similar Documentation" : "Similar Field Internals"),
                                         score: 50 - index * 0.01,

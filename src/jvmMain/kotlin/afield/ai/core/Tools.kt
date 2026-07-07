@@ -358,7 +358,7 @@ data class CodeUseSemanticAnalyzeCodeRequest(
 
 /** Semantic retrieval tools ------------------------------------------------ */
 
-@JsonClassDescription("Search Field's native Lucene semantic retrieval index across Field internals, current workspace sidecar code, and documentation. This is natural-language to code/docs retrieval, not compiler resolution. Set corpus for one corpus, or corpora for combinations. Available corpora are field-internals, workspace-sidecars, and documentation. Leave both blank to search all corpora. Use documentName with corpus/workspace-sidecars to search a specific current workspace document. Results include BM25/symbol/vector ranks when available; vector search is active only when the local ONNX embedder is configured.")
+@JsonClassDescription("Search Field's native Lucene semantic retrieval index across Field internals, current workspace code, and documentation. This is natural-language to code/docs retrieval, not compiler resolution. Set corpus for one corpus, or corpora for combinations. Available corpora are field-internals, workspace, and documentation. Leave both blank to search all corpora. Use documentName with corpus/workspace to search a specific current workspace document. Results include BM25/symbol/vector ranks when available; vector search is active only when the local ONNX embedder is configured.")
 data class SemanticRetrievalSearchRequest(
     val query: String,
     val limit: Int = 10,
