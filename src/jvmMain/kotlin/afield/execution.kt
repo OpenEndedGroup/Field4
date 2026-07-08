@@ -1247,15 +1247,16 @@ class KotlinExecution : BoxExecution {
             }
         }
 
-        private fun reportEvalException(
+        internal fun reportEvalException(
             box: Box,
             reply: ((Message) -> Unit)?,
             originSession: WebSocketSession?,
             throwable: Throwable,
             lineOffset: Int,
-            fallbackProperty: String = "code"
+            fallbackProperty: String = "code",
+            context: String = "batch launch"
         ) {
-            lprintln("error,execution", "exception thrown in batch launch inside box $box")
+            lprintln("error,execution", "exception thrown in $context inside box $box")
             lprintln("error,execution", throwable.stackTraceToString())
 
             val location = editorLocationForEvalException(box, throwable)
