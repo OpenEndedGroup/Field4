@@ -94,6 +94,18 @@ data class RunloopTimingStats(
 )
 
 @Serializable
+data class RunloopSchedulingStatus(
+    val idleStrategy: String = "spin-then-park",
+    val spinIterations: Int = 0,
+    val parkNanos: Long = 0,
+    val affinityRequested: Boolean = false,
+    val affinityCore: Int = -1,
+    val affinityApplied: Boolean = false,
+    val affinityThreadId: Long = -1,
+    val affinityMessage: String = ""
+)
+
+@Serializable
 data class RuntimeAotCacheStatus(
     val state: String = "unknown",
     val summary: String = "unknown",
@@ -126,7 +138,8 @@ data class RuntimeInfo(
     val freeMemoryBytes: Long = 0,
     val aotCacheStatus: RuntimeAotCacheStatus = RuntimeAotCacheStatus(),
     val gcPauseStats: GcPauseStats = GcPauseStats(),
-    val runloopTimingStats: RunloopTimingStats = RunloopTimingStats()
+    val runloopTimingStats: RunloopTimingStats = RunloopTimingStats(),
+    val runloopSchedulingStatus: RunloopSchedulingStatus = RunloopSchedulingStatus()
 )
 
 @Serializable
