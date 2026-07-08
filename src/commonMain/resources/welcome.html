@@ -3009,6 +3009,7 @@
                 ? `waiting for GC samples · ${gc.collectorCount || 0} collectors`
                 : "GC notifications unavailable");
         const runloop = info.runloopTimingStats || {};
+        const runloopScheduling = info.runloopSchedulingStatus || {};
         const runloopSpeed = runloop.sampleCount > 0
             ? `${Number(runloop.ticksPerSecond || 0).toFixed(0)} ticks/s · frame ${runloop.frame || 0}`
             : (runloop.running ? "collecting samples" : "not started");
@@ -3037,6 +3038,19 @@
                 ["n=", runloop.sampleCount || 0]
             ])
             : "";
+        const runloopIdle = [
+            runloopScheduling.idleStrategy || "unknown",
+            runloopScheduling.spinIterations ? `spin ${runloopScheduling.spinIterations}` : "",
+            runloopScheduling.parkNanos ? `park ${runloopScheduling.parkNanos}ns` : ""
+        ].filter(Boolean).join(" · ");
+        const runloopAffinity = runloopScheduling.affinityRequested
+            ? [
+                runloopScheduling.affinityApplied ? "applied" : "not applied",
+                Number(runloopScheduling.affinityCore) >= 0 ? `core ${runloopScheduling.affinityCore}` : "",
+                Number(runloopScheduling.affinityThreadId) > 0 ? `tid ${runloopScheduling.affinityThreadId}` : "",
+                runloopScheduling.affinityMessage || ""
+            ].filter(Boolean).join(" · ")
+            : (runloopScheduling.affinityMessage || "off");
         const rows = [
             ["Java", [info.javaRuntimeName, info.javaRuntimeVersion || info.javaVersion].filter(Boolean).join(" ")],
             ["VM", [info.javaVmName, info.javaVmVersion].filter(Boolean).join(" ")],
@@ -3049,6 +3063,8 @@
             ["CPU", info.availableProcessors ? `${info.availableProcessors} processors` : ""],
             ["Memory", memory],
             ["RunLoop", runloopSpeed],
+            ["RunLoop idle", runloopIdle, "runtime-info-compact"],
+            ["RunLoop affinity", runloopAffinity, "runtime-info-compact"],
             ["RunLoop interval", runloopInterval, "runtime-info-compact", true],
             ["RunLoop work", runloopWork, "runtime-info-compact", true],
             ["RunLoop pauses", runloopMicropauses, "runtime-info-compact", true],

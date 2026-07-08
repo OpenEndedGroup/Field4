@@ -262,7 +262,8 @@ private fun currentRuntimeInfo(): RuntimeInfo {
         freeMemoryBytes = runtime.freeMemory(),
         aotCacheStatus = currentAotCacheStatus(inputArguments),
         gcPauseStats = gcPauseMonitor.stats(),
-        runloopTimingStats = Runloop.runLoop.timingStats()
+        runloopTimingStats = Runloop.runLoop.timingStats(),
+        runloopSchedulingStatus = Runloop.runLoop.schedulingStatus()
     )
 }
 

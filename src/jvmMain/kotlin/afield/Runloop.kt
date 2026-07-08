@@ -5,8 +5,11 @@ import afield.Generator.Companion.isMain
 import afield.four.util.MapOfSequences
 import afield.logger.lprintln
 import kotlinx.coroutines.*
+import java.io.File
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.locks.LockSupport
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.math.ceil
 import kotlin.math.max
@@ -33,6 +36,9 @@ class Runloop {
         val runLoop = Runloop()
         val miscPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() + 2)
 
+        private val scheduling = RunloopSchedulingConfig.fromEnvironment()
+        private val schedulingState = RunloopSchedulingState(scheduling)
+
         @Volatile
         var mainThread: Thread? = null
 
@@ -53,10 +59,13 @@ class Runloop {
 
     fun timingStats(): RunloopTimingStats = timingMonitor.snapshot(frame)
 
+    fun schedulingStatus(): RunloopSchedulingStatus = schedulingState.status()
+
     fun start() {
         if (mainThread == null) {
             mainThread = Thread.currentThread()
         }
+        schedulingState.install(Thread.currentThread())
         while (true) {
             val frameStartNs = System.nanoTime()
             preRun.update()
@@ -68,9 +77,171 @@ class Runloop {
 
             if (shouldSleep) {
 //                lprintln("debug,runloop", "framer has run out of work thread is ${Thread.currentThread().name}")
-                Thread.yield()
+                schedulingState.idle()
             }
             shouldSleep = true
+        }
+    }
+}
+
+private enum class RunloopIdleStrategy {
+    YIELD,
+    SPIN,
+    PARK,
+    SPIN_THEN_PARK
+}
+
+private data class RunloopSchedulingConfig(
+    val idleStrategy: RunloopIdleStrategy = RunloopIdleStrategy.SPIN_THEN_PARK,
+    val spinIterations: Int = 64,
+    val parkNanos: Long = 50_000L,
+    val affinityCore: Int? = null,
+    val affinityEnabled: Boolean = affinityCore != null
+) {
+    companion object {
+        fun fromEnvironment(): RunloopSchedulingConfig {
+            fun envName(name: String): String = "AFIELD_RUNLOOP_" + name
+                .replace(Regex("([a-z])([A-Z])"), "\$1_\$2")
+                .uppercase()
+                .replace('.', '_')
+            fun setting(name: String): String? {
+                return System.getProperty("afield.runloop.$name")
+                    ?: System.getenv(envName(name))
+            }
+
+            val idle = when (setting("idle")?.trim()?.lowercase()) {
+                null, "", "spin-then-park", "spin_then_park" -> RunloopIdleStrategy.SPIN_THEN_PARK
+                "yield" -> RunloopIdleStrategy.YIELD
+                "spin" -> RunloopIdleStrategy.SPIN
+                "park" -> RunloopIdleStrategy.PARK
+                else -> RunloopIdleStrategy.SPIN_THEN_PARK
+            }
+            val spinIterations = setting("spinIterations")?.trim()?.toIntOrNull()?.coerceIn(0, 1_000_000) ?: 64
+            val parkNanos = setting("parkNanos")?.trim()?.toLongOrNull()?.coerceIn(0L, 10_000_000L) ?: 50_000L
+            val affinityText = setting("affinityCore")?.trim()
+                ?: System.getenv("AFIELD_RUNLOOP_AFFINITY")?.trim()
+                ?: System.getProperty("afield.runloop.affinity")?.trim()
+            val affinityCore = affinityText
+                ?.takeUnless { it.isBlank() || it.equals("off", ignoreCase = true) || it.equals("false", ignoreCase = true) }
+                ?.toIntOrNull()
+                ?.takeIf { it >= 0 }
+            return RunloopSchedulingConfig(
+                idleStrategy = idle,
+                spinIterations = spinIterations,
+                parkNanos = parkNanos,
+                affinityCore = affinityCore,
+                affinityEnabled = affinityCore != null
+            )
+        }
+    }
+}
+
+
+private class RunloopSchedulingState(private val config: RunloopSchedulingConfig) {
+    @Volatile private var installed = false
+    @Volatile private var applied = false
+    @Volatile private var linuxThreadId = -1L
+    @Volatile private var message = if (config.affinityEnabled) "pending" else "off"
+
+    fun install(thread: Thread) {
+        if (installed) return
+        installed = true
+        thread.name = "field-runloop-main"
+        if (!config.affinityEnabled) {
+            message = "affinity disabled"
+            lprintln("info,runloop", "Runloop scheduling: ${status().idleStrategy}, affinity disabled")
+            return
+        }
+        val os = System.getProperty("os.name", "").lowercase()
+        if (!os.contains("linux")) {
+            message = "affinity requested, but this is not Linux"
+            return
+        }
+        val core = config.affinityCore ?: run {
+            message = "affinity disabled"
+            return
+        }
+        val tid = currentLinuxThreadId(thread.name)
+        linuxThreadId = tid
+        if (tid <= 0) {
+            message = "could not locate Linux thread id for ${thread.name}"
+            return
+        }
+        val taskset = findTaskset()
+        if (taskset == null) {
+            message = "taskset not found; cannot apply experimental Linux affinity"
+            return
+        }
+        runCatching {
+            val process = ProcessBuilder(taskset, "-pc", core.toString(), tid.toString())
+                .redirectErrorStream(true)
+                .start()
+            val output = process.inputStream.bufferedReader().readText().trim()
+            val finished = process.waitFor(2, TimeUnit.SECONDS)
+            if (!finished) {
+                process.destroyForcibly()
+                message = "taskset timed out"
+            } else if (process.exitValue() == 0) {
+                applied = true
+                message = output.ifBlank { "pinned Linux tid $tid to core $core" }
+            } else {
+                message = output.ifBlank { "taskset failed with exit ${process.exitValue()}" }
+            }
+        }.onFailure {
+            message = it.message ?: it.javaClass.name
+        }
+        lprintln("info,runloop", "Runloop scheduling: ${status().idleStrategy}, affinity=$message")
+    }
+
+    fun idle() {
+        when (config.idleStrategy) {
+            RunloopIdleStrategy.YIELD -> Thread.yield()
+            RunloopIdleStrategy.SPIN -> spin(config.spinIterations)
+            RunloopIdleStrategy.PARK -> park(config.parkNanos)
+            RunloopIdleStrategy.SPIN_THEN_PARK -> {
+                spin(config.spinIterations)
+                park(config.parkNanos)
+            }
+        }
+    }
+
+    fun status(): RunloopSchedulingStatus = RunloopSchedulingStatus(
+        idleStrategy = config.idleStrategy.name.lowercase().replace('_', '-'),
+        spinIterations = config.spinIterations,
+        parkNanos = config.parkNanos,
+        affinityRequested = config.affinityEnabled,
+        affinityCore = config.affinityCore ?: -1,
+        affinityApplied = applied,
+        affinityThreadId = linuxThreadId,
+        affinityMessage = message
+    )
+
+    private fun spin(iterations: Int) {
+        repeat(iterations) { Thread.onSpinWait() }
+    }
+
+    private fun park(nanos: Long) {
+        if (nanos > 0L) LockSupport.parkNanos(nanos)
+    }
+
+    private fun currentLinuxThreadId(threadName: String): Long {
+        val tasks = File("/proc/self/task").listFiles() ?: return -1L
+        val matches = tasks.mapNotNull { task ->
+            val tid = task.name.toLongOrNull() ?: return@mapNotNull null
+            val comm = runCatching { task.resolve("comm").readText().trim() }.getOrNull()
+            if (comm == threadName.take(15)) tid else null
+        }
+        return when {
+            matches.size == 1 -> matches.single()
+            matches.isNotEmpty() -> matches.minOrNull() ?: -1L
+            else -> -1L
+        }
+    }
+
+    private fun findTaskset(): String? {
+        val candidates = listOf("/usr/bin/taskset", "/bin/taskset", "taskset")
+        return candidates.firstOrNull { candidate ->
+            candidate.contains('/') && File(candidate).canExecute() || !candidate.contains('/')
         }
     }
 }
