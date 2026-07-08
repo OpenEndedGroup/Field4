@@ -709,7 +709,9 @@ class Renderer(
         physicalDevice = PhysicalDevice.createPhysicalDevice(instance, Options.preferredDevice)
         device = Device(physicalDevice, instance)
         Options.chooseDefaultDepthFormat(physicalDevice.vkPhysicalDevice)
-        instance.dumpToolingInfo(instance.vkInstance, physicalDevice.vkPhysicalDevice)
+        if (Options.dumpToolingInfo) {
+            instance.dumpToolingInfo(instance.vkInstance, physicalDevice.vkPhysicalDevice)
+        }
         graphQueue = GraphicsQueue(device, 0)
         val primarySurface = Surface(physicalDevice, window.windowHandle)
         // Prefer a different queue index for present to avoid contending with the graphics queue (which XR/runtime may also touch).
@@ -1321,7 +1323,7 @@ class Renderer(
             // --- Label start (compute pass) ---
             MemoryStack.stackPush().use { s ->
                 val c = s.floats(0.25f, 0.65f, 0.85f, 1f) // cyan-ish
-                ccmd.beginLabel("Compute Pass [frame $frameId ctx=$ctxIndex]", c)
+                ccmd.beginLabel("Compute Pass [ctx=$ctxIndex]", c)
             }
 
             val profilerState = ctx.profilerState
@@ -1461,7 +1463,7 @@ class Renderer(
             // --- Label start (graphics frame) ---
             MemoryStack.stackPush().use { s ->
                 val c = s.floats(0.85f, 0.45f, 0.15f, 1f) // orange-ish
-                cmd.beginLabel("Graphics Frame [frame $frameId ctx=$ctxIndex]", c)
+                cmd.beginLabel("Graphics Frame [ctx=$ctxIndex]", c)
             }
 
             currentCommandBuffer = cmd

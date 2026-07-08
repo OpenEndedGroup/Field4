@@ -21,6 +21,7 @@ import java.sql.DriverManager
 import java.sql.ResultSet
 import java.time.Duration
 import java.time.Instant
+import java.util.ArrayDeque
 import java.util.UUID
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.TimeUnit
@@ -34,8 +35,13 @@ data class CodeUseSummary(
     val databasePath: String,
     val queueSize: Int,
     val droppedEvents: Long,
+    val quietMode: Boolean = false,
     val analyzerQueueSize: Int = 0,
     val droppedAnalysisJobs: Long = 0,
+    val analyzerCompletedJobs: Long = 0,
+    val analyzerJobsPerMinute: Double = 0.0,
+    val catchupBacklog: Long = 0,
+    val catchupQueuedJobs: Long = 0,
     val analyzerBackend: String = "source-index",
     val analyzerMessage: String = "",
     val semanticBackend: String = "source-index-fallback",
@@ -297,6 +303,10 @@ object CodeUseTelemetryService {
     private val analysisQueue = ArrayBlockingQueue<CodeUseAnalysisJob>(ANALYSIS_QUEUE_CAPACITY)
     private val droppedEvents = AtomicLong(0)
     private val droppedAnalysisJobs = AtomicLong(0)
+    private val analyzerCompletedJobs = AtomicLong(0)
+    private val catchupQueuedJobs = AtomicLong(0)
+    private val analysisRateLock = Any()
+    private val analysisCompletionTimestamps = ArrayDeque<Long>()
     private val started = AtomicLong(0)
     private val analysisStarted = AtomicLong(0)
     private val disabledMessage = AtomicLong(0)
@@ -304,6 +314,9 @@ object CodeUseTelemetryService {
 
     @Volatile
     private var enabled = true
+
+    @Volatile
+    private var quietMode = runCatching { currentFieldPreferences().quietMode }.getOrDefault(false)
 
     @Volatile
     private var schemaReady = false
@@ -433,6 +446,7 @@ object CodeUseTelemetryService {
     }
 
     fun summary(): CodeUseSummary {
+        refreshQuietMode()
         start()
         val semanticHealth = semanticSidecarHealthStatus()
         if (!enabled) {
@@ -441,8 +455,12 @@ object CodeUseTelemetryService {
                 databasePath = databasePath.absolutePathString(),
                 queueSize = queue.size,
                 droppedEvents = droppedEvents.get(),
+                quietMode = quietMode,
                 analyzerQueueSize = analysisQueue.size,
                 droppedAnalysisJobs = droppedAnalysisJobs.get(),
+                analyzerCompletedJobs = analyzerCompletedJobs.get(),
+                analyzerJobsPerMinute = analyzerJobsPerMinute(),
+                catchupQueuedJobs = catchupQueuedJobs.get(),
                 analyzerBackend = storeAnalyzerBackend(semanticHealth),
                 analyzerMessage = storeAnalyzerMessage(semanticHealth),
                 semanticBackend = semanticHealth.backend,
@@ -454,13 +472,19 @@ object CodeUseTelemetryService {
         return runCatching {
             withConnection { conn ->
                 val confidence = confidenceSummary(conn)
+                val catchupBacklog = recentK2CatchupBacklog(conn)
                 CodeUseSummary(
                     enabled = true,
                     databasePath = databasePath.absolutePathString(),
                     queueSize = queue.size,
                     droppedEvents = droppedEvents.get(),
+                    quietMode = quietMode,
                     analyzerQueueSize = analysisQueue.size,
                     droppedAnalysisJobs = droppedAnalysisJobs.get(),
+                    analyzerCompletedJobs = analyzerCompletedJobs.get(),
+                    analyzerJobsPerMinute = analyzerJobsPerMinute(),
+                    catchupBacklog = catchupBacklog,
+                    catchupQueuedJobs = catchupQueuedJobs.get(),
                     analyzerBackend = storeAnalyzerBackend(semanticHealth),
                     analyzerMessage = storeAnalyzerMessage(semanticHealth),
                     semanticBackend = semanticHealth.backend,
@@ -476,7 +500,8 @@ object CodeUseTelemetryService {
                     sourceIndexUseEdges = confidence.sourceIndexUseEdges,
                     textualUseEdges = confidence.textualUseEdges,
                     unknownUseEdges = confidence.unknownUseEdges,
-                    unresolvedUseEdges = confidence.unresolvedUseEdges
+                    unresolvedUseEdges = confidence.unresolvedUseEdges,
+                    message = if (quietMode) "Quiet mode is on; background semantic catch-up is paused." else ""
                 )
             }
         }.getOrElse {
@@ -485,8 +510,12 @@ object CodeUseTelemetryService {
                 databasePath = databasePath.absolutePathString(),
                 queueSize = queue.size,
                 droppedEvents = droppedEvents.get(),
+                quietMode = quietMode,
                 analyzerQueueSize = analysisQueue.size,
                 droppedAnalysisJobs = droppedAnalysisJobs.get(),
+                analyzerCompletedJobs = analyzerCompletedJobs.get(),
+                analyzerJobsPerMinute = analyzerJobsPerMinute(),
+                catchupQueuedJobs = catchupQueuedJobs.get(),
                 analyzerBackend = storeAnalyzerBackend(semanticHealth),
                 analyzerMessage = storeAnalyzerMessage(semanticHealth),
                 semanticBackend = semanticHealth.backend,
@@ -1878,6 +1907,8 @@ object CodeUseTelemetryService {
         createdAtEpochMs: Long,
         mode: String = ""
     ) {
+        refreshQuietMode()
+        if (quietMode) return
         if (!isSignalBearingSource(source, mode)) return
         val job = CodeUseAnalysisJob(
             snippetId = snippetId,
@@ -1894,6 +1925,11 @@ object CodeUseTelemetryService {
         Thread.currentThread().priority = Thread.MIN_PRIORITY
         while (true) {
             val first = analysisQueue.poll(1, TimeUnit.SECONDS) ?: continue
+            refreshQuietMode()
+            if (quietMode) {
+                analysisQueue.clear()
+                continue
+            }
             val latestBySnippet = LinkedHashMap<String, CodeUseAnalysisJob>()
             latestBySnippet[first.snippetId] = first
             var drained = 0
@@ -1905,6 +1941,7 @@ object CodeUseTelemetryService {
             latestBySnippet.values.forEach { job ->
                 runCatching { analyzeAndStore(job) }
                     .onFailure { lprintln("warning,code-use", "code-use analyzer skipped ${job.snippetId}: ${it.message ?: it.javaClass.name}") }
+                recordAnalysisJobCompleted()
             }
         }
     }
@@ -2585,6 +2622,8 @@ object CodeUseTelemetryService {
     }
 
     private fun enqueueRecentSidecarCatchup(conn: Connection) {
+        refreshQuietMode()
+        if (quietMode) return
         val health = semanticSidecarHealthStatus()
         if (storeAnalyzerBackend(health) != "k2-sidecar") return
         var queued = 0
@@ -2620,8 +2659,77 @@ object CodeUseTelemetryService {
             }
         }
         if (queued > 0) {
+            catchupQueuedJobs.addAndGet(queued.toLong())
             lprintln("info,code-use", "queued $queued recent snippet(s) for semantic sidecar catch-up analysis")
         }
+    }
+
+    private fun recentK2CatchupBacklog(conn: Connection): Long {
+        val since = now() - 7L * 24L * 60L * 60L * 1000L
+        var count = 0L
+        conn.prepareStatement(
+            """
+            SELECT s.mode, b.text
+            FROM snippets s
+            JOIN source_blobs b ON b.hash = s.source_hash
+            WHERE s.updated_at >= ?
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM symbol_uses su
+                  WHERE su.snippet_id = s.id
+                    AND su.confidence = 'k2-resolved'
+              )
+            """.trimIndent()
+        ).use { ps ->
+            ps.setLong(1, since)
+            ps.executeQuery().use { rs ->
+                while (rs.next()) {
+                    if (isSignalBearingSource(rs.getString("text").orEmpty(), rs.getString("mode").orEmpty())) {
+                        count++
+                    }
+                }
+            }
+        }
+        return count
+    }
+
+    private fun recordAnalysisJobCompleted() {
+        analyzerCompletedJobs.incrementAndGet()
+        val timestamp = now()
+        synchronized(analysisRateLock) {
+            analysisCompletionTimestamps.addLast(timestamp)
+            trimAnalysisCompletionTimestamps(timestamp)
+        }
+    }
+
+    private fun analyzerJobsPerMinute(): Double {
+        val timestamp = now()
+        synchronized(analysisRateLock) {
+            trimAnalysisCompletionTimestamps(timestamp)
+            val first = analysisCompletionTimestamps.peekFirst() ?: return 0.0
+            val elapsedMs = (timestamp - first).coerceAtLeast(1L)
+            val scale = if (elapsedMs < 60_000L) 60_000.0 / elapsedMs.toDouble() else 1.0
+            return analysisCompletionTimestamps.size.toDouble() * scale
+        }
+    }
+
+    private fun trimAnalysisCompletionTimestamps(nowMs: Long) {
+        val cutoff = nowMs - 60_000L
+        while (analysisCompletionTimestamps.peekFirst()?.let { it < cutoff } == true) {
+            analysisCompletionTimestamps.removeFirst()
+        }
+    }
+
+    fun configureQuietMode(enabled: Boolean) {
+        quietMode = enabled
+        if (enabled) {
+            analysisQueue.clear()
+        }
+    }
+
+    private fun refreshQuietMode(): Boolean {
+        quietMode = runCatching { currentFieldPreferences().quietMode }.getOrDefault(quietMode)
+        return quietMode
     }
 
     private fun pruneNonSignalAnalysisRows(conn: Connection) {

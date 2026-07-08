@@ -26,7 +26,8 @@ class FabricateFrameGraph private constructor(
                 PASS_LIGHTING to bundle.lighting,
                 PASS_MOTION_BLUR to bundle.motionBlur,
                 PASS_ANTI_ALIAS to bundle.antiAlias
-            )
+                PASS_TRANSPARENCY to bundle.transparentComposite
+            ) + bundle.postStack.effects().map { effect -> passNameFor(effect) to effect.target }
         )
     )
 
@@ -89,6 +90,7 @@ class FabricateFrameGraph private constructor(
         const val PASS_SHADOW = "std-shadow"
         const val PASS_AO = "std-ao"
         const val PASS_LIGHTING = "std-lighting"
+        const val PASS_TRANSPARENCY = "std-transparency"
         const val PASS_MOTION_BLUR = "std-motion-blur"
         const val PASS_ANTI_ALIAS = "std-aa"
 
@@ -97,8 +99,16 @@ class FabricateFrameGraph private constructor(
             PASS_SHADOW,
             PASS_AO,
             PASS_LIGHTING,
+            PASS_TRANSPARENCY,
             PASS_MOTION_BLUR,
             PASS_ANTI_ALIAS
         )
+
+        fun passNameFor(effect: FabricatePostEffect): String =
+            when (effect.kind) {
+                FabricatePostEffect.Kind.MOTION_BLUR -> PASS_MOTION_BLUR
+                FabricatePostEffect.Kind.FXAA -> PASS_ANTI_ALIAS
+                else -> "std-post-${effect.name}"
+            }
     }
 }

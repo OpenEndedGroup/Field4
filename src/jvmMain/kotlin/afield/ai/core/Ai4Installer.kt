@@ -4,6 +4,8 @@ import afield.*
 import afield.ai.KotlinDefinitionRecord
 import afield.ai.KotlinSourceIndex
 import afield.ai.RelatedContextDiscovery
+import afield.ai.SemanticRetrievalQueryRequest
+import afield.ai.SemanticRetrievalService
 import afield.ai.searchWorkspaceSymbols
 import afield.four.Renderer
 import afield.four.util.Window
@@ -1851,6 +1853,54 @@ fun installAi4() {
             }
         }
 
+        val semanticRetrievalSearch: (SemanticRetrievalSearchRequest) -> SemanticRetrievalToolResult = { req ->
+            val result = SemanticRetrievalService.query(
+                SemanticRetrievalQueryRequest(
+                    query = req.query,
+                    limit = req.limit,
+                    corpus = req.corpus,
+                    corpora = req.corpora,
+                    pathPrefix = req.pathPrefix,
+                    kinds = req.kinds,
+                    documentName = req.documentName,
+                    boxId = req.boxId,
+                    property = req.property,
+                    includeCapsule = req.includeCapsule,
+                    includeSource = req.includeSource
+                )
+            )
+            SemanticRetrievalToolResult(
+                success = result.success,
+                message = result.message,
+                status = result.status,
+                model = SemanticRetrievalService.modelInfo(),
+                availableCorpora = SemanticRetrievalService.availableCorpora,
+                results = result.results
+            )
+        }
+
+        val semanticRetrievalStatus: () -> SemanticRetrievalToolResult = {
+            val status = SemanticRetrievalService.status()
+            SemanticRetrievalToolResult(
+                success = true,
+                message = status.message,
+                status = status,
+                model = SemanticRetrievalService.modelInfo(),
+                availableCorpora = SemanticRetrievalService.availableCorpora
+            )
+        }
+
+        val semanticRetrievalRebuild: () -> SemanticRetrievalToolResult = {
+            val result = SemanticRetrievalService.rebuild()
+            SemanticRetrievalToolResult(
+                success = result.success,
+                message = result.message,
+                status = result.status,
+                model = SemanticRetrievalService.modelInfo(),
+                availableCorpora = SemanticRetrievalService.availableCorpora
+            )
+        }
+
         val vectorStoreIds = buildList {
             KotlinSourceIndex.currentVectorStoreId()?.let { add(it) }
             addAll(GlslIncludeLibraryIndex.currentVectorStoreIdsFor(exec.property, expandedExtraPrompt + "\n" + exec.prompt))
@@ -2102,6 +2152,9 @@ fun installAi4() {
                             writeMacro = writeMacro,
                             runMacro = runMacro,
                             codeUseQuery = codeUseQuery,
+                            semanticRetrievalSearch = semanticRetrievalSearch,
+                            semanticRetrievalStatus = semanticRetrievalStatus,
+                            semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             visualVerificationEnabled = visualVerificationAvailable(),
@@ -2165,6 +2218,9 @@ fun installAi4() {
                             writeMacro = writeMacro,
                             runMacro = runMacro,
                             codeUseQuery = codeUseQuery,
+                            semanticRetrievalSearch = semanticRetrievalSearch,
+                            semanticRetrievalStatus = semanticRetrievalStatus,
+                            semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             visualVerificationEnabled = visualVerificationAvailable(),
@@ -2210,6 +2266,9 @@ fun installAi4() {
                             writeMacro = writeMacro,
                             runMacro = runMacro,
                             codeUseQuery = codeUseQuery,
+                            semanticRetrievalSearch = semanticRetrievalSearch,
+                            semanticRetrievalStatus = semanticRetrievalStatus,
+                            semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             visualVerificationEnabled = visualVerificationAvailable(),
@@ -2239,6 +2298,9 @@ fun installAi4() {
                             writeMacro = writeMacro,
                             runMacro = runMacro,
                             codeUseQuery = codeUseQuery,
+                            semanticRetrievalSearch = semanticRetrievalSearch,
+                            semanticRetrievalStatus = semanticRetrievalStatus,
+                            semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             visualVerificationEnabled = visualVerificationAvailable(),
@@ -2268,6 +2330,9 @@ fun installAi4() {
                             writeMacro = writeMacro,
                             runMacro = runMacro,
                             codeUseQuery = codeUseQuery,
+                            semanticRetrievalSearch = semanticRetrievalSearch,
+                            semanticRetrievalStatus = semanticRetrievalStatus,
+                            semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             visualVerificationEnabled = visualVerificationAvailable(),
@@ -2577,6 +2642,51 @@ fun installAi4() {
                         )
                     }
                 }
+                val semanticRetrievalSearch: (SemanticRetrievalSearchRequest) -> SemanticRetrievalToolResult = { req ->
+                    val result = SemanticRetrievalService.query(
+                        SemanticRetrievalQueryRequest(
+                            query = req.query,
+                            limit = req.limit,
+                            corpus = req.corpus,
+                            corpora = req.corpora,
+                            pathPrefix = req.pathPrefix,
+                            kinds = req.kinds,
+                            documentName = req.documentName,
+                            boxId = req.boxId,
+                            property = req.property,
+                            includeCapsule = req.includeCapsule,
+                            includeSource = req.includeSource
+                        )
+                    )
+                    SemanticRetrievalToolResult(
+                        success = result.success,
+                        message = result.message,
+                        status = result.status,
+                        model = SemanticRetrievalService.modelInfo(),
+                        availableCorpora = SemanticRetrievalService.availableCorpora,
+                        results = result.results
+                    )
+                }
+                val semanticRetrievalStatus: () -> SemanticRetrievalToolResult = {
+                    val status = SemanticRetrievalService.status()
+                    SemanticRetrievalToolResult(
+                        success = true,
+                        message = status.message,
+                        status = status,
+                        model = SemanticRetrievalService.modelInfo(),
+                        availableCorpora = SemanticRetrievalService.availableCorpora
+                    )
+                }
+                val semanticRetrievalRebuild: () -> SemanticRetrievalToolResult = {
+                    val build = SemanticRetrievalService.rebuild()
+                    SemanticRetrievalToolResult(
+                        success = build.success,
+                        message = build.message,
+                        status = build.status,
+                        model = SemanticRetrievalService.modelInfo(),
+                        availableCorpora = SemanticRetrievalService.availableCorpora
+                    )
+                }
                 val result = chatHelpers!!.chatGeneral(
                     state = state,
                     code = "",
@@ -2599,6 +2709,9 @@ fun installAi4() {
                         macroRunToolResult(chatDocPath, req, req.targetBoxes.filter { it.isNotBlank() })
                     },
                     codeUseQuery = codeUseQuery,
+                    semanticRetrievalSearch = semanticRetrievalSearch,
+                    semanticRetrievalStatus = semanticRetrievalStatus,
+                    semanticRetrievalRebuild = semanticRetrievalRebuild,
                     agentMemory = agentMemory
                 )
                 

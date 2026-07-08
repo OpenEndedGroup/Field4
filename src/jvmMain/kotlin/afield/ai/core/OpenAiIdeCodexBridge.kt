@@ -59,7 +59,7 @@ class OpenAiIdeCodexBridge(
     }
 
     fun <T : Any> registerTool(toolClass: Class<T>, handler: (ToolExecutionContext, T) -> Any) {
-        tools.register(toolClass, handler)
+        tools.register(toolClass, handler = handler)
     }
 
     fun startThread(
@@ -222,7 +222,7 @@ class OpenAiIdeCodexBridge(
         }
         paramsBuilder.text(textConfig)
         addReasoningIfSupported(paramsBuilder)
-        tools.addAllTo(paramsBuilder)
+        tools.addAllTo(paramsBuilder, ctx)
         if (vectorStoreIds.isNotEmpty() && supportsFileSearch()) {
             paramsBuilder.addFileSearchTool(vectorStoreIds)
         }
@@ -434,7 +434,7 @@ class OpenAiIdeCodexBridge(
             }
             followupBuilder.text(textConfig)
             addReasoningIfSupported(followupBuilder)
-            tools.addAllTo(followupBuilder)
+            tools.addAllTo(followupBuilder, ctx)
             if (vectorStoreIds.isNotEmpty() && supportsFileSearch()) {
                 followupBuilder.addFileSearchTool(vectorStoreIds)
             }
@@ -1055,12 +1055,12 @@ class OpenAiIdeCodexBridge(
         tools.register(Commentary::class.java) { _, _ -> mapOf("ok" to true) }
 
         // Attachments
-        tools.register(ListAttachmentsRequest::class.java) { ctx, _ ->
+        tools.register(ListAttachmentsRequest::class.java, { ctx -> ctx.attachments.isNotEmpty() || ctx.resolveAttachment != null }) { ctx, _ ->
             ListAttachmentsResult(
                 attachments = ctx.attachments.map { AttachmentInfo(it.fileName, it.language, it.description) }
             )
         }
-        tools.register(AttachmentRequest::class.java) { ctx, req ->
+        tools.register(AttachmentRequest::class.java, { ctx -> ctx.attachments.isNotEmpty() || ctx.resolveAttachment != null }) { ctx, req ->
             val requested = req.file.trim()
             if (requested.isEmpty()) {
                 throw IllegalArgumentException("Attachment name is empty.")
@@ -1094,55 +1094,55 @@ class OpenAiIdeCodexBridge(
         }
 
         // Kotlin-only tools (only work if provider is supplied in ctx)
-        tools.register(ListDefinitionsRequest::class.java) { ctx, _ ->
+        tools.register(ListDefinitionsRequest::class.java, { ctx -> ctx.listDefinitions != null }) { ctx, _ ->
             ctx.listDefinitions?.invoke()
                 ?: throw IllegalStateException("ListDefinitions not available for this request.")
         }
-        tools.register(ListContentsRequest::class.java) { ctx, _ ->
+        tools.register(ListContentsRequest::class.java, { ctx -> ctx.listFileContents != null }) { ctx, _ ->
             ctx.listFileContents?.invoke()
                 ?: throw IllegalStateException("ListContents not available for this request.")
         }
-        tools.register(ListKotlinContextVariablesRequest::class.java) { ctx, req ->
+        tools.register(ListKotlinContextVariablesRequest::class.java, { ctx -> ctx.listKotlinContextVariables != null }) { ctx, req ->
             ctx.listKotlinContextVariables?.invoke(req)
                 ?: throw IllegalStateException("ListKotlinContextVariables not available for this request.")
         }
-        tools.register(EvaluateKotlinExpressionRequest::class.java) { ctx, req ->
+        tools.register(EvaluateKotlinExpressionRequest::class.java, { ctx -> ctx.evaluateKotlinExpression != null }) { ctx, req ->
             ctx.evaluateKotlinExpression?.invoke(req)
                 ?: throw IllegalStateException("EvaluateKotlinExpression not available for this request.")
         }
-        tools.register(EditFileRequest::class.java) { ctx, req ->
+        tools.register(EditFileRequest::class.java, { ctx -> ctx.editOtherFile != null }) { ctx, req ->
             ctx.editOtherFile?.invoke(req)
                 ?: throw IllegalStateException("EditFile not available for this request.")
         }
-        tools.register(CompileKotlinRequest::class.java) { ctx, req ->
+        tools.register(CompileKotlinRequest::class.java, { ctx -> ctx.compileKotlin != null }) { ctx, req ->
             ctx.compileKotlin?.invoke(req)
                 ?: throw IllegalStateException("CompileKotlin not available for this request.")
         }
-        tools.register(ReloadShadersRequest::class.java) { ctx, req ->
+        tools.register(ReloadShadersRequest::class.java, { ctx -> ctx.reloadShaders != null }) { ctx, req ->
             ctx.reloadShaders?.invoke(req)
                 ?: throw IllegalStateException("ReloadShaders not available for this request.")
         }
-        tools.register(MacroListRequest::class.java) { ctx, req ->
+        tools.register(MacroListRequest::class.java, { ctx -> ctx.listMacros != null }) { ctx, req ->
             ctx.listMacros?.invoke(req)
                 ?: throw IllegalStateException("MacroList not available for this request.")
         }
-        tools.register(MacroReadRequest::class.java) { ctx, req ->
+        tools.register(MacroReadRequest::class.java, { ctx -> ctx.readMacro != null }) { ctx, req ->
             ctx.readMacro?.invoke(req)
                 ?: throw IllegalStateException("MacroRead not available for this request.")
         }
-        tools.register(MacroWriteRequest::class.java) { ctx, req ->
+        tools.register(MacroWriteRequest::class.java, { ctx -> ctx.writeMacro != null }) { ctx, req ->
             ctx.writeMacro?.invoke(req)
                 ?: throw IllegalStateException("MacroWrite not available for this request.")
         }
-        tools.register(MacroRunRequest::class.java) { ctx, req ->
+        tools.register(MacroRunRequest::class.java, { ctx -> ctx.runMacro != null }) { ctx, req ->
             ctx.runMacro?.invoke(req)
                 ?: throw IllegalStateException("MacroRun not available for this request.")
         }
-        tools.register(CodeUseQueryRequest::class.java) { ctx, req ->
+        tools.register(CodeUseQueryRequest::class.java, { ctx -> ctx.codeUseQuery != null }) { ctx, req ->
             ctx.codeUseQuery?.invoke(req)
                 ?: throw IllegalStateException("CodeUseQuery not available for this request.")
         }
-        tools.register(CodeUseCallersForSourceLineRequest::class.java) { ctx, req ->
+        tools.register(CodeUseCallersForSourceLineRequest::class.java, { ctx -> ctx.codeUseQuery != null }) { ctx, req ->
             ctx.codeUseQuery?.invoke(
                 CodeUseQueryRequest(
                     kind = "line-callers",
@@ -1152,7 +1152,7 @@ class OpenAiIdeCodexBridge(
                 )
             ) ?: throw IllegalStateException("CodeUseCallersForSourceLine not available for this request.")
         }
-        tools.register(CodeUseReferencesForCodeRequest::class.java) { ctx, req ->
+        tools.register(CodeUseReferencesForCodeRequest::class.java, { ctx -> ctx.codeUseQuery != null }) { ctx, req ->
             ctx.codeUseQuery?.invoke(
                 CodeUseQueryRequest(
                     kind = "references-for-code",
@@ -1161,7 +1161,7 @@ class OpenAiIdeCodexBridge(
                 )
             ) ?: throw IllegalStateException("CodeUseReferencesForCode not available for this request.")
         }
-        tools.register(CodeUseRelatedSourceForCodeRequest::class.java) { ctx, req ->
+        tools.register(CodeUseRelatedSourceForCodeRequest::class.java, { ctx -> ctx.codeUseQuery != null }) { ctx, req ->
             ctx.codeUseQuery?.invoke(
                 CodeUseQueryRequest(
                     kind = "related-source-for-code",
@@ -1172,7 +1172,7 @@ class OpenAiIdeCodexBridge(
                 )
             ) ?: throw IllegalStateException("CodeUseRelatedSourceForCode not available for this request.")
         }
-        tools.register(CodeUseSemanticAnalyzeCodeRequest::class.java) { ctx, req ->
+        tools.register(CodeUseSemanticAnalyzeCodeRequest::class.java, { ctx -> ctx.codeUseQuery != null }) { ctx, req ->
             ctx.codeUseQuery?.invoke(
                 CodeUseQueryRequest(
                     kind = "semantic-analyze",
@@ -1184,7 +1184,7 @@ class OpenAiIdeCodexBridge(
                 )
             ) ?: throw IllegalStateException("CodeUseSemanticAnalyzeCode not available for this request.")
         }
-        tools.register(CodeUseHotSymbolsRequest::class.java) { ctx, req ->
+        tools.register(CodeUseHotSymbolsRequest::class.java, { ctx -> ctx.codeUseQuery != null }) { ctx, req ->
             ctx.codeUseQuery?.invoke(
                 CodeUseQueryRequest(
                     kind = "hot-symbols",
@@ -1193,7 +1193,7 @@ class OpenAiIdeCodexBridge(
                 )
             ) ?: throw IllegalStateException("CodeUseHotSymbols not available for this request.")
         }
-        tools.register(CodeUseEarlyDocumentSymbolsRequest::class.java) { ctx, req ->
+        tools.register(CodeUseEarlyDocumentSymbolsRequest::class.java, { ctx -> ctx.codeUseQuery != null }) { ctx, req ->
             ctx.codeUseQuery?.invoke(
                 CodeUseQueryRequest(
                     kind = "early-document-symbols",
@@ -1203,25 +1203,37 @@ class OpenAiIdeCodexBridge(
                 )
             ) ?: throw IllegalStateException("CodeUseEarlyDocumentSymbols not available for this request.")
         }
-        tools.register(ScratchpadReadRequest::class.java) { ctx, _ ->
+        tools.register(SemanticRetrievalSearchRequest::class.java, { ctx -> ctx.semanticRetrievalSearch != null }) { ctx, req ->
+            ctx.semanticRetrievalSearch?.invoke(req)
+                ?: throw IllegalStateException("SemanticRetrievalSearch not available for this request.")
+        }
+        tools.register(SemanticRetrievalStatusRequest::class.java, { ctx -> ctx.semanticRetrievalStatus != null }) { ctx, _ ->
+            ctx.semanticRetrievalStatus?.invoke()
+                ?: throw IllegalStateException("SemanticRetrievalStatus not available for this request.")
+        }
+        tools.register(SemanticRetrievalRebuildRequest::class.java, { ctx -> ctx.semanticRetrievalRebuild != null }) { ctx, _ ->
+            ctx.semanticRetrievalRebuild?.invoke()
+                ?: throw IllegalStateException("SemanticRetrievalRebuild not available for this request.")
+        }
+        tools.register(ScratchpadReadRequest::class.java, { ctx -> ctx.agentMemory != null }) { ctx, _ ->
             ctx.agentMemory?.readScratchpad()
                 ?: throw IllegalStateException("Scratchpad not available for this request.")
         }
-        tools.register(ScratchpadUpdateRequest::class.java) { ctx, req ->
+        tools.register(ScratchpadUpdateRequest::class.java, { ctx -> ctx.agentMemory != null }) { ctx, req ->
             ctx.agentMemory?.updateScratchpad(req)
                 ?: throw IllegalStateException("Scratchpad not available for this request.")
         }
-        tools.register(ChecklistReadRequest::class.java) { ctx, _ ->
+        tools.register(ChecklistReadRequest::class.java, { ctx -> ctx.agentMemory != null }) { ctx, _ ->
             ctx.agentMemory?.readChecklist()
                 ?: throw IllegalStateException("Checklist not available for this request.")
         }
-        tools.register(ChecklistUpdateRequest::class.java) { ctx, req ->
+        tools.register(ChecklistUpdateRequest::class.java, { ctx -> ctx.agentMemory != null }) { ctx, req ->
             ctx.agentMemory?.updateChecklist(req)
                 ?: throw IllegalStateException("Checklist not available for this request.")
         }
 
         // Optional extra tool
-        tools.register(WorkspaceSymbolSearch::class.java) { ctx, req ->
+        tools.register(WorkspaceSymbolSearch::class.java, { ctx -> ctx.workspaceSymbolSearch != null }) { ctx, req ->
             ctx.workspaceSymbolSearch?.invoke(req)
                 ?: throw IllegalStateException("WorkspaceSymbolSearch not available for this request.")
         }

@@ -123,15 +123,20 @@ object StandardRenderer {
 			val shadowMap: RenderToTexture,
 			val ao: RenderToTexture,
 			val lighting: RenderToTexture,
+			val transparentComposite: RenderToTexture,
 			val motionBlur: RenderToTexture,
 			val antiAlias: RenderToTexture,
 			val gBufferModule: ModulePointer,
 			val shadowModule: ModulePointer,
 			val aoModule: ModulePointer,
 			val lightingModule: ModulePointer,
+			val transparentCopyModule: ModulePointer,
+			val transparentModule: ModulePointer,
 			val motionBlurModule: ModulePointer,
 			val antiAliasModule: ModulePointer,
-			val scene: SceneDefaults
+			val scene: SceneDefaults,
+			val sceneGraph: FabricateScene = FabricateScene(),
+			val postStack: FabricatePostStack = FabricatePostStack(transparentComposite)
 		) {
 		/**
 		 * Convenience: build one mesh per pass using the supplied factory and register them with the
@@ -199,7 +204,7 @@ object StandardRenderer {
 				viewport: Rect? = null,
 				configure: RenderToTexture.ColorGrade.() -> Unit = {}
 			): ModulePointer =
-				antiAlias.blitToScreen(renderer = renderer, target = target, name = name, viewport = viewport, configure = {
+				postStack.output().blitToScreen(renderer = renderer, target = target, name = name, viewport = viewport, configure = {
 					offset = vec(0.01f, 0.01f, 0.01f, 0.01f)
 					configure()
 				})
@@ -346,6 +351,85 @@ object StandardRenderer {
 			val g = gBufferModule.makePullingMesh(name, maxVertices, renderer)
 			val s = shadowModule.makePullingMesh(name, maxVertices, renderer, positionBuffer = g.position, normalBuffer = g.normal)
 			return PullingMeshPair(g, s)
+		}
+
+		/**
+		 * Register transparent vertex-pulling geometry into the blended transparency pass. These meshes
+		 * do not write the g-buffer; the transparency shader samples opaque depth and blends over the
+		 * lit scene after the deferred lighting pass.
+		 */
+		fun registerTransparentPullingMesh(
+			name: String = "transparent-pulling",
+			maxVertices: Int = 64,
+			renderer: Renderer = fromContext()
+		): PullingMesh =
+			transparentModule.makePullingMesh(name, maxVertices, renderer)
+
+		fun sortTransparentMeshes(cameraPosition: Vector3f = Vector3f(scene.camera.at)): List<String> {
+			val sortedNames = sceneGraph.drawLists(cameraPosition)
+				.transparent
+				.mapNotNull { draw -> draw.renderable.userData as? String }
+			if (sortedNames.isEmpty()) return emptyList()
+
+			val meshes = transparentModule.current.meshes
+			val reordered = linkedMapOf<String, Mesh>()
+			sortedNames.forEach { name ->
+				meshes[name]?.let { reordered[name] = it }
+			}
+			meshes.forEach { (name, mesh) ->
+				if (name !in reordered) reordered[name] = mesh
+			}
+			meshes.clear()
+			meshes.putAll(reordered)
+			return reordered.keys.toList()
+		}
+
+		/**
+		 * Append a fullscreen shader pass to the post stack. The shader receives the previous stack
+		 * output as `sourceTex`; additional textures can be supplied by [configure].
+		 */
+		fun addShaderEffect(
+			name: String,
+			fragment: String,
+			renderer: Renderer = fromContext(),
+			configure: Parameters.(source: RenderToTexture) -> Unit = {}
+		): FabricatePostEffect {
+			require(name.isNotBlank()) { "effect name must not be blank" }
+			require(postStack[name] == null) { "post effect '$name' already exists" }
+			val source = postStack.output()
+			val target = RenderToTexture(renderer) {
+				width = source.width
+				height = source.height
+				colorAttachments = 1
+				format = source.colorFormats.firstOrNull() ?: source.parameters.format
+				colorSampled = true
+				colorTransferSrc = true
+				useDepth = false
+				clearColor = vec(0f, 0f, 0f, 1f)
+			}
+			val sampler = TextureSampler(renderer, source.parameters.mipLevels, false)
+			val module = Module(parameters(renderer) {
+				this.name = "prefab-post-$name"
+				target.apply()
+				blend = false
+				vertex = fullscreenVertex
+				this.fragment = fragment
+				depth = 0
+				color = target.parameters.colorAttachments
+				val userResolver = textureResolver
+				textureResolver = { tex ->
+					when (tex.name) {
+						"sourceTex" -> fromViews(listOf(source.imageViewArray[0]), tex.name, sampler)
+						else -> userResolver(tex)
+					}
+				}
+				configure(source)
+			}).pointer()
+			target += name to module
+			module.ensureFullscreenTriangle("${name}Quad")
+			val effect = FabricatePostEffect(name, target, module, FabricatePostEffect.Kind.SHADER)
+			postStack.append(effect)
+			return effect
 		}
 
 		/**
@@ -616,6 +700,17 @@ object StandardRenderer {
 					clearColor = vec(0f, 0f, 0f, 1f)
 				}
 
+				val transparentComposite = RenderToTexture {
+					width = resolved.renderWidth
+					height = resolved.renderHeight
+					colorAttachments = 1
+					format = config.hdrFormat
+					colorSampled = true
+					colorTransferSrc = true
+					useDepth = false
+					clearColor = vec(0f, 0f, 0f, 1f)
+				}
+
 				val motionBlur = RenderToTexture {
 					width = resolved.renderWidth
 					height = resolved.renderHeight
@@ -661,6 +756,7 @@ object StandardRenderer {
 				val shadowSampler = TextureSampler(renderer, shadow.parameters.mipLevels, false)
 				val aoSampler = TextureSampler(renderer, ao.parameters.mipLevels, false)
 				val lightingSampler = TextureSampler(renderer, lighting.parameters.mipLevels, false)
+				val transparentSampler = TextureSampler(renderer, transparentComposite.parameters.mipLevels, false)
 				val motionBlurSampler = TextureSampler(renderer, motionBlur.parameters.mipLevels, false)
 
 		val aoModule = Module(parameters {
@@ -708,6 +804,46 @@ object StandardRenderer {
 				val lightingQuad = lightingModule.ensureFullscreenTriangle("lightingQuad")
 				lightingQuad.seedDefaultLightingState(scene)
 
+				val transparentCopyModule = Module(parameters {
+					name = "prefab-transparent-copy"
+					transparentComposite.apply()
+					blend = false
+					vertex = fullscreenVertex
+					fragment = copyFragment
+					depth = 0
+					color = transparentComposite.parameters.colorAttachments
+					textureResolver = { tex ->
+						when (tex.name) {
+							"sourceTex" -> fromViews(listOf(lighting.imageViewArray[0]), tex.name, lightingSampler)
+							else -> null
+						}
+					}
+				}).pointer()
+				transparentComposite += "copy-lighting" to transparentCopyModule
+				transparentCopyModule.ensureFullscreenTriangle("transparentCopyQuad")
+
+				val transparentModule = Module(parameters {
+					name = "prefab-transparent"
+					transparentComposite.apply()
+					blend = true
+					srcColor = VK_BLEND_FACTOR_SRC_ALPHA
+					dstColor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA
+					srcAlpha = VK_BLEND_FACTOR_ONE
+					dstAlpha = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA
+					vertex = transparentVertex
+					fragment = transparentFragment
+					depth = 0
+					color = transparentComposite.parameters.colorAttachments
+					textureResolver = { tex ->
+						when (tex.name) {
+							"gPositionDepth" -> fromViews(listOf(gBuffer.imageViewArray[2]), tex.name, gBufferSampler)
+							"aoTex" -> fromViews(listOf(ao.imageViewArray[0]), tex.name, aoSampler)
+							else -> null
+						}
+					}
+				}).pointer()
+				transparentComposite += "transparent" to transparentModule
+
 				val motionBlurModule = Module(parameters {
 					name = "prefab-motion-blur"
 					motionBlur.apply()
@@ -718,7 +854,7 @@ object StandardRenderer {
 					color = motionBlur.parameters.colorAttachments
 					textureResolver = { tex ->
 						when (tex.name) {
-							"sourceTex" -> fromViews(listOf(lighting.imageViewArray[0]), tex.name, lightingSampler)
+							"sourceTex" -> fromViews(listOf(transparentComposite.imageViewArray[0]), tex.name, transparentSampler)
 							"motionTex" -> fromViews(listOf(gBuffer.imageViewArray[3]), tex.name, gBufferSampler)
 							"gPositionDepth" -> fromViews(listOf(gBuffer.imageViewArray[2]), tex.name, gBufferSampler)
 							else -> null
@@ -750,10 +886,21 @@ object StandardRenderer {
 
 			gBufferModule.seedDefaultCameraUniforms(scene)
 			aoModule.seedDefaultCameraUniforms(scene)
+			transparentModule.seedDefaultCameraUniforms(scene)
 			shadowModule.seedDefaultLightUniforms(scene)
 			lightingModule.seedDefaultLightUniforms(scene)
+			transparentModule.seedDefaultLightUniforms(scene)
 
-				return Bundle(gBuffer, shadow, ao, lighting, motionBlur, antiAlias, gBufferModule, shadowModule, aoModule, lightingModule, motionBlurModule, antiAliasModule, scene)
+				val postStack = FabricatePostStack(
+					input = transparentComposite,
+					initial = listOf(
+						FabricatePostEffect(FabricateFrameGraph.PASS_MOTION_BLUR.removePrefix("std-"), motionBlur, motionBlurModule, FabricatePostEffect.Kind.MOTION_BLUR),
+						FabricatePostEffect(FabricateFrameGraph.PASS_ANTI_ALIAS.removePrefix("std-"), antiAlias, antiAliasModule, FabricatePostEffect.Kind.FXAA)
+					)
+				)
+				val bundle = Bundle(gBuffer, shadow, ao, lighting, transparentComposite, motionBlur, antiAlias, gBufferModule, shadowModule, aoModule, lightingModule, transparentCopyModule, transparentModule, motionBlurModule, antiAliasModule, scene, postStack = postStack)
+				bundle.applyRenderProfile(bundle.sceneGraph.renderProfile)
+				return bundle
 			}
 
 	/** Quick fullscreen triangle helper to avoid having to allocate vertex buffers for post passes. */
@@ -823,8 +970,8 @@ object StandardRenderer {
 		mesh.push.bind("normalBuffer") { normal }
 		mesh.seedDefaultSurfaceState()
 
-		current.meshes[name] = mesh
-		return PullingMesh(mesh, position, normal)
+			current.meshes[name] = mesh
+			return PullingMesh(mesh, position, normal)
 	}
 
 	private fun Structure.seedDefault(name: String, value: () -> Any) {
@@ -1268,6 +1415,123 @@ object StandardRenderer {
 			vec2 pos = positions[gl_VertexIndex];
 			vUv = pos * 0.5 + 0.5;
 			gl_Position = vec4(pos, 0.0, 1.0);
+		}
+	"""
+
+	private const val copyFragment = """
+		#version 450
+		layout(location = 0) in vec2 vUv;
+		layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+		layout(location = 0) out vec4 outColor;
+
+		void main() {
+			outColor = texture(sourceTex, vUv);
+		}
+	"""
+
+	private const val transparentVertex = """
+		#version 450
+		#extension GL_EXT_buffer_reference : require
+		#extension GL_EXT_scalar_block_layout : require
+
+		layout(std430, buffer_reference) readonly buffer VertexPositions {
+			vec4 positions[];
+		};
+
+		layout(std430, buffer_reference) readonly buffer VertexNormals {
+			vec4 normals[];
+		};
+
+		layout(set = 0, binding = 0) uniform Camera {
+			mat4 view;
+			mat4 proj;
+			mat4 prevView;
+			mat4 prevProj;
+			vec3 cameraPos;
+		} uCamera;
+
+		layout(push_constant) uniform ModelData {
+			VertexPositions positionBuffer;
+			VertexNormals normalBuffer;
+			mat4 model;
+			mat4 prevModel;
+			vec4 baseColor;
+			float metallic;
+			float roughness;
+			float ao;
+			float checkerScale;
+			vec4 checkerColor;
+			float checkerMix;
+		} push;
+
+		layout(location = 0) out vec3 vWorldPos;
+		layout(location = 1) out vec3 vNormal;
+		layout(location = 2) out vec2 vScreenUv;
+
+		void main() {
+			vec3 pos = push.positionBuffer.positions[gl_VertexIndex].xyz;
+			vec3 nrm = push.normalBuffer.normals[gl_VertexIndex].xyz;
+			vec4 worldPos = push.model * vec4(pos, 1.0);
+			vec4 clip = uCamera.proj * uCamera.view * worldPos;
+			vWorldPos = worldPos.xyz;
+			vNormal = normalize(mat3(push.model) * nrm);
+			float w = max(abs(clip.w), 1e-5);
+			vScreenUv = (clip.xy / w) * vec2(0.5, -0.5) + vec2(0.5);
+			gl_Position = clip;
+		}
+	"""
+
+	private const val transparentFragment = """
+		#version 450
+		layout(location = 0) in vec3 vWorldPos;
+		layout(location = 1) in vec3 vNormal;
+		layout(location = 2) in vec2 vScreenUv;
+
+		layout(set = 0, binding = 1) uniform sampler2D gPositionDepth;
+		layout(set = 0, binding = 2) uniform sampler2D aoTex;
+
+		layout(set = 0, binding = 5) uniform LightData {
+			mat4 lightViewProj;
+			vec3 lightDir;
+			float shadowBias;
+			vec3 lightColor;
+			float lightIntensity;
+		} uLight;
+
+		layout(push_constant) uniform ModelData {
+			layout(offset = 16) mat4 model;
+			layout(offset = 80) mat4 prevModel;
+			layout(offset = 144) vec4 baseColor;
+			layout(offset = 160) float metallic;
+			layout(offset = 164) float roughness;
+			layout(offset = 168) float ao;
+			layout(offset = 172) float checkerScale;
+			layout(offset = 176) vec4 checkerColor;
+			layout(offset = 192) float checkerMix;
+		} push;
+
+		layout(location = 0) out vec4 outColor;
+
+		void main() {
+			vec2 uv = clamp(vScreenUv, vec2(0.0), vec2(1.0));
+			float opaqueDepth = texture(gPositionDepth, uv).a;
+			if (opaqueDepth > 1e-5 && gl_FragCoord.z > opaqueDepth + 0.00025) {
+				discard;
+			}
+
+			vec3 n = normalize(vNormal);
+			vec3 l = normalize(-uLight.lightDir);
+			float nDotL = max(dot(n, l), 0.0);
+			vec3 albedo = push.baseColor.rgb;
+			if (push.checkerMix > 0.0) {
+				float checkerMask = mod(floor(vWorldPos.x * push.checkerScale) + floor(vWorldPos.z * push.checkerScale), 2.0);
+				vec3 proceduralChecker = mix(push.baseColor.rgb, push.checkerColor.rgb, checkerMask);
+				albedo = mix(push.baseColor.rgb, proceduralChecker, clamp(push.checkerMix, 0.0, 1.0));
+			}
+			float ao = mix(1.0, texture(aoTex, uv).r, clamp(push.ao, 0.0, 1.0));
+			vec3 ambient = vec3(0.08, 0.09, 0.11) * albedo * ao;
+			vec3 lit = ambient + albedo * uLight.lightColor * uLight.lightIntensity * nDotL * 0.25;
+			outColor = vec4(lit, clamp(push.baseColor.a, 0.0, 1.0));
 		}
 	"""
 

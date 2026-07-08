@@ -40,6 +40,9 @@ object StandardRendererDocsHarness {
         renderer: Renderer = rendererFromContextOrDocument(),
         window: Window = renderer.window
     ): File = renderScene(outputPath, renderer, window) { bundle, activeRenderer ->
+        bundle.scene.camera.at.set(0f, 0.25f, -3.35f)
+        bundle.scene.camera.target.set(0f, -0.05f, 0f)
+
         val left = bundle.registerTestTorus(name = "left", slices = 48, stacks = 48, renderer = activeRenderer)
         left.setModel(Matrix4f().translate(-0.95f, 0f, 0f))
         tint(left, color = Vector4f(0.17f, 0.98f, 0.24f, 1f))
@@ -59,7 +62,7 @@ object StandardRendererDocsHarness {
         renderer: Renderer = rendererFromContextOrDocument(),
         window: Window = renderer.window
     ): File = renderScene(outputPath, renderer, window) { bundle, activeRenderer ->
-        bundle.scene.camera.at.set(0f, 0.2f, -4.1f)
+        bundle.scene.camera.at.set(0f, 0.2f, -3.25f)
         bundle.scene.camera.target.set(0f, 0f, 0f)
 
         val left = bundle.registerTestTorus(name = "dielectric", slices = 56, stacks = 56, renderer = activeRenderer)
@@ -140,7 +143,7 @@ object StandardRendererDocsHarness {
         renderer: Renderer = rendererFromContextOrDocument(),
         window: Window = renderer.window
     ): File = renderScene(outputPath, renderer, window) { bundle, activeRenderer ->
-        bundle.scene.camera.at.set(0f, 0.9f, -5.3f)
+        bundle.scene.camera.at.set(0f, 0.78f, -3.75f)
         bundle.scene.camera.target.set(0f, -0.25f, 0f)
         bundle.scene.lightDirection.set(Vector3f(-0.55f, -1.0f, -0.20f).normalize())
         bundle.scene.lightIntensity = 1.55f
@@ -177,7 +180,7 @@ object StandardRendererDocsHarness {
         renderer: Renderer = rendererFromContextOrDocument(),
         window: Window = renderer.window
     ): File = renderScene(outputPath, renderer, window) { bundle, activeRenderer ->
-        bundle.scene.camera.at.set(0f, 0.95f, -5.0f)
+        bundle.scene.camera.at.set(0f, 0.78f, -3.65f)
         bundle.scene.camera.target.set(0f, -0.2f, 0f)
         bundle.scene.lightDirection.set(Vector3f(-0.52f, -1.0f, -0.22f).normalize())
         bundle.scene.lightIntensity = 1.5f
@@ -246,11 +249,11 @@ object StandardRendererDocsHarness {
         bundle.present(renderer = renderer)
 
         val nearCamera = captureScene(tempPng("fabricate-depth-camera-near"), bundle, renderer) {
-            bundle.scene.camera.at.set(-1.8f, 0.8f, -2.2f)
+            bundle.scene.camera.at.set(-1.55f, 0.72f, -1.75f)
             bundle.scene.camera.target.set(-0.95f, -0.2f, 0.95f)
         }
         val farCamera = captureScene(tempPng("fabricate-depth-camera-far"), bundle, renderer) {
-            bundle.scene.camera.at.set(1.8f, 0.9f, -4.8f)
+            bundle.scene.camera.at.set(1.45f, 0.78f, -3.35f)
             bundle.scene.camera.target.set(0.95f, -0.15f, -1.35f)
         }
 
@@ -260,6 +263,72 @@ object StandardRendererDocsHarness {
             nearCamera.delete()
             farCamera.delete()
         }
+    }
+
+    suspend fun renderBlendedTransparency(
+        outputPath: String,
+        renderer: Renderer = rendererFromContextOrDocument(),
+        window: Window = renderer.window
+    ): File = renderScene(outputPath, renderer, window) { bundle, activeRenderer ->
+        bundle.scene.camera.at.set(0f, 0.72f, -3.25f)
+        bundle.scene.camera.target.set(0f, -0.18f, 0f)
+        bundle.scene.lightDirection.set(Vector3f(-0.45f, -1.0f, -0.22f).normalize())
+        bundle.scene.lightIntensity = 1.45f
+        bundle.scene.shadowStrength = 1f
+        bundle.scene.aoStrength = 1f
+        bundle.scene.shadowExtent = 7.0f
+
+        addCheckerboardFloor(bundle, activeRenderer, tilesPerSide = 8, tileSize = 0.55f, y = -1.02f)
+
+        val backTorus = bundle.registerTestTorus(name = "behind-glass", slices = 72, stacks = 72, renderer = activeRenderer)
+        backTorus.setModel(Matrix4f().translate(-0.75f, -0.18f, 0.35f).rotateY(0.30f))
+        tint(backTorus, color = Vector4f(0.95f, 0.40f, 0.28f, 1f), metallic = 1f, roughness = 0.10f)
+
+        val frontTorus = bundle.registerTestTorus(name = "front-metal", slices = 72, stacks = 72, renderer = activeRenderer)
+        frontTorus.setModel(Matrix4f().translate(0.78f, -0.12f, -0.40f).rotateY(-0.35f))
+        tint(frontTorus, color = Vector4f(0.28f, 0.85f, 0.95f, 1f), metallic = 1f, roughness = 0.08f)
+
+        transparentSphere(
+            bundle = bundle,
+            renderer = activeRenderer,
+            name = "far-glass",
+            model = Matrix4f().translate(-0.52f, -0.32f, 0.85f).scale(0.72f),
+            color = Vector4f(0.45f, 0.70f, 1.0f, 0.30f)
+        )
+        transparentSphere(
+            bundle = bundle,
+            renderer = activeRenderer,
+            name = "near-glass",
+            model = Matrix4f().translate(0.42f, -0.28f, -0.38f).scale(0.66f),
+            color = Vector4f(1.0f, 0.78f, 0.38f, 0.38f)
+        )
+        bundle.sortTransparentMeshes()
+        bundle.present(renderer = activeRenderer)
+    }
+
+    suspend fun renderPostStackVignette(
+        outputPath: String,
+        renderer: Renderer = rendererFromContextOrDocument(),
+        window: Window = renderer.window
+    ): File = renderScene(outputPath, renderer, window) { bundle, activeRenderer ->
+        bundle.scene.camera.at.set(0.15f, 0.62f, -3.05f)
+        bundle.scene.camera.target.set(0f, -0.18f, 0.05f)
+        bundle.scene.lightDirection.set(Vector3f(-0.55f, -1.0f, -0.20f).normalize())
+        bundle.scene.lightIntensity = 1.55f
+        bundle.scene.shadowStrength = 1f
+        bundle.scene.aoStrength = 1f
+        addCheckerboardFloor(bundle, activeRenderer, tilesPerSide = 9, tileSize = 0.52f, y = -1.0f)
+
+        val left = bundle.registerTestTorus(name = "post-left", slices = 72, stacks = 72, renderer = activeRenderer)
+        left.setModel(Matrix4f().translate(-0.72f, -0.20f, 0.18f).rotateY(0.32f))
+        tint(left, color = Vector4f(0.96f, 0.28f, 0.68f, 1f), metallic = 1f, roughness = 0.09f)
+
+        val right = bundle.registerTestTorus(name = "post-right", slices = 72, stacks = 72, renderer = activeRenderer)
+        right.setModel(Matrix4f().translate(0.72f, -0.16f, -0.32f).rotateY(-0.35f))
+        tint(right, color = Vector4f(0.18f, 0.92f, 0.70f, 1f), metallic = 1f, roughness = 0.08f)
+
+        bundle.addShaderEffect("vignette-warmth", vignetteWarmthFragment, renderer = activeRenderer)
+        bundle.present(renderer = activeRenderer)
     }
 
     fun htmlForImage(imageFile: File, caption: String? = null): String {
@@ -292,8 +361,8 @@ object StandardRendererDocsHarness {
         }
 
         val bundle = StandardRenderer.build(renderer)
-        bundle.attachTo(renderer)
         buildScene(bundle, renderer)
+        bundle.attachTo(renderer)
 
         return captureFinalImage(bundle, targetFile, renderer)
     }
@@ -318,12 +387,13 @@ object StandardRendererDocsHarness {
         renderer: Renderer
     ): File {
         waitForRendererFrames(renderer)
+        val output = bundle.postStack.output()
         val html = TexturePreviewCache.capture(
             renderer = renderer,
-            vkImage = bundle.antiAlias.colorImageHandles[0],
-            format = bundle.antiAlias.colorFormats[0],
-            srcWidth = bundle.antiAlias.width,
-            srcHeight = bundle.antiAlias.height,
+            vkImage = output.colorImageHandles[0],
+            format = output.colorFormats[0],
+            srcWidth = output.width,
+            srcHeight = output.height,
             currentLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             maxDim = CAPTURE_MAX_DIM
         ) ?: error("could not read back StandardRenderer final image")
@@ -356,7 +426,7 @@ object StandardRendererDocsHarness {
     }
 
     private fun configureGroundedTorusScene(bundle: StandardRenderer.Bundle, renderer: Renderer) {
-        bundle.scene.camera.at.set(0f, 0.75f, -4.7f)
+        bundle.scene.camera.at.set(0f, 0.62f, -3.35f)
         bundle.scene.camera.target.set(0f, -0.35f, 0f)
         bundle.scene.lightDirection.set(Vector3f(-0.42f, -1.0f, -0.25f).normalize())
         bundle.scene.shadowExtent = 5.5f
@@ -477,6 +547,36 @@ object StandardRendererDocsHarness {
         mesh.gBuffer.mesh.push["checkerMix"] = mix
     }
 
+    private fun transparentSphere(
+        bundle: StandardRenderer.Bundle,
+        renderer: Renderer,
+        name: String,
+        model: Matrix4f,
+        color: Vector4f
+    ) {
+        val node = bundle.sceneGraph.mesh(
+            name = name,
+            material = FabricateMaterial(baseColor = Vector4f(color)).transparent(color.w)
+        ) {
+            transform.set(model)
+            renderable?.userData = name
+        }
+        bundle.sceneGraph.updateWorldTransforms()
+
+        val mesh = bundle.registerTransparentPullingMesh(name = name, maxVertices = 32 * 32 * 6, renderer = renderer)
+        val write = StandardShapes.sphere(
+            positions = mesh.position,
+            normals = mesh.normal,
+            radius = 1f,
+            slices = 32,
+            stacks = 32,
+            config = StandardShapes.WriteConfig(append = false)
+        )
+        mesh.setVertexCount(write.writtenVertices)
+        mesh.bindModel { Matrix4f(node.worldMatrix) }
+        mesh.applyFabricateMaterial(node.renderable?.material ?: FabricateMaterial(baseColor = Vector4f(color)).transparent(color.w))
+    }
+
     private fun composeHorizontal(left: File, right: File, output: File): File {
         val leftImage = ImageIO.read(left)
         val rightImage = ImageIO.read(right)
@@ -545,4 +645,21 @@ object StandardRendererDocsHarness {
     }
 
     private fun tempPng(prefix: String): File = Files.createTempFile(prefix, ".png").toFile()
+
+    private val vignetteWarmthFragment = """
+        #version 450
+        layout(location = 0) in vec2 vUv;
+        layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+        layout(location = 0) out vec4 outColor;
+
+        void main() {
+            vec4 c = texture(sourceTex, vUv);
+            vec2 p = vUv * 2.0 - 1.0;
+            float vignette = 1.0 - smoothstep(0.18, 1.05, dot(p, p));
+            vec3 warm = c.rgb * vec3(1.18, 1.04, 0.84);
+            vec3 lifted = pow(max(warm, vec3(0.0)), vec3(0.88));
+            vec3 graded = mix(c.rgb, lifted, 0.72) * mix(0.38, 1.22, vignette);
+            outColor = vec4(graded, c.a);
+        }
+    """.trimIndent()
 }

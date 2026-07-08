@@ -64,6 +64,9 @@ val ktorVersion = "3.3.0"
 val logbackVersion = "1.2.11"
 val imguiVersion = "1.90.0"
 val smileVersion = "5.0.1"
+val luceneVersion = "10.3.2"
+val onnxRuntimeVersion = "1.27.0"
+val djlTokenizersVersion = "0.36.0"
 val javaToolchainVersion = 25
 val graalvmVersion = "25.0.2"
 
@@ -696,6 +699,11 @@ kotlin {
                 implementation("org.jetbrains.trove4j:trove4j:20160824")
                 implementation("org.json:json:20240303")
                 implementation("org.xerial:sqlite-jdbc:3.47.2.0")
+                implementation("org.apache.lucene:lucene-core:$luceneVersion")
+                implementation("org.apache.lucene:lucene-analysis-common:$luceneVersion")
+                implementation("org.apache.lucene:lucene-queryparser:$luceneVersion")
+                implementation("com.microsoft.onnxruntime:onnxruntime:$onnxRuntimeVersion")
+                implementation("ai.djl.huggingface:tokenizers:$djlTokenizersVersion")
 
                 implementation("io.arrow-kt:arrow-core:1.2.4")
                 implementation("io.arrow-kt:arrow-fx-coroutines:1.2.4")

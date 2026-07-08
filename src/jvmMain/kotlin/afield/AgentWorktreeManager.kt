@@ -117,7 +117,7 @@ object AgentWorktreeManager {
 
     fun mergeProposal(projectRoot: File, id: String): AgentWorktreeActionResponse {
         val canonicalRoot = projectRoot.canonicalFile
-        val proposal = readProposal(canonicalRoot, id)
+        var proposal = readProposal(canonicalRoot, id)
             ?: return AgentWorktreeActionResponse(false, message = "Unknown generated worktree '$id'.")
         val dirty = runGit(canonicalRoot, "status", "--porcelain").trim()
         if (dirty.isNotBlank()) {
@@ -130,6 +130,23 @@ object AgentWorktreeManager {
         if (proposal.branch.isBlank()) {
             return AgentWorktreeActionResponse(false, proposal, "Generated worktree has no branch recorded.")
         }
+        val proposalPath = Paths.get(proposal.path).toAbsolutePath().normalize().toFile()
+        if (!proposalPath.isDirectory) {
+            return AgentWorktreeActionResponse(false, proposal, "Generated worktree is missing: ${proposal.path}")
+        }
+        val finalized = finalizeProposalChanges(canonicalRoot, proposal.id)
+        if (!finalized.success) return finalized
+        proposal = finalized.proposal ?: proposal
+
+        val proposalHead = runGit(proposalPath, "rev-parse", "HEAD").trim()
+        val branchHead = runGit(canonicalRoot, "rev-parse", proposal.branch).trim()
+        if (proposalHead != branchHead) {
+            return AgentWorktreeActionResponse(
+                false,
+                proposal,
+                "Generated worktree branch ${proposal.branch} is not at the proposal worktree HEAD."
+            )
+        }
         return try {
             runGit(canonicalRoot, "merge", "--ff-only", proposal.branch)
             val updated = updateProposal(
@@ -141,6 +158,48 @@ object AgentWorktreeManager {
             AgentWorktreeActionResponse(true, updated, updated.message)
         } catch (t: Throwable) {
             AgentWorktreeActionResponse(false, proposal, "Merge failed: ${t.message}")
+        }
+    }
+
+    fun finalizeProposalChanges(projectRoot: File, id: String): AgentWorktreeActionResponse {
+        val canonicalRoot = projectRoot.canonicalFile
+        val proposal = readProposal(canonicalRoot, id)
+            ?: return AgentWorktreeActionResponse(false, message = "Unknown generated worktree '$id'.")
+        val proposalPath = Paths.get(proposal.path).toAbsolutePath().normalize().toFile()
+        if (!proposalPath.isDirectory) {
+            return AgentWorktreeActionResponse(false, proposal, "Generated worktree is missing: ${proposal.path}")
+        }
+
+        return try {
+            // Generated proposal tasks should only commit reviewable source edits.
+            // Build outputs and reports stay as artifacts referenced from metadata.
+            runGit(proposalPath, "add", "src", "dev_docs", "public", "tools", "build.gradle.kts", "settings.gradle.kts")
+            val staged = runGitWithExit(proposalPath, "diff", "--cached", "--quiet").exitCode != 0
+            if (!staged) {
+                val cleanProposal = updateProposal(
+                    canonicalRoot,
+                    id,
+                    "ready",
+                    "Generated proposal has no source changes to commit."
+                ) ?: proposal
+                return AgentWorktreeActionResponse(true, cleanProposal, cleanProposal.message)
+            }
+
+            runGit(
+                proposalPath,
+                "commit",
+                "-m",
+                "Apply generated ${proposal.label.ifBlank { proposal.taskName.ifBlank { "agent proposal" } }}"
+            )
+            val updated = updateProposal(
+                canonicalRoot,
+                id,
+                "ready",
+                "Committed generated proposal changes to ${proposal.branch}."
+            ) ?: proposal
+            AgentWorktreeActionResponse(true, updated, updated.message)
+        } catch (t: Throwable) {
+            AgentWorktreeActionResponse(false, proposal, "Could not commit generated proposal changes: ${t.message}")
         }
     }
 
@@ -186,15 +245,22 @@ object AgentWorktreeManager {
             .take(80)
 
     private fun runGit(cwd: File, vararg args: String): String {
+        val result = runGitWithExit(cwd, *args)
+        if (result.exitCode != 0) {
+            throw IllegalStateException("git ${args.joinToString(" ")} failed with ${result.exitCode}: ${result.output.trim()}")
+        }
+        return result.output
+    }
+
+    private fun runGitWithExit(cwd: File, vararg args: String): GitResult {
         val process = ProcessBuilder(listOf("git") + args)
             .directory(cwd)
             .redirectErrorStream(true)
             .start()
         val output = process.inputStream.bufferedReader(StandardCharsets.UTF_8).readText()
         val exit = process.waitFor()
-        if (exit != 0) {
-            throw IllegalStateException("git ${args.joinToString(" ")} failed with $exit: ${output.trim()}")
-        }
-        return output
+        return GitResult(exit, output)
     }
+
+    private data class GitResult(val exitCode: Int, val output: String)
 }

@@ -72,6 +72,8 @@ FABRICATE_DOCS_SCENES = {
     "metalness": ("renderMetalnessComparison", "fabricate metalness comparison ready"),
     "shadows": ("renderShadowComparison", "fabricate shadow comparison ready"),
     "ambient-occlusion": ("renderAoComparison", "fabricate ao comparison ready"),
+    "blended-transparency": ("renderBlendedTransparency", "fabricate blended transparency ready"),
+    "post-stack-vignette": ("renderPostStackVignette", "fabricate post stack vignette ready"),
 }
 
 

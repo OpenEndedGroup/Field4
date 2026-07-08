@@ -22,6 +22,7 @@ nav:
         - Interactive Guides: interactive_guides.md
         - Guide Chat: guide_chat.md
       - Small Languages:
+        - FieldML Examples: fieldml_examples.md
         - Forth Examples: forth_examples.md
         - StackSL Cheatsheet: stacksl_cheatsheet.md
         - StackSL Examples: stacksl_examples.md

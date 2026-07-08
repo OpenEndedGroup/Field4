@@ -9,6 +9,11 @@ import afield.ai.core.AiSettingsSaveRequest
 import afield.ai.core.aiProviderStatus
 import afield.ai.core.saveAiSettings
 import afield.ai.core.completion.Ai4KotlinAutocomplete
+import afield.ai.SemanticRetrievalQueryRequest
+import afield.ai.SemanticRetrievalService
+import afield.ai.SemanticRetrievalConfigSaveRequest
+import afield.ai.SemanticRetrievalDeleteCacheRequest
+import afield.ai.SemanticRetrievalDownloadRequest
 import afield.debug.RuntimeDebugProbeService
 import afield.four.util.FramePresentationLog
 import afield.four.util.Options
@@ -62,6 +67,7 @@ import java.io.File
 import java.lang.management.ManagementFactory
 import java.net.BindException
 import java.net.URI
+import java.net.ServerSocket
 import java.net.URLEncoder
 import java.nio.file.Paths
 import java.security.KeyStore
@@ -633,13 +639,14 @@ private fun normalizeFieldPreferences(preferences: FieldPreferences): FieldPrefe
 
 private fun applyFieldPreferences(preferences: FieldPreferences) {
     val framePresentationLogWasEnabled = Options.framePresentationLog
-    Options.profiling = preferences.profiling
+    CodeUseTelemetryService.configureQuietMode(preferences.quietMode)
+    Options.profiling = if (Options.captureCompatibility) false else preferences.profiling
     Options.framePresentationLog = preferences.framePresentationLog
     Options.logShadercSource = preferences.logShadercSource
     Options.enableVR = preferences.enableVR
     Options.enableHDR = preferences.enableHDR
     Options.openXRDebugInput = preferences.openXRDebugInput
-    Options.validate = Options.validateOverride ?: preferences.validate
+    Options.validate = if (Options.captureCompatibility) false else Options.validateOverride ?: preferences.validate
     if (preferences.framePresentationLog && !framePresentationLogWasEnabled) {
         FramePresentationLog.start(
             outputPath = Options.framePresentationLogPath,
@@ -841,11 +848,35 @@ private fun launchFieldDesktopFromProject(projectDir: File, reason: String) {
             logFile.absolutePath
         ).directory(canonicalProject)
     }
+    configureAgentWorktreeLaunchEnvironment(processBuilder)
     processBuilder.start()
     lprintln(
         "info,server",
         "launching Field from ${canonicalProject.absolutePath} ($reason); restart log: ${logFile.absolutePath}"
     )
+}
+
+private fun configureAgentWorktreeLaunchEnvironment(processBuilder: ProcessBuilder) {
+    val env = processBuilder.environment()
+    val fieldPort = chooseAvailableLocalPort()
+    val httpPort = chooseAvailableLocalPort(excluding = setOf(fieldPort))
+    env["PORT"] = fieldPort.toString()
+    env["AFIELD_HTTP_PORT"] = httpPort.toString()
+    env["AFIELD_PORT_FALLBACK_COUNT"] = "1"
+
+    // A generated worktree needs its own semantic sidecar. Inheriting the parent
+    // server's sidecar URL/port can point at the wrong checkout or collide with
+    // the launcher-managed sidecar port derived from the worktree path.
+    env.remove("AFIELD_CODE_USE_SEMANTIC_SIDECAR_URL")
+    env.remove("AFIELD_CODE_USE_SEMANTIC_SIDECAR_PORT")
+}
+
+private fun chooseAvailableLocalPort(excluding: Set<Int> = emptySet()): Int {
+    repeat(16) {
+        val port = ServerSocket(0).use { socket -> socket.localPort }
+        if (port !in excluding) return port
+    }
+    throw IllegalStateException("Could not allocate a local port for generated worktree launch.")
 }
 
 val preferSystemBrowser: Boolean = (System.getenv("AFIELD_SYSTEM_BROWSER")
@@ -1041,6 +1072,36 @@ var lastFn by PersistentString { "welcome" }
 var recentFns by PersistentString { "" }
 var fieldPreferencesJson by PersistentString { "" }
 
+private fun appRouteDocumentToken(documentName: String): String {
+    val trimmed = documentName.trim()
+    val path = if (trimmed.startsWith("http://", ignoreCase = true) ||
+        trimmed.startsWith("https://", ignoreCase = true)
+    ) {
+        runCatching { URI(trimmed).path }.getOrNull()?.takeIf { it.isNotEmpty() } ?: trimmed
+    } else {
+        trimmed
+    }
+    return path
+        .substringBefore('?')
+        .substringBefore('#')
+        .replace('\\', '/')
+        .trim('/')
+        .lowercase(Locale.US)
+}
+
+internal fun isFieldAppRouteDocumentName(documentName: String?): Boolean {
+    val trimmed = documentName?.trim().takeUnless { it.isNullOrEmpty() } ?: return false
+    val token = appRouteDocumentToken(trimmed)
+    if (token == "welcome.html") return true
+    if (token != "welcome") return false
+    return trimmed.startsWith("/") ||
+            trimmed.startsWith("http://", ignoreCase = true) ||
+            trimmed.startsWith("https://", ignoreCase = true)
+}
+
+private fun desktopStartupDocumentName(): String? =
+    lastFn?.trim()?.takeIf { it.isNotEmpty() && !isFieldAppRouteDocumentName(it) }
+
 @Volatile
 private var cachedFieldPreferencesRaw: String? = null
 
@@ -1074,6 +1135,7 @@ private fun persistFieldPreferences(preferences: FieldPreferences) {
 }
 
 internal fun recordRecentDocument(documentName: String) {
+    if (isFieldAppRouteDocumentName(documentName)) return
     recentFns = updateRecentDocuments(recentFns, documentName)
 }
 
@@ -2038,9 +2100,7 @@ class Server {
                 val box = box(exec.uid)
 
                 GlobalScope.launch(Dispatchers.Default) {
-                    val result = (box.ke as? KotlinExecution)
-                        ?.describeSymbolContext(box, exec)
-                        ?: SymbolContextResponse()
+                    val result = box.ke.describeSymbolContext(box, exec)
                     reply(Message("symbol-context").payload(result))
                 }
 
@@ -2891,8 +2951,9 @@ class Server {
                             val requestScheme = call.request.local.scheme
                             val requestPort = call.request.local.serverPort
                             val baseUrl = "$requestScheme://localhost:$requestPort"
-                            val url = if (preferences.autoOpenLastDocumentInDesktop) {
-                                val target = URLEncoder.encode(lastFn ?: "welcome", "UTF-8")
+                            val lastDocument = desktopStartupDocumentName()
+                            val url = if (preferences.autoOpenLastDocumentInDesktop && lastDocument != null) {
+                                val target = URLEncoder.encode(lastDocument, "UTF-8")
                                 "$baseUrl/index.html?file=$target"
                             } else {
                                 "$baseUrl/welcome"
@@ -2935,7 +2996,7 @@ class Server {
                                     runningExecutionCount = runningExecutionCounts[it.filename] ?: 0
                                 )
                             }
-                            val fallback = lastFn ?: "welcome"
+                            val fallback = desktopStartupDocumentName() ?: "welcome"
                             val defaultDocument = docs.firstOrNull()?.filename ?: fallback
                             val allTags = docs.flatMap { it.tags }.distinct().sortedWith(String.CASE_INSENSITIVE_ORDER)
                             val workspaceDocumentNames = docs.mapTo(linkedSetOf()) { it.filename }
@@ -2981,7 +3042,8 @@ class Server {
                                     PythonInterface.currentPythonSettingsStatus(),
                                     CompletionDocPolishMonitor.status(),
                                     AiToolUseImprovementMonitor.status(),
-                                    CodeUseTelemetryService.summary()
+                                    CodeUseTelemetryService.summary(),
+                                    SemanticRetrievalService.settingsStatus()
                                 )
                             )
                         }
@@ -3018,6 +3080,20 @@ class Server {
                                 call.respond(
                                     HttpStatusCode.InternalServerError,
                                     mapOf("error" to "AI tool-use improvement launch failed")
+                                )
+                            }
+                        }
+
+                        post("/api/ai-tool-use-improvement/clear-reviewed") {
+                            try {
+                                val request = runCatching { call.receive<AiToolUseImprovementClearRequest>() }
+                                    .getOrElse { AiToolUseImprovementClearRequest() }
+                                call.respond(AiToolUseImprovementMonitor.clearReviewed(request.recentOnly))
+                            } catch (e: Exception) {
+                                lprintln("error,server", "AI tool-use log clear failed: ${e.message}")
+                                call.respond(
+                                    HttpStatusCode.InternalServerError,
+                                    mapOf("error" to "AI tool-use log clear failed")
                                 )
                             }
                         }
@@ -3151,6 +3227,102 @@ class Server {
                                 call.respond(
                                     HttpStatusCode.InternalServerError,
                                     mapOf("error" to "Code-use semantic analysis failed")
+                                )
+                            }
+                        }
+
+                        get("/api/semantic-search/status") {
+                            call.respond(SemanticRetrievalService.status())
+                        }
+
+                        get("/api/semantic-search/model") {
+                            call.respond(SemanticRetrievalService.modelInfo())
+                        }
+
+                        get("/api/semantic-search/settings") {
+                            call.respond(SemanticRetrievalService.settingsStatus())
+                        }
+
+                        post("/api/semantic-search/settings") {
+                            try {
+                                val request = call.receive<SemanticRetrievalConfigSaveRequest>()
+                                call.respond(SemanticRetrievalService.saveConfig(request))
+                            } catch (e: IllegalArgumentException) {
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf("error" to (e.message ?: "invalid semantic search settings"))
+                                )
+                            } catch (e: Exception) {
+                                lprintln("error,server", "Semantic search settings save failed: ${e.message}")
+                                call.respond(
+                                    HttpStatusCode.InternalServerError,
+                                    mapOf("error" to "Semantic search settings save failed")
+                                )
+                            }
+                        }
+
+                        post("/api/semantic-search/download") {
+                            try {
+                                val request = call.receive<SemanticRetrievalDownloadRequest>()
+                                call.respond(SemanticRetrievalService.downloadPreset(request))
+                            } catch (e: IllegalArgumentException) {
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf("error" to (e.message ?: "invalid semantic search download request"))
+                                )
+                            } catch (e: Exception) {
+                                lprintln("error,server", "Semantic search model download failed: ${e.message}")
+                                call.respond(
+                                    HttpStatusCode.InternalServerError,
+                                    mapOf("error" to (e.message ?: "Semantic search model download failed"))
+                                )
+                            }
+                        }
+
+                        post("/api/semantic-search/cache/delete") {
+                            try {
+                                val request = call.receive<SemanticRetrievalDeleteCacheRequest>()
+                                call.respond(SemanticRetrievalService.deleteCache(request))
+                            } catch (e: IllegalArgumentException) {
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf("error" to (e.message ?: "invalid semantic search cache request"))
+                                )
+                            } catch (e: Exception) {
+                                lprintln("error,server", "Semantic search cache delete failed: ${e.message}")
+                                call.respond(
+                                    HttpStatusCode.InternalServerError,
+                                    mapOf("error" to "Semantic search cache delete failed")
+                                )
+                            }
+                        }
+
+                        post("/api/semantic-search/rebuild") {
+                            try {
+                                call.respond(SemanticRetrievalService.startRebuild())
+                            } catch (e: Exception) {
+                                lprintln("error,server", "Semantic retrieval rebuild failed: ${e.message}")
+                                call.respond(
+                                    HttpStatusCode.InternalServerError,
+                                    mapOf("error" to "Semantic retrieval rebuild failed")
+                                )
+                            }
+                        }
+
+                        post("/api/semantic-search/query") {
+                            try {
+                                val request = call.receive<SemanticRetrievalQueryRequest>()
+                                call.respond(SemanticRetrievalService.query(request))
+                            } catch (e: IllegalArgumentException) {
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf("error" to (e.message ?: "invalid semantic retrieval query"))
+                                )
+                            } catch (e: Exception) {
+                                lprintln("error,server", "Semantic retrieval query failed: ${e.message}")
+                                call.respond(
+                                    HttpStatusCode.InternalServerError,
+                                    mapOf("error" to "Semantic retrieval query failed")
                                 )
                             }
                         }
@@ -4076,13 +4248,18 @@ class Server {
 
             globalServerPort = port
             globalLoopbackHttpPort = loopbackHttpPortFor(port)
-            val initialURL = "https://localhost:${port}/index.html?file=${lastFn}"
+            val initialURL = desktopStartupDocumentName()
+                ?.let { "https://localhost:${port}/index.html?file=${URLEncoder.encode(it, "UTF-8")}" }
+                ?: "https://localhost:${port}/welcome"
             lprintln("info,server", asciiWelcome)
             lprintln("info,server", "welcome to Field, ß-033")
             lprintln("info,server", "last document: $initialURL")
-            lprintln("info,server", "welcome page: https://localhost:${port}/welcome.html")
+            lprintln("info,server", "welcome page: https://localhost:${port}/welcome")
             globalLoopbackHttpPort?.let { httpPort ->
-                lprintln("info,server", "local automation page: http://localhost:${httpPort}/index.html?file=${lastFn}")
+                val automationUrl = desktopStartupDocumentName()
+                    ?.let { "http://localhost:${httpPort}/index.html?file=${URLEncoder.encode(it, "UTF-8")}" }
+                    ?: "http://localhost:${httpPort}/welcome"
+                lprintln("info,server", "local automation page: $automationUrl")
             }
             lprintln("info,server", "---")
 

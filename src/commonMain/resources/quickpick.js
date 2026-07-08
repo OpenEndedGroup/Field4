@@ -148,6 +148,7 @@ const anywhereProviders = []
 const usageKey = "quickpick_anywhere_usage"
 let anywhereUsage = {}
 const ANYWHERE_RESULT_LIMIT = 150
+const SEMANTIC_PALETTE_RESULT_LIMIT = 24
 
 // load usage eagerly so reranking has data even before the first palette open
 loadUsage()
@@ -231,6 +232,13 @@ function registerAnywhereProvider(id, fetcher) {
         anywhereProviders.push({ id, fetcher })
 }
 window.registerAnywhereProvider = registerAnywhereProvider
+
+const currentDocumentNameForSemantic = () => {
+        const raw = window.currentDocumentFilename || ""
+        const text = String(raw || "").trim()
+        if (!text) return ""
+        return text.split(/[\\/]/).filter(Boolean).pop() || text
+}
 
 function boxElements() {
         return Array.from(document.getElementsByClassName("box") || [])
@@ -408,6 +416,25 @@ function bootstrapAnywhereProviders() {
                         }).filter(Boolean)
                 })
         })
+
+        registerAnywhereProvider("semantic-current", (query) => {
+                const q = String(query || "").trim()
+                if (q.length < 3) return []
+                return paletteSemanticSearch(q, {
+                        corpus: "workspace",
+                        documentName: currentDocumentNameForSemantic(),
+                        limit: 12,
+                        includeSource: true,
+                        timeoutMs: 2500,
+                }).then((hits) => hits.map((hit, index) => paletteItemForSemanticHit(hit, {
+                        prefix: "semantic-current",
+                        category: "Semantic in Current Document",
+                        score: 34 - index * 0.01,
+                }))).catch((error) => {
+                        console.warn("semantic current-document palette search failed", error)
+                        return []
+                })
+        })
 }
 window.bootstrapAnywhereProviders = bootstrapAnywhereProviders
 bootstrapAnywhereProviders()
@@ -509,6 +536,7 @@ const paletteProviderTitle = (provider) => {
         const titles = {
                 "box": "Boxes",
                 "box-prop": "Properties",
+                "semantic-current": "Semantic in Current Document",
                 "field": "Field",
                 "editor": "Editor",
                 "macro": "Macros",
@@ -704,6 +732,128 @@ const paletteTextPreview = (text, empty = "No preview available", language = "")
                 return `<pre class="afield-palette-code"><code${languageClass} data-palette-highlighted="shader">${paletteHighlightShaderCode(trimmed)}</code></pre>`
         }
         return `<pre class="afield-palette-code"><code${languageClass}>${paletteEscapeHtml(trimmed)}</code></pre>`
+}
+
+const paletteSemanticSearch = async (query, options = {}) => {
+        const q = String(query || "").trim()
+        if (!q) return []
+        const controller = options.timeoutMs || options.signal ? new AbortController() : null
+        let timeoutId = null
+        if (controller && options.signal) {
+                if (options.signal.aborted) controller.abort()
+                else options.signal.addEventListener("abort", () => controller.abort(), { once: true })
+        }
+        if (controller && options.timeoutMs) {
+                timeoutId = setTimeout(() => controller.abort(), Math.max(250, Number(options.timeoutMs) || 2500))
+        }
+        const body = {
+                query: q,
+                limit: Math.max(1, Math.min(Number(options.limit) || SEMANTIC_PALETTE_RESULT_LIMIT, 50)),
+                corpus: options.corpus || "",
+                documentName: options.documentName || "",
+                boxId: options.boxId || "",
+                property: options.property || "",
+                rebuildIfEmpty: false,
+                includeSource: options.includeSource !== false,
+                includeCapsule: !!options.includeCapsule,
+        }
+        const response = await fetch("/api/semantic-search/query", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                signal: controller ? controller.signal : undefined,
+                body: JSON.stringify(body),
+        }).finally(() => {
+                if (timeoutId) clearTimeout(timeoutId)
+        })
+        try {
+                const payload = await response.json().catch(() => ({}))
+                if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`)
+                if (payload.success === false) {
+                        const message = payload.message || "semantic search unavailable"
+                        if (payload.status && payload.status.indexStale) console.warn(`${message}; semantic index is stale`)
+                        return []
+                }
+                return Array.isArray(payload.results) ? payload.results : []
+        } finally {
+                if (timeoutId) clearTimeout(timeoutId)
+        }
+}
+
+const paletteSemanticTitle = (hit) => {
+        const box = hit.boxName || hit.title || hit.symbol || hit.path || "Semantic result"
+        const property = hit.property || hit.kind || ""
+        return property ? `${box} / ${property}` : box
+}
+
+const paletteSemanticDescription = (hit) => {
+        const parts = []
+        if (hit.documentName) parts.push(hit.documentName)
+        if (hit.language) parts.push(hit.language)
+        if (hit.line > 0) parts.push(`line ${hit.line}`)
+        const score = Number(hit.score)
+        if (Number.isFinite(score)) parts.push(score.toFixed(3))
+        return parts.join(" · ")
+}
+
+const paletteSemanticPreview = (item) => {
+        const hit = item.semanticHit || item
+        const bits = [
+                `<div class="afield-palette-doc-title">${paletteEscapeHtml(paletteSemanticTitle(hit))}</div>`,
+                `<div class="afield-palette-doc-meta">${paletteEscapeHtml(paletteSemanticDescription(hit))}</div>`,
+        ]
+        if (hit.path) {
+                bits.push(`<div class="afield-palette-doc-source"><span>path</span><code>${paletteEscapeHtml(hit.path)}</code></div>`)
+        }
+        if (hit.boxId) {
+                bits.push(`<div class="afield-palette-doc-source"><span>box uid</span><code>${paletteEscapeHtml(hit.boxId)}</code></div>`)
+        }
+        bits.push(paletteTextPreview(hit.sourcePreview || hit.capsule || hit.signature || "", "No indexed source preview", hit.language || ""))
+        return bits.join("")
+}
+
+const runSemanticHit = (hit) => {
+        if (!hit) return
+        const uid = String(hit.boxId || "").trim()
+        const property = String(hit.property || "code").trim() || "code"
+        const line = Math.max(1, Number(hit.line) || 1)
+        if (uid && typeof window.navigateToBoxProperty === "function") {
+                window.navigateToBoxProperty(uid, property, line, line)
+                return
+        }
+        if (uid) {
+                const el = selectBoxByUid(uid)
+                if (el) applySelection(el, property)
+        }
+}
+
+const paletteItemForSemanticHit = (hit, options = {}) => {
+        const line = Math.max(0, Number(hit.line) || 0)
+        const idParts = [
+                options.prefix || "semantic",
+                hit.id || "",
+                hit.documentName || "",
+                hit.boxId || "",
+                hit.property || "",
+                line || "",
+        ].join(":")
+        return {
+                id: idParts,
+                label: paletteSemanticTitle(hit),
+                description: paletteSemanticDescription(hit),
+                detail: hit.path || hit.symbol || "",
+                icon: "se",
+                category: options.category || "Semantic",
+                boxId: hit.boxId || "",
+                property: hit.property || "",
+                line,
+                language: hit.language || "",
+                path: hit.path || "",
+                semanticHit: hit,
+                score: Number(options.score) || Number(hit.score) || 0,
+                previewHtml: () => paletteSemanticPreview({ semanticHit: hit }),
+                run: () => runSemanticHit(hit),
+        }
 }
 
 const palettePlatformIsMac = () => !!(navigator.platform && /Mac/i.test(navigator.platform))
@@ -970,6 +1120,9 @@ const paletteBoxLabel = (uid) => {
 
 const palettePreviewForAnywhere = (item) => {
         if (!item) return ""
+        if (item.provider === "semantic-current" || item.semanticHit) {
+                return paletteSemanticPreview(item)
+        }
         if (item.provider === "macro") {
                 const bits = [
                         `<div class="afield-palette-doc-title">${paletteEscapeHtml(item.macroName || item.label || "")}</div>`,
@@ -1413,6 +1566,10 @@ function openAnywherePalette() {
                                                         icon: it.icon || "",
                                                         boxId: it.boxId,
                                                         property: it.property,
+                                                        line: it.line,
+                                                        language: it.language || "",
+                                                        path: it.path || "",
+                                                        semanticHit: it.semanticHit || null,
                                                         scope: it.scope || "",
                                                         projectName: it.projectName || "",
                                                         macroName: it.macroName || "",
@@ -1546,11 +1703,12 @@ const collectDocumentCommandItems = () => {
                 try { updateActions() } catch (e) { console.warn("updateActions failed", e) }
         }
         return paletteDedupeCommandItems([
+                similarCodeCommandItem(),
                 ...collectPropertyCommandItems(),
                 ...(window.lastActions || [])
                 .map((action) => normalizeCommandAction(action, "Document", window.globalEditor))
                 .filter(Boolean),
-        ])
+        ].filter(Boolean))
 }
 
 const paletteMergeCommandItem = (target, source) => {
@@ -1581,6 +1739,131 @@ const paletteDedupeCommandItems = (items) => {
         })
         return result
 }
+
+const currentCodeContextForSemanticSearch = () => {
+        const selected = paletteSelectedBoxes()
+        const box = selected.length === 1 ? selected[0] : (window.currentSelectedCode && window.currentSelectedCode[0]) || null
+        const property = String(window.currentSelectedProperty || window.selectedProperty || "code")
+        const value = box && typeof box[property] === "string" ? box[property] : ""
+        if (!box || !value.trim()) return null
+
+        let queryText = ""
+        let line = 1
+        let column = 1
+        const editor = window.globalEditor
+        try {
+                const currentSelected = window.currentSelectedCode || []
+                const selectedProperty = window.currentSelectedProperty || window.selectedProperty || "code"
+                if (editor && currentSelected.length === 1 && currentSelected[0] === box && selectedProperty === property) {
+                        const selection = editor.getSelection && editor.getSelection()
+                        const model = editor.getModel && editor.getModel()
+                        const position = editor.getPosition && editor.getPosition()
+                        line = Number(position && position.lineNumber) || line
+                        column = Number(position && position.column) || column
+                        if (selection && model && typeof selection.isEmpty === "function" && !selection.isEmpty()) {
+                                queryText = model.getValueInRange(selection)
+                        }
+                }
+        } catch (_) {}
+
+        if (!queryText.trim()) {
+                const cursor = palettePropertyCursorPosition(box, property)
+                line = Number(cursor.lineNumber) || line
+                column = Number(cursor.column) || column
+                queryText = paletteExcerptForProperty(value, cursor, 10).text
+        }
+        queryText = String(queryText || "").replace(/^\s*\.\.\.\s*$/gm, "").trim()
+        if (!queryText) return null
+        if (queryText.length > 5000) queryText = queryText.slice(0, 5000)
+        return {
+                queryText,
+                box,
+                boxId: paletteBoxUid(box),
+                boxName: paletteBoxName(box),
+                property,
+                line,
+                column,
+                language: palettePropertyLanguage(property, box),
+                documentName: currentDocumentNameForSemantic(),
+        }
+}
+
+const similarCodeCommandItem = () => ({
+        id: "find-similar-code",
+        label: "Find similar code",
+        description: "Semantic search from the current cursor context",
+        detail: "Searches current document, workspace, Field internals, and indexed documentation.",
+        category: "Search",
+        icon: "se",
+        score: 30,
+        previewHtml: () => {
+                const context = currentCodeContextForSemanticSearch()
+                if (!context) {
+                        return `<div class="afield-palette-doc-title">Find similar code</div>` +
+                                `<div class="afield-palette-warning">Select a box with code or place the editor cursor in a non-empty property.</div>`
+                }
+                return [
+                        `<div class="afield-palette-doc-title">Find similar code</div>`,
+                        `<div class="afield-palette-doc-meta">${paletteEscapeHtml(context.documentName || "current document")} · ${paletteEscapeHtml(context.boxName || context.boxId)} · ${paletteEscapeHtml(context.property)}:${paletteEscapeHtml(context.line)}</div>`,
+                        paletteTextPreview(context.queryText, "No cursor context", context.language),
+                ].join("")
+        },
+        run: () => openSimilarCodePalette(),
+})
+
+async function openSimilarCodePalette() {
+        const context = currentCodeContextForSemanticSearch()
+        if (!context) {
+                const message = "Select a box with code or place the editor cursor in a non-empty property."
+                if (typeof window.notify === "function") window.notify(message, "warning")
+                else console.warn(message)
+                return
+        }
+        const title = "Find Similar Code"
+        let cachedItems = null
+        fieldPalette().open({
+                title,
+                placeholder: "Filter similar code results...",
+                hint: `${context.boxName || context.boxId} · ${context.property}:${context.line}`,
+                matchMode: "substring",
+                getItems: async () => {
+                        if (cachedItems) return cachedItems
+                        let hits = []
+                        try {
+                                hits = await paletteSemanticSearch(context.queryText, {
+                                        limit: 32,
+                                        includeSource: true,
+                                        includeCapsule: true,
+                                })
+                        } catch (error) {
+                                console.warn("Find similar code failed", error)
+                                cachedItems = [{
+                                        id: "find-similar-code-error",
+                                        label: "Semantic search unavailable",
+                                        description: error && error.message ? error.message : "Could not query the semantic index.",
+                                        detail: "Try rebuilding the semantic index from /welcome.",
+                                        category: "Search",
+                                        icon: "!",
+                                        score: 0,
+                                        previewHtml: () => `<div class="afield-palette-doc-title">Semantic search unavailable</div>` +
+                                                `<div class="afield-palette-warning">${paletteEscapeHtml(error && error.message ? error.message : "Could not query the semantic index.")}</div>`,
+                                }]
+                                return cachedItems
+                        }
+                        cachedItems = hits
+                                .filter((hit) => !(hit.boxId === context.boxId && hit.property === context.property && Math.abs((Number(hit.line) || 1) - context.line) <= 2))
+                                .map((hit, index) => paletteItemForSemanticHit(hit, {
+                                        prefix: "similar-code",
+                                        category: hit.corpus === "workspace"
+                                                ? (hit.documentName === context.documentName ? "Similar in Current Document" : "Similar in Workspace")
+                                                : (hit.corpus === "documentation" ? "Similar Documentation" : "Similar Field Internals"),
+                                        score: 50 - index * 0.01,
+                                }))
+                        return cachedItems
+                },
+        })
+}
+window.openSimilarCodePalette = openSimilarCodePalette
 
 const collectPropertyCommandItems = () => {
         const selected = paletteSelectedBoxes()

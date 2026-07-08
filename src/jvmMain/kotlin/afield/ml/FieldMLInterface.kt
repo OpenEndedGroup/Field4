@@ -3,19 +3,19 @@ package afield.ml
 import afield.Box
 import afield.BoxExecution
 import afield.CachedLaunchReturn
-import afield.Completion
 import afield.CompletionRequest
 import afield.Execute
 import afield.ExecuteSymbol
 import afield.HasOutput
 import afield.IsRunning
 import afield.Message
-import afield.Metadata
 import afield.Output
 import afield.ReturnValueRegistry
 import afield.RunningState
 import afield.Runloop
 import afield.RunsAt
+import afield.SymbolContextRequest
+import afield.SymbolContextResponse
 import afield.clearRunningStates
 import afield.configureOutputProxies
 import afield.dispatchExecutionOutput
@@ -63,7 +63,7 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
                 val core = compileResult.core!!
                 try {
                     val output = TrackingOutput(inside.output)
-                    val value = Evaluator(FieldMLRuntimePrelude.values(output)).evaluate(core)
+                    val value = Evaluator(FieldMLRuntimePrelude.values(output, inside)).evaluate(core)
                     val typeText = afield.ml.type.TypePrinter().print(compileResult.typed!!.type)
                     val valueText = renderFieldMLValue(value)
                     if (!output.printed) {
@@ -72,7 +72,7 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
                             reply,
                             Output(
                                 uid = inside.id,
-                                line = execute.line + code.lines().lastIndex,
+                                line = fieldMLResultLine(execute.line, compileResult),
                                 kind = "normal",
                                 property = execute.property,
                                 html = renderInlineResult(valueText, typeText),
@@ -146,34 +146,13 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
     }
 
     override fun complete(inside: Box, completionRequest: CompletionRequest, reply: (Message) -> Unit) {
-        val code = completionRequest.allCode
-        val cursor = completionRequest.position.coerceIn(0, code.length)
-        var start = cursor
-        while (start > 0 && (code[start - 1].isLetterOrDigit() || code[start - 1] == '_')) start--
-        val prefix = code.substring(start, cursor)
-        val candidates = (fieldMLKeywords + fieldMLBuiltins + constructorNames(code))
-            .distinct()
-            .filter { it.startsWith(prefix, ignoreCase = false) }
-            .sorted()
-        if (candidates.isEmpty()) return
-        reply(
-            Message("complete").payload(
-                Completion(
-                    boundsStart = start,
-                    boundsEnd = cursor,
-                    metadata = candidates.map {
-                        Metadata(
-                            icon = if (it.firstOrNull()?.isUpperCase() == true) "class" else "keyword",
-                            tail = "fieldml",
-                            documentation = fieldMLKeywordDocs[it] ?: "FieldML symbol",
-                            text = it,
-                            displayText = it,
-                        )
-                    },
-                ),
-            ),
-        )
+        FieldMLCompletionEngine.complete(completionRequest)?.let {
+            reply(Message("complete").payload(it))
+        }
     }
+
+    override fun describeSymbolContext(inside: Box, request: SymbolContextRequest): SymbolContextResponse =
+        FieldMLCompletionEngine.describeSymbolContext(request)
 
     override val languageName: String get() = "fieldml"
 
@@ -187,7 +166,7 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
                 val result = FieldMLCompiler.compile(execute.code)
                 if (!reportDiagnostics(inside, execute, result, originSession, reply)) {
                     val output = TrackingOutput(inside.output)
-                    val value = Evaluator(FieldMLRuntimePrelude.values(output)).evaluate(result.core!!)
+                    val value = Evaluator(FieldMLRuntimePrelude.values(output, inside)).evaluate(result.core!!)
                     val typeText = afield.ml.type.TypePrinter().print(result.typed!!.type)
                     val valueText = renderFieldMLValue(value)
                     if (!output.printed) {
@@ -196,7 +175,7 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
                             reply,
                             Output(
                                 uid = inside.id,
-                                line = execute.line + execute.code.lines().lastIndex,
+                                line = fieldMLResultLine(execute.line, result),
                                 kind = "normal",
                                 property = execute.property,
                                 html = renderInlineResult(valueText, typeText),
@@ -212,6 +191,11 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
                 send(Message("is-running").payload(IsRunning(execute.uid, false, watermark, "__fragment__")))
             }
         }
+    }
+
+    private fun fieldMLResultLine(executeLine: Int, result: CompilationResult): Int {
+        val sourceLine = result.typed?.range?.end?.line ?: result.surface?.range?.end?.line
+        return sourceLine?.let { executeLine + it } ?: executeLine
     }
 
     private fun reportDiagnostics(
@@ -246,82 +230,6 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
         return true
     }
 
-    private fun constructorNames(code: String): List<String> =
-        Regex("""\btype\s+\w+(?:\s+\w+)*\s*=\s*([^\n]+)""")
-            .findAll(code)
-            .flatMap { match ->
-                match.groupValues[1]
-                    .split("|")
-                    .asSequence()
-                    .mapNotNull { it.trim().split(Regex("""\s+""")).firstOrNull() }
-                    .filter { it.firstOrNull()?.isUpperCase() == true }
-            }
-            .toList()
-
-    companion object {
-        private val fieldMLKeywords = listOf(
-            "let",
-            "type",
-            "match",
-            "with",
-            "if",
-            "then",
-            "else",
-            "fun",
-            "true",
-            "false",
-            "in",
-        )
-
-        private val fieldMLBuiltins = listOf(
-            "Unit",
-            "print",
-            "println",
-            "display",
-            "show",
-            "vec2",
-            "vec3",
-            "vec4",
-            "fline",
-            "moveTo",
-            "moveTo3",
-            "lineTo",
-            "lineTo3",
-            "moveToV",
-            "lineToV",
-            "cubicTo",
-            "close",
-            "thickness",
-            "color",
-            "filled",
-            "stroked",
-            "pointed",
-            "pointSize",
-            "hostClass",
-            "hostNew0",
-            "hostCall0",
-            "hostCall1",
-            "hostCall2",
-            "hostGet",
-            "hostSet",
-        )
-
-        private val fieldMLKeywordDocs = mapOf(
-            "let" to "Introduce an immutable binding.",
-            "type" to "Declare an algebraic data type.",
-            "match" to "Pattern match over a value.",
-            "with" to "Start match cases.",
-            "fun" to "Anonymous function.",
-            "if" to "Conditional expression.",
-            "display" to "display \"channel\" value sends a value to a Field output panel and returns it.",
-            "print" to "Print a value and return it, useful as a pipe tap.",
-            "println" to "Print a value plus newline and return it, useful as a pipe tap.",
-            "fline" to "Create an FLine host value.",
-            "moveTo" to "moveTo x y line adds a move instruction and returns the FLine.",
-            "lineTo" to "lineTo x y line adds a line instruction and returns the FLine.",
-            "hostCall1" to "Generic opaque host bridge: hostCall1 \"method\" arg target.",
-        )
-    }
 }
 
 var Box.isFieldMLRoot by Delegation<Boolean?>()

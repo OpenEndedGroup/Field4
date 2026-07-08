@@ -540,7 +540,7 @@ const buildSymbolContextRequest = (editor, resolveContext, options = {}) => {
         const allowUnfocused = !!options.allowUnfocused
         if (!editor || (!allowUnfocused && typeof editor.hasTextFocus === "function" && !editor.hasTextFocus())) return null
         const model = editor.getModel && editor.getModel()
-        if (!model || model.getLanguageId() !== "kotlin") return null
+        if (!model || !["kotlin", "fieldml"].includes(model.getLanguageId())) return null
 
         const context = resolveContext ? resolveContext(editor) : null
         if (!context || !context.uid || !context.property) return null
@@ -554,7 +554,7 @@ const buildSymbolContextRequest = (editor, resolveContext, options = {}) => {
         if (!bounds || !bounds.text) return null
 
         return {
-                key: `${context.uid}::${context.property}::${model.getVersionId()}::${bounds.start}:${bounds.end}`,
+                key: `${model.getLanguageId()}::${context.uid}::${context.property}::${model.getVersionId()}::${bounds.start}:${bounds.end}`,
                 editor,
                 payload: {
                         uid: context.uid,
@@ -1326,6 +1326,7 @@ const initMonaco = () => {
         monaco.languages.registerCompletionItemProvider("forth", completionProvider)
         monaco.languages.registerCompletionItemProvider("nano", completionProvider)
         monaco.languages.registerCompletionItemProvider("bend", completionProvider)
+        monaco.languages.registerCompletionItemProvider("fieldml", completionProvider)
         monaco.languages.registerCompletionItemProvider("yaml", completionProvider)
 
 
@@ -1375,17 +1376,6 @@ const syncBoxRunningClass = (box) => {
         )
 }
 
-const ensureMarkerForExternalLaunch = (uid, strand) => {
-        if (typeof window.ensureExecutionMarkerForLaunch !== "function") return false
-        const current = window.currentSelectedCode
-        if (!current || current.length !== 1 || current[0]?.uid !== uid) return false
-        const editor = window.globalMonacoEditor || window.globalEditor
-        const model = editor?.getModel?.()
-        if (!editor || !model) return false
-        const lineCount = Math.max(1, model.getLineCount?.() || 1)
-        return window.ensureExecutionMarkerForLaunch(editor, strand || "default", 1, lineCount) === true
-}
-
 const setBoxRunning = (uid, isRunning, watermark, strand, mode = "launch") => {
         // console.log("setBoxRunning, looking for ", uid, isRunning, watermark, strand, mode)
         let first = [...document.querySelectorAll(".box")].find(x => x.uid === uid)
@@ -1413,10 +1403,7 @@ const setBoxRunning = (uid, isRunning, watermark, strand, mode = "launch") => {
                         first.runningEntries.set(name, mode)
                         if (watermark > lastWatermark) first.latestWatermark.set(strand, watermark)
                         syncBoxRunningClass(first)
-                        const markerUpdated = window.setStatusForExecutionMarker?.(strand, true, mode) === true
-                        if (!markerUpdated && ensureMarkerForExternalLaunch(uid, strand)) {
-                                window.setStatusForExecutionMarker?.(strand || "default", true, mode)
-                        }
+                        window.setStatusForExecutionMarker?.(strand, true, mode)
 
                 } else {
                         // Ignore stop messages that are older than the latest start we saw

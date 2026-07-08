@@ -12,6 +12,9 @@ import afield.CodeUseSourceReferenceRow
 import afield.CodeUseSourceTarget
 import afield.CodeUseSymbolRow
 import afield.CodeUseUnresolvedRow
+import afield.ai.SemanticRetrievalHit
+import afield.ai.SemanticRetrievalModelInfo
+import afield.ai.SemanticRetrievalStatus
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.openai.models.responses.ResponseCreateParams
@@ -353,6 +356,38 @@ data class CodeUseSemanticAnalyzeCodeRequest(
     val sourceRadiusLines: Int = 24
 )
 
+/** Semantic retrieval tools ------------------------------------------------ */
+
+@JsonClassDescription("Search Field's native Lucene semantic retrieval index across Field internals, current workspace code, and documentation. This is natural-language to code/docs retrieval, not compiler resolution. Set corpus for one corpus, or corpora for combinations. Available corpora are field-internals, workspace, and documentation. Leave both blank to search all corpora. Use documentName with corpus/workspace to search a specific current workspace document. Results include BM25/symbol/vector ranks when available; vector search is active only when the local ONNX embedder is configured.")
+data class SemanticRetrievalSearchRequest(
+    val query: String,
+    val limit: Int = 10,
+    val corpus: String = "",
+    val corpora: List<String> = emptyList(),
+    val pathPrefix: String = "",
+    val kinds: List<String> = emptyList(),
+    val documentName: String = "",
+    val boxId: String = "",
+    val property: String = "",
+    val includeCapsule: Boolean = false,
+    val includeSource: Boolean = false
+)
+
+@JsonClassDescription("Return status for Field's native Lucene semantic retrieval index, including capsule backend, ONNX/vector availability, and available corpora for SemanticRetrievalSearchRequest.")
+data class SemanticRetrievalStatusRequest(val unused: Int = 0)
+
+@JsonClassDescription("Rebuild Field's native Lucene semantic retrieval index from current source-index declarations and documentation sections. Use sparingly; normal searches rebuild automatically if the index is missing.")
+data class SemanticRetrievalRebuildRequest(val unused: Int = 0)
+
+data class SemanticRetrievalToolResult(
+    val success: Boolean,
+    val message: String,
+    val status: SemanticRetrievalStatus,
+    val model: SemanticRetrievalModelInfo? = null,
+    val availableCorpora: List<String> = emptyList(),
+    val results: List<SemanticRetrievalHit> = emptyList()
+)
+
 /** Long-running task tools -------------------------------------------------- */
 
 @JsonClassDescription("Read the persistent scratchpad for this chat. Use it to recover durable notes, decisions, constraints, and handoff context from earlier turns.")
@@ -610,6 +645,9 @@ data class ToolExecutionContext(
     val writeMacro: ((MacroWriteRequest) -> MacroWriteResult)? = null,
     val runMacro: ((MacroRunRequest) -> MacroRunResult)? = null,
     val codeUseQuery: ((CodeUseQueryRequest) -> CodeUseQueryResult)? = null,
+    val semanticRetrievalSearch: ((SemanticRetrievalSearchRequest) -> SemanticRetrievalToolResult)? = null,
+    val semanticRetrievalStatus: (() -> SemanticRetrievalToolResult)? = null,
+    val semanticRetrievalRebuild: (() -> SemanticRetrievalToolResult)? = null,
 
     val agentMemory: AgentMemoryState? = null,
 
@@ -624,19 +662,26 @@ fun virtualFilesToAttachments(files: List<afield.ai.VirtualTextFile>): List<Cont
 internal class ToolRegistry {
     private data class Handler<T : Any>(
         val cls: Class<T>,
+        val available: (ToolExecutionContext) -> Boolean,
         val fn: (ToolExecutionContext, T) -> Any
     )
 
     private val handlers = ConcurrentHashMap<String, Handler<*>>()
 
-    fun <T : Any> register(toolClass: Class<T>, handler: (ToolExecutionContext, T) -> Any) {
-        handlers[toolClass.simpleName] = Handler(toolClass, handler)
+    fun <T : Any> register(
+        toolClass: Class<T>,
+        available: (ToolExecutionContext) -> Boolean = { true },
+        handler: (ToolExecutionContext, T) -> Any
+    ) {
+        handlers[toolClass.simpleName] = Handler(toolClass, available, handler)
     }
 
-    fun addAllTo(builder: ResponseCreateParams.Builder) {
+    fun addAllTo(builder: ResponseCreateParams.Builder, ctx: ToolExecutionContext) {
         handlers.values.forEach { h ->
-            @Suppress("UNCHECKED_CAST")
-            builder.addTool(h.cls as Class<Any>)
+            if (h.available(ctx)) {
+                @Suppress("UNCHECKED_CAST")
+                builder.addTool(h.cls as Class<Any>)
+            }
         }
     }
 

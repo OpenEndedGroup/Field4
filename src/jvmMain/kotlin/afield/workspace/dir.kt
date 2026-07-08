@@ -1,6 +1,8 @@
 package afield
 
 import afield.logger.lprintln
+import afield.ai.SemanticRetrievalSettingsStatus
+import afield.ai.SemanticRetrievalService
 import afield.python.PythonSettingsStatus
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.Serializable
@@ -213,13 +215,20 @@ data class AiToolUseImprovementStatus(
     val finishedAtEpochMs: Long = 0,
     val exitCode: Int? = null,
     val message: String = "",
-    val logTail: String = ""
+    val logTail: String = "",
+    val reportMarkdown: String = "",
+    val dryRunPatch: String = ""
 )
 
 @Serializable
 data class AiToolUseImprovementRunRequest(
     val dryRun: Boolean = true,
     val proposalCount: Int = 1
+)
+
+@Serializable
+data class AiToolUseImprovementClearRequest(
+    val recentOnly: Boolean = true
 )
 
 val defaultImportClassBlacklist = listOf(
@@ -261,7 +270,8 @@ data class WelcomeDocsResponse(
         queueSize = 0,
         droppedEvents = 0,
         message = "not loaded"
-    )
+    ),
+    val semanticSearch: SemanticRetrievalSettingsStatus = SemanticRetrievalService.settingsStatus()
 )
 
 @Serializable
@@ -332,6 +342,7 @@ data class FieldPreferences(
     val enableHDR: Boolean = false,
     val openXRDebugInput: Boolean = true,
     val validate: Boolean = true,
+    val quietMode: Boolean = false,
     val autoOpenLastDocumentInDesktop: Boolean = false,
     val editorPropertyStickiness: String = "none",
     val oscEditorEnabled: Boolean = false,

@@ -6,12 +6,71 @@ private var currentSelectedCode: dynamic = js("[]")
 private var currentSelectedProperty: String = "code"
 private var currentValueAtOrigination = ""
 private val recentChangeCache = mutableListOf<String>()
+private const val mainEditorModelCacheLimit = 80
+private val mainEditorModelCache = mutableMapOf<String, MainEditorModelEntry>()
+private var mainEditorModelSerial = 0L
 
 private var provisionalDiffKey: String? = null
 private var provisionalDiffText: String? = null
 private var provisionalDiffRetry: Int? = null
 private var provisionalListenerInstalled = false
 private var provisionalAcceptedValueListenerInstalled = false
+
+private data class MainEditorModelEntry(
+    val uid: String,
+    val property: String,
+    val model: dynamic,
+    var lastUsed: Long
+)
+
+private fun mainEditorModelKey(uid: String, property: String): String = "$uid\u001f$property"
+
+private fun pruneMainEditorModelCache(activeModel: dynamic) {
+    if (mainEditorModelCache.size <= mainEditorModelCacheLimit) return
+    val stale = mainEditorModelCache.values
+        .filter { entry -> entry.model != activeModel }
+        .sortedBy { entry -> entry.lastUsed }
+        .take(mainEditorModelCache.size - mainEditorModelCacheLimit)
+    stale.forEach { entry ->
+        mainEditorModelCache.remove(mainEditorModelKey(entry.uid, entry.property))
+        runCatching { entry.model.dispose() }
+    }
+}
+
+private fun modelLanguageFor(box: dynamic, property: String): String {
+    val language = when (property) {
+        "code" -> box.code_language as? String
+        "contents" -> box.contents_language as? String
+        else -> null
+    } ?: monacoFindLanguageForPropertyName(property)
+    return language.lowercase()
+}
+
+private fun modelForSelectedProperty(w: dynamic, box: dynamic, property: String, text: String): dynamic {
+    val monaco = w.globalMonaco
+    val uid = box.uid as? String ?: ""
+    val key = mainEditorModelKey(uid, property)
+    val language = modelLanguageFor(box, property)
+    val normalized = text.replace("\r\n", "\n")
+    mainEditorModelSerial += 1
+
+    val existing = mainEditorModelCache[key]
+    if (existing != null) {
+        existing.lastUsed = mainEditorModelSerial
+        if ((existing.model.getValue() as? String ?: "") != normalized) {
+            existing.model.setValue(normalized)
+        }
+        runCatching { monaco.editor.setModelLanguage(existing.model, language) }
+        pruneMainEditorModelCache(existing.model)
+        return existing.model
+    }
+
+    val model = monaco.editor.createModel(normalized, language)
+    runCatching { model.setEOL(0) }
+    mainEditorModelCache[key] = MainEditorModelEntry(uid, property, model, mainEditorModelSerial)
+    pruneMainEditorModelCache(model)
+    return model
+}
 
 private fun syncNotesMarkdownPreview() {
     val w = js("window")
@@ -242,30 +301,23 @@ private fun monitorSelection() {
             var code = currentSelectedCode[0][currentSelectedProperty] as? String
             if (code == null) code = ""
             val state = currentSelectedCode[0]["${currentSelectedProperty}_editorState"] as? String
-            if (state != null) {
-                val suppressRestore = (w.suppressNextEditorStateRestore as? Boolean) == true
-                if (suppressRestore) {
-                    w.suppressNextEditorStateRestore = false
-                }
-                var disposable: dynamic = null
-                if (!suppressRestore) {
-                    disposable = globalEditor.onDidChangeModelContent { event: dynamic ->
-                        if (event.isFlush as? Boolean == true) {
-                            if (disposable != null) {
-                                disposable.dispose()
-                            }
-                            window.setTimeout({
-                                globalEditor.restoreViewState(js("JSON.parse")(state))
-                                globalEditor.focus()
-                            }, 300)
-                        }
-                    }
-                }
+            val suppressRestore = (w.suppressNextEditorStateRestore as? Boolean) == true
+            if (suppressRestore) {
+                w.suppressNextEditorStateRestore = false
             }
             w.pauseLineTracking()
-            globalEditor.setValue(code.replace("\r\n", "\n"))
-            globalEditor.getModel().setEOL(0)
+            val model = modelForSelectedProperty(w, currentSelectedCode[0], currentSelectedProperty, code)
+            if (globalEditor.getModel() != model) {
+                globalEditor.setModel(model)
+            }
+            model.setEOL(0)
             w.unpauseLineTracking()
+            if (state != null && !suppressRestore) {
+                window.setTimeout({
+                    globalEditor.restoreViewState(js("JSON.parse")(state))
+                    globalEditor.focus()
+                }, 0)
+            }
             currentValueAtOrigination = code
         } else {
             w.hideMonaco()

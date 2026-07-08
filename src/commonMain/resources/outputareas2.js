@@ -10,6 +10,10 @@ const NESTED_MAX_VIEWPORT_W_RATIO = 0.9;
 const NESTED_MAX_VIEWPORT_H_RATIO = 0.82;
 const NESTED_MIN_W = 220;
 const NESTED_MIN_H = 120;
+const AI_CHAT_MAX_W_PX = 960;
+const AI_CHAT_MAX_H_PX = 560;
+const AI_CHAT_MIN_W = 320;
+const AI_CHAT_MIN_H = 180;
 const AUTO_SIZE_PASSES = [0, 1, 2, 4, 8, 14, 22];
 
 // --- Disclosure handling (new behavior) ---
@@ -503,6 +507,16 @@ function disclosureInterface(container) {
         }
 
         function boundsForId(id) {
+                if (id === "ai-chat") {
+                        const viewportW = Math.max(window.innerWidth || 0, DEFAULT_W);
+                        const viewportH = Math.max(window.innerHeight || 0, DEFAULT_H);
+                        return {
+                                minW: AI_CHAT_MIN_W,
+                                minH: AI_CHAT_MIN_H,
+                                maxW: Math.max(AI_CHAT_MIN_W, Math.min(AI_CHAT_MAX_W_PX, Math.floor(viewportW * 0.9))),
+                                maxH: Math.max(AI_CHAT_MIN_H, Math.min(AI_CHAT_MAX_H_PX, Math.floor(viewportH * 0.65)))
+                        };
+                }
                 if (id !== "nested") {
                         return {
                                 minW: 50,

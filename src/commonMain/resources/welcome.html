@@ -102,7 +102,6 @@
             border-radius: var(--radius);
             background: #222;
             backdrop-filter: blur(4px);
-            box-shadow: 0 14px 48px rgba(0, 0, 0, 0.35);
             margin-top: -5px;
             margin-bottom: -5px;
         }
@@ -146,7 +145,6 @@
             font-size: 14px;
             line-height: 0.95;
             /*letter-spacing: 1px;*/
-            text-shadow: 0 0 9px rgba(72, 201, 255, 0.45);
             min-width: 50px;
         }
 
@@ -256,6 +254,7 @@
         .project-management-header,
         .maven-header,
         .ai-settings-header,
+        .semantic-search-header,
         .python-settings-header,
         .preferences-header,
         .osc-settings-header {
@@ -270,6 +269,7 @@
         .project-management-label,
         .maven-label,
         .ai-settings-label,
+        .semantic-search-label,
         .python-settings-label,
         .preferences-label,
         .osc-settings-label {
@@ -280,6 +280,7 @@
         #project-management-state,
         #maven-state,
         #ai-settings-state,
+        #semantic-search-state,
         #python-settings-state,
         #preferences-state,
         #osc-settings-state {
@@ -294,6 +295,7 @@
         .project-management-controls,
         .maven-controls,
         .ai-settings-controls,
+        .semantic-search-controls,
         .python-settings-controls,
         .osc-settings-controls {
             display: grid;
@@ -338,6 +340,104 @@
             align-items: center;
             font-size: 12px;
             color: var(--field-text-soft);
+        }
+
+        .semantic-search-panel {
+            display: grid;
+            gap: 8px;
+            padding-top: 2px;
+        }
+
+        .semantic-search-controls {
+            grid-template-columns: 1fr auto;
+        }
+
+        .semantic-search-field {
+            display: grid;
+            grid-template-columns: 82px minmax(0, 1fr);
+            gap: 8px;
+            align-items: center;
+            font-size: 12px;
+            color: var(--field-text-soft);
+            min-width: 0;
+        }
+
+        .semantic-search-field-full {
+            grid-template-columns: 1fr;
+            gap: 5px;
+        }
+
+        .semantic-search-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            color: var(--field-text);
+            font-size: 12px;
+        }
+
+        .semantic-search-toggle input {
+            width: 14px;
+            height: 14px;
+            accent-color: var(--field-cyan);
+        }
+
+        .semantic-search-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 7px;
+        }
+
+        .semantic-search-path {
+            min-width: 0;
+            color: var(--field-text-soft);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 10px;
+        }
+
+        .semantic-search-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        #semantic-search-progress {
+            position: relative;
+            height: 3px;
+            overflow: hidden;
+            border: 1px solid rgba(72, 201, 255, 0.28);
+            background: rgba(0, 0, 0, 0.72);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #semantic-search-progress.is-active {
+            opacity: 1;
+        }
+
+        #semantic-search-progress::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            width: 38%;
+            background: rgba(72, 201, 255, 0.8);
+            transform: translateX(-110%);
+        }
+
+        #semantic-search-progress.is-active::after {
+            animation: semantic-search-progress 1.35s linear infinite;
+        }
+
+        @keyframes semantic-search-progress {
+            from {
+                transform: translateX(-110%);
+            }
+            to {
+                transform: translateX(285%);
+            }
         }
 
         .ai-settings-provider {
@@ -399,6 +499,11 @@
         #ai-flagship-model,
         #ai-fast-model,
         #ai-fallback-model,
+        #semantic-search-preset,
+        #semantic-search-model-path,
+        #semantic-search-tokenizer-path,
+        #semantic-search-dimension,
+        #semantic-search-max-tokens,
         #pref-import-class-blacklist,
         #osc-editor-port,
         #osc-editor-float-address,
@@ -427,6 +532,10 @@
         #ai-flagship-model::placeholder,
         #ai-fast-model::placeholder,
         #ai-fallback-model::placeholder,
+        #semantic-search-model-path::placeholder,
+        #semantic-search-tokenizer-path::placeholder,
+        #semantic-search-dimension::placeholder,
+        #semantic-search-max-tokens::placeholder,
         #pref-import-class-blacklist::placeholder,
         #osc-editor-port::placeholder,
         #osc-editor-float-address::placeholder,
@@ -449,6 +558,11 @@
         #ai-flagship-model:focus,
         #ai-fast-model:focus,
         #ai-fallback-model:focus,
+        #semantic-search-preset:focus,
+        #semantic-search-model-path:focus,
+        #semantic-search-tokenizer-path:focus,
+        #semantic-search-dimension:focus,
+        #semantic-search-max-tokens:focus,
         #pref-import-class-blacklist:focus,
         #osc-editor-port:focus,
         #osc-editor-float-address:focus,
@@ -465,6 +579,7 @@
         #project-management-status,
         #maven-status,
         #ai-settings-status,
+        #semantic-search-status,
         #python-settings-status,
         #completion-doc-polish-status,
         #ai-tool-use-improvement-status,
@@ -480,6 +595,7 @@
         #project-management-status.error,
         #maven-status.error,
         #ai-settings-status.error,
+        #semantic-search-status.error,
         #python-settings-status.error,
         #completion-doc-polish-status.error,
         #ai-tool-use-improvement-status.error,
@@ -828,6 +944,20 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 6px 10px;
+        }
+
+        .preference-section {
+            display: grid;
+            gap: 6px;
+        }
+
+        .preference-section-title {
+            color: var(--field-text-soft);
+            font-size: 11px;
+        }
+
+        .preference-grid-single {
+            grid-template-columns: 1fr;
         }
 
         .preference-toggle {
@@ -1191,7 +1321,6 @@
             background: rgba(10, 10, 10, 0.96);
             border: 1px solid rgba(72, 201, 255, 0.28);
             border-radius: 7px;
-            box-shadow: 0 16px 38px rgba(0, 0, 0, 0.42);
         }
 
         #welcome-context-menu.open {
@@ -1255,10 +1384,20 @@
             padding-left: 8px;
         }
 
+        .search-match.semantic {
+            border-left-color: rgba(114, 230, 168, 0.42);
+        }
+
         .search-match-meta {
             font-size: 10px;
             color: var(--field-text-soft);
             text-transform: lowercase;
+        }
+
+        .search-match-source {
+            display: inline-block;
+            margin-right: 5px;
+            color: rgba(114, 230, 168, 0.95);
         }
 
         .search-match-snippet {
@@ -1410,6 +1549,11 @@
             .ai-settings-controls,
             .ai-settings-field,
             .ai-settings-provider,
+            .semantic-search-header,
+            .semantic-search-controls,
+            .semantic-search-field,
+            .semantic-search-grid,
+            .semantic-search-actions,
             .python-settings-header,
             .python-settings-controls,
             .python-settings-field,
@@ -1426,6 +1570,7 @@
             #project-management-state,
             #maven-state,
             #ai-settings-state,
+            #semantic-search-state,
             #python-settings-state,
             #completion-doc-polish-state,
             #ai-tool-use-improvement-state,
@@ -1483,7 +1628,11 @@
         }
     </style>
 </head>
-<body>
+<body class="field-webgl-page">
+<script src="/fieldWebglBackground.js"></script>
+<script>
+    window.FieldWebGLBackground?.install(document.body, { fixed: true });
+</script>
 
 <div id="splash-screen">
     <pre class="f4drift">
@@ -1712,7 +1861,8 @@
                             </div>
                             <div class="ai-docs-actions two">
                                 <button id="run-ai-tool-use-review" type="button">Review logs</button>
-                                <button id="run-ai-tool-use-apply" type="button">Apply polish</button>
+                                <button id="run-ai-tool-use-apply" type="button">Generate proposal</button>
+                                <button id="clear-ai-tool-use-reviewed" type="button">Mark reviewed</button>
                             </div>
                             <div id="ai-tool-use-improvement-status" aria-live="polite"></div>
                         </div>
@@ -1726,6 +1876,48 @@
                             </div>
                             <div id="code-use-status" aria-live="polite"></div>
                         </div>
+                        <div class="semantic-search-panel">
+                            <div class="semantic-search-header">
+                                <span class="semantic-search-label">Semantic search</span>
+                                <span id="semantic-search-state">checking</span>
+                            </div>
+                            <label class="semantic-search-toggle">
+                                <input id="semantic-search-enabled" type="checkbox"> enabled
+                            </label>
+                            <label class="semantic-search-field" for="semantic-search-preset">
+                                <span>model</span>
+                                <select id="semantic-search-preset"></select>
+                            </label>
+                            <div class="semantic-search-controls">
+                                <button id="semantic-search-download" type="button">Download model</button>
+                                <button id="semantic-search-save" type="button">Save</button>
+                            </div>
+                            <div class="semantic-search-grid">
+                                <label class="semantic-search-field semantic-search-field-full" for="semantic-search-dimension">
+                                    <span>dimension</span>
+                                    <input id="semantic-search-dimension" type="number" min="1" max="1024" step="1" autocomplete="off" placeholder="384">
+                                </label>
+                                <label class="semantic-search-field semantic-search-field-full" for="semantic-search-max-tokens">
+                                    <span>max tokens</span>
+                                    <input id="semantic-search-max-tokens" type="number" min="16" max="8192" step="16" autocomplete="off" placeholder="512">
+                                </label>
+                            </div>
+                            <label class="semantic-search-field semantic-search-field-full" for="semantic-search-model-path">
+                                <span>model file</span>
+                                <input id="semantic-search-model-path" type="text" autocomplete="off" placeholder="download or enter /path/to/model.onnx">
+                            </label>
+                            <label class="semantic-search-field semantic-search-field-full" for="semantic-search-tokenizer-path">
+                                <span>tokenizer</span>
+                                <input id="semantic-search-tokenizer-path" type="text" autocomplete="off" placeholder="download or enter /path/to/tokenizer.json">
+                            </label>
+                            <div class="semantic-search-actions">
+                                <button id="semantic-search-rebuild" type="button">Rebuild index</button>
+                                <button id="semantic-search-delete-index" type="button" class="button-danger">Delete index</button>
+                                <button id="semantic-search-delete-models" type="button" class="button-danger">Delete models</button>
+                            </div>
+                            <div id="semantic-search-progress" aria-hidden="true"></div>
+                            <div id="semantic-search-status" aria-live="polite"></div>
+                        </div>
                         <div id="ai-settings-status" aria-live="polite"></div>
                     </div>
                 </details>
@@ -1735,27 +1927,36 @@
                         <span id="preferences-summary" class="changelog-count">loading</span>
                     </summary>
                     <div class="preferences-body">
-                        <div class="preference-grid">
-                            <label class="preference-toggle"><input id="pref-profiling" type="checkbox"> profiling</label>
-                            <label class="preference-toggle"><input id="pref-frame-presentation-log" type="checkbox"> frame presentation log</label>
-                            <label class="preference-toggle"><input id="pref-log-shaderc-source" type="checkbox"> log shader source</label>
-                            <label class="preference-toggle"><input id="pref-enable-vr" type="checkbox"> enableVR</label>
-                            <label class="preference-toggle"><input id="pref-enable-hdr" type="checkbox"> enableHDR</label>
-                            <label class="preference-toggle"><input id="pref-openxr-debug-input" type="checkbox"> openXRDebugInput</label>
-                            <label class="preference-toggle"><input id="pref-validate" type="checkbox"> validate</label>
-                            <label class="preference-toggle"><input id="pref-auto-open-last" type="checkbox"> auto-open last document</label>
-                        </div>
-                        <div class="preferences-controls">
-                            <span class="preference-select-label">track edited property</span>
-                            <div class="segmented-control" role="group" aria-label="track edited property">
-                                <button class="segmented-button stickiness-segment" type="button" data-stickiness-value="none" aria-pressed="true">never</button>
-                                <button class="segmented-button stickiness-segment" type="button" data-stickiness-value="per-box" aria-pressed="false">per-box</button>
-                                <button class="segmented-button stickiness-segment" type="button" data-stickiness-value="global" aria-pressed="false">globally</button>
+                        <div class="preference-section">
+                            <div class="preference-section-title">Graphics system</div>
+                            <div class="preference-grid">
+                                <label class="preference-toggle"><input id="pref-profiling" type="checkbox"> profiling</label>
+                                <label class="preference-toggle"><input id="pref-frame-presentation-log" type="checkbox"> frame presentation log</label>
+                                <label class="preference-toggle"><input id="pref-log-shaderc-source" type="checkbox"> log shader source</label>
+                                <label class="preference-toggle"><input id="pref-enable-vr" type="checkbox"> enableVR</label>
+                                <label class="preference-toggle"><input id="pref-enable-hdr" type="checkbox"> enableHDR</label>
+                                <label class="preference-toggle"><input id="pref-openxr-debug-input" type="checkbox"> openXRDebugInput</label>
+                                <label class="preference-toggle"><input id="pref-validate" type="checkbox"> validate</label>
                             </div>
-                            <label class="preference-textarea-field" for="pref-import-class-blacklist">
-                                <span>import class blacklist</span>
-                                <textarea id="pref-import-class-blacklist" rows="5" spellcheck="false" autocomplete="off" placeholder="com.sun.*&#10;sun.*&#10;*awt*"></textarea>
-                            </label>
+                        </div>
+                        <div class="preference-section">
+                            <div class="preference-section-title">Other</div>
+                            <div class="preference-grid preference-grid-single">
+                                <label class="preference-toggle"><input id="pref-quiet-mode" type="checkbox"> quiet mode</label>
+                                <label class="preference-toggle"><input id="pref-auto-open-last" type="checkbox"> auto-open last document</label>
+                            </div>
+                            <div class="preferences-controls">
+                                <span class="preference-select-label">track edited property</span>
+                                <div class="segmented-control" role="group" aria-label="track edited property">
+                                    <button class="segmented-button stickiness-segment" type="button" data-stickiness-value="none" aria-pressed="true">never</button>
+                                    <button class="segmented-button stickiness-segment" type="button" data-stickiness-value="per-box" aria-pressed="false">per-box</button>
+                                    <button class="segmented-button stickiness-segment" type="button" data-stickiness-value="global" aria-pressed="false">globally</button>
+                                </div>
+                                <label class="preference-textarea-field" for="pref-import-class-blacklist">
+                                    <span>import class blacklist</span>
+                                    <textarea id="pref-import-class-blacklist" rows="5" spellcheck="false" autocomplete="off" placeholder="com.sun.*&#10;sun.*&#10;*awt*"></textarea>
+                                </label>
+                            </div>
                         </div>
                         <div id="preferences-status" aria-live="polite"></div>
                     </div>
@@ -1841,6 +2042,13 @@
         searchQuery: "",
         searchResults: [],
         searchTruncated: false,
+        searchSemantic: {
+            hitCount: 0,
+            message: "",
+            error: false,
+            stale: false,
+            skipped: false
+        },
         lastOpened: "welcome",
         defaultDocument: "welcome",
         allTags: [],
@@ -1937,6 +2145,49 @@
             sourceBlobs: 0,
             message: ""
         },
+        semanticSearch: {
+            config: {
+                enabled: true,
+                presetId: "granite-97m-r2-quantized",
+                modelPath: "",
+                tokenizerPath: "",
+                dimension: 384,
+                maxTokens: 512,
+                queryPrefix: "",
+                documentPrefix: ""
+            },
+            status: {
+                enabled: true,
+                indexExists: false,
+                indexedCapsules: 0,
+                embedderBackend: "disabled",
+                message: ""
+            },
+            model: {
+                backend: "disabled",
+                dimension: 0,
+                message: ""
+            },
+            presets: [],
+            modelFile: { path: "", exists: false, sizeBytes: 0 },
+            tokenizerFile: { path: "", exists: false, sizeBytes: 0 },
+            indexSizeBytes: 0,
+            modelCacheSizeBytes: 0,
+            downloadRunning: false,
+            rebuild: {
+                running: false,
+                status: "idle",
+                startedAtEpochMs: 0,
+                finishedAtEpochMs: 0,
+                message: "",
+                step: "",
+                indexedCapsules: 0
+            },
+            message: ""
+        },
+        semanticSearchBusy: false,
+        semanticSearchBusyMessage: "",
+        semanticSearchErrorMessage: "",
         savingAiSettings: false,
         savingPythonSettings: false,
         preferences: {
@@ -1947,6 +2198,7 @@
             enableHDR: false,
             openXRDebugInput: true,
             validate: true,
+            quietMode: false,
             autoOpenLastDocumentInDesktop: false,
             editorPropertyStickiness: "none",
             oscEditorEnabled: false,
@@ -2480,6 +2732,7 @@
         renderCompletionDocPolish();
         renderAiToolUseImprovement();
         renderCodeUse();
+        renderSemanticSearch();
     }
 
     function formatCount(value, singular, plural = `${singular}s`) {
@@ -2533,18 +2786,19 @@
         const stateNode = document.getElementById("ai-tool-use-improvement-state");
         const reviewButton = document.getElementById("run-ai-tool-use-review");
         const applyButton = document.getElementById("run-ai-tool-use-apply");
+        const clearButton = document.getElementById("clear-ai-tool-use-reviewed");
 
         if (stateNode) {
             stateNode.textContent = task.running
                 ? "running"
                 : (recent > 0 ? `${recent} recent / ${formatCount(total, "log")}` : (logs.exists ? "empty" : "no logs"));
         }
-        [reviewButton, applyButton].forEach((button) => {
+        [reviewButton, applyButton, clearButton].forEach((button) => {
             if (!button) return;
             button.disabled = !!task.running || recent <= 0;
         });
         if (reviewButton) reviewButton.textContent = task.running && task.dryRun ? "Reviewing..." : "Review logs";
-        if (applyButton) applyButton.textContent = task.running && !task.dryRun ? "Applying..." : "Apply polish";
+        if (applyButton) applyButton.textContent = task.running && !task.dryRun ? "Generating..." : "Generate proposal";
 
         const message = task.running || task.status === "failed" || recent <= 0
             ? (task.message || logs.message || "")
@@ -2566,19 +2820,139 @@
         const snippets = Number(summary.snippets) || 0;
         const launches = Number(summary.launchEvents) || 0;
         const dropped = Number(summary.droppedEvents) || 0;
+        const quietMode = !!summary.quietMode || !!(state.preferences || {}).quietMode;
+        const analyzerQueue = Number(summary.analyzerQueueSize) || 0;
+        const catchupBacklog = Number(summary.catchupBacklog) || 0;
+        const analyzerRate = Number(summary.analyzerJobsPerMinute) || 0;
+        const analyzerCompleted = Number(summary.analyzerCompletedJobs) || 0;
 
         if (stateNode) {
-            stateNode.textContent = summary.enabled
+            stateNode.textContent = quietMode
+                ? "quiet"
+                : summary.enabled
                 ? `${formatCount(snippets, "snippet")} / ${formatCount(launches, "lifecycle")}`
                 : "disabled";
         }
         if (openButton) openButton.disabled = false;
 
         const details = [];
+        if (quietMode) details.push("background analysis paused");
+        details.push(`queue ${formatCount(analyzerQueue, "job")}`);
+        details.push(`catch-up ${formatCount(catchupBacklog, "snippet")}`);
+        if (analyzerRate > 0) details.push(`${analyzerRate < 10 ? analyzerRate.toFixed(1) : Math.round(analyzerRate)} jobs/min`);
+        if (analyzerCompleted > 0) details.push(`${formatCount(analyzerCompleted, "processed job")}`);
         if (summary.databasePath) details.push(summary.databasePath);
         if (dropped > 0) details.push(`${formatCount(dropped, "dropped event")}`);
         if (summary.message) details.push(summary.message);
         setCodeUseStatus(details.join(" · "), !summary.enabled);
+    }
+
+    function setSemanticSearchStatus(text, isError = false) {
+        const node = document.getElementById("semantic-search-status");
+        if (!node) return;
+        node.textContent = text || "";
+        node.classList.toggle("error", !!isError);
+    }
+
+    function renderSemanticSearch() {
+        const semantic = state.semanticSearch || {};
+        const config = semantic.config || {};
+        const status = semantic.status || {};
+        const model = semantic.model || {};
+        const rebuild = semantic.rebuild || {};
+        const presets = Array.isArray(semantic.presets) ? semantic.presets : [];
+        const enabledInput = document.getElementById("semantic-search-enabled");
+        const presetInput = document.getElementById("semantic-search-preset");
+        const modelPathInput = document.getElementById("semantic-search-model-path");
+        const tokenizerPathInput = document.getElementById("semantic-search-tokenizer-path");
+        const dimensionInput = document.getElementById("semantic-search-dimension");
+        const maxTokensInput = document.getElementById("semantic-search-max-tokens");
+        const stateNode = document.getElementById("semantic-search-state");
+        const saveButton = document.getElementById("semantic-search-save");
+        const downloadButton = document.getElementById("semantic-search-download");
+        const rebuildButton = document.getElementById("semantic-search-rebuild");
+        const deleteIndexButton = document.getElementById("semantic-search-delete-index");
+        const deleteModelsButton = document.getElementById("semantic-search-delete-models");
+        const progressNode = document.getElementById("semantic-search-progress");
+        const rebuildRunning = !!rebuild.running;
+        const operationMessage = state.semanticSearchBusyMessage || (rebuildRunning ? rebuild.message : "");
+        const operationError = state.semanticSearchErrorMessage || (!rebuildRunning && rebuild.status === "failed" ? rebuild.message : "");
+        const busy = !!state.semanticSearchBusy || !!semantic.downloadRunning || rebuildRunning;
+        const indexSize = Number(semantic.indexSizeBytes) || 0;
+        const modelSize = Number(semantic.modelCacheSizeBytes) || 0;
+        const capsules = Number(status.indexedCapsules) || Number(status.indexedDocuments) || 0;
+        const workspaceSidecars = Number(status.workspaceSidecarFiles) || 0;
+        const workspaceDocuments = Number(status.workspaceDocuments) || 0;
+        const vectorReady = model.backend && model.backend !== "disabled";
+
+        if (stateNode) {
+            stateNode.textContent = rebuildRunning
+                ? "rebuilding"
+                : config.enabled === false
+                ? "off"
+                : (vectorReady
+                    ? `${model.backend} · ${model.dimension || status.embeddingDimension || config.dimension || "?"}d`
+                    : (status.indexExists ? `${formatCount(capsules, "capsule")} · lexical` : "not indexed"));
+        }
+        if (enabledInput) enabledInput.checked = config.enabled !== false;
+        if (presetInput) {
+            const currentValue = presetInput.value;
+            presetInput.innerHTML = presets.map((preset) => `
+                <option value="${escapeHtml(preset.id)}">${escapeHtml(preset.label || preset.id)}</option>
+            `).join("");
+            presetInput.value = config.presetId || currentValue || (presets[0]?.id || "");
+            presetInput.disabled = busy;
+        }
+        if (modelPathInput && (!modelPathInput.value.trim() || modelPathInput.value === state._lastSemanticModelPath)) {
+            modelPathInput.value = config.modelPath || "";
+            state._lastSemanticModelPath = modelPathInput.value;
+        }
+        if (tokenizerPathInput && (!tokenizerPathInput.value.trim() || tokenizerPathInput.value === state._lastSemanticTokenizerPath)) {
+            tokenizerPathInput.value = config.tokenizerPath || "";
+            state._lastSemanticTokenizerPath = tokenizerPathInput.value;
+        }
+        if (dimensionInput && (!dimensionInput.value.trim() || dimensionInput.value === state._lastSemanticDimension)) {
+            dimensionInput.value = String(config.dimension || 384);
+            state._lastSemanticDimension = dimensionInput.value;
+        }
+        if (maxTokensInput && (!maxTokensInput.value.trim() || maxTokensInput.value === state._lastSemanticMaxTokens)) {
+            maxTokensInput.value = String(config.maxTokens || 512);
+            state._lastSemanticMaxTokens = maxTokensInput.value;
+        }
+        [enabledInput, modelPathInput, tokenizerPathInput, dimensionInput, maxTokensInput].filter(Boolean).forEach((input) => {
+            input.disabled = busy;
+        });
+        [saveButton, downloadButton, rebuildButton, deleteIndexButton, deleteModelsButton].filter(Boolean).forEach((button) => {
+            button.disabled = busy;
+        });
+        if (downloadButton) downloadButton.textContent = semantic.downloadRunning ? "Downloading..." : "Download model";
+        if (rebuildButton) {
+            rebuildButton.disabled = busy || config.enabled === false;
+            rebuildButton.textContent = rebuildRunning ? "Rebuilding..." : "Rebuild index";
+        }
+        if (progressNode) progressNode.classList.toggle("is-active", busy);
+
+        const details = [];
+        if (operationError) details.push(operationError);
+        if (operationMessage) details.push(operationMessage);
+        details.push(status.indexExists ? `index ${formatBytes(indexSize)}` : "no index");
+        if (status.indexStale) details.push("stale: rebuild needed");
+        if (rebuildRunning && rebuild.step) details.push(rebuild.step);
+        if (rebuildRunning && rebuild.indexedCapsules) details.push(formatCount(rebuild.indexedCapsules, "capsule"));
+        if (capsules) details.push(formatCount(capsules, "capsule"));
+        if (workspaceSidecars) details.push(`${formatCount(workspaceSidecars, "workspace file")} in ${formatCount(workspaceDocuments, "document")}`);
+        if (vectorReady) details.push(`vectors ${model.backend} ${model.dimension || status.embeddingDimension || config.dimension || "?"}d`);
+        details.push(modelSize ? `models ${formatBytes(modelSize)}` : "no model cache");
+        if (semantic.modelFile?.exists) details.push(`model ${formatBytes(semantic.modelFile.sizeBytes)}`);
+        if (semantic.tokenizerFile?.exists) details.push(`tokenizer ${formatBytes(semantic.tokenizerFile.sizeBytes)}`);
+        if (model.modelPath) details.push(model.modelPath);
+        if (status.capsuleBackend) details.push(status.capsuleBackend);
+        if (model.message && model.backend === "disabled") details.push(model.message);
+        if (semantic.message && !operationMessage) details.push(semantic.message);
+        setSemanticSearchStatus(
+            details.join(" · "),
+            !busy && (!!operationError || status.indexStale || (config.enabled !== false && !vectorReady && !!config.modelPath))
+        );
     }
 
     function formatMs(value) {
@@ -2762,6 +3136,7 @@
             prefs.enableHDR,
             prefs.openXRDebugInput,
             prefs.validate,
+            prefs.quietMode,
             prefs.autoOpenLastDocumentInDesktop
         ].filter(Boolean).length;
 
@@ -2773,6 +3148,7 @@
             "pref-enable-hdr": "enableHDR",
             "pref-openxr-debug-input": "openXRDebugInput",
             "pref-validate": "validate",
+            "pref-quiet-mode": "quietMode",
             "pref-auto-open-last": "autoOpenLastDocumentInDesktop"
         };
         Object.entries(fields).forEach(([id, key]) => {
@@ -2859,6 +3235,7 @@
             enableHDR: !!document.getElementById("pref-enable-hdr")?.checked,
             openXRDebugInput: !!document.getElementById("pref-openxr-debug-input")?.checked,
             validate: !!document.getElementById("pref-validate")?.checked,
+            quietMode: !!document.getElementById("pref-quiet-mode")?.checked,
             autoOpenLastDocumentInDesktop: !!document.getElementById("pref-auto-open-last")?.checked,
             editorPropertyStickiness: document.querySelector(".stickiness-segment.active")?.getAttribute("data-stickiness-value") || "none",
             oscEditorEnabled: !!document.getElementById("osc-editor-enabled")?.checked,
@@ -3616,6 +3993,7 @@
         const docs = state.searchResults;
         const query = state.searchQuery.trim();
         const statusNode = document.getElementById("recent-search-status");
+        const semanticState = state.searchSemantic || {};
 
         countNode.textContent = docs.length === 1 ? "1 match" : `${docs.length} matches`;
 
@@ -3625,8 +4003,8 @@
                     No workspace matches for <code>${escapeHtml(query)}</code>.
                 </div>
             `;
-            statusNode.textContent = "no matches";
-            statusNode.classList.remove("error");
+            statusNode.textContent = semanticState.error ? "no matches · semantic failed" : "no matches";
+            statusNode.classList.toggle("error", !!semanticState.error);
             return;
         }
 
@@ -3639,9 +4017,13 @@
                 const matches = Array.isArray(doc.matches) ? doc.matches : [];
                 const matchHtml = matches.map((match) => {
                     const linePart = match.line > 0 ? ` line ${match.line}` : "";
+                    const source = match.source === "semantic" ? `<span class="search-match-source">semantic</span>` : "";
+                    const score = match.source === "semantic" && Number.isFinite(Number(match.score))
+                        ? ` · ${Number(match.score).toFixed(3)}`
+                        : "";
                     return `
-                        <div class="search-match">
-                            <div class="search-match-meta">${escapeHtml(match.boxName || doc.filename)} · ${escapeHtml(match.property || "project")}${escapeHtml(linePart)}</div>
+                        <div class="search-match ${match.source === "semantic" ? "semantic" : ""}">
+                            <div class="search-match-meta">${source}${escapeHtml(match.boxName || doc.filename)} · ${escapeHtml(match.property || "project")}${escapeHtml(linePart)}${escapeHtml(score)}</div>
                             <div class="search-match-snippet">${highlightQuery(match.snippet || "", query)}</div>
                         </div>
                     `;
@@ -3670,9 +4052,14 @@
             const matchHtml = matches.map((match) => {
                 const property = match.property === "document" ? "document name" : match.property;
                 const linePart = match.line > 0 ? ` line ${match.line}` : "";
+                const languagePart = match.language ? ` · ${match.language}` : "";
+                const source = match.source === "semantic" ? `<span class="search-match-source">semantic</span>` : "";
+                const score = match.source === "semantic" && Number.isFinite(Number(match.score))
+                    ? ` · ${Number(match.score).toFixed(3)}`
+                    : "";
                 return `
-                    <div class="search-match">
-                        <div class="search-match-meta">${escapeHtml(match.boxName || "(unnamed box)")} · ${escapeHtml(property)}${escapeHtml(linePart)}</div>
+                    <div class="search-match ${match.source === "semantic" ? "semantic" : ""}">
+                        <div class="search-match-meta">${source}${escapeHtml(match.boxName || "(unnamed box)")} · ${escapeHtml(property)}${escapeHtml(languagePart)}${escapeHtml(linePart)}${escapeHtml(score)}</div>
                         <div class="search-match-snippet">${highlightQuery(match.snippet || "", query)}</div>
                     </div>
                 `;
@@ -3698,10 +4085,15 @@
         installDocumentListHandlers(listNode);
 
         const matchCount = docs.reduce((sum, doc) => sum + ((doc.matches || []).length), 0);
+        const semanticDetails = [];
+        if (semanticState.hitCount) semanticDetails.push(`${semanticState.hitCount} semantic`);
+        if (semanticState.stale) semanticDetails.push("semantic index stale");
+        if (semanticState.error) semanticDetails.push("semantic failed");
+        const semanticText = semanticDetails.length ? ` · ${semanticDetails.join(" · ")}` : "";
         statusNode.textContent = state.searchTruncated
-            ? `${matchCount}+ matches shown`
-            : `${matchCount} matches`;
-        statusNode.classList.remove("error");
+            ? `${matchCount}+ matches shown${semanticText}`
+            : `${matchCount} matches${semanticText}`;
+        statusNode.classList.toggle("error", !!semanticState.error && !semanticState.hitCount);
     }
 
     function renderList() {
@@ -3763,6 +4155,7 @@
             state.completionDocPolish = payload.completionDocPolish || state.completionDocPolish;
             state.aiToolUseImprovement = payload.aiToolUseImprovement || state.aiToolUseImprovement;
             state.codeUse = payload.codeUse || state.codeUse;
+            state.semanticSearch = payload.semanticSearch || state.semanticSearch;
             state.preferences = payload.preferences || state.preferences;
             state.runtimeInfo = payload.runtimeInfo || state.runtimeInfo || {};
             state.pythonSettings = payload.pythonSettings || state.pythonSettings || {};
@@ -3802,6 +4195,10 @@
                 ...(state.codeUse || {}),
                 enabled: false,
                 message: "Could not load code-use telemetry state."
+            };
+            state.semanticSearch = {
+                ...(state.semanticSearch || {}),
+                message: "Could not load semantic search state."
             };
             renderWorkspaceControls();
             renderProjectManagement();
@@ -3897,15 +4294,20 @@
                 maxMatchesPerDocument: "5",
                 maxScanMillis: "3000"
             });
-            const response = await fetch(`/api/workspace-search?${params.toString()}`, {
+            const workspaceRequest = fetch(`/api/workspace-search?${params.toString()}`, {
                 cache: "no-store",
                 signal: searchController.signal
+            }).then(async (response) => {
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.json();
             });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const payload = await response.json();
+            const semanticRequest = runWelcomeSemanticSearch(query, searchController.signal);
+            const [payload, semanticPayload] = await Promise.all([workspaceRequest, semanticRequest]);
             if (requestSerial !== searchRequestSerial) return;
-            state.searchResults = Array.isArray(payload.documents) ? payload.documents : [];
+            const textResults = Array.isArray(payload.documents) ? payload.documents : [];
+            state.searchResults = mergeWelcomeSemanticSearch(textResults, semanticPayload);
             state.searchTruncated = !!payload.truncated;
+            state.searchSemantic = semanticPayload.state;
             renderList();
         } catch (error) {
             if (error?.name === "AbortError") return;
@@ -3913,6 +4315,13 @@
             console.error("Workspace search failed", error);
             state.searchResults = [];
             state.searchTruncated = false;
+            state.searchSemantic = {
+                hitCount: 0,
+                message: "",
+                error: false,
+                stale: false,
+                skipped: true
+            };
             renderList();
             statusNode.textContent = "search failed";
             statusNode.classList.add("error");
@@ -3932,6 +4341,7 @@
             }
             state.searchResults = [];
             state.searchTruncated = false;
+            state.searchSemantic = initialSemanticSearchState({ skipped: true });
             renderList();
             return;
         }
@@ -4403,7 +4813,7 @@
 
     async function runAiToolUseImprovement(dryRun = true) {
         window.open("/ai-tool-use-improvement.html", "_blank", "noopener");
-        setAiToolUseImprovementStatus(dryRun ? "Starting tool-use review..." : "Starting tool-use polish...");
+        setAiToolUseImprovementStatus(dryRun ? "Starting tool-use review..." : "Starting tool-use proposal...");
 
         try {
             const response = await fetch("/api/ai-tool-use-improvement", {
@@ -4424,8 +4834,266 @@
         }
     }
 
+    async function clearAiToolUseReviewedLogs() {
+        const task = state.aiToolUseImprovement || {};
+        const logs = task.logs || {};
+        const recent = Number(logs.recentLogCount) || 0;
+        if (recent <= 0) return;
+        if (!window.confirm(`Move the ${recent} most recent reviewed AI tool I/O log(s) into an archive folder?`)) return;
+        setAiToolUseImprovementStatus("Moving reviewed tool-use logs...");
+
+        try {
+            const response = await fetch("/api/ai-tool-use-improvement/clear-reviewed", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                body: JSON.stringify({ recentOnly: true })
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(payload.error || `HTTP ${response.status}`);
+            }
+            state.aiToolUseImprovement = payload || state.aiToolUseImprovement;
+            renderAiToolUseImprovement();
+        } catch (error) {
+            console.error("Failed to move reviewed AI tool-use logs", error);
+            setAiToolUseImprovementStatus(error?.message || "Could not move reviewed AI tool-use logs.", true);
+        }
+    }
+
     function openCodeUseBrowser() {
         window.open("/code-use", "_blank", "noopener");
+    }
+
+    function initialSemanticSearchState(overrides = {}) {
+        return {
+            hitCount: 0,
+            message: "",
+            error: false,
+            stale: false,
+            skipped: false,
+            ...overrides
+        };
+    }
+
+    function semanticSnippet(hit) {
+        const raw = String(hit.sourcePreview || hit.capsule || hit.symbol || hit.title || hit.path || "").trim();
+        if (!raw) return "";
+        const lines = raw
+            .split(/\r?\n/)
+            .map((line) => line.trimEnd())
+            .filter((line) => line.trim().length > 0)
+            .slice(0, 5)
+            .join("\n");
+        return lines.length > 520 ? `${lines.slice(0, 520)}...` : lines;
+    }
+
+    async function runWelcomeSemanticSearch(query, signal) {
+        const semantic = state.semanticSearch || {};
+        const config = semantic.config || {};
+        const status = semantic.status || {};
+        if (config.enabled === false || !status.indexExists) {
+            return {
+                hits: [],
+                state: initialSemanticSearchState({ skipped: true, stale: !!status.indexStale })
+            };
+        }
+
+        try {
+            const semanticController = new AbortController();
+            let timeoutId = setTimeout(() => semanticController.abort(), 2200);
+            if (signal) {
+                if (signal.aborted) semanticController.abort();
+                else signal.addEventListener("abort", () => semanticController.abort(), { once: true });
+            }
+            const response = await fetch("/api/semantic-search/query", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                signal: semanticController.signal,
+                body: JSON.stringify({
+                    query,
+                    limit: 16,
+                    corpus: "workspace",
+                    rebuildIfEmpty: false,
+                    includeSource: true
+                })
+            }).finally(() => {
+                clearTimeout(timeoutId);
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+            const hits = payload.success === false ? [] : (Array.isArray(payload.results) ? payload.results : []);
+            const stale = !!payload.status?.indexStale || !!status.indexStale;
+            return {
+                hits,
+                state: initialSemanticSearchState({
+                    hitCount: hits.length,
+                    message: payload.message || "",
+                    error: false,
+                    stale,
+                    skipped: payload.success === false
+                })
+            };
+        } catch (error) {
+            if (error?.name === "AbortError") {
+                return {
+                    hits: [],
+                    state: initialSemanticSearchState({
+                        message: "semantic search timed out",
+                        error: false,
+                        stale: !!status.indexStale,
+                        skipped: true
+                    })
+                };
+            }
+            console.warn("Semantic welcome search failed", error);
+            return {
+                hits: [],
+                state: initialSemanticSearchState({
+                    message: error?.message || "semantic search failed",
+                    error: true,
+                    stale: !!status.indexStale
+                })
+            };
+        }
+    }
+
+    function mergeWelcomeSemanticSearch(textResults, semanticPayload) {
+        const merged = (Array.isArray(textResults) ? textResults : []).map((doc) => ({
+            ...doc,
+            matches: Array.isArray(doc.matches) ? [...doc.matches] : []
+        }));
+        const byFilename = new Map(merged.map((doc) => [doc.filename, doc]));
+        const recentByFilename = new Map(state.documents.map((doc) => [doc.filename, doc]));
+        const seen = new Set();
+        merged.forEach((doc) => {
+            (doc.matches || []).forEach((match) => {
+                seen.add(`${doc.filename}\u0000${match.boxName || ""}\u0000${match.property || ""}\u0000${match.line || 0}\u0000${match.snippet || ""}`);
+            });
+        });
+
+        (semanticPayload?.hits || []).forEach((hit) => {
+            const filename = String(hit.documentName || "").trim() || String(hit.path || "").split("/")[0] || "workspace";
+            let doc = byFilename.get(filename);
+            if (!doc) {
+                const summary = recentByFilename.get(filename) || {};
+                doc = {
+                    filename,
+                    numBoxes: Number(summary.numBoxes) || 0,
+                    lastModifiedEpochMs: Number(summary.lastModifiedEpochMs) || 0,
+                    lastModifiedAgoMs: Number(summary.lastModifiedAgoMs) || 0,
+                    tags: Array.isArray(summary.tags) ? summary.tags : [],
+                    matches: [],
+                    kind: "document"
+                };
+                byFilename.set(filename, doc);
+                merged.push(doc);
+            }
+
+            const score = Number(hit.score);
+            const match = {
+                boxName: hit.boxName || hit.title || hit.symbol || "",
+                boxId: hit.boxId || "",
+                property: hit.property || hit.kind || "semantic",
+                language: hit.language || "",
+                line: Number(hit.line) || 0,
+                snippet: semanticSnippet(hit),
+                source: "semantic",
+                score: Number.isFinite(score) ? score : 0,
+                path: hit.path || ""
+            };
+            const key = `${filename}\u0000${match.boxName}\u0000${hit.property || ""}\u0000${match.line}\u0000${match.snippet}`;
+            if (seen.has(key)) return;
+            seen.add(key);
+            doc.matches.push(match);
+        });
+
+        merged.forEach((doc) => {
+            doc.matches = (doc.matches || []).sort((a, b) => {
+                const semanticDelta = (b.source === "semantic" ? 1 : 0) - (a.source === "semantic" ? 1 : 0);
+                if (semanticDelta !== 0) return semanticDelta;
+                return (Number(b.score) || 0) - (Number(a.score) || 0);
+            }).slice(0, 8);
+        });
+        return merged;
+    }
+
+    function semanticSearchRequestBody() {
+        return {
+            enabled: !!document.getElementById("semantic-search-enabled")?.checked,
+            presetId: String(document.getElementById("semantic-search-preset")?.value || "").trim(),
+            modelPath: String(document.getElementById("semantic-search-model-path")?.value || "").trim(),
+            tokenizerPath: String(document.getElementById("semantic-search-tokenizer-path")?.value || "").trim(),
+            dimension: Number.parseInt(document.getElementById("semantic-search-dimension")?.value || "384", 10) || 384,
+            maxTokens: Number.parseInt(document.getElementById("semantic-search-max-tokens")?.value || "512", 10) || 512
+        };
+    }
+
+    async function postSemanticSearch(url, body, statusText) {
+        state.semanticSearchBusy = true;
+        state.semanticSearchBusyMessage = statusText || "Working...";
+        state.semanticSearchErrorMessage = "";
+        setSemanticSearchStatus(state.semanticSearchBusyMessage);
+        renderSemanticSearch();
+        try {
+            const response = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                body: JSON.stringify(body || {})
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(payload.error || `HTTP ${response.status}`);
+            }
+            if (payload && payload.config) {
+                state.semanticSearch = payload;
+            } else if (payload && payload.status) {
+                state.semanticSearch = {
+                    ...(state.semanticSearch || {}),
+                    status: payload.status,
+                    rebuild: payload.rebuild || (state.semanticSearch || {}).rebuild,
+                    message: payload.message || ""
+                };
+            } else {
+                state.semanticSearch = payload || state.semanticSearch;
+            }
+            if (payload.rebuild?.running) {
+                state.semanticSearchBusyMessage = "";
+            } else {
+                state.semanticSearchErrorMessage = payload.success === false ? (payload.message || "Semantic search operation failed.") : "";
+                setSemanticSearchStatus(payload.message || "");
+            }
+        } catch (error) {
+            console.error("Semantic search operation failed", error);
+            state.semanticSearchBusyMessage = "";
+            state.semanticSearchErrorMessage = error?.message || "Semantic search operation failed.";
+            setSemanticSearchStatus(error?.message || "Semantic search operation failed.", true);
+        } finally {
+            state.semanticSearchBusy = false;
+            if (!(state.semanticSearch?.rebuild || {}).running) state.semanticSearchBusyMessage = "";
+            renderSemanticSearch();
+        }
+    }
+
+    function saveSemanticSearchSettings() {
+        postSemanticSearch("/api/semantic-search/settings", semanticSearchRequestBody(), "Saving semantic search settings...");
+    }
+
+    function downloadSemanticSearchModel() {
+        const presetId = String(document.getElementById("semantic-search-preset")?.value || "").trim();
+        postSemanticSearch("/api/semantic-search/download", { presetId }, "Downloading semantic search model files...");
+    }
+
+    function rebuildSemanticSearchIndex() {
+        postSemanticSearch("/api/semantic-search/rebuild", {}, "Rebuilding semantic search index...");
+    }
+
+    function deleteSemanticSearchCache(target) {
+        const label = target === "models" ? "model files" : "Lucene index";
+        if (!window.confirm(`Delete semantic search ${label}?`)) return;
+        postSemanticSearch("/api/semantic-search/cache/delete", { target }, `Deleting semantic search ${label}...`);
     }
 
     async function learnOscAddress(targetId) {
@@ -4492,6 +5160,7 @@
         const preferences = readPreferencesForm();
         state.preferences = preferences;
         renderPreferences();
+        renderCodeUse();
         renderOscSettings();
         setStatus("Saving...");
 
@@ -4522,6 +5191,7 @@
             if (saveSerial === preferencesSaveSerial) {
                 if (!background) state.savingPreferences = false;
                 renderPreferences();
+                renderCodeUse();
                 renderOscSettings();
             }
         }
@@ -4677,7 +5347,15 @@
         const runCompletionDocPolishButton = document.getElementById("run-completion-doc-polish");
         const runAiToolUseReviewButton = document.getElementById("run-ai-tool-use-review");
         const runAiToolUseApplyButton = document.getElementById("run-ai-tool-use-apply");
+        const clearAiToolUseReviewedButton = document.getElementById("clear-ai-tool-use-reviewed");
         const openCodeUseBrowserButton = document.getElementById("open-code-use-browser");
+        const semanticSearchEnabledInput = document.getElementById("semantic-search-enabled");
+        const semanticSearchPresetInput = document.getElementById("semantic-search-preset");
+        const semanticSearchSaveButton = document.getElementById("semantic-search-save");
+        const semanticSearchDownloadButton = document.getElementById("semantic-search-download");
+        const semanticSearchRebuildButton = document.getElementById("semantic-search-rebuild");
+        const semanticSearchDeleteIndexButton = document.getElementById("semantic-search-delete-index");
+        const semanticSearchDeleteModelsButton = document.getElementById("semantic-search-delete-models");
         const stickinessButtons = document.querySelectorAll("[data-stickiness-value]");
         const importClassBlacklistInput = document.getElementById("pref-import-class-blacklist");
         const oscInputs = [
@@ -4823,7 +5501,24 @@
         runCompletionDocPolishButton?.addEventListener("click", runCompletionDocPolish);
         runAiToolUseReviewButton?.addEventListener("click", () => runAiToolUseImprovement(true));
         runAiToolUseApplyButton?.addEventListener("click", () => runAiToolUseImprovement(false));
+        clearAiToolUseReviewedButton?.addEventListener("click", clearAiToolUseReviewedLogs);
         openCodeUseBrowserButton?.addEventListener("click", openCodeUseBrowser);
+        semanticSearchEnabledInput?.addEventListener("change", saveSemanticSearchSettings);
+        semanticSearchPresetInput?.addEventListener("change", () => {
+            const preset = (state.semanticSearch?.presets || []).find((candidate) => candidate.id === semanticSearchPresetInput.value);
+            if (preset) {
+                const dimension = document.getElementById("semantic-search-dimension");
+                const maxTokens = document.getElementById("semantic-search-max-tokens");
+                if (dimension) dimension.value = String(preset.dimension || 384);
+                if (maxTokens) maxTokens.value = String(preset.maxTokens || 512);
+            }
+            setSemanticSearchStatus("");
+        });
+        semanticSearchSaveButton?.addEventListener("click", saveSemanticSearchSettings);
+        semanticSearchDownloadButton?.addEventListener("click", downloadSemanticSearchModel);
+        semanticSearchRebuildButton?.addEventListener("click", rebuildSemanticSearchIndex);
+        semanticSearchDeleteIndexButton?.addEventListener("click", () => deleteSemanticSearchCache("index"));
+        semanticSearchDeleteModelsButton?.addEventListener("click", () => deleteSemanticSearchCache("models"));
 
         openAiKeyInput?.addEventListener("keydown", (event) => {
             if (event.key !== "Enter") return;

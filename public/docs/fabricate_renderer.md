@@ -19,6 +19,61 @@ mesh.gBuffer.mesh.push["roughness"] = 0.36f
 bundle.present(renderer = renderer)
 ```
 
+The current built-in frame is:
+
+```diffstatic {data-lang=kotlin}
+std-gbuffer
+std-shadow
+std-ao
+std-lighting
+std-transparency
+std-motion-blur
+std-aa
+```
+
+`bundle.present(...)` presents `bundle.postStack.output()`, so any effect you append after the stock stack becomes the final image automatically.
+
+## Scene Graph and Transforms
+
+Fabricate now has a small scene layer on top of `afield.four`: nodes, local transforms, world transforms, render intent, animation samples, and draw-list ordering. The scene graph is pure Kotlin; renderer modules consume it through bound model matrices.
+
+```diffstatic {data-lang=kotlin}
+val bundle = StandardRenderer.build(renderer)
+bundle.attachTo(renderer)
+
+val parent = bundle.sceneGraph.node("pivot") {
+    transform.position.set(0f, -0.2f, 0f)
+}
+
+val glass = bundle.sceneGraph.mesh(
+    name = "glass",
+    parent = parent,
+    material = FabricateMaterial(Vector4f(0.45f, 0.70f, 1.0f, 0.35f)).transparent(0.35f)
+) {
+    transform.position.set(0.4f, 0f, -0.45f)
+    transform.scale.set(0.7f, 0.7f, 0.7f)
+}
+
+bundle.sceneGraph.updateWorldTransforms()
+val worldMatrix = Matrix4f(glass.worldMatrix)
+```
+
+Draw lists are computed from the same tree. Opaque items are sorted front-to-back, transparent items back-to-front, and shadow casters are separated:
+
+```diffstatic {data-lang=kotlin}
+val lists = bundle.sceneDrawLists()
+println(lists.opaque.map { it.node.name })
+println(lists.transparent.map { it.node.name })
+println(lists.shadowCasters.map { it.node.name })
+```
+
+For moving transparent objects, call:
+
+```diffstatic {data-lang=kotlin}
+bundle.sceneGraph.advance(1f / 60f)
+bundle.sortTransparentMeshes()
+```
+
 ## Default Scene
 
 The default scene is deliberately plain: three colored torii, the standard camera, and the stock lighting setup. If this image is wrong, the higher-level Fabricate examples are not worth trusting yet.
@@ -66,7 +121,7 @@ A compact "hero" scene: reflective torii over a checkerboard floor. This is a qu
 The checkerboard here is mesh-side: alternating tile geometry receives alternating material values. The harness packs the two parities into pulling meshes for fewer draw items; conceptually, the scene logic is this:
 
 ```diffstatic {data-lang=kotlin}
-bundle.scene.camera.at.set(0f, 0.9f, -5.3f)
+bundle.scene.camera.at.set(0f, 0.78f, -3.75f)
 bundle.scene.camera.target.set(0f, -0.25f, 0f)
 bundle.scene.lightDirection.set(Vector3f(-0.55f, -1.0f, -0.20f).normalize())
 bundle.scene.lightIntensity = 1.55f
@@ -123,11 +178,11 @@ This scene keeps geometry fixed and compares two camera framings over the same c
 Nothing changes between the two halves except `camera.at` and `camera.target`:
 
 ```diffstatic {data-lang=kotlin}
-bundle.scene.camera.at.set(-1.8f, 0.8f, -2.2f)
+bundle.scene.camera.at.set(-1.55f, 0.72f, -1.75f)
 bundle.scene.camera.target.set(-0.95f, -0.2f, 0.95f)
 // capture the near framing
 
-bundle.scene.camera.at.set(1.8f, 0.9f, -4.8f)
+bundle.scene.camera.at.set(1.45f, 0.78f, -3.35f)
 bundle.scene.camera.target.set(0.95f, -0.15f, -1.35f)
 // capture the far framing
 ```
@@ -199,6 +254,149 @@ expect:
         marginGt: 6
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-shader-generated-checkerboard.png" source-image="/tmp/docs-fabricate-shader-checkerboard-native.png" wait="20.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-shader-generated-checkerboard" hidden=true fabricate-scene="shader-generated-checkerboard"}
+```
+
+## Blended Transparency
+
+Transparent meshes render after the deferred lighting pass. Fabricate copies the lit opaque scene into `transparentComposite`, then draws transparent pulling meshes with alpha blending while sampling opaque g-buffer depth to discard hidden fragments.
+
+The scene graph supplies the ordering; the transparency pass supplies the blending:
+
+```diffstatic {data-lang=kotlin}
+val node = bundle.sceneGraph.mesh(
+    name = "near-glass",
+    material = FabricateMaterial(Vector4f(1.0f, 0.78f, 0.38f, 0.38f)).transparent(0.38f)
+) {
+    transform.set(Matrix4f().translate(0.42f, -0.28f, -0.38f).scale(0.66f))
+    renderable?.userData = "near-glass"
+}
+
+val glass = bundle.registerTransparentPullingMesh(
+    name = "near-glass",
+    maxVertices = 32 * 32 * 6,
+    renderer = renderer
+)
+
+StandardShapes.sphere(
+    positions = glass.position,
+    normals = glass.normal,
+    radius = 1f,
+    slices = 32,
+    stacks = 32,
+    config = StandardShapes.WriteConfig(append = false)
+).also { glass.setVertexCount(it.writtenVertices) }
+
+glass.bindModel { Matrix4f(node.worldMatrix) }
+glass.applyFabricateMaterial(node.renderable!!.material)
+
+bundle.sceneGraph.updateWorldTransforms()
+bundle.sortTransparentMeshes()
+bundle.present(renderer = renderer)
+```
+
+<!--
+FIELD_TEST
+id: docs.fabricate.blended-transparency
+runner: backdoor-box
+graphicsContext: true
+tags: [docs, fabricate, renderer, graphics, transparency]
+timeoutSec: 180
+execution: launch
+waitSec: 25.0
+expect:
+  allowMissingOutput: true
+  image:
+    path: /tmp/docs-fabricate-blended-transparency-native.png
+    regionsDifferent:
+      - a: [0.26, 0.28, 0.22, 0.32]
+        b: [0.58, 0.28, 0.22, 0.32]
+        meanAbsDiffGt: 5
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-blended-transparency.png" source-image="/tmp/docs-fabricate-blended-transparency-native.png" wait="25.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-blended-transparency" hidden=true fabricate-scene="blended-transparency"}
+```
+
+## Post Stack
+
+The post stack is Fabricate's small EffectComposer equivalent. It starts with the transparent composite and, by default, runs motion blur then FXAA:
+
+```diffstatic {data-lang=kotlin}
+println(bundle.postStack.names()) // [motion-blur, aa]
+println(bundle.postStack.output()) // the texture bundle.present(...) will use
+```
+
+Append a fullscreen shader effect with `addShaderEffect`. The fragment shader receives the previous stack output as `sourceTex`; the new pass becomes the stack output.
+
+```diffstatic {data-lang=kotlin}
+bundle.addShaderEffect("vignette-warmth", """
+    #version 450
+    layout(location = 0) in vec2 vUv;
+    layout(set = 0, binding = 0) uniform sampler2D sourceTex;
+    layout(location = 0) out vec4 outColor;
+
+    void main() {
+        vec4 c = texture(sourceTex, vUv);
+        vec2 p = vUv * 2.0 - 1.0;
+        float vignette = 1.0 - smoothstep(0.18, 1.05, dot(p, p));
+        vec3 warm = c.rgb * vec3(1.18, 1.04, 0.84);
+        vec3 lifted = pow(max(warm, vec3(0.0)), vec3(0.88));
+        vec3 graded = mix(c.rgb, lifted, 0.72) * mix(0.38, 1.22, vignette);
+        outColor = vec4(graded, c.a);
+    }
+""".trimIndent(), renderer = renderer)
+
+bundle.present(renderer = renderer)
+```
+
+<!--
+FIELD_TEST
+id: docs.fabricate.post-stack-vignette
+runner: backdoor-box
+graphicsContext: true
+tags: [docs, fabricate, renderer, graphics, post, effects]
+timeoutSec: 180
+execution: launch
+waitSec: 25.0
+expect:
+  allowMissingOutput: true
+  image:
+    path: /tmp/docs-fabricate-post-stack-native.png
+    lumaComparisons:
+      - darker: [0.02, 0.02, 0.10, 0.10]
+        lighter: [0.42, 0.28, 0.18, 0.18]
+        marginGt: 6
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-post-stack-vignette.png" source-image="/tmp/docs-fabricate-post-stack-native.png" wait="25.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-post-stack-vignette" hidden=true fabricate-scene="post-stack-vignette"}
+```
+
+## GLTF Loading and Animation
+
+The GLTF path uses the existing Assimp-backed loader, then imports mesh instances into the Fabricate scene graph. Opaque meshes go to the g-buffer/shadow pair. Alpha materials go to the blended transparency pass.
+
+```diffstatic {data-lang=kotlin}
+val loaded = bundle.registerGltf(
+    path = "/path/to/model.glb",
+    namePrefix = "robot",
+    renderer = renderer
+)
+
+// The imported nodes carry bind-pose transforms and any sampled TRS animation.
+bundle.sceneGraph.updateWorldTransforms(time = 0f)
+
+// Advance sampled node animation and keep transparent draw order current.
+loaded.animate(time = 1.25f)
+bundle.sortTransparentMeshes()
+
+println("opaque meshes: ${loaded.opaqueMeshes.size}")
+println("transparent meshes: ${loaded.transparentMeshes.size}")
+```
+
+You can still override material classification on import:
+
+```diffstatic {data-lang=kotlin}
+val model = GltfSupport.loadGltfBasic("/path/to/model.glb")
+bundle.sceneGraph.importGltf(model, namePrefix = "ghost") { mesh ->
+    FabricateMaterial.fromGltf(mesh.material).transparent(0.42f)
+}
 ```
 
 ## Metalness
