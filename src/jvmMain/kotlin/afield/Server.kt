@@ -639,6 +639,7 @@ private fun normalizeFieldPreferences(preferences: FieldPreferences): FieldPrefe
 
 private fun applyFieldPreferences(preferences: FieldPreferences) {
     val framePresentationLogWasEnabled = Options.framePresentationLog
+    CodeUseTelemetryService.configureQuietMode(preferences.quietMode)
     Options.profiling = if (Options.captureCompatibility) false else preferences.profiling
     Options.framePresentationLog = preferences.framePresentationLog
     Options.logShadercSource = preferences.logShadercSource
@@ -1071,6 +1072,36 @@ var lastFn by PersistentString { "welcome" }
 var recentFns by PersistentString { "" }
 var fieldPreferencesJson by PersistentString { "" }
 
+private fun appRouteDocumentToken(documentName: String): String {
+    val trimmed = documentName.trim()
+    val path = if (trimmed.startsWith("http://", ignoreCase = true) ||
+        trimmed.startsWith("https://", ignoreCase = true)
+    ) {
+        runCatching { URI(trimmed).path }.getOrNull()?.takeIf { it.isNotEmpty() } ?: trimmed
+    } else {
+        trimmed
+    }
+    return path
+        .substringBefore('?')
+        .substringBefore('#')
+        .replace('\\', '/')
+        .trim('/')
+        .lowercase(Locale.US)
+}
+
+internal fun isFieldAppRouteDocumentName(documentName: String?): Boolean {
+    val trimmed = documentName?.trim().takeUnless { it.isNullOrEmpty() } ?: return false
+    val token = appRouteDocumentToken(trimmed)
+    if (token == "welcome.html") return true
+    if (token != "welcome") return false
+    return trimmed.startsWith("/") ||
+            trimmed.startsWith("http://", ignoreCase = true) ||
+            trimmed.startsWith("https://", ignoreCase = true)
+}
+
+private fun desktopStartupDocumentName(): String? =
+    lastFn?.trim()?.takeIf { it.isNotEmpty() && !isFieldAppRouteDocumentName(it) }
+
 @Volatile
 private var cachedFieldPreferencesRaw: String? = null
 
@@ -1104,6 +1135,7 @@ private fun persistFieldPreferences(preferences: FieldPreferences) {
 }
 
 internal fun recordRecentDocument(documentName: String) {
+    if (isFieldAppRouteDocumentName(documentName)) return
     recentFns = updateRecentDocuments(recentFns, documentName)
 }
 
@@ -2919,8 +2951,9 @@ class Server {
                             val requestScheme = call.request.local.scheme
                             val requestPort = call.request.local.serverPort
                             val baseUrl = "$requestScheme://localhost:$requestPort"
-                            val url = if (preferences.autoOpenLastDocumentInDesktop) {
-                                val target = URLEncoder.encode(lastFn ?: "welcome", "UTF-8")
+                            val lastDocument = desktopStartupDocumentName()
+                            val url = if (preferences.autoOpenLastDocumentInDesktop && lastDocument != null) {
+                                val target = URLEncoder.encode(lastDocument, "UTF-8")
                                 "$baseUrl/index.html?file=$target"
                             } else {
                                 "$baseUrl/welcome"
@@ -2963,7 +2996,7 @@ class Server {
                                     runningExecutionCount = runningExecutionCounts[it.filename] ?: 0
                                 )
                             }
-                            val fallback = lastFn ?: "welcome"
+                            val fallback = desktopStartupDocumentName() ?: "welcome"
                             val defaultDocument = docs.firstOrNull()?.filename ?: fallback
                             val allTags = docs.flatMap { it.tags }.distinct().sortedWith(String.CASE_INSENSITIVE_ORDER)
                             val workspaceDocumentNames = docs.mapTo(linkedSetOf()) { it.filename }
@@ -3266,7 +3299,7 @@ class Server {
 
                         post("/api/semantic-search/rebuild") {
                             try {
-                                call.respond(SemanticRetrievalService.rebuild())
+                                call.respond(SemanticRetrievalService.startRebuild())
                             } catch (e: Exception) {
                                 lprintln("error,server", "Semantic retrieval rebuild failed: ${e.message}")
                                 call.respond(
@@ -4215,13 +4248,18 @@ class Server {
 
             globalServerPort = port
             globalLoopbackHttpPort = loopbackHttpPortFor(port)
-            val initialURL = "https://localhost:${port}/index.html?file=${lastFn}"
+            val initialURL = desktopStartupDocumentName()
+                ?.let { "https://localhost:${port}/index.html?file=${URLEncoder.encode(it, "UTF-8")}" }
+                ?: "https://localhost:${port}/welcome"
             lprintln("info,server", asciiWelcome)
             lprintln("info,server", "welcome to Field, ß-033")
             lprintln("info,server", "last document: $initialURL")
-            lprintln("info,server", "welcome page: https://localhost:${port}/welcome.html")
+            lprintln("info,server", "welcome page: https://localhost:${port}/welcome")
             globalLoopbackHttpPort?.let { httpPort ->
-                lprintln("info,server", "local automation page: http://localhost:${httpPort}/index.html?file=${lastFn}")
+                val automationUrl = desktopStartupDocumentName()
+                    ?.let { "http://localhost:${httpPort}/index.html?file=${URLEncoder.encode(it, "UTF-8")}" }
+                    ?: "http://localhost:${httpPort}/welcome"
+                lprintln("info,server", "local automation page: $automationUrl")
             }
             lprintln("info,server", "---")
 

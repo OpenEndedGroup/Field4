@@ -1466,7 +1466,8 @@ class CanvasGestures(
 
         val svg = getNamedSVGGroup("connections")
         svg.innerHTML = ""
-        val hints = getNamedSVGGroup("offscreen-hints")
+        getNamedSVGGroup("offscreen-hints").innerHTML = ""
+        val hints = frontParent.getGroupOrMake("offscreen-hints-front")
         hints.innerHTML = ""
         val markers = frontParent.getGroupOrMake("connection-end-markers")
         markers.innerHTML = ""

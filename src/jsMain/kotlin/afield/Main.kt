@@ -2339,12 +2339,259 @@ private fun applyBackgroundAlphas() {
     mainViewport.style.setProperty("--dot-alpha-25", dotAlphaSmall.toString())
     mainViewport.style.setProperty("--dot-alpha-100", dotAlphaLarge.toString())
     mainViewport.style.setProperty("--axis-alpha", axisAlpha.toString())
+    renderWebGLBackground()
 }
 
 private fun applyEditorOpacity() {
     val container = document.querySelector(".monaco-editor-container") as? HTMLElement ?: return
     if (container.style.visibility == "hidden" || container.style.opacity == "0") return
     container.style.opacity = editorOpacity.toString()
+}
+
+private fun installWebGLBackground(host: HTMLElement) {
+    val sharedBackground = window.asDynamic().FieldWebGLBackground
+    if (sharedBackground != null && sharedBackground != js("undefined")) {
+        val sharedInstaller = sharedBackground.install
+        if (sharedInstaller != null && sharedInstaller != js("undefined")) {
+            sharedInstaller(host)
+            return
+        }
+    }
+
+    val installer = js(
+        """
+        (function(host) {
+            if (!host || host.__fieldWebglBackground) return;
+
+            const canvas = document.createElement("canvas");
+            canvas.className = "field-webgl-background";
+            host.insertBefore(canvas, host.firstChild);
+
+            const gl = canvas.getContext("webgl", {
+                alpha: false,
+                antialias: false,
+                depth: false,
+                stencil: false,
+                preserveDrawingBuffer: true
+            }) || canvas.getContext("experimental-webgl", {
+                alpha: false,
+                antialias: false,
+                depth: false,
+                stencil: false,
+                preserveDrawingBuffer: true
+            });
+
+            if (!gl) {
+                canvas.remove();
+                host.__fieldWebglBackground = { ok: false };
+                return;
+            }
+
+            const vertexSource = `
+                attribute vec2 a_position;
+                void main() {
+                    gl_Position = vec4(a_position, 0.0, 1.0);
+                }
+            `;
+
+            const fragmentSource = `
+                precision highp float;
+
+                uniform vec2 u_resolution;
+                uniform vec2 u_translation;
+                uniform float u_dotSmallAlpha;
+                uniform float u_dotLargeAlpha;
+                uniform float u_axisAlpha;
+                uniform float u_dpr;
+
+                float hash(vec2 p) {
+                    p = fract(p * vec2(0.1031, 0.11369));
+                    p += dot(p, p.yx + 19.19);
+                    return fract((p.x + p.y) * p.x);
+                }
+
+                float dotMask(vec2 world, float spacing, float r0, float r1) {
+                    vec2 q = mod(world - vec2(0.5 * u_dpr), spacing);
+                    q = min(q, spacing - q);
+                    float d = length(q);
+                    return 1.0 - smoothstep(r0, r1, d);
+                }
+
+                float roundedRectSdf(vec2 p, vec2 halfSize, float radius) {
+                    vec2 q = abs(p) - halfSize + vec2(radius);
+                    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
+                }
+
+                void main() {
+                    vec2 frag = vec2(gl_FragCoord.x, u_resolution.y - gl_FragCoord.y);
+                    vec2 halfResolution = u_resolution * 0.5;
+                    float falloff = 450.0 * u_dpr;
+                    vec2 edgeDistance = min(frag, u_resolution - frag);
+                    vec2 edgeProximity = 1.0 - clamp(edgeDistance / falloff, 0.0, 1.0);
+                    float shade = min(length(edgeProximity), 1.0) * 0.25;
+
+                    vec3 centerColor = vec3(24.0 / 255.0);
+                    vec3 edgeColor = vec3(2.0 / 255.0);
+                    vec3 color = mix(centerColor, edgeColor, shade);
+
+                    float dither = (hash(frag) - 0.5) * (2.4 / 255.0);
+                    color += vec3(dither);
+
+                    vec2 world = frag - u_translation;
+                    float smallDots = dotMask(world, 25.0 * u_dpr, 0.75 * u_dpr, 1.25 * u_dpr);
+                    float largeDots = dotMask(world, 100.0 * u_dpr, 1.25 * u_dpr, 2.05 * u_dpr);
+                    float dotAlpha = clamp(smallDots * u_dotSmallAlpha + largeDots * u_dotLargeAlpha, 0.0, 0.32);
+                    color = mix(color, vec3(1.0), dotAlpha);
+
+                    float axisX = 1.0 - smoothstep(0.45 * u_dpr, 1.05 * u_dpr, abs(frag.x - u_translation.x));
+                    float axisY = 1.0 - smoothstep(0.45 * u_dpr, 1.05 * u_dpr, abs(frag.y - u_translation.y));
+                    color = mix(color, vec3(1.0), max(axisX, axisY) * u_axisAlpha);
+
+                    gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
+                }
+            `;
+
+            function compile(type, source) {
+                const shader = gl.createShader(type);
+                gl.shaderSource(shader, source);
+                gl.compileShader(shader);
+                if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                    const log = gl.getShaderInfoLog(shader);
+                    gl.deleteShader(shader);
+                    throw new Error(log || "shader compile failed");
+                }
+                return shader;
+            }
+
+            try {
+                const program = gl.createProgram();
+                gl.attachShader(program, compile(gl.VERTEX_SHADER, vertexSource));
+                gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragmentSource));
+                gl.linkProgram(program);
+                if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                    throw new Error(gl.getProgramInfoLog(program) || "shader link failed");
+                }
+
+                const buffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                    -1, -1,
+                     1, -1,
+                    -1,  1,
+                     1,  1
+                ]), gl.STATIC_DRAW);
+
+                const locations = {
+                    position: gl.getAttribLocation(program, "a_position"),
+                    resolution: gl.getUniformLocation(program, "u_resolution"),
+                    translation: gl.getUniformLocation(program, "u_translation"),
+                    dotSmallAlpha: gl.getUniformLocation(program, "u_dotSmallAlpha"),
+                    dotLargeAlpha: gl.getUniformLocation(program, "u_dotLargeAlpha"),
+                    axisAlpha: gl.getUniformLocation(program, "u_axisAlpha"),
+                    dpr: gl.getUniformLocation(program, "u_dpr")
+                };
+
+                const state = {
+                    ok: true,
+                    hasFrame: false,
+                    width: 0,
+                    height: 0,
+                    dpr: 1,
+                    tx: 0,
+                    ty: 0,
+                    dotSmall: 0.02,
+                    dotLarge: 0.04,
+                    axis: 0.0,
+                    renderCount: 0,
+                    skippedCount: 0,
+                    render(tx, ty, dotSmall, dotLarge, axis) {
+                        const dpr = Math.max(1, window.devicePixelRatio || 1);
+                        const width = Math.max(1, Math.round(host.clientWidth * dpr));
+                        const height = Math.max(1, Math.round(host.clientHeight * dpr));
+                        const nextTx = Number(tx) || 0;
+                        const nextTy = Number(ty) || 0;
+                        const nextDotSmall = Number(dotSmall) || 0;
+                        const nextDotLarge = Number(dotLarge) || 0;
+                        const nextAxis = Number(axis) || 0;
+
+                        if (
+                            state.hasFrame &&
+                            state.width === width &&
+                            state.height === height &&
+                            state.dpr === dpr &&
+                            state.tx === nextTx &&
+                            state.ty === nextTy &&
+                            state.dotSmall === nextDotSmall &&
+                            state.dotLarge === nextDotLarge &&
+                            state.axis === nextAxis
+                        ) {
+                            state.skippedCount += 1;
+                            return false;
+                        }
+
+                        state.tx = nextTx;
+                        state.ty = nextTy;
+                        state.dotSmall = nextDotSmall;
+                        state.dotLarge = nextDotLarge;
+                        state.axis = nextAxis;
+                        state.width = width;
+                        state.height = height;
+                        state.dpr = dpr;
+                        if (canvas.width !== width || canvas.height !== height) {
+                            canvas.width = width;
+                            canvas.height = height;
+                        }
+
+                        gl.viewport(0, 0, width, height);
+                        gl.useProgram(program);
+                        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+                        gl.enableVertexAttribArray(locations.position);
+                        gl.vertexAttribPointer(locations.position, 2, gl.FLOAT, false, 0, 0);
+                        gl.uniform2f(locations.resolution, width, height);
+                        gl.uniform2f(locations.translation, state.tx * dpr, state.ty * dpr);
+                        gl.uniform1f(locations.dotSmallAlpha, state.dotSmall);
+                        gl.uniform1f(locations.dotLargeAlpha, state.dotLarge);
+                        gl.uniform1f(locations.axisAlpha, state.axis);
+                        gl.uniform1f(locations.dpr, dpr);
+                        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+                        state.hasFrame = true;
+                        state.renderCount += 1;
+                        return true;
+                    }
+                };
+
+                host.__fieldWebglBackground = state;
+                window.__fieldRenderWebglBackground = function(tx, ty, dotSmall, dotLarge, axis) {
+                    if (host.__fieldWebglBackground && host.__fieldWebglBackground.ok) {
+                        return host.__fieldWebglBackground.render(tx, ty, dotSmall, dotLarge, axis);
+                    }
+                    return false;
+                };
+
+                if (window.ResizeObserver) {
+                    new ResizeObserver(function() {
+                        state.render(state.tx, state.ty, state.dotSmall, state.dotLarge, state.axis);
+                    }).observe(host);
+                }
+                window.addEventListener("resize", function() {
+                    state.render(state.tx, state.ty, state.dotSmall, state.dotLarge, state.axis);
+                });
+            } catch (error) {
+                console.warn("[field-background] WebGL background disabled", error);
+                canvas.remove();
+                host.__fieldWebglBackground = { ok: false, error: String(error && error.message || error) };
+            }
+        })
+        """
+    )
+    installer(host)
+}
+
+private fun renderWebGLBackground() {
+    if (!::mainViewport.isInitialized) return
+    val renderer = window.asDynamic().__fieldRenderWebglBackground
+    if (renderer == null || renderer == js("undefined")) return
+    renderer(mainTranslation[0], mainTranslation[1], dotAlphaSmall, dotAlphaLarge, axisAlpha)
 }
 
 private fun stepBackgroundLerp(): Boolean {
@@ -2400,7 +2647,8 @@ fun updateBackgroundGrid(translationX: Double, translationY: Double, panning: Bo
     val posAxisX = "${translationX}px 0px"
     val posAxisY = "0px ${translationY}px"
 
-    mainViewport.style.backgroundPosition = "$posAxisX, $posAxisY, $posSmall, $posLarge"
+    mainViewport.style.backgroundPosition = "$posAxisX, $posAxisY, $posSmall, $posLarge, center center"
+    renderWebGLBackground()
 
     if (panning) {
         bumpBackgroundVisibility()
@@ -2413,10 +2661,12 @@ fun initializeBackgroundGrid(host: HTMLElement) {
                         host.style.backgroundImage = "linear-gradient(90deg, rgba(255,255,255,var(--axis-alpha)) 1px, rgba(255,255,255,0) 1px), " +
                             "linear-gradient(0deg, rgba(255,255,255,var(--axis-alpha)) 1px, rgba(255,255,255,0) 1px), " +
                         "radial-gradient(circle at 50% 50%, rgba(255,255,255,var(--dot-alpha-25)) 0.8px, rgba(255,255,255,0) 1.2px), " +
-                        "radial-gradient(circle at 50% 50%, rgba(255,255,255,var(--dot-alpha-100)) 1.3px, rgba(255,255,255,0) 2.0px)"
-    host.style.backgroundRepeat = "no-repeat, no-repeat, repeat, repeat"
-    host.style.backgroundSize = "1px 100%, 100% 1px, ${dotSpacingSmall}px ${dotSpacingSmall}px, ${dotSpacingLarge}px ${dotSpacingLarge}px"
-    host.style.backgroundPosition = "0px 0px, 0px 0px, 0px 0px, 0px 0px"
+                        "radial-gradient(circle at 50% 50%, rgba(255,255,255,var(--dot-alpha-100)) 1.3px, rgba(255,255,255,0) 2.0px), " +
+                        "var(--field-vignette-background)"
+    host.style.backgroundRepeat = "no-repeat, no-repeat, repeat, repeat, no-repeat"
+    host.style.backgroundSize = "1px 100%, 100% 1px, ${dotSpacingSmall}px ${dotSpacingSmall}px, ${dotSpacingLarge}px ${dotSpacingLarge}px, 100% 100%"
+    host.style.backgroundPosition = "0px 0px, 0px 0px, 0px 0px, 0px 0px, center center"
+    installWebGLBackground(host)
     applyBackgroundAlphas()
 }
 
@@ -5094,7 +5344,7 @@ suspend fun main() {
         }
     }
     mainViewport = body.append {
-        div {
+        div(classes = "field-main-viewport") {
             style = CssBuilder().apply {
                 width = 100.vw
                 height = 100.vh
@@ -5108,7 +5358,7 @@ suspend fun main() {
     initializeBackgroundGrid(mainViewport)
 
     mainCanvas = mainViewport.append {
-        div {
+        div(classes = "field-main-canvas") {
             style = CssBuilder().apply {
                 width = 0.px
                 height = 0.px

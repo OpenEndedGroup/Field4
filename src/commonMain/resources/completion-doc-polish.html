@@ -41,6 +41,8 @@
         }
 
         main {
+            position: relative;
+            z-index: 1;
             width: min(1180px, calc(100vw - 40px));
             margin: 0 auto;
             display: grid;
@@ -363,7 +365,11 @@
         }
     </style>
 </head>
-<body>
+<body class="field-webgl-page">
+<script src="/fieldWebglBackground.js"></script>
+<script>
+    window.FieldWebGLBackground?.install(document.body, { fixed: true });
+</script>
 <main>
     <header>
         <div>

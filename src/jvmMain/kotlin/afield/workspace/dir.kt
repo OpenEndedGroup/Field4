@@ -342,6 +342,7 @@ data class FieldPreferences(
     val enableHDR: Boolean = false,
     val openXRDebugInput: Boolean = true,
     val validate: Boolean = true,
+    val quietMode: Boolean = false,
     val autoOpenLastDocumentInDesktop: Boolean = false,
     val editorPropertyStickiness: String = "none",
     val oscEditorEnabled: Boolean = false,

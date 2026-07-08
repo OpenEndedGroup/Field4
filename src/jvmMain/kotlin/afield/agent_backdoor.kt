@@ -152,7 +152,7 @@ internal fun attachDocumentSession(
     val target = resolveDocumentTarget(documentName, scratch, sessionKey)
     File(home).mkdirs()
 
-    if (!target.scratch) {
+    if (!target.scratch && !isFieldAppRouteDocumentName(target.documentName)) {
         lastFn = target.documentName
         if (!target.documentName.isHttpUrl()) {
             recordRecentDocument(target.documentName)

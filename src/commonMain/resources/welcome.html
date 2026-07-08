@@ -102,7 +102,6 @@
             border-radius: var(--radius);
             background: #222;
             backdrop-filter: blur(4px);
-            box-shadow: 0 14px 48px rgba(0, 0, 0, 0.35);
             margin-top: -5px;
             margin-bottom: -5px;
         }
@@ -146,7 +145,6 @@
             font-size: 14px;
             line-height: 0.95;
             /*letter-spacing: 1px;*/
-            text-shadow: 0 0 9px rgba(72, 201, 255, 0.45);
             min-width: 50px;
         }
 
@@ -402,6 +400,44 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 8px;
+        }
+
+        #semantic-search-progress {
+            position: relative;
+            height: 3px;
+            overflow: hidden;
+            border: 1px solid rgba(72, 201, 255, 0.28);
+            background: rgba(0, 0, 0, 0.72);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #semantic-search-progress.is-active {
+            opacity: 1;
+        }
+
+        #semantic-search-progress::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            width: 38%;
+            background: rgba(72, 201, 255, 0.8);
+            transform: translateX(-110%);
+        }
+
+        #semantic-search-progress.is-active::after {
+            animation: semantic-search-progress 1.35s linear infinite;
+        }
+
+        @keyframes semantic-search-progress {
+            from {
+                transform: translateX(-110%);
+            }
+            to {
+                transform: translateX(285%);
+            }
         }
 
         .ai-settings-provider {
@@ -1285,7 +1321,6 @@
             background: rgba(10, 10, 10, 0.96);
             border: 1px solid rgba(72, 201, 255, 0.28);
             border-radius: 7px;
-            box-shadow: 0 16px 38px rgba(0, 0, 0, 0.42);
         }
 
         #welcome-context-menu.open {
@@ -1593,7 +1628,11 @@
         }
     </style>
 </head>
-<body>
+<body class="field-webgl-page">
+<script src="/fieldWebglBackground.js"></script>
+<script>
+    window.FieldWebGLBackground?.install(document.body, { fixed: true });
+</script>
 
 <div id="splash-screen">
     <pre class="f4drift">
@@ -1876,6 +1915,7 @@
                                 <button id="semantic-search-delete-index" type="button" class="button-danger">Delete index</button>
                                 <button id="semantic-search-delete-models" type="button" class="button-danger">Delete models</button>
                             </div>
+                            <div id="semantic-search-progress" aria-hidden="true"></div>
                             <div id="semantic-search-status" aria-live="polite"></div>
                         </div>
                         <div id="ai-settings-status" aria-live="polite"></div>
@@ -1902,6 +1942,7 @@
                         <div class="preference-section">
                             <div class="preference-section-title">Other</div>
                             <div class="preference-grid preference-grid-single">
+                                <label class="preference-toggle"><input id="pref-quiet-mode" type="checkbox"> quiet mode</label>
                                 <label class="preference-toggle"><input id="pref-auto-open-last" type="checkbox"> auto-open last document</label>
                             </div>
                             <div class="preferences-controls">
@@ -2133,9 +2174,20 @@
             indexSizeBytes: 0,
             modelCacheSizeBytes: 0,
             downloadRunning: false,
+            rebuild: {
+                running: false,
+                status: "idle",
+                startedAtEpochMs: 0,
+                finishedAtEpochMs: 0,
+                message: "",
+                step: "",
+                indexedCapsules: 0
+            },
             message: ""
         },
         semanticSearchBusy: false,
+        semanticSearchBusyMessage: "",
+        semanticSearchErrorMessage: "",
         savingAiSettings: false,
         savingPythonSettings: false,
         preferences: {
@@ -2146,6 +2198,7 @@
             enableHDR: false,
             openXRDebugInput: true,
             validate: true,
+            quietMode: false,
             autoOpenLastDocumentInDesktop: false,
             editorPropertyStickiness: "none",
             oscEditorEnabled: false,
@@ -2767,15 +2820,27 @@
         const snippets = Number(summary.snippets) || 0;
         const launches = Number(summary.launchEvents) || 0;
         const dropped = Number(summary.droppedEvents) || 0;
+        const quietMode = !!summary.quietMode || !!(state.preferences || {}).quietMode;
+        const analyzerQueue = Number(summary.analyzerQueueSize) || 0;
+        const catchupBacklog = Number(summary.catchupBacklog) || 0;
+        const analyzerRate = Number(summary.analyzerJobsPerMinute) || 0;
+        const analyzerCompleted = Number(summary.analyzerCompletedJobs) || 0;
 
         if (stateNode) {
-            stateNode.textContent = summary.enabled
+            stateNode.textContent = quietMode
+                ? "quiet"
+                : summary.enabled
                 ? `${formatCount(snippets, "snippet")} / ${formatCount(launches, "lifecycle")}`
                 : "disabled";
         }
         if (openButton) openButton.disabled = false;
 
         const details = [];
+        if (quietMode) details.push("background analysis paused");
+        details.push(`queue ${formatCount(analyzerQueue, "job")}`);
+        details.push(`catch-up ${formatCount(catchupBacklog, "snippet")}`);
+        if (analyzerRate > 0) details.push(`${analyzerRate < 10 ? analyzerRate.toFixed(1) : Math.round(analyzerRate)} jobs/min`);
+        if (analyzerCompleted > 0) details.push(`${formatCount(analyzerCompleted, "processed job")}`);
         if (summary.databasePath) details.push(summary.databasePath);
         if (dropped > 0) details.push(`${formatCount(dropped, "dropped event")}`);
         if (summary.message) details.push(summary.message);
@@ -2794,6 +2859,7 @@
         const config = semantic.config || {};
         const status = semantic.status || {};
         const model = semantic.model || {};
+        const rebuild = semantic.rebuild || {};
         const presets = Array.isArray(semantic.presets) ? semantic.presets : [];
         const enabledInput = document.getElementById("semantic-search-enabled");
         const presetInput = document.getElementById("semantic-search-preset");
@@ -2807,7 +2873,11 @@
         const rebuildButton = document.getElementById("semantic-search-rebuild");
         const deleteIndexButton = document.getElementById("semantic-search-delete-index");
         const deleteModelsButton = document.getElementById("semantic-search-delete-models");
-        const busy = !!state.semanticSearchBusy || !!semantic.downloadRunning;
+        const progressNode = document.getElementById("semantic-search-progress");
+        const rebuildRunning = !!rebuild.running;
+        const operationMessage = state.semanticSearchBusyMessage || (rebuildRunning ? rebuild.message : "");
+        const operationError = state.semanticSearchErrorMessage || (!rebuildRunning && rebuild.status === "failed" ? rebuild.message : "");
+        const busy = !!state.semanticSearchBusy || !!semantic.downloadRunning || rebuildRunning;
         const indexSize = Number(semantic.indexSizeBytes) || 0;
         const modelSize = Number(semantic.modelCacheSizeBytes) || 0;
         const capsules = Number(status.indexedCapsules) || Number(status.indexedDocuments) || 0;
@@ -2816,7 +2886,9 @@
         const vectorReady = model.backend && model.backend !== "disabled";
 
         if (stateNode) {
-            stateNode.textContent = config.enabled === false
+            stateNode.textContent = rebuildRunning
+                ? "rebuilding"
+                : config.enabled === false
                 ? "off"
                 : (vectorReady
                     ? `${model.backend} · ${model.dimension || status.embeddingDimension || config.dimension || "?"}d`
@@ -2854,11 +2926,19 @@
             button.disabled = busy;
         });
         if (downloadButton) downloadButton.textContent = semantic.downloadRunning ? "Downloading..." : "Download model";
-        if (rebuildButton) rebuildButton.disabled = busy || config.enabled === false;
+        if (rebuildButton) {
+            rebuildButton.disabled = busy || config.enabled === false;
+            rebuildButton.textContent = rebuildRunning ? "Rebuilding..." : "Rebuild index";
+        }
+        if (progressNode) progressNode.classList.toggle("is-active", busy);
 
         const details = [];
+        if (operationError) details.push(operationError);
+        if (operationMessage) details.push(operationMessage);
         details.push(status.indexExists ? `index ${formatBytes(indexSize)}` : "no index");
         if (status.indexStale) details.push("stale: rebuild needed");
+        if (rebuildRunning && rebuild.step) details.push(rebuild.step);
+        if (rebuildRunning && rebuild.indexedCapsules) details.push(formatCount(rebuild.indexedCapsules, "capsule"));
         if (capsules) details.push(formatCount(capsules, "capsule"));
         if (workspaceSidecars) details.push(`${formatCount(workspaceSidecars, "workspace file")} in ${formatCount(workspaceDocuments, "document")}`);
         if (vectorReady) details.push(`vectors ${model.backend} ${model.dimension || status.embeddingDimension || config.dimension || "?"}d`);
@@ -2868,8 +2948,11 @@
         if (model.modelPath) details.push(model.modelPath);
         if (status.capsuleBackend) details.push(status.capsuleBackend);
         if (model.message && model.backend === "disabled") details.push(model.message);
-        if (semantic.message) details.push(semantic.message);
-        setSemanticSearchStatus(details.join(" · "), status.indexStale || (config.enabled !== false && !vectorReady && !!config.modelPath));
+        if (semantic.message && !operationMessage) details.push(semantic.message);
+        setSemanticSearchStatus(
+            details.join(" · "),
+            !busy && (!!operationError || status.indexStale || (config.enabled !== false && !vectorReady && !!config.modelPath))
+        );
     }
 
     function formatMs(value) {
@@ -3053,6 +3136,7 @@
             prefs.enableHDR,
             prefs.openXRDebugInput,
             prefs.validate,
+            prefs.quietMode,
             prefs.autoOpenLastDocumentInDesktop
         ].filter(Boolean).length;
 
@@ -3064,6 +3148,7 @@
             "pref-enable-hdr": "enableHDR",
             "pref-openxr-debug-input": "openXRDebugInput",
             "pref-validate": "validate",
+            "pref-quiet-mode": "quietMode",
             "pref-auto-open-last": "autoOpenLastDocumentInDesktop"
         };
         Object.entries(fields).forEach(([id, key]) => {
@@ -3150,6 +3235,7 @@
             enableHDR: !!document.getElementById("pref-enable-hdr")?.checked,
             openXRDebugInput: !!document.getElementById("pref-openxr-debug-input")?.checked,
             validate: !!document.getElementById("pref-validate")?.checked,
+            quietMode: !!document.getElementById("pref-quiet-mode")?.checked,
             autoOpenLastDocumentInDesktop: !!document.getElementById("pref-auto-open-last")?.checked,
             editorPropertyStickiness: document.querySelector(".stickiness-segment.active")?.getAttribute("data-stickiness-value") || "none",
             oscEditorEnabled: !!document.getElementById("osc-editor-enabled")?.checked,
@@ -4946,7 +5032,9 @@
 
     async function postSemanticSearch(url, body, statusText) {
         state.semanticSearchBusy = true;
-        setSemanticSearchStatus(statusText || "Working...");
+        state.semanticSearchBusyMessage = statusText || "Working...";
+        state.semanticSearchErrorMessage = "";
+        setSemanticSearchStatus(state.semanticSearchBusyMessage);
         renderSemanticSearch();
         try {
             const response = await fetch(url, {
@@ -4965,17 +5053,26 @@
                 state.semanticSearch = {
                     ...(state.semanticSearch || {}),
                     status: payload.status,
+                    rebuild: payload.rebuild || (state.semanticSearch || {}).rebuild,
                     message: payload.message || ""
                 };
             } else {
                 state.semanticSearch = payload || state.semanticSearch;
             }
-            setSemanticSearchStatus(payload.message || "");
+            if (payload.rebuild?.running) {
+                state.semanticSearchBusyMessage = "";
+            } else {
+                state.semanticSearchErrorMessage = payload.success === false ? (payload.message || "Semantic search operation failed.") : "";
+                setSemanticSearchStatus(payload.message || "");
+            }
         } catch (error) {
             console.error("Semantic search operation failed", error);
+            state.semanticSearchBusyMessage = "";
+            state.semanticSearchErrorMessage = error?.message || "Semantic search operation failed.";
             setSemanticSearchStatus(error?.message || "Semantic search operation failed.", true);
         } finally {
             state.semanticSearchBusy = false;
+            if (!(state.semanticSearch?.rebuild || {}).running) state.semanticSearchBusyMessage = "";
             renderSemanticSearch();
         }
     }
@@ -5063,6 +5160,7 @@
         const preferences = readPreferencesForm();
         state.preferences = preferences;
         renderPreferences();
+        renderCodeUse();
         renderOscSettings();
         setStatus("Saving...");
 
@@ -5093,6 +5191,7 @@
             if (saveSerial === preferencesSaveSerial) {
                 if (!background) state.savingPreferences = false;
                 renderPreferences();
+                renderCodeUse();
                 renderOscSettings();
             }
         }

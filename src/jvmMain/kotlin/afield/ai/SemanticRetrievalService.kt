@@ -5,8 +5,10 @@ import ai.djl.huggingface.tokenizers.HuggingFaceTokenizer
 import ai.onnxruntime.OnnxTensor
 import ai.onnxruntime.OrtEnvironment
 import ai.onnxruntime.OrtSession
+import ai.onnxruntime.providers.CoreMLFlags
 import afield.Box
 import afield.SavingContext
+import afield.broadcastWelcomeEvent
 import afield.home
 import afield.logger.lprintln
 import kotlinx.serialization.Serializable
@@ -45,11 +47,55 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.security.MessageDigest
 import java.time.Instant
+import java.util.EnumSet
 import java.util.Locale
+import kotlin.concurrent.thread
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 import kotlin.math.sqrt
+
+private val semanticSearchProviders = setOf("cpu", "coreml", "coreml-mlprogram", "xnnpack")
+
+private fun semanticSearchProviderSetting(): String =
+    listOf(
+        System.getProperty("afield.semanticSearch.provider"),
+        System.getenv("AFIELD_SEMANTIC_SEARCH_PROVIDER")
+    ).firstOrNull { !it.isNullOrBlank() }
+        ?.trim()
+        ?.lowercase(Locale.ROOT)
+        ?.takeIf { it in semanticSearchProviders }
+        ?: defaultSemanticSearchProvider()
+
+private fun defaultSemanticSearchProvider(): String {
+    val osName = System.getProperty("os.name").orEmpty().lowercase(Locale.ROOT)
+    val osArch = System.getProperty("os.arch").orEmpty().lowercase(Locale.ROOT)
+    return if (osName.contains("mac") && (osArch == "aarch64" || osArch == "arm64")) {
+        "xnnpack"
+    } else {
+        "cpu"
+    }
+}
+
+private fun semanticSearchFixedShapesSetting(provider: String): Boolean =
+    listOf(
+        System.getProperty("afield.semanticSearch.fixedShapes"),
+        System.getenv("AFIELD_SEMANTIC_SEARCH_FIXED_SHAPES")
+    ).firstOrNull { !it.isNullOrBlank() }
+        ?.trim()
+        ?.lowercase(Locale.ROOT)
+        ?.let { it in setOf("1", "true", "yes", "on") }
+        ?: provider.startsWith("coreml")
+
+private fun semanticSearchBatchSizeSetting(provider: String = semanticSearchProviderSetting()): Int =
+    listOf(
+        System.getProperty("afield.semanticSearch.batchSize"),
+        System.getenv("AFIELD_SEMANTIC_SEARCH_BATCH_SIZE")
+    ).firstOrNull { !it.isNullOrBlank() }
+        ?.trim()
+        ?.toIntOrNull()
+        ?.coerceIn(1, 64)
+        ?: if (provider == "xnnpack") 64 else 8
 
 @Serializable
 data class SemanticRetrievalStatus(
@@ -119,14 +165,27 @@ data class SemanticRetrievalSettingsStatus(
     val configPath: String,
     val cacheRoot: String,
     val downloadRunning: Boolean = false,
+    val rebuild: SemanticRetrievalBuildStatus = SemanticRetrievalBuildStatus(),
     val message: String = ""
+)
+
+@Serializable
+data class SemanticRetrievalBuildStatus(
+    val running: Boolean = false,
+    val status: String = "idle",
+    val startedAtEpochMs: Long = 0,
+    val finishedAtEpochMs: Long = 0,
+    val message: String = "",
+    val step: String = "",
+    val indexedCapsules: Int = 0
 )
 
 @Serializable
 data class SemanticRetrievalBuildResult(
     val success: Boolean,
     val message: String,
-    val status: SemanticRetrievalStatus
+    val status: SemanticRetrievalStatus,
+    val rebuild: SemanticRetrievalBuildStatus = SemanticRetrievalBuildStatus()
 )
 
 @Serializable
@@ -331,6 +390,7 @@ object SemanticRetrievalService {
         .followRedirects(HttpClient.Redirect.NORMAL)
         .build()
     private val lock = Any()
+    private val rebuildLock = Any()
 
     @Volatile
     private var lastStatus: SemanticRetrievalStatus? = null
@@ -343,6 +403,9 @@ object SemanticRetrievalService {
 
     @Volatile
     private var downloadRunning: Boolean = false
+
+    @Volatile
+    private var rebuildStatus: SemanticRetrievalBuildStatus = SemanticRetrievalBuildStatus()
 
     val presets: List<SemanticRetrievalModelPreset> = listOf(
         SemanticRetrievalModelPreset(
@@ -375,8 +438,13 @@ object SemanticRetrievalService {
         val modelPath = configured.modelPath
         val tokenizerPath = configured.tokenizerPath
         if (settings.enabled && modelPath?.exists() == true && tokenizerPath?.exists() == true) {
+            val fixedSuffix = if (configured.fixedTokenLength > 0) {
+                ":fixed-${configured.fixedBatchSize}x${configured.fixedTokenLength}"
+            } else {
+                ""
+            }
             return SemanticRetrievalModelInfo(
-                backend = "onnx-runtime-java",
+                backend = "onnx-runtime-java:${configured.provider}$fixedSuffix",
                 dimension = configured.dimension,
                 modelPath = modelPath.absolutePathString(),
                 tokenizerPath = tokenizerPath.absolutePathString(),
@@ -419,6 +487,7 @@ object SemanticRetrievalService {
             configPath = configPath.absolutePathString(),
             cacheRoot = cacheRoot.absolutePathString(),
             downloadRunning = downloadRunning,
+            rebuild = rebuildStatus,
             message = ""
         )
     }
@@ -487,49 +556,163 @@ object SemanticRetrievalService {
         settingsStatus().copy(message = "Deleted semantic search ${request.target} cache.")
     }
 
-    fun rebuild(): SemanticRetrievalBuildResult = synchronized(lock) {
-        if (!currentConfig().enabled) {
-            val status = computeStatus("Semantic search is off.")
-            return@synchronized SemanticRetrievalBuildResult(false, status.message, status)
-        }
-        val started = System.currentTimeMillis()
-        val build = buildCapsules()
-        val capsules = build.capsules
-        val currentEmbedder = loadEmbedder()
-        val path = indexPath()
-        path.createDirectories()
-        FSDirectory.open(path).use { directory ->
-            val config = IndexWriterConfig(analyzer)
-                .setOpenMode(IndexWriterConfig.OpenMode.CREATE)
-            IndexWriter(directory, config).use { writer ->
-                val intentVectors = currentEmbedder?.encodeDocuments(capsules.map { it.intentText() }).orEmpty()
-                val implementationVectors = currentEmbedder?.encodeDocuments(capsules.map { it.implementationText() }).orEmpty()
-                capsules.forEachIndexed { index, capsule ->
-                    val doc = capsule.toLuceneDocument(
-                        intentVector = intentVectors.getOrNull(index),
-                        implementationVector = implementationVectors.getOrNull(index)
-                    )
-                    writer.updateDocument(Term("id", capsule.id), doc)
-                }
-                writer.commit()
-            }
-        }
-        val meta = listOf(
-            "builtAtEpochMs=$started",
-            "capsules=${capsules.size}",
-            "embedder=${currentEmbedder?.backend ?: "disabled"}",
-            "dimension=${currentEmbedder?.dimension ?: 0}",
-            "capsuleBackend=source-index+workspace",
-            "workspaceDocuments=${build.workspaceDocuments}",
-            "workspaceSidecarFiles=${build.workspaceSidecarFiles}",
-            "corpusFingerprint=${build.corpusFingerprint}"
-        ).joinToString("\n")
-        Files.writeString(path.resolve(META_FILE), meta, StandardCharsets.UTF_8)
-        val status = computeStatus(
-            "Built semantic retrieval index with ${capsules.size} capsule(s) in ${System.currentTimeMillis() - started}ms."
+    private fun beginRebuild(message: String): SemanticRetrievalBuildStatus? = synchronized(rebuildLock) {
+        if (rebuildStatus.running) return@synchronized null
+        val status = SemanticRetrievalBuildStatus(
+            running = true,
+            status = "running",
+            startedAtEpochMs = Instant.now().toEpochMilli(),
+            message = message,
+            step = "starting"
         )
-        lastStatus = status
-        SemanticRetrievalBuildResult(true, status.message, status)
+        rebuildStatus = status
+        broadcastWelcomeEvent("semantic-search-rebuild")
+        status
+    }
+
+    private fun updateRebuildStatus(
+        step: String,
+        message: String,
+        indexedCapsules: Int = rebuildStatus.indexedCapsules
+    ) {
+        rebuildStatus = rebuildStatus.copy(
+            running = true,
+            status = "running",
+            message = message,
+            step = step,
+            indexedCapsules = indexedCapsules
+        )
+        broadcastWelcomeEvent("semantic-search-rebuild")
+    }
+
+    private fun finishRebuildStatus(
+        status: String,
+        message: String,
+        indexedCapsules: Int = rebuildStatus.indexedCapsules
+    ): SemanticRetrievalBuildStatus {
+        val finished = rebuildStatus.copy(
+            running = false,
+            status = status,
+            finishedAtEpochMs = Instant.now().toEpochMilli(),
+            message = message,
+            step = status,
+            indexedCapsules = indexedCapsules
+        )
+        rebuildStatus = finished
+        broadcastWelcomeEvent("semantic-search-rebuild")
+        return finished
+    }
+
+    private fun runRebuild(startedAtEpochMs: Long): SemanticRetrievalBuildResult {
+        val started = if (startedAtEpochMs > 0) startedAtEpochMs else System.currentTimeMillis()
+        return try {
+            if (!currentConfig().enabled) {
+                val status = computeStatus("Semantic search is off.")
+                val finished = finishRebuildStatus("failed", status.message)
+                return SemanticRetrievalBuildResult(false, status.message, status, finished)
+            }
+
+            lprintln("info,semantic-search", "semantic retrieval rebuild started")
+            updateRebuildStatus("collecting", "Collecting semantic search capsules...")
+            val build = buildCapsules()
+            val capsules = build.capsules
+            updateRebuildStatus("embedding", "Preparing ${capsules.size} semantic search capsule(s)...", capsules.size)
+            val currentEmbedder = loadEmbedder()
+            val path = indexPath()
+            path.createDirectories()
+
+            FSDirectory.open(path).use { directory ->
+                val config = IndexWriterConfig(analyzer)
+                    .setOpenMode(IndexWriterConfig.OpenMode.CREATE)
+                    .setRAMBufferSizeMB(64.0)
+                IndexWriter(directory, config).use { writer ->
+                    val batchSize = semanticEmbeddingBatchSize()
+                    updateRebuildStatus(
+                        "embedding",
+                        if (currentEmbedder == null) {
+                            "Writing lexical index for ${capsules.size} capsule(s)..."
+                        } else {
+                            "Embedding ${capsules.size} capsule(s) with ${currentEmbedder.backend} in batches of $batchSize..."
+                        },
+                        capsules.size
+                    )
+                    if (currentEmbedder == null) {
+                        capsules.forEach { capsule ->
+                            writer.updateDocument(Term("id", capsule.id), capsule.toLuceneDocument(null, null))
+                        }
+                    } else {
+                        var indexed = 0
+                        var batchIndex = 0
+                        while (indexed < capsules.size) {
+                            val end = (indexed + batchSize).coerceAtMost(capsules.size)
+                            val batch = capsules.subList(indexed, end)
+                            updateRebuildStatus(
+                                "embedding",
+                                "Embedding semantic search batch ${batchIndex + 1} (${indexed + 1}-${indexed + batch.size} of ${capsules.size})...",
+                                indexed
+                            )
+                            val intentVectors = currentEmbedder.encodeDocuments(batch.map { it.intentText() })
+                            val implementationVectors = currentEmbedder.encodeDocuments(batch.map { it.implementationText() })
+                            updateRebuildStatus(
+                                "writing",
+                                "Writing semantic search batch ${batchIndex + 1} (${indexed + 1}-${indexed + batch.size} of ${capsules.size})...",
+                                indexed
+                            )
+                            batch.forEachIndexed { index, capsule ->
+                                val doc = capsule.toLuceneDocument(
+                                    intentVector = intentVectors.getOrNull(index),
+                                    implementationVector = implementationVectors.getOrNull(index)
+                                )
+                                writer.updateDocument(Term("id", capsule.id), doc)
+                            }
+                            indexed += batch.size
+                            batchIndex += 1
+                        }
+                    }
+                    writer.commit()
+                }
+            }
+            val meta = listOf(
+                "builtAtEpochMs=$started",
+                "capsules=${capsules.size}",
+                "embedder=${currentEmbedder?.backend ?: "disabled"}",
+                "dimension=${currentEmbedder?.dimension ?: 0}",
+                "capsuleBackend=source-index+workspace",
+                "workspaceDocuments=${build.workspaceDocuments}",
+                "workspaceSidecarFiles=${build.workspaceSidecarFiles}",
+                "corpusFingerprint=${build.corpusFingerprint}"
+            ).joinToString("\n")
+            Files.writeString(path.resolve(META_FILE), meta, StandardCharsets.UTF_8)
+            val status = computeStatus(
+                "Built semantic retrieval index with ${capsules.size} capsule(s) in ${System.currentTimeMillis() - started}ms."
+            )
+            lastStatus = status
+            val finished = finishRebuildStatus("succeeded", status.message, capsules.size)
+            lprintln("info,semantic-search", status.message)
+            SemanticRetrievalBuildResult(true, status.message, status, finished)
+        } catch (t: Throwable) {
+            val message = "Semantic retrieval rebuild failed: ${t.message ?: t.javaClass.simpleName}"
+            lprintln("error,semantic-search", message)
+            val status = computeStatus(message)
+            val finished = finishRebuildStatus("failed", message)
+            SemanticRetrievalBuildResult(false, message, status, finished)
+        }
+    }
+
+    fun rebuild(): SemanticRetrievalBuildResult {
+        val startedStatus = beginRebuild("Semantic retrieval rebuild started.")
+            ?: return SemanticRetrievalBuildResult(false, rebuildStatus.message, status(), rebuildStatus)
+        return runRebuild(startedStatus.startedAtEpochMs)
+    }
+
+    fun startRebuild(): SemanticRetrievalBuildResult {
+        val startedStatus = beginRebuild("Semantic retrieval rebuild queued.")
+            ?: return SemanticRetrievalBuildResult(true, rebuildStatus.message, status(), rebuildStatus)
+        lprintln("info,semantic-search", "semantic retrieval rebuild queued")
+        thread(name = "semantic-retrieval-rebuild", isDaemon = true) {
+            runRebuild(startedStatus.startedAtEpochMs)
+        }
+        return SemanticRetrievalBuildResult(true, "Semantic retrieval rebuild started.", status(), rebuildStatus)
     }
 
     fun query(request: SemanticRetrievalQueryRequest): SemanticRetrievalQueryResult {
@@ -711,6 +894,9 @@ object SemanticRetrievalService {
         embedderMessage = ""
         lastStatus = null
     }
+
+    private fun semanticEmbeddingBatchSize(): Int =
+        semanticSearchBatchSizeSetting()
 
     private fun firstNonBlank(vararg values: String?): String? =
         values.firstOrNull { !it.isNullOrBlank() }?.trim()
@@ -1614,10 +1800,14 @@ class OnnxSemanticEmbedder private constructor(
     private val config: Config,
     private val env: OrtEnvironment,
     private val session: OrtSession,
-    private val tokenizer: HuggingFaceTokenizer
+    private val tokenizer: HuggingFaceTokenizer,
+    private val actualProvider: String
 ) : SemanticEmbedder {
     override val dimension: Int = config.dimension
-    override val backend: String = "onnx-runtime-java:${config.modelPath?.fileName ?: "model.onnx"}"
+    override val backend: String = buildString {
+        append("onnx-runtime-java:$actualProvider:${config.modelPath?.fileName ?: "model.onnx"}")
+        if (config.fixedTokenLength > 0) append(":fixed-${config.fixedBatchSize}x${config.fixedTokenLength}")
+    }
 
     override fun encodeQueries(texts: List<String>): List<FloatArray> =
         encode(texts.map { config.queryPrefix + it })
@@ -1627,8 +1817,18 @@ class OnnxSemanticEmbedder private constructor(
 
     private fun encode(texts: List<String>): List<FloatArray> {
         if (texts.isEmpty()) return emptyList()
-        val encodings = tokenizer.batchEncode(texts.toTypedArray())
-        val maxLength = encodings.maxOfOrNull { it.ids.size }?.coerceAtMost(config.maxTokens) ?: 0
+        val requestedSize = texts.size
+        val encodedTexts = if (config.fixedBatchSize > texts.size) {
+            texts + List(config.fixedBatchSize - texts.size) { "" }
+        } else {
+            texts
+        }
+        val encodings = tokenizer.batchEncode(encodedTexts.toTypedArray())
+        val maxLength = if (config.fixedTokenLength > 0) {
+            config.fixedTokenLength
+        } else {
+            encodings.maxOfOrNull { it.ids.size }?.coerceAtMost(config.maxTokens) ?: 0
+        }
         if (maxLength <= 0) return texts.map { FloatArray(dimension) }
         val ids = Array(encodings.size) { LongArray(maxLength) }
         val mask = Array(encodings.size) { LongArray(maxLength) }
@@ -1647,10 +1847,13 @@ class OnnxSemanticEmbedder private constructor(
         addIfExpected("input_ids", ids)
         addIfExpected("attention_mask", mask)
         addIfExpected("token_type_ids", typeIds)
-        session.run(inputs).use { result ->
+        try {
+            session.run(inputs).use { result ->
+                val raw = result.firstOrNull()?.value
+                return pooledVectors(raw, mask).map { it.normalized() }.take(requestedSize)
+            }
+        } finally {
             inputs.values.forEach { it.close() }
-            val raw = result.firstOrNull()?.value
-            return pooledVectors(raw, mask).map { it.normalized() }
         }
     }
 
@@ -1697,35 +1900,81 @@ class OnnxSemanticEmbedder private constructor(
         val dimension: Int,
         val maxTokens: Int,
         val queryPrefix: String,
-        val documentPrefix: String
+        val documentPrefix: String,
+        val provider: String,
+        val fixedTokenLength: Int,
+        val fixedBatchSize: Int
     ) {
         fun createOrNull(): OnnxSemanticEmbedder? {
             val model = modelPath?.takeIf { it.exists() } ?: return null
             val tokenizerFile = tokenizerPath?.takeIf { it.exists() } ?: return null
             return runCatching {
                 val env = OrtEnvironment.getEnvironment()
-                val session = env.createSession(model.absolutePathString(), OrtSession.SessionOptions())
+                val (session, actualProvider) = createSession(env, model)
                 val tokenizer = HuggingFaceTokenizer.builder()
                     .optTokenizerPath(tokenizerFile)
                     .optTruncation(true)
                     .optPadding(true)
                     .optMaxLength(maxTokens)
                     .build()
-                OnnxSemanticEmbedder(this, env, session, tokenizer)
+                OnnxSemanticEmbedder(this, env, session, tokenizer, actualProvider)
             }.onFailure {
                 lprintln("warning,semantic-search", "failed to load ONNX embedder: ${it.message ?: it.javaClass.name}")
             }.getOrNull()
         }
 
+        private fun createSession(env: OrtEnvironment, model: Path): Pair<OrtSession, String> {
+            val options = OrtSession.SessionOptions()
+            options.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
+            return when (provider.lowercase(Locale.ROOT)) {
+                "coreml", "coreml-mlprogram" -> {
+                    runCatching {
+                        if (provider.equals("coreml-mlprogram", ignoreCase = true)) {
+                            options.addCoreML(EnumSet.of(CoreMLFlags.CREATE_MLPROGRAM))
+                        } else {
+                            options.addCoreML()
+                        }
+                        lprintln("info,semantic-search", "using ONNX Runtime CoreML execution provider")
+                        env.createSession(model.absolutePathString(), options) to provider.lowercase(Locale.ROOT)
+                    }.getOrElse { coreMlError ->
+                        lprintln(
+                            "warning,semantic-search",
+                            "CoreML execution provider failed (${coreMlError.message ?: coreMlError.javaClass.simpleName}); falling back to CPU"
+                        )
+                        val fallback = OrtSession.SessionOptions()
+                        fallback.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
+                        env.createSession(model.absolutePathString(), fallback) to "cpu-fallback"
+                    }
+                }
+                "xnnpack" -> {
+                    val actualProvider = runCatching {
+                        options.addXnnpack(emptyMap())
+                        lprintln("info,semantic-search", "using ONNX Runtime XNNPACK execution provider")
+                        "xnnpack"
+                    }.onFailure {
+                        lprintln("warning,semantic-search", "XNNPACK execution provider unavailable: ${it.message ?: it.javaClass.simpleName}")
+                    }.getOrDefault("cpu-fallback")
+                    env.createSession(model.absolutePathString(), options) to actualProvider
+                }
+                else -> env.createSession(model.absolutePathString(), options) to "cpu"
+            }
+        }
+
         companion object {
             fun fromSettings(settings: SemanticRetrievalConfig): Config {
+                val provider = semanticSearchProviderSetting()
+                val maxTokens = settings.maxTokens.coerceIn(16, 8192)
+                val fixedShapes = semanticSearchFixedShapesSetting(provider)
                 return Config(
                     modelPath = settings.modelPath.trim().takeIf { it.isNotBlank() }?.let { Paths.get(it).toAbsolutePath().normalize() },
                     tokenizerPath = settings.tokenizerPath.trim().takeIf { it.isNotBlank() }?.let { Paths.get(it).toAbsolutePath().normalize() },
                     dimension = settings.dimension.coerceIn(1, 1024),
-                    maxTokens = settings.maxTokens.coerceIn(16, 8192),
+                    maxTokens = maxTokens,
                     queryPrefix = settings.queryPrefix,
-                    documentPrefix = settings.documentPrefix
+                    documentPrefix = settings.documentPrefix,
+                    provider = provider,
+                    fixedTokenLength = if (fixedShapes) maxTokens else 0,
+                    fixedBatchSize = if (fixedShapes) semanticSearchBatchSizeSetting(provider) else 0
                 )
             }
 

@@ -1376,17 +1376,6 @@ const syncBoxRunningClass = (box) => {
         )
 }
 
-const ensureMarkerForExternalLaunch = (uid, strand) => {
-        if (typeof window.ensureExecutionMarkerForLaunch !== "function") return false
-        const current = window.currentSelectedCode
-        if (!current || current.length !== 1 || current[0]?.uid !== uid) return false
-        const editor = window.globalMonacoEditor || window.globalEditor
-        const model = editor?.getModel?.()
-        if (!editor || !model) return false
-        const lineCount = Math.max(1, model.getLineCount?.() || 1)
-        return window.ensureExecutionMarkerForLaunch(editor, strand || "default", 1, lineCount) === true
-}
-
 const setBoxRunning = (uid, isRunning, watermark, strand, mode = "launch") => {
         // console.log("setBoxRunning, looking for ", uid, isRunning, watermark, strand, mode)
         let first = [...document.querySelectorAll(".box")].find(x => x.uid === uid)
@@ -1414,10 +1403,7 @@ const setBoxRunning = (uid, isRunning, watermark, strand, mode = "launch") => {
                         first.runningEntries.set(name, mode)
                         if (watermark > lastWatermark) first.latestWatermark.set(strand, watermark)
                         syncBoxRunningClass(first)
-                        const markerUpdated = window.setStatusForExecutionMarker?.(strand, true, mode) === true
-                        if (!markerUpdated && ensureMarkerForExternalLaunch(uid, strand)) {
-                                window.setStatusForExecutionMarker?.(strand || "default", true, mode)
-                        }
+                        window.setStatusForExecutionMarker?.(strand, true, mode)
 
                 } else {
                         // Ignore stop messages that are older than the latest start we saw
