@@ -24,6 +24,8 @@ class FabricateFrameGraph private constructor(
                 PASS_SHADOW to bundle.shadowMap,
                 PASS_AO to bundle.ao,
                 PASS_LIGHTING to bundle.lighting,
+                PASS_MOTION_BLUR to bundle.motionBlur,
+                PASS_ANTI_ALIAS to bundle.antiAlias
                 PASS_TRANSPARENCY to bundle.transparentComposite
             ) + bundle.postStack.effects().map { effect -> passNameFor(effect) to effect.target }
         )

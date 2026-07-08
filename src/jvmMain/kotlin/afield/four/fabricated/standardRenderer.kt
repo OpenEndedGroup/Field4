@@ -155,6 +155,17 @@ object StandardRenderer {
 				shadow.bindModelMatrix(model)
 				return this
 			}
+
+			fun setNode(node: FabricateNode): MeshPair {
+				node.updateFromRoot()
+				return setModel(node.worldMatrix())
+			}
+
+			fun bindNode(node: FabricateNode, updateRoot: Boolean = true): MeshPair =
+				bindModel {
+					if (updateRoot) node.updateFromRoot()
+					node.worldMatrix()
+				}
 		}
 
 		fun registerMesh(name: String, build: (ModulePointer) -> Mesh): MeshPair {
@@ -315,6 +326,17 @@ object StandardRenderer {
 				shadow.bindModel(model)
 				return this
 			}
+
+			fun setNode(node: FabricateNode): PullingMeshPair {
+				node.updateFromRoot()
+				return setModel(node.worldMatrix())
+			}
+
+			fun bindNode(node: FabricateNode, updateRoot: Boolean = true): PullingMeshPair =
+				bindModel {
+					if (updateRoot) node.updateFromRoot()
+					node.worldMatrix()
+				}
 		}
 
 		/**
