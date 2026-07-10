@@ -213,15 +213,22 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
     }
 
     fun cleanup() {
+        // Destroy only THIS window's native resources. Terminating GLFW here would tear down
+        // every other open window's context too (see openWindows), so we only call
+        // glfwTerminate once the very last window has been disposed.
+        val wasLastWindow: Boolean
         synchronized(openWindowsLock) {
             openWindows -= this
             if (lastWindowToOpen === this) {
                 lastWindowToOpen = openWindows.lastOrNull()
             }
+            wasLastWindow = openWindows.isEmpty()
         }
         Callbacks.glfwFreeCallbacks(windowHandle)
         GLFW.glfwDestroyWindow(windowHandle)
-        GLFW.glfwTerminate()
+        if (wasLastWindow) {
+            GLFW.glfwTerminate()
+        }
     }
 
     fun isKeyPressed(keyCode: Int): Boolean {
