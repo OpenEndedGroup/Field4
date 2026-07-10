@@ -41,7 +41,8 @@ Use the high-level layer for:
 - `bundle.sceneGraph`: hierarchy, transforms, animation samples, visibility, material intent, and glTF import.
 - `bundle.registerCube(...)`, `registerSphere(...)`, `registerPullingMesh(...)`: geometry that should render through both the g-buffer and shadow pass.
 - `bundle.registerTransparentPullingMesh(...)`: blended geometry that should draw after deferred lighting.
-- `bundle.postStack` and `bundle.addShaderEffect(...)`: fullscreen image effects after opaque and transparent composition.
+- `bundle.addLight(...)` + `bundle.syncLights()`: directional/point/spot lights; `bundle.showEnvironmentBackground()` draws the environment map as the backdrop.
+- `bundle.postStack`, `bundle.addShaderEffect(...)`, `bundle.setToneMapping(...)`, `bundle.addBloom(...)`: fullscreen image effects, tone mapping, and bloom after opaque and transparent composition.
 
 Drop down to raw `Module`, `Mesh`, `RenderToTexture`, or push constants when you need a shader or buffer layout that the bundle does not know about yet. The important part is to keep transform/material intent in the scene graph and let the planner classify it before the module maps are committed.
 
@@ -69,6 +70,25 @@ graph.attachTo(renderer)
 ```
 
 `bundle.attachTo(renderer)` is the convenience form for `bundle.frameGraph().attachTo(renderer)`. `bundle.present(...)` presents `bundle.postStack.output()`, so any effect you append after the stock stack becomes the final image automatically.
+
+## Editing the Built-in Shaders
+
+Fabricate's own passes are ordinary `Module`s carrying GLSL source, so they can be bound to boxes and edited/hot-reloaded exactly like a shader you write yourself. `bundle.bindShadersToBoxes()` creates one box per pass — g-buffer, shadow, AO, lighting, transparency, motion blur, FXAA, plus any post effects (tone map, bloom, your own) and textured g-buffer variants from glTF import. Each box shows the pass's `vertex`/`fragment` GLSL in editable tabs; `alt r` reloads it, `alt shift enter` does an ABI-preserving live pipeline swap.
+
+```diffstatic {data-lang=kotlin}
+val bundle = StandardRenderer.build(renderer)
+bundle.setToneMapping(FabricateToneMap.ACES)
+bundle.addBloom()
+
+// Bind every built-in pass (and the post effects above) to editable boxes.
+val boxes = bundle.bindShadersToBoxes()
+println(boxes.keys) // std-gbuffer, std-shadow, std-ao, std-lighting, std-transparency, std-motion-blur, std-aa, std-post/bloom-composite, std-post/tonemap, ...
+
+// Or hack on a single pass:
+bundle.bindShaderToBox("std-lighting", bundle.lightingModule)
+```
+
+Reloads reuse the pass's existing `Parameters`, so the renderer's texture bindings, attachment formats, and push-constant seeding are preserved — only the GLSL changes. Edit the lighting fragment to try a different BRDF, or the FXAA pass to swap in a different AA, and the change is live on the next frame. `bundle.shaderModules()` returns the same `name → ModulePointer` map for programmatic access, and `bundle.shaderSources()` returns the raw `vertex`/`fragment` text for inspection without a session.
 
 ## Scene Graph and Transforms
 
@@ -393,6 +413,52 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-blended-transparency.png" source-image="/tmp/docs-fabricate-blended-transparency-native.png" wait="25.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-blended-transparency" hidden=true fabricate-scene="blended-transparency"}
 ```
 
+## Lights and Skybox
+
+The historical scene had exactly one hard-coded directional light. Fabricate now carries a Three.js-style light list on the scene graph: one shadow-casting directional key light plus any number of point and spot lights, evaluated in the deferred lighting pass. It can also draw the loaded environment map as the scene background instead of a flat colour.
+
+Lights are pure scene state; `bundle.syncLights()` uploads them to the lighting pass (call it after changing lights, or once per frame if they move — the same explicit-sync idiom as `sortTransparentMeshes()`). The first shadow-casting directional light becomes the key light that drives the shadow map; every other light is shaded without shadows. `bundle.showEnvironmentBackground()` turns the equirect environment into the backdrop.
+
+```diffstatic {data-lang=kotlin}
+val bundle = StandardRenderer.build(
+    renderer,
+    StandardRenderer.Config(environmentTexture = environment, environmentStrength = 0.85f)
+)
+
+// Environment as backdrop (Three.js scene.background = envMap).
+bundle.showEnvironmentBackground(true)
+
+// One shadowed key light + coloured point lights that pool on the floor.
+bundle.addLight(FabricateLight.directional(Vector3f(-0.4f, -1f, -0.3f), intensity = 1.7f, castShadow = true))
+bundle.addLight(FabricateLight.point(Vector3f(-1.7f, 0.15f, -1.2f), color = Vector3f(1f, 0.22f, 0.25f), intensity = 10f, range = 5.5f))
+bundle.addLight(FabricateLight.point(Vector3f(1.7f, 0.1f, -1.0f), color = Vector3f(0.25f, 0.5f, 1f), intensity = 10f, range = 5.5f))
+bundle.addLight(FabricateLight.spot(Vector3f(0f, 2f, 0f), Vector3f(0f, -1f, 0f), intensity = 12f, range = 8f))
+bundle.syncLights()
+```
+
+Point lights use inverse-square falloff clamped by `range`; spot lights add an inner/outer cone. Metals show these as sharp coloured highlights (they have no diffuse term); dielectrics such as the checkerboard floor catch the coloured pools.
+
+<!--
+FIELD_TEST
+id: docs.fabricate.multi-light-skybox
+runner: backdoor-box
+graphicsContext: true
+tags: [docs, fabricate, renderer, graphics, lights, skybox]
+timeoutSec: 240
+execution: launch
+waitSec: 30.0
+expect:
+  allowMissingOutput: true
+  image:
+    path: /tmp/docs-fabricate-multi-light-native.png
+    regionsDifferent:
+      - a: [0.14, 0.60, 0.20, 0.30]
+        b: [0.66, 0.60, 0.20, 0.30]
+        meanAbsDiffGt: 6
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-multi-light-skybox.png" source-image="/tmp/docs-fabricate-multi-light-native.png" wait="30.0" timeout="240" execution="launch" embed=true graphics-context=true name="fabricate-multi-light-skybox" hidden=true fabricate-scene="multi-light-skybox"}
+```
+
 ## Post Stack
 
 The post stack is Fabricate's small EffectComposer equivalent. It starts with the transparent composite and, by default, runs motion blur then FXAA:
@@ -444,6 +510,42 @@ expect:
         marginGt: 6
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-post-stack-vignette.png" source-image="/tmp/docs-fabricate-post-stack-native.png" wait="25.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-post-stack-vignette" hidden=true fabricate-scene="post-stack-vignette"}
+```
+
+## Tone Mapping and Bloom
+
+Deferred lighting runs in HDR, so raw output clips bright highlights to white. Tone mapping maps HDR into a displayable range, and bloom bleeds the brightest regions into a soft glow — the two effects most responsible for a scene reading as "correct" rather than washed out.
+
+`bundle.setToneMapping(...)` appends a tone-map pass that always runs last (options: `NONE`, `REINHARD`, `FILMIC`, `ACES`, `AGX`, plus an `exposure` multiplier). `bundle.addBloom(...)` inserts a bright-pass, separable blur, and additive composite ahead of the tone-map pass, so bloom accumulates on HDR values before they are compressed. Both modify the post stack, so re-attach the frame graph afterwards.
+
+```diffstatic {data-lang=kotlin}
+bundle.addBloom(threshold = 1.0f, intensity = 0.85f, radius = 3.2f)
+bundle.setToneMapping(FabricateToneMap.ACES, exposure = 1.0f)
+bundle.attachTo(renderer)
+bundle.present(renderer = renderer)
+```
+
+The comparison below is the same strongly-lit scene captured twice: raw HDR on the left (highlights blow out to flat white), bloom + ACES on the right (highlights roll off and glow).
+
+<!--
+FIELD_TEST
+id: docs.fabricate.tonemap-bloom
+runner: backdoor-box
+graphicsContext: true
+tags: [docs, fabricate, renderer, graphics, post, tonemap, bloom]
+timeoutSec: 240
+execution: launch
+waitSec: 30.0
+expect:
+  allowMissingOutput: true
+  image:
+    path: /tmp/docs-fabricate-tonemap-bloom-native.png
+    regionsDifferent:
+      - a: [0.05, 0.20, 0.40, 0.55]
+        b: [0.55, 0.20, 0.40, 0.55]
+        meanAbsDiffGt: 5
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-tonemap-bloom.png" source-image="/tmp/docs-fabricate-tonemap-bloom-native.png" wait="30.0" timeout="240" execution="launch" embed=true graphics-context=true name="fabricate-tonemap-bloom" hidden=true fabricate-scene="tonemap-bloom"}
 ```
 
 ## GLTF Loading and Animation

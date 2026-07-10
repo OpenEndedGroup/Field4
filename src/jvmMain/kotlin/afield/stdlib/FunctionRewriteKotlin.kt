@@ -134,16 +134,25 @@ fun Functions.Fn.rewriteKotlin(
     spec: String,
     preserveSharing: Boolean = false,
     box: Box? = Box.context.get()
-): Functions.Fn {
-    val evaluator = box?.let { SourceBackedFnRewriteNumberEvaluator(it.id) }
-    return rewrite(
-        spec,
-        FnRewriteOptions(
-            preserveSharing = preserveSharing,
-            kotlinNumberContext = evaluator
-        )
+): Functions.Fn = rewrite(spec, kotlinRewriteOptions(preserveSharing, box))
+
+fun Functions.Fn.previewRewriteKotlin(
+    spec: String,
+    preserveSharing: Boolean = false,
+    box: Box? = Box.context.get()
+): FnRewritePreview = previewRewrite(spec, kotlinRewriteOptions(preserveSharing, box))
+
+fun Functions.Fn.rewriteKotlinChecked(
+    spec: String,
+    preserveSharing: Boolean = false,
+    box: Box? = Box.context.get()
+): Functions.Fn = rewriteChecked(spec, kotlinRewriteOptions(preserveSharing, box))
+
+private fun kotlinRewriteOptions(preserveSharing: Boolean, box: Box?): FnRewriteOptions =
+    FnRewriteOptions(
+        preserveSharing = preserveSharing,
+        kotlinNumberContext = box?.let { SourceBackedFnRewriteNumberEvaluator(it.id) }
     )
-}
 
 fun Box.rewriteFn(
     fn: Functions.Fn,
@@ -151,3 +160,10 @@ fun Box.rewriteFn(
     preserveSharing: Boolean = false
 ): Functions.Fn =
     fn.rewriteKotlin(spec, preserveSharing = preserveSharing, box = this)
+
+fun Box.previewRewriteFn(
+    fn: Functions.Fn,
+    spec: String,
+    preserveSharing: Boolean = false
+): FnRewritePreview =
+    fn.previewRewriteKotlin(spec, preserveSharing = preserveSharing, box = this)

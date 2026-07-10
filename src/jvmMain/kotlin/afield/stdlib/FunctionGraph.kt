@@ -501,59 +501,11 @@ fun Functions.Fn.graphFLineMap(
     return map
 }
 
-internal fun Functions.Fn.rebuildAsOp(targetOp: String): Functions.Fn? {
-    val children = graphNode().children.associate { it.role to it.fn }
-    fun p(value: Number): Functions.Fn = Functions.c(value, Functions.Domain.ALL)
-    fun child(vararg roles: String): Functions.Fn? = roles.firstNotNullOfOrNull { children[it] }
-    fun periodFromFrequency(frequency: Functions.Fn?): Functions.Fn? =
-        frequency?.let { with(Functions) { p(1.0) / it } }
-    fun frequencyFromPeriod(period: Functions.Fn?): Functions.Fn? =
-        period?.let { with(Functions) { p(1.0) / it } }
-
-    return with(Functions) {
-        when (targetOp.lowercase()) {
-            "sin", "sine" -> sin(
-                frequency = child("frequency") ?: frequencyFromPeriod(child("period")) ?: p(1.0),
-                phase = child("phase") ?: p(0.0),
-                amplitude = child("amplitude") ?: p(1.0),
-                offset = child("offset") ?: p(0.0),
-                domain = domain
-            ).withName(name ?: "sin")
-
-            "cos", "cosine" -> cos(
-                frequency = child("frequency") ?: frequencyFromPeriod(child("period")) ?: p(1.0),
-                phase = child("phase") ?: p(0.0),
-                amplitude = child("amplitude") ?: p(1.0),
-                offset = child("offset") ?: p(0.0),
-                domain = domain
-            ).withName(name ?: "cos")
-
-            "saw" -> saw(
-                period = child("period") ?: periodFromFrequency(child("frequency")) ?: p(1.0),
-                phase = child("phase") ?: p(0.0),
-                amplitude = child("amplitude") ?: p(1.0),
-                offset = child("offset") ?: p(0.0),
-                domain = domain
-            ).withName(name ?: "saw")
-
-            "triangle", "tri" -> triangle(
-                period = child("period") ?: periodFromFrequency(child("frequency")) ?: p(1.0),
-                phase = child("phase") ?: p(0.0),
-                amplitude = child("amplitude") ?: p(1.0),
-                offset = child("offset") ?: p(0.0),
-                domain = domain
-            ).withName(name ?: "triangle")
-
-            "square" -> square(
-                period = child("period") ?: periodFromFrequency(child("frequency")) ?: p(1.0),
-                phase = child("phase") ?: p(0.0),
-                duty = child("duty") ?: p(0.5),
-                amplitude = child("amplitude") ?: p(1.0),
-                offset = child("offset") ?: p(0.0),
-                domain = domain
-            ).withName(name ?: "square")
-
-            else -> null
-        }
-    }
-}
+/**
+ * Rebuild this node as [targetOp], reusing role-addressed children and scalar
+ * metadata. The full transmutation vocabulary and its cross-family role bridging
+ * (e.g. frequency ↔ period) live in [OpRegistry], the single source of truth.
+ * Returns null when the target is not a viable transmutation of this node.
+ */
+internal fun Functions.Fn.rebuildAsOp(targetOp: String): Functions.Fn? =
+    OpRegistry.rebuild(this, targetOp)

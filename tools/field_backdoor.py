@@ -22,13 +22,47 @@ from collections import deque
 from pathlib import Path
 from typing import Any, TextIO
 
-try:
-    import websockets
-except ImportError as exc:  # pragma: no cover - runtime dependency guard
+def _reexec_under_repo_env_if_needed() -> None:
+    """Self-heal the "wrong Python interpreter" trap.
+
+    Agents/humans naturally type ``python tools/field_backdoor.py``, but the
+    ambient interpreter (e.g. system/conda Python) usually lacks ``websockets``.
+    Rather than dying with a pip hint, transparently re-exec the *current* entry
+    script under the repo's ``.venv`` (or via ``uv run``), which has the deps.
+    Guarded by an env var so it can never loop.
+    """
+    try:
+        import websockets  # noqa: F401
+        return
+    except ImportError:
+        pass
+    if os.environ.get("FIELD_BACKDOOR_REEXEC") == "1":
+        raise SystemExit(
+            "field_backdoor: 'websockets' is unavailable even after re-exec into the repo environment.\n"
+            "Run: uv sync --group backdoor   (or: python3 -m pip install websockets)"
+        )
+    import shutil
+    repo_root = Path(__file__).resolve().parent.parent
+    entry = os.path.abspath(sys.argv[0]) if sys.argv and sys.argv[0] else str(Path(__file__).resolve())
+    env = {**os.environ, "FIELD_BACKDOOR_REEXEC": "1"}
+    venv_py = repo_root / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python3")
+    if venv_py.exists():
+        os.execve(str(venv_py), [str(venv_py), entry, *sys.argv[1:]], env)
+    uv = shutil.which("uv")
+    if uv:
+        os.execvpe(
+            uv, [uv, "run", "--project", str(repo_root), "--group", "backdoor",
+                 "python", entry, *sys.argv[1:]], env,
+        )
     raise SystemExit(
-        "tools/field_backdoor.py requires the 'websockets' package.\n"
-        "Install it with: python3 -m pip install websockets"
-    ) from exc
+        "field_backdoor.py requires the 'websockets' package and no repo .venv or uv was found.\n"
+        "Run via: uv run --project . --group backdoor python tools/field_backdoor.py ..."
+    )
+
+
+_reexec_under_repo_env_if_needed()
+
+import websockets  # noqa: E402  (guaranteed importable after the shim above)
 
 try:
     import yaml
@@ -41,9 +75,19 @@ REPO_ROOT = TOOLS_ROOT.parent
 LOG_ROOT = REPO_ROOT / ".field-backdoor" / "logs"
 DEFAULT_PORT = 9092
 DEFAULT_TIMEOUT = 20.0
-PLAYWRIGHT_TIMEOUT_FLOOR = 180.0
+# Generous budget for the FIRST Playwright attach on a machine, where the browser
+# binaries may still need to download. After that, attaches are fast, so ordinary
+# ops honor the caller's --timeout and a hung attach fails fast instead of blocking
+# for minutes (which previously caused docs captures to be killed at ~50s and then
+# retried with full JVM restarts). A marker file records that the browser is ready.
+PLAYWRIGHT_ATTACH_FIRST_RUN_FLOOR = float(os.environ.get("AFIELD_PLAYWRIGHT_ATTACH_TIMEOUT", "180"))
+PLAYWRIGHT_READY_MARKER = REPO_ROOT / ".field-backdoor" / "playwright-ready"
 MAX_EVENTS = 4000
 LOG_STRING_PREVIEW = 512
+# Each backdoor invocation writes a session log; historically these accumulated
+# unbounded (thousands of files / >100MB). Keep only the most recent N of each
+# kind. Override with AFIELD_BACKDOOR_LOG_KEEP, or 0 to disable pruning.
+LOG_KEEP = int(os.environ.get("AFIELD_BACKDOOR_LOG_KEEP", "300"))
 EXACT_REPLAY_VARIABLE = re.compile(
     r"^\$([A-Za-z_][A-Za-z0-9_.-]*)$|^\$\{([A-Za-z_][A-Za-z0-9_.-]*)\}$|^\{\{\s*([A-Za-z_][A-Za-z0-9_.-]*)\s*\}\}$"
 )
@@ -107,10 +151,26 @@ def command_result(command: str, ok: bool, data: Any = None, events: list[dict[s
     }
 
 
-def playwright_timeout(timeout: float | None, default_timeout: float) -> float:
-    if timeout is None:
-        timeout = default_timeout
-    return max(timeout, PLAYWRIGHT_TIMEOUT_FLOOR)
+def playwright_attach_budget(timeout: float | None, default_timeout: float) -> float:
+    """Effective wait for a Playwright *attach*.
+
+    The first attach on a machine may download browser binaries, so allow a
+    generous one-time floor (recorded by PLAYWRIGHT_READY_MARKER). Once the
+    browser is known-ready, attaches are near-instant and we honor the caller's
+    timeout so a genuine hang fails fast instead of blocking for minutes.
+    """
+    requested = default_timeout if timeout is None else timeout
+    if not PLAYWRIGHT_READY_MARKER.exists():
+        return max(requested, PLAYWRIGHT_ATTACH_FIRST_RUN_FLOOR)
+    return requested
+
+
+def mark_playwright_ready() -> None:
+    try:
+        PLAYWRIGHT_READY_MARKER.parent.mkdir(parents=True, exist_ok=True)
+        PLAYWRIGHT_READY_MARKER.touch()
+    except OSError:
+        pass
 
 
 def command_timeout(timeout: float | None, default_timeout: float) -> float:
@@ -427,9 +487,26 @@ def _summarize_for_log(value: Any) -> Any:
 
 
 class SessionLogger:
+    @staticmethod
+    def prune(root: Path, keep: int = LOG_KEEP) -> None:
+        """Keep only the newest `keep` logs of each kind; best-effort."""
+        if keep <= 0 or not root.exists():
+            return
+        try:
+            for pattern in ("*.jsonl", "*.managed-server.log"):
+                files = sorted(root.glob(pattern), key=lambda p: p.stat().st_mtime, reverse=True)
+                for stale in files[keep:]:
+                    try:
+                        stale.unlink()
+                    except OSError:
+                        pass
+        except OSError:
+            pass
+
     def __init__(self, root: Path, argv: list[str]) -> None:
         self.root = root
         self.root.mkdir(parents=True, exist_ok=True)
+        self.prune(root)
         stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         self.session_id = f"{stamp}-pid{os.getpid()}-{uuid.uuid4().hex[:8]}"
         self.path = self.root / f"{self.session_id}.jsonl"
@@ -2777,15 +2854,22 @@ def parse_command(command_line: str) -> argparse.Namespace:
 
 
 async def ensure_playwright_attached(client: FieldBackdoor, *, timeout: float, reason: str) -> dict[str, Any]:
+    # Upgrade to the generous first-run floor only when the browser might still
+    # be downloading on this machine; otherwise honor the caller's timeout so a
+    # hung attach fails fast rather than blocking for the old 180s floor.
+    attach_timeout = playwright_attach_budget(timeout, client.default_timeout)
     client.logger.log(
         "ensure_playwright_attached_start",
         reason=reason,
         timeout=timeout,
+        attachTimeout=attach_timeout,
+        firstRun=not PLAYWRIGHT_READY_MARKER.exists(),
         documentName=client.document_name,
         scratch=client.scratch,
         sessionKey=client.session_key,
     )
-    payload = await client.open_playwright(timeout=timeout)
+    payload = await client.open_playwright(timeout=attach_timeout)
+    mark_playwright_ready()
     client.logger.log(
         "ensure_playwright_attached_complete",
         reason=reason,
@@ -2862,14 +2946,14 @@ async def dispatch_command(
         return result
 
     if args.command == "playwright-open":
-        timeout = playwright_timeout(args.timeout, client.default_timeout)
+        timeout = command_timeout(args.timeout, client.default_timeout)
         data = await ensure_playwright_attached(client, timeout=timeout, reason="command:playwright-open")
         result = command_result(command_line, True, data=data, events=[])
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
         return result
 
     if args.command == "editor-open":
-        timeout = playwright_timeout(args.timeout, client.default_timeout)
+        timeout = command_timeout(args.timeout, client.default_timeout)
         await ensure_playwright_attached(client, timeout=timeout, reason=f"command:editor-open:{args.uid}")
         data = await client.open_editor(
             uid=args.uid,
@@ -2888,7 +2972,7 @@ async def dispatch_command(
         if auto_playwright:
             await ensure_playwright_attached(
                 client,
-                timeout=auto_playwright_timeout or playwright_timeout(args.timeout, client.default_timeout),
+                timeout=auto_playwright_timeout or command_timeout(args.timeout, client.default_timeout),
                 reason=f"command:screenshot-window:{args.uid or 'window'}",
             )
         timeout = command_timeout(args.timeout, client.default_timeout)
@@ -2913,7 +2997,7 @@ async def dispatch_command(
         if auto_playwright:
             await ensure_playwright_attached(
                 client,
-                timeout=auto_playwright_timeout or playwright_timeout(args.timeout, client.default_timeout),
+                timeout=auto_playwright_timeout or command_timeout(args.timeout, client.default_timeout),
                 reason=f"command:screenshot-editor:{args.uid}",
             )
         timeout = command_timeout(args.timeout, client.default_timeout)
@@ -2938,7 +3022,7 @@ async def dispatch_command(
         if auto_playwright:
             await ensure_playwright_attached(
                 client,
-                timeout=auto_playwright_timeout or playwright_timeout(args.timeout, client.default_timeout),
+                timeout=auto_playwright_timeout or command_timeout(args.timeout, client.default_timeout),
                 reason=f"command:screenshot-box:{args.uid}",
             )
         timeout = command_timeout(args.timeout, client.default_timeout)
@@ -2983,7 +3067,7 @@ async def dispatch_command(
         if auto_playwright:
             await ensure_playwright_attached(
                 client,
-                timeout=auto_playwright_timeout or playwright_timeout(args.timeout, client.default_timeout),
+                timeout=auto_playwright_timeout or command_timeout(args.timeout, client.default_timeout),
                 reason=f"command:record-window:{args.uid or 'window'}",
             )
         timeout = command_timeout(args.timeout, client.default_timeout)
@@ -3011,7 +3095,7 @@ async def dispatch_command(
         if auto_playwright:
             await ensure_playwright_attached(
                 client,
-                timeout=auto_playwright_timeout or playwright_timeout(args.timeout, client.default_timeout),
+                timeout=auto_playwright_timeout or command_timeout(args.timeout, client.default_timeout),
                 reason=f"command:record-editor:{args.uid}",
             )
         timeout = command_timeout(args.timeout, client.default_timeout)
@@ -3038,7 +3122,7 @@ async def dispatch_command(
         if auto_playwright:
             await ensure_playwright_attached(
                 client,
-                timeout=auto_playwright_timeout or playwright_timeout(args.timeout, client.default_timeout),
+                timeout=auto_playwright_timeout or command_timeout(args.timeout, client.default_timeout),
                 reason=f"command:record-box:{args.uid}",
             )
         timeout = command_timeout(args.timeout, client.default_timeout)
@@ -3158,7 +3242,7 @@ async def dispatch_command(
         if auto_playwright:
             await ensure_playwright_attached(
                 client,
-                timeout=auto_playwright_timeout or playwright_timeout(args.timeout, client.default_timeout),
+                timeout=auto_playwright_timeout or command_timeout(args.timeout, client.default_timeout),
                 reason=f"command:{args.command}:{args.uid}",
             )
         if args.value is not None and args.file is not None:
@@ -3513,7 +3597,7 @@ async def async_main(argv: list[str], logger: SessionLogger) -> int:
 
         command_lines = collect_command_lines(args)
         logger.log("command_lines_collected", commandLines=command_lines)
-        auto_playwright_timeout = playwright_timeout(args.timeout, client.default_timeout)
+        auto_playwright_timeout = command_timeout(args.timeout, client.default_timeout)
         should_auto_open = True
         if command_lines and not args.document and not args.scratch:
             try:

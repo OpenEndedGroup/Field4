@@ -9,11 +9,35 @@ define("bithero/fnrewrite", ["require", "vs/editor/editor.api"], function (requi
                 "op", "replace", "name", "domain", "all", "default", "value", "it",
                 "role", "edge", "parameter", "parent", "under", "tag", "depth", "index",
         ])
-        const opWords = new Set(["sin", "saw", "pulseTrain", "fbm", "valueNoise", "hannWindow", "delay", "mirror", "repeat"])
+        // Highlighted op vocabulary. Kept a subset of afield.stdlib.OpRegistry.knownOps
+        // (asserted by FunctionsGraphRewriteTest so this list can never name an op the
+        // registry does not know).
+        const opWords = new Set([
+                "sin", "cos", "saw", "triangle", "square", "pulseTrain", "pulsetrain",
+                "gaussian", "ramp", "step", "smoothstep", "tween", "ease",
+                "whiteNoise", "valueNoise", "perlinNoise", "fbm", "fbmPerlin", "randomWalk",
+                "hannWindow", "hammingWindow", "blackmanWindow", "gaussianWindow",
+                "add", "subtract", "multiply", "divide",
+                "shift", "scaleX", "scaleY", "offsetY", "pow", "log",
+                "clamp", "clip", "softClip", "fold", "wrapY",
+                "delay", "mirror", "repeat", "warp", "timeline",
+        ])
 
         if (monaco && monaco.languages && !root.__fnRewriteLanguageRegistered) {
                 root.__fnRewriteLanguageRegistered = true
                 monaco.languages.register({ id: languageId, aliases: ["FnRewrite", "fnrewrite"] })
+                monaco.languages.setLanguageConfiguration(languageId, {
+                        comments: { lineComment: "//" },
+                        brackets: [["[", "]"], ["{", "}"], ["(", ")"]],
+                        autoClosingPairs: [
+                                { open: "[", close: "]" }, { open: "{", close: "}" },
+                                { open: "(", close: ")" }, { open: '"', close: '"' },
+                        ],
+                        surroundingPairs: [
+                                { open: "[", close: "]" }, { open: "{", close: "}" },
+                                { open: "(", close: ")" }, { open: '"', close: '"' },
+                        ],
+                })
                 monaco.languages.setMonarchTokensProvider(languageId, {
                         tokenPostfix: ".fnrewrite",
                         tokenizer: {
@@ -21,7 +45,7 @@ define("bithero/fnrewrite", ["require", "vs/editor/editor.api"], function (requi
                                         [/\/\/.*$/, "comment"],
                                         [/#.*$/, "comment"],
                                         [/(?:@\{|\$\{)/, { token: "delimiter.bracket", next: "@kotlin" }],
-                                        [/=>/, "operator"],
+                                        [/(?:=>|->|→)/, "operator"],
                                         [/(?:\*=|\/=|\+=|-=|=)/, "operator"],
                                         [/\*\*|\*|\//, "operator"],
                                         [/\[|\]/, "delimiter.square"],
@@ -127,9 +151,14 @@ define("bithero/fnrewrite", ["require", "vs/editor/editor.api"], function (requi
                                 push("kotlin", start, i)
                                 continue
                         }
-                        if (source.slice(i, i + 2) === "=>") {
+                        if (source.slice(i, i + 2) === "=>" || source.slice(i, i + 2) === "->") {
                                 push("operator", i, i + 2)
                                 i += 2
+                                continue
+                        }
+                        if (ch === "→") {
+                                push("operator", i, i + 1)
+                                i++
                                 continue
                         }
                         const two = source.slice(i, i + 2)
@@ -228,30 +257,159 @@ define("bithero/fnrewrite", ["require", "vs/editor/editor.api"], function (requi
                 return warnings
         }
 
+        const modelRegions = (model) => {
+                if (!model) return []
+                if (model.getLanguageId() === languageId) {
+                        const source = model.getValue()
+                        return [{ bodyStart: 0, bodyEnd: source.length, source }]
+                }
+                return findEmbeddedRegions(model)
+        }
+
+        const topLevelStatements = (source) => {
+                const statements = []
+                let start = 0
+                let parens = 0
+                let brackets = 0
+                let braces = 0
+                let quote = null
+                let escaped = false
+                let comment = false
+                let commentStart = -1
+                const emit = (end) => {
+                        const raw = source.slice(start, end)
+                        const leading = /^\s*/.exec(raw)[0].length
+                        const text = raw.slice(leading).trimEnd()
+                        if (text) statements.push({ text, start: start + leading, end: start + leading + text.length })
+                }
+                for (let i = 0; i < source.length; i++) {
+                        const c = source[i]
+                        if (comment) {
+                                if (c === "\n") {
+                                        comment = false
+                                        if (parens === 0 && brackets === 0 && braces === 0) {
+                                                emit(commentStart >= 0 ? commentStart : i)
+                                                start = i + 1
+                                        }
+                                        commentStart = -1
+                                }
+                                continue
+                        }
+                        if (quote) {
+                                if (escaped) escaped = false
+                                else if (c === "\\") escaped = true
+                                else if (c === quote) quote = null
+                                continue
+                        }
+                        if (c === '"' || c === "'") { quote = c; continue }
+                        if (c === "#" || (c === "/" && source[i + 1] === "/")) { comment = true; commentStart = i; continue }
+                        if (c === "(") parens++
+                        else if (c === ")" && parens > 0) parens--
+                        else if (c === "[") brackets++
+                        else if (c === "]" && brackets > 0) brackets--
+                        else if (c === "{") braces++
+                        else if (c === "}" && braces > 0) braces--
+                        if ((c === "\n" || c === ";") && parens === 0 && brackets === 0 && braces === 0) {
+                                emit(i)
+                                start = i + 1
+                        }
+                }
+                emit(comment && commentStart >= 0 ? commentStart : source.length)
+                return statements
+        }
+
+        const splitActions = (source) => {
+                const actions = []
+                let start = 0
+                let parens = 0
+                let brackets = 0
+                let braces = 0
+                let quote = null
+                let escaped = false
+                const emit = (end) => {
+                        const value = source.slice(start, end).trim()
+                        if (value) actions.push(value)
+                }
+                for (let i = 0; i < source.length; i++) {
+                        const c = source[i]
+                        if (quote) {
+                                if (escaped) escaped = false
+                                else if (c === "\\") escaped = true
+                                else if (c === quote) quote = null
+                                continue
+                        }
+                        if (c === '"' || c === "'") { quote = c; continue }
+                        if (c === "(") parens++
+                        else if (c === ")" && parens > 0) parens--
+                        else if (c === "[") brackets++
+                        else if (c === "]" && brackets > 0) brackets--
+                        else if (c === "{") braces++
+                        else if (c === "}" && braces > 0) braces--
+                        if ((c === "," || c === "|") && parens === 0 && brackets === 0 && braces === 0) {
+                                emit(i)
+                                start = i + 1
+                        }
+                }
+                emit(source.length)
+                return actions
+        }
+
+        const ruleArrow = (text) => {
+                const choices = [text.indexOf("=>"), text.indexOf("->"), text.indexOf("→")].filter((x) => x >= 0)
+                return choices.length ? Math.min(...choices) : -1
+        }
+
+        const validateRules = (source) => {
+                const warnings = []
+                for (const statement of topLevelStatements(source)) {
+                        const text = statement.text.trim()
+                        if (!text || /^#fnrewrite\b/i.test(text)) continue
+                        const arrow = ruleArrow(text)
+                        if (arrow < 0) {
+                                warnings.push({ start: statement.start, end: statement.end, severity: "error", message: "Expected selector => action. (`->` and `→` also work.)" })
+                                continue
+                        }
+                        const arrowLength = text[arrow] === "→" ? 1 : 2
+                        const selector = text.slice(0, arrow).trim()
+                        const action = text.slice(arrow + arrowLength).trim()
+                        if (!selector) warnings.push({ start: statement.start, end: statement.start + Math.max(1, arrow), severity: "error", message: "Selector is empty. Use `any` to match every node." })
+                        if (!action) warnings.push({ start: statement.start + arrow + arrowLength, end: statement.end, severity: "error", message: "Action is empty." })
+                        if ((selector.match(/\[/g) || []).length !== (selector.match(/]/g) || []).length) {
+                                warnings.push({ start: statement.start, end: statement.start + arrow, severity: "error", message: "Unbalanced [...] selector predicate." })
+                        }
+                        if (action) {
+                                const actions = splitActions(action)
+                                for (const candidate of actions) {
+                                        const recognized = /^(?:drop|prune|zero)$/i.test(candidate) ||
+                                                /^(?:op|replace|name|domain)\s*=\s*.+$/i.test(candidate) ||
+                                                /^(?:value\s*)?(?:\*=|\/=|\+=|-=|=)\s*.+$/i.test(candidate)
+                                        if (!recognized) warnings.push({ start: statement.start + arrow + arrowLength, end: statement.end, severity: "error", message: `Unknown action “${candidate}”.` })
+                                        const replacement = /^(?:op|replace)\s*=\s*([^\s]+)/i.exec(candidate)
+                                        if (replacement && !/^(?:sin|sine|cos|cosine|saw|triangle|tri|square)$/i.test(replacement[1])) {
+                                                warnings.push({ start: statement.start + arrow + arrowLength, end: statement.end, severity: "warning", message: `Operation replacement “${replacement[1]}” is not currently supported.` })
+                                        }
+                                }
+                        }
+                }
+                return warnings
+        }
+
         const updateDiagnostics = (editor, context) => {
                 const model = context.model
                 const monacoApi = context.monaco || monaco
                 if (!model || !monacoApi || !monacoApi.editor) return
                 const markers = []
-                for (const region of findEmbeddedRegions(model)) {
-                        const lines = region.source.split(/\r?\n/)
-                        let offset = region.bodyStart
-                        for (const line of lines) {
-                                const trimmed = line.trim()
-                                if (trimmed && !trimmed.startsWith("#") && !trimmed.startsWith("//") && !trimmed.includes("=>")) {
-                                        const start = offset + line.indexOf(trimmed)
-                                        const end = start + trimmed.length
-                                        const range = rangeFromOffsets(monacoApi, model, start, end)
-                                        markers.push({
-                                                severity: monacoApi.MarkerSeverity.Warning,
-                                                message: "Expected selector => action.",
-                                                startLineNumber: range.startLineNumber,
-                                                startColumn: range.startColumn,
-                                                endLineNumber: range.endLineNumber,
-                                                endColumn: range.endColumn,
-                                        })
-                                }
-                                offset += line.length + 1
+                for (const region of modelRegions(model)) {
+                        for (const warning of validateRules(region.source)) {
+                                const range = rangeFromOffsets(monacoApi, model, region.bodyStart + warning.start, region.bodyStart + warning.end)
+                                markers.push({
+                                        severity: warning.severity === "error" ? monacoApi.MarkerSeverity.Error : monacoApi.MarkerSeverity.Warning,
+                                        message: warning.message,
+                                        startLineNumber: range.startLineNumber,
+                                        startColumn: range.startColumn,
+                                        endLineNumber: range.endLineNumber,
+                                        endColumn: range.endColumn,
+                                })
                         }
                         for (const warning of validateKotlinBraces(region.source)) {
                                 const range = rangeFromOffsets(monacoApi, model, region.bodyStart + warning.start, region.bodyStart + warning.end)
@@ -270,11 +428,11 @@ define("bithero/fnrewrite", ["require", "vs/editor/editor.api"], function (requi
 
         const buildContextPayload = (editor, resolveContext) => {
                 const model = editor && editor.getModel && editor.getModel()
-                if (!model || model.getLanguageId() !== "kotlin") return null
+                if (!model || (model.getLanguageId() !== "kotlin" && model.getLanguageId() !== languageId)) return null
                 const position = resolveContext && resolveContext.position
                 if (!position) return null
                 const offset = model.getOffsetAt(position)
-                const region = findEmbeddedRegions(model).find((candidate) => offset >= candidate.bodyStart && offset <= candidate.bodyEnd)
+                const region = modelRegions(model).find((candidate) => offset >= candidate.bodyStart && offset <= candidate.bodyEnd)
                 if (!region) return null
                 const html = '<div class="afield-stacksl-context"><strong>FnRewrite</strong> ' +
                         '<span class="afield-stacksl-muted">path selector =&gt; action; use <code>*</code>, <code>**</code>, predicates, and Kotlin inside <code>@{...}</code></span></div>'
@@ -282,16 +440,16 @@ define("bithero/fnrewrite", ["require", "vs/editor/editor.api"], function (requi
         }
 
         const provideCompletionItems = (editor, model, position, context) => {
-                if (!model || model.getLanguageId() !== "kotlin") return null
+                if (!model || (model.getLanguageId() !== "kotlin" && model.getLanguageId() !== languageId)) return null
                 const offset = model.getOffsetAt(position)
-                const region = findEmbeddedRegions(model).find((candidate) => offset >= candidate.bodyStart && offset <= candidate.bodyEnd)
+                const region = modelRegions(model).find((candidate) => offset >= candidate.bodyStart && offset <= candidate.bodyEnd)
                 if (!region) return null
                 const monacoApi = context.monaco || monaco
                 const kind = monacoApi.languages.CompletionItemKind.Snippet
                 const range = model.getWordUntilPosition(position)
                 const replaceRange = new monacoApi.Range(position.lineNumber, range.startColumn, position.lineNumber, range.endColumn)
                 const snippets = [
-                        ["Path saw under sin", "sin/*/saw => op=sin"],
+                        ["Path saw under sin", "sin/*/saw => op=triangle"],
                         ["Deep constants under sin", "sin/**/[tag=number] => *= @{value * 1.1}"],
                         ["Deep amplitude params", "**/[role=amplitude] => *= 0.5"],
                         ["Positive constants", "**/[op=const][value>0.2] => *= @{value.pow(0.8)}"],
@@ -301,6 +459,7 @@ define("bithero/fnrewrite", ["require", "vs/editor/editor.api"], function (requi
                         ["Drop constants", "const => drop"],
                         ["Rename", "any => name=mutated"],
                         ["Domain all", "any => domain=all"],
+                        ["Annotated rule", "**/[role=amplitude] => *= 0.5  # halve every amplitude"],
                 ]
                 return {
                         suggestions: snippets.map(([label, insertText]) => ({
@@ -343,6 +502,6 @@ define("bithero/fnrewrite", ["require", "vs/editor/editor.api"], function (requi
                 root.__fieldLanguageExtensionQueue = root.__fieldLanguageExtensionQueue || []
                 root.__fieldLanguageExtensionQueue.push(extension)
         }
-        root.__fnRewriteExtensionProof = { registered: true, extension, findEmbeddedRegions, tokenize }
+        root.__fnRewriteExtensionProof = { registered: true, extension, findEmbeddedRegions, modelRegions, tokenize, topLevelStatements, splitActions, validateRules }
         return extension
 })

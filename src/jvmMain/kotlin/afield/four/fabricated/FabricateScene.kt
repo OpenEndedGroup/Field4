@@ -28,6 +28,19 @@ class FabricateScene(
     var renderProfile: FabricateRenderProfile = FabricateRenderProfile.outOfBox()
     var animationTime: Float = 0f
 
+    /**
+     * Scene lights, Three.js style. The renderer treats one shadow-casting directional light as the
+     * key light (it drives the shadow map and the built-in `LightData` uniform); every other light
+     * is uploaded to the deferred lighting pass through a lights buffer. An empty list keeps the
+     * historical single default directional light untouched, so existing scenes render unchanged.
+     */
+    val lights: MutableList<FabricateLight> = mutableListOf()
+
+    fun addLight(light: FabricateLight): FabricateLight {
+        lights += light
+        return light
+    }
+
     fun node(name: String, parent: FabricateNode = root, configure: FabricateNode.() -> Unit = {}): FabricateNode {
         val n = FabricateNode(name)
         parent.add(n)
@@ -396,6 +409,77 @@ data class FabricateRenderProfile(
 
     companion object {
         fun outOfBox(): FabricateRenderProfile = FabricateRenderProfile()
+    }
+}
+
+enum class FabricateLightType {
+    DIRECTIONAL,
+    POINT,
+    SPOT
+}
+
+/**
+ * A light source. Directional lights model the sun (parallel rays, no falloff); point lights radiate
+ * from a position with inverse-square falloff clamped by [range]; spot lights add a cone defined by
+ * [innerConeDegrees]/[outerConeDegrees]. Only one directional light with [castShadow] can drive the
+ * shadow map at a time (the first such light wins); the rest are shaded without shadows.
+ */
+data class FabricateLight(
+    var type: FabricateLightType = FabricateLightType.DIRECTIONAL,
+    var position: Vector3f = Vector3f(0f, 3f, 0f),
+    var direction: Vector3f = Vector3f(-0.35f, -1f, -0.25f),
+    var color: Vector3f = Vector3f(1f, 1f, 1f),
+    var intensity: Float = 1f,
+    var range: Float = 0f,
+    var innerConeDegrees: Float = 20f,
+    var outerConeDegrees: Float = 30f,
+    var castShadow: Boolean = false
+) {
+    companion object {
+        fun directional(
+            direction: Vector3f,
+            color: Vector3f = Vector3f(1f, 1f, 1f),
+            intensity: Float = 3.5f,
+            castShadow: Boolean = true
+        ): FabricateLight = FabricateLight(
+            type = FabricateLightType.DIRECTIONAL,
+            direction = Vector3f(direction),
+            color = Vector3f(color),
+            intensity = intensity,
+            castShadow = castShadow
+        )
+
+        fun point(
+            position: Vector3f,
+            color: Vector3f = Vector3f(1f, 1f, 1f),
+            intensity: Float = 6f,
+            range: Float = 8f
+        ): FabricateLight = FabricateLight(
+            type = FabricateLightType.POINT,
+            position = Vector3f(position),
+            color = Vector3f(color),
+            intensity = intensity,
+            range = range
+        )
+
+        fun spot(
+            position: Vector3f,
+            direction: Vector3f,
+            color: Vector3f = Vector3f(1f, 1f, 1f),
+            intensity: Float = 8f,
+            range: Float = 12f,
+            innerConeDegrees: Float = 16f,
+            outerConeDegrees: Float = 26f
+        ): FabricateLight = FabricateLight(
+            type = FabricateLightType.SPOT,
+            position = Vector3f(position),
+            direction = Vector3f(direction),
+            color = Vector3f(color),
+            intensity = intensity,
+            range = range,
+            innerConeDegrees = innerConeDegrees,
+            outerConeDegrees = outerConeDegrees
+        )
     }
 }
 

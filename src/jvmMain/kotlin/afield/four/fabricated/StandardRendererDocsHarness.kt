@@ -526,6 +526,161 @@ object StandardRendererDocsHarness {
         }
     }
 
+    suspend fun renderMultiLightSkybox(
+        outputPath: String,
+        renderer: Renderer = rendererFromContextOrDocument(),
+        window: Window = renderer.window,
+        environmentPath: String = File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath
+    ): File {
+        val environment = LoadedTexture.fromExrFile(
+            environmentPath,
+            renderer,
+            requestedMipLevels = 0,
+            prefilterEnvironment = true
+        ).also { texture ->
+            texture.setDefaultSampler()
+            texture.transferNow()
+        }
+        return renderScene(
+            outputPath,
+            renderer,
+            window,
+            StandardRenderer.Config(
+                environmentTexture = environment,
+                environmentStrength = 0.85f,
+                environmentRotation = 0.35f,
+                backgroundColor = srgbGray(0.06f)
+            )
+        ) { bundle, activeRenderer ->
+            bundle.scene.camera.at.set(0f, 1.05f, -4.1f)
+            bundle.scene.camera.target.set(0f, -0.15f, 0f)
+            bundle.scene.aoStrength = 0.6f
+            bundle.scene.shadowStrength = 0.7f
+            bundle.scene.shadowExtent = 6.5f
+            bundle.scene.shadowBias = 0.0024f
+
+            // Show the loaded environment as the scene backdrop (Three.js scene.background = env).
+            bundle.showEnvironmentBackground(true, intensity = 1.0f)
+
+            addCheckerboardFloor(bundle, activeRenderer, tilesPerSide = 10, tileSize = 0.55f, y = -1.0f)
+
+            registerTorusNode(
+                bundle = bundle,
+                renderer = activeRenderer,
+                name = "ml-left",
+                model = Matrix4f().translate(-1.35f, -0.2f, 0.5f).rotateY(0.35f),
+                material = material(Vector4f(0.85f, 0.85f, 0.88f, 1f), metallic = 1f, roughness = 0.14f),
+                slices = 72,
+                stacks = 72
+            )
+            registerTorusNode(
+                bundle = bundle,
+                renderer = activeRenderer,
+                name = "ml-mid",
+                model = Matrix4f().translate(0f, -0.16f, 0f).rotateX(0.22f).rotateY(-0.24f),
+                material = material(Vector4f(0.85f, 0.85f, 0.88f, 1f), metallic = 1f, roughness = 0.1f),
+                slices = 72,
+                stacks = 72
+            )
+            registerTorusNode(
+                bundle = bundle,
+                renderer = activeRenderer,
+                name = "ml-right",
+                model = Matrix4f().translate(1.35f, -0.2f, -0.5f).rotateY(-0.4f),
+                material = material(Vector4f(0.85f, 0.85f, 0.88f, 1f), metallic = 1f, roughness = 0.18f),
+                slices = 72,
+                stacks = 72
+            )
+
+            // One shadow-casting key light plus three coloured point lights that pool on the floor.
+            bundle.addLight(
+                FabricateLight.directional(
+                    direction = Vector3f(-0.4f, -1f, -0.3f),
+                    color = Vector3f(1f, 0.97f, 0.9f),
+                    intensity = 1.7f,
+                    castShadow = true
+                )
+            )
+            bundle.addLight(FabricateLight.point(Vector3f(-1.7f, 0.15f, -1.2f), color = Vector3f(1f, 0.22f, 0.25f), intensity = 10f, range = 5.5f))
+            bundle.addLight(FabricateLight.point(Vector3f(1.7f, 0.1f, -1.0f), color = Vector3f(0.25f, 0.5f, 1f), intensity = 10f, range = 5.5f))
+            bundle.addLight(FabricateLight.point(Vector3f(0f, 0.55f, 1.7f), color = Vector3f(0.32f, 1f, 0.45f), intensity = 9f, range = 5.5f))
+            bundle.syncLights()
+
+            bundle.present(renderer = activeRenderer)
+        }
+    }
+
+    suspend fun renderToneMapBloom(
+        outputPath: String,
+        renderer: Renderer = rendererFromContextOrDocument(),
+        window: Window = renderer.window,
+        environmentPath: String = File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath
+    ): File {
+        val environment = LoadedTexture.fromExrFile(
+            environmentPath,
+            renderer,
+            requestedMipLevels = 0,
+            prefilterEnvironment = true
+        ).also { texture ->
+            texture.setDefaultSampler()
+            texture.transferNow()
+        }
+        val bundle = StandardRenderer.build(
+            renderer,
+            StandardRenderer.Config(
+                environmentTexture = environment,
+                environmentStrength = 1.4f,
+                environmentRotation = 0.3f,
+                backgroundColor = srgbGray(0.05f)
+            )
+        )
+        bundle.scene.camera.at.set(0f, 0.8f, -3.6f)
+        bundle.scene.camera.target.set(0f, -0.15f, 0f)
+        bundle.scene.lightIntensity = 6.0f
+        bundle.scene.shadowStrength = 0.8f
+        bundle.scene.aoStrength = 0.7f
+        bundle.scene.shadowExtent = 6.0f
+        bundle.scene.shadowBias = 0.0024f
+
+        addCheckerboardFloor(bundle, renderer, tilesPerSide = 9, tileSize = 0.52f, y = -1.0f)
+        registerTorusNode(
+            bundle = bundle,
+            renderer = renderer,
+            name = "tb-left",
+            model = Matrix4f().translate(-1.05f, -0.18f, 0.35f).rotateY(0.32f),
+            material = material(Vector4f(0.95f, 0.35f, 0.30f, 1f), metallic = 1f, roughness = 0.08f),
+            slices = 72,
+            stacks = 72
+        )
+        registerTorusNode(
+            bundle = bundle,
+            renderer = renderer,
+            name = "tb-right",
+            model = Matrix4f().translate(1.05f, -0.16f, -0.35f).rotateY(-0.35f),
+            material = material(Vector4f(0.30f, 0.70f, 0.98f, 1f), metallic = 1f, roughness = 0.07f),
+            slices = 72,
+            stacks = 72
+        )
+
+        bundle.present(renderer = renderer)
+        bundle.applyScenePlan()
+        bundle.attachTo(renderer)
+
+        // Left: raw HDR (highlights clip to white). Right: bloom + ACES tone mapping.
+        val raw = captureScene(tempPng("fabricate-tonemap-off"), bundle, renderer) {}
+        bundle.addBloom(threshold = 1.0f, intensity = 0.85f, radius = 3.2f, renderer = renderer)
+        bundle.setToneMapping(FabricateToneMap.ACES, exposure = 1.0f, renderer = renderer)
+        bundle.attachTo(renderer)
+        val graded = captureScene(tempPng("fabricate-tonemap-on"), bundle, renderer) {}
+
+        return try {
+            composeHorizontal(raw, graded, File(outputPath))
+        } finally {
+            raw.delete()
+            graded.delete()
+        }
+    }
+
     fun htmlForImage(imageFile: File, caption: String? = null): String {
         val encoded = Base64.getEncoder().encodeToString(imageFile.readBytes())
         val captionHtml = caption?.takeIf { it.isNotBlank() }?.let {

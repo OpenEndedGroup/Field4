@@ -37,6 +37,12 @@ FENCE_NAMES = sorted(RUNNER_TARGETS, key=len, reverse=True)
 SCRIPT_VERSION = 17
 RUNNER_RETRIES = 3
 RUNNER_SUBPROCESS_GRACE_SEC = 5.0
+# Kept consistent with tools/field_backdoor.py: the first Playwright attach on a
+# machine may download browser binaries. While that marker is absent, give the
+# capture subprocess enough headroom to finish the download instead of killing it
+# at ~50s and retrying with full JVM restarts.
+PLAYWRIGHT_READY_MARKER = Path(__file__).resolve().parent.parent / ".field-backdoor" / "playwright-ready"
+PLAYWRIGHT_FIRST_RUN_HEADROOM_SEC = float(os.environ.get("AFIELD_PLAYWRIGHT_ATTACH_TIMEOUT", "180"))
 RUNNER_MODE_ENV = "FIELD_DOCS_RUNNER_MODE"
 RUNNER_CONTINUE_ON_ERROR_ENV = "FIELD_DOCS_RUNNER_CONTINUE_ON_ERROR"
 RUNNER_PORT_ENV = "FIELD_DOCS_RUNNER_PORT"
@@ -2195,7 +2201,10 @@ def code_with_macro_digest(*, code: str, options: RunnerOptions, repo_root: Path
 
 def runner_subprocess_timeout(*, options: RunnerOptions, is_video: bool) -> float:
     base = max(options.timeout, options.duration + 30.0) if is_video else options.timeout
-    return base + RUNNER_SUBPROCESS_GRACE_SEC
+    budget = base + RUNNER_SUBPROCESS_GRACE_SEC
+    if not PLAYWRIGHT_READY_MARKER.exists():
+        budget = max(budget, PLAYWRIGHT_FIRST_RUN_HEADROOM_SEC + RUNNER_SUBPROCESS_GRACE_SEC)
+    return budget
 
 
 def build_backdoor_command(

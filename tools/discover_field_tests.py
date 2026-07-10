@@ -75,6 +75,8 @@ FABRICATE_DOCS_SCENES = {
     "blended-transparency": ("renderBlendedTransparency", "fabricate blended transparency ready"),
     "post-stack-vignette": ("renderPostStackVignette", "fabricate post stack vignette ready"),
     "toy-car-gltf": ("renderToyCarGltf", "fabricate toy car gltf ready"),
+    "multi-light-skybox": ("renderMultiLightSkybox", "fabricate multi light skybox ready"),
+    "tonemap-bloom": ("renderToneMapBloom", "fabricate tonemap bloom ready"),
 }
 
 

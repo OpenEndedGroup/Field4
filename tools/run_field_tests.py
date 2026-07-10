@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shlex
 import subprocess
@@ -16,6 +17,7 @@ from typing import Any
 from PIL import Image, ImageChops, ImageStat
 
 from discover_field_tests import DEFAULT_ROOTS, discover
+from field_backdoor import gradle_command, health_check, make_unverified_ssl_context
 
 
 TOOLS_ROOT = Path(__file__).resolve().parent
@@ -31,6 +33,57 @@ PLAYWRIGHT_TIMEOUT_FLOOR = 180.0
 
 class RunnerError(RuntimeError):
     pass
+
+
+def ensure_persistent_field(port: int, *, boot_timeout: float = 180.0) -> subprocess.Popen[Any] | None:
+    """Guarantee one warm Field for the whole run.
+
+    Historically the first test's backdoor process cold-booted the JVM and then
+    KILLED it on close (a self-started server is torn down at exit), so every
+    subsequent test cold-booted again -- ~16s of JVM boot per test. Starting one
+    persistent Field up front (and leaving it healthy) means each test's backdoor
+    reuses it and does not tear it down. Returns the process we started, or None
+    if a healthy Field was already serving the port (which we then leave alone).
+    """
+    ctx = make_unverified_ssl_context()
+    if health_check(port, ctx):
+        return None
+    log_path = REPO_ROOT / ".field-backdoor" / "logs" / f"smoke-prewarm-field-{port}.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_file = log_path.open("w", encoding="utf-8")
+    popen_kwargs: dict[str, Any] = {
+        "cwd": str(REPO_ROOT),
+        "stdout": log_file,
+        "stderr": subprocess.STDOUT,
+        "stdin": subprocess.DEVNULL,
+        "text": True,
+        "env": {**os.environ, "PORT": str(port)},
+    }
+    if os.name == "nt":
+        popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]
+    else:
+        popen_kwargs["start_new_session"] = True
+    proc = subprocess.Popen(gradle_command("runJvm"), **popen_kwargs)
+    deadline = time.monotonic() + boot_timeout
+    while time.monotonic() < deadline:
+        if proc.poll() is not None:
+            raise SystemExit(f"Prewarm Field exited early (code {proc.returncode}); see {log_path}")
+        if health_check(port, ctx):
+            return proc
+        time.sleep(0.5)
+    proc.terminate()
+    raise SystemExit(f"Prewarm Field did not become healthy on port {port} within {boot_timeout:.0f}s; see {log_path}")
+
+
+def stop_persistent_field(proc: subprocess.Popen[Any] | None) -> None:
+    if proc is None or proc.poll() is not None:
+        return
+    proc.terminate()
+    try:
+        proc.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait(timeout=5)
 
 
 def load_or_refresh_catalog(
@@ -823,6 +876,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--port", type=int, default=9092)
     parser.add_argument("--fail-fast", action="store_true")
     parser.add_argument("--json", action="store_true")
+    parser.add_argument(
+        "--no-prewarm",
+        action="store_true",
+        help="Do not start/keep a persistent Field; rely on an already-running server on --port.",
+    )
     return parser.parse_args()
 
 
@@ -854,19 +912,31 @@ def main() -> int:
     passed = 0
     failed = 0
 
-    for test in tests:
-        result = run_one_test(test, port=args.port, workspace=args.workspace)
-        results.append(result)
-        if result["ok"]:
-            passed += 1
-        else:
-            failed += 1
+    field_proc: subprocess.Popen[Any] | None = None
+    if not args.no_prewarm:
+        field_proc = ensure_persistent_field(args.port)
         if not args.json:
-            print(format_result_line(result))
-            for failure in result["failures"]:
-                print(f"  {failure}")
-        if failed and args.fail_fast:
-            break
+            if field_proc is None:
+                print(f"Reusing existing Field on port {args.port}")
+            else:
+                print(f"Started persistent Field on port {args.port} for this run")
+
+    try:
+        for test in tests:
+            result = run_one_test(test, port=args.port, workspace=args.workspace)
+            results.append(result)
+            if result["ok"]:
+                passed += 1
+            else:
+                failed += 1
+            if not args.json:
+                print(format_result_line(result))
+                for failure in result["failures"]:
+                    print(f"  {failure}")
+            if failed and args.fail_fast:
+                break
+    finally:
+        stop_persistent_field(field_proc)
 
     report = {
         "catalog": str(catalog_path),

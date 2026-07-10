@@ -671,6 +671,39 @@ with(Functions) {
 }
 ```
 
+#### tween / ease
+
+`tween` is the direct procedural-animation constructor: it moves between two values (or two `Fn` signals) across a domain with a named easing curve. `Fn.ease(...)` shapes an existing normalized signal. Both remain visible and rebuildable in the function graph.
+
+```diffstatic {data-lang=kotlin}
+val fade = tween(0.0, 1.0, 2.0..4.0, Functions.Easing.SINE_IN_OUT)
+val shapedNoise = valueNoise(3, 4.0, 1.0).ease(Functions.Easing.SMOOTHSTEP)
+```
+
+`Easing` covers the conventional Penner family, so motion reads the same here as in
+other animation toolkits. The polynomial ramps (`QUAD`, `CUBIC`, `QUART`, `QUINT`),
+`SINE`, `EXPO`, and `CIRC` come in `_IN`, `_OUT`, and `_IN_OUT` variants; `BACK`,
+`ELASTIC`, and `BOUNCE` add anticipation, spring, and settle; `LINEAR`,
+`SMOOTHSTEP`, and `SMOOTHERSTEP` round out the set. A tween clamps normalized time
+to its endpoints. `ease(..., clampInput = false)` is useful when a polynomial shape
+should continue beyond `0..1`.
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/tween-ease.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-tween-ease"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    // A settling spring, textured with a windowed tremor — the headline motion gesture.
+    val motion = tween(-1.0, 1.0, 0.0..1.0, Functions.Easing.BACK_OUT)
+    val tremor = valueNoise(17, 10.0, 0.08) * hannWindow()
+    val texturedMotion = (motion + tremor).withName("settling motion")
+    texturedMotion.plot(0.0..1.0)
+}
+```
+
 
 ### Oscillators and pulse family
 
@@ -2592,307 +2625,6 @@ with(Functions) {
 }
 ```
 
-#### Fn graph inspection and rewrite language
-
-`Fn` values carry a best-effort structural graph alongside their evaluator. Ordinary sampling still uses the evaluator; the graph is there so a function can be inspected, deep-copied, visualized, and rewritten without reverse-engineering a Kotlin closure. Constructors and combiners in the standard family attach graph nodes with operation names, child edges, numeric metadata, and rebuild recipes. Opaque `fn { ... }` functions still evaluate normally, but rewrite passes cannot see inside their lambda bodies.
-
-The rewrite language is a compact "selector `=>` action" layer over `Fn.rewriteGraph(...)`. It is deliberately closer to XPath/CSS/glob selectors than to JSON tools: the thing being matched is a labeled occurrence path through a function graph.
-
-**Simple**
-
-This should inspect the graph of a nested function, then rewrite the `saw` under a `sin` into a `triangle`.
-
-```diffstatic {data-lang=kotlin}
-val base = sin(sin(saw(0.25)))
-val changed = base.rewriteKotlin("""
-#fnrewrite
-sin/*/saw => op=triangle
-""")
-```
-
-**Creative**
-
-```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/fn-rewrite-graph-inspection.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-fn-rewrite-graph-inspection"}
-:::static
-import afield.stdlib.Functions
-import afield.stdlib.graphSvg
-import afield.stdlib.rewriteKotlin
-
-with(Functions) {
-    val base = sin(sin(saw(0.25))).withName("nested carrier")
-    val changed = base.rewriteKotlin("""
-#fnrewrite
-sin/*/saw => op=triangle
-sin/**/[tag=number][value>0.2] => = 0.5
-""")
-
-    display(
-        "graph",
-        """
-        <div style="font-family:Iosevka Web, monospace; background:#050505; color:#e8e8e8; border:1px solid #303030; padding:14px; max-width:1120px;">
-          <div style="display:grid; grid-template-columns:1fr; gap:14px; align-items:start;">
-            <div>
-              <div style="font-weight:700; margin:0 0 8px 2px;">before</div>
-              <div style="overflow:hidden; border:1px solid #202020;">${base.graphSvg(width = 1060, nodeWidth = 154.0, nodeHeight = 46.0, xGap = 176.0, yGap = 62.0, maxDepth = 5)}</div>
-            </div>
-            <div>
-              <div style="font-weight:700; margin:0 0 8px 2px;">after</div>
-              <div style="overflow:hidden; border:1px solid #202020;">${changed.graphSvg(width = 1060, nodeWidth = 154.0, nodeHeight = 46.0, xGap = 176.0, yGap = 62.0, maxDepth = 5)}</div>
-            </div>
-          </div>
-        </div>
-        """.trimIndent()
-    )
-}
-```
-
-The first rule matches a `saw` occurrence whose parent is any node and whose grandparent is `sin`. The second rule finds numeric nodes anywhere under a `sin` and changes values greater than `0.2` to `0.5`. The graph view is a better first read than text here: the operation swap and constant rewrites become visible as topology and labels.
-
-#### Rewrite rule shape
-
-A rewrite spec is a sequence of rules. Rules can be separated by newlines or semicolons. A rule has one selector on the left and one or more actions on the right:
-
-```text
-selector => action
-selector => action, action
-selector => action | action
-```
-
-Commas and pipes on the RHS both mean "then". Actions are applied left-to-right to the copied node. This matters for numeric edits:
-
-```text
-**/[value>0.2] => *= 2.0, += 1.0
-```
-
-That rule doubles the current numeric value, then adds one to the doubled value.
-
-Lines starting with `#` or `//` are comments. The `#fnrewrite` header is optional for runtime parsing, but useful inside Kotlin triple-quoted strings because the Monaco language extension recognizes it:
-
-```kotlin
-val spec = """
-#fnrewrite
-sin/**/[tag=number] => *= @{1.0 + depth * 0.1}
-"""
-```
-
-#### Selector basics
-
-A selector is a set of terms. Whitespace and `&` both mean "and":
-
-```text
-saw
-role=frequency
-parent=sin role=amplitude
-parent=sin & role=amplitude
-tag=number
-```
-
-The older terse selector style is still supported:
-
-```text
-sin.frequency
-```
-
-That reads as "a node connected through the `frequency` role on or under a `sin`-ish occurrence". Prefer path selectors for new code when ancestry matters; they are more explicit.
-
-Useful term forms:
-
-| Term | Matches |
-| --- | --- |
-| `sin` | current node op, incoming role, or tag named `sin` |
-| `number` | node tagged as numeric metadata |
-| `const` / `param` / `opaque` | common node classes |
-| `op=saw` | current node operation |
-| `role=frequency` | incoming edge role |
-| `edge=frequency` | alias for `role` |
-| `param=frequency` | alias for `role` |
-| `parameter=frequency` | alias for `role` |
-| `parent=sin` | parent operation |
-| `under=sin` | alias for `parent` |
-| `name=lead` | public `Fn.name` |
-| `tag=number` | graph tag |
-| `depth=2` | depth from the graph root |
-
-#### Path selectors
-
-Path selectors are slash-separated occurrence matches:
-
-```text
-sin/saw
-sin/*/saw
-sin/**/saw
-/multiply/**/[tag=number]
-```
-
-The matched node is always the current node being considered for rewrite. An unanchored path can match any suffix of the current root-to-node occurrence path. A leading `/` anchors the match at the graph root.
-
-| Path piece | Meaning |
-| --- | --- |
-| `foo` | one node whose op, role, or tag matches `foo` |
-| `*` | exactly one node |
-| `**` | zero or more nodes |
-| `/` prefix | anchor at the graph root |
-| `[predicate]` | filter the current path segment |
-
-Examples:
-
-```text
-sin/*/saw
-```
-
-Matches `saw` nodes that are children of children of a `sin`.
-
-```text
-sin/**/saw
-```
-
-Matches `saw` nodes at any depth below a `sin`, including direct children.
-
-```text
-/multiply/**/[tag=number]
-```
-
-Matches numeric nodes anywhere under a root `multiply` graph.
-
-Because graph nodes may be shared, the match is occurrence-based. The same `Fn` object can appear through multiple paths. Whether those paths collapse to one copied node depends on `preserveSharing`; by default `rewriteKotlin(...)` copies by occurrence so path-sensitive edits are unsurprising.
-
-#### Predicates
-
-Predicates live inside path segments:
-
-```text
-**/[op=const]
-**/[role=frequency]
-**/[tag=number][value>0.2]
-**/[depth>=2][index=0]
-```
-
-Supported predicate keys:
-
-| Key | Value source |
-| --- | --- |
-| `op` | graph operation name |
-| `role`, `edge`, `param`, `parameter` | incoming edge role |
-| `tag` | graph tag set |
-| `name` | public function name |
-| `depth` | path depth from root |
-| `index` | child index within the parent |
-| `value` | common numeric metadata value |
-| other names | `numbers`, `strings`, `booleans`, or `longs` metadata on the graph node |
-
-Supported comparisons are `=`, `!=`, `>`, `<`, `>=`, and `<=`. Numeric comparisons are used when both sides can be parsed as numbers; otherwise equality is case-insensitive string equality.
-
-#### Actions
-
-Actions rebuild or relabel the matched copied node:
-
-| Action | Effect |
-| --- | --- |
-| `drop`, `prune`, `zero` | replace with `zero(copy.domain)` |
-| `op=sin` | rebuild this node as another known operation, if possible |
-| `replace=triangle` | alias for `op=triangle` |
-| `name=lead` | set the copied function name |
-| `domain=all` | set `Domain.ALL` |
-| `domain=default` | set `Domain.DEFAULT` |
-| `domain=0.0..1.0` | set a concrete domain |
-| `= 0.5` | replace a numeric node's `value` |
-| `*= 2.0` | multiply a numeric node's `value` |
-| `/= 2.0` | divide a numeric node's `value` |
-| `+= 0.1` | add to a numeric node's `value` |
-| `-= 0.1` | subtract from a numeric node's `value` |
-
-Numeric actions apply only to nodes with a `numbers["value"]` metadata entry. That usually means constants and parameter nodes. If a numeric action lands on a non-numeric node, it is ignored rather than failing the whole rewrite.
-
-`op=...` is intentionally conservative. It works when the copied node knows how to rebuild as the requested standard operation. If the node is opaque or the operation is not compatible, the copied node is left alone.
-
-#### Kotlin on the RHS
-
-Use `@{ ... }` for Kotlin expressions in numeric actions. The code inside is compiled in the current live Field box context by `rewriteKotlin(...)`, and it receives a `FnRewriteNumberContext` as implicit receiver:
-
-```text
-**/[tag=number] => *= @{1.0 + depth * 0.1}
-**/[role=amplitude] => = @{if (parentOp == "sin") value * 0.5 else value}
-```
-
-Available names inside `@{...}`:
-
-| Name | Meaning |
-| --- | --- |
-| `value` | current numeric value |
-| `it` | alias for `value` |
-| `op` | current node operation |
-| `role` | incoming edge role |
-| `parameter` | alias for `role` |
-| `parentOp` | parent node operation, if any |
-| `depth` | depth from root |
-| `path` | list of child indices from root |
-| `ancestors` | root-to-parent path elements |
-| `occurrence` | root-to-current path elements |
-| `name` | public function name, if any |
-| `domain` | current function domain |
-| `numbers` | numeric metadata map |
-| `strings` | string metadata map |
-| `booleans` | boolean metadata map |
-| `longs` | long metadata map |
-
-Kotlin RHS snippets can be multi-line. The last expression is returned:
-
-```text
-**/[tag=number] => = @{
-    val bias = if (role == "frequency") 1.25 else 1.0
-    value * bias + depth * 0.05
-}
-```
-
-The older `${...}` form is still accepted for compatibility, but `@{...}` is the intended syntax because it can be written directly inside Kotlin raw strings without escaping.
-
-#### rewrite versus rewriteKotlin
-
-Use `rewriteKotlin(...)` in live Field code. It accepts all rewrite syntax, including `@{...}` RHS snippets:
-
-```kotlin
-val g = f.rewriteKotlin("""
-#fnrewrite
-sin/**/[tag=number] => *= @{1.1}
-""")
-```
-
-The lower-level `rewrite(...)` function is useful when the RHS is plain numbers and actions, or when you are supplying your own evaluator through `FnRewriteOptions`. It intentionally does not depend on the live-code compiler.
-
-#### Rewrite plot example
-
-This example rewrites a nested graph in two ways: it changes a descendant `saw` into a `triangle`, then uses Kotlin RHS code to scale numeric values under `sin` by depth.
-
-```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/fn-rewrite-language-plot.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-fn-rewrite-language-plot"}
-:::static
-import afield.stdlib.Functions
-import afield.stdlib.rewriteKotlin
-
-with(Functions) {
-    val base = (sin(sin(saw(0.18))) * 0.45) over (0.0..3.0)
-    val changed = base.rewriteKotlin("""
-#fnrewrite
-sin/*/saw => op=triangle
-sin/**/[tag=number][value>0.15] => *= @{1.0 + depth * 0.08}
-**/[role=amplitude] => *= @{if (parentOp == "sin") 0.75 else 1.0}
-""")
-    base.withName("before rewrite").plot(0.0..3.0, channel = "before", heightPx = 240, title = "before rewrite")
-    changed.withName("after rewrite").plot(0.0..3.0, channel = "after", heightPx = 240, title = "after rewrite")
-    (changed - base).withName("rewrite delta").plot(0.0..3.0, channel = "delta", heightPx = 220, title = "after - before")
-}
-```
-
-The important thing here is that the selectors talk about structure, not sample values. The rules do not ask "where is the waveform high?"; they ask "which function graph nodes sit under this ancestry, role, or metadata condition?" Plotting the source, result, and delta makes the structural edit audible-to-the-eye: the graph rewrite is not just metadata, it changes the sampled signal.
-
-#### Rewrite limitations
-
-The graph is a recipe, not a decompiler. Standard `Functions` constructors and combiners participate because they attach graph metadata and rebuild functions. Raw `fn { ... }` lambdas are opaque: they can be copied as evaluators and shown as opaque nodes, but they cannot be structurally edited from the inside.
-
-Path matching follows occurrence paths through the copied graph. This is what makes selectors like `sin/**/[role=frequency]` useful, but it also means shared subgraphs need a conscious choice. Leave `preserveSharing = false` for independent occurrence edits; pass `preserveSharing = true` when identity sharing matters more than path-specific mutation.
-
-Finally, rewrite rules run during graph copy, bottom-up through children before parents. A rule can affect what later actions on the same node see, but it does not retroactively revisit children that have already been copied.
-
-
 #### FunctionCursor methods
 
 Cursor entries show how to pull sequential samples from an `Fn` when array or stream helpers are too indirect.
@@ -2950,6 +2682,19 @@ with(Functions) {
     f.plot()
 }
 ```
+
+For hand-driven procedural loops, cursors also provide:
+
+| Method | Meaning |
+| --- | --- |
+| `peek()` | sample at the current coordinate without advancing |
+| `nextWithX()` | return the coordinate and value, then advance |
+| `skip(count)` | move without evaluating |
+| `seek(x)` | move to an absolute coordinate |
+| `reset()` | return to the function domain start |
+| `copy()` | branch cursor state while sharing the immutable `Fn` |
+
+These operations make a cursor useful as a tiny transport without turning `Fn` itself stateful. The function remains a value; the cursor owns position.
 
 
 #### Functions.TimelineChunk and TimelineGraph
@@ -3315,6 +3060,471 @@ with(Functions) {
     f.plot()
 }
 ```
+
+## Browsing a function through its component graph
+
+The final plot answers “what shape did I make?” `browseGraph()` answers “how did each occurrence become part of that shape?” It keeps the root function’s x-axis fixed while you select nodes in the structural graph:
+
+```diffstatic {data-lang=kotlin}
+val gesture = (
+    sin(2.0).shift(0.12) *
+    tween(0.15, 1.0, 0.0..1.0, Functions.Easing.CUBIC_IN_OUT)
+).softClip(0.8)
+
+gesture.browseGraph(channel = "components")
+```
+
+The browser always leaves the final curve visible in gray. The selected cyan trace has five views:
+
+- **local** samples the selected subgraph directly on the final x-axis;
+- **effect** replaces that exact occurrence with a neutral signal, rebuilds the root, and plots `final - muted`;
+- **muted final** shows the rebuilt root without that occurrence;
+- **cascade** steps the selected component up its ancestor chain one transform at a time, so you watch a raw piece *become the final shape* — a slider walks leaf → root, every stage on the shared x-axis;
+- **sensitivity** sweeps the selected numeric node across a range and overlays the resulting family of final curves, so you can see how much that one number moves the finished gesture.
+
+Shift- or ⌘-click nodes in the sidebar to overlay several occurrences at once for side-by-side comparison.
+
+The distinction between local and effect is the useful part. A sine below `shift`, `warp`, `repeat`, multiplication, or a timeline may look ordinary locally while its effect shows where it actually lands in the finished gesture. Every graph occurrence has its own path, so a shared function used in two places can be inspected twice in context.
+
+```diffstatic {data-lang=kotlin}
+val trace = gesture.graphTrace(samples = 256)
+val shiftedSine = trace.nodes.first { it.op == "sin" }
+
+println(shiftedSine.path)
+println(shiftedSine.local.take(4))
+println(shiftedSine.effect.take(4))
+```
+
+`graphTrace(...)` is the non-HTML form for tests, analysis, and agents. It returns the shared x coordinates, final samples, and local/muted/effect arrays for each occurrence, plus the numeric-node value sweeps behind the sensitivity view (pass `sensitivitySteps` to control the sweep resolution). `maxDepth` and `maxNodes` bound the work for unusually large generated graphs.
+
+Effect is deliberately called *contextual effect*, not contribution. For addition it behaves like an additive decomposition; for clipping, division, modulation, and other nonlinear parents it answers the more honest counterfactual question: “what changes in the final output if this occurrence is neutralized?”
+
+### Watching a rewrite happen
+
+The occurrence browser answers "how did each piece become the final shape?"; `browseRewrite(...)` answers "what did each rewrite do to that shape?" It applies the rules one at a time and steps through the result on the same time-base, drawing *before* (dashed), *after* (cyan), and *delta* (orange) for each rule:
+
+```diffstatic {data-lang=kotlin}
+gesture.browseRewrite("""
+#fnrewrite
+saw => op=triangle
+**/[role=amplitude] => *= 0.5
+""", channel = "rewrite")
+```
+
+`graphRewriteTrace(...)` is the non-HTML form, and it also accepts a `List<FnGraphRule>` — so the same before/after lanes work for the pattern rules and programmatic rules described below, not just the string DSL. Together, the two browsers close the loop between structural editing and perceptual confirmation: rewrite the graph, then watch exactly which occurrence moved and by how much.
+
+## Fn graph inspection and rewrite language
+
+`Fn` values carry a best-effort structural graph alongside their evaluator. Ordinary sampling still uses the evaluator; the graph is there so a function can be inspected, deep-copied, visualized, and rewritten without reverse-engineering a Kotlin closure. Constructors and combiners in the standard family attach graph nodes with operation names, child edges, numeric metadata, and rebuild recipes. Opaque `fn { ... }` functions still evaluate normally, but rewrite passes cannot see inside their lambda bodies.
+
+The rewrite language is a compact "selector `=>` action" layer over `Fn.rewriteGraph(...)`. It is deliberately closer to XPath/CSS/glob selectors than to JSON tools: the thing being matched is a labeled occurrence path through a function graph.
+
+**Simple**
+
+This should inspect the graph of a nested function, then rewrite the `saw` under a `sin` into a `triangle`.
+
+```diffstatic {data-lang=kotlin}
+val base = sin(sin(saw(0.25)))
+val changed = base.rewriteKotlin("""
+#fnrewrite
+sin/*/saw => op=triangle
+""")
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/fn-rewrite-graph-inspection.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-fn-rewrite-graph-inspection"}
+:::static
+import afield.stdlib.Functions
+import afield.stdlib.graphSvg
+import afield.stdlib.rewriteKotlin
+
+with(Functions) {
+    val base = sin(sin(saw(0.25))).withName("nested carrier")
+    val changed = base.rewriteKotlin("""
+#fnrewrite
+sin/*/saw => op=triangle
+sin/**/[tag=number][value>0.2] => = 0.5
+""")
+
+    display(
+        "graph",
+        """
+        <div style="font-family:Iosevka Web, monospace; background:#050505; color:#e8e8e8; border:1px solid #303030; padding:14px; max-width:1120px;">
+          <div style="display:grid; grid-template-columns:1fr; gap:14px; align-items:start;">
+            <div>
+              <div style="font-weight:700; margin:0 0 8px 2px;">before</div>
+              <div style="overflow:hidden; border:1px solid #202020;">${base.graphSvg(width = 1060, nodeWidth = 154.0, nodeHeight = 46.0, xGap = 176.0, yGap = 62.0, maxDepth = 5)}</div>
+            </div>
+            <div>
+              <div style="font-weight:700; margin:0 0 8px 2px;">after</div>
+              <div style="overflow:hidden; border:1px solid #202020;">${changed.graphSvg(width = 1060, nodeWidth = 154.0, nodeHeight = 46.0, xGap = 176.0, yGap = 62.0, maxDepth = 5)}</div>
+            </div>
+          </div>
+        </div>
+        """.trimIndent()
+    )
+}
+```
+
+The first rule matches a `saw` occurrence whose parent is any node and whose grandparent is `sin`. The second rule finds numeric nodes anywhere under a `sin` and changes values greater than `0.2` to `0.5`. The graph view is a better first read than text here: the operation swap and constant rewrites become visible as topology and labels.
+
+### The interactive loop: compile, preview, commit
+
+`rewrite(...)` remains intentionally forgiving for sketches and performances. For deliberate editing—especially from an agent—use the three-stage API:
+
+```diffstatic {data-lang=kotlin}
+val source = (saw(0.2) * 0.5).withName("gesture")
+val spec = """
+#fnrewrite
+saw -> op=triangle                 # `->` reads naturally
+**/[role=amplitude] → *= 0.75      # unicode arrows are welcome too
+parent=notHere => drop             # useful experiment; currently unmatched
+"""
+
+val program = compileFnRewrite(spec)
+println(program.diagnosticText())
+
+val preview = source.previewRewrite(spec)
+println(preview.summary())
+
+val committed = source.rewriteChecked(spec)
+```
+
+`compileFnRewrite(...)` never needs a function graph. It checks the language, retains valid rules, and returns line-addressed errors and warnings. `previewRewrite(...)` applies those rules to an immutable copy and records every matched path, role, before/after operation, no-op, and unmatched rule. `rewriteChecked(...)` refuses a program with errors; ordinary `rewrite(...)` keeps the historical forgiving behavior.
+
+When the rules contain Kotlin `@{...}` expressions, use `previewRewriteKotlin(...)` and `rewriteKotlinChecked(...)`. They compile expressions in the current Field box just like `rewriteKotlin(...)`, so preview and commit see the same live variables, imports, and helper functions.
+
+That gives humans a pleasant rhythm—write, inspect, listen or look, commit—and gives agents a bounded evidence loop:
+
+1. Compile and fix every error.
+2. Preview and read `summary()`.
+3. Treat unmatched rules and matched/no-op applications as hypotheses to reconsider, not silent success.
+4. Plot or sample the previewed function when structural success also needs perceptual confirmation.
+5. Commit with `rewriteChecked(...)` once the report matches the intention.
+
+The summary is compact and deterministic enough to paste into chat or a transcript. A typical report starts with `FnRewrite: 3 rule(s), 2 match(es), 2 change(s)`, then lists unmatched selectors, diagnostics, and paths such as `#1 path=/0 op=saw changed -> triangle`.
+
+### Rewrite rule shape
+
+A rewrite spec is a sequence of rules. Rules can be separated by newlines or semicolons. A rule has one selector on the left and one or more actions on the right:
+
+```diffstatic {data-lang=fnrewrite}
+selector => action
+selector => action, action
+selector => action | action
+```
+
+Commas and pipes on the RHS both mean "then". Actions are applied left-to-right to the copied node. This matters for numeric edits:
+
+```diffstatic {data-lang=fnrewrite}
+**/[value>0.2] => *= 2.0, += 1.0
+```
+
+That rule doubles the current numeric value, then adds one to the doubled value.
+
+Lines starting with `#` or `//` are comments. The `#fnrewrite` header is optional for runtime parsing, but useful inside Kotlin triple-quoted strings because the Monaco language extension recognizes it:
+
+```diffstatic {data-lang=kotlin}
+val spec = """
+#fnrewrite
+sin/**/[tag=number] => *= @{1.0 + depth * 0.1}
+"""
+```
+
+Inline comments are supported too, including after actions. The canonical arrow is `=>`; ASCII `->` and Unicode `→` are exact aliases. Monaco highlights, diagnoses, and completes both embedded `#fnrewrite` strings and standalone `fnrewrite` models.
+
+### Selector basics
+
+A selector is a set of terms. Whitespace and `&` both mean "and":
+
+```diffstatic {data-lang=fnrewrite}
+saw
+role=frequency
+parent=sin role=amplitude
+parent=sin & role=amplitude
+tag=number
+```
+
+The older terse selector style is still supported:
+
+```diffstatic {data-lang=fnrewrite}
+sin.frequency
+```
+
+That reads as "a node connected through the `frequency` role on or under a `sin`-ish occurrence". Prefer path selectors for new code when ancestry matters; they are more explicit.
+
+Useful term forms:
+
+| Term | Matches |
+| --- | --- |
+| `sin` | current node op, incoming role, or tag named `sin` |
+| `number` | node tagged as numeric metadata |
+| `const` / `param` / `opaque` | common node classes |
+| `op=saw` | current node operation |
+| `role=frequency` | incoming edge role |
+| `edge=frequency` | alias for `role` |
+| `param=frequency` | alias for `role` |
+| `parameter=frequency` | alias for `role` |
+| `parent=sin` | parent operation |
+| `under=sin` | alias for `parent` |
+| `name=lead` | public `Fn.name` |
+| `tag=number` | graph tag |
+| `depth=2` | depth from the graph root |
+
+### Path selectors
+
+Path selectors are slash-separated occurrence matches:
+
+```diffstatic {data-lang=fnrewrite}
+sin/saw
+sin/*/saw
+sin/**/saw
+/multiply/**/[tag=number]
+```
+
+The matched node is always the current node being considered for rewrite. An unanchored path can match any suffix of the current root-to-node occurrence path. A leading `/` anchors the match at the graph root.
+
+| Path piece | Meaning |
+| --- | --- |
+| `foo` | one node whose op, role, or tag matches `foo` |
+| `*` | exactly one node |
+| `**` | zero or more nodes |
+| `/` prefix | anchor at the graph root |
+| `[predicate]` | filter the current path segment |
+
+Examples:
+
+```diffstatic {data-lang=fnrewrite}
+sin/*/saw
+```
+
+Matches `saw` nodes that are children of children of a `sin`.
+
+```diffstatic {data-lang=fnrewrite}
+sin/**/saw
+```
+
+Matches `saw` nodes at any depth below a `sin`, including direct children.
+
+```diffstatic {data-lang=fnrewrite}
+/multiply/**/[tag=number]
+```
+
+Matches numeric nodes anywhere under a root `multiply` graph.
+
+Because graph nodes may be shared, the match is occurrence-based. The same `Fn` object can appear through multiple paths. Whether those paths collapse to one copied node depends on `preserveSharing`; by default `rewriteKotlin(...)` copies by occurrence so path-sensitive edits are unsurprising.
+
+### Predicates
+
+Predicates live inside path segments:
+
+```diffstatic {data-lang=fnrewrite}
+**/[op=const]
+**/[role=frequency]
+**/[tag=number][value>0.2]
+**/[depth>=2][index=0]
+```
+
+Supported predicate keys:
+
+| Key | Value source |
+| --- | --- |
+| `op` | graph operation name |
+| `role`, `edge`, `param`, `parameter` | incoming edge role |
+| `tag` | graph tag set |
+| `name` | public function name |
+| `depth` | path depth from root |
+| `index` | child index within the parent |
+| `value` | common numeric metadata value |
+| other names | `numbers`, `strings`, `booleans`, or `longs` metadata on the graph node |
+
+Supported comparisons are `=`, `!=`, `>`, `<`, `>=`, and `<=`. Numeric comparisons are used when both sides can be parsed as numbers; otherwise equality is case-insensitive string equality.
+
+### Actions
+
+Actions rebuild or relabel the matched copied node:
+
+| Action | Effect |
+| --- | --- |
+| `drop`, `prune`, `zero` | replace with `zero(copy.domain)` |
+| `op=sin` | rebuild this node as another known operation, if possible |
+| `replace=triangle` | alias for `op=triangle` |
+| `name=lead` | set the copied function name |
+| `domain=all` | set `Domain.ALL` |
+| `domain=default` | set `Domain.DEFAULT` |
+| `domain=0.0..1.0` | set a concrete domain |
+| `= 0.5` | replace a numeric node's `value` |
+| `*= 2.0` | multiply a numeric node's `value` |
+| `/= 2.0` | divide a numeric node's `value` |
+| `+= 0.1` | add to a numeric node's `value` |
+| `-= 0.1` | subtract from a numeric node's `value` |
+
+Numeric actions apply only to nodes with a `numbers["value"]` metadata entry. That usually means constants and parameter nodes. If a numeric action lands on a non-numeric node, it is ignored rather than failing the whole rewrite.
+
+`op=...` transmutes a node to another operation, reusing role-addressed children and scalar metadata. The vocabulary is the whole graph-aware family, defined once in `OpRegistry` (the single source of truth the DSL validator and the Monaco editor also consult):
+
+- **Generators** — oscillators (`sin`, `cos`, `saw`, `triangle`, `square`), `pulseTrain`, noise (`whiteNoise`, `valueNoise`, `perlinNoise`, `fbm`, `fbmPerlin`, `randomWalk`), windows (`hannWindow`, `hammingWindow`, `blackmanWindow`, `gaussianWindow`), `gaussian`, `ramp`, `step`, `smoothstep`, `tween`, `ease`. These rebuild from whatever roles the source carries and fall back to factory defaults for the rest. Role names bridge across families, so `sin => op=saw` carries `frequency` over as `period` (via reciprocal) rather than resetting it.
+- **Algebra** — `add`, `subtract`, `multiply`, `divide`, rebuilt from the `left`/`right` children.
+- **Value transforms** — `shift`, `scaleX`, `scaleY`, `offsetY`, `pow`, `log`, `clamp`, `clip`, `softClip`, `fold`, `wrapY`. These need an existing `source` child, so `clamp => op=softClip` works while `sin => op=clamp` is an honest no-op (nothing to wrap) rather than a silent lie.
+
+Transmutation is deliberately truthful about impossibility: if a target cannot be built from the matched node it is left unchanged and reported as `matched/no-op` in `previewRewrite(...)`. Data-carrying ops such as `piecewise`, `timeline`, and `rbf` are *known* to selectors and validation but are not transmutation targets, because their identity lives in baked point/item data a foreign node cannot supply.
+
+### Kotlin on the RHS
+
+Use `@{ ... }` for Kotlin expressions in numeric actions. The code inside is compiled in the current live Field box context by `rewriteKotlin(...)`, and it receives a `FnRewriteNumberContext` as implicit receiver:
+
+```diffstatic {data-lang=fnrewrite}
+**/[tag=number] => *= @{1.0 + depth * 0.1}
+**/[role=amplitude] => = @{if (parentOp == "sin") value * 0.5 else value}
+```
+
+Available names inside `@{...}`:
+
+| Name | Meaning |
+| --- | --- |
+| `value` | current numeric value |
+| `it` | alias for `value` |
+| `op` | current node operation |
+| `role` | incoming edge role |
+| `parameter` | alias for `role` |
+| `parentOp` | parent node operation, if any |
+| `depth` | depth from root |
+| `path` | list of child indices from root |
+| `ancestors` | root-to-parent path elements |
+| `occurrence` | root-to-current path elements |
+| `name` | public function name, if any |
+| `domain` | current function domain |
+| `numbers` | numeric metadata map |
+| `strings` | string metadata map |
+| `booleans` | boolean metadata map |
+| `longs` | long metadata map |
+
+Kotlin RHS snippets can be multi-line. The last expression is returned:
+
+```diffstatic {data-lang=fnrewrite}
+**/[tag=number] => = @{
+    val bias = if (role == "frequency") 1.25 else 1.0
+    value * bias + depth * 0.05
+}
+```
+
+The older `${...}` form is still accepted for compatibility, but `@{...}` is the intended syntax because it can be written directly inside Kotlin raw strings without escaping.
+
+### rewrite versus rewriteKotlin
+
+Use `rewriteKotlin(...)` in live Field code. It accepts all rewrite syntax, including `@{...}` RHS snippets:
+
+```diffstatic {data-lang=kotlin}
+val g = f.rewriteKotlin("""
+#fnrewrite
+sin/**/[tag=number] => *= @{1.1}
+""")
+```
+
+The lower-level `rewrite(...)` function is useful when the RHS is plain numbers and actions, or when you are supplying your own evaluator through `FnRewriteOptions`. It intentionally does not depend on the live-code compiler.
+
+### Programmatic rules, traces, and fixed points
+
+The string language is the concise live-coding surface. The middle layer for larger experiments is `FnGraphRule`: a named predicate plus a replacement function. It uses the same bottom-up graph copier as `rewrite(...)`, but returns a trace rather than only a new function.
+
+```diffstatic {data-lang=kotlin}
+val eliminateAddZero = FnGraphRule(
+    name = "x + 0 -> x",
+    matches = { c ->
+        c.op == "add" && c.node.child("right")?.graphNode()?.numbers?.get("value") == 0.0
+    },
+    replace = { _, copy -> copy.graphNode().child("left") ?: copy }
+)
+
+val run = ((sin(2.0) + 0.0) + 0.0).rewriteUntilStable(eliminateAddZero)
+val optimized = run.function
+println("${run.stop}: ${run.events.size} edits in ${run.passes} passes")
+```
+
+This API is deliberately small, but it establishes the pieces needed for a more ambitious optimizer or evolving-function system:
+
+- `graphMatches { ... }` returns occurrence-sensitive matches with roles, ancestry, depth, and paths.
+- `firstGraphMatch { ... }` is the short-circuit query form.
+- `graphMetrics { node -> cost }` reports unique nodes, path occurrences, edges, depth, opacity, rebuildability, and a caller-defined cost.
+- `graphSignature()` gives a deterministic structural signature without sampling or comparing evaluator closures.
+- `rewriteWithRules(...)` performs one named, traced pass.
+- `rewriteUntilStable(...)` performs bounded passes and stops with `STABLE`, `CYCLE`, or `MAX_PASSES`.
+
+Rules default to `FIRST_MATCH` at each node, which makes priority explicit. Use `FnGraphRuleMode.ALL_MATCHES` when several rules should deliberately chain on the same copied node. A bounded run is important in live art code: an oscillating rewrite should report a cycle, not disappear into the animation loop.
+
+`graphMetrics` separates shared DAG nodes from path occurrences. That distinction is useful now for understanding repeated motifs, and later for cost-guided search: execution cost might charge each unique node, while visual or semantic complexity might charge each occurrence.
+
+### Pattern → template rewriting
+
+The selector DSL edits one matched node in place. Its algebraic sibling is *pattern => template*, where both sides are graph shapes with metavariables. This is the term-rewriting surface a rewriting or evolving-function system reasons with. A metavariable `?x` binds a whole subtree (and, if repeated, must bind structurally equal subtrees); a bare number matches a numeric node; a bare op matches by op; `op(child, …)` also constrains the leading children.
+
+```diffstatic {data-lang=kotlin}
+val simplified = ((sin(2.0) + 0.0) + 0.0).rewritePatterns(
+    "add(?x, 0) => ?x",       // additive identity, applied to a fixed point
+    "multiply(?x, 1) => ?x"   // multiplicative identity
+)
+println(simplified.function.graphNode().op) // sin
+```
+
+`fnRule("lhs => rhs")` compiles a spec into an ordinary `FnGraphRule`, so pattern rules inherit the same traced, bounded, cycle-detecting runners (`rewriteWithRules`, `rewriteUntilStable`) as everything else. A bare op on the right transmutes the matched node through `OpRegistry` (`sin => cos`); the algebra ops build directly from child templates (`multiply(?a, ?b) => multiply(?b, ?a)`). For an RHS the string form cannot express, use the programmatic builder — the pattern captures structure, and the replacement is ordinary Kotlin over the whole stdlib:
+
+```diffstatic {data-lang=kotlin}
+val folded = (sin(1.0) + sin(1.0)).rewriteUntilStable(
+    fnRule("fold ?x + ?x", "add(?x, ?x)") { m -> m.sub("x") * 2.0 }
+)
+```
+
+### Evolving and optimizing functions
+
+The pieces above — occurrence matching, a cost from `graphMetrics`, and the seeded mutation operators in `FnMutations` (jitter/nudge numbers, substitute an op within its family, prune, duplicate, or graft a subtree) — compose into `evolve(...)`: a bounded, fully deterministic (µ+λ) hill-climb over `Fn` graphs. Given the same seed and inputs it reproduces the same run, which is what makes evolved gestures repeatable in live art.
+
+```diffstatic {data-lang=kotlin}
+val target = triangle(0.5).softClip(0.7)
+val run = evolve(
+    seed = saw(1.0),
+    iterations = 80,
+    rngSeed = 1L,
+    fitness = matchFitness(target, samples = 128, complexityWeight = 0.02)
+)
+println("${run.bestScore} after ${run.steps.size} accepted mutations")
+run.best.browseGraph(channel = "evolved")
+```
+
+`matchFitness(...)` scores a candidate by how closely it matches a target on a shared time-base, minus an optional `graphMetrics` complexity penalty (parsimony pressure). Supply any `(Fn) -> Double` for a different objective. Like `rewriteUntilStable`, the loop is bounded by `iterations` so a search can never disappear into the animation loop.
+
+### Rewrite plot example
+
+This example rewrites a nested graph in two ways: it changes a descendant `saw` into a `triangle`, then uses Kotlin RHS code to scale numeric values under `sin` by depth.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/fn-rewrite-language-plot.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-fn-rewrite-language-plot"}
+:::static
+import afield.stdlib.Functions
+import afield.stdlib.rewriteKotlin
+
+with(Functions) {
+    val base = (sin(sin(saw(0.18))) * 0.45) over (0.0..3.0)
+    val changed = base.rewriteKotlin("""
+#fnrewrite
+sin/*/saw => op=triangle
+sin/**/[tag=number][value>0.15] => *= @{1.0 + depth * 0.08}
+**/[role=amplitude] => *= @{if (parentOp == "sin") 0.75 else 1.0}
+""")
+    base.withName("before rewrite").plot(0.0..3.0, channel = "before", heightPx = 240, title = "before rewrite")
+    changed.withName("after rewrite").plot(0.0..3.0, channel = "after", heightPx = 240, title = "after rewrite")
+    (changed - base).withName("rewrite delta").plot(0.0..3.0, channel = "delta", heightPx = 220, title = "after - before")
+}
+```
+
+The important thing here is that the selectors talk about structure, not sample values. The rules do not ask "where is the waveform high?"; they ask "which function graph nodes sit under this ancestry, role, or metadata condition?" Plotting the source, result, and delta makes the structural edit audible-to-the-eye: the graph rewrite is not just metadata, it changes the sampled signal.
+
+### Rewrite limitations
+
+The graph is a recipe, not a decompiler. Standard `Functions` constructors and combiners participate because they attach graph metadata and rebuild functions. Raw `fn { ... }` lambdas are opaque: they can be copied as evaluators and shown as opaque nodes, but they cannot be structurally edited from the inside.
+
+Path matching follows occurrence paths through the copied graph. This is what makes selectors like `sin/**/[role=frequency]` useful, but it also means shared subgraphs need a conscious choice. Leave `preserveSharing = false` for independent occurrence edits; pass `preserveSharing = true` when identity sharing matters more than path-specific mutation.
+
+Finally, rewrite rules run during graph copy, bottom-up through children before parents. A rule can affect what later actions on the same node see, but it does not retroactively revisit children that have already been copied.
 
 ## Notes
 

@@ -259,6 +259,9 @@ code {
     background: transparent !important;
     color: var(--mono-text-faint);
 }
+.md-typeset .highlighttable pre {
+    margin-left: 0;
+}
 
 /* ── diff code-block offset (shared with code-diff-player) ──── */
 @media screen and (min-width: 76.234375em) {

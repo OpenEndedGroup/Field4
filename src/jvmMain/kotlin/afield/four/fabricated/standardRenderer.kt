@@ -71,6 +71,8 @@ object StandardRenderer {
 				var environmentStrength: Float = 0f,
 				var environmentRotation: Float = 0f,
 				val backgroundColor: Vector3f = Vector3f(0f, 0f, 0f),
+				var showEnvironmentBackground: Boolean = false,
+				var environmentBackgroundIntensity: Float = 1f,
 				var motionBlurStrength: Float = DEFAULT_MOTION_BLUR_STRENGTH,
 			var motionBlurClamp: Float = DEFAULT_MOTION_BLUR_CLAMP,
 			var motionBlurDepthReject: Float = DEFAULT_MOTION_BLUR_DEPTH_REJECT,
@@ -147,6 +149,72 @@ object StandardRenderer {
 			val sceneGraph: FabricateScene = FabricateScene(),
 			val postStack: FabricatePostStack = FabricatePostStack(transparentComposite)
 		) {
+		/**
+		 * GPU-side buffer of extra (non-key) lights consumed by the deferred lighting pass. Populated by
+		 * [syncLights]; capacity is [maxLights]. The primary shadow-casting directional light does not
+		 * live here — it stays in the built-in `LightData` uniform so it can drive the shadow map.
+		 */
+		var lightsBuffer: FrameBufferGroup? = null
+		val maxLights: Int = DEFAULT_MAX_LIGHTS
+
+		/** Add a light to the scene. Call [syncLights] afterwards (or once per frame) to upload it. */
+		fun addLight(light: FabricateLight): FabricateLight = sceneGraph.addLight(light)
+
+		/**
+		 * Toggle drawing the environment map as the scene background (Three.js `scene.background = env`).
+		 * Requires an environment texture in the build [Config]; otherwise background pixels stay
+		 * [SceneDefaults.backgroundColor].
+		 */
+		fun showEnvironmentBackground(show: Boolean = true, intensity: Float = scene.environmentBackgroundIntensity): Bundle {
+			scene.showEnvironmentBackground = show
+			scene.environmentBackgroundIntensity = intensity
+			return this
+		}
+
+		/**
+		 * Upload [sceneGraph] lights into the deferred lighting pass. The first shadow-casting
+		 * directional light (or, failing that, the first directional light) becomes the key light and
+		 * updates the scene's directional/shadow state; every other light is packed into [lightsBuffer].
+		 * Mirrors the explicit-sync idiom of [sortTransparentMeshes]/`applyScenePlan`.
+		 */
+		fun syncLights(): Bundle {
+			val lights = sceneGraph.lights
+			val quad = lightingModule.current.meshes["lightingQuad"] ?: return this
+
+			val key = lights.firstOrNull { it.type == FabricateLightType.DIRECTIONAL && it.castShadow }
+				?: lights.firstOrNull { it.type == FabricateLightType.DIRECTIONAL }
+			if (key != null) {
+				scene.lightDirection.set(key.direction).also { if (it.lengthSquared() > 1e-8f) it.normalize() }
+				scene.lightColor.set(key.color)
+				scene.lightIntensity = key.intensity
+			}
+
+			val extras = lights.filter { it !== key }
+			val buffer = lightsBuffer
+			if (buffer != null && extras.isNotEmpty()) {
+				buffer.write {
+					extras.take(maxLights).forEach { light ->
+						val dir = Vector3f(light.direction).also { if (it.lengthSquared() > 1e-8f) it.normalize() }
+						val typeId = when (light.type) {
+							FabricateLightType.DIRECTIONAL -> 0f
+							FabricateLightType.POINT -> 1f
+							FabricateLightType.SPOT -> 2f
+						}
+						val cosInner = kotlin.math.cos(Math.toRadians(light.innerConeDegrees.toDouble())).toFloat()
+						val cosOuter = kotlin.math.cos(Math.toRadians(light.outerConeDegrees.toDouble())).toFloat()
+						put(light.position.x, light.position.y, light.position.z, light.range)
+						put(dir.x, dir.y, dir.z, typeId)
+						put(light.color.x, light.color.y, light.color.z, light.intensity)
+						put(cosInner, cosOuter, 0f, 0f)
+					}
+				}
+			}
+			if (quad.push.offsets.containsKey("lightCount")) {
+				quad.push["lightCount"] = extras.size.coerceAtMost(maxLights)
+			}
+			return this
+		}
+
 		/**
 		 * Convenience: build one mesh per pass using the supplied factory and register them with the
 		 * appropriate modules. Use this when you want the same vertex data drawn into both g-buffer
@@ -883,6 +951,17 @@ object StandardRenderer {
 				val lightingQuad = lightingModule.ensureFullscreenTriangle("lightingQuad")
 				lightingQuad.seedDefaultLightingState(scene)
 
+				val lightsBuffer = defaultBuffer(name = "fabricateLights") {
+					perFrame = true
+					size = (DEFAULT_MAX_LIGHTS * 4).vec4s
+				}.toBuffer(renderer)
+				if (lightingQuad.push.offsets.containsKey("lightBuffer")) {
+					lightingQuad.push.bind("lightBuffer") { lightsBuffer }
+				}
+				if (lightingQuad.push.offsets.containsKey("lightCount")) {
+					lightingQuad.push["lightCount"] = 0
+				}
+
 				val transparentCopyModule = Module(parameters {
 					name = "prefab-transparent-copy"
 					transparentComposite.apply()
@@ -978,6 +1057,7 @@ object StandardRenderer {
 					)
 				)
 				val bundle = Bundle(gBuffer, shadow, ao, lighting, transparentComposite, motionBlur, antiAlias, gBufferModule, shadowModule, aoModule, lightingModule, transparentCopyModule, transparentModule, motionBlurModule, antiAliasModule, scene, postStack = postStack)
+				bundle.lightsBuffer = lightsBuffer
 				bundle.applyRenderProfile(bundle.sceneGraph.renderProfile)
 				return bundle
 			}
@@ -1318,6 +1398,8 @@ object StandardRenderer {
 				push.seedDefaultBinding("environmentStrength") { scene.environmentStrength }
 				push.seedDefaultBinding("environmentRotation") { scene.environmentRotation }
 				push.seedDefaultBinding("backgroundColor") { Vector3f(scene.backgroundColor) }
+				push.seedDefaultBinding("showEnvBackground") { if (scene.showEnvironmentBackground) 1f else 0f }
+				push.seedDefaultBinding("envBackgroundIntensity") { scene.environmentBackgroundIntensity }
 				return this
 			}
 
@@ -1357,6 +1439,11 @@ object StandardRenderer {
 			light.seedDefaultBinding("shadowBias") { scene.shadowBias }
 			light.seedDefaultBinding("lightColor") { Vector3f(scene.lightColor) }
 			light.seedDefaultBinding("lightIntensity") { scene.lightIntensity }
+			light.seedDefaultBinding("invViewProj") {
+				Matrix4f(scene.projection.evaluateUniform())
+					.mul(scene.camera.modelView())
+					.invert()
+			}
 		}
 	}
 
@@ -1388,6 +1475,7 @@ object StandardRenderer {
 	private const val DEFAULT_FXAA_EDGE_THRESHOLD = 0.125f
 	private const val DEFAULT_FXAA_EDGE_THRESHOLD_MIN = 0.0312f
 	private const val DEFAULT_FXAA_SPAN_MAX = 8f
+	private const val DEFAULT_MAX_LIGHTS = 64
 
 	private fun defaultCheckerColor(): Vector4f = Vector4f(0f, 0f, 0f, 1f)
 
@@ -2140,8 +2228,22 @@ object StandardRenderer {
 			}
 		"""
 
-		private const val lightingFragment = """
+		internal const val lightingFragment = """
 			#version 450
+			#extension GL_EXT_buffer_reference : require
+			#extension GL_EXT_scalar_block_layout : require
+
+			struct GpuLight {
+				vec4 positionRange;   // xyz = position, w = range (0 = no falloff)
+				vec4 directionType;   // xyz = direction, w = type (0=dir, 1=point, 2=spot)
+				vec4 colorIntensity;  // rgb = color, a = intensity
+				vec4 spotParams;      // x = cosInner, y = cosOuter
+			};
+
+			layout(std430, buffer_reference) readonly buffer LightBuffer {
+				GpuLight lights[];
+			};
+
 			layout(location = 0) in vec2 vUv;
 			layout(set = 0, binding = 0) uniform sampler2D gAlbedoRoughness;
 		layout(set = 0, binding = 1) uniform sampler2D gNormalMetallic;
@@ -2157,6 +2259,7 @@ object StandardRenderer {
 			float shadowBias;
 			vec3 lightColor;
 			float lightIntensity;
+			mat4 invViewProj;
 		} uLight;
 
 			layout(push_constant) uniform LightPush {
@@ -2168,6 +2271,10 @@ object StandardRenderer {
 				float environmentStrength;
 				float environmentRotation;
 				vec3 backgroundColor;
+				LightBuffer lightBuffer;
+				int lightCount;
+				float showEnvBackground;
+				float envBackgroundIntensity;
 			} push;
 
 		layout(location = 0) out vec4 outColor;
@@ -2201,6 +2308,46 @@ object StandardRenderer {
 		vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
 			vec3 grazing = max(vec3(1.0 - roughness), F0);
 			return F0 + (grazing - F0) * pow(1.0 - cosTheta, 5.0);
+		}
+
+		// Cook-Torrance direct contribution for one light of given incoming radiance.
+		vec3 shadePBR(vec3 n, vec3 v, vec3 l, vec3 radiance, vec3 albedo, float roughness, float metallic, vec3 F0) {
+			vec3 h = normalize(v + l);
+			float nDotL = max(dot(n, l), 0.0);
+			if (nDotL <= 0.0) return vec3(0.0);
+			float NDF = distributionGGX(n, h, roughness);
+			float G = geometrySmith(n, v, l, roughness);
+			vec3 F = fresnelSchlick(max(dot(h, v), 0.0), F0);
+			vec3 numerator = NDF * G * F;
+			float denom = 4.0 * max(dot(n, v), 0.0) * nDotL + 1e-4;
+			vec3 specular = numerator / denom;
+			vec3 kD = (vec3(1.0) - F) * (1.0 - metallic);
+			return (kD * albedo / 3.14159 + specular) * radiance * nDotL;
+		}
+
+		// Attenuated radiance from a packed GpuLight at a world position.
+		vec3 lightRadiance(GpuLight gl, vec3 worldPos, out vec3 l) {
+			int type = int(gl.directionType.w + 0.5);
+			vec3 radiance = gl.colorIntensity.rgb * gl.colorIntensity.a;
+			if (type == 0) {
+				l = normalize(-gl.directionType.xyz);
+				return radiance;
+			}
+			vec3 toLight = gl.positionRange.xyz - worldPos;
+			float dist = max(length(toLight), 1e-4);
+			l = toLight / dist;
+			float atten = 1.0 / max(dist * dist, 1e-4);
+			float range = gl.positionRange.w;
+			if (range > 0.0) {
+				float t = clamp(1.0 - pow(dist / range, 4.0), 0.0, 1.0);
+				atten *= t * t;
+			}
+			if (type == 2) {
+				float cosAngle = dot(normalize(gl.directionType.xyz), -l);
+				float spot = clamp((cosAngle - gl.spotParams.y) / max(gl.spotParams.x - gl.spotParams.y, 1e-4), 0.0, 1.0);
+				atten *= spot * spot;
+			}
+			return radiance * atten;
 		}
 
 		vec2 directionToEquirect(vec3 dir) {
@@ -2240,7 +2387,16 @@ object StandardRenderer {
 					vec4 positionDepth = texture(gPositionDepth, vUv);
 					vec4 motionMaterial = texture(gMotionMaterial, vUv);
 					if (length(normalMetallic.xyz) < 0.01) {
-					outColor = vec4(push.backgroundColor, 1.0);
+					if (push.showEnvBackground > 0.5) {
+						// Reconstruct a world-space view ray for this background pixel. The ndc.y flip
+						// matches the g-buffer's stored screen orientation (see the AO reprojection).
+						vec2 ndc = vec2(vUv.x * 2.0 - 1.0, 1.0 - 2.0 * vUv.y);
+						vec4 farPoint = uLight.invViewProj * vec4(ndc, 1.0, 1.0);
+						vec3 rayDir = normalize(farPoint.xyz / farPoint.w - push.cameraPos);
+						outColor = vec4(sampleEnvironment(rayDir, 0.0) * max(push.envBackgroundIntensity, 0.0), 1.0);
+					} else {
+						outColor = vec4(push.backgroundColor, 1.0);
+					}
 					return;
 				}
 				vec3 albedo = albedoRough.rgb;
@@ -2289,6 +2445,15 @@ object StandardRenderer {
 				vec3 iblSpecular = envSpecular * F_ibl * envAmount * mix(1.0, 0.48, roughness);
 				vec3 iblClearcoat = envClearcoat * Fcc_ibl * envAmount * clearcoat * mix(0.38, 0.18, clearcoatRoughness);
 				vec3 color = ambient + Lo + iblSpecular * (1.0 - clearcoat * 0.10) + iblClearcoat;
+
+				// Additional scene lights (points, spots, extra directionals) from the lights buffer.
+				// The key/shadowed directional light is already handled above via uLight.
+				for (int i = 0; i < push.lightCount; ++i) {
+					GpuLight gl = push.lightBuffer.lights[i];
+					vec3 li;
+					vec3 radiance = lightRadiance(gl, worldPos, li);
+					color += shadePBR(n, v, li, radiance, albedo, roughness, metallic, F0);
+				}
 			outColor = vec4(color, 1.0);
 		}
 	"""

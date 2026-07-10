@@ -47,28 +47,138 @@ data class FnRewriteOptions(
     val kotlinNumberContext: ((FnRewriteNumberContext) -> Double?)? = null
 )
 
-private data class FnDslRewriteRule(
+enum class FnRewriteSeverity { ERROR, WARNING }
+
+data class FnRewriteDiagnostic(
+    val severity: FnRewriteSeverity,
+    val line: Int,
+    val column: Int,
+    val message: String,
+    val hint: String? = null
+) {
+    override fun toString(): String = buildString {
+        append(severity.name.lowercase()).append(" at ").append(line).append(':').append(column).append(": ").append(message)
+        hint?.let { append(" (").append(it).append(')') }
+    }
+}
+
+data class FnRewriteRuleSpec(
+    val line: Int,
     val selector: String,
     val actions: List<String>
 )
 
+data class FnRewriteProgram(
+    val source: String,
+    val rules: List<FnRewriteRuleSpec>,
+    val diagnostics: List<FnRewriteDiagnostic>
+) {
+    val valid: Boolean get() = diagnostics.none { it.severity == FnRewriteSeverity.ERROR }
+
+    fun diagnosticText(): String = if (diagnostics.isEmpty()) "FnRewrite: ${rules.size} rule(s), no diagnostics"
+    else diagnostics.joinToString("\n")
+}
+
+data class FnRewriteApplication(
+    val rule: Int,
+    val line: Int,
+    val selector: String,
+    val actions: List<String>,
+    val path: List<Int>,
+    val role: String?,
+    val beforeOp: String,
+    val afterOp: String,
+    val changed: Boolean
+)
+
+data class FnRewritePreview(
+    val function: Functions.Fn,
+    val program: FnRewriteProgram,
+    val applications: List<FnRewriteApplication>
+) {
+    val matchedRules: Int get() = applications.map { it.rule }.distinct().size
+    val matchCount: Int get() = applications.size
+    val changeCount: Int get() = applications.count { it.changed }
+    val unmatchedRules: List<FnRewriteRuleSpec> get() {
+        val matched = applications.mapTo(mutableSetOf()) { it.rule }
+        return program.rules.filterIndexed { index, _ -> index !in matched }
+    }
+
+    /** Compact deterministic report suitable for logs, chat, and agent transcripts. */
+    fun summary(): String = buildString {
+        append("FnRewrite: ").append(program.rules.size).append(" rule(s), ")
+            .append(matchCount).append(" match(es), ").append(changeCount).append(" change(s)")
+        if (program.diagnostics.isNotEmpty()) {
+            append(", ").append(program.diagnostics.count { it.severity == FnRewriteSeverity.ERROR }).append(" error(s), ")
+                .append(program.diagnostics.count { it.severity == FnRewriteSeverity.WARNING }).append(" warning(s)")
+        }
+        unmatchedRules.takeIf { it.isNotEmpty() }?.let { rules ->
+            append("\nunmatched: ").append(rules.joinToString { "line ${it.line} `${it.selector}`" })
+        }
+        program.diagnostics.forEach { append('\n').append(it) }
+        applications.forEach { application ->
+            append("\n#").append(application.rule + 1)
+                .append(" path=").append(if (application.path.isEmpty()) "/" else application.path.joinToString("/", prefix = "/"))
+                .append(" op=").append(application.beforeOp)
+            application.role?.let { append(" role=").append(it) }
+            append(if (application.changed) " changed" else " matched/no-op")
+            if (application.afterOp != application.beforeOp) append(" -> ").append(application.afterOp)
+        }
+    }
+}
+
+fun compileFnRewrite(spec: String): FnRewriteProgram = parseFnDslRewriteProgram(spec)
+
 fun Functions.Fn.rewrite(
     spec: String,
     options: FnRewriteOptions = FnRewriteOptions()
-): Functions.Fn {
-    val rules = parseFnDslRewriteRules(spec)
-    if (rules.isEmpty()) return deepCopy(preserveSharing = options.preserveSharing)
+): Functions.Fn = previewRewrite(spec, options).function
 
-    return rewriteGraph(preserveSharing = options.preserveSharing) { context, copy ->
+/** Compiles and applies [spec], retaining diagnostics, match paths, and effective-change information. */
+fun Functions.Fn.previewRewrite(
+    spec: String,
+    options: FnRewriteOptions = FnRewriteOptions()
+): FnRewritePreview {
+    val program = compileFnRewrite(spec)
+    if (program.rules.isEmpty()) {
+        return FnRewritePreview(deepCopy(preserveSharing = options.preserveSharing), program, emptyList())
+    }
+
+    val applications = mutableListOf<FnRewriteApplication>()
+    val rewritten = rewriteGraph(preserveSharing = options.preserveSharing) { context, copy ->
         var current = copy
-        for (rule in rules) {
+        for ((ruleIndex, rule) in program.rules.withIndex()) {
             if (!rule.matches(context)) continue
-            for (action in rule.actions) {
-                current = applyRewriteAction(current, context, action, options)
-            }
+            val before = current
+            val beforeSignature = before.graphSignature()
+            for (action in rule.actions) current = applyRewriteAction(current, context, action, options)
+            applications += FnRewriteApplication(
+                rule = ruleIndex,
+                line = rule.line,
+                selector = rule.selector,
+                actions = rule.actions,
+                path = context.path,
+                role = context.role,
+                beforeOp = before.graphNode().op,
+                afterOp = current.graphNode().op,
+                changed = current.graphSignature() != beforeSignature
+            )
         }
         current
     }
+    return FnRewritePreview(rewritten, program, applications)
+}
+
+/** Rejects malformed specs before applying any valid rules that happen to remain. */
+fun Functions.Fn.rewriteChecked(
+    spec: String,
+    options: FnRewriteOptions = FnRewriteOptions()
+): Functions.Fn {
+    val preview = previewRewrite(spec, options)
+    require(preview.program.valid) {
+        "Invalid FnRewrite program:\n${preview.program.diagnosticText()}"
+    }
+    return preview.function
 }
 
 fun Functions.Fn.rewrite(
@@ -76,18 +186,143 @@ fun Functions.Fn.rewrite(
     preserveSharing: Boolean
 ): Functions.Fn = rewrite(spec, FnRewriteOptions(preserveSharing = preserveSharing))
 
-private fun parseFnDslRewriteRules(spec: String): List<FnDslRewriteRule> =
-    splitRewriteText(spec, setOf('\n', ';'))
-        .map { it.trim() }
-        .filter { it.isNotEmpty() && !it.startsWith("#") && !it.startsWith("//") }
-        .mapNotNull { line ->
-            val parts = line.split("=>", limit = 2)
-            if (parts.size != 2) return@mapNotNull null
-            val actions = splitRewriteText(parts[1], setOf('|', ','))
-                .map { it.trim() }
-                .filter { it.isNotEmpty() }
-            if (actions.isEmpty()) null else FnDslRewriteRule(parts[0].trim(), actions)
+private fun parseFnDslRewriteProgram(spec: String): FnRewriteProgram {
+    val rules = mutableListOf<FnRewriteRuleSpec>()
+    val diagnostics = mutableListOf<FnRewriteDiagnostic>()
+    var searchFrom = 0
+
+    for (rawStatement in splitRewriteText(spec, setOf('\n', ';'))) {
+        val offset = spec.indexOf(rawStatement, searchFrom).let { if (it < 0) searchFrom else it }
+        searchFrom = (offset + rawStatement.length).coerceAtMost(spec.length)
+        val line = spec.take(offset).count { it == '\n' } + 1
+        val statement = stripFnRewriteComment(rawStatement).trim()
+        if (statement.isEmpty() || statement.equals("#fnrewrite", ignoreCase = true)) continue
+
+        val arrow = findRewriteArrow(statement)
+        if (arrow == null) {
+            diagnostics += FnRewriteDiagnostic(
+                FnRewriteSeverity.ERROR, line, 1,
+                "Expected `selector => action`.",
+                "`->` and `→` are also accepted"
+            )
+            continue
         }
+        val selector = statement.substring(0, arrow.first).trim()
+        val rhs = statement.substring(arrow.first + arrow.second).trim()
+        if (selector.isEmpty()) {
+            diagnostics += FnRewriteDiagnostic(FnRewriteSeverity.ERROR, line, 1, "Selector is empty.", "Use `any` to match every node")
+            continue
+        }
+        if (rhs.isEmpty()) {
+            diagnostics += FnRewriteDiagnostic(FnRewriteSeverity.ERROR, line, arrow.first + arrow.second + 1, "Action is empty.")
+            continue
+        }
+        if (!balancedSelectorBrackets(selector)) {
+            diagnostics += FnRewriteDiagnostic(FnRewriteSeverity.ERROR, line, 1, "Unbalanced `[...]` selector predicate.")
+            continue
+        }
+
+        val actions = splitRewriteText(rhs, setOf('|', ','))
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+        if (actions.isEmpty()) {
+            diagnostics += FnRewriteDiagnostic(FnRewriteSeverity.ERROR, line, arrow.first + arrow.second + 1, "Action is empty.")
+            continue
+        }
+        actions.forEach { action -> validateRewriteAction(action, line, diagnostics) }
+        rules += FnRewriteRuleSpec(line, selector, actions)
+    }
+    return FnRewriteProgram(spec, rules, diagnostics)
+}
+
+private fun findRewriteArrow(statement: String): Pair<Int, Int>? {
+    val arrows = listOf("=>", "->", "→")
+    var best: Pair<Int, Int>? = null
+    for (arrow in arrows) {
+        val index = statement.indexOf(arrow)
+        if (index >= 0 && (best == null || index < best.first)) best = index to arrow.length
+    }
+    return best
+}
+
+private fun stripFnRewriteComment(text: String): String {
+    var bracketDepth = 0
+    var braceDepth = 0
+    var inSingle = false
+    var inDouble = false
+    var escaped = false
+    var i = 0
+    while (i < text.length) {
+        val c = text[i]
+        if (inSingle || inDouble) {
+            if (escaped) escaped = false
+            else if (c == '\\') escaped = true
+            else if (inSingle && c == '\'') inSingle = false
+            else if (inDouble && c == '"') inDouble = false
+            i++
+            continue
+        }
+        when (c) {
+            '\'' -> inSingle = true
+            '"' -> inDouble = true
+            '[' -> bracketDepth++
+            ']' -> if (bracketDepth > 0) bracketDepth--
+            '{' -> braceDepth++
+            '}' -> if (braceDepth > 0) braceDepth--
+            '#' -> if (bracketDepth == 0 && braceDepth == 0) return text.substring(0, i)
+            '/' -> if (text.getOrNull(i + 1) == '/' && bracketDepth == 0 && braceDepth == 0) return text.substring(0, i)
+        }
+        i++
+    }
+    return text
+}
+
+private fun balancedSelectorBrackets(selector: String): Boolean {
+    var depth = 0
+    for (c in selector) {
+        if (c == '[') depth++
+        if (c == ']' && --depth < 0) return false
+    }
+    return depth == 0
+}
+
+private fun validateRewriteAction(
+    action: String,
+    line: Int,
+    diagnostics: MutableList<FnRewriteDiagnostic>
+) {
+    val lower = action.lowercase()
+    if (lower in setOf("drop", "prune", "zero")) return
+    if (lower.startsWith("op=") || lower.startsWith("replace=")) {
+        val target = action.substringAfter('=').trim().trim('"', '\'')
+        if (target.isEmpty()) diagnostics += FnRewriteDiagnostic(FnRewriteSeverity.ERROR, line, 1, "Replacement operation is empty.")
+        else if (!OpRegistry.knows(target)) {
+            diagnostics += FnRewriteDiagnostic(
+                FnRewriteSeverity.WARNING, line, 1,
+                "`op=$target` is not a known operation.",
+                OpRegistry.transmutableHint()
+            )
+        }
+        return
+    }
+    if (lower.startsWith("name=")) {
+        if (action.substringAfter('=').trim().isEmpty()) diagnostics += FnRewriteDiagnostic(FnRewriteSeverity.ERROR, line, 1, "Name is empty.")
+        return
+    }
+    if (lower.startsWith("domain=")) {
+        val value = action.substringAfter('=').trim()
+        if (!value.equals("all", true) && !value.equals("default", true) && parseDomain(value) == null) {
+            diagnostics += FnRewriteDiagnostic(FnRewriteSeverity.ERROR, line, 1, "Invalid domain `$value`.", "Use `all`, `default`, or `a..b`")
+        }
+        return
+    }
+    if (Regex("""^\s*(?:value\s*)?(\*=|/=|\+=|-=|=)\s*.+$""").matches(action)) return
+    diagnostics += FnRewriteDiagnostic(
+        FnRewriteSeverity.ERROR, line, 1,
+        "Unknown action `$action`.",
+        "Try `op=triangle`, `*= 0.5`, `name=lead`, `domain=all`, or `drop`"
+    )
+}
 
 /**
  * Split rewrite text on top-level separators only.
@@ -121,8 +356,13 @@ private fun splitRewriteText(text: String, separators: Set<Char>): List<String> 
         val next2 = text.getOrNull(i + 2)
 
         if (inLineComment) {
-            if (c == '\n') inLineComment = false
-            current.append(c)
+            if (c == '\n') {
+                inLineComment = false
+                if (c in separators && parenDepth == 0 && bracketDepth == 0 && braceDepth == 0) emit()
+                else current.append(c)
+            } else {
+                current.append(c)
+            }
             i++
             continue
         }
@@ -192,7 +432,7 @@ private fun splitRewriteText(text: String, separators: Set<Char>): List<String> 
     return parts
 }
 
-private fun FnDslRewriteRule.matches(context: FnGraphCopyContext): Boolean {
+private fun FnRewriteRuleSpec.matches(context: FnGraphCopyContext): Boolean {
     val selector = selector.trim()
     if (selector == "*" || selector.equals("any", ignoreCase = true)) return true
     return splitSelectorTerms(selector)

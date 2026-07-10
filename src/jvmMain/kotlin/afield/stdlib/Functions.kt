@@ -246,6 +246,48 @@ object Functions {
 
     enum class StretchShape { LINEAR, SMOOTHSTEP, SMOOTHERSTEP }
 
+    /** Common normalized-time shapes for procedural motion and value tweening. */
+    /**
+     * Named motion curves for [tween], [Fn.ease], and other alpha-shaping helpers.
+     * The `_IN`/`_OUT`/`_IN_OUT` families follow the conventional Penner easings so
+     * procedural animation reads the same here as in other motion toolkits.
+     */
+    enum class Easing {
+        LINEAR,
+        QUAD_IN,
+        QUAD_OUT,
+        QUAD_IN_OUT,
+        CUBIC_IN,
+        CUBIC_OUT,
+        CUBIC_IN_OUT,
+        QUART_IN,
+        QUART_OUT,
+        QUART_IN_OUT,
+        QUINT_IN,
+        QUINT_OUT,
+        QUINT_IN_OUT,
+        SINE_IN,
+        SINE_OUT,
+        SINE_IN_OUT,
+        EXPO_IN,
+        EXPO_OUT,
+        EXPO_IN_OUT,
+        CIRC_IN,
+        CIRC_OUT,
+        CIRC_IN_OUT,
+        BACK_IN,
+        BACK_OUT,
+        BACK_IN_OUT,
+        ELASTIC_IN,
+        ELASTIC_OUT,
+        ELASTIC_IN_OUT,
+        BOUNCE_IN,
+        BOUNCE_OUT,
+        BOUNCE_IN_OUT,
+        SMOOTHSTEP,
+        SMOOTHERSTEP
+    }
+
     // Common enum entries are re-exported here so `with(Functions)` reads like a
     // small DSL (`blend = ADD`, `profile = HANN`) instead of exposing every
     // internal enum path. Ambiguous entries such as CLAMP/WRAP stay qualified.
@@ -331,6 +373,92 @@ object Functions {
     private fun clamp01(x: Double): Double = x.coerceIn(0.0, 1.0)
     private fun smoothstep(t: Double): Double = t * t * (3.0 - 2.0 * t)
     private fun smootherstep(t: Double): Double = t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
+    private fun powIn(t: Double, p: Double): Double = t.pow(p)
+    private fun powOut(t: Double, p: Double): Double = 1.0 - (1.0 - t).pow(p)
+    private fun powInOut(t: Double, p: Double): Double =
+        if (t < 0.5) 0.5 * (2.0 * t).pow(p) else 1.0 - 0.5 * (2.0 - 2.0 * t).pow(p)
+
+    private fun bounceOut(t: Double): Double {
+        val n = 7.5625
+        val d = 2.75
+        return when {
+            t < 1.0 / d -> n * t * t
+            t < 2.0 / d -> (t - 1.5 / d).let { n * it * it + 0.75 }
+            t < 2.5 / d -> (t - 2.25 / d).let { n * it * it + 0.9375 }
+            else -> (t - 2.625 / d).let { n * it * it + 0.984375 }
+        }
+    }
+
+    private fun shapeAlpha(t: Double, easing: Easing): Double {
+        val c1 = 1.70158
+        val c2 = c1 * 1.525
+        val c3 = c1 + 1.0
+        val c4 = TAU / 3.0
+        val c5 = TAU / 4.5
+        return when (easing) {
+            Easing.LINEAR -> t
+            Easing.QUAD_IN -> powIn(t, 2.0)
+            Easing.QUAD_OUT -> powOut(t, 2.0)
+            Easing.QUAD_IN_OUT -> powInOut(t, 2.0)
+            Easing.CUBIC_IN -> powIn(t, 3.0)
+            Easing.CUBIC_OUT -> powOut(t, 3.0)
+            Easing.CUBIC_IN_OUT -> powInOut(t, 3.0)
+            Easing.QUART_IN -> powIn(t, 4.0)
+            Easing.QUART_OUT -> powOut(t, 4.0)
+            Easing.QUART_IN_OUT -> powInOut(t, 4.0)
+            Easing.QUINT_IN -> powIn(t, 5.0)
+            Easing.QUINT_OUT -> powOut(t, 5.0)
+            Easing.QUINT_IN_OUT -> powInOut(t, 5.0)
+            Easing.SINE_IN -> 1.0 - kotlin.math.cos(t * Math.PI / 2.0)
+            Easing.SINE_OUT -> kotlin.math.sin(t * Math.PI / 2.0)
+            Easing.SINE_IN_OUT -> -(kotlin.math.cos(Math.PI * t) - 1.0) * 0.5
+            Easing.EXPO_IN -> if (t == 0.0) 0.0 else 2.0.pow(10.0 * t - 10.0)
+            Easing.EXPO_OUT -> if (t == 1.0) 1.0 else 1.0 - 2.0.pow(-10.0 * t)
+            Easing.EXPO_IN_OUT -> when {
+                t == 0.0 -> 0.0
+                t == 1.0 -> 1.0
+                t < 0.5 -> 2.0.pow(20.0 * t - 10.0) / 2.0
+                else -> (2.0 - 2.0.pow(-20.0 * t + 10.0)) / 2.0
+            }
+            Easing.CIRC_IN -> 1.0 - kotlin.math.sqrt(1.0 - t * t)
+            Easing.CIRC_OUT -> kotlin.math.sqrt(1.0 - (t - 1.0) * (t - 1.0))
+            Easing.CIRC_IN_OUT -> if (t < 0.5)
+                (1.0 - kotlin.math.sqrt(1.0 - (2.0 * t) * (2.0 * t))) / 2.0
+            else
+                (kotlin.math.sqrt(1.0 - (-2.0 * t + 2.0) * (-2.0 * t + 2.0)) + 1.0) / 2.0
+            Easing.BACK_IN -> c3 * t * t * t - c1 * t * t
+            Easing.BACK_OUT -> 1.0 + c3 * (t - 1.0).pow(3.0) + c1 * (t - 1.0).pow(2.0)
+            Easing.BACK_IN_OUT -> if (t < 0.5)
+                ((2.0 * t) * (2.0 * t) * ((c2 + 1.0) * 2.0 * t - c2)) / 2.0
+            else
+                ((2.0 * t - 2.0) * (2.0 * t - 2.0) * ((c2 + 1.0) * (t * 2.0 - 2.0) + c2) + 2.0) / 2.0
+            Easing.ELASTIC_IN -> when {
+                t == 0.0 -> 0.0
+                t == 1.0 -> 1.0
+                else -> -2.0.pow(10.0 * t - 10.0) * kotlin.math.sin((t * 10.0 - 10.75) * c4)
+            }
+            Easing.ELASTIC_OUT -> when {
+                t == 0.0 -> 0.0
+                t == 1.0 -> 1.0
+                else -> 2.0.pow(-10.0 * t) * kotlin.math.sin((t * 10.0 - 0.75) * c4) + 1.0
+            }
+            Easing.ELASTIC_IN_OUT -> when {
+                t == 0.0 -> 0.0
+                t == 1.0 -> 1.0
+                t < 0.5 -> -(2.0.pow(20.0 * t - 10.0) * kotlin.math.sin((20.0 * t - 11.125) * c5)) / 2.0
+                else -> (2.0.pow(-20.0 * t + 10.0) * kotlin.math.sin((20.0 * t - 11.125) * c5)) / 2.0 + 1.0
+            }
+            Easing.BOUNCE_IN -> 1.0 - bounceOut(1.0 - t)
+            Easing.BOUNCE_OUT -> bounceOut(t)
+            Easing.BOUNCE_IN_OUT -> if (t < 0.5)
+                (1.0 - bounceOut(1.0 - 2.0 * t)) / 2.0
+            else
+                (1.0 + bounceOut(2.0 * t - 1.0)) / 2.0
+            Easing.SMOOTHSTEP -> smoothstep(t)
+            Easing.SMOOTHERSTEP -> smootherstep(t)
+        }
+    }
+    private fun easeAlpha(alpha: Double, easing: Easing): Double = shapeAlpha(alpha.coerceIn(0.0, 1.0), easing)
     private fun fract(x: Double): Double = x - floor(x)
     private fun stretchAlpha(alpha: Double, shape: StretchShape): Double =
         when (shape) {
@@ -655,6 +783,60 @@ object Functions {
 
     fun smoothStep(edge0: Any, edge1: Any, domain: ClosedRange<*>): Fn =
         smoothStep(edge0, edge1, domain.toDomain())
+
+    /**
+     * Interpolates from [from] to [to] across [domain] with a named motion curve.
+     * The endpoints may themselves be signals, which keeps tweening compositional.
+     */
+    fun tween(
+        from: Fn = param(0.0),
+        to: Fn = param(1.0),
+        domain: Domain = Domain.DEFAULT,
+        easing: Easing = Easing.SMOOTHSTEP
+    ): Fn {
+        val d = intersectDomains(domain, from, to)
+        return graphFn(
+            d,
+            "tween",
+            "tween",
+            children = listOf(fnEdge("from", from), fnEdge("to", to)),
+            strings = mapOf("easing" to easing.name),
+            rebuild = { children -> tween(children[0], children[1], domain, easing) }
+        ) { x ->
+            val t = easeAlpha(domain.alphaOf(x), easing)
+            blend(from.eval(x), to.eval(x), t)
+        }
+    }
+
+    fun tween(
+        from: Number,
+        to: Number,
+        domain: Domain = Domain.DEFAULT,
+        easing: Easing = Easing.SMOOTHSTEP
+    ): Fn = tween(param(from), param(to), domain, easing)
+
+    fun tween(
+        from: Number,
+        to: Number,
+        domain: ClosedRange<*>,
+        easing: Easing = Easing.SMOOTHSTEP
+    ): Fn = tween(from, to, domain.toDomain(), easing)
+
+    /** Shapes a normalized signal through [easing], optionally clamping it to 0..1 first. */
+    fun Fn.ease(easing: Easing = Easing.SMOOTHSTEP, clampInput: Boolean = true): Fn =
+        graphFn(
+            domain,
+            name?.let { "ease($it)" } ?: "ease",
+            "ease",
+            children = listOf(fnEdge("source", this)),
+            strings = mapOf("easing" to easing.name),
+            booleans = mapOf("clampInput" to clampInput),
+            rebuild = { children -> children[0].ease(easing, clampInput) }
+        ) { x ->
+            val value = eval(x)
+            if (clampInput) easeAlpha(value, easing)
+            else shapeAlpha(value, easing)
+        }
 
     fun sin(
         frequency: Fn = param(1.0),
@@ -2921,23 +3103,48 @@ canvas {
 
     // Streaming helpers
     class FunctionCursor(
-        private val fn: Fn,
+        val fn: Fn,
         var x: Double = fn.domain.min,
         var step: Double = 1.0
     ) {
+        /** Samples at the current position without advancing. */
+        fun peek(): Double = fn.eval(x)
+
         fun next(): Double {
             val value = fn.eval(x)
             x += step
             return value
         }
 
+        /** Returns the sampled coordinate and value, then advances once. */
+        fun nextWithX(): Pair<Double, Double> {
+            val sampleX = x
+            return sampleX to next()
+        }
+
         fun next(count: Int): DoubleArray {
+            require(count >= 0) { "count must be non-negative" }
             val out = DoubleArray(count)
             for (i in 0 until count) {
                 out[i] = next()
             }
             return out
         }
+
+        /** Moves by [count] cursor steps without evaluating the function. */
+        fun skip(count: Int = 1): FunctionCursor {
+            x += step * count
+            return this
+        }
+
+        fun seek(position: Double): FunctionCursor {
+            x = position
+            return this
+        }
+
+        fun reset(position: Double = fn.domain.min): FunctionCursor = seek(position)
+
+        fun copy(x: Double = this.x, step: Double = this.step): FunctionCursor = FunctionCursor(fn, x, step)
 
         override fun toString(): String = prettySummary(
             "FunctionCursor",
