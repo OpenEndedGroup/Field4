@@ -199,7 +199,10 @@ _server_ref: dict[str, Any] = {}
 # Client
 # --------------------------------------------------------------------------- #
 async def send_request(sock_path: Path, request: dict[str, Any], *, timeout: float) -> dict[str, Any]:
-    reader, writer = await asyncio.open_unix_connection(path=str(sock_path))
+    # A single response can carry screenshot/event payloads far larger than the
+    # asyncio StreamReader default (64 KiB); raise the line limit so readline()
+    # doesn't raise LimitOverrunError on a big-but-valid response.
+    reader, writer = await asyncio.open_unix_connection(path=str(sock_path), limit=256 * 1024 * 1024)
     try:
         writer.write((json.dumps(request) + "\n").encode("utf-8"))
         await writer.drain()

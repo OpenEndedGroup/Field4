@@ -782,6 +782,35 @@ fun handleOutputAreaControl(box: HTMLElement, control: OutputControl) {
     }
 }
 
+/**
+ * Tear down every output-area disclosure owned by [box]: disconnects its
+ * ResizeObserver/MutationObserver, disposes any embedded Monaco editor, removes
+ * the wrap (including any output iframe and the render loop running inside it),
+ * and drops it from the disclosure maps. Mirrors the "clear-all" output-control.
+ *
+ * Called when a box is deleted/tombstoned. Without this a long-lived page (the
+ * docs-capture runner creates/runs/deletes hundreds of boxes on one warm page)
+ * accumulates live-but-hidden output areas whose observers/loops keep firing --
+ * pinning chromium at hundreds of % CPU and multi-GB RSS. Output areas are
+ * regenerated from server output if the box is ever restored (undo) and re-run.
+ */
+fun teardownBoxOutputs(box: HTMLElement) {
+    val outputArea = box.getElementsByClassName("outputArea").asList().firstOrNull() as? HTMLElement ?: return
+    val contain = outputArea.querySelector(".disclosure-group") ?: return
+    val di = js("window.disclosureInterface")
+    if (di == null || di == undefined) return
+    val inter = di(contain)
+    val ids = contain.querySelectorAll(".disclosure").asList().mapNotNull {
+        it.asDynamic().__disclosureId as? String
+    }
+    ids.forEach { id ->
+        // Keep "nested" (it holds child boxes, not output content).
+        if (id != "nested") {
+            (inter.remove as (String) -> Unit).invoke(id)
+        }
+    }
+}
+
 fun handleCustomizationRequest(box: HTMLElement, code: Set_string) {
     console.info("[customize] executing customization code for ${code.property}")
     val f = eval(

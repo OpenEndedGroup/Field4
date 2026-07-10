@@ -351,8 +351,13 @@ class SessionInformation(
         _fileWatchManager = null
         // Dispose any afield.four renderer/window owned by this document's boxes so closing
         // a document (or detaching its last session) releases the native GLFW/Vulkan surface
-        // instead of leaking it into Window.openWindows.
-        boxes.values.forEach { disposeBoxRenderer(it) }
+        // instead of leaking it into Window.openWindows. Also dispose each box's Kotlin
+        // engine (K2 REPL compilation state) so re-opening scratch documents in a long-lived
+        // session does not leak FIR/metadata per box.
+        boxes.values.forEach {
+            disposeBoxRenderer(it)
+            it.disposeKi()
+        }
     }
 }
 

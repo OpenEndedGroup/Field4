@@ -11,6 +11,7 @@ import handleCustomizationRequest
 import handleEvalRequest
 import handleOutputAreaRequest
 import handleOutputAreaControl
+import teardownBoxOutputs
 import kotlinext.js.asJsObject
 import kotlinx.browser.document
 import kotlinx.browser.window
@@ -4610,6 +4611,11 @@ suspend fun main() {
                         box.style.display = "none"
                         box.classList.add("tombstoned")
                         box.asDynamic().tombstoned = true
+                        // Release the box's output areas (observers, iframes, render
+                        // loops, editors). A hidden tombstoned box otherwise keeps them
+                        // alive and running, so a long-lived page that deletes many boxes
+                        // (docs capture runner) accumulates them and pins the browser.
+                        teardownBoxOutputs(box)
                         if (selected.contains(box)) {
                             deselectBox(box)
                         }

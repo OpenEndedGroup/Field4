@@ -103,10 +103,36 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
     val properties = mutableMapOf<String, Any?>()
     val markers = mutableMapOf<String, Marker>()
 
-    var ki: KotlinScriptEngine by lazyVar {
+    // Kept as a named delegate (not an anonymous `by lazyVar { }`) so disposeKi()
+    // can check whether the engine was ever created and release it without forcing
+    // a pointless lazy initialization.
+    private val kiDelegate = lazyVar<KotlinScriptEngine> {
         makeKI(this, reason = "box.ki lazy initialization")
     }
+    var ki: KotlinScriptEngine by kiDelegate
     var ke: BoxExecution = KotlinExecution()
+
+    /**
+     * Dispose this box's Kotlin engine (the K2 REPL compilation state: FIR sessions,
+     * project environment, ProtoBuf metadata) if it was ever created. Each box owns
+     * its own engine, and until now nothing ever disposed it, so every deleted or
+     * detached box leaked its whole compilation state (~tens of MB each) -- fatal for
+     * long-lived sessions that create/run/delete many boxes (e.g. the docs capture
+     * loop). Safe to call repeatedly; a later `ki` access lazily recreates a fresh
+     * engine.
+     */
+    fun disposeKi() {
+        if (!kiDelegate.isInitialized) return
+        try {
+            ki.dispose()
+        } catch (t: Throwable) {
+            lprintln("error,ki", "disposeKi failed for box $id: ${t.message}")
+        }
+        // Pass the initializer explicitly: LazyVar nulls its initializer after the
+        // first init, so reset() with the default arg would leave `ki` unrecoverable
+        // ("Initializer cleared"). This keeps a later `ki` access able to rebuild.
+        kiDelegate.reset { makeKI(this, reason = "box.ki re-initialization after disposeKi") }
+    }
 
     var frame by Delegation<Rect>(defaultValue = { Rect(0.0, 0.0, 0.0, 0.0) }, hook = ::onFrameChange)
     var viewport by Delegation<Rect>(defaultValue = { Rect(0.0, 0.0, 0.0, 0.0) }, hook = ::onViewportChange)
@@ -487,6 +513,9 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                         }
                         target.setPropertyRaw("_tombstone", true)
                         root.disconnect(target)
+                        // Release the box's K2 compilation state; a deleted box is never
+                        // re-run, and otherwise its FIR/metadata leaks for the session's life.
+                        target.disposeKi()
                     }
 
                     val countMessage = formatBoxCountMessage(selected.size, targets.size, "Deleted")
@@ -659,7 +688,12 @@ fun doResync() {
         if (box.inside.loading && name !in LOADING_PRIORITY_RESYNC_PROPERTIES) {
             return@removeAll true
         }
-        if (box.getPropertyRaw("_tombstone").isTrue()) return@removeAll true
+        // Skip resyncing a tombstoned box's *other* properties, but ALWAYS let the
+        // "_tombstone" message itself through -- it is the signal clients use to remove
+        // the box. Swallowing it here left every client that didn't initiate the delete
+        // (notably the backdoor/docs-runner's attached page) with the box, its output
+        // areas, iframes and observers alive forever -> unbounded browser CPU/memory.
+        if (name != "_tombstone" && box.getPropertyRaw("_tombstone").isTrue()) return@removeAll true
         val value = box.getPropertyRaw(name, null)
         if (value == null) {
             val message = Message("set-null").payload(Set_null(box.id, name))
