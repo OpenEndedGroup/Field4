@@ -9,10 +9,12 @@ import re
 import shlex
 import shutil
 import signal
+import socket
 import subprocess
 import sys
 import time
 from dataclasses import dataclass, replace
+from types import SimpleNamespace
 from pathlib import Path
 from typing import Any
 import urllib.error
@@ -43,6 +45,41 @@ RUNNER_SUBPROCESS_GRACE_SEC = 5.0
 # at ~50s and retrying with full JVM restarts.
 PLAYWRIGHT_READY_MARKER = Path(__file__).resolve().parent.parent / ".field-backdoor" / "playwright-ready"
 PLAYWRIGHT_FIRST_RUN_HEADROOM_SEC = float(os.environ.get("AFIELD_PLAYWRIGHT_ATTACH_TIMEOUT", "180"))
+# Opt-in warm-session capture path: reuse ONE persistent field_session daemon
+# (JVM + WebSocket + Playwright page attached once) across non-graphics captures
+# instead of spawning a fresh field_backdoor.py process per capture. Measured
+# ~3.8x faster on non-graphics captures. Default OFF; the default docs build is
+# byte-for-byte unchanged. Graphics-context and video captures always use the
+# per-process path (a graphics-context warm session needs the renderer-dispose
+# fix first). Reset the shared page every N captures to bound box accumulation.
+RUNNER_SESSION_ENV = "FIELD_DOCS_RUNNER_SESSION"
+# Every warm-session capture now creates its box at the ORIGIN, runs, screenshots,
+# then deletes it (via the `delete-box` backdoor command) so exactly zero capture
+# boxes linger between captures. That keeps every box inside the browser viewport
+# render-zone (so its output area actually renders) and removes the old need to
+# stagger boxes off-screen. Retained only as the origin all captures share.
+SESSION_BOX_ORIGIN_X = 0.0
+SESSION_BOX_ORIGIN_Y = 0.0
+# Cap each warm-session ATTEMPT low so a genuinely-incompatible capture (a snippet
+# that errors or emits no output -- which also fails the per-process path) fails
+# fast and falls back to the per-process path, which re-runs with the full
+# options.timeout. Keeps a failed fast-path attempt cheap.
+SESSION_ATTEMPT_TIMEOUT_SEC = float(os.environ.get("FIELD_DOCS_RUNNER_SESSION_ATTEMPT_TIMEOUT", "30"))
+# Circuit breaker: after this many warm-session misses in a run, stop the daemon
+# and use the (authoritative) per-process path for the rest of the build. This
+# MUST stay at 1: the warm daemon and a per-process capture cannot safely share
+# one Field -- a per-process fallback opens its own scratch document on the same
+# server, which breaks the display-output pipeline for BOTH (and, once the shared
+# server is wedged, later fallbacks cold-boot their own JVMs). So the first miss
+# has to free the Field by stopping the daemon before any fallback runs. delete-box
+# cleanup removes the *box-accumulation* constraint (each capture's box is created
+# at the origin and deleted after the shot, so an unbounded run of compatible
+# captures reuses one never-re-reset doc), but display-channel wait-output captures
+# still miss in a warm session, and each such miss must end the daemon cleanly.
+# Measured: raising this let the daemon coexist with fallbacks and made a full
+# forth+fline build SLOWER and crash; at 1 the warm path accelerates the
+# compatible-capture prefix and then falls back safely. See docs-capture-perf-lever.
+SESSION_MAX_FAILURES = int(os.environ.get("FIELD_DOCS_RUNNER_SESSION_MAX_FAILURES", "1"))
 RUNNER_MODE_ENV = "FIELD_DOCS_RUNNER_MODE"
 RUNNER_CONTINUE_ON_ERROR_ENV = "FIELD_DOCS_RUNNER_CONTINUE_ON_ERROR"
 RUNNER_PORT_ENV = "FIELD_DOCS_RUNNER_PORT"
@@ -121,6 +158,14 @@ FABRICATE_DOCS_SCENES = {
     "toy-car-gltf": (
         "renderToyCarGltf",
         "fabricate toy car gltf ready",
+    ),
+    "multi-light-skybox": (
+        "renderMultiLightSkybox",
+        "fabricate multi light skybox ready",
+    ),
+    "tonemap-bloom": (
+        "renderToneMapBloom",
+        "fabricate tonemap bloom ready",
     ),
 }
 
@@ -206,8 +251,20 @@ class RunnerState:
         self.missing_assets = 0
         self.server_starts = 0
         self.server_restarts = 0
+        # Warm-session (opt-in) state.
+        self.session_enabled = (
+            os.environ.get(RUNNER_SESSION_ENV, "").strip().lower() in TRUE_VALUES
+            and self.runner_mode != "never"
+        )
+        self._session_process: subprocess.Popen[str] | None = None
+        self._session_sock_path = self.repo_root / ".field-backdoor" / f"session-{self.backdoor_port}.sock"
+        self._session_box_count = 0
+        self._session_failures = 0
+        self.session_captures = 0
         LOG.info("Field docs runner mode: %s", self.runner_mode)
         LOG.info("Field docs runner continue on error: %s", self.continue_on_error)
+        if self.session_enabled:
+            LOG.info("Field docs runner warm-session path ENABLED (experimental; fast path with per-process fallback)")
         if self.runner_mode != "never":
             self._ensure_shared_field_server()
         atexit.register(self.close)
@@ -371,8 +428,267 @@ class RunnerState:
             return
         LOG.warning("Field docs runner restarting shared Field server: %s", reason)
         self.server_restarts += 1
+        # The warm-session daemon holds a WebSocket to this server; it is now stale.
+        self._stop_session(reason="shared server restart")
         self._stop_shared_field_server()
         self._ensure_shared_field_server()
+
+    # ----- Warm-session daemon (opt-in) -------------------------------------
+    def _ensure_session(self) -> Path | None:
+        """Start (once) and return the socket path for the warm-session daemon.
+
+        The daemon reuses the already-running shared Field on backdoor_port and
+        keeps one Playwright page attached, so eligible captures become cheap
+        socket batches instead of fresh field_backdoor.py processes. Returns None
+        (disabling the fast path) if it cannot be brought up.
+        """
+        if not self.session_enabled:
+            return None
+        if self._session_process is not None and self._session_process.poll() is None:
+            return self._session_sock_path
+        field_session = self.repo_root / "tools" / "field_session.py"
+        if not field_session.exists():
+            LOG.warning("Field docs runner warm-session disabled: %s not found", field_session)
+            self.session_enabled = False
+            return None
+        if self._session_sock_path.exists():
+            try:
+                self._session_sock_path.unlink()
+            except OSError:
+                pass
+        cmd = [
+            sys.executable, str(field_session), "serve",
+            "--port", str(self.backdoor_port),
+            "--with-playwright",
+            "--timeout", "45",
+        ]
+        self._session_log_path = self.repo_root / ".field-backdoor" / "logs" / f"docs-session-{self.backdoor_port}.log"
+        self._session_log_path.parent.mkdir(parents=True, exist_ok=True)
+        session_log = self._session_log_path.open("w", encoding="utf-8")
+        LOG.info("Field docs runner starting warm-session daemon on port %s (log: %s)", self.backdoor_port, self._session_log_path)
+        self._session_process = subprocess.Popen(
+            cmd, cwd=str(self.repo_root),
+            stdout=session_log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+            text=True,
+            **({"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP} if os.name == "nt" else {"start_new_session": True}),
+        )
+        deadline = time.monotonic() + PLAYWRIGHT_FIRST_RUN_HEADROOM_SEC + 30.0
+        while time.monotonic() < deadline:
+            if self._session_process.poll() is not None:
+                LOG.warning(
+                    "Field docs runner warm-session daemon exited early; disabling fast path (see %s)",
+                    self._session_log_path,
+                )
+                self._session_process = None
+                self.session_enabled = False
+                return None
+            if self._session_sock_path.exists():
+                try:
+                    pong = self._session_request({"command": "ping"}, timeout=5.0)
+                    if pong.get("pong"):
+                        self._session_box_count = 0
+                        return self._session_sock_path
+                except OSError:
+                    pass
+            time.sleep(0.25)
+        LOG.warning("Field docs runner warm-session daemon did not become ready; disabling fast path")
+        self._stop_session(reason="daemon startup timeout")
+        self.session_enabled = False
+        return None
+
+    def _session_request(self, request: dict[str, Any], *, timeout: float) -> dict[str, Any]:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
+            sock.settimeout(timeout)
+            sock.connect(str(self._session_sock_path))
+            sock.sendall((json.dumps(request) + "\n").encode("utf-8"))
+            chunks: list[bytes] = []
+            while True:
+                chunk = sock.recv(65536)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+                if b"\n" in chunk:
+                    break
+        raw = b"".join(chunks)
+        if not raw:
+            raise OSError("empty response from warm-session daemon")
+        return json.loads(raw.split(b"\n", 1)[0].decode("utf-8"))
+
+    def _stop_session(self, *, reason: str) -> None:
+        process = self._session_process
+        if process is None:
+            return
+        LOG.info("Field docs runner stopping warm-session daemon: %s", reason)
+        try:
+            if process.poll() is None and self._session_sock_path.exists():
+                self._session_request({"command": "shutdown"}, timeout=5.0)
+        except OSError:
+            pass
+        try:
+            process.wait(timeout=8)
+        except subprocess.TimeoutExpired:
+            try:
+                if os.name == "nt":
+                    process.kill()
+                else:
+                    os.killpg(process.pid, signal.SIGTERM)
+                process.wait(timeout=5)
+            except (ProcessLookupError, subprocess.TimeoutExpired):
+                try:
+                    process.kill()
+                except ProcessLookupError:
+                    pass
+        self._session_process = None
+        if self._session_sock_path.exists():
+            try:
+                self._session_sock_path.unlink()
+            except OSError:
+                pass
+
+    def _try_session_capture(
+        self,
+        *,
+        page_path: Path,
+        block_index: int,
+        screenshot_path: Path,
+        options: RunnerOptions,
+        source_image_path: Path | None,
+        source_image_min_mtime: float | None,
+        code: str,
+    ) -> Any | None:
+        """Run one eligible capture through the warm session.
+
+        Returns a subprocess.CompletedProcess-like object ONLY when the capture
+        is fully clean (rc 0, no execution error, no output gap, file written);
+        otherwise returns None so the caller falls back to the authoritative
+        per-process path. This never lets warm-session/page-reuse state produce a
+        false failure.
+        """
+        sock = self._ensure_session()
+        if sock is None:
+            return None
+        # One scratch doc for the whole session (the daemon opened it at startup;
+        # re-resetting mid-session breaks the output pipeline). Every capture's box
+        # is created at the ORIGIN -- in the viewport render-zone -- then deleted
+        # right after the screenshot, so exactly zero capture boxes accumulate and
+        # an unbounded number of captures reuse one never-re-reset doc. Cap the
+        # per-command timeout low so a capture the warm page can't produce fails
+        # fast and the process fallback re-runs it with the full options.timeout.
+        attempt_timeout = min(options.timeout, SESSION_ATTEMPT_TIMEOUT_SEC)
+        session_options = replace(
+            options, box_x=SESSION_BOX_ORIGIN_X, box_y=SESSION_BOX_ORIGIN_Y, timeout=attempt_timeout,
+        )
+        invocation = build_backdoor_command(
+            repo_root=self.repo_root,
+            page_path=page_path,
+            block_index=block_index,
+            screenshot_path=screenshot_path,
+            options=session_options,
+            source_image_path=source_image_path,
+            source_image_min_mtime=source_image_min_mtime,
+        )
+        # Reset the scratch doc only on the very first capture of the run (this
+        # establishes the output pipeline). Never re-reset mid-run -- a second
+        # open_document in a warm session breaks display output entirely.
+        request = {
+            "commands": invocation.backdoor_commands,
+            "stdin": code,
+            "withPlaywright": True,
+            "resetDoc": self._session_box_count == 0,
+            "timeout": attempt_timeout,
+            "document": invocation.document,
+        }
+        try:
+            resp = self._session_request(
+                request, timeout=runner_subprocess_timeout(options=session_options, is_video=False) + 10.0,
+            )
+        except (OSError, ValueError) as exc:
+            self._stop_session(reason="request failure")
+            return self._session_fallback(f"request failed: {exc}")
+        self._session_box_count += 1
+        results = resp.get("results") or []
+        # Delete every box this capture created (parsed from the batch results) so
+        # the board is clean before the next capture stamps its box at the same
+        # origin -- otherwise a leftover box there would ghost the next screenshot.
+        # Runs on success AND on a miss (the batch may have stopped before an
+        # in-band delete), so overlap is impossible either way.
+        self._session_cleanup_boxes(self._session_created_box_uids(results))
+        stdout = "\n".join(json.dumps(r) for r in results)
+        completed = SimpleNamespace(returncode=0 if resp.get("ok") else 1, stdout=stdout, stderr=resp.get("error", "") or "")
+        if completed.returncode != 0:
+            failing = next((r for r in results if not r.get("ok")), None)
+            detail = resp.get("error") or (
+                f"{failing.get('command')}: {(failing.get('data') or {}).get('error', 'failed')}"
+                if isinstance(failing, dict) else "unknown"
+            )
+            return self._session_fallback(f"batch not ok ({detail})")
+        if extract_backdoor_execution_error(stdout) is not None:
+            return self._session_fallback("execution error in batch")
+        if extract_backdoor_output_gap(stdout=stdout, code=code, options=options) is not None:
+            return self._session_fallback("output gap in batch")
+        if not screenshot_path.exists():
+            return self._session_fallback("no output file produced")
+        self._session_failures = 0
+        self.session_captures += 1
+        return completed
+
+    @staticmethod
+    def _session_created_box_uids(results: list[Any]) -> list[str]:
+        """Uids of the boxes a batch created, in order, parsed from new-box results."""
+        uids: list[str] = []
+        for result in results:
+            if not isinstance(result, dict) or not str(result.get("command", "")).startswith("new-box"):
+                continue
+            data = result.get("data")
+            box = data.get("box") if isinstance(data, dict) else None
+            uid = box.get("uid") if isinstance(box, dict) else None
+            if isinstance(uid, str) and uid:
+                uids.append(uid)
+        return uids
+
+    def _session_cleanup_boxes(self, uids: list[str]) -> None:
+        """Best-effort delete of a capture's boxes so nothing lingers at the origin.
+
+        A separate, cheap socket batch (no Playwright, no doc reset). Failure here
+        never fails the capture -- the screenshot is already on disk -- but a clean
+        board is required for the next origin box not to overlap, so we log misses.
+        """
+        if not uids:
+            return
+        if self._session_process is None or self._session_process.poll() is not None:
+            return
+        try:
+            resp = self._session_request(
+                {
+                    "commands": [shlex.join(["delete-box", *uids, "--timeout", "15"])],
+                    "withPlaywright": False,
+                    "resetDoc": False,
+                    "timeout": 15.0,
+                },
+                timeout=30.0,
+            )
+        except OSError as exc:
+            LOG.warning("Field docs runner warm-session cleanup delete failed: %s", exc)
+            return
+        if not resp.get("ok"):
+            LOG.warning("Field docs runner warm-session cleanup delete not ok: %s", json.dumps(resp)[:300])
+
+    def _session_fallback(self, reason: str) -> None:
+        """Record a warm-session miss and trip the circuit breaker if needed."""
+        self._session_failures += 1
+        LOG.warning(
+            "Field docs runner warm-session miss (%s/%s): %s; using per-process path",
+            self._session_failures, SESSION_MAX_FAILURES, reason,
+        )
+        if self._session_failures >= SESSION_MAX_FAILURES:
+            LOG.warning(
+                "Field docs runner disabling warm-session fast path after %s misses; "
+                "remaining captures use the per-process path",
+                self._session_failures,
+            )
+            self.session_enabled = False
+            self._stop_session(reason="circuit breaker tripped")
+        return None
 
     def _load_cache(self) -> tuple[dict[str, str], dict[str, dict[str, Any]]]:
         try:
@@ -433,6 +749,7 @@ class RunnerState:
         self._closed = True
         self.log_summary()
         self.save()
+        self._stop_session(reason="runner close")
         self._stop_shared_field_server()
 
     def log_summary(self) -> None:
@@ -538,7 +855,7 @@ class RunnerState:
             screenshot_path=video_path,
             options=video_options,
             is_video=True,
-        )
+        ).process_command
         LOG.info("Field docs runner recording video %s for %s", page_path.name, video_path)
         completed: subprocess.CompletedProcess[str] | None = None
         for attempt in range(1, RUNNER_RETRIES + 1):
@@ -714,7 +1031,7 @@ class RunnerState:
             self._ensure_runner_owned_field_server(
                 reason=f"graphics-context capture for {page_path.name} -> {screenshot_path}"
             )
-        command = build_backdoor_command(
+        invocation = build_backdoor_command(
             repo_root=self.repo_root,
             page_path=page_path,
             block_index=block_index,
@@ -723,9 +1040,27 @@ class RunnerState:
             source_image_path=source_image_path,
             source_image_min_mtime=source_image_min_mtime,
         )
+        command = invocation.process_command
         LOG.info("Field docs runner executing %s for %s", page_path.name, screenshot_path)
         completed: subprocess.CompletedProcess[str] | None = None
+        # Warm-session fast path (opt-in): reuse one persistent daemon + attached
+        # page across non-graphics captures. On any failure, fall through to the
+        # unchanged per-process retry loop below so correctness never regresses.
+        if self.session_enabled and invocation.session_eligible:
+            completed = self._try_session_capture(
+                page_path=page_path,
+                block_index=block_index,
+                screenshot_path=screenshot_path,
+                options=options,
+                source_image_path=source_image_path,
+                source_image_min_mtime=source_image_min_mtime,
+                code=code,
+            )
+            if completed is not None:
+                LOG.info("Field docs runner warm-session capture ok: %s", screenshot_path)
         for attempt in range(1, RUNNER_RETRIES + 1):
+            if completed is not None:
+                break
             try:
                 completed = subprocess.run(
                     command,
@@ -2207,6 +2542,15 @@ def runner_subprocess_timeout(*, options: RunnerOptions, is_video: bool) -> floa
     return budget
 
 
+@dataclass
+class BackdoorInvocation:
+    process_command: list[str]        # full `python field_backdoor.py --command ...` argv
+    backdoor_commands: list[str]      # just the backdoor command lines (for the warm-session path)
+    session_eligible: bool            # safe to run through the warm-session daemon?
+    port: int
+    document: str | None
+
+
 def build_backdoor_command(
     *,
     repo_root: Path,
@@ -2217,7 +2561,7 @@ def build_backdoor_command(
     is_video: bool = False,
     source_image_path: Path | None = None,
     source_image_min_mtime: float | None = None,
-) -> list[str]:
+) -> BackdoorInvocation:
     port = int(os.environ.get(RUNNER_PORT_ENV, "9092"))
     capture_mode = effective_capture_mode(options)
     command = [
@@ -2546,4 +2890,11 @@ def build_backdoor_command(
         ]))
     for command_line in backdoor_commands:
         command.extend(["--command", command_line])
-    return command
+    session_eligible = not options.graphics_context and not is_video and not options.source_image
+    return BackdoorInvocation(
+        process_command=command,
+        backdoor_commands=backdoor_commands,
+        session_eligible=session_eligible,
+        port=port,
+        document=options.document or None,
+    )

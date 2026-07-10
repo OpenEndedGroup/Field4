@@ -66,7 +66,7 @@ async def _run_batch(client: fb.FieldBackdoor, request: dict[str, Any]) -> dict[
     """
     timeout = float(request.get("timeout") or client.default_timeout)
     with_pw = bool(request.get("withPlaywright"))
-    apw_timeout = fb.playwright_timeout(timeout, client.default_timeout)
+    apw_timeout = fb.playwright_attach_budget(timeout, client.default_timeout)
     timings: dict[str, float] = {}
 
     if request.get("resetDoc", True):
@@ -134,7 +134,7 @@ async def serve(
     if with_playwright:
         await fb.ensure_playwright_attached(
             client,
-            timeout=fb.playwright_timeout(default_timeout, default_timeout),
+            timeout=fb.playwright_attach_budget(default_timeout, default_timeout),
             reason="serve:startup",
         )
 

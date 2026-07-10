@@ -553,6 +553,10 @@ class FieldBackdoor:
         self.websocket: websockets.WebSocketClientProtocol | None = None
         self.receiver_task: asyncio.Task[None] | None = None
         self.condition = asyncio.Condition()
+        # Serializes all websocket sends: the receiver loop acks output messages
+        # (see _maybe_ack_output) concurrently with command sends, and a single
+        # connection is not safe for interleaved writes from two coroutines.
+        self._send_lock = asyncio.Lock()
         self.event_seq = 0
         self.event_log: deque[dict[str, Any]] = deque(maxlen=MAX_EVENTS)
         self.reply_contexts: dict[str, dict[str, Any]] = {}
@@ -742,6 +746,7 @@ class FieldBackdoor:
                 message = json.loads(raw)
                 event = self._build_event(message)
                 self._apply_event(event)
+                acks = 1 if self._is_backpressured_output(message) else 0
                 payload = event.get("payload")
                 if event.get("name") == "message-batch" and isinstance(payload, dict):
                     for child in payload.get("messages") or []:
@@ -749,6 +754,18 @@ class FieldBackdoor:
                             child_event = self._build_event(child)
                             child_event["batchSeq"] = event["seq"]
                             self._apply_event(child_event)
+                            if self._is_backpressured_output(child):
+                                acks += 1
+                # The server applies per-session output back-pressure: after
+                # maxPending unacked output messages it buffers, then silently
+                # skips further set-output/output/peer-output. A short-lived
+                # per-process backdoor never hits this, but a warm/reused session
+                # (docs runner daemon) accumulates unacked outputs across captures
+                # and, once saturated, stops seeing display output entirely --
+                # making wait-output time out. Ack every back-pressured message so
+                # the server releases the slot, exactly as the real frontend does.
+                for _ in range(acks):
+                    await self._send_output_ack()
                 async with self.condition:
                     self.condition.notify_all()
         except Exception as exc:
@@ -794,6 +811,23 @@ class FieldBackdoor:
         self.event_log.append(event)
         self.logger.log("ws_event", eventData=event)
         return event
+
+    @staticmethod
+    def _is_backpressured_output(message: dict[str, Any]) -> bool:
+        # Mirror Server.kt isBackPressuredOutputMessage: these are the messages the
+        # server gates behind per-session output back-pressure and expects an
+        # `output-ack` for.
+        name = message.get("name")
+        return name in {"set-output", "output", "peer-output"} or message.get("originalName") == "output"
+
+    async def _send_output_ack(self) -> None:
+        if self.websocket is None:
+            return
+        try:
+            async with self._send_lock:
+                await self.websocket.send(json.dumps({"name": "output-ack"}))
+        except Exception as exc:  # noqa: BLE001 - an ack failure must never kill the receiver loop
+            self.logger.exception("output_ack_send_error", exc)
 
     def _apply_event(self, event: dict[str, Any]) -> None:
         name = event["name"]
@@ -1402,7 +1436,8 @@ class FieldBackdoor:
         if payload is not None:
             message["payload"] = payload
         self.logger.log("ws_send", message=message)
-        await self.websocket.send(json.dumps(message))
+        async with self._send_lock:
+            await self.websocket.send(json.dumps(message))
         return uid
 
     async def call_for_single_reply(self, name: str, payload: Any, *, timeout: float, reply_context: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -2759,6 +2794,10 @@ def build_command_parser() -> argparse.ArgumentParser:
     new_box.add_argument("--h", type=float, default=100.0)
     new_box.add_argument("--timeout", type=float)
 
+    delete_box = subparsers.add_parser("delete-box", add_help=False)
+    delete_box.add_argument("uids", nargs="+")
+    delete_box.add_argument("--timeout", type=float)
+
     for command_name in ("connect", "disconnect"):
         graph_parser = subparsers.add_parser(command_name, add_help=False)
         graph_parser.add_argument("parent")
@@ -3154,6 +3193,22 @@ async def dispatch_command(
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
         return result
 
+    if args.command == "delete-box":
+        timeout = args.timeout or client.default_timeout
+        data, events, timed_out = await client.delete_boxes(args.uids, timeout=timeout)
+        # Drop stale references so a later @last/alias cannot resolve to a box we
+        # just removed (the warm-session docs path deletes each capture's box and
+        # then creates the next one at the same origin).
+        deleted = set(data.get("boxes") or [])
+        if client.last_box_uid in deleted:
+            client.last_box_uid = None
+        for alias, uid in list(client.box_aliases.items()):
+            if uid in deleted:
+                del client.box_aliases[alias]
+        result = command_result(command_line, not timed_out, data=data, events=events, timed_out=timed_out)
+        client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"], timedOut=timed_out, eventCount=len(events))
+        return result
+
     if args.command in {"connect", "disconnect"}:
         timeout = args.timeout or client.default_timeout
         data, events, timed_out = await client.change_connections(
@@ -3538,7 +3593,7 @@ async def repl(
             return 0
         if line == "help":
             client.logger.log("repl_help")
-            print("Commands: open, status, snapshot, boxes, sleep, playwright-open, editor-open, page-eval, screenshot-window, screenshot-editor, screenshot-box, native-screenshot, wait-native-renderer, record-window, record-editor, record-box, new-box, connect, disconnect, set, macro, transcript, replay-operations, play-operations, run, launch, continue, stop, wait-file, output, wait-output, raw-send, run-jvm-main, exit")
+            print("Commands: open, status, snapshot, boxes, sleep, playwright-open, editor-open, page-eval, screenshot-window, screenshot-editor, screenshot-box, native-screenshot, wait-native-renderer, record-window, record-editor, record-box, new-box, delete-box, connect, disconnect, set, macro, transcript, replay-operations, play-operations, run, launch, continue, stop, wait-file, output, wait-output, raw-send, run-jvm-main, exit")
             continue
         try:
             parsed = parse_command(line)
