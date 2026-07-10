@@ -1555,6 +1555,31 @@ class FieldBackdoor:
         self.logger.log("graphics_context_ready", payload=result)
         return result
 
+    async def dispose_graphics_context(self, *, timeout: float) -> dict[str, Any]:
+        event = await self.call_for_single_reply(
+            "agent-dispose-graphics-context",
+            {},
+            timeout=timeout,
+        )
+        payload = event.get("payload")
+        if not isinstance(payload, dict):
+            raise BackdoorError("agent-dispose-graphics-context returned an invalid payload")
+        if not payload.get("ok", False):
+            raise BackdoorError(str(payload.get("error") or "Graphics context dispose failed"))
+        disposed = bool(payload.get("reused", False))
+        previous_uid = self.graphics_context_uid
+        self.graphics_context_uid = None
+        result = {
+            "ok": True,
+            "disposed": disposed,
+            "uid": previous_uid,
+            "documentName": payload.get("documentName", self.document_name),
+            "scratch": bool(payload.get("scratch", self.scratch)),
+            "sessionKey": self.session_key,
+        }
+        self.logger.log("graphics_context_disposed", payload=result)
+        return result
+
     def assign_box_alias(self, alias: str, uid: str) -> None:
         cleaned = alias.strip()
         if not cleaned:
@@ -2636,6 +2661,9 @@ def build_command_parser() -> argparse.ArgumentParser:
     playwright_open = subparsers.add_parser("playwright-open", add_help=False)
     playwright_open.add_argument("--timeout", type=float)
 
+    dispose_graphics = subparsers.add_parser("dispose-graphics-context", add_help=False)
+    dispose_graphics.add_argument("--timeout", type=float)
+
     editor_open = subparsers.add_parser("editor-open", add_help=False)
     editor_open.add_argument("uid")
     editor_open.add_argument("--property", default="code")
@@ -2948,6 +2976,13 @@ async def dispatch_command(
     if args.command == "playwright-open":
         timeout = command_timeout(args.timeout, client.default_timeout)
         data = await ensure_playwright_attached(client, timeout=timeout, reason="command:playwright-open")
+        result = command_result(command_line, True, data=data, events=[])
+        client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
+        return result
+
+    if args.command == "dispose-graphics-context":
+        timeout = command_timeout(args.timeout, client.default_timeout)
+        data = await client.dispose_graphics_context(timeout=timeout)
         result = command_result(command_line, True, data=data, events=[])
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
         return result
@@ -3266,6 +3301,13 @@ async def dispatch_command(
         if args.best_effort:
             timeout = min(timeout, 5.0)
         data, events, timed_out = await client.stop_box(args.uid, timeout=timeout)
+        # Stopping the graphics-context box disposes its renderer server-side
+        # (Server.stop -> disposeBoxRenderer), so drop the client cache too; a later
+        # ensure_graphics_context() must then recreate it instead of reusing a dead box.
+        if not timed_out and client.graphics_context_uid:
+            stopped_uid = data.get("uid") if isinstance(data, dict) else None
+            if stopped_uid == client.graphics_context_uid:
+                client.graphics_context_uid = None
         if args.best_effort:
             data = dict(data)
             data["bestEffort"] = True

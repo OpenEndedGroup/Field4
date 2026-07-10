@@ -6,6 +6,7 @@ import afield.four.synth.musicClock
 import afield.four.synth.patClock
 import afield.four.util.Window
 import afield.four.util.lastWindowToOpen
+import afield.four.util.openWindowsSnapshot
 import afield.logger.lprintln
 import afield.server.refreshFileProxyBoxes
 import io.ktor.websocket.Frame
@@ -709,6 +710,70 @@ private fun ensureAgentGraphicsContext(info: SessionInformation): Pair<Box, Bool
     return graphicsBox to (existing != null)
 }
 
+/**
+ * Tear down a [Renderer] owned by [box] and its GLFW window(s), releasing the native
+ * Vulkan/OpenXR surface and window that the agent graphics-context path otherwise leaks.
+ *
+ * Cancelling the render coroutine only stops the loop; it never reaches [Renderer.cleanup].
+ * This cancels the box's jobs, then schedules the native teardown on the main render thread
+ * (so it runs after the render loop has unwound). Returns true if a renderer was disposed.
+ *
+ * Idempotent: the renderer/window properties are removed up-front, so a second call — e.g.
+ * stop-box followed by document detach — finds nothing and does not double-free.
+ */
+internal fun disposeBoxRenderer(box: Box): Boolean {
+    val renderer = box.getPropertyRaw("renderer") as? Renderer ?: return false
+
+    // Stop the render loop and cancel any jobs still driving it.
+    renderer.running = false
+    val jobsToCancel = box.jobs.toList()
+    box.jobs.clear()
+    box.clearRunningStates()
+    box.runGeneration["default"] = (box.runGeneration["default"] ?: -1) + 1
+    jobsToCancel.forEach { it.cancel() }
+
+    // Drop the references before scheduling teardown so a concurrent dispose is a no-op.
+    box.properties.remove("renderer")
+    box.properties.remove("window")
+
+    inMain {
+        runCatching {
+            val before = openWindowsSnapshot().size
+            renderer.cleanup()
+            renderer.windows.forEach { it.cleanup() }
+            val after = openWindowsSnapshot().size
+            lprintln(
+                "info,agent_backdoor",
+                "disposed renderer for box ${box.id}; openWindows $before -> $after"
+            )
+        }.onFailure {
+            lprintln("warning,agent_backdoor", "graphics context dispose failed: ${it.stackTraceToString()}")
+        }
+    }
+    return true
+}
+
+/**
+ * Dispose the agent graphics-context box's renderer for [info], if one exists.
+ * Returns the graphics box (if found) and whether a renderer was actually disposed.
+ */
+private fun disposeAgentGraphicsContext(info: SessionInformation): Pair<Box?, Boolean> {
+    val graphicsBox = info.root.children.firstOrNull {
+        it.name == AGENT_GRAPHICS_CONTEXT_NAME && it.getPropertyRaw("renderer") is Renderer
+    } ?: return null to false
+
+    val disposed = disposeBoxRenderer(graphicsBox)
+
+    needsResync.add(info.root to "children")
+    needsResync.add(graphicsBox to "parents")
+    needsResync.add(graphicsBox to "actions")
+    graphicsBox.resyncAll()
+    info.topologyGeneration++
+    doResync()
+
+    return graphicsBox to disposed
+}
+
 private fun currentJavaExecutable(): String {
     val javaHome = System.getProperty("java.home") ?: error("java.home is not set")
     val executable = if (System.getProperty("os.name").startsWith("Windows", ignoreCase = true)) "java.exe" else "java"
@@ -943,6 +1008,34 @@ fun installAgentBackdoorHandlers() {
                 )
             }
             reply(Message("agent-ensure-graphics-context").payload(response))
+        }
+        Handled.yes
+    })
+
+    handlers["agent-dispose-graphics-context"] = mutableSetOf({ _, reply ->
+        val info = thisSessionInfo.get()
+        inMain {
+            val response = runCatching {
+                val (graphicsBox, disposed) = disposeAgentGraphicsContext(info)
+                AgentGraphicsContextResponse(
+                    ok = true,
+                    documentName = info.documentName,
+                    scratch = info.ephemeral,
+                    box = snapshotFor(graphicsBox ?: info.root),
+                    reused = disposed
+                )
+            }.getOrElse { throwable ->
+                lprintln("warning,agent_backdoor", "graphics context dispose failed: ${throwable.message}")
+                AgentGraphicsContextResponse(
+                    ok = false,
+                    error = throwable.message ?: throwable::class.simpleName ?: "Unknown graphics context error",
+                    documentName = info.documentName,
+                    scratch = info.ephemeral,
+                    box = snapshotFor(info.root),
+                    reused = false
+                )
+            }
+            reply(Message("agent-dispose-graphics-context").payload(response))
         }
         Handled.yes
     })

@@ -349,6 +349,10 @@ class SessionInformation(
     fun cleanup() {
         _fileWatchManager?.stop()
         _fileWatchManager = null
+        // Dispose any afield.four renderer/window owned by this document's boxes so closing
+        // a document (or detaching its last session) releases the native GLFW/Vulkan surface
+        // instead of leaking it into Window.openWindows.
+        boxes.values.forEach { disposeBoxRenderer(it) }
     }
 }
 
@@ -4301,6 +4305,9 @@ class Server {
         fun stop(box: Box, entrypoint: String = "server.stop") {
             FlightRecorder.recordStopEntrypoint(entrypoint, box)
             box.ke.stop(box)
+            // If this box owns an afield.four Renderer (e.g. the agent graphics-context box),
+            // cancelling its jobs above never disposes the native window/surface. Do that now.
+            disposeBoxRenderer(box)
             broadcastWelcomeEvent("running")
         }
 
