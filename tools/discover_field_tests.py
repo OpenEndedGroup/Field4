@@ -14,6 +14,19 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+# Single source of truth for the fabricate docs scene registry, shared with the
+# mkdocs docs-build hook. The map lives next to that hook in public/, so add it
+# to sys.path here rather than duplicating the map (the two used to drift and
+# break docs builds). See public/fabricate_docs_scenes.py.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_PUBLIC_DIR = _REPO_ROOT / "public"
+if str(_PUBLIC_DIR) not in sys.path:
+    sys.path.insert(0, str(_PUBLIC_DIR))
+from fabricate_docs_scenes import (  # noqa: E402  (path set up just above)
+    FABRICATE_DOCS_SCENES,
+    validate_scenes_against_harness,
+)
+
 
 DEFAULT_ROOTS = [
     "src/jvmMain/kotlin/afield",
@@ -64,22 +77,6 @@ KOTLIN_SNIPPET_RE = re.compile(
 DIFF_SECTION_NAMES = {"before", "after", "static"}
 DIFF_FENCE_KINDS = {"diff", "diff_runner"}
 DIFFSTATIC_FENCE_KINDS = {"diffstatic", "diffstatic_runner"}
-FABRICATE_DOCS_SCENES = {
-    "default-scene": ("renderDefaultScene", "fabricate default scene ready"),
-    "shiny-torii-checkerboard": ("renderShinyToriCheckerboard", "fabricate shiny checkerboard scene ready"),
-    "camera-depth-study": ("renderCheckerboardCameraDepthStudy", "fabricate camera depth study ready"),
-    "shader-generated-checkerboard": ("renderShaderGeneratedCheckerboard", "fabricate shader checkerboard scene ready"),
-    "metalness": ("renderMetalnessComparison", "fabricate metalness comparison ready"),
-    "shadows": ("renderShadowComparison", "fabricate shadow comparison ready"),
-    "ambient-occlusion": ("renderAoComparison", "fabricate ao comparison ready"),
-    "blended-transparency": ("renderBlendedTransparency", "fabricate blended transparency ready"),
-    "post-stack-vignette": ("renderPostStackVignette", "fabricate post stack vignette ready"),
-    "toy-car-gltf": ("renderToyCarGltf", "fabricate toy car gltf ready"),
-    "multi-light-skybox": ("renderMultiLightSkybox", "fabricate multi light skybox ready"),
-    "tonemap-bloom": ("renderToneMapBloom", "fabricate tonemap bloom ready"),
-}
-
-
 @dataclass
 class Token:
     indent: int
@@ -601,6 +598,7 @@ def bind_annotation(path: Path, text: str, block: AnnotationBlock, annotation: d
 
 
 def discover(repo_root: Path, roots: list[str]) -> dict[str, Any]:
+    validate_scenes_against_harness(repo_root)
     tests: list[dict[str, Any]] = []
     errors: list[str] = []
     seen_ids: dict[str, str] = {}

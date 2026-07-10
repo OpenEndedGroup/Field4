@@ -14,6 +14,7 @@ import kotlin.math.abs
 /*
 FIELD_TEST
 id: examples.four.dual-quaternionf-smoke
+runner: jvm-main
 entrypoint: afield.examples.four.DualQuaternionfSmokeTest
 timeoutSec: 20
 expect:

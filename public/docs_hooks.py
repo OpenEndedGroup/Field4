@@ -21,6 +21,11 @@ import ssl
 
 from mkdocs.structure.files import File
 
+# Shared with tools/discover_field_tests.py; see public/fabricate_docs_scenes.py.
+# public/ is already on sys.path when mkdocs loads this hook, so this stays a
+# clean leaf import with no sys.path manipulation.
+from fabricate_docs_scenes import FABRICATE_DOCS_SCENES, validate_scenes_against_harness
+
 
 LOG = logging.getLogger("mkdocs.field_runner")
 
@@ -80,50 +85,6 @@ RUNNER_DIGEST_SOURCE_FILES = (
     "tools/field_backdoor.py",
     "tools/run_field_tests.py",
 )
-
-FABRICATE_DOCS_SCENES = {
-    "default-scene": (
-        "renderDefaultScene",
-        "fabricate default scene ready",
-    ),
-    "shiny-torii-checkerboard": (
-        "renderShinyToriCheckerboard",
-        "fabricate shiny checkerboard scene ready",
-    ),
-    "camera-depth-study": (
-        "renderCheckerboardCameraDepthStudy",
-        "fabricate camera depth study ready",
-    ),
-    "shader-generated-checkerboard": (
-        "renderShaderGeneratedCheckerboard",
-        "fabricate shader checkerboard scene ready",
-    ),
-    "metalness": (
-        "renderMetalnessComparison",
-        "fabricate metalness comparison ready",
-    ),
-    "shadows": (
-        "renderShadowComparison",
-        "fabricate shadow comparison ready",
-    ),
-    "ambient-occlusion": (
-        "renderAoComparison",
-        "fabricate ao comparison ready",
-    ),
-    "blended-transparency": (
-        "renderBlendedTransparency",
-        "fabricate blended transparency ready",
-    ),
-    "post-stack-vignette": (
-        "renderPostStackVignette",
-        "fabricate post stack vignette ready",
-    ),
-    "toy-car-gltf": (
-        "renderToyCarGltf",
-        "fabricate toy car gltf ready",
-    ),
-}
-
 
 @dataclass(frozen=True)
 class RunnerOptions:
@@ -194,6 +155,7 @@ class RunnerState:
         self._shared_field_started_by_runner = False
         self._closed = False
         self.failures: list[str] = []
+        validate_scenes_against_harness(self.repo_root)
         self.runner_source_digest = compute_runner_source_digest(self.repo_root)
         self.cache, self.cache_metadata = self._load_cache()
         self.dirty = False
