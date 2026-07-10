@@ -278,11 +278,18 @@ class Mesh(var renderer: Renderer = fromContext()) {
     }
 
     internal fun initializePushConstantsFromModule(inside: ModulePointer) {
-        for (pc in inside.current.fi.pushConstants) {
-            push.setMembers(pc.members)
+        push.setMergedPushMembers(inside)
+    }
+
+    private fun Structure.setMergedPushMembers(inside: ModulePointer) {
+        val mergedMembers = linkedMapOf<String, Introspected.Member>()
+        for (pc in inside.current.fi.pushConstants + inside.current.vi.pushConstants) {
+            for (member in pc.members) {
+                mergedMembers[member.name] = member
+            }
         }
-        for (pc in inside.current.vi.pushConstants) {
-            push.setMembers(pc.members)
+        if (mergedMembers.isNotEmpty()) {
+            push.setMembers(mergedMembers.values.sortedBy { it.offset })
         }
     }
 
@@ -374,12 +381,7 @@ class Mesh(var renderer: Renderer = fromContext()) {
 
             fun pushConstantsForCurrentDispatch(): Boolean {
                 if (pushConstantBuffer.limit() <= 0) return true
-                for (pc in inside.fi.pushConstants) {
-                    push.setMembers(pc.members)
-                }
-                for (pc in inside.vi.pushConstants) {
-                    push.setMembers(pc.members)
-                }
+                push.setMergedPushMembers(this.inside)
                 try {
                     pushConstantBuffer.clear()
                     push.writeToBuffer(pushConstantBuffer, cmd) {

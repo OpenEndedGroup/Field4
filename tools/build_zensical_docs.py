@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import os
 import shutil
 import subprocess
@@ -41,6 +42,23 @@ def copy_non_markdown_files(source: Path, target: Path) -> None:
         shutil.copy2(path, destination)
 
 
+def matches_page_filter(relative: Path, filters: tuple[str, ...]) -> bool:
+    rel = relative.as_posix()
+    stem = relative.stem
+    name = relative.name
+    for raw_filter in filters:
+        page_filter = raw_filter.strip().replace("\\", "/")
+        if not page_filter:
+            continue
+        if page_filter in {rel, name, stem}:
+            return True
+        if "/" not in page_filter and "." not in page_filter and page_filter == stem:
+            return True
+        if fnmatch.fnmatch(rel, page_filter) or fnmatch.fnmatch(name, page_filter):
+            return True
+    return False
+
+
 def build_generated_config(*, public_dir: Path, generated_root: Path) -> Path:
     source_config = public_dir / "mkdocs.yml"
     with source_config.open("r", encoding="utf-8") as handle:
@@ -60,7 +78,7 @@ def build_generated_config(*, public_dir: Path, generated_root: Path) -> Path:
     return target_config
 
 
-def preprocess_docs(*, public_dir: Path, generated_docs: Path) -> None:
+def preprocess_docs(*, public_dir: Path, generated_docs: Path, page_filters: tuple[str, ...] = ()) -> None:
     sys.path.insert(0, str(public_dir))
     import docs_hooks  # type: ignore[import-not-found]
 
@@ -72,6 +90,9 @@ def preprocess_docs(*, public_dir: Path, generated_docs: Path) -> None:
     )
     files = GeneratedFiles()
     state = docs_hooks.ensure_state(config)
+    runner_mode = state.runner_mode
+    matched_pages = 0
+    total_pages = 0
 
     try:
         for path in sorted(source_docs.rglob("*.md")):
@@ -79,15 +100,33 @@ def preprocess_docs(*, public_dir: Path, generated_docs: Path) -> None:
             destination = generated_docs / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
             markdown = path.read_text(encoding="utf-8")
-            processed = docs_hooks.process_markdown(
-                markdown=markdown,
-                page_path=path.resolve(),
-                state=state,
-                files=files,
-            )
+            total_pages += 1
+            page_matches = not page_filters or matches_page_filter(relative, page_filters)
+            if page_matches:
+                matched_pages += 1
+
+            previous_mode = state.runner_mode
+            if page_filters and not page_matches:
+                state.runner_mode = "never"
+            try:
+                processed = docs_hooks.process_markdown(
+                    markdown=markdown,
+                    page_path=path.resolve(),
+                    state=state,
+                    files=files,
+                )
+            finally:
+                state.runner_mode = previous_mode
             destination.write_text(processed, encoding="utf-8")
     finally:
+        state.runner_mode = runner_mode
         docs_hooks.on_post_build(config)
+
+    if page_filters and matched_pages == 0:
+        requested = ", ".join(page_filters)
+        raise RuntimeError(f"No docs pages matched --page filter(s): {requested}")
+    if page_filters:
+        print(f"Processed {matched_pages}/{total_pages} docs page(s) with runner mode {runner_mode}; non-matching pages used runner mode never.")
 
     copy_non_markdown_files(source_docs, generated_docs)
 
@@ -100,6 +139,17 @@ def main() -> int:
     parser.add_argument("--clean", action="store_true", help="Pass --clean to zensical build.")
     parser.add_argument("--strict", action="store_true", help="Pass --strict to zensical build.")
     parser.add_argument("--skip-build", action="store_true", help="Only generate preprocessed sources and config.")
+    parser.add_argument(
+        "--page",
+        action="append",
+        default=[],
+        metavar="PATTERN",
+        help=(
+            "Only run capture-enabled docs hooks for matching markdown pages. "
+            "Non-matching pages are still generated, but with runner mode never. "
+            "Matches relative paths, filenames, stems, or shell globs; may be repeated."
+        ),
+    )
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parent.parent
@@ -112,16 +162,19 @@ def main() -> int:
     generated_root.mkdir(parents=True, exist_ok=True)
     generated_docs.mkdir(parents=True, exist_ok=True)
 
-    preprocess_docs(public_dir=public_dir, generated_docs=generated_docs)
+    preprocess_docs(public_dir=public_dir, generated_docs=generated_docs, page_filters=tuple(args.page))
     generated_config = build_generated_config(public_dir=public_dir, generated_root=generated_root)
 
     if args.skip_build:
         print(f"Generated {generated_config}")
         return 0
 
-    command = [sys.executable, "-m", "zensical", "build", "-f", str(generated_config)]
     if args.clean:
-        command.append("--clean")
+        site_dir = public_dir / "field4"
+        if site_dir.exists():
+            shutil.rmtree(site_dir)
+
+    command = [sys.executable, "-m", "zensical", "build", "-f", str(generated_config)]
     if args.strict:
         command.append("--strict")
     return subprocess.run(command, cwd=public_dir, check=False).returncode

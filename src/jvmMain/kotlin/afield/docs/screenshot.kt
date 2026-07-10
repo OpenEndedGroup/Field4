@@ -384,7 +384,8 @@ private fun WindowScreenshotRequest.toPlaywrightArg(): Map<String, Any?> = mapOf
     "showEditor" to showEditor,
     "openOutputs" to openOutputs,
     "editorOnly" to editorOnly,
-    "padding" to padding
+    "padding" to padding,
+    "waitMs" to waitMs
 )
 
 private fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest): BoxScreenshotResponse {
@@ -829,7 +830,8 @@ suspend fun captureWindowScreenshot(info: SessionInformation, request: AgentWind
                 showEditor = request.showEditor,
                 openOutputs = request.openOutputs,
                 editorOnly = request.editorOnly,
-                padding = request.padding
+                padding = request.padding,
+                waitMs = request.waitMs
             )
         )
     }.getOrElse {
@@ -862,6 +864,10 @@ suspend fun captureWindowScreenshot(info: SessionInformation, request: AgentWind
             uid = request.uid,
             message = "Editor screenshot prep did not return a clip"
         )
+    }
+
+    if (request.waitMs > 0.0) {
+        page.waitForTimeout(request.waitMs)
     }
 
     val outputPath = Path.of(request.path)

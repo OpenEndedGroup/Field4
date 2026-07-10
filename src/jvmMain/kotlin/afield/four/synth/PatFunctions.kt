@@ -340,7 +340,6 @@ private fun <A> buildPatFunction(
     )
     val domain = Functions.Domain(0.0, Double.POSITIVE_INFINITY)
     return Functions.Fn(
-        roi = domain,
         domain = domain,
         name = "pat-fn"
     ) { x ->

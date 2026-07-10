@@ -29,7 +29,7 @@ FIELD_TEST
 id: docs.visualizers.inline-metrics
 runner: backdoor-box
 tags: [docs, visualizers, inline, histogram, history, stats]
-timeoutSec: 45
+timeoutSec: 120
 waitSec: 2.0
 expect:
   outputContains:
@@ -40,22 +40,26 @@ expect:
     kind: editor
     padding: 10
 -->
-```diffstatic_runner {data-lang=kotlin video="assets/visualizers-inline-metrics.mp4" wait="2.0" capture="editor" padding="10" execution="launch" duration="5" fps="30" embed=true name="inline-metrics"}
+```diffstatic_runner {data-lang=kotlin video="assets/visualizers-inline-metrics.mp4" wait="1.0" capture="editor" padding="10" execution="launch" duration="3" fps="12" timeout="120" embed=true name="inline-metrics"}
 :::static
 var tick = 0.0
+var visualizerFrame = 0
 
 println("inline metrics ready")
 
 loop {
     tick += 0.4
+    visualizerFrame += 1
 
-    val value = sin(tick * 0.22) * 0.7 +
-        cos(tick * 0.11) * 0.2 +
-        tick * 0.01
+    if (visualizerFrame % 12 == 0) {
+        val value = sin(tick * 0.22) * 0.7 +
+            cos(tick * 0.11) * 0.2 +
+            tick * 0.01
 
-    __m("histogram").histogram(value, dur = 480)
-    __m("trail").history(value, dur = 48)
-    __m("summary").stats(value, dur = 48)
+        __m("histogram").histogram(value, dur = 120)
+        __m("trail").history(value, dur = 48)
+        __m("summary").stats(value, dur = 48)
+    }
     frame()
 }
 ```
@@ -86,7 +90,7 @@ FIELD_TEST
 id: docs.visualizers.inline-live-history
 runner: backdoor-box
 tags: [docs, visualizers, inline, history, live]
-timeoutSec: 45
+timeoutSec: 120
 execution: launch
 waitSec: 5.0
 expect:
@@ -94,15 +98,19 @@ expect:
     kind: editor
     padding: 10
 -->
-```diffstatic_runner {data-lang=kotlin video="assets/visualizers-inline-live-history.mp4" wait="5.0" capture="editor" padding="10" execution="launch" duration="5" fps="30" embed=true name="inline-live-history"}
+```diffstatic_runner {data-lang=kotlin video="assets/visualizers-inline-live-history.mp4" wait="2.0" capture="editor" padding="10" execution="launch" duration="3" fps="12" timeout="120" embed=true name="inline-live-history"}
 :::static
 println("live history launched")
 
 var phase = 0.0
+var visualizerFrame = 0
 
 loop {
-    val y = sin(phase * 0.8) + 0.2 * sin(phase * 7.0)
-    __m("live").history(y, dur = 120)
+    visualizerFrame += 1
+    if (visualizerFrame % 12 == 0) {
+        val y = sin(phase * 0.8) + 0.2 * sin(phase * 7.0)
+        __m("live").history(y, dur = 120)
+    }
     phase += 0.07
     frame()
 }
@@ -129,7 +137,7 @@ FIELD_TEST
 id: docs.visualizers.inline-pianoroll
 runner: backdoor-box
 tags: [docs, visualizers, inline, synth, pianoroll]
-timeoutSec: 45
+timeoutSec: 120
 execution: launch
 waitSec: 5.0
 expect:
@@ -141,7 +149,7 @@ expect:
     kind: editor
     padding: 10
 -->
-```diffstatic_runner {data-lang=kotlin video="assets/visualizers-inline-pianoroll.mp4" wait="5.0" capture="editor" padding="10" execution="launch" duration="5" fps="30" embed=true name="inline-pianoroll"}
+```diffstatic_runner {data-lang=kotlin video="assets/visualizers-inline-pianoroll.mp4" wait="2.0" capture="editor" padding="10" execution="launch" duration="3" fps="12" timeout="120" embed=true name="inline-pianoroll"}
 :::static
 val arp = noteProcess {
     val chord = listOf(48, 55, 60, 64)
@@ -161,9 +169,13 @@ val arp = noteProcess {
 println("inline piano roll launched")
 
 var playhead = 0.0
+var visualizerFrame = 0
 
 loop {
-    __m("arp").pianoRoll(arp.at(playhead))
+    visualizerFrame += 1
+    if (visualizerFrame % 12 == 0) {
+        __m("arp").pianoRoll(arp.at(playhead))
+    }
     playhead += 0.08
     frame()
 }

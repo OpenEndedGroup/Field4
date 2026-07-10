@@ -1072,7 +1072,12 @@ class Renderer(
 
     private fun writeWindowCapturePng(capture: WindowCapturePixels) {
         val startedAt = System.nanoTime()
-        val pngBytes = PngEncoder.encodeFromBuffer(ByteBuffer.wrap(capture.rgba), capture.width, capture.height)
+        val pngBytes = PngEncoder.encodeFromBuffer(
+            ByteBuffer.wrap(capture.rgba),
+            capture.width,
+            capture.height,
+            flipY = true
+        )
         val encodeMs = SaveReloadLog.elapsedMillis(startedAt)
         val writeStartedAt = System.nanoTime()
         Files.write(

@@ -112,6 +112,10 @@ FABRICATE_DOCS_SCENES = {
         "renderPostStackVignette",
         "fabricate post stack vignette ready",
     ),
+    "toy-car-gltf": (
+        "renderToyCarGltf",
+        "fabricate toy car gltf ready",
+    ),
 }
 
 
@@ -2494,6 +2498,8 @@ def build_backdoor_command(
                 "--padding", str(options.padding),
                 "--timeout", str(options.timeout),
             ]
+            if options.open_outputs:
+                parts.append("--open-outputs")
             backdoor_commands.append(shlex.join(parts))
         elif capture_mode == "editor":
             target_uid = default_target_uid

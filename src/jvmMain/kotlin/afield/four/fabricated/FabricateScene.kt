@@ -3,10 +3,12 @@ package afield.four.fabricated
 import afield.four.modules.GltfSupport
 import afield.four.modules.fromContext
 import afield.four.modules.sample
+import afield.four.texture.LoadedTexture
 import org.joml.Matrix4f
 import org.joml.Quaternionf
 import org.joml.Vector3f
 import org.joml.Vector4f
+import org.lwjgl.assimp.Assimp
 import kotlin.math.max
 
 /**
@@ -17,6 +19,8 @@ import kotlin.math.max
 class FabricateScene(
     val root: FabricateNode = FabricateNode("root")
 ) {
+    constructor(name: String) : this(FabricateNode(name))
+
     init {
         root.scene = this
     }
@@ -44,6 +48,13 @@ class FabricateScene(
     fun updateWorldTransforms(time: Float = animationTime): FabricateScene {
         root.updateWorld(Matrix4f().identity(), time)
         return this
+    }
+
+    fun updateWorld(): FabricateScene =
+        updateWorldTransforms()
+
+    fun traverse(visit: (FabricateNode) -> Unit) {
+        root.walk().forEach(visit)
     }
 
     fun advance(seconds: Float, loop: Boolean = true): FabricateScene {
@@ -147,6 +158,8 @@ class FabricateNode(val name: String) {
     val transform: FabricateTransform = FabricateTransform()
     var worldMatrix: Matrix4f = Matrix4f().identity()
         private set
+    var previousWorldMatrix: Matrix4f = Matrix4f().identity()
+        private set
     var renderable: FabricateRenderable? = null
     var visible: Boolean = true
     var animationSamples: List<GltfSupport.TRSSample>? = null
@@ -163,6 +176,10 @@ class FabricateNode(val name: String) {
         return child
     }
 
+    operator fun plusAssign(child: FabricateNode) {
+        add(child)
+    }
+
     fun remove(child: FabricateNode): Boolean {
         val removed = children.remove(child)
         if (removed) {
@@ -177,14 +194,39 @@ class FabricateNode(val name: String) {
         children.forEach { child -> yieldAll(child.walk()) }
     }
 
+    fun translate(x: Float, y: Float, z: Float): FabricateNode {
+        transform.position.add(x, y, z)
+        return this
+    }
+
+    fun setTranslation(x: Float, y: Float, z: Float): FabricateNode {
+        transform.position.set(x, y, z)
+        return this
+    }
+
+    fun updateFromRoot(): FabricateNode {
+        scene?.updateWorldTransforms() ?: updateWorld(Matrix4f().identity(), 0f)
+        return this
+    }
+
+    fun updateWorld(parentWorld: Matrix4f? = parent?.worldMatrix, force: Boolean = true): FabricateNode {
+        val base = parentWorld ?: Matrix4f().identity()
+        updateWorld(base, scene?.animationTime ?: 0f)
+        return this
+    }
+
     internal fun updateWorld(parentWorld: Matrix4f, time: Float) {
         animationSamples?.sample(time)?.let { transform.set(it.toMatrix()) }
+        previousWorldMatrix = Matrix4f(worldMatrix)
         worldMatrix = Matrix4f(parentWorld).mul(transform.matrix())
         children.forEach { it.updateWorld(worldMatrix, time) }
     }
 
     fun worldPoint(local: Vector3f = Vector3f()): Vector3f =
         worldMatrix.transformPosition(Vector3f(local))
+
+    fun worldPosition(dest: Vector3f = Vector3f()): Vector3f =
+        worldMatrix.getTranslation(dest)
 
     private fun propagateScene(nextScene: FabricateScene?) {
         scene = nextScene
@@ -226,6 +268,16 @@ data class FabricateMaterial(
     val baseColor: Vector4f = Vector4f(1f, 0.56f, 0.24f, 1f),
     var metallic: Float = 0.08f,
     var roughness: Float = 0.42f,
+    var baseColorTexture: LoadedTexture? = null,
+    var normalTexture: LoadedTexture? = null,
+    var metallicRoughnessTexture: LoadedTexture? = null,
+    var occlusionTexture: LoadedTexture? = null,
+    var emissiveTexture: LoadedTexture? = null,
+    var clearcoatTexture: LoadedTexture? = null,
+    var emissiveFactor: Vector3f = Vector3f(0f, 0f, 0f),
+    var clearcoatFactor: Float = 0f,
+    var clearcoatRoughnessFactor: Float = 0f,
+    var uvTransform: Vector4f = Vector4f(0f, 0f, 1f, 1f),
     var alphaMode: FabricateAlphaMode = FabricateAlphaMode.OPAQUE,
     var alphaCutoff: Float = 0.5f,
     var doubleSided: Boolean = false,
@@ -239,12 +291,56 @@ data class FabricateMaterial(
         return this
     }
 
-    companion object {
-        fun fromGltf(material: GltfSupport.MaterialTextured): FabricateMaterial =
-            FabricateMaterial(
-                baseColor = Vector4f(material.baseColor),
-                alphaMode = if (material.baseColor.w < 0.999f) FabricateAlphaMode.BLEND else FabricateAlphaMode.OPAQUE
+        companion object {
+        fun fromGltf(material: GltfSupport.MaterialTextured): FabricateMaterial {
+            val emissiveTexture = material.textures.firstOrNull {
+                it.valid && it.type == Assimp.aiTextureType_EMISSIVE
+            }?.texture
+            val metallicRoughnessTexture = material.textures.firstOrNull {
+                it.valid && (it.type == Assimp.aiTextureType_GLTF_METALLIC_ROUGHNESS || it.type == Assimp.aiTextureType_DIFFUSE_ROUGHNESS || it.type == Assimp.aiTextureType_METALNESS)
+            }?.texture
+            val occlusionTexture = material.textures.firstOrNull {
+                it.valid && (it.type == Assimp.aiTextureType_AMBIENT_OCCLUSION || it.type == Assimp.aiTextureType_LIGHTMAP)
+            }?.texture ?: metallicRoughnessTexture
+            val clearcoatTexture = material.textures.firstOrNull {
+                it.valid && it.type == Assimp.aiTextureType_CLEARCOAT
+            }?.texture
+            val transmission = material.transmissionFactor.coerceIn(0f, 1f)
+            val base = Vector4f(material.baseColor)
+            if (transmission > 0.001f && base.w >= 0.999f) {
+                base.w = (1f - transmission * 0.72f).coerceIn(0.18f, 0.42f)
+            }
+            val alphaMode = when {
+                material.alphaMode.equals("MASK", ignoreCase = true) -> FabricateAlphaMode.MASK
+                material.alphaMode.equals("BLEND", ignoreCase = true) -> FabricateAlphaMode.BLEND
+                transmission > 0.001f -> FabricateAlphaMode.BLEND
+                base.w < 0.999f -> FabricateAlphaMode.BLEND
+                else -> FabricateAlphaMode.OPAQUE
+            }
+            return FabricateMaterial(
+                baseColor = base,
+                metallic = material.metallicFactor,
+                roughness = material.roughnessFactor.coerceIn(0.02f, 1f),
+                baseColorTexture = material.textures.firstOrNull {
+                    it.valid && (it.type == Assimp.aiTextureType_BASE_COLOR || it.type == Assimp.aiTextureType_DIFFUSE)
+                }?.texture,
+                normalTexture = material.textures.firstOrNull {
+                    it.valid && it.type == Assimp.aiTextureType_NORMALS
+                }?.texture,
+                metallicRoughnessTexture = metallicRoughnessTexture,
+                occlusionTexture = occlusionTexture,
+                emissiveTexture = emissiveTexture,
+                clearcoatTexture = clearcoatTexture,
+                emissiveFactor = if (emissiveTexture != null) Vector3f(1f, 1f, 1f) else Vector3f(0f, 0f, 0f),
+                clearcoatFactor = material.clearcoatFactor,
+                clearcoatRoughnessFactor = material.clearcoatRoughnessFactor,
+                alphaMode = alphaMode,
+                alphaCutoff = material.alphaCutoff,
+                doubleSided = material.doubleSided,
+                receiveShadow = transmission <= 0.001f,
+                receiveAo = transmission <= 0.001f
             )
+        }
     }
 }
 
@@ -306,7 +402,8 @@ data class FabricateRenderProfile(
 data class FabricateRegisteredGltf(
     val nodes: List<FabricateNode>,
     val opaqueMeshes: List<StandardRenderer.Bundle.PullingMeshPair>,
-    val transparentMeshes: List<StandardRenderer.PullingMesh>
+    val transparentMeshes: List<StandardRenderer.PullingMesh>,
+    val meshBindings: List<FabricateGltfMeshBinding> = emptyList()
 ) {
     fun animate(time: Float): FabricateRegisteredGltf {
         nodes.firstOrNull()?.scene?.updateWorldTransforms(time)
@@ -317,11 +414,66 @@ data class FabricateRegisteredGltf(
         get() = opaqueMeshes
 }
 
+data class FabricateGltfMeshBinding(
+    val index: Int,
+    val node: FabricateNode,
+    val opaque: StandardRenderer.Bundle.PullingMeshPair? = null,
+    val transparent: StandardRenderer.PullingMesh? = null
+) {
+    fun applyMaterial(material: FabricateMaterial): FabricateGltfMeshBinding {
+        opaque?.applyFabricateMaterial(material)
+        transparent?.applyFabricateMaterial(material)
+        return this
+    }
+}
+
 fun StandardRenderer.Bundle.applyRenderProfile(profile: FabricateRenderProfile = FabricateRenderProfile.outOfBox()): StandardRenderer.Bundle =
     profile.applyTo(this)
 
 fun StandardRenderer.Bundle.sceneDrawLists(cameraPosition: Vector3f = Vector3f(scene.camera.at)): FabricateDrawLists =
     sceneGraph.drawLists(cameraPosition)
+
+fun StandardRenderer.Bundle.planScene(
+    cameraPosition: Vector3f = Vector3f(scene.camera.at),
+    planner: FabricateScenePlanner = FabricateScenePlanner()
+): FabricateRenderPlan =
+    planner.plan(sceneGraph, cameraPosition)
+
+fun StandardRenderer.Bundle.applyScenePlan(plan: FabricateRenderPlan = planScene()): FabricateRenderPlan {
+    require(plan.allDrawItems.isEmpty() || plan.materials.isNotEmpty()) {
+        "Fabricate planner returned draw items without material records"
+    }
+
+    reorderFabricateMeshes(
+        gBufferModule.current.meshes,
+        (plan.opaque + plan.alphaMask).fabricateMeshNames()
+    )
+    reorderFabricateMeshes(
+        shadowModule.current.meshes,
+        plan.shadowCasters.fabricateMeshNames()
+    )
+    reorderFabricateMeshes(
+        transparentModule.current.meshes,
+        plan.transparent.fabricateMeshNames()
+    )
+    return plan
+}
+
+private fun List<FabricateRenderItem>.fabricateMeshNames(): List<String> =
+    mapNotNull { it.renderable.userData as? String }
+
+private fun <T> reorderFabricateMeshes(meshes: MutableMap<String, T>, orderedNames: List<String>) {
+    if (orderedNames.isEmpty()) return
+    val reordered = linkedMapOf<String, T>()
+    orderedNames.forEach { name ->
+        meshes[name]?.let { reordered[name] = it }
+    }
+    meshes.forEach { (name, mesh) ->
+        if (name !in reordered) reordered[name] = mesh
+    }
+    meshes.clear()
+    meshes.putAll(reordered)
+}
 
 fun StandardRenderer.Bundle.registerGltf(
     path: String,
@@ -339,6 +491,7 @@ fun StandardRenderer.Bundle.registerGltf(
     val nodes = sceneGraph.importGltf(model, namePrefix)
     val opaque = mutableListOf<StandardRenderer.Bundle.PullingMeshPair>()
     val transparent = mutableListOf<StandardRenderer.PullingMesh>()
+    val bindings = mutableListOf<FabricateGltfMeshBinding>()
 
     model.meshes.zip(nodes).forEachIndexed { index, (instance, node) ->
         val material = node.renderable?.material ?: FabricateMaterial.fromGltf(instance.material)
@@ -354,19 +507,28 @@ fun StandardRenderer.Bundle.registerGltf(
             mesh.bindModel { Matrix4f(node.worldMatrix) }
             mesh.applyFabricateMaterial(material)
             transparent += mesh
+            bindings += FabricateGltfMeshBinding(index, node, transparent = mesh)
         } else {
-            val pair = registerPullingMesh(
-                name = meshName,
-                maxVertices = instance.buffers.indexCount.coerceAtLeast(3),
-                renderer = renderer
-            )
+            val pair = material.baseColorTexture?.let {
+                registerTexturedPullingMesh(
+                    name = meshName,
+                    maxVertices = instance.buffers.indexCount.coerceAtLeast(3),
+                    material = material,
+                    renderer = renderer
+                )
+            } ?: registerPullingMesh(
+                    name = meshName,
+                    maxVertices = instance.buffers.indexCount.coerceAtLeast(3),
+                    renderer = renderer
+                )
             writeGltfMesh(instance, pair)
             pair.bindModel { Matrix4f(node.worldMatrix) }
             pair.applyFabricateMaterial(material)
             opaque += pair
+            bindings += FabricateGltfMeshBinding(index, node, opaque = pair)
         }
     }
-    return FabricateRegisteredGltf(nodes, opaque, transparent)
+    return FabricateRegisteredGltf(nodes, opaque, transparent, bindings)
 }
 
 fun StandardRenderer.Bundle.PullingMeshPair.applyFabricateMaterial(
@@ -377,6 +539,15 @@ fun StandardRenderer.Bundle.PullingMeshPair.applyFabricateMaterial(
     if (push.offsets.containsKey("metallic")) push["metallic"] = material.metallic
     if (push.offsets.containsKey("roughness")) push["roughness"] = material.roughness
     if (push.offsets.containsKey("ao")) push["ao"] = if (material.receiveAo) 1f else 0f
+    if (push.offsets.containsKey("hasNormalMap")) push["hasNormalMap"] = if (material.normalTexture != null) 1f else 0f
+    if (push.offsets.containsKey("hasMetallicRoughnessMap")) push["hasMetallicRoughnessMap"] = if (material.metallicRoughnessTexture != null) 1f else 0f
+    if (push.offsets.containsKey("hasOcclusionMap")) push["hasOcclusionMap"] = if (material.occlusionTexture != null) 1f else 0f
+    if (push.offsets.containsKey("hasEmissiveMap")) push["hasEmissiveMap"] = if (material.emissiveTexture != null) 1f else 0f
+    if (push.offsets.containsKey("hasClearcoatMap")) push["hasClearcoatMap"] = if (material.clearcoatTexture != null) 1f else 0f
+    if (push.offsets.containsKey("emissiveFactor")) push["emissiveFactor"] = Vector4f(material.emissiveFactor, 1f)
+    if (push.offsets.containsKey("clearcoatFactor")) push["clearcoatFactor"] = material.clearcoatFactor
+    if (push.offsets.containsKey("clearcoatRoughness")) push["clearcoatRoughness"] = material.clearcoatRoughnessFactor
+    if (push.offsets.containsKey("uvTransform")) push["uvTransform"] = Vector4f(material.uvTransform)
     return this
 }
 
@@ -388,6 +559,15 @@ fun StandardRenderer.PullingMesh.applyFabricateMaterial(
     if (push.offsets.containsKey("metallic")) push["metallic"] = material.metallic
     if (push.offsets.containsKey("roughness")) push["roughness"] = material.roughness
     if (push.offsets.containsKey("ao")) push["ao"] = if (material.receiveAo) 1f else 0f
+    if (push.offsets.containsKey("hasNormalMap")) push["hasNormalMap"] = if (material.normalTexture != null) 1f else 0f
+    if (push.offsets.containsKey("hasMetallicRoughnessMap")) push["hasMetallicRoughnessMap"] = if (material.metallicRoughnessTexture != null) 1f else 0f
+    if (push.offsets.containsKey("hasOcclusionMap")) push["hasOcclusionMap"] = if (material.occlusionTexture != null) 1f else 0f
+    if (push.offsets.containsKey("hasEmissiveMap")) push["hasEmissiveMap"] = if (material.emissiveTexture != null) 1f else 0f
+    if (push.offsets.containsKey("hasClearcoatMap")) push["hasClearcoatMap"] = if (material.clearcoatTexture != null) 1f else 0f
+    if (push.offsets.containsKey("emissiveFactor")) push["emissiveFactor"] = Vector4f(material.emissiveFactor, 1f)
+    if (push.offsets.containsKey("clearcoatFactor")) push["clearcoatFactor"] = material.clearcoatFactor
+    if (push.offsets.containsKey("clearcoatRoughness")) push["clearcoatRoughness"] = material.clearcoatRoughnessFactor
+    if (push.offsets.containsKey("uvTransform")) push["uvTransform"] = Vector4f(material.uvTransform)
     return this
 }
 
@@ -404,6 +584,7 @@ private fun writeGltfMesh(
     mesh: StandardRenderer.PullingMesh
 ) {
     val vertexData = instance.buffers.vertexData.asFloatBuffer()
+    val tangentData = instance.buffers.tangentData?.asFloatBuffer()
     val indexData = instance.buffers.indexData
     val indexCount = instance.buffers.indexCount
 
@@ -417,6 +598,27 @@ private fun writeGltfMesh(
         for (i in 0 until indexCount) {
             val base = indexData.get(i) * 12
             put(vertexData.get(base + 3), vertexData.get(base + 4), vertexData.get(base + 5), 0f)
+        }
+    }
+    mesh.uv?.write {
+        for (i in 0 until indexCount) {
+            val base = indexData.get(i) * 12
+            put(vertexData.get(base + 6), vertexData.get(base + 7), 0f, 0f)
+        }
+    }
+    mesh.tangent?.write {
+        for (i in 0 until indexCount) {
+            val base = indexData.get(i) * 4
+            if (tangentData != null) {
+                put(
+                    tangentData.get(base),
+                    tangentData.get(base + 1),
+                    tangentData.get(base + 2),
+                    tangentData.get(base + 3)
+                )
+            } else {
+                put(1f, 0f, 0f, 0f)
+            }
         }
     }
     mesh.setVertexCount(indexCount)

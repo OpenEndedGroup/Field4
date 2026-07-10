@@ -143,10 +143,26 @@ Roadmap and test IDs: `dev_docs/testing/UI_REGRESSION_ROADMAP.md`.
 Public docs are a testing surface. Examples using `diffstatic_runner` execute
 through Field and can regenerate screenshots/videos during docs builds.
 
-Zensical currently does not run Python page hooks directly, so use
-`tools/build_zensical_docs.py`. The wrapper preprocesses Markdown through
-`public/docs_hooks.py`, writes generated sources under `public/.zensical-generated/`,
-and then runs `zensical build`.
+The supported build path is a uv one-liner. Do not create a manual venv or
+install Zensical/MkDocs dependencies by hand:
+
+```bash
+FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --clean
+```
+
+For a full evidence rebuild, run:
+
+```bash
+FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py --clean
+```
+
+Zensical currently does not run Python page hooks directly, so the uv command
+enters `tools/build_zensical_docs.py` first. The wrapper preprocesses Markdown
+through `public/docs_hooks.py`, writes generated sources under
+`public/.zensical-generated/`, writes `public/zensical.generated.yml`, and then
+runs `python -m zensical build` using the same interpreter. The docs dependency
+group intentionally includes the backdoor dependencies because docs captures
+launch `tools/field_backdoor.py` from that interpreter.
 
 Modes:
 - `FIELD_DOCS_RUNNER_MODE=never`: build HTML only; reuse existing assets

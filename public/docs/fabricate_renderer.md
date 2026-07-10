@@ -2,24 +2,50 @@
 
 `StandardRenderer` is the quick path into the fabricated renderer. A new scene should be lit already. Metalness should visibly change the material. Shadows should land where objects touch the ground. Ambient occlusion should add contact darkening, not mystery noise.
 
-These examples are also `FIELD_TEST` smoke tests, so the page doubles as a small renderer checklist. The docs runner uses `StandardRendererDocsHarness` behind the scenes to make deterministic captures; the code shown on this page is the part you would normally edit in a Field box: scene settings, mesh registration, transforms, and material pushes.
+These examples are also `FIELD_TEST` smoke tests, so the page doubles as a small renderer checklist. The docs runner uses `StandardRendererDocsHarness` behind the scenes to make deterministic captures; the screenshot harness now builds `FabricateNode` and `FabricateMaterial` state, binds renderer meshes to node world transforms, asks `FabricateScenePlanner` for draw/material queues, then attaches the `FabricateFrameGraph` for capture.
+
+The current "make it feel like Three.js" target asset is `assets/fabricate_demo/ToyCar.glb`, paired with `assets/fabricate_demo/venice_sunset_1k.exr`. ToyCar is intentionally more demanding than our hand-built torus scenes: it carries transmission, clearcoat, sheen, tangent-space normal maps, texture transforms, and multiple texture semantics. Venice Sunset drives the first image-based-lighting path through `LoadedTexture.fromExrFile(...)`, which decodes EXR channels into RGBA32F, can build GGX-prefiltered radiance mips, and samples that mip chain by roughness. A cubemap target and BRDF LUT are still the next quality jumps.
 
 The common pattern is:
 
 ```diffstatic {data-lang=kotlin}
 val bundle = StandardRenderer.build(renderer)
-bundle.attachTo(renderer)
+
+val material = FabricateMaterial(
+    baseColor = Vector4f(0.83f, 0.58f, 0.28f, 1f),
+    metallic = 0.18f,
+    roughness = 0.36f
+)
+
+val node = bundle.sceneGraph.mesh(name = "torus", material = material) {
+    transform.set(Matrix4f().translate(0f, -0.18f, 0f))
+    renderable?.userData = "torus"
+}
 
 val mesh = bundle.registerTestTorus(name = "torus", slices = 64, stacks = 64, renderer = renderer)
-mesh.setModel(Matrix4f().translate(0f, -0.18f, 0f))
-mesh.gBuffer.mesh.push["baseColor"] = Vector4f(0.83f, 0.58f, 0.28f, 1f)
-mesh.gBuffer.mesh.push["metallic"] = 0.18f
-mesh.gBuffer.mesh.push["roughness"] = 0.36f
+mesh.bindNode(node)
+mesh.applyFabricateMaterial(material)
 
+val plan = bundle.applyScenePlan()
+println(plan.opaque.map { it.node.name })
+println(plan.materials.first())
+
+bundle.attachTo(renderer)
 bundle.present(renderer = renderer)
 ```
 
-The current built-in frame is:
+`StandardRenderer.Bundle` is the object to keep around. It owns the off-screen render targets, the modules that draw into them, the scene defaults, the scene graph, and the post stack. Most sketches should build one bundle, register geometry into it, attach its frame graph to a window, then present the post-stack output.
+
+Use the high-level layer for:
+
+- `bundle.sceneGraph`: hierarchy, transforms, animation samples, visibility, material intent, and glTF import.
+- `bundle.registerCube(...)`, `registerSphere(...)`, `registerPullingMesh(...)`: geometry that should render through both the g-buffer and shadow pass.
+- `bundle.registerTransparentPullingMesh(...)`: blended geometry that should draw after deferred lighting.
+- `bundle.postStack` and `bundle.addShaderEffect(...)`: fullscreen image effects after opaque and transparent composition.
+
+Drop down to raw `Module`, `Mesh`, `RenderToTexture`, or push constants when you need a shader or buffer layout that the bundle does not know about yet. The important part is to keep transform/material intent in the scene graph and let the planner classify it before the module maps are committed.
+
+The current built-in frame graph is:
 
 ```diffstatic {data-lang=kotlin}
 std-gbuffer
@@ -31,7 +57,18 @@ std-motion-blur
 std-aa
 ```
 
-`bundle.present(...)` presents `bundle.postStack.output()`, so any effect you append after the stock stack becomes the final image automatically.
+Inspect or edit that order before attaching it:
+
+```diffstatic {data-lang=kotlin}
+val graph = bundle.frameGraph()
+println(graph.passNames())
+
+// Insert custom utility passes around the named built-ins.
+graph.insertBefore("my-pre-light-pass", FabricateFrameGraph.PASS_LIGHTING, myTarget)
+graph.attachTo(renderer)
+```
+
+`bundle.attachTo(renderer)` is the convenience form for `bundle.frameGraph().attachTo(renderer)`. `bundle.present(...)` presents `bundle.postStack.output()`, so any effect you append after the stock stack becomes the final image automatically.
 
 ## Scene Graph and Transforms
 
@@ -74,23 +111,45 @@ bundle.sceneGraph.advance(1f / 60f)
 bundle.sortTransparentMeshes()
 ```
 
+## Render Planning
+
+The scene graph answers "what exists?" and the render plan answers "what order should it draw in?" `FabricateScenePlanner` walks the current scene, resolves material records into a compact table, and splits draw items into opaque, alpha-mask, transparent, and shadow-caster queues.
+
+```diffstatic {data-lang=kotlin}
+val planner = FabricateScenePlanner()
+val plan = planner.plan(bundle.sceneGraph, cameraPosition = Vector3f(bundle.scene.camera.at))
+
+println(plan.opaque.map { it.node.name })
+println(plan.alphaMask.map { it.node.name })
+println(plan.transparent.map { it.node.name }) // back-to-front
+println(plan.materials.size)
+```
+
+The planner is pure Kotlin. It is useful in tests, docs harnesses, and future renderer adapters because it does not allocate Vulkan objects. A `FabricateRenderItem` carries the node, renderable, material id, queue, current world matrix, previous world matrix, and camera distance. A `FabricateMaterialRecord` is the CPU-side handoff shape for material buffers: base color, metalness, roughness, alpha mode, cutoff, double-sided state, and a texture mask placeholder.
+
+Style rule: keep user intent on `FabricateMaterial` and `FabricateRenderable`; let the planner classify it. Prefer `FabricateAlphaMode.OPAQUE`, `.MASK`, and `.BLEND` over ad hoc booleans, and use `material.sortOrder` only when a stable override matters.
+
 ## Default Scene
 
 The default scene is deliberately plain: three colored torii, the standard camera, and the stock lighting setup. If this image is wrong, the higher-level Fabricate examples are not worth trusting yet.
 
-The scene is intentionally just mesh registration, transforms, and material pushes:
+The scene is intentionally just node/material creation plus mesh binding:
 
 ```diffstatic {data-lang=kotlin}
-val left = bundle.registerTestTorus(name = "left", slices = 48, stacks = 48, renderer = renderer)
-left.setModel(Matrix4f().translate(-0.95f, 0f, 0f))
-left.gBuffer.mesh.push["baseColor"] = Vector4f(0.17f, 0.98f, 0.24f, 1f)
+fun torusNode(name: String, x: Float, color: Vector4f) {
+    val material = FabricateMaterial(baseColor = color)
+    val node = bundle.sceneGraph.mesh(name = name, material = material) {
+        transform.set(Matrix4f().translate(x, 0f, 0f))
+        renderable?.userData = name
+    }
+    val mesh = bundle.registerTestTorus(name = name, slices = 48, stacks = 48, renderer = renderer)
+    mesh.bindNode(node)
+    mesh.applyFabricateMaterial(material)
+}
 
-val middle = bundle.registerTestTorus(name = "middle", slices = 48, stacks = 48, renderer = renderer)
-middle.gBuffer.mesh.push["baseColor"] = Vector4f(0.98f, 0.92f, 0.22f, 1f)
-
-val right = bundle.registerTestTorus(name = "right", slices = 48, stacks = 48, renderer = renderer)
-right.setModel(Matrix4f().translate(0.95f, 0f, 0f))
-right.gBuffer.mesh.push["baseColor"] = Vector4f(0.98f, 0.30f, 0.32f, 1f)
+torusNode("left", -0.95f, Vector4f(0.17f, 0.98f, 0.24f, 1f))
+torusNode("middle", 0f, Vector4f(0.98f, 0.92f, 0.22f, 1f))
+torusNode("right", 0.95f, Vector4f(0.98f, 0.30f, 0.32f, 1f))
 ```
 
 <!--
@@ -118,7 +177,7 @@ expect:
 
 A compact "hero" scene: reflective torii over a checkerboard floor. This is a quick visual sanity check for specular highlights, floor contacts, and stable shading under denser geometry.
 
-The checkerboard here is mesh-side: alternating tile geometry receives alternating material values. The harness packs the two parities into pulling meshes for fewer draw items; conceptually, the scene logic is this:
+The checkerboard here is mesh-side: alternating tile geometry receives alternating `FabricateMaterial` values. The harness packs the two parities into pulling meshes for fewer draw items; conceptually, the scene logic is this:
 
 ```diffstatic {data-lang=kotlin}
 bundle.scene.camera.at.set(0f, 0.78f, -3.75f)
@@ -130,24 +189,33 @@ bundle.scene.aoStrength = 1f
 
 for (row in 0 until 10) {
     for (col in 0 until 10) {
-        val tile = bundle.registerCube(name = "tile-$row-$col", size = 1f, renderer = renderer)
-        tile.setModel(
-            Matrix4f()
-                .translate((col - 4.5f) * 0.52f, -1.0f, (row - 4.5f) * 0.52f)
-                .scale(0.26f, 0.02f, 0.26f)
-        )
         val light = (row + col) % 2 == 0
-        tile.gBuffer.mesh.push["baseColor"] =
-            if (light) Vector4f(0.57f, 0.57f, 0.61f, 1f) else Vector4f(0.22f, 0.22f, 0.24f, 1f)
-        tile.gBuffer.mesh.push["roughness"] = 0.9f
+        val material = FabricateMaterial(
+            baseColor = if (light) Vector4f(0.57f, 0.57f, 0.61f, 1f) else Vector4f(0.22f, 0.22f, 0.24f, 1f),
+            roughness = 0.9f
+        )
+        val node = bundle.sceneGraph.mesh(name = "tile-$row-$col", material = material) {
+            transform.set(
+                Matrix4f()
+                    .translate((col - 4.5f) * 0.52f, -1.0f, (row - 4.5f) * 0.52f)
+                    .scale(0.26f, 0.02f, 0.26f)
+            )
+            renderable?.userData = "tile-$row-$col"
+        }
+        val tile = bundle.registerCube(name = "tile-$row-$col", size = 1f, renderer = renderer)
+        tile.bindNode(node)
+        tile.applyFabricateMaterial(material)
     }
 }
 
+val torusMaterial = FabricateMaterial(Vector4f(0.28f, 0.86f, 0.96f, 1f), metallic = 1.0f, roughness = 0.07f)
+val torusNode = bundle.sceneGraph.mesh(name = "torus", material = torusMaterial) {
+    transform.set(Matrix4f().translate(0f, -0.16f, 0f).rotateX(0.24f).rotateY(-0.25f))
+    renderable?.userData = "torus"
+}
 val torus = bundle.registerTestTorus(name = "torus", slices = 72, stacks = 72, renderer = renderer)
-torus.setModel(Matrix4f().translate(0f, -0.16f, 0f).rotateX(0.24f).rotateY(-0.25f))
-torus.gBuffer.mesh.push["baseColor"] = Vector4f(0.28f, 0.86f, 0.96f, 1f)
-torus.gBuffer.mesh.push["metallic"] = 1.0f
-torus.gBuffer.mesh.push["roughness"] = 0.07f
+torus.bindNode(torusNode)
+torus.applyFabricateMaterial(torusMaterial)
 ```
 
 <!--
@@ -219,20 +287,30 @@ Limitations:
 - World-space scale dependency for checker density
 - Shader-only pattern can alias at grazing angles compared with textured/filtered approaches
 
-The mesh is one scaled cube. The checker controls are pushed into the g-buffer material:
+The mesh is one scaled cube. Fabricate owns the transform/material intent; the checker controls are extra shader parameters on the g-buffer mesh:
 
 ```diffstatic {data-lang=kotlin}
-val floor = bundle.registerCube(name = "shader-floor", size = 1f, renderer = renderer)
-floor.setModel(
-    Matrix4f()
-        .translate(0f, -1.0f, 0f)
-        .scale(3.2f, 0.02f, 3.2f)
+val material = FabricateMaterial(
+    baseColor = Vector4f(0.58f, 0.58f, 0.62f, 1f),
+    roughness = 0.9f
 )
-floor.gBuffer.mesh.push["baseColor"] = Vector4f(0.58f, 0.58f, 0.62f, 1f)
-floor.gBuffer.mesh.push["roughness"] = 0.9f
+val node = bundle.sceneGraph.mesh(name = "shader-floor", material = material) {
+    transform.set(
+        Matrix4f()
+            .translate(0f, -1.0f, 0f)
+            .scale(3.2f, 0.02f, 3.2f)
+    )
+    renderable?.userData = "shader-floor"
+}
+val floor = bundle.registerCube(name = "shader-floor", size = 1f, renderer = renderer)
+floor.bindNode(node)
+floor.applyFabricateMaterial(material)
+
 floor.gBuffer.mesh.push["checkerScale"] = 3.0f
 floor.gBuffer.mesh.push["checkerColor"] = Vector4f(0.20f, 0.20f, 0.22f, 1f)
 floor.gBuffer.mesh.push["checkerMix"] = 1f
+
+bundle.applyScenePlan()
 ```
 
 <!--
@@ -372,9 +450,29 @@ expect:
 
 The GLTF path uses the existing Assimp-backed loader, then imports mesh instances into the Fabricate scene graph. Opaque meshes go to the g-buffer/shadow pair. Alpha materials go to the blended transparency pass.
 
+This page uses the Khronos ToyCar sample as the pressure test. The loader sees three mesh/material buckets, 77k vertices, 326k indices, and texture slots for base/diffuse, normal, emissive, packed occlusion/roughness/metalness, and clearcoat inputs. The current `StandardRenderer` material bridge consumes base-color textures, UVs, glTF tangent frames, alpha/transmission classification, metalness, roughness, tangent-space normal maps, packed metal/roughness maps, occlusion, emissive maps, clearcoat factors/maps, shadows, AO, and equirectangular image-based lighting from float EXR environments with GGX-prefiltered radiance mips. The headlamp lens ridges are a useful canary here: they disappear if the normal map is sampled without the model's tangent basis. Texture transforms, physical transmission/refraction, sheen, BRDF LUT integration, cubemap PMREM, and clearcoat roughness/normal texture variants are the remaining distance to a convincing three.js-style PBR scene.
+
+The visual target is Don McCurdy's glTF Viewer with the same ToyCar model and Venice Sunset environment. Use it as the reference for exposure, contrast, fabric detail, and material readability. Its useful baseline settings are:
+
+- Environment: Venice Sunset EXR
+- Environment processing: Three.js `PMREMGenerator.fromEquirectangular(...)`
+- Tone mapping: Linear
+- Exposure: `0`
+- Punctual lights: on
+- Ambient intensity: `0.3`
+- Direct intensity: `0.8 * PI`
+- Background: `#191919`
+
+![ToyCar in Don McCurdy's glTF Viewer, close comparison framing](assets/fabricate-toy-car-donmccurdy-reference-close.png)
+
+For local debugging, the throwaway Three.js probe loads the same `ToyCar.glb` and Venice EXR with `PMREMGenerator`. It confirms that the visible grime and surface variation come from the GLB texture maps, not from procedural dirt in the viewer. The Field docs harness pins the ToyCar capture to the same 50-degree comparison FOV, represented as a signed radian value to preserve the current Vulkan-oriented projection convention.
+
+![ToyCar comparison between the throwaway Three.js probe and Field StandardRenderer](assets/fabricate-toy-car-three-throwaway-comparison.png)
+
 ```diffstatic {data-lang=kotlin}
+val toyCarPath = File("public/docs/assets/fabricate_demo/ToyCar.glb").absolutePath
 val loaded = bundle.registerGltf(
-    path = "/path/to/model.glb",
+    path = toyCarPath,
     namePrefix = "robot",
     renderer = renderer
 )
@@ -390,13 +488,63 @@ println("opaque meshes: ${loaded.opaqueMeshes.size}")
 println("transparent meshes: ${loaded.transparentMeshes.size}")
 ```
 
+<!--
+FIELD_TEST
+id: docs.fabricate.toy-car-gltf
+runner: backdoor-box
+graphicsContext: true
+tags: [docs, fabricate, renderer, graphics, gltf, pbr]
+timeoutSec: 240
+execution: launch
+waitSec: 30.0
+expect:
+  allowMissingOutput: true
+  image:
+    path: /tmp/docs-fabricate-toy-car-native.png
+    lumaComparisons:
+      - darker: [0.03, 0.03, 0.12, 0.12]
+        lighter: [0.36, 0.34, 0.28, 0.24]
+        marginGt: 6
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-toy-car-gltf.png" source-image="/tmp/docs-fabricate-toy-car-native.png" wait="30.0" timeout="240" execution="launch" embed=true graphics-context=true name="fabricate-toy-car-gltf" hidden=true fabricate-scene="toy-car-gltf"}
+```
+
 You can still override material classification on import:
 
 ```diffstatic {data-lang=kotlin}
-val model = GltfSupport.loadGltfBasic("/path/to/model.glb")
+val model = GltfSupport.loadGltfBasic(toyCarPath)
 bundle.sceneGraph.importGltf(model, namePrefix = "ghost") { mesh ->
     FabricateMaterial.fromGltf(mesh.material).transparent(0.42f)
 }
+```
+
+For tooling that wants only the pure scene representation, `FabricateGltfBridge.fromModel(model)` returns a `FabricateScene` without registering renderer meshes. Use `bundle.registerGltf(...)` when you want GPU draw resources and `FabricateGltfBridge` when you want to inspect or plan imported nodes first.
+
+The environment asset is already local. Load the EXR directly when the environment should participate in roughness-aware IBL. Ask the texture loader for prefiltered radiance mips so glossy materials can sample lower LODs as roughness rises. The PNG companion is just a debug/preview fallback now.
+
+```diffstatic {data-lang=kotlin}
+val veniceExr = File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath
+
+val environment = LoadedTexture.fromExrFile(
+    veniceExr,
+    renderer,
+    requestedMipLevels = 0,
+    prefilterEnvironment = true
+).also {
+    it.setDefaultSampler()
+    it.transferNow()
+}
+
+val bundle = StandardRenderer.build(
+    renderer,
+    StandardRenderer.Config(
+        environmentTexture = environment,
+        environmentStrength = 1.35f,
+        environmentRotation = 0.42f,
+        // Linear renderer input for a #191919-style sRGB background.
+        backgroundColor = Vector3f(0.0093f, 0.0093f, 0.0093f)
+    )
+)
 ```
 
 ## Metalness

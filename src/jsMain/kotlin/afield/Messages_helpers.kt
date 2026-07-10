@@ -112,7 +112,13 @@ fun sendWithReply(name: String, payload: dynamic, callbackname: String, callback
         Message(name, payload = Json.decodeFromString<JsonElement>(JSON.stringify(payload))),
         callbackname
     ) { message: Message, function: (Message) -> Unit ->
-        callback(message, JSON.parse(message.payload.toString()))
-        Handled.yes
+        val callbackResult = callback(message, JSON.parse(message.payload.toString()))
+        if ((callbackResult as? String) in setOf("remove", "once", "yes_remove")) Handled.yes_remove else Handled.yes
     }
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun clearReplyHandler(callbackname: String) {
+    handlers.remove(callbackname)
 }

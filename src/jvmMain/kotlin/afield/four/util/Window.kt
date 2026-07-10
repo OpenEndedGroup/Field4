@@ -320,7 +320,7 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
             val tempFile = Files.createTempFile("field4_screenshot_$timestamp", ".png").toFile()
 
             // Convert buffer to PNG and write to file
-            val pngBytes = PngEncoder.encodeFromBuffer(imageData, width, height)
+            val pngBytes = PngEncoder.encodeFromBuffer(imageData, width, height, flipY = true)
             Files.write(tempFile.toPath(), pngBytes, StandardOpenOption.WRITE)
 
             return tempFile
@@ -344,7 +344,7 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
         }
 
         return try {
-            val pngBytes = PngEncoder.encodeFromBuffer(imageData, width, height)
+            val pngBytes = PngEncoder.encodeFromBuffer(imageData, width, height, flipY = true)
             Base64.getEncoder().encodeToString(pngBytes)
         } catch (e: Exception) {
             System.err.println("Failed to get framebuffer as base64 PNG: ${e.message}")

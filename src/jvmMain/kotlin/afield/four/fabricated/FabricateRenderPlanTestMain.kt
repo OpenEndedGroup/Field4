@@ -7,28 +7,19 @@ import org.joml.Vector4f
 object FabricateRenderPlanTestMain {
     @JvmStatic
     fun main(args: Array<String>) {
-        val scene = FabricateScene("render-plan")
-        val opaque = FabricateMeshNode(
-            "opaque",
-            FabricateStandardMaterial(baseColor = Vector4f(1f, 0f, 0f, 1f))
-        ).setTranslation(0f, 0f, 2f) as FabricateMeshNode
-        val masked = FabricateMeshNode(
-            "masked",
-            FabricateStandardMaterial(alphaMode = FabricateAlphaMode.Mask)
-        ).setTranslation(0f, 0f, 3f) as FabricateMeshNode
-        val farGlass = FabricateMeshNode(
-            "farGlass",
-            FabricateStandardMaterial(alphaMode = FabricateAlphaMode.Blend)
-        ).setTranslation(0f, 0f, 10f) as FabricateMeshNode
-        val nearGlass = FabricateMeshNode(
-            "nearGlass",
-            FabricateStandardMaterial(alphaMode = FabricateAlphaMode.Blend)
-        ).setTranslation(0f, 0f, 1f) as FabricateMeshNode
-
-        scene.root += opaque
-        scene.root += masked
-        scene.root += nearGlass
-        scene.root += farGlass
+        val scene = FabricateScene(FabricateNode("render-plan"))
+        scene.mesh("opaque", material = FabricateMaterial(baseColor = Vector4f(1f, 0f, 0f, 1f))) {
+            transform.position.set(0f, 0f, 2f)
+        }
+        scene.mesh("masked", material = FabricateMaterial(alphaMode = FabricateAlphaMode.MASK)) {
+            transform.position.set(0f, 0f, 3f)
+        }
+        scene.mesh("farGlass", material = FabricateMaterial(alphaMode = FabricateAlphaMode.BLEND)) {
+            transform.position.set(0f, 0f, 10f)
+        }
+        scene.mesh("nearGlass", material = FabricateMaterial(alphaMode = FabricateAlphaMode.BLEND)) {
+            transform.position.set(0f, 0f, 1f)
+        }
 
         val plan = FabricateScenePlanner().plan(scene, cameraPosition = Vector3f(0f, 0f, 0f))
 
@@ -41,7 +32,7 @@ object FabricateRenderPlanTestMain {
             "transparent meshes should not be default shadow casters: ${plan.shadowCasters.map { it.node.name }}"
         }
         check(plan.materials.size == 4) { "expected 4 material records, got ${plan.materials.size}" }
-        check(plan.materials[plan.transparent.first().materialId].alphaMode == FabricateAlphaMode.Blend)
+        check(plan.materials[plan.transparent.first().materialId].alphaMode == FabricateAlphaMode.BLEND)
 
         println("FabricateRenderPlanTestMain ok")
     }

@@ -32,6 +32,7 @@ import org.joml.Vector4f
 import org.lwjgl.assimp.*
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil.*
+import org.lwjgl.vulkan.VK10
 import java.nio.file.Path
 import java.nio.file.Paths
 
@@ -122,7 +123,9 @@ object GltfSupport {
     data class MeshBuffers(
         val vertexData: java.nio.ByteBuffer, // tightly packed floats
         val indexData: java.nio.IntBuffer,   // 32-bit indices
-        val vertexCount: Int, val indexCount: Int
+        val vertexCount: Int,
+        val indexCount: Int,
+        val tangentData: java.nio.ByteBuffer? = null // optional vec4 tangent frame; w is bitangent sign
     )
 
     data class TextureSlot(
@@ -133,7 +136,16 @@ object GltfSupport {
 
     data class MaterialTextured(
         val baseColor: Vector4f,            // RGBA (treat as linear in your pipeline)
-        val textures: List<TextureSlot> = emptyList()
+        val textures: List<TextureSlot> = emptyList(),
+        val name: String = "",
+        val metallicFactor: Float = 1f,
+        val roughnessFactor: Float = 1f,
+        val clearcoatFactor: Float = 0f,
+        val clearcoatRoughnessFactor: Float = 0f,
+        val transmissionFactor: Float = 0f,
+        val alphaMode: String = "OPAQUE",
+        val alphaCutoff: Float = 0.5f,
+        val doubleSided: Boolean = false
     )
 
     data class MeshInstance(
@@ -214,7 +226,7 @@ object GltfSupport {
     // ------------------------------------------------------------------------
 
     private const val POST_FLAGS: Int =
-        Assimp.aiProcess_Triangulate or Assimp.aiProcess_GenNormals or Assimp.aiProcess_JoinIdenticalVertices or Assimp.aiProcess_ImproveCacheLocality or Assimp.aiProcess_SortByPType
+        Assimp.aiProcess_Triangulate or Assimp.aiProcess_GenNormals or Assimp.aiProcess_CalcTangentSpace or Assimp.aiProcess_JoinIdenticalVertices or Assimp.aiProcess_ImproveCacheLocality or Assimp.aiProcess_SortByPType
 
     fun loadModel(path: String) = Assimp.aiImportFile(path, POST_FLAGS)
         ?: error("Assimp import failed for '$path': ${Assimp.aiGetErrorString()}")
@@ -293,10 +305,13 @@ object GltfSupport {
         val vertexCount = aiMesh.mNumVertices()
         val posBuf = aiMesh.mVertices()
         val normalBuf = aiMesh.mNormals()
+        val tangentBuf = aiMesh.mTangents()
+        val bitangentBuf = aiMesh.mBitangents()
         val texBuf = aiMesh.mTextureCoords(0)
         val colorBuf = if (includeVertexColors) aiMesh.mColors(0) else null
 
         val hasNormals = normalBuf != null
+        val hasTangents = tangentBuf != null
         val hasTex = texBuf != null
         val hasColors = colorBuf != null
 
@@ -305,6 +320,7 @@ object GltfSupport {
         val componentsPerVertex = 12
         val strideBytes = componentsPerVertex * 4
         val vertexData = memAlloc(vertexCount * strideBytes)
+        val tangentData = if (hasTangents) memAlloc(vertexCount * 4 * 4) else null
 
         for (i in 0 until vertexCount) {
             // pos
@@ -349,8 +365,27 @@ object GltfSupport {
                 vertexData.putFloat(1f)
                 vertexData.putFloat(1f)
             }
+
+            if (hasTangents && tangentData != null) {
+                val t = tangentBuf[i]
+                val sign = if (hasNormals && bitangentBuf != null) {
+                    val n = normalBuf[i]
+                    val b = bitangentBuf[i]
+                    val cx = n.y() * t.z() - n.z() * t.y()
+                    val cy = n.z() * t.x() - n.x() * t.z()
+                    val cz = n.x() * t.y() - n.y() * t.x()
+                    if (cx * b.x() + cy * b.y() + cz * b.z() < 0f) -1f else 1f
+                } else {
+                    1f
+                }
+                tangentData.putFloat(t.x())
+                tangentData.putFloat(t.y())
+                tangentData.putFloat(t.z())
+                tangentData.putFloat(sign)
+            }
         }
         vertexData.flip()
+        tangentData?.flip()
 
         // Indices (uint32). You can compress to 16-bit in your own step if desired.
         val faceBuf = aiMesh.mFaces()
@@ -370,7 +405,11 @@ object GltfSupport {
         indexData.flip()
 
         return MeshBuffers(
-            vertexData = vertexData, indexData = indexData, vertexCount = vertexCount, indexCount = indexCount
+            vertexData = vertexData,
+            indexData = indexData,
+            vertexCount = vertexCount,
+            indexCount = indexCount,
+            tangentData = tangentData
         )
     }
 
@@ -394,10 +433,43 @@ object GltfSupport {
 
         val aiMat = getMaterial(scene, matIndex) ?: return MaterialTextured(defaultColor)
 
+        fun materialFloat(key: String, default: Float): Float {
+            val values = floatArrayOf(default)
+            val count = intArrayOf(1)
+            return if (Assimp.aiGetMaterialFloatArray(aiMat, key, 0, 0, values, count) == Assimp.aiReturn_SUCCESS && count[0] > 0) {
+                values[0]
+            } else {
+                default
+            }
+        }
+
+        fun materialInt(key: String, default: Int): Int {
+            val values = intArrayOf(default)
+            val count = intArrayOf(1)
+            return if (Assimp.aiGetMaterialIntegerArray(aiMat, key, 0, 0, values, count) == Assimp.aiReturn_SUCCESS && count[0] > 0) {
+                values[0]
+            } else {
+                default
+            }
+        }
+
+        fun materialString(key: String, default: String): String {
+            val value = AIString.calloc()
+            return try {
+                if (Assimp.aiGetMaterialString(aiMat, key, 0, 0, value) == Assimp.aiReturn_SUCCESS) {
+                    value.dataString().ifBlank { default }
+                } else {
+                    default
+                }
+            } finally {
+                value.free()
+            }
+        }
+
         val color = AIColor4D.calloc()
-        val resultBase = Assimp.aiGetMaterialColor(aiMat, "\$clr.base", 0, 0, color)
+        val resultBase = Assimp.aiGetMaterialColor(aiMat, Assimp.AI_MATKEY_BASE_COLOR, 0, 0, color)
         val resultDiffuse = if (resultBase != 0) {
-            Assimp.aiGetMaterialColor(aiMat, "\$clr.diffuse", 0, 0, color)
+            Assimp.aiGetMaterialColor(aiMat, Assimp.AI_MATKEY_COLOR_DIFFUSE, 0, 0, color)
         } else 0
 
         val baseColor = when {
@@ -406,8 +478,33 @@ object GltfSupport {
             else -> defaultColor
         }
         color.free()
+        baseColor.w *= materialFloat(Assimp.AI_MATKEY_OPACITY, 1f).coerceIn(0f, 1f)
 
-        if (!config.loadTextures) return MaterialTextured(baseColor)
+        val materialName = materialString(Assimp.AI_MATKEY_NAME, "material-$matIndex")
+        val metallicFactor = materialFloat(Assimp.AI_MATKEY_METALLIC_FACTOR, 1f)
+        val roughnessFactor = materialFloat(Assimp.AI_MATKEY_ROUGHNESS_FACTOR, 1f)
+        val clearcoatFactor = materialFloat(Assimp.AI_MATKEY_CLEARCOAT_FACTOR, 0f).coerceIn(0f, 1f)
+        val clearcoatRoughnessFactor = materialFloat(Assimp.AI_MATKEY_CLEARCOAT_ROUGHNESS_FACTOR, 0f).coerceIn(0f, 1f)
+        val transmissionFactor = materialFloat(Assimp.AI_MATKEY_TRANSMISSION_FACTOR, 0f).coerceIn(0f, 1f)
+        val alphaMode = materialString(
+            Assimp.AI_MATKEY_GLTF_ALPHAMODE,
+            if (baseColor.w < 0.999f) "BLEND" else "OPAQUE"
+        )
+        val alphaCutoff = materialFloat(Assimp.AI_MATKEY_GLTF_ALPHACUTOFF, 0.5f)
+        val doubleSided = materialInt(Assimp.AI_MATKEY_TWOSIDED, 0) != 0
+
+        if (!config.loadTextures) return MaterialTextured(
+            baseColor = baseColor,
+            name = materialName,
+            metallicFactor = metallicFactor,
+            roughnessFactor = roughnessFactor,
+            clearcoatFactor = clearcoatFactor,
+            clearcoatRoughnessFactor = clearcoatRoughnessFactor,
+            transmissionFactor = transmissionFactor,
+            alphaMode = alphaMode,
+            alphaCutoff = alphaCutoff,
+            doubleSided = doubleSided
+        )
 
         val slots = mutableListOf<TextureSlot>()
         val renderer: Renderer = fromContext()
@@ -418,7 +515,11 @@ object GltfSupport {
             Assimp.aiTextureType_NORMALS,
             Assimp.aiTextureType_EMISSIVE,
             Assimp.aiTextureType_METALNESS,
-            Assimp.aiTextureType_DIFFUSE_ROUGHNESS
+            Assimp.aiTextureType_DIFFUSE_ROUGHNESS,
+            Assimp.aiTextureType_GLTF_METALLIC_ROUGHNESS,
+            Assimp.aiTextureType_LIGHTMAP,
+            Assimp.aiTextureType_AMBIENT_OCCLUSION,
+            Assimp.aiTextureType_CLEARCOAT
         )
 
         val typeMapping = types.mapIndexed { i, type -> type to i }.toMap()
@@ -431,6 +532,18 @@ object GltfSupport {
                 valid = false
             )
         }
+
+        fun textureFormatFor(type: Int): Int =
+            when (type) {
+                Assimp.aiTextureType_NORMALS,
+                Assimp.aiTextureType_METALNESS,
+                Assimp.aiTextureType_DIFFUSE_ROUGHNESS,
+                Assimp.aiTextureType_GLTF_METALLIC_ROUGHNESS,
+                Assimp.aiTextureType_LIGHTMAP,
+                Assimp.aiTextureType_AMBIENT_OCCLUSION,
+                Assimp.aiTextureType_CLEARCOAT -> VK10.VK_FORMAT_R8G8B8A8_UNORM
+                else -> VK10.VK_FORMAT_R8G8B8A8_SRGB
+            }
 
         fun loadSlot(type: Int) {
             val count = Assimp.aiGetMaterialTextureCount(aiMat, type)
@@ -445,7 +558,13 @@ object GltfSupport {
                     if (res != Assimp.aiReturn_SUCCESS) {
                         continue
                     }
-                    val tex = loadTextureFromPathOrEmbedded(scene, path.dataString(), baseDir, renderer)
+                    val tex = loadTextureFromPathOrEmbedded(
+                        scene,
+                        path.dataString(),
+                        baseDir,
+                        renderer,
+                        textureFormatFor(type)
+                    )
                     if (tex != null) {
                         slots[typeMapping[type]!!] =
                             TextureSlot(type = type, uvSet = uvIndex[0], texture = tex, valid = true)
@@ -457,16 +576,28 @@ object GltfSupport {
 
         types.forEach { loadSlot(it) }
 
-        return MaterialTextured(baseColor, slots)
+        return MaterialTextured(
+            baseColor = baseColor,
+            textures = slots,
+            name = materialName,
+            metallicFactor = metallicFactor,
+            roughnessFactor = roughnessFactor,
+            clearcoatFactor = clearcoatFactor,
+            clearcoatRoughnessFactor = clearcoatRoughnessFactor,
+            transmissionFactor = transmissionFactor,
+            alphaMode = alphaMode,
+            alphaCutoff = alphaCutoff,
+            doubleSided = doubleSided
+        )
     }
 
     private fun loadTextureFromPathOrEmbedded(
-        scene: AIScene, path: String, baseDir: Path?, renderer: Renderer
+        scene: AIScene, path: String, baseDir: Path?, renderer: Renderer, imageFormat: Int
     ): LoadedTexture? {
         if (path.isEmpty()) return null
         // Embedded texture reference: "*0", "*1", ...
         if (path.startsWith("*")) {
-            val embedded = loadEmbeddedTexture(scene, path, renderer)
+            val embedded = loadEmbeddedTexture(scene, path, renderer, imageFormat)
             if (embedded == null) {
                 lprintln("warning,gltf", "Skipping embedded texture $path: unable to decode")
             }
@@ -475,7 +606,7 @@ object GltfSupport {
             val p = Paths.get(path)
             val resolved = if (p.isAbsolute) p else baseDir?.resolve(p) ?: p
             return try {
-                val t = LoadedTexture.fromFile(resolved.toString(), renderer)
+                val t = LoadedTexture.fromFile(resolved.toString(), renderer, imageFormat)
                 t.transferNow()
                 t
             } catch (_: Exception) {
@@ -484,7 +615,7 @@ object GltfSupport {
         }
     }
 
-    private fun loadEmbeddedTexture(scene: AIScene, path: String, renderer: Renderer): LoadedTexture? {
+    private fun loadEmbeddedTexture(scene: AIScene, path: String, renderer: Renderer, imageFormat: Int): LoadedTexture? {
         val index = path.drop(1).toIntOrNull()
         if (index == null) {
             lprintln("warning,gltf", "Embedded texture reference is not numeric: $path")
@@ -510,7 +641,7 @@ object GltfSupport {
             val texels = aiTex.pcData()
             val encoded = memByteBuffer(texels.address(), width)
             try {
-                val t = LoadedTexture.fromEncodedMemory("embedded:$path", encoded, renderer)
+                val t = LoadedTexture.fromEncodedMemory("embedded:$path", encoded, renderer, imageFormat)
                 t.transferNow()
                 t
             } catch (_: Exception) {
@@ -535,7 +666,7 @@ object GltfSupport {
                     rgba.put((t.a().toInt() and 0xFF).toByte())
                 }
                 rgba.flip()
-                val t = LoadedTexture.fromRawRGBA("embedded:$path", width, height, rgba, renderer)
+                val t = LoadedTexture.fromRawRGBA("embedded:$path", width, height, rgba, renderer, imageFormat)
                 t.transferNow()
                 t
             } catch (_: Exception) {

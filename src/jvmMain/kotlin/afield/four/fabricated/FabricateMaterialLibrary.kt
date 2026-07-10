@@ -47,26 +47,15 @@ class FabricateMaterialLibrary {
 }
 
 fun FabricateMaterial.toRecord(): FabricateMaterialRecord {
-    val standard = this as? FabricateStandardMaterial
     return FabricateMaterialRecord(
-        baseColor = Vector4f(standard?.baseColor ?: Vector4f(1f, 1f, 1f, 1f)),
-        metallic = standard?.metallic ?: 0f,
-        roughness = standard?.roughness ?: 1f,
-        occlusion = standard?.occlusion ?: 1f,
-        emissive = Vector3f(standard?.emissive ?: Vector3f()),
+        baseColor = Vector4f(baseColor),
+        metallic = metallic,
+        roughness = roughness,
+        occlusion = if (receiveAo) 1f else 0f,
+        emissive = Vector3f(),
         alphaCutoff = alphaCutoff,
         alphaMode = alphaMode,
         doubleSided = doubleSided,
-        textureMask = standard?.textureMask() ?: 0
+        textureMask = 0
     )
-}
-
-fun FabricateStandardMaterial.textureMask(): Int {
-    var mask = 0
-    if (baseColorTexture?.valid == true) mask = mask or 1
-    if (normalTexture?.valid == true) mask = mask or 2
-    if (metallicRoughnessTexture?.valid == true) mask = mask or 4
-    if (occlusionTexture?.valid == true) mask = mask or 8
-    if (emissiveTexture?.valid == true) mask = mask or 16
-    return mask
 }

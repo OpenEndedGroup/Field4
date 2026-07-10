@@ -40,7 +40,7 @@ Green lines are additions and red deletions. This may include changes to other p
 
 ## AI Auto-complete
 
-`ctrl-space` (show autocomplete) will, in Field, typically do a type-based analysis of what kinds of things can complete here (Kotlin's internal compiler for Kotlin, the Jedi package for Python etc.); but in the background it also fires off a request for up to 3 AI completions and updates the completion list with them when they arrive:
+`ctrl-space` opens Field's custom completion panel. Field typically does a type-based analysis of what can complete here (Kotlin's internal compiler for Kotlin, the Jedi package for Python etc.); in the background it also fires off a request for up to 3 AI completions and updates the same FieldSuggest list when they arrive:
 
 ![](assets/screenshot_50.png)
 
@@ -90,4 +90,3 @@ System.setProperty("OPENAI_API_KEY", "your key here")
 Early on in your session.
 
 Field will also open a filestore in that OpenAI's account, upload most of it's source and documentation to it, to allow agents to search it quickly. It will keep this filestore in sync when you upgrade your Field. So, the first time you open Field with AI extensions, expect some traffic.
-

@@ -737,7 +737,8 @@ data class WindowScreenshotRequest(
     val showEditor: Boolean = false,
     val openOutputs: Boolean = false,
     val editorOnly: Boolean = false,
-    val padding: Double = 12.0
+    val padding: Double = 12.0,
+    val waitMs: Double = 0.0
 )
 
 @Serializable
@@ -758,7 +759,8 @@ data class AgentWindowScreenshot(
     val showEditor: Boolean = false,
     val openOutputs: Boolean = false,
     val editorOnly: Boolean = false,
-    val padding: Double = 12.0
+    val padding: Double = 12.0,
+    val waitMs: Double = 0.0
 )
 
 @Serializable

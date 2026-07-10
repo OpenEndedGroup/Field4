@@ -125,6 +125,10 @@ Public docs pages should use Field's code-fence renderers, not plain Markdown co
 
 ## uv Dependency Recipes
 
+The docs and backdoor Python tools are designed to be run through `uv` from
+the repository root. Install `uv` if that command is missing, but do not install
+Zensical, MkDocs, Playwright, or backdoor dependencies into an ad hoc virtualenv.
+
 The root `pyproject.toml` defines two dependency groups:
 
 - `backdoor`: `websockets` and `PyYAML` for `tools/field_backdoor.py`.
@@ -144,16 +148,19 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --port
 and:
 
 ```bash
-FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 \
-  uv run --project . --group docs python tools/build_zensical_docs.py --clean
+FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py --clean
 ```
 
 Use this no-capture form when you only need to rebuild HTML around assets that already exist on disk:
 
 ```bash
-FIELD_DOCS_RUNNER_MODE=never \
-  uv run --project . --group docs python tools/build_zensical_docs.py --clean
+FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --clean
 ```
+
+That wrapper preprocesses runnable docs fences with `public/docs_hooks.py`,
+writes generated sources under `public/.zensical-generated/`, writes
+`public/zensical.generated.yml`, and then runs `python -m zensical build` from
+the same uv-managed interpreter.
 
 If either step exposes a compile error, runtime error, empty capture, or obviously broken screenshot/video, fix the underlying code or documentation and rerun.
 If a timed-out snippet leaves later probes stuck before they emit `is-running`, restart the managed Field JVM and retry the repro once from a clean server before chasing secondary failures.
@@ -531,6 +538,7 @@ What each command does:
 - For inline Monaco visualizers, the reliable sequence is `editor-open -> run/launch -> optional sleep -> screenshot-editor`.
 - `screenshot-box` hides Monaco, opens nested/output disclosures for the target box, computes a padded clip, and saves only that region.
 - `screenshot-box --open-outputs` is accepted for symmetry with `screenshot-window`, but box screenshots already open nested/output disclosures internally.
+- Use `screenshot-box --no-open-outputs` only when you deliberately want the collapsed box shell.
 - `--open-outputs` tells `screenshot-window` to open all output disclosures on the target box before capture.
 - `--no-pan` disables the automatic centering step if you want the current viewport as-is.
 

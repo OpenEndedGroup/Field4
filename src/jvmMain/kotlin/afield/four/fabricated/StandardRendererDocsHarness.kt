@@ -4,7 +4,9 @@ import afield.Box
 import afield.documents
 import afield.four.TexturePreviewCache
 import afield.four.Renderer
+import afield.four.modules.GltfSupport
 import afield.four.modules.fromContext
+import afield.four.texture.LoadedTexture
 import afield.four.util.Window
 import afield.logger.lprintln
 import afield.stdlib.Vec3
@@ -23,6 +25,7 @@ import java.util.Base64
 import javax.imageio.ImageIO
 import kotlin.math.PI
 import kotlin.math.max
+import kotlin.math.min
 
 /**
  * Small native-render harness for docs and smoke tests. It renders deterministic
@@ -43,16 +46,33 @@ object StandardRendererDocsHarness {
         bundle.scene.camera.at.set(0f, 0.25f, -3.35f)
         bundle.scene.camera.target.set(0f, -0.05f, 0f)
 
-        val left = bundle.registerTestTorus(name = "left", slices = 48, stacks = 48, renderer = activeRenderer)
-        left.setModel(Matrix4f().translate(-0.95f, 0f, 0f))
-        tint(left, color = Vector4f(0.17f, 0.98f, 0.24f, 1f))
-
-        val middle = bundle.registerTestTorus(name = "middle", slices = 48, stacks = 48, renderer = activeRenderer)
-        tint(middle, color = Vector4f(0.98f, 0.92f, 0.22f, 1f))
-
-        val right = bundle.registerTestTorus(name = "right", slices = 48, stacks = 48, renderer = activeRenderer)
-        right.setModel(Matrix4f().translate(0.95f, 0f, 0f))
-        tint(right, color = Vector4f(0.98f, 0.30f, 0.32f, 1f))
+        registerTorusNode(
+            bundle = bundle,
+            renderer = activeRenderer,
+            name = "left",
+            model = Matrix4f().translate(-0.95f, 0f, 0f),
+            material = material(color = Vector4f(0.17f, 0.98f, 0.24f, 1f)),
+            slices = 48,
+            stacks = 48
+        )
+        registerTorusNode(
+            bundle = bundle,
+            renderer = activeRenderer,
+            name = "middle",
+            model = Matrix4f(),
+            material = material(color = Vector4f(0.98f, 0.92f, 0.22f, 1f)),
+            slices = 48,
+            stacks = 48
+        )
+        registerTorusNode(
+            bundle = bundle,
+            renderer = activeRenderer,
+            name = "right",
+            model = Matrix4f().translate(0.95f, 0f, 0f),
+            material = material(color = Vector4f(0.98f, 0.30f, 0.32f, 1f)),
+            slices = 48,
+            stacks = 48
+        )
 
         bundle.present(renderer = activeRenderer)
     }
@@ -65,22 +85,32 @@ object StandardRendererDocsHarness {
         bundle.scene.camera.at.set(0f, 0.2f, -3.25f)
         bundle.scene.camera.target.set(0f, 0f, 0f)
 
-        val left = bundle.registerTestTorus(name = "dielectric", slices = 56, stacks = 56, renderer = activeRenderer)
-        left.setModel(Matrix4f().translate(-1.05f, 0f, 0f))
-        tint(
-            left,
-            color = Vector4f(0.78f, 0.80f, 0.84f, 1f),
-            metallic = 0.0f,
-            roughness = 0.16f
+        registerTorusNode(
+            bundle = bundle,
+            renderer = activeRenderer,
+            name = "dielectric",
+            model = Matrix4f().translate(-1.05f, 0f, 0f),
+            material = material(
+                color = Vector4f(0.78f, 0.80f, 0.84f, 1f),
+                metallic = 0.0f,
+                roughness = 0.16f
+            ),
+            slices = 56,
+            stacks = 56
         )
 
-        val right = bundle.registerTestTorus(name = "metal", slices = 56, stacks = 56, renderer = activeRenderer)
-        right.setModel(Matrix4f().translate(1.05f, 0f, 0f))
-        tint(
-            right,
-            color = Vector4f(0.78f, 0.80f, 0.84f, 1f),
-            metallic = 1.0f,
-            roughness = 0.16f
+        registerTorusNode(
+            bundle = bundle,
+            renderer = activeRenderer,
+            name = "metal",
+            model = Matrix4f().translate(1.05f, 0f, 0f),
+            material = material(
+                color = Vector4f(0.78f, 0.80f, 0.84f, 1f),
+                metallic = 1.0f,
+                roughness = 0.16f
+            ),
+            slices = 56,
+            stacks = 56
         )
 
         bundle.present(renderer = activeRenderer)
@@ -92,12 +122,13 @@ object StandardRendererDocsHarness {
         window: Window = renderer.window
     ): File {
         val bundle = StandardRenderer.build(renderer)
-        bundle.attachTo(renderer)
         configureGroundedTorusScene(bundle, renderer)
         bundle.scene.aoStrength = 0f
         bundle.scene.ambientColor.set(0.015f, 0.015f, 0.018f)
         bundle.scene.lightIntensity = 1.35f
         bundle.present(renderer = renderer)
+        bundle.applyScenePlan()
+        bundle.attachTo(renderer)
 
         val shadowOff = captureScene(tempPng("fabricate-shadow-off"), bundle, renderer) {
             bundle.scene.shadowStrength = 0f
@@ -119,9 +150,10 @@ object StandardRendererDocsHarness {
         window: Window = renderer.window
     ): File {
         val bundle = StandardRenderer.build(renderer)
-        bundle.attachTo(renderer)
         configureGroundedTorusScene(bundle, renderer)
         bundle.present(renderer = renderer)
+        bundle.applyScenePlan()
+        bundle.attachTo(renderer)
         val originalAoStrength = bundle.scene.aoStrength
 
         val aoOff = captureScene(tempPng("fabricate-ao-off"), bundle, renderer) {
@@ -160,17 +192,33 @@ object StandardRendererDocsHarness {
             y = -1.0f
         )
 
-        val torusA = bundle.registerTestTorus(name = "torus-a", slices = 72, stacks = 72, renderer = activeRenderer)
-        torusA.setModel(Matrix4f().translate(-1.25f, -0.25f, 0.6f).rotateY(0.35f))
-        tint(torusA, color = Vector4f(0.92f, 0.35f, 0.33f, 1f), metallic = 1.0f, roughness = 0.08f)
-
-        val torusB = bundle.registerTestTorus(name = "torus-b", slices = 72, stacks = 72, renderer = activeRenderer)
-        torusB.setModel(Matrix4f().translate(0f, -0.16f, 0f).rotateX(0.24f).rotateY(-0.25f))
-        tint(torusB, color = Vector4f(0.28f, 0.86f, 0.96f, 1f), metallic = 1.0f, roughness = 0.07f)
-
-        val torusC = bundle.registerTestTorus(name = "torus-c", slices = 72, stacks = 72, renderer = activeRenderer)
-        torusC.setModel(Matrix4f().translate(1.25f, -0.25f, -0.65f).rotateY(-0.45f))
-        tint(torusC, color = Vector4f(0.95f, 0.78f, 0.29f, 1f), metallic = 1.0f, roughness = 0.09f)
+        registerTorusNode(
+            bundle = bundle,
+            renderer = activeRenderer,
+            name = "torus-a",
+            model = Matrix4f().translate(-1.25f, -0.25f, 0.6f).rotateY(0.35f),
+            material = material(Vector4f(0.92f, 0.35f, 0.33f, 1f), metallic = 1.0f, roughness = 0.08f),
+            slices = 72,
+            stacks = 72
+        )
+        registerTorusNode(
+            bundle = bundle,
+            renderer = activeRenderer,
+            name = "torus-b",
+            model = Matrix4f().translate(0f, -0.16f, 0f).rotateX(0.24f).rotateY(-0.25f),
+            material = material(Vector4f(0.28f, 0.86f, 0.96f, 1f), metallic = 1.0f, roughness = 0.07f),
+            slices = 72,
+            stacks = 72
+        )
+        registerTorusNode(
+            bundle = bundle,
+            renderer = activeRenderer,
+            name = "torus-c",
+            model = Matrix4f().translate(1.25f, -0.25f, -0.65f).rotateY(-0.45f),
+            material = material(Vector4f(0.95f, 0.78f, 0.29f, 1f), metallic = 1.0f, roughness = 0.09f),
+            slices = 72,
+            stacks = 72
+        )
 
         bundle.present(renderer = activeRenderer)
     }
@@ -189,17 +237,18 @@ object StandardRendererDocsHarness {
         bundle.scene.shadowExtent = 8.0f
         bundle.scene.shadowBias = 0.0022f
 
-        val floor = bundle.registerCube(name = "shader-floor", size = 1f, renderer = activeRenderer)
-        floor.setModel(
-            Matrix4f()
+        val floor = registerCubeNode(
+            bundle = bundle,
+            renderer = activeRenderer,
+            name = "shader-floor",
+            model = Matrix4f()
                 .translate(0f, -1.0f, 0f)
-                .scale(3.2f, 0.02f, 3.2f)
-        )
-        tint(
-            floor,
-            color = Vector4f(0.58f, 0.58f, 0.62f, 1f),
-            metallic = 0.03f,
-            roughness = 0.9f
+                .scale(3.2f, 0.02f, 3.2f),
+            material = material(
+                color = Vector4f(0.58f, 0.58f, 0.62f, 1f),
+                metallic = 0.03f,
+                roughness = 0.9f
+            )
         )
         checker(
             floor,
@@ -208,13 +257,24 @@ object StandardRendererDocsHarness {
             mix = 1f
         )
 
-        val torusLeft = bundle.registerTestTorus(name = "shader-torus-left", slices = 72, stacks = 72, renderer = activeRenderer)
-        torusLeft.setModel(Matrix4f().translate(-0.95f, -0.22f, 0.48f).rotateY(0.32f))
-        tint(torusLeft, color = Vector4f(0.90f, 0.39f, 0.33f, 1f), metallic = 1f, roughness = 0.1f)
-
-        val torusRight = bundle.registerTestTorus(name = "shader-torus-right", slices = 72, stacks = 72, renderer = activeRenderer)
-        torusRight.setModel(Matrix4f().translate(0.95f, -0.22f, -0.52f).rotateY(-0.35f))
-        tint(torusRight, color = Vector4f(0.30f, 0.84f, 0.95f, 1f), metallic = 1f, roughness = 0.08f)
+        registerTorusNode(
+            bundle = bundle,
+            renderer = activeRenderer,
+            name = "shader-torus-left",
+            model = Matrix4f().translate(-0.95f, -0.22f, 0.48f).rotateY(0.32f),
+            material = material(Vector4f(0.90f, 0.39f, 0.33f, 1f), metallic = 1f, roughness = 0.1f),
+            slices = 72,
+            stacks = 72
+        )
+        registerTorusNode(
+            bundle = bundle,
+            renderer = activeRenderer,
+            name = "shader-torus-right",
+            model = Matrix4f().translate(0.95f, -0.22f, -0.52f).rotateY(-0.35f),
+            material = material(Vector4f(0.30f, 0.84f, 0.95f, 1f), metallic = 1f, roughness = 0.08f),
+            slices = 72,
+            stacks = 72
+        )
 
         bundle.present(renderer = activeRenderer)
     }
@@ -225,7 +285,6 @@ object StandardRendererDocsHarness {
         window: Window = renderer.window
     ): File {
         val bundle = StandardRenderer.build(renderer)
-        bundle.attachTo(renderer)
         bundle.scene.lightDirection.set(Vector3f(-0.48f, -1.0f, -0.26f).normalize())
         bundle.scene.lightIntensity = 1.45f
         bundle.scene.shadowStrength = 1f
@@ -234,19 +293,37 @@ object StandardRendererDocsHarness {
         bundle.scene.shadowBias = 0.0024f
         addCheckerboardFloor(bundle, renderer, tilesPerSide = 12, tileSize = 0.48f, y = -1.05f)
 
-        val near = bundle.registerTestTorus(name = "near-torus", slices = 72, stacks = 72, renderer = renderer)
-        near.setModel(Matrix4f().translate(-1.0f, -0.15f, 1.0f).rotateY(0.35f))
-        tint(near, color = Vector4f(0.89f, 0.44f, 0.30f, 1f), metallic = 1f, roughness = 0.12f)
-
-        val middle = bundle.registerTestTorus(name = "mid-torus", slices = 72, stacks = 72, renderer = renderer)
-        middle.setModel(Matrix4f().translate(0f, -0.12f, -0.1f).rotateY(-0.20f))
-        tint(middle, color = Vector4f(0.34f, 0.82f, 0.95f, 1f), metallic = 1f, roughness = 0.10f)
-
-        val far = bundle.registerTestTorus(name = "far-torus", slices = 72, stacks = 72, renderer = renderer)
-        far.setModel(Matrix4f().translate(1.0f, -0.08f, -1.35f).rotateY(0.45f))
-        tint(far, color = Vector4f(0.96f, 0.85f, 0.34f, 1f), metallic = 1f, roughness = 0.10f)
+        registerTorusNode(
+            bundle = bundle,
+            renderer = renderer,
+            name = "near-torus",
+            model = Matrix4f().translate(-1.0f, -0.15f, 1.0f).rotateY(0.35f),
+            material = material(Vector4f(0.89f, 0.44f, 0.30f, 1f), metallic = 1f, roughness = 0.12f),
+            slices = 72,
+            stacks = 72
+        )
+        registerTorusNode(
+            bundle = bundle,
+            renderer = renderer,
+            name = "mid-torus",
+            model = Matrix4f().translate(0f, -0.12f, -0.1f).rotateY(-0.20f),
+            material = material(Vector4f(0.34f, 0.82f, 0.95f, 1f), metallic = 1f, roughness = 0.10f),
+            slices = 72,
+            stacks = 72
+        )
+        registerTorusNode(
+            bundle = bundle,
+            renderer = renderer,
+            name = "far-torus",
+            model = Matrix4f().translate(1.0f, -0.08f, -1.35f).rotateY(0.45f),
+            material = material(Vector4f(0.96f, 0.85f, 0.34f, 1f), metallic = 1f, roughness = 0.10f),
+            slices = 72,
+            stacks = 72
+        )
 
         bundle.present(renderer = renderer)
+        bundle.applyScenePlan()
+        bundle.attachTo(renderer)
 
         val nearCamera = captureScene(tempPng("fabricate-depth-camera-near"), bundle, renderer) {
             bundle.scene.camera.at.set(-1.55f, 0.72f, -1.75f)
@@ -280,13 +357,24 @@ object StandardRendererDocsHarness {
 
         addCheckerboardFloor(bundle, activeRenderer, tilesPerSide = 8, tileSize = 0.55f, y = -1.02f)
 
-        val backTorus = bundle.registerTestTorus(name = "behind-glass", slices = 72, stacks = 72, renderer = activeRenderer)
-        backTorus.setModel(Matrix4f().translate(-0.75f, -0.18f, 0.35f).rotateY(0.30f))
-        tint(backTorus, color = Vector4f(0.95f, 0.40f, 0.28f, 1f), metallic = 1f, roughness = 0.10f)
-
-        val frontTorus = bundle.registerTestTorus(name = "front-metal", slices = 72, stacks = 72, renderer = activeRenderer)
-        frontTorus.setModel(Matrix4f().translate(0.78f, -0.12f, -0.40f).rotateY(-0.35f))
-        tint(frontTorus, color = Vector4f(0.28f, 0.85f, 0.95f, 1f), metallic = 1f, roughness = 0.08f)
+        registerTorusNode(
+            bundle = bundle,
+            renderer = activeRenderer,
+            name = "behind-glass",
+            model = Matrix4f().translate(-0.75f, -0.18f, 0.35f).rotateY(0.30f),
+            material = material(Vector4f(0.95f, 0.40f, 0.28f, 1f), metallic = 1f, roughness = 0.10f),
+            slices = 72,
+            stacks = 72
+        )
+        registerTorusNode(
+            bundle = bundle,
+            renderer = activeRenderer,
+            name = "front-metal",
+            model = Matrix4f().translate(0.78f, -0.12f, -0.40f).rotateY(-0.35f),
+            material = material(Vector4f(0.28f, 0.85f, 0.95f, 1f), metallic = 1f, roughness = 0.08f),
+            slices = 72,
+            stacks = 72
+        )
 
         transparentSphere(
             bundle = bundle,
@@ -319,16 +407,123 @@ object StandardRendererDocsHarness {
         bundle.scene.aoStrength = 1f
         addCheckerboardFloor(bundle, activeRenderer, tilesPerSide = 9, tileSize = 0.52f, y = -1.0f)
 
-        val left = bundle.registerTestTorus(name = "post-left", slices = 72, stacks = 72, renderer = activeRenderer)
-        left.setModel(Matrix4f().translate(-0.72f, -0.20f, 0.18f).rotateY(0.32f))
-        tint(left, color = Vector4f(0.96f, 0.28f, 0.68f, 1f), metallic = 1f, roughness = 0.09f)
-
-        val right = bundle.registerTestTorus(name = "post-right", slices = 72, stacks = 72, renderer = activeRenderer)
-        right.setModel(Matrix4f().translate(0.72f, -0.16f, -0.32f).rotateY(-0.35f))
-        tint(right, color = Vector4f(0.18f, 0.92f, 0.70f, 1f), metallic = 1f, roughness = 0.08f)
+        registerTorusNode(
+            bundle = bundle,
+            renderer = activeRenderer,
+            name = "post-left",
+            model = Matrix4f().translate(-0.72f, -0.20f, 0.18f).rotateY(0.32f),
+            material = material(Vector4f(0.96f, 0.28f, 0.68f, 1f), metallic = 1f, roughness = 0.09f),
+            slices = 72,
+            stacks = 72
+        )
+        registerTorusNode(
+            bundle = bundle,
+            renderer = activeRenderer,
+            name = "post-right",
+            model = Matrix4f().translate(0.72f, -0.16f, -0.32f).rotateY(-0.35f),
+            material = material(Vector4f(0.18f, 0.92f, 0.70f, 1f), metallic = 1f, roughness = 0.08f),
+            slices = 72,
+            stacks = 72
+        )
 
         bundle.addShaderEffect("vignette-warmth", vignetteWarmthFragment, renderer = activeRenderer)
         bundle.present(renderer = activeRenderer)
+    }
+
+    suspend fun renderToyCarGltf(
+        outputPath: String,
+        renderer: Renderer = rendererFromContextOrDocument(),
+        window: Window = renderer.window,
+        gltfPath: String = File("public/docs/assets/fabricate_demo/ToyCar.glb").absolutePath,
+        environmentPath: String = File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath
+    ): File {
+        val environment = if (environmentPath.endsWith(".exr", ignoreCase = true)) {
+            LoadedTexture.fromExrFile(
+                environmentPath,
+                renderer,
+                requestedMipLevels = 0,
+                prefilterEnvironment = true
+            )
+        } else {
+            LoadedTexture.fromFile(
+                environmentPath,
+                renderer,
+                requestedMipLevels = 0,
+                generateMipmaps = true
+            )
+        }.also { texture ->
+            texture.setDefaultSampler()
+            texture.transferNow()
+        }
+        return renderScene(
+            outputPath,
+            renderer,
+            window,
+            StandardRenderer.Config(
+                environmentTexture = environment,
+                environmentStrength = 1.35f,
+                environmentRotation = 0.42f,
+                backgroundColor = srgbGray(0.095f)
+            )
+        ) { bundle, activeRenderer ->
+            bundle.scene.projection.fov = -50.0 * PI / 180.0
+            bundle.scene.camera.at.set(1.225f, 1.00f, -1.625f)
+            bundle.scene.camera.target.set(0f, 0.28f, 0f)
+            bundle.scene.lightDirection.set(Vector3f(-0.36f, -0.58f, 0.72f).normalize())
+            bundle.scene.lightIntensity = 2.45f
+            bundle.scene.ambientColor.set(0.055f, 0.055f, 0.06f)
+            bundle.scene.shadowStrength = 0.34f
+            bundle.scene.aoStrength = 0.18f
+            bundle.scene.shadowExtent = 6.2f
+            bundle.scene.shadowBias = 0.0028f
+
+            val model = GltfSupport.loadGltfBasic(gltfPath, GltfSupport.GltfLoadConfig(loadTextures = true))
+            val loaded = bundle.registerGltf(model, namePrefix = "toy-car", renderer = activeRenderer)
+            val bounds = gltfWorldBounds(model)
+            val scale = 4.45f / bounds.longestAxis.coerceAtLeast(0.0001f)
+            val root = bundle.sceneGraph.node("toy-car-root") {
+                transform.set(
+                    Matrix4f()
+                        .translate(0f, -0.18f, 0f)
+                        .rotateY(PI.toFloat())
+                        .scale(scale)
+                        .translate(-bounds.center.x, -bounds.center.y, -bounds.center.z)
+                )
+            }
+            model.meshes.zip(loaded.nodes).forEachIndexed { index, (instance, node) ->
+                root.add(node)
+                // Freeze the docs frame to the imported bind pose; the parent node owns screenshot fit.
+                node.animationSamples = null
+                node.renderable?.boundsRadius = 2.2f
+                node.renderable?.material?.let { importedMaterial ->
+                    when (instance.name) {
+		                        "ToyCar" -> {
+		                            importedMaterial.metallic = 1.0f
+		                            importedMaterial.roughness = 1.0f
+		                            importedMaterial.emissiveFactor.set(0f, 0f, 0f)
+		                        }
+                        "Fabric" -> {
+                            importedMaterial.baseColor.set(0.42f, 0.42f, 0.42f, 1f)
+                            importedMaterial.metallic = 0f
+                            importedMaterial.roughness = 1.0f
+                            importedMaterial.uvTransform.set(0f, 0f, 3f, 3f)
+                            importedMaterial.receiveAo = false
+                        }
+                        "Glass" -> {
+                            importedMaterial.baseColor.set(0.58f, 0.91f, 0.58f, 0.34f)
+                            importedMaterial.metallic = 0f
+                            importedMaterial.roughness = 0.0f
+                            importedMaterial.alphaMode = FabricateAlphaMode.BLEND
+                            importedMaterial.receiveShadow = false
+                            importedMaterial.receiveAo = false
+                        }
+                    }
+                    loaded.meshBindings.getOrNull(index)?.applyMaterial(importedMaterial)
+                }
+            }
+            bundle.sceneGraph.updateWorldTransforms()
+            bundle.present(renderer = activeRenderer)
+        }
     }
 
     fun htmlForImage(imageFile: File, caption: String? = null): String {
@@ -352,6 +547,7 @@ object StandardRendererDocsHarness {
         outputPath: String,
         renderer: Renderer,
         window: Window,
+        config: StandardRenderer.Config = StandardRenderer.Config(),
         buildScene: (StandardRenderer.Bundle, Renderer) -> Unit
     ): File {
         val targetFile = File(outputPath)
@@ -360,8 +556,9 @@ object StandardRendererDocsHarness {
             targetFile.delete()
         }
 
-        val bundle = StandardRenderer.build(renderer)
+        val bundle = StandardRenderer.build(renderer, config)
         buildScene(bundle, renderer)
+        bundle.applyScenePlan()
         bundle.attachTo(renderer)
 
         return captureFinalImage(bundle, targetFile, renderer)
@@ -378,6 +575,7 @@ object StandardRendererDocsHarness {
             targetFile.delete()
         }
         beforeCapture()
+        bundle.applyScenePlan()
         return captureFinalImage(bundle, targetFile, renderer)
     }
 
@@ -442,21 +640,31 @@ object StandardRendererDocsHarness {
             config = StandardShapes.WriteConfig(append = false)
         )
         floor.setVertexCount(floorWrite.writtenVertices)
-        floor.setModel(Matrix4f().translate(0f, -0.85f, 0f).rotateX((-PI * 0.5).toFloat()))
-        tint(
-            floor,
-            color = Vector4f(0.74f, 0.74f, 0.78f, 1f),
-            metallic = 0.0f,
-            roughness = 0.92f
+        bindFabricateMesh(
+            bundle = bundle,
+            name = "floor",
+            mesh = floor,
+            model = Matrix4f().translate(0f, -0.85f, 0f).rotateX((-PI * 0.5).toFloat()),
+            material = material(
+                color = Vector4f(0.74f, 0.74f, 0.78f, 1f),
+                metallic = 0.0f,
+                roughness = 0.92f
+            ),
+            boundsRadius = 3.2f
         )
 
-        val torus = bundle.registerTestTorus(name = "torus", slices = 64, stacks = 64, renderer = renderer)
-        torus.setModel(Matrix4f().translate(0f, -0.18f, 0f))
-        tint(
-            torus,
-            color = Vector4f(0.83f, 0.58f, 0.28f, 1f),
-            metallic = 0.18f,
-            roughness = 0.36f
+        registerTorusNode(
+            bundle = bundle,
+            renderer = renderer,
+            name = "torus",
+            model = Matrix4f().translate(0f, -0.18f, 0f),
+            material = material(
+                color = Vector4f(0.83f, 0.58f, 0.28f, 1f),
+                metallic = 0.18f,
+                roughness = 0.36f
+            ),
+            slices = 64,
+            stacks = 64
         )
     }
 
@@ -475,7 +683,11 @@ object StandardRendererDocsHarness {
             .translate(0f, y, 0f)
             .scale(tileSize * 0.5f, 0.02f, tileSize * 0.5f)
 
-        fun createParityMesh(name: String, parity: Int): StandardRenderer.Bundle.PullingMeshPair {
+        fun createParityMesh(
+            name: String,
+            parity: Int,
+            material: FabricateMaterial
+        ): StandardRenderer.Bundle.PullingMeshPair {
             val tilesInParity = (0 until tileCount).count { index ->
                 val row = index / tilesPerSide
                 val col = index % tilesPerSide
@@ -507,33 +719,145 @@ object StandardRendererDocsHarness {
                 }
             }
             mesh.setVertexCount(vertexCount)
-            mesh.setModel(model)
-            return mesh
+            return bindFabricateMesh(
+                bundle = bundle,
+                name = name,
+                mesh = mesh,
+                model = Matrix4f(model),
+                material = material,
+                boundsRadius = tileSize * tilesPerSide * 0.75f
+            )
         }
 
-        tint(
-            createParityMesh(name = "checkerboard-light", parity = 0),
-            color = Vector4f(0.57f, 0.57f, 0.61f, 1f),
-            metallic = 0.035f,
-            roughness = 0.88f
+        createParityMesh(
+            name = "checkerboard-light",
+            parity = 0,
+            material = material(
+                color = Vector4f(0.57f, 0.57f, 0.61f, 1f),
+                metallic = 0.035f,
+                roughness = 0.88f
+            )
         )
-        tint(
-            createParityMesh(name = "checkerboard-dark", parity = 1),
-            color = Vector4f(0.22f, 0.22f, 0.24f, 1f),
-            metallic = 0.035f,
-            roughness = 0.92f
+        createParityMesh(
+            name = "checkerboard-dark",
+            parity = 1,
+            material = material(
+                color = Vector4f(0.22f, 0.22f, 0.24f, 1f),
+                metallic = 0.035f,
+                roughness = 0.92f
+            )
         )
     }
 
-    private fun tint(
-        mesh: StandardRenderer.Bundle.PullingMeshPair,
+    private fun material(
         color: Vector4f,
-        metallic: Float? = null,
-        roughness: Float? = null
+        metallic: Float = 0.08f,
+        roughness: Float = 0.42f
+    ): FabricateMaterial =
+        FabricateMaterial(baseColor = Vector4f(color), metallic = metallic, roughness = roughness)
+
+    private fun srgbGray(value: Float): Vector3f {
+        val linear = if (value <= 0.04045f) {
+            value / 12.92f
+        } else {
+            Math.pow(((value + 0.055f) / 1.055f).toDouble(), 2.4).toFloat()
+        }
+        return Vector3f(linear, linear, linear)
+    }
+
+    private fun registerTorusNode(
+        bundle: StandardRenderer.Bundle,
+        renderer: Renderer,
+        name: String,
+        model: Matrix4f,
+        material: FabricateMaterial,
+        slices: Int,
+        stacks: Int,
+        tubeRadius: Float = 0.25f,
+        majorRadius: Float = 1f
+    ): StandardRenderer.Bundle.PullingMeshPair {
+        val mesh = bundle.registerTestTorus(
+            name = name,
+            slices = slices,
+            stacks = stacks,
+            tubeRadius = tubeRadius,
+            majorRadius = majorRadius,
+            renderer = renderer
+        )
+        return bindFabricateMesh(
+            bundle = bundle,
+            name = name,
+            mesh = mesh,
+            model = model,
+            material = material,
+            boundsRadius = majorRadius + tubeRadius
+        )
+    }
+
+    private fun registerCubeNode(
+        bundle: StandardRenderer.Bundle,
+        renderer: Renderer,
+        name: String,
+        model: Matrix4f,
+        material: FabricateMaterial,
+        size: Float = 1f
+    ): StandardRenderer.Bundle.PullingMeshPair {
+        val mesh = bundle.registerCube(name = name, size = size, renderer = renderer)
+        return bindFabricateMesh(
+            bundle = bundle,
+            name = name,
+            mesh = mesh,
+            model = model,
+            material = material,
+            boundsRadius = size * 0.9f
+        )
+    }
+
+    private data class GltfBounds(
+        val min: Vector3f,
+        val max: Vector3f
     ) {
-        mesh.gBuffer.mesh.push["baseColor"] = Vector4f(color)
-        metallic?.let { mesh.gBuffer.mesh.push["metallic"] = it }
-        roughness?.let { mesh.gBuffer.mesh.push["roughness"] = it }
+        val center: Vector3f
+            get() = Vector3f(min).add(max).mul(0.5f)
+        val longestAxis: Float
+            get() = max(max.x - min.x, max(max.y - min.y, max.z - min.z))
+    }
+
+    private fun gltfWorldBounds(model: GltfSupport.GltfModel): GltfBounds {
+        val minPoint = Vector3f(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+        val maxPoint = Vector3f(Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY)
+        val point = Vector3f()
+        model.meshes.forEach { instance ->
+            val matrix = instance.bindPose.toMatrix()
+            val floats = instance.buffers.vertexData.asFloatBuffer()
+            for (i in 0 until instance.buffers.vertexCount) {
+                val base = i * 12
+                point.set(floats.get(base), floats.get(base + 1), floats.get(base + 2))
+                matrix.transformPosition(point)
+                minPoint.set(min(minPoint.x, point.x), min(minPoint.y, point.y), min(minPoint.z, point.z))
+                maxPoint.set(max(maxPoint.x, point.x), max(maxPoint.y, point.y), max(maxPoint.z, point.z))
+            }
+        }
+        require(minPoint.x.isFinite() && maxPoint.x.isFinite()) { "GLTF model contained no vertices" }
+        return GltfBounds(minPoint, maxPoint)
+    }
+
+    private fun bindFabricateMesh(
+        bundle: StandardRenderer.Bundle,
+        name: String,
+        mesh: StandardRenderer.Bundle.PullingMeshPair,
+        model: Matrix4f,
+        material: FabricateMaterial,
+        boundsRadius: Float = 1f
+    ): StandardRenderer.Bundle.PullingMeshPair {
+        val node = bundle.sceneGraph.mesh(name = name, material = material) {
+            transform.set(model)
+            renderable?.userData = name
+            renderable?.boundsRadius = boundsRadius
+        }
+        mesh.bindNode(node)
+        mesh.applyFabricateMaterial(material)
+        return mesh
     }
 
     private fun checker(

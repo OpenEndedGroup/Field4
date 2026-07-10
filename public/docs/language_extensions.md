@@ -69,7 +69,7 @@ FieldLanguageExtensions.register({
   },
 
   provideCompletionItems(editor, model, position, context) {
-    // Return Monaco completion items when the cursor is inside this language.
+    // Return FieldSuggest-compatible completion items when the cursor is inside this language.
     return { suggestions: [] }
   }
 })
@@ -232,7 +232,8 @@ the source and target keyframes of a timing transform.
 `provideCompletionItems(...)` lets an out-of-tree language answer before Field's
 server-side completion path. This is useful for embedded DSLs, because the
 language often knows its local vocabulary without needing Kotlin compiler
-context:
+context. FieldSuggest renders these suggestions; they are not registered with
+Monaco's built-in suggest widget:
 
 ```diffstatic {data-lang=javascript}
 provideCompletionItems(editor, model, position, { monaco }) {
@@ -258,8 +259,9 @@ provideCompletionItems(editor, model, position, { monaco }) {
 ```
 
 RectSL's incubating extension keeps a word-documentation table beside the
-highlighter and flow lens, so Monaco completion, token colors, and the context
-badge all describe the same language.
+highlighter and flow lens, so FieldSuggest completion, token colors, and the
+context badge all describe the same language. Field no longer routes user-facing
+completion through Monaco's built-in suggest widget.
 
 ## When To Promote
 

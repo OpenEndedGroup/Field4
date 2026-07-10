@@ -31,6 +31,7 @@ typealias Vec3 = Vector3f
  */
 typealias Vec2 = Vector2f
 typealias Quat = Quaternionf
+typealias DualQuat = DualQuaternionf
 
 /**
  * Oriented Bounding Box (OBB) representation.
@@ -561,6 +562,10 @@ operator fun Quat.remAssign(a: Quat) {
     this.set(a)
 }
 
+operator fun DualQuat.remAssign(a: DualQuat) {
+    this.set(a)
+}
+
 infix fun Vector3f.x(b: Vector3f) = Vector3f(this).cross(b)
 
 
@@ -579,11 +584,19 @@ fun Vector2fc.isNaN() = this.x().isNaN() || this.y().isNaN()
 operator fun Vector3fc.times(v: Quaternionfc): Vector3f = v.transform(this, Vector3f())
 operator fun Vector2fc.times(v: Quaternionfc): Vector2fc = v.transform(Vector3f(this.x(), this.y(), 0f), Vector3f()).xy
 operator fun Vector2dc.times(v: Quaterniondc): Vector2dc = v.transform(Vector3d(this.x(), this.y(), 0.0), Vector3d()).v2
+operator fun Vector3fc.times(v: DualQuaternionf): Vector3f = v.transform(this, Vector3f())
 
 
 fun quat(angle: Number = 0.0, axis: Vector3f = vec(0, 0, 1)) =
     Quaternionf().setAngleAxis(angle.toFloat(), axis.x, axis.y, axis.z)
 
+fun dualquat(
+    rotation: Quaternionfc = Quaternionf(),
+    translation: Vector3fc = vec(0, 0, 0)
+) = DualQuaternionf(rotation, translation)
+
+fun dualquat(real: Quaternionfc, dual: Quaternionfc) =
+    DualQuaternionf(real, dual).normalize()
 
 class Cuboid(val x: Float, val y: Float, val z: Float, val w: Float, val h: Float, val d: Float) {
 
@@ -686,4 +699,3 @@ class Cuboid(val x: Float, val y: Float, val z: Float, val w: Float, val h: Floa
         }
     }
 }
-

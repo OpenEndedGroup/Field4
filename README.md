@@ -113,6 +113,18 @@ Build the documentation site without regenerating screenshots:
 FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --clean
 ```
 
+That one command is the supported Zensical path: `uv` resolves the docs
+dependencies from `pyproject.toml`/`uv.lock`, `tools/build_zensical_docs.py`
+preprocesses Field's runnable docs fences, and the wrapper then invokes
+Zensical. Do not create a separate virtualenv or install Zensical/MkDocs
+packages by hand.
+
+Regenerate every screenshot and video through a fresh Field-backed docs run:
+
+```bash
+FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py --clean
+```
+
 The consolidated testing guide is `dev_docs/testing/TESTING_STRATEGY.md`.
 
 ## License

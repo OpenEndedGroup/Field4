@@ -1,4 +1,8 @@
-import { sendWithReply, aiChatMarkdownToHtml } from "./afield.mjs";
+import {
+  sendWithReply,
+  clearReplyHandler,
+  aiChatMarkdownToHtml,
+} from "./afield.mjs";
 
 const DEFAULT_LANGUAGES = new Set([
   "kotlin",
@@ -14,6 +18,7 @@ const DEFAULT_LANGUAGES = new Set([
 ]);
 const MAX_VISIBLE_ITEMS = 80;
 const REFRESH_DELAY_MS = 110;
+const COMPLETION_RPC_TIMEOUT_MS = 15000;
 const RECENCY_STORAGE_KEY = "field.suggest.recency.v1";
 const RECENCY_LIMIT = 200;
 const CATEGORY_WEIGHT = new Map([
@@ -71,6 +76,12 @@ const KOTLIN_QUICK_COMPLETIONS = [
     category: "snippets",
     icon: "sn",
   },
+  {
+    label: "go",
+    insertText: "go {\n    \n}",
+    category: "snippets",
+    icon: "sn",
+  },
   { label: "val", insertText: "val ", category: "snippets", icon: "kw" },
   { label: "var", insertText: "var ", category: "snippets", icon: "kw" },
   { label: "fun", insertText: "fun ", category: "snippets", icon: "kw" },
@@ -87,6 +98,46 @@ const escapeHtml = (value) =>
 
 const loadingMarkup = () =>
   `<div class="afield-suggest-loading" aria-label="Completing"><span class="afield-suggest-spinner" aria-hidden="true"></span></div>`;
+
+let completionReplySequence = 0;
+
+const nextCompletionReplyName = (baseName) => {
+  completionReplySequence += 1;
+  return `${baseName}-${Date.now().toString(36)}-${completionReplySequence.toString(36)}`;
+};
+
+const requestWithReply = (
+  name,
+  payload,
+  replyBaseName,
+  timeoutMs = COMPLETION_RPC_TIMEOUT_MS,
+) =>
+  new Promise((resolve) => {
+    const replyName = nextCompletionReplyName(replyBaseName);
+    let settled = false;
+    let timer = null;
+    const finish = (value, removeHandler = true) => {
+      if (settled) return;
+      settled = true;
+      if (timer !== null) clearTimeout(timer);
+      if (removeHandler && typeof clearReplyHandler === "function") {
+        try {
+          clearReplyHandler(replyName);
+        } catch (_) {}
+      }
+      resolve(value);
+    };
+
+    timer = setTimeout(() => finish(null), timeoutMs);
+    try {
+      sendWithReply(name, payload, replyName, (_message, response) => {
+        finish(response, false);
+        return "remove";
+      });
+    } catch (_) {
+      finish(null);
+    }
+  });
 
 const titleForCategory = (category) => {
   const key = String(category || "")
@@ -940,17 +991,21 @@ class FieldSuggestController {
     this.aiItemsLoaded = languageId !== "kotlin";
     if (localItems.length > 0) this.renderItems(this.rawItems);
 
-    this.remoteItems(model, position, target, languageId, generation).then(
-      (remoteItems) => {
+    this.remoteItems(model, position, target, languageId, generation)
+      .then((remoteItems) => {
         this.mergeLateItems(remoteItems, generation, { base: true });
-      },
-    );
+      })
+      .catch(() => {
+        this.mergeLateItems([], generation, { base: true });
+      });
     if (languageId === "kotlin") {
-      this.aiItems(model, position, target, languageId, generation).then(
-        (aiItems) => {
+      this.aiItems(model, position, target, languageId, generation)
+        .then((aiItems) => {
           this.mergeLateItems(aiItems, generation, { ai: true });
-        },
-      );
+        })
+        .catch(() => {
+          this.mergeLateItems([], generation, { ai: true });
+        });
     }
     return true;
   }
@@ -961,12 +1016,17 @@ class FieldSuggestController {
     const completionEditor = target.embedded
       ? target.embedded.editor
       : this.editor;
-    const result = window.fieldLanguageCompletionItems(
-      completionEditor,
-      model,
-      position,
-      { triggerKind: "field-suggest" },
-    );
+    let result = [];
+    try {
+      result = window.fieldLanguageCompletionItems(
+        completionEditor,
+        model,
+        position,
+        { triggerKind: "field-suggest" },
+      );
+    } catch (_) {
+      return [];
+    }
     if (!Array.isArray(result) || result.length === 0) return [];
     return result.map((item, index) =>
       normalizeLocalSuggestion(
@@ -1004,50 +1064,35 @@ class FieldSuggestController {
 
   remoteItems(model, position, target, languageId, generation) {
     const payload = completionPayloadFor(this.editor, model, position, target);
-    return new Promise((resolve) => {
-      sendWithReply(
-        "complete",
-        payload,
-        "complete-me",
-        (message, completion) => {
-          resolve(
-            normalizeRpcCompletion(
-              this.monaco,
-              completion || {},
-              model,
-              languageId,
-              0,
-              "rpc",
-            ),
-          );
-          return true;
-        },
-      );
-    });
+    return requestWithReply("complete", payload, "complete-me").then(
+      (completion) =>
+        normalizeRpcCompletion(
+          this.monaco,
+          completion || {},
+          model,
+          languageId,
+          0,
+          "rpc",
+        ),
+    );
   }
 
   aiItems(model, position, target, languageId, generation) {
     const payload = completionPayloadFor(this.editor, model, position, target);
-    return new Promise((resolve) => {
-      sendWithReply(
-        "complete-kotlin-ai",
-        payload,
-        "complete-kotlin-ai",
-        (message, completion) => {
-          resolve(
-            normalizeRpcCompletion(
-              this.monaco,
-              completion || {},
-              model,
-              languageId,
-              0,
-              "ai",
-            ),
-          );
-          return true;
-        },
-      );
-    });
+    return requestWithReply(
+      "complete-kotlin-ai",
+      payload,
+      "complete-kotlin-ai",
+    ).then((completion) =>
+      normalizeRpcCompletion(
+        this.monaco,
+        completion || {},
+        model,
+        languageId,
+        0,
+        "ai",
+      ),
+    );
   }
 
   mergeLateItems(items, generation, flags = {}) {
@@ -1234,11 +1279,8 @@ class FieldSuggestController {
       documentationSourcePath: item.documentationSourcePath || "",
       documentationSourceLine: item.documentationSourceLine || -1,
     };
-    sendWithReply(
-      "resolve-completion",
-      payload,
-      "resolve-completion",
-      (message, response) => {
+    requestWithReply("resolve-completion", payload, "resolve-completion").then(
+      (response) => {
         item.resolving = false;
         item.resolved = true;
         if (response && response.documentation) {
@@ -1247,7 +1289,6 @@ class FieldSuggestController {
             : response.documentation;
         }
         if (this.items[this.activeIndex] === item) this.renderDoc();
-        return true;
       },
     );
   }

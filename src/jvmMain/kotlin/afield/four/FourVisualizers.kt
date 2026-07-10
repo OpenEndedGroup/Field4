@@ -293,9 +293,25 @@ object TexturePreviewCache {
             thumbH = (srcHeight * scale).toInt().coerceAtLeast(1)
         }
 
-        val needsBlit = thumbW != srcWidth || thumbH != srcHeight
-        // Target format for readback — always RGBA8 for PngEncoder
-        val readbackFormat = VK_FORMAT_R8G8B8A8_UNORM
+        val needsResize = thumbW != srcWidth || thumbH != srcHeight
+        val directCopyFormat = when (format) {
+            VK_FORMAT_R8G8B8A8_UNORM,
+            VK_FORMAT_R8G8B8A8_SRGB,
+            VK_FORMAT_B8G8R8A8_UNORM,
+            VK_FORMAT_B8G8R8A8_SRGB -> true
+            else -> false
+        }
+        val displayEncodedSource = when (format) {
+            VK_FORMAT_R8G8B8A8_SRGB,
+            VK_FORMAT_B8G8R8A8_SRGB,
+            VK_FORMAT_R16G16B16A16_SFLOAT,
+            VK_FORMAT_R32G32B32A32_SFLOAT -> true
+            else -> false
+        }
+        val needsBlit = needsResize || !directCopyFormat
+        // Target format for readback. HDR/float and sRGB sources become display-encoded
+        // RGBA8 so PNG previews match the swapchain path instead of storing linear bytes.
+        val readbackFormat = if (displayEncodedSource) VK_FORMAT_R8G8B8A8_SRGB else VK_FORMAT_R8G8B8A8_UNORM
         val bpp = 4
         val stagingSize = thumbW.toLong() * thumbH.toLong() * bpp
 
@@ -334,7 +350,7 @@ object TexturePreviewCache {
                 val copySourceLayout: Int
 
                 if (needsBlit) {
-                    // Create temporary small image for blit target
+                    // Create a temporary RGBA8 image for resizing and/or display-format conversion.
                     val blitData = Image.ImageData()
                         .width(thumbW).height(thumbH)
                         .format(readbackFormat)
@@ -430,7 +446,7 @@ object TexturePreviewCache {
                         this.put(off + 2, b)
                     }
                 }
-                val png = PngEncoder.encodeFromBuffer(this, thumbW, thumbH, flipY = false)
+                val png = PngEncoder.encodeFromBuffer(this, thumbW, thumbH, flipY = true)
                 result = Base64.getEncoder().encodeToString(png)
             }
 

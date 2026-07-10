@@ -2688,18 +2688,71 @@ class KotlinExecution : BoxExecution {
             else return emptyList()
         }
 
+        fun fieldSnippetCompletions(activeToken: String): List<Metadata> {
+            val token = activeToken.trim()
+            if (token.isNotEmpty() && !"go".startsWith(token)) return emptyList()
+            return listOf(
+                Metadata(
+                    icon = "snippet",
+                    tail = "Field coroutine",
+                    text = "go {\n    \n}",
+                    displayText = "go { }",
+                    documentation = "```kotlin\n" +
+                        "go {\n" +
+                        "    \n" +
+                        "}\n" +
+                        "```\n\n" +
+                        "Launch a suspendable block on this box with Field error reporting.",
+                    category = "snippets",
+                    documentationSourceName = "afield.stdlib.go",
+                    documentationSourcePath = "src/jvmMain/kotlin/afield/stdlib/actors.kt",
+                    documentationSourceLine = 166
+                )
+            )
+        }
+
+        fun emptyCompletion(): Completion =
+            Completion(
+                boundsStart = position,
+                boundsEnd = position,
+                metadata = emptyList()
+            )
+
+        fun replyEmpty(reason: String) {
+            if (completionTraceEnabled()) {
+                completionTrace("completion empty reason='$reason' uid='${inside.id}' property='$property' position=$position")
+            }
+            reply(Message("complete").payload(emptyCompletion()))
+        }
+
         runBlocking {
             launch(Runloop.runLoop.main) {
-                val c = inside.ki.complete(allCode, position)
+                val c = runCatching {
+                    inside.ki.complete(allCode, position)
+                }.getOrElse {
+                    completionTrace(
+                        "completion exception uid='${inside.id}' property='$property' position=$position error='${it.javaClass.simpleName}: ${it.message.orEmpty()}'"
+                    )
+                    replyEmpty("exception")
+                    return@launch
+                }
                 when (c) {
                     is CompletionResult.Success -> {
                         val synthetic = KotlinCompletionSupport.namedArgumentCompletions(inside, allCode, position)
-                        val boundsStart = synthetic?.bounds?.start ?: c.bounds.start
-                        val boundsEnd = synthetic?.bounds?.end ?: c.bounds.end
+                        val tokenBounds = runCatching { getTokenBounds(allCode, position) }
+                            .getOrElse { CompletionTokenBounds(position, position) }
+                        val typedToken = allCode.substring(
+                            tokenBounds.start.coerceIn(0, allCode.length),
+                            tokenBounds.end.coerceIn(0, allCode.length)
+                        )
+                        val fieldSnippets = fieldSnippetCompletions(typedToken)
+                        val useTokenBounds = c.metadata.isEmpty() && fieldSnippets.isNotEmpty()
+                        val boundsStart = synthetic?.bounds?.start ?: if (useTokenBounds) tokenBounds.start else c.bounds.start
+                        val boundsEnd = synthetic?.bounds?.end ?: if (useTokenBounds) tokenBounds.end else c.bounds.end
                         val completions = Completion(
                             boundsStart = boundsStart,
                             boundsEnd = boundsEnd,
-                            metadata = ((synthetic?.metadata ?: emptyList()) + completionFor(c) + importHelpFor(c))
+                            metadata = ((synthetic?.metadata ?: emptyList()) + fieldSnippets + completionFor(c) + importHelpFor(c))
                                 .map(KotlinCompletionSupport::withCategoryDocumentationHeader)
                         )
 
@@ -2708,6 +2761,13 @@ class KotlinExecution : BoxExecution {
                                 completions
                             )
                         )
+                    }
+
+                    is CompletionResult.Error -> {
+                        completionTrace(
+                            "completion error uid='${inside.id}' property='$property' position=$position error='${c.errorName}: ${c.errorValue}'"
+                        )
+                        replyEmpty("error")
                     }
                 }
             }

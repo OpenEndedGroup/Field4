@@ -663,6 +663,7 @@ kotlin {
                 //                implementation("org.lwjgl:lwjgl-openvr:${lwjglVersion}")
                 implementation("org.lwjgl:lwjgl-openxr:$lwjglVersion")
                 implementation("org.lwjgl:lwjgl-stb:$lwjglVersion")
+                implementation("org.lwjgl:lwjgl-tinyexr:$lwjglVersion")
                 implementation("org.lwjgl:lwjgl-vma:$lwjglVersion")
                 implementation("org.lwjgl:lwjgl-shaderc:$lwjglVersion")
                 implementation("org.lwjgl:lwjgl-spvc:$lwjglVersion")
@@ -674,6 +675,7 @@ kotlin {
                 val addLwjglNativeArtifacts: (String) -> Unit = { classifier ->
                     implementation("org.lwjgl:lwjgl-glfw::$classifier")
                     implementation("org.lwjgl:lwjgl-stb::$classifier")
+                    implementation("org.lwjgl:lwjgl-tinyexr::$classifier")
                     implementation("org.lwjgl:lwjgl-shaderc::$classifier")
                     implementation("org.lwjgl:lwjgl-spvc::$classifier")
                     implementation("org.lwjgl:lwjgl::$classifier")

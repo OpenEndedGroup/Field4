@@ -74,6 +74,7 @@ FABRICATE_DOCS_SCENES = {
     "ambient-occlusion": ("renderAoComparison", "fabricate ao comparison ready"),
     "blended-transparency": ("renderBlendedTransparency", "fabricate blended transparency ready"),
     "post-stack-vignette": ("renderPostStackVignette", "fabricate post stack vignette ready"),
+    "toy-car-gltf": ("renderToyCarGltf", "fabricate toy car gltf ready"),
 }
 
 

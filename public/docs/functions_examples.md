@@ -14,17 +14,16 @@ import afield.graphics.FLine
 import afield.stdlib.Functions
 
 with(Functions) {
-    val d = Functions.Domain.of(0.0, 1.0)
     val x0 = 40.0
     val x1 = 940.0
     val y0 = 50.0
     val y1 = 390.0
 
-    val base = sin(frequency = c(2.0), amplitude = c(0.72), roi = d, domain = d)
-    val overtone = sin(frequency = c(5.0), phase = c(0.35), amplitude = c(0.24), roi = d, domain = d)
-    val detail = valueNoise(seed = 41L, frequency = c(22.0), amplitude = c(0.07), roi = d, domain = d)
+    val base = sin(frequency = 2.0, amplitude = 0.72)
+    val overtone = sin(frequency = 5.0, phase = 0.35, amplitude = 0.24)
+    val detail = valueNoise(seed = 41L, frequency = 22.0, amplitude = 0.07)
 
-    val shaped = ((base + overtone + detail) * hannWindow(d)).softClip(c(1.25))
+    val shaped = ((base + overtone + detail) * hannWindow()).softClip(1.25)
 
     fun hLine(y: Double, color: Vec4, thickness: Double): FLine = fline {
         moveTo(x0, y)
@@ -43,14 +42,7 @@ with(Functions) {
         this.thickness = thickness
     }
 
-    val waveform = shaped.toFLine(
-        domain = d,
-        samples = 900,
-        xScale = 900.0,
-        yScale = 170.0,
-        xOffset = 40.0,
-        yOffset = 220.0
-    ).apply {
+    val waveform = shaped.toFLine(samples = 900, xScale = 900.0, yScale = 170.0, xOffset = 40.0, yOffset = 220.0).apply {
         color = vec(0.95, 0.92, 0.35, 1.0)
         thickness = 3.2
         stroked = true
@@ -91,37 +83,19 @@ import afield.graphics.FLine
 import afield.stdlib.Functions
 
 with(Functions) {
-    val d = Functions.Domain.of(0.0, 1.0)
     val x0 = 30.0
     val x1 = 950.0
     val y0 = 40.0
     val y1 = 360.0
 
-    val pulses = pulseTrain(
-        period = c(0.13),
-        duty = c(0.36),
-        rise = c(0.01),
-        fall = c(0.03),
-        edge = Functions.PulseEdge.SMOOTH,
-        profile = Functions.PulseProfile.HANN,
-        amplitude = c(1.0),
-        roi = d,
-        domain = d
-    )
+    val pulses = pulseTrain(period = 0.13, duty = 0.36, rise = 0.01, fall = 0.03, edge = SMOOTH, profile = HANN, amplitude = 1.0)
 
-    val mod = sin(frequency = c(1.5), phase = c(0.7), amplitude = c(0.28), roi = d, domain = d)
-    val textured = (pulses + mod).clip(c(1.0))
-    val blurred = textured.blur(sigma = c(0.015), samples = 48)
-    val held = blurred.sampleHold(step = c(0.02))
+    val mod = sin(frequency = 1.5, phase = 0.7, amplitude = 0.28)
+    val textured = (pulses + mod).clip(1.0)
+    val blurred = textured.blur(sigma = 0.015, samples = 48)
+    val held = blurred.sampleHold(step = 0.02)
 
-    fun asLine(fn: Functions.Fn, color: Vec4, thickness: Double): FLine = fn.toFLine(
-        domain = d,
-        samples = 950,
-        xScale = 920.0,
-        yScale = 150.0,
-        xOffset = 30.0,
-        yOffset = 200.0
-    ).apply {
+    fun asLine(fn: Functions.Fn, color: Vec4, thickness: Double): FLine = fn.toFLine(samples = 950, xScale = 920.0, yScale = 150.0, xOffset = 30.0, yOffset = 200.0).apply {
         this.color = color
         this.thickness = thickness
     }
@@ -168,17 +142,17 @@ import afield.graphics.FLine
 import afield.stdlib.Functions
 
 with(Functions) {
-    val tDomain = Functions.Domain.of(0.0, 1.0)
+    val tDomain = 0.0..1.0
     val cx = 500.0
     val cy = 250.0
 
-    val xFn = (sin(frequency = c(3.0), phase = c(0.2), amplitude = c(1.0), roi = tDomain, domain = tDomain)
-            + sin(frequency = c(9.0), phase = c(1.1), amplitude = c(0.18), roi = tDomain, domain = tDomain))
-        .softClip(c(1.15))
+    val xFn = (sin(frequency = 3.0, phase = 0.2, amplitude = 1.0, domain = tDomain)
+            + sin(frequency = 9.0, phase = 1.1, amplitude = 0.18, domain = tDomain))
+        .softClip(1.15)
 
-    val yFn = (sin(frequency = c(4.0), phase = c(1.2), amplitude = c(1.0), roi = tDomain, domain = tDomain)
-            + valueNoise(seed = 88L, frequency = c(16.0), amplitude = c(0.1), roi = tDomain, domain = tDomain))
-        .softClip(c(1.2))
+    val yFn = (sin(frequency = 4.0, phase = 1.2, amplitude = 1.0, domain = tDomain)
+            + valueNoise(seed = 88L, frequency = 16.0, amplitude = 0.1, domain = tDomain))
+        .softClip(1.2)
 
     fun parametric(xf: Functions.Fn, yf: Functions.Fn, samples: Int = 1400): FLine {
         val f = FLine()
@@ -242,20 +216,20 @@ import afield.graphics.FLine
 import afield.stdlib.Functions
 
 with(Functions) {
-    val tDomain = Functions.Domain.of(0.0, 1.0)
+    val tDomain = 0.0..1.0
     val cx = 500.0
     val cy = 250.0
 
     val radial = (
-        one(tDomain, tDomain) * 0.62
-            + pulseTrain(period = c(0.25), duty = c(0.5), profile = Functions.PulseProfile.TRIANGLE, amplitude = c(0.22), roi = tDomain, domain = tDomain)
-            + valueNoise(seed = 5L, frequency = c(14.0), amplitude = c(0.05), roi = tDomain, domain = tDomain)
+        one(tDomain) * 0.62
+            + pulseTrain(period = 0.25, duty = 0.5, profile = TRIANGLE, amplitude = 0.22, domain = tDomain)
+            + valueNoise(seed = 5L, frequency = 14.0, amplitude = 0.05, domain = tDomain)
         )
-        .clamp(c(0.12), c(1.0))
+        .clamp(0.12, 1.0)
 
-    val theta = ramp(start = c(0.0), end = c(1.0), roi = tDomain, domain = tDomain) * c(Math.PI * 2.0 * 6.0)
+    val theta = ramp(start = 0.0, end = 1.0, domain = tDomain) * Math.PI * 2.0 * 6.0
 
-    val xFn = (radial * cos(frequency = c(0.0), phase = c(0.0), amplitude = c(1.0), offset = c(0.0), roi = tDomain, domain = tDomain))
+    val xFn = (radial * cos(frequency = 0.0, phase = 0.0, amplitude = 1.0, offset = 0.0, domain = tDomain))
         .mapY { _ -> 0.0 }
 
     // Explicit x/y from radial + theta, sampled directly for clarity.
@@ -316,12 +290,11 @@ import afield.graphics.FLine
 import afield.stdlib.Functions
 
 with(Functions) {
-    val d = Functions.Domain.of(0.0, 1.0)
-    val a = sin(frequency = c(2.0), amplitude = c(0.7), roi = d, domain = d)
-    val b = pulseTrain(period = c(0.2), duty = c(0.35), amplitude = c(0.35), roi = d, domain = d)
-    val f = (a + b).softClip(c(1.0))
+    val a = sin(frequency = 2.0, amplitude = 0.7)
+    val b = pulseTrain(period = 0.2, duty = 0.35, amplitude = 0.35)
+    val f = (a + b).softClip(1.0)
 
-    val line = f.toFLine(domain = d, samples = 900, xScale = 900.0, yScale = 160.0, xOffset = 40.0, yOffset = 220.0).apply {
+    val line = f.toFLine(samples = 900, xScale = 900.0, yScale = 160.0, xOffset = 40.0, yOffset = 220.0).apply {
         color = vec(1.0, 0.75, 0.4, 1.0)
         thickness = 2.0
     }
@@ -344,22 +317,12 @@ import afield.graphics.FLine
 import afield.stdlib.Functions
 
 with(Functions) {
-    val d = Functions.Domain.of(0.0, 1.0)
-    val a = sin(frequency = c(2.0), amplitude = c(0.7), roi = d, domain = d)
-    val b = pulseTrain(
-        period = c(0.2),
-        duty = c(0.35),
-        rise = c(0.01),
-        fall = c(0.025),
-        profile = Functions.PulseProfile.HANN,
-        amplitude = c(0.35),
-        roi = d,
-        domain = d
-    )
-    val detail = fbm(seed = 77L, frequency = c(4.0), amplitude = c(0.12), octaves = 4, roi = d, domain = d)
-    val f = (a + b + detail).softClip(c(1.22))
+    val a = sin(frequency = 2.0, amplitude = 0.7)
+    val b = pulseTrain(period = 0.2, duty = 0.35, rise = 0.01, fall = 0.025, profile = HANN, amplitude = 0.35)
+    val detail = fbm(seed = 77L, frequency = 4.0, amplitude = 0.12, octaves = 4)
+    val f = (a + b + detail).softClip(1.22)
 
-    val line = f.toFLine(domain = d, samples = 900, xScale = 900.0, yScale = 160.0, xOffset = 40.0, yOffset = 220.0).apply {
+    val line = f.toFLine(samples = 900, xScale = 900.0, yScale = 160.0, xOffset = 40.0, yOffset = 220.0).apply {
         color = vec(0.58, 0.93, 1.0, 1.0)
         thickness = 2.6
     }
@@ -392,6 +355,130 @@ The diff keeps the frame and scale fixed and changes only the stack: a more shap
 
 The broad contour survives, while the surface gains character. The expanded reference below is the place to browse the API once the main patterns are familiar.
 
+## Domains and timeline composition
+
+`Fn` now has one public interval: `domain`. Earlier sketches split that into domain plus ROI, but composition quickly became ambiguous. Arithmetic intersects domains, replacement and piecewise tools expand domains when they truly need to, and timeline chunks keep their source interval separate from the interval where they are placed.
+
+Unless a constructor says otherwise, a fresh `Fn` starts with `Domain.DEFAULT`, which is `0.0..1.0`. Use `domain = ...` to change the construction interval, use `over (...)` to relabel or place an existing function, and use `/ all` when an unbounded function is genuinely meant.
+
+The declarative timeline layer is intentionally thin Kotlin over those same pieces. `over` sets the resulting function domain, `stretch` remaps the left-hand domain into a new one, `then` concatenates two functions, `overlapping` creates an overlapped pair, and `/` pipes a function through reusable transforms. `through` and `pipe` remain readable aliases, but `/` is the compact style that matches the audio section. The transform `all` is the terse form of "set the domain to `Domain.ALL`", so `sin(0.5) / all` is the compact unbounded signal spelling. Because `over` and `stretch` are infix calls, keep the target range in parentheses; for longer arithmetic stacks, wrap the left side too.
+
+Numeric parameters on these helpers accept Kotlin `Number`s and can also be `Fn`s. Literals like `overlap = 1`, `overlap = 0.1`, or `slower(2)` are just the constant-function case; an `Fn` parameter is sampled near where it applies, such as the midpoint of a join's overlap, or the current slot/grain for random-repeat style transforms. The terse `0.25` form is a parameter signal, so it does not narrow the domain of the function it configures.
+
+### `domain = ...` vs `over ...`
+
+For a periodic function like `pulseTrain`, these two forms usually produce the same sampled values:
+
+```diffstatic {data-lang=kotlin}
+val a = pulseTrain(period = 0.08, duty = 0.35, domain = 0.0..0.8)
+val b = pulseTrain(period = 0.08, duty = 0.35) over (0.0..0.8)
+```
+
+The first form builds the pulse train with `0.0..0.8` as its construction-time domain. The second form builds the pulse train with its default `0.0..1.0` domain, then replaces the public `Fn.domain` with `0.0..0.8`. Because `pulseTrain` computes phase from `x`, period, duty, and phase rather than from domain-normalized position, the two functions are effectively equivalent here.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/domain-over-pulsetrain-difference.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" timeout="120" name="functions-domain-over-pulsetrain-difference"}
+:::static
+import afield.stdlib.Functions
+
+with(Functions) {
+    val a = pulseTrain(period = 0.08, duty = 0.35, domain = 0.0..0.8)
+    val b = pulseTrain(period = 0.08, duty = 0.35) over (0.0..0.8)
+
+    (a - b).plot(
+        "plot",
+        domain(0.0..0.8),
+        title = "pulseTrain: construction domain - over domain",
+        yDomain = domain((-0.1)..0.1)
+    )
+}
+```
+
+The difference matters for functions where the domain is part of the math. Windows and ramps care about their construction domain because they normalize `x` across that interval:
+
+```diffstatic {data-lang=kotlin}
+val shaped = hannWindow(0.0..0.8)
+val relabeled = hannWindow() over (0.0..0.8)
+```
+
+`hannWindow(0.0..0.8)` means "shape the whole Hann curve across `0.0..0.8`". `hannWindow() over (0.0..0.8)` means "make a Hann curve over its default `0.0..1.0` construction domain, then relabel its valid interval".
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/domain-over-hannwindow-difference.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" timeout="120" name="functions-domain-over-hannwindow-difference"}
+:::static
+import afield.stdlib.Functions
+
+with(Functions) {
+    val shaped = hannWindow(0.0..0.8)
+    val relabeled = hannWindow() over (0.0..0.8)
+
+    (shaped - relabeled).plot(
+        "plot",
+        domain(0.0..0.8),
+        title = "hannWindow: construction domain - over domain",
+        yDomain = domain((-1.0)..1.0)
+    )
+}
+```
+
+The short rule is: use `domain = ...` when the construction interval should affect internals, and use `over ...` when you want post-hoc timeline placement, trimming, or extent declaration. For pure periodic signals those often coincide. For domain-normalized shapes, they do not.
+
+### `over ...` vs `stretch ...`
+
+`over` changes only the public domain. `stretch` changes the x-coordinate lookup, so the whole source domain is replayed across the target domain:
+
+```diffstatic {data-lang=kotlin}
+val relabeled = sin(5.0) over (0.0..10.0)
+val stretched = sin(5.0) stretch (0.0..10.0)
+val alsoStretched = sin(5.0) / stretch(0.0..10.0)
+```
+
+Stretching needs finite source and target domains. If the source is unbounded, give it a finite source interval first:
+
+```diffstatic {data-lang=kotlin}
+val fromSlice = (sin(0.5) / all).stretchFrom(from = 0.0..1.0, to = 0.0..12.0)
+```
+
+The default stretch is linear in normalized time. `stretchSmooth(...)`, `stretchSmoother(...)`, and `stretchBy(..., warp = someFn)` warp that normalized time before sampling the source:
+
+```diffstatic {data-lang=kotlin}
+val linear = pulseTrain(0.1) stretch (0.0..4.0)
+val eased = pulseTrain(0.1).stretchSmooth(0.0..4.0)
+val softer = pulseTrain(0.1) / stretchSmoother(0.0..4.0)
+val custom = pulseTrain(0.1).stretchBy(0.0..4.0, warp = smoothStep(0.0, 1.0))
+```
+
+```diffstatic {data-lang=kotlin}
+import afield.stdlib.Functions
+
+with(Functions) {
+    val tone = ((sin(5) * 1.4) / delay(0.4) / slower(2)) over (0.0..10.0)
+    val forever = sin(0.25) / all
+    val stretchedTone = sin(5.0) stretch (0.0..10.0)
+    val easedTone = sin(5.0) / stretchSmoother(0.0..10.0)
+
+    val a = sin(2.0) over (0.0..1.0)
+    val b = pulseTrain(period = 0.12, duty = 0.35, domain = 0.0..1.0)
+    val phrase = a then ((b / softClipBy(1.5)) over (0.0..1.0))
+
+    val pad = (a overlapping 0.5) with (sin(7.0) / gain(0.35))
+    val alsoPad = a.overlapping(0.5, sin(7.0) / gain(0.35))
+
+    val palette = [
+        sin(2.0) over (0.0..1.0),
+        saw(0.12) over (0.0..0.6),
+        pulseTrain(period = 0.08, duty = 0.35, domain = 0.0..0.8)
+    ]
+
+    val movingOverlap = ramp(0.02, 0.18, 0.0..10.0)
+    val melody = palette.sequence(overlap = movingOverlap)
+    val endless = (palette.randomSequence(seed = 4, overlap = 0.05, slot = ramp(0.18, 0.42, 0.0..10.0)) / all) over (0.0..10.0)
+    val shuffled = palette.shuffleLoop(seed = 9, overlap = 0.12) over (0.0..12.0)
+    val morph = palette.morph(ramp(0.0, 2.0, 0.0..1.0))
+
+    val tornTape =
+        (sin(5.0) / slower(ramp(0.8, 1.6, 0.0..4.0)) / turbulence(amount = 0.035, frequency = 11.0) / randomCopyPaste(grain = ramp(0.08, 0.2, 0.0..4.0), seed = 5)) over (0.0..4.0)
+}
+```
+
 ## Expanded reference: simple + creative patterns
 
 All snippets below assume:
@@ -399,110 +486,1910 @@ All snippets below assume:
 ```diffstatic {data-lang=kotlin}
 import afield.stdlib.Functions
 with(Functions) {
-    val d = Functions.Domain.of(0.0, 1.0)
     // examples here
 }
 ```
 
+Unless a snippet says otherwise, functions use the default domain `0.0..1.0`.
+
+Most numeric parameters accept plain numbers directly; the DSL lifts them into parameter functions where needed.
+
 ### Core constructors and base shapes
 
-| Function | Simple | Creative |
-|---|---|---|
-| fn | `val f = fn(roi = d, domain = d) { x -> x * x }` | `val f = fn(roi = d, domain = d) { x -> sin(20.0 * x) * exp(-3.0 * x) }` |
-| c / constant | `val f = c(0.5, d, d)` | `val f = (constant(0.6, d, d) + valueNoise(5, c(12.0), c(0.05), d, d)).clamp(c(0.0), c(1.0))` |
-| zero / one | `val gate = one(d, d)` | `val gate = (one(d, d) - pulseTrain(period = c(0.2), duty = c(0.8), roi = d, domain = d)).clip(c(1.0))` |
-| identity | `val x = identity(d, d)` | `val spiralT = identity(d, d).pow(c(1.7)).withEdge(Functions.EdgeMode.CLAMP)` |
-| ramp | `val r = ramp(c(0.0), c(1.0), d, d)` | `val env = ramp(c(0.1), c(0.9), d, d).crossfade(ramp(c(0.9), c(0.1), d, d), center = c(0.5), width = c(0.25))` |
-| step | `val s = step(c(0.5), d, d)` | `val trem = step(sin(c(2.0), amplitude = c(0.15), offset = c(0.5), roi = d, domain = d), d, d)` |
-| smoothStep | `val s = smoothStep(c(0.2), c(0.8), d, d)` | `val mask = smoothStep(valueNoise(2, c(3.0), c(0.2), d, d), c(0.9), d, d)` |
+#### fn
+
+Use `fn` when the shape is easiest to write directly as `x -> y` code over a domain.
+
+**Simple**
+
+This should produce a quadratic curve over the default domain, where each output is `x * x`.
+
+```diffstatic {data-lang=kotlin}
+val f = fn { x -> x * x }
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/fn.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-fn"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = fn { x -> kotlin.math.sin(20.0 * x) * kotlin.math.exp(-3.0 * x) }
+    f.plot()
+}
+```
+
+#### c / constant
+
+Use constants when a scalar needs to participate in `Fn` arithmetic or carry a domain.
+
+**Simple**
+
+This should produce a flat function that evaluates to `0.5` everywhere in the default domain.
+
+```diffstatic {data-lang=kotlin}
+val f = constant(0.5)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/c-constant.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-c-constant"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = (constant(0.6) + valueNoise(5, 12.0, 0.05)).clamp(0.0, 1.0)
+    f.plot()
+}
+```
+
+#### zero / one
+
+`zero` and `one` make domain-aware baseline, mask, and gate functions.
+
+**Simple**
+
+This should produce a gate that stays at `1.0` across the whole domain.
+
+```diffstatic {data-lang=kotlin}
+val gate = one()
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/zero-one.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-zero-one"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val gate = (one() - pulseTrain(period = 0.2, duty = 0.8)).clip(1.0)
+    gate.plot()
+}
+```
+
+#### identity
+
+`identity` returns the input coordinate, useful as a raw time or normalized-position signal.
+
+**Simple**
+
+This should produce the raw input coordinate as the output value.
+
+```diffstatic {data-lang=kotlin}
+val x = identity()
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/identity.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-identity"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val spiralT = identity().pow(1.7).withEdge(Functions.EdgeMode.CLAMP)
+    spiralT.plot()
+}
+```
+
+#### ramp
+
+`ramp` converts an interval into a linear progress signal, often for envelopes and selectors.
+
+**Simple**
+
+This should produce a linear 0-to-1 ramp across the default domain.
+
+```diffstatic {data-lang=kotlin}
+val r = ramp(0.0, 1.0)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/ramp.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-ramp"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val env = ramp(0.1, 0.9).crossfade(ramp(0.9, 0.1), center = 0.5, width = 0.25)
+    env.plot()
+}
+```
+
+#### step
+
+`step` turns a threshold into a binary gate.
+
+**Simple**
+
+This should produce a hard binary switch at `x = 0.5`.
+
+```diffstatic {data-lang=kotlin}
+val s = step(0.5)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/step.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-step"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val trem = step(sin(2.0, amplitude = 0.15, offset = 0.5))
+    trem.plot()
+}
+```
+
+#### smoothStep
+
+`smoothStep` turns two edges into a soft 0-to-1 mask.
+
+**Simple**
+
+This should produce a softened 0-to-1 transition between `0.2` and `0.8`.
+
+```diffstatic {data-lang=kotlin}
+val s = smoothStep(0.2, 0.8)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/smoothstep.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-smoothstep"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val mask = smoothStep(valueNoise(2, 3.0, 0.2), 0.9)
+    mask.plot()
+}
+```
+
 
 ### Oscillators and pulse family
 
-| Function | Simple | Creative |
-|---|---|---|
-| sin | `val f = sin(frequency = c(3.0), amplitude = c(0.8), roi = d, domain = d)` | `val f = sin(c(2.0), phase = valueNoise(7, c(5.0), c(0.3), d, d), amplitude = c(0.7), roi = d, domain = d)` |
-| cos | `val f = cos(frequency = c(2.0), amplitude = c(1.0), roi = d, domain = d)` | `val f = cos(c(5.0), phase = ramp(c(0.0), c(Math.PI), d, d), amplitude = c(0.5), roi = d, domain = d)` |
-| saw | `val f = saw(period = c(0.25), amplitude = c(1.0), roi = d, domain = d)` | `val f = saw(period = c(0.14), amplitude = c(0.7), roi = d, domain = d).softClip(c(1.6))` |
-| triangle | `val f = triangle(period = c(0.2), amplitude = c(0.9), roi = d, domain = d)` | `val f = triangle(c(0.2), amplitude = fbm(9, c(1.0), c(0.6), roi = d, domain = d), roi = d, domain = d)` |
-| square | `val f = square(period = c(0.25), duty = c(0.5), amplitude = c(1.0), roi = d, domain = d)` | `val f = square(c(0.125), duty = sin(c(1.0), amplitude = c(0.2), offset = c(0.5), roi = d, domain = d), amplitude = c(0.8), roi = d, domain = d)` |
-| pulseTrain | `val f = pulseTrain(period = c(0.2), duty = c(0.35), roi = d, domain = d)` | `val f = pulseTrain(period = c(0.15), duty = c(0.4), rise = c(0.01), fall = c(0.02), profile = Functions.PulseProfile.HANN, jitter = c(0.08), seed = 42, roi = d, domain = d)` |
-| pulseTrainWidth | `val f = pulseTrainWidth(period = c(0.2), width = c(0.08), roi = d, domain = d)` | `val f = pulseTrainWidth(period = c(0.18), width = sin(c(0.5), amplitude = c(0.05), offset = c(0.08), roi = d, domain = d), profile = Functions.PulseProfile.GAUSSIAN, roi = d, domain = d)` |
-| pulseTrainHz | `val f = pulseTrainHz(frequency = c(8.0), duty = c(0.3), roi = d, domain = d)` | `val f = pulseTrainHz(frequency = ramp(c(4.0), c(16.0), d, d), duty = c(0.22), edge = Functions.PulseEdge.SINE, roi = d, domain = d)` |
-| pulseTrainPattern | `val f = pulseTrainPattern(doubleArrayOf(1.0, 0.5, 1.0, 0.2), period = c(0.2), roi = d, domain = d)` | `val f = pulseTrainPattern(doubleArrayOf(1.0, 0.0, 0.8, 0.3, 1.2), period = c(0.11), jitter = c(0.1), profile = Functions.PulseProfile.TRIANGLE, roi = d, domain = d)` |
-| impulseTrain | `val f = impulseTrain(period = c(0.1), width = c(0.01), roi = d, domain = d)` | `val f = impulseTrain(period = c(0.12), width = c(0.02), sigma = c(0.09), jitter = c(0.2), seed = 9, roi = d, domain = d)` |
-| pulseBurst | `val f = pulseBurst(count = 5, period = c(0.1), start = c(0.2), roi = d, domain = d)` | `val f = pulseBurst(9, period = c(0.07), start = c(0.12), edge = Functions.PulseEdge.EXP, curve = c(3.0), profile = Functions.PulseProfile.HANN, roi = d, domain = d)` |
-| gaussian | `val f = gaussian(mean = c(0.5), sigma = c(0.1), amplitude = c(1.0), roi = d, domain = d)` | `val f = gaussian(mean = sin(c(0.5), amplitude = c(0.15), offset = c(0.5), roi = d, domain = d), sigma = c(0.08), amplitude = c(0.9), roi = d, domain = d)` |
+#### sin
+
+`sin` builds a periodic oscillator from frequency, phase, amplitude, and offset controls.
+
+**Simple**
+
+This should produce a sine wave with three cycles over the unit domain and peak amplitude `0.8`.
+
+```diffstatic {data-lang=kotlin}
+val f = sin(frequency = 3.0, amplitude = 0.8)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/sin.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-sin"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = sin(2.0, phase = valueNoise(7, 5.0, 0.3), amplitude = 0.7)
+    f.plot()
+}
+```
+
+#### cos
+
+`cos` is the phase-shifted companion to `sin`, useful for quadrature and circular motion.
+
+**Simple**
+
+This should produce a cosine wave with two cycles and full-scale amplitude.
+
+```diffstatic {data-lang=kotlin}
+val f = cos(frequency = 2.0, amplitude = 1.0)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/cos.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-cos"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = cos(5.0, phase = ramp(0.0, Math.PI), amplitude = 0.5)
+    f.plot()
+}
+```
+
+#### saw
+
+`saw` creates a repeating ramp with sharp wraparound edges.
+
+**Simple**
+
+This should produce a sawtooth wave that repeats every quarter of the domain.
+
+```diffstatic {data-lang=kotlin}
+val f = saw(period = 0.25, amplitude = 1.0)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/saw.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-saw"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = saw(period = 0.14, amplitude = 0.7).softClip(1.6)
+    f.plot()
+}
+```
+
+#### triangle
+
+`triangle` creates a bipolar linear up/down oscillator.
+
+**Simple**
+
+This should produce a triangle wave with a `0.2` period and `0.9` amplitude.
+
+```diffstatic {data-lang=kotlin}
+val f = triangle(period = 0.2, amplitude = 0.9)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/triangle.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-triangle"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = triangle(0.2, amplitude = fbm(9, 1.0, 0.6))
+    f.plot()
+}
+```
+
+#### square
+
+`square` creates a duty-controlled high/low oscillator.
+
+**Simple**
+
+This should produce an even-duty square wave that flips every half-period.
+
+```diffstatic {data-lang=kotlin}
+val f = square(period = 0.25, duty = 0.5, amplitude = 1.0)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/square.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-square"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = square(0.125, duty = sin(1.0, amplitude = 0.2, offset = 0.5), amplitude = 0.8)
+    f.plot()
+}
+```
+
+#### pulseTrain
+
+`pulseTrain` creates shaped repeating pulses with optional edge, jitter, and profile controls.
+
+**Simple**
+
+This should produce repeating pulses that are high for 35% of each `0.2` period.
+
+```diffstatic {data-lang=kotlin}
+val f = pulseTrain(period = 0.2, duty = 0.35)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/pulsetrain.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-pulsetrain"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = pulseTrain(period = 0.15, duty = 0.4, rise = 0.01, fall = 0.02, profile = HANN, jitter = 0.08, seed = 42)
+    f.plot()
+}
+```
+
+#### pulseTrainWidth
+
+`pulseTrainWidth` specifies pulse duration directly instead of duty fraction.
+
+**Simple**
+
+This should produce repeating pulses whose high portion is `0.08` units wide.
+
+```diffstatic {data-lang=kotlin}
+val f = pulseTrainWidth(period = 0.2, width = 0.08)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/pulsetrainwidth.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-pulsetrainwidth"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = pulseTrainWidth(period = 0.18, width = sin(0.5, amplitude = 0.05, offset = 0.08), profile = GAUSSIAN)
+    f.plot()
+}
+```
+
+#### pulseTrainHz
+
+`pulseTrainHz` describes pulses by frequency instead of period.
+
+**Simple**
+
+This should produce eight pulses per unit, with each pulse high for 30% of its cycle.
+
+```diffstatic {data-lang=kotlin}
+val f = pulseTrainHz(frequency = 8.0, duty = 0.3)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/pulsetrainhz.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-pulsetrainhz"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = pulseTrainHz(frequency = ramp(4.0, 16.0), duty = 0.22, edge = Functions.PulseEdge.SINE)
+    f.plot()
+}
+```
+
+#### pulseTrainPattern
+
+`pulseTrainPattern` cycles through per-pulse amplitudes for rhythmic patterns.
+
+**Simple**
+
+This should produce a pulse train whose pulse heights cycle through the supplied pattern.
+
+```diffstatic {data-lang=kotlin}
+val f = pulseTrainPattern(doubleArrayOf(1.0, 0.5, 1.0, 0.2), period = 0.2)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/pulsetrainpattern.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-pulsetrainpattern"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = pulseTrainPattern(doubleArrayOf(1.0, 0.0, 0.8, 0.3, 1.2), period = 0.11, jitter = 0.1, profile = TRIANGLE)
+    f.plot()
+}
+```
+
+#### impulseTrain
+
+`impulseTrain` makes narrow Gaussian-style events at a repeating period.
+
+**Simple**
+
+This should produce narrow repeating impulses every `0.1` units.
+
+```diffstatic {data-lang=kotlin}
+val f = impulseTrain(period = 0.1, width = 0.01)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/impulsetrain.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-impulsetrain"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = impulseTrain(period = 0.12, width = 0.02, sigma = 0.09, jitter = 0.2, seed = 9)
+    f.plot()
+}
+```
+
+#### pulseBurst
+
+`pulseBurst` limits a pulse train to a finite count of events.
+
+**Simple**
+
+This should produce five short pulses starting at `0.2` and spaced by `0.1`.
+
+```diffstatic {data-lang=kotlin}
+val f = pulseBurst(count = 5, period = 0.1, start = 0.2)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/pulseburst.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-pulseburst"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = pulseBurst(9, period = 0.07, start = 0.12, edge = EXP, curve = 3.0, profile = HANN)
+    f.plot()
+}
+```
+
+#### gaussian
+
+`gaussian` makes a bell-shaped lobe that can be used as an envelope, bump, or mask.
+
+**Simple**
+
+This should produce a unit Gaussian bump centered at `0.5` with `0.1` spread.
+
+```diffstatic {data-lang=kotlin}
+val f = gaussian(mean = 0.5, sigma = 0.1, amplitude = 1.0)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/gaussian.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-gaussian"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = gaussian(mean = sin(0.5, amplitude = 0.15, offset = 0.5), sigma = 0.08, amplitude = 0.9)
+    f.plot()
+}
+```
+
 
 ### Algebra and mapping
 
-| Function | Simple | Creative |
-|---|---|---|
-| `+ - * /` | `val f = sin(c(2.0), roi = d, domain = d) + saw(c(0.2), roi = d, domain = d)` | `val f = (sin(c(3.0), roi = d, domain = d) * pulseTrain(c(0.18), roi = d, domain = d)) / (one(d, d) + c(0.2, d, d))` |
-| mapY | `val f = sin(c(2.0), roi = d, domain = d).mapY { it * 0.5 }` | `val f = valueNoise(3, c(14.0), c(1.0), d, d).mapY { v -> kotlin.math.sign(v) * kotlin.math.sqrt(kotlin.math.abs(v)) }` |
-| mapX | `val f = sin(c(2.0), roi = d, domain = d).mapX { x -> x * 0.5 }` | `val f = sin(c(4.0), roi = d, domain = d).mapX(newRoi = d) { x -> x + 0.08 * kotlin.math.sin(16.0 * x) }` |
-| shift / delay | `val f = sin(c(2.0), roi = d, domain = d).shift(c(0.1))` | `val f = valueNoise(7, c(10.0), c(0.7), d, d).delay(sin(c(0.5), amplitude = c(0.03), roi = d, domain = d))` |
-| scaleX | `val f = saw(c(0.2), roi = d, domain = d).scaleX(c(2.0))` | `val f = sin(c(3.0), roi = d, domain = d).scaleX(scale = ramp(c(0.8), c(1.6), d, d), about = c(0.5))` |
-| scaleY / offsetY | `val f = sin(c(2.0), roi = d, domain = d).scaleY(c(0.5)).offsetY(c(0.2))` | `val f = fbm(1, c(2.0), c(1.0), roi = d, domain = d).scaleY(smoothStep(c(0.0), c(1.0), d, d)).offsetY(valueNoise(2, c(3.0), c(0.1), d, d))` |
-| reverse / flip | `val f = ramp(c(0.0), c(1.0), d, d).reverse()` | `val f = (sin(c(2.0), roi = d, domain = d).reverse(c(0.5)) + triangle(c(0.12), roi = d, domain = d)).flip()` |
-| abs / sign / rectify | `val f = sin(c(3.0), roi = d, domain = d).abs()` | `val f = fbmPerlin(7, c(2.5), c(1.0), roi = d, domain = d).sign().rectify()` |
-| pow / exp / log | `val f = ramp(c(0.0), c(1.0), d, d).pow(c(2.0))` | `val f = (gaussian(c(0.5), c(0.12), c(1.0), d, d) + c(1.2, d, d)).log(c(Math.E)).exp()` |
-| clamp / clip / softClip / fold / wrapY | `val f = sin(c(2.0), roi = d, domain = d).clip(c(0.7))` | `val f = (saw(c(0.11), roi = d, domain = d) * c(2.5, d, d)).fold(c(0.8)).softClip(c(1.4)).wrapY(c(-0.7), c(0.7))` |
-| withEdge | `val f = sin(c(3.0), roi = d, domain = d).withEdge(Functions.EdgeMode.CLAMP)` | `val f = gaussian(c(0.5), c(0.08), c(1.0), d, d).withEdge(Functions.EdgeMode.MIRROR, outside = valueNoise(8, c(4.0), c(0.05), d, d))` |
-| quantize / bitCrush | `val f = sin(c(2.0), roi = d, domain = d).quantize(8)` | `val f = (fbm(4, c(3.0), c(1.0), roi = d, domain = d).bitCrush(5)).mix(sin(c(1.0), roi = d, domain = d), c(0.2, d, d))` |
-| mix / crossfade | `val f = sin(c(2.0), roi = d, domain = d).mix(saw(c(0.2), roi = d, domain = d), c(0.5))` | `val f = triangle(c(0.12), roi = d, domain = d).crossfade(fbmPerlin(11, c(2.0), c(1.0), roi = d, domain = d), center = c(0.55), width = c(0.35))` |
-| cut / trim / slice / replace | `val f = sin(c(2.0), roi = d, domain = d).cut(Functions.Domain.of(0.2, 0.8))` | `val f = saw(c(0.18), roi = d, domain = d).replace(Functions.Domain.of(0.35, 0.6), pulseTrain(c(0.08), duty = c(0.4), roi = d, domain = d))` |
-| window / amplitudeMod / ringMod / warp | `val f = sin(c(2.0), roi = d, domain = d).window(hannWindow(d))` | `val f = sin(c(4.0), roi = d, domain = d).amplitudeMod(fbm(2, c(6.0), c(0.7), roi = d, domain = d), depth = c(0.8)).ringMod(cos(c(9.0), roi = d, domain = d), c(0.5)).warp(valueNoise(2, c(5.0), c(1.0), d, d), c(0.05))` |
-| quantizeX / sampleHold | `val f = sin(c(2.0), roi = d, domain = d).sampleHold(c(0.05))` | `val f = valueNoise(9, c(16.0), c(0.8), d, d).quantizeX(step = ramp(c(0.02), c(0.09), d, d)).sampleHold(step = c(0.03), offset = c(0.01))` |
-| phaseMod / frequencyMod | `val f = sin(c(2.0), roi = d, domain = d).phaseMod(sin(c(8.0), roi = d, domain = d), c(0.02))` | `val f = triangle(c(0.2), roi = d, domain = d).frequencyMod(fbmPerlin(5, c(4.0), c(1.0), roi = d, domain = d), depth = c(0.04))` |
-| saturate / jitterX | `val f = sin(c(2.0), roi = d, domain = d).saturate(c(1.0))` | `val f = pulseTrain(c(0.15), duty = c(0.3), roi = d, domain = d).jitterX(c(0.03), seed = 7).saturate(c(1.8))` |
-| repeat / mirrorRepeat / tile / pad / echo | `val f = sin(c(2.0), roi = d, domain = d).repeat(c(0.25), c(0.0))` | `val f = saw(c(0.2), roi = d, domain = d).mirrorRepeat(c(0.17)).tile(6, c(0.12)).pad(c(0.05), c(0.08), c(0.0)).echo(c(0.03), c(0.45), repeats = 6)` |
-| derivative / integral | `val slope = sin(c(2.0), roi = d, domain = d).derivative()` | `val area = (pulseTrain(c(0.2), roi = d, domain = d) * hannWindow(d)).integral(step = 1e-3, origin = 0.0)` |
-| convolve / correlate / movingAverage / blur | `val sm = valueNoise(3, c(14.0), c(1.0), d, d).movingAverage(c(0.08), samples = 64)` | `val f = fbm(9, c(2.0), c(1.0), roi = d, domain = d).convolve(gaussianWindow(Functions.Domain.of(-0.06, 0.06), sigma = c(0.3)), samples = 41, kernelDomain = Functions.Domain.of(-0.06, 0.06), normalize = true).blur(c(0.01), samples = 31)` |
+#### `+ - * /`
+
+Arithmetic combines functions pointwise, intersecting domains where both inputs are valid.
+
+**Simple**
+
+This should produce the pointwise sum of a sine wave and a sawtooth wave.
+
+```diffstatic {data-lang=kotlin}
+val f = sin(2.0) + saw(0.2)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/plus-minus.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-plus-minus"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = (sin(3.0) * pulseTrain(0.18)) / (one() + constant(0.2))
+    f.plot()
+}
+```
+
+#### mapY
+
+`mapY` reshapes output values while leaving time alone.
+
+**Simple**
+
+This should halve the sine wave's output values without changing its timing.
+
+```diffstatic {data-lang=kotlin}
+val f = sin(2.0).mapY { it * 0.5 }
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/mapy.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-mapy"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = valueNoise(3, 14.0, 1.0).mapY { v -> kotlin.math.sign(v) * kotlin.math.sqrt(kotlin.math.abs(v)) }
+    f.plot()
+}
+```
+
+#### mapX
+
+`mapX` warps the input coordinate before sampling the source function.
+
+**Simple**
+
+This should compress the sine wave horizontally by sampling it at half the input coordinate.
+
+```diffstatic {data-lang=kotlin}
+val f = sin(2.0).mapX { x -> x * 0.5 }
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/mapx.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-mapx"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = sin(4.0).mapX { x -> x + 0.08 * kotlin.math.sin(16.0 * x) }
+    f.plot()
+}
+```
+
+#### shift / delay
+
+`shift` and `delay` sample the source earlier or later in x.
+
+**Simple**
+
+This should move the sine wave forward in time by `0.1` units.
+
+```diffstatic {data-lang=kotlin}
+val f = sin(2.0).shift(0.1)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/shift-delay.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-shift-delay"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = valueNoise(7, 10.0, 0.7).delay(sin(0.5, amplitude = 0.03))
+    f.plot()
+}
+```
+
+#### scaleX / faster / slower
+
+Time-scaling changes how quickly the source is traversed.
+
+**Simple**
+
+This should stretch the saw wave's time axis by a factor of two.
+
+```diffstatic {data-lang=kotlin}
+val f = saw(0.2).scaleX(2.0)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/scalex-faster-slower.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-scalex-faster-slower"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = (sin(3.0).faster(2.0) / slower(0.75)).scaleX(scale = ramp(0.8, 1.6), about = 0.5)
+    f.plot()
+}
+```
+
+#### scaleY / offsetY
+
+Y-scaling and offsetting change the amplitude range without moving events in time.
+
+**Simple**
+
+This should halve the sine wave's amplitude and lift it upward by `0.2`.
+
+```diffstatic {data-lang=kotlin}
+val f = sin(2.0).scaleY(0.5).offsetY(0.2)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/scaley-offsety.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-scaley-offsety"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = fbm(1, 2.0, 1.0).scaleY(smoothStep(0.0, 1.0)).offsetY(valueNoise(2, 3.0, 0.1))
+    f.plot()
+}
+```
+
+#### reverse / flip
+
+Reverse mirrors time around a point, while flip negates the output.
+
+**Simple**
+
+This should reverse the ramp so it falls from one to zero across the domain.
+
+```diffstatic {data-lang=kotlin}
+val f = ramp(0.0, 1.0).reverse()
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/reverse-flip.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-reverse-flip"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = (sin(2.0).reverse(0.5) + triangle(0.12)).flip()
+    f.plot()
+}
+```
+
+#### abs / sign / rectify
+
+These turn bipolar signals into magnitude, sign, or positive-only shapes.
+
+**Simple**
+
+This should fold negative sine values upward into positive values.
+
+```diffstatic {data-lang=kotlin}
+val f = sin(3.0).abs()
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/abs-sign-rectify.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-abs-sign-rectify"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = fbmPerlin(7, 2.5, 1.0).sign().rectify()
+    f.plot()
+}
+```
+
+#### pow / exp / log
+
+Power and logarithmic transforms bend a signal curve nonlinearly.
+
+**Simple**
+
+This should square the linear ramp, bending it into an ease-in curve.
+
+```diffstatic {data-lang=kotlin}
+val f = ramp(0.0, 1.0).pow(2.0)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/pow-exp-log.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-pow-exp-log"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = (gaussian(0.5, 0.12, 1.0) + constant(1.2)).log(kotlin.math.E).exp()
+    f.plot()
+}
+```
+
+#### clamp / clip / softClip / fold / wrapY
+
+Limiters and wrappers keep outputs in a usable range, either gently or with hard edges.
+
+**Simple**
+
+This should limit the sine wave so values never exceed `0.7` in magnitude.
+
+```diffstatic {data-lang=kotlin}
+val f = sin(2.0).clip(0.7)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/clamp-clip-softclip-fold-wrapy.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-clamp-clip-softclip-fold-wrapy"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = (saw(0.11) * constant(2.5)).fold(0.8).softClip(1.4).wrapY(-0.7, 0.7)
+    f.plot()
+}
+```
+
+#### withEdge
+
+`withEdge` defines how a function behaves when sampled outside its domain.
+
+**Simple**
+
+This should make out-of-domain samples clamp to the nearest edge value.
+
+```diffstatic {data-lang=kotlin}
+val f = sin(3.0).withEdge(Functions.EdgeMode.CLAMP)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/withedge.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-withedge"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = gaussian(0.5, 0.08, 1.0).withEdge(Functions.EdgeMode.MIRROR, outside = valueNoise(8, 4.0, 0.05))
+    f.plot()
+}
+```
+
+#### quantize / bitCrush
+
+Quantizers reduce continuous values into stepped or bit-depth-like levels.
+
+**Simple**
+
+This should reduce the sine wave to eight discrete value levels.
+
+```diffstatic {data-lang=kotlin}
+val f = sin(2.0).quantize(8)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/quantize-bitcrush.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-quantize-bitcrush"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = (fbm(4, 3.0, 1.0).bitCrush(5)).mix(sin(1.0), constant(0.2))
+    f.plot()
+}
+```
+
+#### mix / crossfade
+
+Mixing blends between functions, either by a fixed amount or over a transition region.
+
+**Simple**
+
+This should blend halfway between the sine and saw waves.
+
+```diffstatic {data-lang=kotlin}
+val f = sin(2.0).mix(saw(0.2), 0.5)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/mix-crossfade.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-mix-crossfade"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = triangle(0.12).crossfade(fbmPerlin(11, 2.0, 1.0), center = 0.55, width = 0.35)
+    f.plot()
+}
+```
+
+#### cut / trim / slice / replace
+
+Interval edits keep or swap parts of a function over a target range.
+
+**Simple**
+
+This should keep only the `0.2..0.8` portion of the sine wave as the function's domain.
+
+```diffstatic {data-lang=kotlin}
+val f = sin(2.0).cut(0.2..0.8)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/cut-trim-slice-replace.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-cut-trim-slice-replace"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = saw(0.18).replace(0.35..0.6, pulseTrain(0.08, duty = 0.4))
+    f.plot()
+}
+```
+
+#### window / amplitudeMod / ringMod / warp
+
+Modulation tools multiply, ring, or time-warp one signal by another.
+
+**Simple**
+
+This should multiply the sine wave by a Hann envelope over the default domain.
+
+```diffstatic {data-lang=kotlin}
+val f = sin(2.0).window(hannWindow())
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/window-amplitudemod-ringmod-warp.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-window-amplitudemod-ringmod-warp"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = sin(4.0).amplitudeMod(fbm(2, 6.0, 0.7), depth = 0.8).ringMod(cos(9.0), 0.5).warp(valueNoise(2, 5.0, 1.0), 0.05)
+    f.plot()
+}
+```
+
+#### quantizeX / sampleHold
+
+X-quantization and sample-hold create stepped time sampling.
+
+**Simple**
+
+This should hold the sine wave constant over `0.05`-wide sample steps.
+
+```diffstatic {data-lang=kotlin}
+val f = sin(2.0).sampleHold(0.05)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/quantizex-samplehold.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-quantizex-samplehold"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = valueNoise(9, 16.0, 0.8).quantizeX(step = ramp(0.02, 0.09)).sampleHold(step = 0.03, offset = 0.01)
+    f.plot()
+}
+```
+
+#### phaseMod / frequencyMod
+
+Phase and frequency modulation are aliases for controlled time warping.
+
+**Simple**
+
+This should modulate the sine wave's phase with a faster sine signal.
+
+```diffstatic {data-lang=kotlin}
+val f = sin(2.0).phaseMod(sin(8.0), 0.02)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/phasemod-frequencymod.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-phasemod-frequencymod"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = triangle(0.2).frequencyMod(fbmPerlin(5, 4.0, 1.0), depth = 0.04)
+    f.plot()
+}
+```
+
+#### saturate / jitterX
+
+Saturation compresses output values while jitter perturbs sampling positions.
+
+**Simple**
+
+This should push the sine through a saturation curve without changing its timing.
+
+```diffstatic {data-lang=kotlin}
+val f = sin(2.0).saturate(1.0)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/saturate-jitterx.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-saturate-jitterx"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = pulseTrain(0.15, duty = 0.3).jitterX(0.03, seed = 7).saturate(1.8)
+    f.plot()
+}
+```
+
+#### repeat / mirrorRepeat / tile / pad / echo
+
+Repetition tools loop, mirror, bound, extend, and echo a source function.
+
+**Simple**
+
+This should tile the sine wave into repeated `0.25`-wide copies.
+
+```diffstatic {data-lang=kotlin}
+val f = sin(2.0).repeat(0.25, 0.0)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/repeat-mirrorrepeat-tile-pad-echo.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-repeat-mirrorrepeat-tile-pad-echo"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = saw(0.2).mirrorRepeat(0.17).tile(6, 0.12).pad(0.05, 0.08, 0.0).echo(0.03, 0.45, repeats = 6)
+    f.plot()
+}
+```
+
+#### derivative / integral
+
+Calculus helpers estimate slope and accumulated area over a sampled function.
+
+**Simple**
+
+This should estimate the sine wave's slope as a new function.
+
+```diffstatic {data-lang=kotlin}
+val slope = sin(2.0).derivative()
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/derivative-integral.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-derivative-integral"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val area = (pulseTrain(0.2) * hannWindow()).integral(step = 1e-3, origin = 0.0)
+    area.plot()
+}
+```
+
+#### convolve / correlate / movingAverage / blur
+
+Filtering helpers smooth or compare a function with a local kernel.
+
+**Simple**
+
+This should smooth the noise by averaging nearby samples over a short window.
+
+```diffstatic {data-lang=kotlin}
+val sm = valueNoise(3, 14.0, 1.0).movingAverage(0.08, samples = 64)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/convolve-correlate-movingaverage-blur.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-convolve-correlate-movingaverage-blur"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = fbm(9, 2.0, 1.0).convolve(gaussianWindow(-0.06..0.06, sigma = 0.3), samples = 41, kernelDomain = -0.06..0.06, normalize = true).blur(0.01, samples = 31)
+    f.plot()
+}
+```
+
+#### over / stretch / `/` pipe
+
+`over` relabels the resulting domain, `stretch` remaps the old domain into a new one, and `/` pipes a function through transforms.
+
+**Simple**
+
+This should show the difference between relabeling a domain and remapping a source into a target interval.
+
+```diffstatic {data-lang=kotlin}
+val relabeled = sin(5.0) over (0.0..10.0)
+val stretched = sin(5.0) stretch (0.0..10.0)
+val piped = sin(5.0) / stretch(0.0..10.0)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/over-pipe.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-over-pipe"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = ((sin(5.0) * 1.4) / delay(0.4) / softClipBy(1.2)) over (0.0..10.0)
+    f.plot()
+}
+```
+
+#### FnTransform
+
+`FnTransform` packages reusable function edits so they can be chained and piped.
+
+**Simple**
+
+This should pipe the sine wave through a transform that halves its amplitude.
+
+```diffstatic {data-lang=kotlin}
+val f = sin(3.0) / gain(0.5)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/fntransform.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-fntransform"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val shape = delay(0.1) / gain(0.75) / hold(0.02)
+    val f = pulseTrain(0.12) / shape
+    f.plot()
+}
+```
+
 
 ### Arrays, sampling, streams, and output conversion
 
-| Function | Simple | Creative |
-|---|---|---|
-| DoubleArray.toFn / List.toFn | `val f = doubleArrayOf(0.0, 1.0, 0.4, -0.2).toFn(domain = d)` | `val f = listOf(0.0, 0.4, 1.0, 0.2, -0.4).toFn(domain = d, interpolation = Functions.Interpolation.CUBIC).softClip(c(1.5))` |
-| sampleAt / samplesAt | `val ys = sin(c(2.0), roi = d, domain = d).sampleAt(doubleArrayOf(0.0, 0.25, 0.5))` | `val pts = fbmPerlin(8, c(2.0), c(1.0), roi = d, domain = d).samplesAt(DoubleArray(12) { it / 11.0 })` |
-| toDoubleArray / toVec2List | `val ys = sin(c(3.0), roi = d, domain = d).toDoubleArray(128, d)` | `val pts = pulseTrain(c(0.13), duty = c(0.32), roi = d, domain = d).toVec2List(256, d).map { vec(it.x.toDouble() * 700 + 80, it.y.toDouble() * 140 + 220) }` |
-| cursor | `val c0 = sin(c(2.0), roi = d, domain = d).cursor(start = 0.0, step = 0.01)` | `val scratch = fbm(6, c(3.0), c(0.8), roi = d, domain = d).cursor(0.0, 0.002).next(1024).toFn(Functions.Domain.of(0.0, 1.0))` |
-| stream / streamWithX | `val first = sin(c(2.0), roi = d, domain = d).stream(start = 0.0, step = 0.01).take(8).toList()` | `val pairs = pulseTrain(c(0.15), roi = d, domain = d).streamWithX(0.0, 0.005).take(200).map { Sample(it.first, it.second) }` |
-| toFLine | `val line = sin(c(2.0), roi = d, domain = d).toFLine(domain = d, samples = 600)` | `val line = (sin(c(2.0), roi = d, domain = d) + fbm(5, c(6.0), c(0.2), roi = d, domain = d)).toFLine(domain = d, samples = 1400, xScale = 980.0, yScale = 170.0, xOffset = 30.0, yOffset = 220.0)` |
+#### DoubleArray.toFn / List.toFn
+
+Array conversion turns sampled numeric data into an interpolated `Fn`.
+
+**Simple**
+
+This should interpolate the four array values across `0.0..1.0` as a function.
+
+```diffstatic {data-lang=kotlin}
+val f = doubleArrayOf(0.0, 1.0, 0.4, -0.2).toFn(domain = 0.0..1.0)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/doublearray-tofn-list-tofn.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-doublearray-tofn-list-tofn"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = [0.0, 0.4, 1.0, 0.2, -0.4].toFn(domain = 0.0..1.0, interpolation = CUBIC).softClip(1.5)
+    f.plot()
+}
+```
+
+#### sampleAt / samplesAt
+
+Sampling helpers extract values or weighted sample records from chosen x positions.
+
+**Simple**
+
+This should sample the sine wave at three explicit x positions.
+
+```diffstatic {data-lang=kotlin}
+val ys = sin(2.0).sampleAt(doubleArrayOf(0.0, 0.25, 0.5))
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/sampleat-samplesat.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-sampleat-samplesat"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = fbmPerlin(8, 2.0, 1.0)
+    val pts = f.samplesAt(DoubleArray(32) { it / 31.0 })
+    f.withName("samplesAt source").plot()
+}
+```
+
+#### toDoubleArray / toVec2List
+
+Array exporters resample an `Fn` for analysis, drawing, or interop.
+
+**Simple**
+
+This should resample the sine wave into 128 numeric values.
+
+```diffstatic {data-lang=kotlin}
+val ys = sin(3.0).toDoubleArray(128)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/todoublearray-tovec2list.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-todoublearray-tovec2list"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val pts = pulseTrain(0.13, duty = 0.32).toVec2List(256)
+    val f = pts.map { it.y.toDouble() }.toFn(domain = 0.0..1.0, interpolation = NEAREST).withName("toVec2List")
+    f.plot()
+}
+```
+
+#### cursor
+
+A cursor walks through a function at a fixed step and remembers its position.
+
+**Simple**
+
+This should create a reusable cursor that advances through the sine wave in `0.01` steps.
+
+```diffstatic {data-lang=kotlin}
+val c0 = sin(2.0).cursor(start = 0.0, step = 0.01)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/cursor.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-cursor"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val scratch = fbm(6, 3.0, 0.8).cursor(0.0, 0.002).next(1024).toFn(0.0..1.0)
+    scratch.plot()
+}
+```
+
+#### stream / streamWithX
+
+Streams expose lazy samples, with or without their x coordinate.
+
+**Simple**
+
+This should create a lazy stream of sine values and collect the first eight samples.
+
+```diffstatic {data-lang=kotlin}
+val first = sin(2.0).stream(start = 0.0, step = 0.01).take(8).toList()
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/stream-streamwithx.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-stream-streamwithx"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val pairs = pulseTrain(0.15).streamWithX(0.0, 0.005).take(200).toList()
+    val f = pairs.map { it.second }.toFn(domain = 0.0..1.0, interpolation = NEAREST).withName("streamWithX")
+    f.plot()
+}
+```
+
+#### toFLine
+
+`toFLine` turns a sampled function into drawable Field geometry.
+
+**Simple**
+
+This should convert the sine wave into drawable line geometry sampled across its domain.
+
+```diffstatic {data-lang=kotlin}
+val line = sin(2.0).toFLine(samples = 600)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/tofline.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-tofline"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = sin(2.0) + fbm(5, 6.0, 0.2)
+    val line = f.toFLine(samples = 1400, xScale = 980.0, yScale = 170.0, xOffset = 30.0, yOffset = 220.0)
+    f.withName("toFLine source").plot()
+}
+```
+
 
 ### Windows, noise, normalization, and sampling sets
 
-| Function | Simple | Creative |
-|---|---|---|
-| hannWindow / hammingWindow / blackmanWindow / gaussianWindow | `val w = hannWindow(d)` | `val w = gaussianWindow(d, sigma = c(0.25)).mix(blackmanWindow(d), c(0.4, d, d))` |
-| whiteNoise / valueNoise / perlinNoise | `val n = valueNoise(seed = 1, frequency = c(12.0), amplitude = c(0.5), roi = d, domain = d)` | `val n = whiteNoise(4, c(24.0), c(0.3), d, d).mix(perlinNoise(5, c(3.0), c(0.7), d, d), c(0.65, d, d))` |
-| fbm / fbmPerlin / randomWalk | `val n = fbm(seed = 2, frequency = c(2.0), amplitude = c(1.0), octaves = 5, roi = d, domain = d)` | `val n = fbmPerlin(4, c(1.8), c(1.0), octaves = 6, roi = d, domain = d).mix(randomWalk(8, step = c(0.03), amplitude = c(0.02), roi = d, domain = d), c(0.3, d, d))` |
-| autoScale / zNormalize / whitenCdf | `val f = fbm(4, c(2.0), c(1.0), roi = d, domain = d).autoScale(d)` | `val f = valueNoise(12, c(18.0), c(1.0), d, d).zNormalize(d).whitenCdf(d, bins = 128, targetMin = -1.0, targetMax = 1.0)` |
-| sampleUniform / sampleJittered / sampleRandom | `val s = sin(c(2.0), roi = d, domain = d).sampleUniform(32, d)` | `val s = fbm(2, c(3.0), c(1.0), roi = d, domain = d).sampleJittered(128, d, jitter = 0.4, seed = 9)` |
-| sampleByDensity / sampleZeroCrossings / samplePeaks | `val zc = sin(c(6.0), roi = d, domain = d).sampleZeroCrossings(d)` | `val peaks = (sin(c(3.0), roi = d, domain = d) + fbm(1, c(7.0), c(0.25), roi = d, domain = d)).samplePeaks(20, d)` |
+#### hannWindow / hammingWindow / blackmanWindow / gaussianWindow
+
+Window functions create smooth masks for tapering, blending, and weighting.
+
+**Simple**
+
+This should produce a Hann window over the default domain, rising from zero and returning to zero.
+
+```diffstatic {data-lang=kotlin}
+val w = hannWindow()
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/hannwindow-hammingwindow-blackmanwindow-gaussianwindow.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-hannwindow-hammingwindow-blackmanwindow-gaussianwindow"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val w = gaussianWindow(sigma = 0.25).mix(blackmanWindow(), constant(0.4))
+    w.plot()
+}
+```
+
+#### whiteNoise / valueNoise / perlinNoise
+
+Noise functions generate stochastic texture with different continuity properties.
+
+**Simple**
+
+This should produce seeded smooth value noise with repeatable random-looking variation.
+
+```diffstatic {data-lang=kotlin}
+val n = valueNoise(seed = 1, frequency = 12.0, amplitude = 0.5)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/whitenoise-valuenoise-perlinnoise.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-whitenoise-valuenoise-perlinnoise"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val n = whiteNoise(4, 24.0, 0.3).mix(perlinNoise(5, 3.0, 0.7), constant(0.65))
+    n.plot()
+}
+```
+
+#### fbm / fbmPerlin / randomWalk
+
+Fractal and walk generators layer randomness into rougher, multi-scale signals.
+
+**Simple**
+
+This should produce layered fractal noise by summing several octaves.
+
+```diffstatic {data-lang=kotlin}
+val n = fbm(seed = 2, frequency = 2.0, amplitude = 1.0, octaves = 5)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/fbm-fbmperlin-randomwalk.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-fbm-fbmperlin-randomwalk"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val n = fbmPerlin(4, 1.8, 1.0, octaves = 6).mix(randomWalk(8, step = 0.03, amplitude = 0.02), constant(0.3))
+    n.plot()
+}
+```
+
+#### autoScale / zNormalize / whitenCdf
+
+Normalization helpers reshape the distribution of a sampled function.
+
+**Simple**
+
+This should rescale the sampled noise so its values fit a normalized range.
+
+```diffstatic {data-lang=kotlin}
+val f = fbm(4, 2.0, 1.0).autoScale()
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/autoscale-znormalize-whitencdf.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-autoscale-znormalize-whitencdf"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = valueNoise(12, 18.0, 1.0).zNormalize().whitenCdf(bins = 128, targetMin = -1.0, targetMax = 1.0)
+    f.plot()
+}
+```
+
+#### sampleUniform / sampleJittered / sampleRandom
+
+Sampling-set helpers choose x positions uniformly, randomly, or with jitter.
+
+**Simple**
+
+This should return 32 evenly spaced samples from the sine wave.
+
+```diffstatic {data-lang=kotlin}
+val s = sin(2.0).sampleUniform(32)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/sampleuniform-samplejittered-samplerandom.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-sampleuniform-samplejittered-samplerandom"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = fbm(2, 3.0, 1.0)
+    val s = f.sampleJittered(128, jitter = 0.4, seed = 9)
+    f.withName("sampleJittered source").plot()
+}
+```
+
+#### sampleByDensity / sampleZeroCrossings / samplePeaks
+
+Feature samplers find points by density, zero crossings, or prominent peaks.
+
+**Simple**
+
+This should find x positions where the sine wave crosses zero.
+
+```diffstatic {data-lang=kotlin}
+val zc = sin(6.0).sampleZeroCrossings()
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/samplebydensity-samplezerocrossings-samplepeaks.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-samplebydensity-samplezerocrossings-samplepeaks"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val source = sin(3.0) + fbm(1, 7.0, 0.25)
+    val peaks = source.samplePeaks(20)
+    source.withName("samplePeaks source").plot()
+}
+```
+
 
 ### Piecewise, interpolation, RBF, and resampling
 
-| Function | Simple | Creative |
-|---|---|---|
-| points | `val pts = points(0.0 to 0.0, 0.4 to 1.0, 1.0 to 0.2)` | `val pts = points(0.0 to 0.0, 0.12 to 0.9, 0.32 to -0.4, 0.75 to 0.7, 1.0 to 0.0)` |
-| piecewise | `val f = piecewise(zero(d, d), Functions.Domain.of(0.0, 0.5) to one(d, d), Functions.Domain.of(0.5, 1.0) to zero(d, d))` | `val f = piecewise(default = valueNoise(3, c(8.0), c(0.1), d, d), Functions.Domain.of(0.0, 0.33) to sin(c(3.0), roi = d, domain = d), Functions.Domain.of(0.33, 0.66) to saw(c(0.2), roi = d, domain = d), Functions.Domain.of(0.66, 1.0) to pulseTrain(c(0.1), roi = d, domain = d))` |
-| piecewiseLinear / catmullRomSpline / monotoneCubic | `val f = piecewiseLinear(listOf(Keyframe(0.0, 0.0, "linear"), Keyframe(1.0, 1.0, "linear")))` | `val f = catmullRomSpline(listOf(Keyframe(0.0, 0.0, "linear"), Keyframe(0.2, 0.9, "linear"), Keyframe(0.6, -0.4, "linear"), Keyframe(1.0, 0.2, "linear")), alpha = 0.5).mix(monotoneCubic(listOf(Keyframe(0.0, 0.1, "linear"), Keyframe(0.4, 0.8, "linear"), Keyframe(1.0, 0.0, "linear"))), c(0.35, d, d))` |
-| hermiteFromHandles / bSplineQuadratic | `val f = bSplineQuadratic(listOf(Keyframe(0.0, 0.0, "linear"), Keyframe(0.4, 1.0, "linear"), Keyframe(1.0, 0.2, "linear")))` | `val f = hermiteFromHandles(listOf(Keyframe(0.0, 0.0, "linear"), Keyframe(0.3, 0.8, "linear"), Keyframe(0.75, -0.2, "linear"), Keyframe(1.0, 0.1, "linear"))).softClip(c(1.2, d, d))` |
-| stepHold / nearestValue / cosineInterp / smoothStepInterp / smootherStepInterp | `val f = stepHold(listOf(Keyframe(0.0, 0.0, "linear"), Keyframe(0.5, 1.0, "linear"), Keyframe(1.0, 0.5, "linear")))` | `val f = cosineInterp(listOf(Keyframe(0.0, 0.2, "linear"), Keyframe(0.3, 0.9, "linear"), Keyframe(0.8, -0.4, "linear"), Keyframe(1.0, 0.1, "linear"))).mix(smootherStepInterp(listOf(Keyframe(0.0, 0.2, "linear"), Keyframe(0.3, 0.9, "linear"), Keyframe(0.8, -0.4, "linear"), Keyframe(1.0, 0.1, "linear"))), c(0.5, d, d))` |
-| gaussianSmooth / differentiate / fromKeyframeEditor / resample | `val f = differentiate(sin(c(2.0), roi = d, domain = d))` | `val f = gaussianSmooth(fromKeyframeEditor(listOf(Keyframe(0.0, 0.0, "linear"), Keyframe(0.4, 1.0, "bezier"), Keyframe(1.0, 0.1, "linear"))), sigma = 0.03, taps = 41).let { resample(it, sampleCount = 512, interpolation = Functions.Interpolation.CUBIC) }` |
-| rbf / rbfQuadratic / rbfCubic / rbfThinPlate and Fn.* variants | `val f = rbfThinPlate(points(0.0 to 0.0, 0.4 to 1.0, 1.0 to 0.2))` | `val f = sin(c(2.0), roi = d, domain = d).rbf(points(0.1 to 0.6, 0.52 to -0.3, 0.9 to 0.7), kernel = Functions.RbfKernels.gaussian(2.5), smoothing = 1e-4)` |
+#### points
+
+`points` creates weighted sample records for fitting and interpolation helpers.
+
+**Simple**
+
+This should make reusable point data from explicit coordinate pairs.
+
+```diffstatic {data-lang=kotlin}
+val pts = points(0.0 to 0.0, 0.4 to 1.0, 1.0 to 0.2)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/points.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-points"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val pts = points(0.0 to 0.0, 0.12 to 0.9, 0.32 to -0.4, 0.75 to 0.7, 1.0 to 0.0)
+    val f = rbf(pts, kernel = RbfKernels.gaussian(2.4), smoothing = 1e-3) over (0.0..1.0)
+    f.plot()
+}
+```
+
+#### piecewise
+
+`piecewise` chooses different source functions over explicit subranges.
+
+**Simple**
+
+This should choose different source functions over the two specified intervals.
+
+```diffstatic {data-lang=kotlin}
+val f = piecewise(zero(), 0.0..0.5 to one(), 0.5..1.0 to zero())
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/piecewise.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-piecewise"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = piecewise(default = valueNoise(3, 8.0, 0.1), 0.0..0.33 to sin(3.0), 0.33..0.66 to saw(0.2), 0.66..1.0 to pulseTrain(0.1))
+    f.plot()
+}
+```
+
+#### piecewiseLinear / catmullRomSpline / monotoneCubic
+
+Spline constructors turn keyframes into continuous curves with different interpolation behavior.
+
+**Simple**
+
+This should linearly interpolate between two keyframes.
+
+```diffstatic {data-lang=kotlin}
+val f = piecewiseLinear(listOf(Keyframe(0.0, 0.0, "linear"), Keyframe(1.0, 1.0, "linear")))
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/piecewiselinear-catmullromspline-monotonecubic.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-piecewiselinear-catmullromspline-monotonecubic"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = catmullRomSpline(listOf(Keyframe(0.0, 0.0, "linear"), Keyframe(0.2, 0.9, "linear"), Keyframe(0.6, -0.4, "linear"), Keyframe(1.0, 0.2, "linear")), alpha = 0.5).mix(monotoneCubic(listOf(Keyframe(0.0, 0.1, "linear"), Keyframe(0.4, 0.8, "linear"), Keyframe(1.0, 0.0, "linear"))), constant(0.35))
+    f.plot()
+}
+```
+
+#### hermiteFromHandles / bSplineQuadratic
+
+Handle and B-spline helpers make smoother keyframe-derived curves.
+
+**Simple**
+
+This should build a smooth quadratic B-spline through the keyframe values.
+
+```diffstatic {data-lang=kotlin}
+val f = bSplineQuadratic(listOf(Keyframe(0.0, 0.0, "linear"), Keyframe(0.4, 1.0, "linear"), Keyframe(1.0, 0.2, "linear")))
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/hermitefromhandles-bsplinequadratic.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-hermitefromhandles-bsplinequadratic"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = hermiteFromHandles(listOf(Keyframe(0.0, 0.0, "linear"), Keyframe(0.3, 0.8, "linear"), Keyframe(0.75, -0.2, "linear"), Keyframe(1.0, 0.1, "linear"))).softClip(constant(1.2))
+    f.plot()
+}
+```
+
+#### stepHold / nearestValue / cosineInterp / smoothStepInterp / smootherStepInterp
+
+Discrete and eased interpolators choose how keyframes are held or blended.
+
+**Simple**
+
+This should hold each keyframe value until the next keyframe is reached.
+
+```diffstatic {data-lang=kotlin}
+val f = stepHold(listOf(Keyframe(0.0, 0.0, "linear"), Keyframe(0.5, 1.0, "linear"), Keyframe(1.0, 0.5, "linear")))
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/stephold-nearestvalue-cosineinterp-smoothstepinterp-smootherstepinterp.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-stephold-nearestvalue-cosineinterp-smoothstepinterp-smootherstepinterp"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = cosineInterp(listOf(Keyframe(0.0, 0.2, "linear"), Keyframe(0.3, 0.9, "linear"), Keyframe(0.8, -0.4, "linear"), Keyframe(1.0, 0.1, "linear"))).mix(smootherStepInterp(listOf(Keyframe(0.0, 0.2, "linear"), Keyframe(0.3, 0.9, "linear"), Keyframe(0.8, -0.4, "linear"), Keyframe(1.0, 0.1, "linear"))), constant(0.5))
+    f.plot()
+}
+```
+
+#### gaussianSmooth / differentiate / fromKeyframeEditor / resample
+
+Curve utilities smooth, differentiate, import, and resample keyframed functions.
+
+**Simple**
+
+This should approximate the derivative of the sine wave.
+
+```diffstatic {data-lang=kotlin}
+val f = differentiate(sin(2.0))
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/gaussiansmooth-differentiate-fromkeyframeeditor-resample.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-gaussiansmooth-differentiate-fromkeyframeeditor-resample"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = gaussianSmooth(fromKeyframeEditor(listOf(Keyframe(0.0, 0.0, "linear"), Keyframe(0.4, 1.0, "bezier"), Keyframe(1.0, 0.1, "linear"))), sigma = 0.03, taps = 41).let { resample(it, sampleCount = 512, interpolation = CUBIC) }
+    f.plot()
+}
+```
+
+#### rbf / rbfQuadratic / rbfCubic / rbfThinPlate and Fn.* variants
+
+RBF helpers fit smooth curves through scattered samples, optionally blended with a base function.
+
+**Simple**
+
+This should interpolate the points with a thin-plate radial basis function.
+
+```diffstatic {data-lang=kotlin}
+val f = rbfThinPlate(points(0.0 to 0.0, 0.4 to 1.0, 1.0 to 0.2))
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/rbf-rbfquadratic-rbfcubic-rbfthinplate-and-fn-variants.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-rbf-rbfquadratic-rbfcubic-rbfthinplate-and-fn-variants"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = sin(2.0).rbf(points(0.1 to 0.6, 0.52 to -0.3, 0.9 to 0.7), kernel = RbfKernels.gaussian(2.5), smoothing = 1e-4)
+    f.plot()
+}
+```
+
 
 ### Timeline, granular, and stream filters
 
-| Function | Simple | Creative |
-|---|---|---|
-| spliceWindow | `val w = spliceWindow(fadeIn = 0.1, fadeOut = 0.1, domain = d)` | `val w = spliceWindow(0.2, 0.35, d).pow(c(0.7, d, d))` |
-| timelineGraph / timeline | `val t = timeline { sin(c(2.0), roi = d, domain = d).place() }` | `val t = timeline(name = "scene") { mark("start"); pulseTrain(c(0.12), roi = d, domain = d).place(duration = 0.7, mapMode = Functions.ChunkMapMode.WRAP); fbm(4, c(3.0), c(0.35), roi = d, domain = d).overlap(amount = 0.15, duration = 0.8, blend = Functions.ChunkBlend.ADD); moveToMark("start", 0.35); saw(c(0.2), roi = d, domain = d).splice(lookBack = 0.2, duration = 0.5) }` |
-| repeatToFit / stretchToFit / snapshot / lookBack | `val g = timelineGraph { repeatToFit(sin(c(2.0), roi = d, domain = d), duration = 2.0) }` | `val g = timelineGraph { stretchToFit(fbmPerlin(2, c(2.0), c(1.0), roi = d, domain = d), duration = 3.0); val ghost = snapshot(offset = 0.12); ghost.place(duration = 1.5, blend = Functions.ChunkBlend.ADD, gain = c(0.4)) }` |
-| granular | `val f = sin(c(3.0), roi = d, domain = d).granular(grainSize = c(0.05), spacing = c(0.04))` | `val f = fbmPerlin(1, c(3.0), c(0.8), roi = d, domain = d).granular(grainSize = c(0.04), spacing = c(0.027), jitter = c(0.35), overlap = 2, seed = 3, window = gaussianWindow(Functions.Domain.of(0.0, 1.0), c(0.3)))` |
-| lowpassStream / highpassStream | `val s = sin(c(2.0), roi = d, domain = d).lowpassStream(alpha = 0.2).take(64).toList()` | `val s = (pulseTrain(c(0.12), roi = d, domain = d) + valueNoise(5, c(22.0), c(0.2), d, d)).highpassStream(alpha = 0.88, step = 0.004).take(256).toList()` |
-| demo | `val result = demo(sampleCount = 256, domain = d)` | `val result = demo(sampleCount = 1024, seed = 77, domain = Functions.Domain.of(-0.25, 1.25), printSummary = false)` |
+#### spliceWindow
+
+`spliceWindow` creates fade weights for joins and overlaps.
+
+**Simple**
+
+This should make a fade-in/fade-out window for splicing a chunk into a timeline.
+
+```diffstatic {data-lang=kotlin}
+val w = spliceWindow(fadeIn = 0.1, fadeOut = 0.1)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/splicewindow.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-splicewindow"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val w = spliceWindow(0.2, 0.35).pow(constant(0.7))
+    w.plot()
+}
+```
+
+#### timelineGraph / timeline
+
+Timeline builders place functions as chunks that can overlap, repeat, or be stretched.
+
+**Simple**
+
+This should build a one-chunk timeline graph from a placed sine function.
+
+```diffstatic {data-lang=kotlin}
+val t = timeline {
+    sin(2.0).place()
+}
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/timelinegraph-timeline.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-timelinegraph-timeline"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val t = timeline(name = "scene") { mark("start")
+    pulseTrain(0.12).place(duration = 0.7, mapMode = Functions.ChunkMapMode.WRAP)
+    fbm(4, 3.0, 0.35).overlap(amount = 0.15, duration = 0.8, blend = ADD)
+    moveToMark("start", 0.35)
+    saw(0.2).splice(lookBack = 0.2, duration = 0.5) }
+    t.plot()
+}
+```
+
+#### then / overlapping / overlapWith
+
+Composition operators concatenate or crossfade functions along a timeline.
+
+**Simple**
+
+This should place the saw after the sine, producing a two-part phrase.
+
+```diffstatic {data-lang=kotlin}
+val phrase = (sin(2.0) over (0.0..1.0)) then (saw(0.15) over (0.0..1.0))
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/then-overlapping-overlapwith.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-then-overlapping-overlapwith"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val phrase = ((sin(2.0) over (0.0..1.0)) overlapping ramp(0.05, 0.25)) with (pulseTrain(0.1) / gain(0.4))
+    val same = sin(2.0).overlapping(0.25, saw(0.15))
+    phrase.plot()
+}
+```
+
+#### List.sequence / palindrome / roundRobin
+
+List combiners arrange multiple functions into ordered, mirrored, or cycling phrases.
+
+**Simple**
+
+This should concatenate the list of functions with a small overlap between neighbors.
+
+```diffstatic {data-lang=kotlin}
+val phrase = [sin(2.0), saw(0.12), square(0.18)].sequence(overlap = 0.05)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/list-sequence-palindrome-roundrobin.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-list-sequence-palindrome-roundrobin"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val cycle = [sin(2.0), pulseTrain(0.09), fbm(3, 4.0, 0.4)].palindrome(overlap = ramp(0.02, 0.12)) / repeatEvery(2.0)
+    cycle.plot()
+}
+```
+
+#### List.sequenceLoop / shuffleLoop
+
+Looping list combiners repeat a sequence, optionally shuffled by seed.
+
+**Simple**
+
+This should repeat the listed functions forever, then trim the result to `0.0..8.0`.
+
+```diffstatic {data-lang=kotlin}
+val f = [sin(2.0), saw(0.2)].sequenceLoop() over (0.0..8.0)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/list-sequenceloop-shuffleloop.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-list-sequenceloop-shuffleloop"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = [sin(2.0), saw(0.13), pulseTrain(0.08)].shuffleLoop(seed = 12, overlap = 0.1) over (0.0..12.0)
+    f.plot()
+}
+```
+
+#### List.randomSequence / weightedSequence
+
+Random sequence helpers choose chunks by seed, slot size, and optional weights.
+
+**Simple**
+
+This should choose random list entries in fixed-width slots, then trim to six seconds.
+
+```diffstatic {data-lang=kotlin}
+val f = [sin(2.0), saw(0.2)].randomSequence(seed = 3, slot = 0.4) over (0.0..6.0)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/list-randomsequence-weightedsequence.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-list-randomsequence-weightedsequence"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = [sin(2.0), saw(0.12), pulseTrain(0.08)].weightedSequence([0.6, ramp(0.1, 0.35), 0.15], seed = 7, overlap = ramp(0.02, 0.08)) over (0.0..10.0)
+    f.plot()
+}
+```
+
+#### List.stack / average / select / morph
+
+Stacking and selection helpers combine many functions at the same x position.
+
+**Simple**
+
+This should sum the list's functions into a single stacked result.
+
+```diffstatic {data-lang=kotlin}
+val f = [sin(2.0), saw(0.2) * 0.3].stack()
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/list-stack-average-select-morph.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-list-stack-average-select-morph"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = [sin(2.0), saw(0.14), fbm(3, 3.0, 0.6)].morph(ramp(0.0, 2.0))
+    f.plot()
+}
+```
+
+#### `/` transform palette
+
+Transform-palette helpers make compact chains of common time and value edits.
+
+**Simple**
+
+This should stretch the sine across four units, then speed up, smooth, and scale it through a transform chain.
+
+```diffstatic {data-lang=kotlin}
+val f = sin(3.0) / stretch(0.0..4.0) / faster(2.0) / lowPass(0.04) / gain(0.8)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/transform-palette.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-transform-palette"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = (fbm(4, 5.0, 1.0) / all / slower(ramp(0.8, 1.7)) / highPass(ramp(0.02, 0.08)) / turbulence(0.02, ramp(8.0, 18.0)) / crush(5) / mirrorEvery(0.4)) over (0.0..4.0)
+    f.plot()
+}
+```
+
+#### copyPaste / randomRepeat / randomCopyPaste
+
+Copy and repeat transforms reuse source fragments deterministically or randomly.
+
+**Simple**
+
+This should copy the `0.1..0.3` slice of the sine wave into `0.7..0.9`.
+
+```diffstatic {data-lang=kotlin}
+val f = sin(3.0) / copyPaste(0.1..0.3, 0.7..0.9)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/copypaste-randomrepeat-randomcopypaste.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-copypaste-randomrepeat-randomcopypaste"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = (pulseTrain(0.08) / randomRepeat(period = ramp(0.12, 0.28), seed = 4) / randomCopyPaste(grain = ramp(0.04, 0.12), seed = 8, density = ramp(0.35, 0.85))) over (0.0..6.0)
+    f.plot()
+}
+```
+
+#### repeatToFit / stretchToFit / snapshot / lookBack
+
+Timeline utilities fit sources to durations or reuse recently placed material.
+
+**Simple**
+
+This should fill a two-unit timeline span by repeating the source function.
+
+```diffstatic {data-lang=kotlin}
+val g = timelineGraph {
+    repeatToFit(sin(2.0), duration = 2.0)
+}
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/repeattofit-stretchtofit-snapshot-lookback.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-repeattofit-stretchtofit-snapshot-lookback"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val g = timelineGraph {
+        stretchToFit(fbmPerlin(2, 2.0, 1.0), duration = 3.0)
+        val ghost = snapshot(offset = 0.12)
+        ghost.place(duration = 1.5, blend = ADD, gain = 0.4)
+    }
+    g.asFn("snapshot").plot()
+}
+```
+
+#### granular
+
+`granular` resynthesizes a function from small overlapping source grains.
+
+**Simple**
+
+This should rebuild the sine wave from overlapping short grains.
+
+```diffstatic {data-lang=kotlin}
+val f = sin(3.0).granular(grainSize = 0.05, spacing = 0.04)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/granular.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-granular"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = fbmPerlin(1, 3.0, 0.8).granular(grainSize = 0.04, spacing = 0.027, jitter = 0.35, overlap = 2, seed = 3, window = gaussianWindow(0.0..1.0, 0.3))
+    f.plot()
+}
+```
+
+#### lowpassStream / highpassStream
+
+Stream filters process sampled values lazily for lightweight smoothing or edge emphasis.
+
+**Simple**
+
+This should stream low-pass filtered sine samples into a list.
+
+```diffstatic {data-lang=kotlin}
+val s = sin(2.0).lowpassStream(alpha = 0.2).take(64).toList()
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/lowpassstream-highpassstream.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-lowpassstream-highpassstream"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val s = (pulseTrain(0.12) + valueNoise(5, 22.0, 0.2)).highpassStream(alpha = 0.88, step = 0.004).take(256).toList()
+    val f = s.toFn(domain = 0.0..1.0).withName("highpassStream")
+    f.plot()
+}
+```
+
+#### demo
+
+`demo` builds a compact bundle of representative series and statistics for quick validation.
+
+**Simple**
+
+This should run the built-in demo over the default domain and return sampled result data.
+
+```diffstatic {data-lang=kotlin}
+val result = demo(sampleCount = 256)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/demo.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-demo"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val result = demo(sampleCount = 1024, seed = 77, domain = -0.25..1.25, printSummary = false)
+    val series = result.series.first { it.name == "mixed" }
+    val f = series.ys.toFn(domain = series.domain, interpolation = CUBIC).withName("demo mixed")
+    f.plot()
+}
+```
+
 
 ### Complete API addendum: utility classes and methods
 
@@ -510,57 +2397,924 @@ The tables above cover the primary signal-shaping API. This addendum closes the 
 
 #### Domain methods
 
-| Method | Simple | Creative |
-|---|---|---|
-| Functions.Domain.of / point / centered | `val a = Functions.Domain.of(0.0, 1.0)` | `val a = Functions.Domain.centered(0.5, 0.42).intersect(Functions.Domain.of(0.0, 1.0))` |
-| containsInclusive / contains | `val inside = d.containsInclusive(0.2)` | `val mask = if (d.contains(0.77)) one(d, d) else zero(d, d)` |
-| expand / shrink | `val wide = d.expand(0.1)` | `val band = d.expand(0.2).shrink(0.05)` |
-| shift / scale | `val moved = d.shift(0.15)` | `val zoom = d.scale(0.5, about = d.center).shift(0.1)` |
-| lerp / alphaOf | `val x = d.lerp(0.25)` | `val warpedAlpha = smoothStep(c(0.0), c(1.0), d, d).eval(d.alphaOf(0.42))` |
-| clamp / wrap / reflect | `val x = d.clamp(1.2)` | `val pingPong = d.reflect(2.7)` |
-| intersect / union | `val i = d.intersect(Functions.Domain.of(0.2, 0.7))` | `val merged = d.union(Functions.Domain.of(-0.3, 0.3)).intersect(Functions.Domain.of(-0.1, 0.9))` |
+These entries cover interval operations used to build, trim, and remap `Fn` domains. In this subsection, `d` means `domain(0.0..1.0)`.
+
+#### Range notation / point / centered
+
+Domain helpers create and combine numeric intervals for construction and sampling.
+
+**Simple**
+
+This should create numeric domains with terse range notation and use them directly in functions.
+
+```diffstatic {data-lang=kotlin}
+val a = 0.0..1.0
+val b = sin(5, domain = 0..1)
+```
+
+**Creative**
+
+```diffstatic {data-lang=kotlin}
+val a = Functions.Domain.centered(0.5, 0.42).intersect(0.0..1.0)
+```
+
+#### containsInclusive / contains
+
+Containment checks ask whether an x value lies inside a domain.
+
+**Simple**
+
+This should report that `0.2` lies inside the domain.
+
+```diffstatic {data-lang=kotlin}
+val inside = d.containsInclusive(0.2)
+```
+
+**Creative**
+
+```diffstatic {data-lang=kotlin}
+val mask = if (d.contains(0.77)) one() else zero()
+```
+
+#### expand / shrink
+
+Expansion and shrinking grow or contract a domain around its endpoints.
+
+**Simple**
+
+This should widen the domain by `0.1` on both sides.
+
+```diffstatic {data-lang=kotlin}
+val wide = d.expand(0.1)
+```
+
+**Creative**
+
+```diffstatic {data-lang=kotlin}
+val band = d.expand(0.2).shrink(0.05)
+```
+
+#### shift / scale
+
+Domain shifts and scales move or zoom intervals without sampling an `Fn`.
+
+**Simple**
+
+This should shift the whole domain forward by `0.15`.
+
+```diffstatic {data-lang=kotlin}
+val moved = d.shift(0.15)
+```
+
+**Creative**
+
+```diffstatic {data-lang=kotlin}
+val zoom = d.scale(0.5, about = d.center).shift(0.1)
+```
+
+#### lerp / alphaOf
+
+Interpolation helpers convert between normalized alpha and concrete x positions.
+
+**Simple**
+
+This should return the point one-quarter of the way across the domain.
+
+```diffstatic {data-lang=kotlin}
+val x = d.lerp(0.25)
+```
+
+**Creative**
+
+```diffstatic {data-lang=kotlin}
+val warpedAlpha = smoothStep(0.0, 1.0).eval(domain(0.0..1.0).alphaOf(0.42))
+```
+
+#### clamp / wrap / reflect
+
+Domain edge helpers keep x values inside an interval by clamping, wrapping, or reflecting.
+
+**Simple**
+
+This should clamp an outside value back to the domain's upper edge.
+
+```diffstatic {data-lang=kotlin}
+val x = d.clamp(1.2)
+```
+
+**Creative**
+
+```diffstatic {data-lang=kotlin}
+val pingPong = d.reflect(2.7)
+```
+
+#### intersect / union
+
+Domain set operations find overlap or coverage across intervals.
+
+**Simple**
+
+This should compute the overlapping interval between `d` and `0.2..0.7`.
+
+```diffstatic {data-lang=kotlin}
+val i = d.intersect(0.2..0.7)
+```
+
+**Creative**
+
+```diffstatic {data-lang=kotlin}
+val merged = d.union(-0.3..0.3).intersect(-0.1..0.9)
+```
+
 
 #### Fn lifecycle and safety
 
-| Method | Simple | Creative |
-|---|---|---|
-| eval / invoke | `val y = sin(c(2.0), roi = d, domain = d).eval(0.5)` | `val y = (fbm(3, c(4.0), c(0.6), roi = d, domain = d))(0.37)` |
-| evalSafe | `val y = sin(c(2.0), roi = d, domain = d).evalSafe(2.0, outside = 0.0)` | `val y = saw(c(0.1), roi = d, domain = d).evalSafe(-0.3, edge = Functions.EdgeMode.MIRROR)` |
-| withRoi / withDomain / withName | `val f = sin(c(2.0), roi = d, domain = d).withName("lead")` | `val f = valueNoise(4, c(12.0), c(0.5), d, d).withRoi(Functions.Domain.of(0.1, 0.9)).withDomain(Functions.Domain.ALL).withName("noise-bed")` |
+These entries cover direct sampling, safe edge behavior, and lightweight relabeling of existing functions.
+
+#### eval / invoke
+
+Evaluation samples a function at one x value, either explicitly or with call syntax.
+
+**Simple**
+
+This should evaluate the sine wave directly at `x = 0.5`.
+
+```diffstatic {data-lang=kotlin}
+val y = sin(2.0).eval(0.5)
+```
+
+**Creative**
+
+```diffstatic {data-lang=kotlin}
+val y = (fbm(3, 4.0, 0.6))(0.37)
+```
+
+#### evalSafe
+
+`evalSafe` samples with an outside-domain policy instead of assuming x is valid.
+
+**Simple**
+
+This should safely return the outside value when sampling beyond the domain.
+
+```diffstatic {data-lang=kotlin}
+val y = sin(2.0).evalSafe(2.0, outside = 0.0)
+```
+
+**Creative**
+
+```diffstatic {data-lang=kotlin}
+val y = saw(0.1).evalSafe(-0.3, edge = Functions.EdgeMode.MIRROR)
+```
+
+#### over / withDomain / withName
+
+Lifecycle helpers relabel a function with a new interval or display name. Prefer `over (...)` in user code; `withDomain(...)` is the lower-level method behind it.
+
+**Simple**
+
+This should rename the sine wave to `lead` while preserving its behavior.
+
+```diffstatic {data-lang=kotlin}
+val f = sin(2.0).withName("lead")
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/withdomain-withname.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-withdomain-withname"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = ((valueNoise(4, 12.0, 0.5) over (0.1..0.9)) / all).withName("noise-bed")
+    f.plot()
+}
+```
+
+#### Fn graph inspection and rewrite language
+
+`Fn` values carry a best-effort structural graph alongside their evaluator. Ordinary sampling still uses the evaluator; the graph is there so a function can be inspected, deep-copied, visualized, and rewritten without reverse-engineering a Kotlin closure. Constructors and combiners in the standard family attach graph nodes with operation names, child edges, numeric metadata, and rebuild recipes. Opaque `fn { ... }` functions still evaluate normally, but rewrite passes cannot see inside their lambda bodies.
+
+The rewrite language is a compact "selector `=>` action" layer over `Fn.rewriteGraph(...)`. It is deliberately closer to XPath/CSS/glob selectors than to JSON tools: the thing being matched is a labeled occurrence path through a function graph.
+
+**Simple**
+
+This should inspect the graph of a nested function, then rewrite the `saw` under a `sin` into a `triangle`.
+
+```diffstatic {data-lang=kotlin}
+val base = sin(sin(saw(0.25)))
+val changed = base.rewriteKotlin("""
+#fnrewrite
+sin/*/saw => op=triangle
+""")
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/fn-rewrite-graph-inspection.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-fn-rewrite-graph-inspection"}
+:::static
+import afield.stdlib.Functions
+import afield.stdlib.graphSvg
+import afield.stdlib.rewriteKotlin
+
+with(Functions) {
+    val base = sin(sin(saw(0.25))).withName("nested carrier")
+    val changed = base.rewriteKotlin("""
+#fnrewrite
+sin/*/saw => op=triangle
+sin/**/[tag=number][value>0.2] => = 0.5
+""")
+
+    display(
+        "graph",
+        """
+        <div style="font-family:Iosevka Web, monospace; background:#050505; color:#e8e8e8; border:1px solid #303030; padding:14px; max-width:1120px;">
+          <div style="display:grid; grid-template-columns:1fr; gap:14px; align-items:start;">
+            <div>
+              <div style="font-weight:700; margin:0 0 8px 2px;">before</div>
+              <div style="overflow:hidden; border:1px solid #202020;">${base.graphSvg(width = 1060, nodeWidth = 154.0, nodeHeight = 46.0, xGap = 176.0, yGap = 62.0, maxDepth = 5)}</div>
+            </div>
+            <div>
+              <div style="font-weight:700; margin:0 0 8px 2px;">after</div>
+              <div style="overflow:hidden; border:1px solid #202020;">${changed.graphSvg(width = 1060, nodeWidth = 154.0, nodeHeight = 46.0, xGap = 176.0, yGap = 62.0, maxDepth = 5)}</div>
+            </div>
+          </div>
+        </div>
+        """.trimIndent()
+    )
+}
+```
+
+The first rule matches a `saw` occurrence whose parent is any node and whose grandparent is `sin`. The second rule finds numeric nodes anywhere under a `sin` and changes values greater than `0.2` to `0.5`. The graph view is a better first read than text here: the operation swap and constant rewrites become visible as topology and labels.
+
+#### Rewrite rule shape
+
+A rewrite spec is a sequence of rules. Rules can be separated by newlines or semicolons. A rule has one selector on the left and one or more actions on the right:
+
+```text
+selector => action
+selector => action, action
+selector => action | action
+```
+
+Commas and pipes on the RHS both mean "then". Actions are applied left-to-right to the copied node. This matters for numeric edits:
+
+```text
+**/[value>0.2] => *= 2.0, += 1.0
+```
+
+That rule doubles the current numeric value, then adds one to the doubled value.
+
+Lines starting with `#` or `//` are comments. The `#fnrewrite` header is optional for runtime parsing, but useful inside Kotlin triple-quoted strings because the Monaco language extension recognizes it:
+
+```kotlin
+val spec = """
+#fnrewrite
+sin/**/[tag=number] => *= @{1.0 + depth * 0.1}
+"""
+```
+
+#### Selector basics
+
+A selector is a set of terms. Whitespace and `&` both mean "and":
+
+```text
+saw
+role=frequency
+parent=sin role=amplitude
+parent=sin & role=amplitude
+tag=number
+```
+
+The older terse selector style is still supported:
+
+```text
+sin.frequency
+```
+
+That reads as "a node connected through the `frequency` role on or under a `sin`-ish occurrence". Prefer path selectors for new code when ancestry matters; they are more explicit.
+
+Useful term forms:
+
+| Term | Matches |
+| --- | --- |
+| `sin` | current node op, incoming role, or tag named `sin` |
+| `number` | node tagged as numeric metadata |
+| `const` / `param` / `opaque` | common node classes |
+| `op=saw` | current node operation |
+| `role=frequency` | incoming edge role |
+| `edge=frequency` | alias for `role` |
+| `param=frequency` | alias for `role` |
+| `parameter=frequency` | alias for `role` |
+| `parent=sin` | parent operation |
+| `under=sin` | alias for `parent` |
+| `name=lead` | public `Fn.name` |
+| `tag=number` | graph tag |
+| `depth=2` | depth from the graph root |
+
+#### Path selectors
+
+Path selectors are slash-separated occurrence matches:
+
+```text
+sin/saw
+sin/*/saw
+sin/**/saw
+/multiply/**/[tag=number]
+```
+
+The matched node is always the current node being considered for rewrite. An unanchored path can match any suffix of the current root-to-node occurrence path. A leading `/` anchors the match at the graph root.
+
+| Path piece | Meaning |
+| --- | --- |
+| `foo` | one node whose op, role, or tag matches `foo` |
+| `*` | exactly one node |
+| `**` | zero or more nodes |
+| `/` prefix | anchor at the graph root |
+| `[predicate]` | filter the current path segment |
+
+Examples:
+
+```text
+sin/*/saw
+```
+
+Matches `saw` nodes that are children of children of a `sin`.
+
+```text
+sin/**/saw
+```
+
+Matches `saw` nodes at any depth below a `sin`, including direct children.
+
+```text
+/multiply/**/[tag=number]
+```
+
+Matches numeric nodes anywhere under a root `multiply` graph.
+
+Because graph nodes may be shared, the match is occurrence-based. The same `Fn` object can appear through multiple paths. Whether those paths collapse to one copied node depends on `preserveSharing`; by default `rewriteKotlin(...)` copies by occurrence so path-sensitive edits are unsurprising.
+
+#### Predicates
+
+Predicates live inside path segments:
+
+```text
+**/[op=const]
+**/[role=frequency]
+**/[tag=number][value>0.2]
+**/[depth>=2][index=0]
+```
+
+Supported predicate keys:
+
+| Key | Value source |
+| --- | --- |
+| `op` | graph operation name |
+| `role`, `edge`, `param`, `parameter` | incoming edge role |
+| `tag` | graph tag set |
+| `name` | public function name |
+| `depth` | path depth from root |
+| `index` | child index within the parent |
+| `value` | common numeric metadata value |
+| other names | `numbers`, `strings`, `booleans`, or `longs` metadata on the graph node |
+
+Supported comparisons are `=`, `!=`, `>`, `<`, `>=`, and `<=`. Numeric comparisons are used when both sides can be parsed as numbers; otherwise equality is case-insensitive string equality.
+
+#### Actions
+
+Actions rebuild or relabel the matched copied node:
+
+| Action | Effect |
+| --- | --- |
+| `drop`, `prune`, `zero` | replace with `zero(copy.domain)` |
+| `op=sin` | rebuild this node as another known operation, if possible |
+| `replace=triangle` | alias for `op=triangle` |
+| `name=lead` | set the copied function name |
+| `domain=all` | set `Domain.ALL` |
+| `domain=default` | set `Domain.DEFAULT` |
+| `domain=0.0..1.0` | set a concrete domain |
+| `= 0.5` | replace a numeric node's `value` |
+| `*= 2.0` | multiply a numeric node's `value` |
+| `/= 2.0` | divide a numeric node's `value` |
+| `+= 0.1` | add to a numeric node's `value` |
+| `-= 0.1` | subtract from a numeric node's `value` |
+
+Numeric actions apply only to nodes with a `numbers["value"]` metadata entry. That usually means constants and parameter nodes. If a numeric action lands on a non-numeric node, it is ignored rather than failing the whole rewrite.
+
+`op=...` is intentionally conservative. It works when the copied node knows how to rebuild as the requested standard operation. If the node is opaque or the operation is not compatible, the copied node is left alone.
+
+#### Kotlin on the RHS
+
+Use `@{ ... }` for Kotlin expressions in numeric actions. The code inside is compiled in the current live Field box context by `rewriteKotlin(...)`, and it receives a `FnRewriteNumberContext` as implicit receiver:
+
+```text
+**/[tag=number] => *= @{1.0 + depth * 0.1}
+**/[role=amplitude] => = @{if (parentOp == "sin") value * 0.5 else value}
+```
+
+Available names inside `@{...}`:
+
+| Name | Meaning |
+| --- | --- |
+| `value` | current numeric value |
+| `it` | alias for `value` |
+| `op` | current node operation |
+| `role` | incoming edge role |
+| `parameter` | alias for `role` |
+| `parentOp` | parent node operation, if any |
+| `depth` | depth from root |
+| `path` | list of child indices from root |
+| `ancestors` | root-to-parent path elements |
+| `occurrence` | root-to-current path elements |
+| `name` | public function name, if any |
+| `domain` | current function domain |
+| `numbers` | numeric metadata map |
+| `strings` | string metadata map |
+| `booleans` | boolean metadata map |
+| `longs` | long metadata map |
+
+Kotlin RHS snippets can be multi-line. The last expression is returned:
+
+```text
+**/[tag=number] => = @{
+    val bias = if (role == "frequency") 1.25 else 1.0
+    value * bias + depth * 0.05
+}
+```
+
+The older `${...}` form is still accepted for compatibility, but `@{...}` is the intended syntax because it can be written directly inside Kotlin raw strings without escaping.
+
+#### rewrite versus rewriteKotlin
+
+Use `rewriteKotlin(...)` in live Field code. It accepts all rewrite syntax, including `@{...}` RHS snippets:
+
+```kotlin
+val g = f.rewriteKotlin("""
+#fnrewrite
+sin/**/[tag=number] => *= @{1.1}
+""")
+```
+
+The lower-level `rewrite(...)` function is useful when the RHS is plain numbers and actions, or when you are supplying your own evaluator through `FnRewriteOptions`. It intentionally does not depend on the live-code compiler.
+
+#### Rewrite plot example
+
+This example rewrites a nested graph in two ways: it changes a descendant `saw` into a `triangle`, then uses Kotlin RHS code to scale numeric values under `sin` by depth.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/fn-rewrite-language-plot.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-fn-rewrite-language-plot"}
+:::static
+import afield.stdlib.Functions
+import afield.stdlib.rewriteKotlin
+
+with(Functions) {
+    val base = (sin(sin(saw(0.18))) * 0.45) over (0.0..3.0)
+    val changed = base.rewriteKotlin("""
+#fnrewrite
+sin/*/saw => op=triangle
+sin/**/[tag=number][value>0.15] => *= @{1.0 + depth * 0.08}
+**/[role=amplitude] => *= @{if (parentOp == "sin") 0.75 else 1.0}
+""")
+    base.withName("before rewrite").plot(0.0..3.0, channel = "before", heightPx = 240, title = "before rewrite")
+    changed.withName("after rewrite").plot(0.0..3.0, channel = "after", heightPx = 240, title = "after rewrite")
+    (changed - base).withName("rewrite delta").plot(0.0..3.0, channel = "delta", heightPx = 220, title = "after - before")
+}
+```
+
+The important thing here is that the selectors talk about structure, not sample values. The rules do not ask "where is the waveform high?"; they ask "which function graph nodes sit under this ancestry, role, or metadata condition?" Plotting the source, result, and delta makes the structural edit audible-to-the-eye: the graph rewrite is not just metadata, it changes the sampled signal.
+
+#### Rewrite limitations
+
+The graph is a recipe, not a decompiler. Standard `Functions` constructors and combiners participate because they attach graph metadata and rebuild functions. Raw `fn { ... }` lambdas are opaque: they can be copied as evaluators and shown as opaque nodes, but they cannot be structurally edited from the inside.
+
+Path matching follows occurrence paths through the copied graph. This is what makes selectors like `sin/**/[role=frequency]` useful, but it also means shared subgraphs need a conscious choice. Leave `preserveSharing = false` for independent occurrence edits; pass `preserveSharing = true` when identity sharing matters more than path-specific mutation.
+
+Finally, rewrite rules run during graph copy, bottom-up through children before parents. A rule can affect what later actions on the same node see, but it does not retroactively revisit children that have already been copied.
+
 
 #### FunctionCursor methods
 
-| Method | Simple | Creative |
-|---|---|---|
-| next() | `val cur = sin(c(2.0), roi = d, domain = d).cursor(0.0, 0.01); val y = cur.next()` | `val cur = fbm(5, c(3.0), c(0.7), roi = d, domain = d).cursor(0.0, 0.002); repeat(32) { cur.next() }` |
-| next(count) | `val ys = sin(c(2.0), roi = d, domain = d).cursor().next(16)` | `val ys = pulseTrain(c(0.15), roi = d, domain = d).cursor(start = 0.25, step = 0.003).next(1024)` |
+Cursor entries show how to pull sequential samples from an `Fn` when array or stream helpers are too indirect.
+
+#### next()
+
+`next()` advances a cursor by one step and returns the sampled value.
+
+**Simple**
+
+This should advance the cursor once and return the first sampled value.
+
+```diffstatic {data-lang=kotlin}
+val cur = sin(2.0).cursor(0.0, 0.01)
+val y = cur.next()
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/cursor-next.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-cursor-next"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val cur = fbm(5, 3.0, 0.7).cursor(0.0, 0.002)
+    repeat(32) { cur.next() }
+    val f = cur.next(512).toFn(domain = 0.0..1.0, interpolation = CUBIC).withName("cursor next")
+    f.plot()
+}
+```
+
+#### next(count)
+
+`next(count)` pulls a fixed-size batch from a cursor.
+
+**Simple**
+
+This should return the next sixteen cursor samples as a batch.
+
+```diffstatic {data-lang=kotlin}
+val ys = sin(2.0).cursor().next(16)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/cursor-next-count.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-cursor-next-count"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val ys = pulseTrain(0.15).cursor(start = 0.25, step = 0.003).next(1024)
+    val f = ys.toFn(domain = 0.0..1.0, interpolation = NEAREST).withName("cursor batch")
+    f.plot()
+}
+```
+
 
 #### Functions.TimelineChunk and TimelineGraph
 
-| API | Simple | Creative |
-|---|---|---|
-| Functions.TimelineChunk.contains / sampleAt | `val ch = Functions.TimelineChunk(sin(c(2.0), roi = d, domain = d), targetDomain = d); val s = ch.sampleAt(0.3)` | `val ch = Functions.TimelineChunk(fbm(2, c(2.0), c(0.5), roi = d, domain = d), sourceDomain = d, targetDomain = Functions.Domain.of(1.0, 2.0), mapMode = Functions.ChunkMapMode.WRAP, window = hannWindow(Functions.Domain.of(0.0, 1.0))); val on = ch.contains(1.35)` |
-| Functions.TimelineChunk.weightAt | `val w = Functions.TimelineChunk(sin(c(2.0), roi = d, domain = d), targetDomain = d).weightAt(0.5)` | `val w = Functions.TimelineChunk(saw(c(0.2), roi = d, domain = d), targetDomain = d, window = spliceWindow(0.2, 0.2, Functions.Domain.of(0.0, 1.0)), gain = valueNoise(1, c(4.0), c(0.2), d, d)).weightAt(0.6)` |
-| TimelineGraph.eval / invoke | `val g = timelineGraph { sin(c(2.0), roi = d, domain = d).place() }; val y = g.eval(0.4)` | `val g = timelineGraph { pulseTrain(c(0.11), roi = d, domain = d).place(duration = 0.7); fbm(8, c(3.0), c(0.4), roi = d, domain = d).overlap(0.2, blend = Functions.ChunkBlend.ADD) }; val y = g(0.9)` |
-| TimelineGraph.asFn / tap | `val f = timelineGraph { sin(c(2.0), roi = d, domain = d).place() }.asFn("main")` | `val delayed = timelineGraph { saw(c(0.2), roi = d, domain = d).place() }.tap(offset = 0.12, name = "echoTap")` |
+These entries show the lower-level timeline objects beneath the infix composition helpers.
+
+#### Functions.TimelineChunk.contains / sampleAt
+
+Timeline chunks map a placed domain back into source time before sampling.
+
+**Simple**
+
+This should sample the timeline chunk at `x = 0.3`.
+
+```diffstatic {data-lang=kotlin}
+val ch = Functions.TimelineChunk(sin(2.0), domain = 0.0..1.0)
+val s = ch.sampleAt(0.3)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/timelinechunk-contains-sampleat.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-timelinechunk-contains-sampleat"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val ch = Functions.TimelineChunk(fbm(2, 2.0, 0.5), sourceDomain = 0.0..1.0, domain = 1.0..2.0, mapMode = Functions.ChunkMapMode.WRAP, window = hannWindow(0.0..1.0))
+    val on = ch.contains(1.35)
+    val f = fn(1.0..2.0, "chunk sample") { x -> ch.sampleAt(x) ?: 0.0 }
+    f.plot()
+}
+```
+
+#### Functions.TimelineChunk.weightAt
+
+Chunk weights report the local fade, gain, and window contribution at a time.
+
+**Simple**
+
+This should return the chunk's blend weight at the midpoint of its domain.
+
+```diffstatic {data-lang=kotlin}
+val w = Functions.TimelineChunk(sin(2.0), domain = 0.0..1.0).weightAt(0.5)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/timelinechunk-weightat.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-timelinechunk-weightat"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val ch = Functions.TimelineChunk(saw(0.2), domain = 0.0..1.0, window = spliceWindow(0.2, 0.2, 0.0..1.0), gain = valueNoise(1, 4.0, 0.2))
+    val w = ch.weightAt(0.6)
+    val f = fn(name = "chunk weight") { x -> ch.weightAt(x) }
+    f.plot()
+}
+```
+
+#### TimelineGraph.eval / invoke
+
+Timeline graphs evaluate the active placed chunks at a given time.
+
+**Simple**
+
+This should evaluate the timeline graph at `x = 0.4`.
+
+```diffstatic {data-lang=kotlin}
+val g = timelineGraph {
+    sin(2.0).place()
+}
+val y = g.eval(0.4)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/timelinegraph-eval-invoke.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-timelinegraph-eval-invoke"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val g = timelineGraph {
+        pulseTrain(0.11).place(duration = 0.7)
+        fbm(8, 3.0, 0.4).overlap(0.2, blend = ADD)
+    }
+    val y = g(0.9)
+    g.asFn("graph eval").plot()
+}
+```
+
+#### TimelineGraph.asFn / tap
+
+Timeline graphs can be exposed as ordinary functions or sampled as delayed taps.
+
+**Simple**
+
+This should expose the timeline graph as a named `Fn`.
+
+```diffstatic {data-lang=kotlin}
+val f = timelineGraph {
+    sin(2.0).place()
+}.asFn("main")
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/timelinegraph-asfn-tap.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-timelinegraph-asfn-tap"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val delayed = timelineGraph {
+        saw(0.2).place()
+    }.tap(offset = 0.12, name = "echoTap")
+    delayed.plot()
+}
+```
+
 
 #### Functions.TimelineBuilder helpers
 
-| Method | Simple | Creative |
-|---|---|---|
-| mark / marker | `val t = timeline { mark("A") }` | `val t = timeline { mark("intro", 0.5); moveToMark("intro", 0.2); sin(c(2.0), roi = d, domain = d).place() }` |
-| moveTo / moveToMark / advance / rewind | `val t = timeline { moveTo(0.3); advance(0.2); rewind(0.1) }` | `val t = timeline { mark("drop"); advance(0.4); moveToMark("drop", 0.15); pulseTrain(c(0.12), roi = d, domain = d).place() }` |
-| repeatToFit / stretchToFit | `val t = timeline { repeatToFit(sin(c(2.0), roi = d, domain = d), duration = 2.0) }` | `val t = timeline { stretchToFit(fbmPerlin(9, c(2.0), c(0.6), roi = d, domain = d), duration = 3.5, blend = Functions.ChunkBlend.ADD, gain = c(0.45)) }` |
-| Fn.place / overlap / splice | `val t = timeline { sin(c(2.0), roi = d, domain = d).place() }` | `val t = timeline { saw(c(0.18), roi = d, domain = d).place(duration = 1.1); pulseTrain(c(0.1), roi = d, domain = d).overlap(0.2, blend = Functions.ChunkBlend.ADD); fbm(4, c(2.0), c(0.2), roi = d, domain = d).splice(lookBack = 0.15, duration = 0.6) }` |
-| chunks / buildGraph / build | `val g = timelineGraph { one(d, d).place() }; val cs = timeline(start = 0.0) { }.withName("empty")` | `val f = Functions.TimelineBuilder(start = 0.0).apply { sin(c(2.0), roi = d, domain = d).place(); fbm(3, c(4.0), c(0.3), roi = d, domain = d).overlap(0.1, blend = Functions.ChunkBlend.ADD) }.build(name = "stacked")` |
+Builder helpers are the imperative timeline controls used by `timeline { ... }` and `timelineGraph { ... }`.
+
+#### mark / marker
+
+Timeline markers name positions so later placements can jump back to them.
+
+**Simple**
+
+This should create a timeline builder and record a mark named `A` at the current time.
+
+```diffstatic {data-lang=kotlin}
+val t = timeline {
+    mark("A")
+}
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/mark-marker.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-mark-marker"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val t = timeline {
+        mark("intro", 0.5)
+        moveToMark("intro", 0.2)
+        sin(2.0).place()
+    }
+    t.plot()
+}
+```
+
+#### moveTo / moveToMark / advance / rewind
+
+Timeline cursor controls place the next chunk at an absolute or relative time.
+
+**Simple**
+
+This should move the builder cursor to `0.3`, advance it, then rewind it slightly.
+
+```diffstatic {data-lang=kotlin}
+val t = timeline {
+    moveTo(0.3)
+    advance(0.2)
+    rewind(0.1)
+}
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/moveto-movetomark-advance-rewind.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-moveto-movetomark-advance-rewind"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val t = timeline {
+        mark("drop")
+        advance(0.4)
+        moveToMark("drop", 0.15)
+        pulseTrain(0.12).place()
+    }
+    t.plot()
+}
+```
+
+#### repeatToFit / stretchToFit
+
+Fit helpers fill a target duration by wrapping or stretching a source.
+
+**Simple**
+
+This should place repeated copies of the source function until two timeline units are filled.
+
+```diffstatic {data-lang=kotlin}
+val t = timeline {
+    repeatToFit(sin(2.0), duration = 2.0)
+}
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/repeattofit-stretchtofit.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-repeattofit-stretchtofit"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val t = timeline {
+        stretchToFit(fbmPerlin(9, 2.0, 0.6), duration = 3.5, blend = ADD, gain = 0.45)
+    }
+    t.plot()
+}
+```
+
+#### Fn.place / overlap / splice
+
+Placement helpers add source functions to the active timeline with optional joins.
+
+**Simple**
+
+This should place the sine function at the builder's current time.
+
+```diffstatic {data-lang=kotlin}
+val t = timeline {
+    sin(2.0).place()
+}
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/fn-place-overlap-splice.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-fn-place-overlap-splice"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val t = timeline {
+        saw(0.18).place(duration = 1.1)
+        pulseTrain(0.1).overlap(0.2, blend = ADD)
+        fbm(4, 2.0, 0.2).splice(lookBack = 0.15, duration = 0.6)
+    }
+    t.plot()
+}
+```
+
+#### chunks / buildGraph / build
+
+Builder outputs expose the placed chunks as graphs or ordinary functions.
+
+**Simple**
+
+This should build a graph from placed chunks and create an empty named timeline.
+
+```diffstatic {data-lang=kotlin}
+val g = timelineGraph {
+    one().place()
+}
+val cs = timeline(start = 0.0) { }.withName("empty")
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/chunks-buildgraph-build.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-chunks-buildgraph-build"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = Functions.TimelineBuilder(start = 0.0).apply {
+        sin(2.0).place()
+        fbm(3, 4.0, 0.3).overlap(0.1, blend = ADD)
+    }.build(name = "stacked")
+    f.plot()
+}
+```
+
 
 #### RBF kernels and interpolator
 
-| API | Simple | Creative |
-|---|---|---|
-| Functions.RbfKernels.linear / quadratic / cubic / thinPlate | `val f = rbf(points(0.0 to 0.0, 1.0 to 1.0), kernel = Functions.RbfKernels.linear)` | `val f = rbf(points(0.0 to 0.0, 0.3 to 1.0, 0.8 to -0.5, 1.0 to 0.2), kernel = Functions.RbfKernels.thinPlate, smoothing = 1e-3)` |
-| Functions.RbfKernels.gaussian / multiquadric / inverse* | `val f = rbf(points(0.0 to 0.0, 1.0 to 0.4), kernel = Functions.RbfKernels.gaussian(2.0))` | `val f = rbf(points(0.0 to 0.2, 0.4 to 0.9, 1.0 to -0.1), kernel = Functions.RbfKernels.inverseQuadratic(0.5), base = sin(c(2.0), roi = d, domain = d))` |
-| Functions.RbfInterpolator.eval | `val i = Functions.RbfInterpolator(points(0.0 to 0.0, 1.0 to 1.0), Functions.RbfKernels.cubic); val y = i.eval(0.5)` | `val i = Functions.RbfInterpolator(points(0.0 to 0.0, 0.2 to 0.9, 0.9 to -0.2), Functions.RbfKernels.gaussian(3.0), smoothing = 1e-4, base = sin(c(1.0), roi = d, domain = d)); val y = i.eval(0.63)` |
+RBF entries cover the kernels and direct interpolator object behind the `rbf(...)` convenience functions.
+
+#### RbfKernels.linear / quadratic / cubic / thinPlate
+
+Built-in RBF kernels choose the shape used for radial fitting.
+
+**Simple**
+
+This should interpolate the two points with a linear radial basis kernel.
+
+```diffstatic {data-lang=kotlin}
+val f = rbf(points(0.0 to 0.0, 1.0 to 1.0), kernel = RbfKernels.linear)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/functions-rbfkernels-linear-quadratic-cubic-thinplate.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-functions-rbfkernels-linear-quadratic-cubic-thinplate"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = rbf(points(0.0 to 0.0, 0.3 to 1.0, 0.8 to -0.5, 1.0 to 0.2), kernel = RbfKernels.thinPlate, smoothing = 1e-3)
+    f.plot()
+}
+```
+
+#### RbfKernels.gaussian / multiquadric / inverse*
+
+Parameterized RBF kernels tune how strongly samples influence nearby x positions.
+
+**Simple**
+
+This should interpolate the points with a Gaussian radial basis kernel.
+
+```diffstatic {data-lang=kotlin}
+val f = rbf(points(0.0 to 0.0, 1.0 to 0.4), kernel = RbfKernels.gaussian(2.0))
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/functions-rbfkernels-gaussian-multiquadric-inverse.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-functions-rbfkernels-gaussian-multiquadric-inverse"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val f = rbf(points(0.0 to 0.2, 0.4 to 0.9, 1.0 to -0.1), kernel = RbfKernels.inverseQuadratic(0.5), base = sin(2.0))
+    f.plot()
+}
+```
+
+#### RbfInterpolator.eval
+
+An RBF interpolator can be kept as an object and sampled directly.
+
+**Simple**
+
+This should evaluate the cubic radial basis interpolator halfway between its two points.
+
+```diffstatic {data-lang=kotlin}
+val i = RbfInterpolator(points(0.0 to 0.0, 1.0 to 1.0), RbfKernels.cubic)
+val y = i.eval(0.5)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/rbfinterpolator-eval.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-rbfinterpolator-eval"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    val i = RbfInterpolator(points(0.0 to 0.0, 0.2 to 0.9, 0.9 to -0.2), RbfKernels.gaussian(3.0), smoothing = 1e-4, base = sin(1.0))
+    val y = i.eval(0.63)
+    val f = fn(name = "rbf interpolator") { x -> i.eval(x) }
+    f.plot()
+}
+```
 
 ## Notes
 

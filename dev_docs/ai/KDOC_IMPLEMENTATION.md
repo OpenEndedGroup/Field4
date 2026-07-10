@@ -69,7 +69,7 @@ Updated completion metadata generation to include KDoc:
 4. Checks for `@Doc` annotation first (existing behavior)
 5. If no `@Doc`, calls `KotlinSourceIndex.getKDocForSymbol(symbolName)`
 6. Returns KDoc text if found
-7. Monaco editor displays KDoc in hover/completion popup
+7. FieldSuggest displays KDoc in its documentation pane
 
 ## Example
 

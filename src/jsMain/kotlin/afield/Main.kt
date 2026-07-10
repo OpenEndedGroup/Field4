@@ -1021,6 +1021,14 @@ private fun disclosureTitleClientRect(disclosure: HTMLElement): Rect? {
 private fun cssPixelsOrZero(raw: String): Double =
     raw.removeSuffix("px").trim().toDoubleOrNull() ?: 0.0
 
+private fun dataAttributePixelsOrZero(element: HTMLElement, attribute: String): Double =
+    element.getAttribute(attribute)
+        ?.removeSuffix("px")
+        ?.trim()
+        ?.toDoubleOrNull()
+        ?.takeIf { it.isFinite() && it > 0.0 }
+        ?: 0.0
+
 private fun hasStyledBox(element: HTMLElement): Boolean {
     val style = window.getComputedStyle(element)
     val background = style.backgroundColor.trim().lowercase()
@@ -1061,10 +1069,20 @@ private fun disclosureBodyClientRect(disclosure: HTMLElement): Rect? {
             when (element) {
                 is SVGElement,
                 is HTMLCanvasElement,
-                is HTMLIFrameElement,
                 is HTMLImageElement,
                 is HTMLTableElement,
                 is HTMLVideoElement -> rect
+
+                is HTMLIFrameElement -> {
+                    val intrinsicWidth = dataAttributePixelsOrZero(element, "data-afield-intrinsic-width")
+                    val intrinsicHeight = dataAttributePixelsOrZero(element, "data-afield-intrinsic-height")
+                    Rect(
+                        rect.x,
+                        rect.y,
+                        max(rect.w, intrinsicWidth),
+                        max(rect.h, intrinsicHeight)
+                    )
+                }
 
                 is HTMLElement -> {
                     val text = directText(element)
@@ -1385,9 +1403,10 @@ private fun fitOutputDisclosuresForScreenshot(outputArea: HTMLElement) {
                 .mapNotNull { child ->
                     val element = child as? HTMLElement ?: return@mapNotNull null
                     val rect = element.getBoundingClientRect()
+                    val intrinsicHeight = dataAttributePixelsOrZero(element, "data-afield-intrinsic-height")
                     max(
-                        rect.height,
-                        (element.scrollHeight as? Number)?.toDouble() ?: 0.0
+                        max(rect.height, (element.scrollHeight as? Number)?.toDouble() ?: 0.0),
+                        intrinsicHeight
                     )
                 }
             val svgHeights = content.querySelectorAll("svg").asList()
@@ -1429,11 +1448,15 @@ private fun fitBoxWidthToOutputsForScreenshot(box: HTMLElement, outputArea: HTML
                     if (!isOverlayVisible(element)) return@mapNotNull null
                     val edgeW = element.getBoundingClientRect().right - contentRect.left
                     val html = element as? HTMLElement
+                    val intrinsicWidth = html?.let { dataAttributePixelsOrZero(it, "data-afield-intrinsic-width") } ?: 0.0
                     max(
                         edgeW,
                         max(
-                            html?.getBoundingClientRect()?.width ?: 0.0,
-                            (html?.scrollWidth as? Number)?.toDouble() ?: 0.0
+                            max(
+                                html?.getBoundingClientRect()?.width ?: 0.0,
+                                (html?.scrollWidth as? Number)?.toDouble() ?: 0.0
+                            ),
+                            intrinsicWidth
                         )
                     )
                 }
@@ -1543,11 +1566,19 @@ private fun iframeOutputRectForScreenshot(
     fitOutputDisclosuresForScreenshot(outputArea)
     fitBoxWidthToOutputsForScreenshot(box, outputArea)
 
+    fun iframeAwareDisclosureRect(disclosure: HTMLElement): Rect? {
+        val disclosureRect = domRectToRect(disclosure.getBoundingClientRect())
+        if (disclosureRect.w <= 2.0 || disclosureRect.h <= 2.0) return null
+        val titleRect = disclosureTitleClientRect(disclosure)
+        val bodyRect = disclosureBodyClientRect(disclosure)
+        return unionRects(listOfNotNull(titleRect, bodyRect)) ?: bodyRect ?: titleRect ?: disclosureRect
+    }
+
     fun visibleDisclosureRects(): List<Rect> =
         outputArea.querySelectorAll(".disclosure").asList()
             .mapNotNull { it as? HTMLElement }
             .filter { isOverlayVisible(it) }
-            .map { domRectToRect(it.getBoundingClientRect()) }
+            .mapNotNull(::iframeAwareDisclosureRect)
             .filter { it.w > 2.0 && it.h > 2.0 }
 
     var targetRect = unionRects(visibleDisclosureRects())
@@ -2210,7 +2241,8 @@ private fun rawToWindowScreenshotRequest(raw: dynamic) = WindowScreenshotRequest
     showEditor = dynamicBoolean(raw?.showEditor, false),
     openOutputs = dynamicBoolean(raw?.openOutputs, false),
     editorOnly = dynamicBoolean(raw?.editorOnly, false),
-    padding = dynamicDouble(raw?.padding, 12.0)
+    padding = dynamicDouble(raw?.padding, 12.0),
+    waitMs = dynamicDouble(raw?.waitMs, 0.0)
 )
 
 private fun prepareBoxScreenshotJson(raw: dynamic): String {

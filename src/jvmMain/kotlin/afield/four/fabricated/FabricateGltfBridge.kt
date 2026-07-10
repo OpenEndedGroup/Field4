@@ -5,50 +5,16 @@ import org.lwjgl.assimp.Assimp
 
 /** Converts the existing Assimp/GLTF loader model into the fabricated scene/material data model. */
 object FabricateGltfBridge {
-    fun fromModel(model: GltfSupport.GltfModel, name: String = "gltf"): FabricateNode {
+    fun fromModel(model: GltfSupport.GltfModel, name: String = "gltf"): FabricateScene {
         val root = FabricateNode(name)
-        model.meshes.forEachIndexed { index, mesh ->
-            val node = FabricateMeshNode(
-                name = mesh.name.ifBlank { "mesh-$index" },
-                material = mesh.material.toFabricateMaterial("${mesh.name.ifBlank { "mesh-$index" }}-material"),
-                source = mesh
-            )
-            node.local.translation.set(mesh.bindPose.t)
-            node.local.rotation.set(mesh.bindPose.r)
-            node.local.scale.set(mesh.bindPose.s)
-            root += node
-        }
-        root.updateWorld(parentWorld = null, force = true)
-        return root
+        val scene = FabricateScene(root)
+        scene.importGltf(model, namePrefix = name)
+        return scene
     }
 }
 
-fun GltfSupport.MaterialTextured.toFabricateMaterial(name: String = "gltf-material"): FabricateStandardMaterial {
-    val material = FabricateStandardMaterial(
-        name = name,
-        baseColor = baseColor,
-        metallic = 0f,
-        roughness = 0.5f,
-        occlusion = 1f
-    )
-    textures.forEach { slot ->
-        val fabricateSlot = FabricateTextureSlot(
-            semantic = slot.type.toFabricateTextureSemantic(),
-            texture = slot.texture,
-            uvSet = slot.uvSet,
-            valid = slot.valid
-        )
-        when (slot.type) {
-            Assimp.aiTextureType_BASE_COLOR,
-            Assimp.aiTextureType_DIFFUSE -> material.baseColorTexture = fabricateSlot
-            Assimp.aiTextureType_NORMALS -> material.normalTexture = fabricateSlot
-            Assimp.aiTextureType_METALNESS,
-            Assimp.aiTextureType_DIFFUSE_ROUGHNESS -> material.metallicRoughnessTexture = fabricateSlot
-            Assimp.aiTextureType_EMISSIVE -> material.emissiveTexture = fabricateSlot
-        }
-    }
-    return material
-}
+fun GltfSupport.MaterialTextured.toFabricateMaterial(): FabricateMaterial =
+    FabricateMaterial.fromGltf(this)
 
 fun Int.toFabricateTextureSemantic(): String = when (this) {
     Assimp.aiTextureType_BASE_COLOR -> "baseColor"
@@ -57,5 +23,9 @@ fun Int.toFabricateTextureSemantic(): String = when (this) {
     Assimp.aiTextureType_EMISSIVE -> "emissive"
     Assimp.aiTextureType_METALNESS -> "metallic"
     Assimp.aiTextureType_DIFFUSE_ROUGHNESS -> "roughness"
+    Assimp.aiTextureType_GLTF_METALLIC_ROUGHNESS -> "metallicRoughness"
+    Assimp.aiTextureType_AMBIENT_OCCLUSION -> "occlusion"
+    Assimp.aiTextureType_LIGHTMAP -> "lightmap"
+    Assimp.aiTextureType_CLEARCOAT -> "clearcoat"
     else -> "texture-$this"
 }

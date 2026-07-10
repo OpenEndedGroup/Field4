@@ -3,6 +3,10 @@
 package afield.stdlib
 
 import afield.ToHTML
+import afield.four.util.Camera
+import afield.four.util.CameraPose
+import afield.four.util.applyPose
+import afield.four.util.pose
 import afield.h
 import afield.four.buffers.Structure
 import afield.four.modules.ComputeModulePointer
@@ -17,6 +21,7 @@ import org.joml.Vector4f
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
+import org.joml.DualQuaternionf
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
 import java.nio.file.Files
@@ -46,6 +51,31 @@ sealed interface KValue {
     @Serializable @SerialName("quat")
     data class Quat(val x: Float, val y: Float, val z: Float, val w: Float) : KValue
 
+    @Serializable @SerialName("dualquat")
+    data class DualQuat(
+        val realX: Float,
+        val realY: Float,
+        val realZ: Float,
+        val realW: Float,
+        val dualX: Float,
+        val dualY: Float,
+        val dualZ: Float,
+        val dualW: Float
+    ) : KValue
+
+    @Serializable @SerialName("cameraPose")
+    data class CameraPoseValue(
+        val realX: Float,
+        val realY: Float,
+        val realZ: Float,
+        val realW: Float,
+        val dualX: Float,
+        val dualY: Float,
+        val dualZ: Float,
+        val dualW: Float,
+        val focusDistance: Float
+    ) : KValue
+
     @Serializable @SerialName("stacksl")
     data class StackSL(val value: String) : KValue
 
@@ -68,6 +98,17 @@ sealed interface KValue {
         is Vec3 -> Vector3f(x, y, z)
         is Vec4 -> Vector4f(x, y, z, w)
         is Quat -> Quaternionf(x, y, z, w)
+        is DualQuat -> DualQuaternionf(
+            Quaternionf(realX, realY, realZ, realW),
+            Quaternionf(dualX, dualY, dualZ, dualW)
+        ).normalize()
+        is CameraPoseValue -> CameraPose(
+            DualQuaternionf(
+                Quaternionf(realX, realY, realZ, realW),
+                Quaternionf(dualX, dualY, dualZ, dualW)
+            ).normalize(),
+            focusDistance
+        )
         is StackSL -> StackSLString(value)
         is Str -> value
         is SourceBlock -> SourceBackedBlock<Any?>(boxId, source)
@@ -88,6 +129,27 @@ sealed interface KValue {
             is Vector3f -> Vec3(v.x, v.y, v.z)
             is Vector4f -> Vec4(v.x, v.y, v.z, v.w)
             is Quaternionf -> Quat(v.x, v.y, v.z, v.w)
+            is DualQuaternionf -> DualQuat(
+                v.real.x,
+                v.real.y,
+                v.real.z,
+                v.real.w,
+                v.dual.x,
+                v.dual.y,
+                v.dual.z,
+                v.dual.w
+            )
+            is CameraPose -> CameraPoseValue(
+                v.transform.real.x,
+                v.transform.real.y,
+                v.transform.real.z,
+                v.transform.real.w,
+                v.transform.dual.x,
+                v.transform.dual.y,
+                v.transform.dual.z,
+                v.transform.dual.w,
+                v.focusDistance
+            )
             is StackSLString -> StackSL(v.value)
             is String -> Str(v)
             is SourceBackedBlock<*> -> SourceBlock(v.boxId, v.source)
@@ -308,6 +370,20 @@ class KeyframeScope(val schemaVersion: Int = 0) {
         targets.remove(keyName)
     }
 
+    fun camera(camera: Camera, keyName: String = "camera") {
+        dynamicTargets[keyName] = Target(
+            resolve = { null },
+            set = { value ->
+                when (value) {
+                    is CameraPose -> camera.applyPose(value)
+                    is DualQuaternionf -> camera.applyPose(CameraPose(value, camera.distanceToTarget()))
+                }
+            },
+            get = { camera.pose() }
+        )
+        targets.remove(keyName)
+    }
+
     fun findByName(name : String) : ((Function0<*>) -> Unit)? {
         targetFor(name)?.bind?.let { return it }
         return null
@@ -361,6 +437,8 @@ class KeyframeScope(val schemaVersion: Int = 0) {
                 va is org.joml.Vector3f && vb is org.joml.Vector3f -> org.joml.Vector3f(va).lerp(vb, tf)
                 va is org.joml.Vector4f && vb is org.joml.Vector4f -> org.joml.Vector4f(va).lerp(vb, tf)
                 va is org.joml.Quaternionf && vb is org.joml.Quaternionf -> org.joml.Quaternionf(va).slerp(vb, tf)
+                va is org.joml.DualQuaternionf && vb is org.joml.DualQuaternionf -> org.joml.DualQuaternionf(va).sclerp(vb, tf)
+                va is CameraPose && vb is CameraPose -> va.sclerp(vb, tf)
                 va is StackSLString && vb is StackSLString -> if (tEffective >= 1.0) vb else va
                 va is String && vb is String -> if (tEffective >= 1.0) vb else va
                 va is SourceBackedBlock<*> && vb is SourceBackedBlock<*> -> if (tEffective >= 1.0) vb else va
@@ -556,6 +634,11 @@ private fun keyValuesEqual(a: Any?, b: Any?): Boolean =
         a is Vector3f && b is Vector3f -> a.x == b.x && a.y == b.y && a.z == b.z
         a is Vector4f && b is Vector4f -> a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w
         a is Quaternionf && b is Quaternionf -> a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w
+        a is DualQuaternionf && b is DualQuaternionf ->
+            a.real.x == b.real.x && a.real.y == b.real.y && a.real.z == b.real.z && a.real.w == b.real.w &&
+                a.dual.x == b.dual.x && a.dual.y == b.dual.y && a.dual.z == b.dual.z && a.dual.w == b.dual.w
+        a is CameraPose && b is CameraPose ->
+            a.focusDistance == b.focusDistance && keyValuesEqual(a.transform, b.transform)
         else -> a == b
     }
 
@@ -619,6 +702,8 @@ private fun kotlinValueLiteral(value: Any?): String =
         is Vector3f -> "vec(${kotlinNumberLiteral(value.x)}, ${kotlinNumberLiteral(value.y)}, ${kotlinNumberLiteral(value.z)})"
         is Vector4f -> "vec(${kotlinNumberLiteral(value.x)}, ${kotlinNumberLiteral(value.y)}, ${kotlinNumberLiteral(value.z)}, ${kotlinNumberLiteral(value.w)})"
         is Quaternionf -> "org.joml.Quaternionf(${kotlinNumberLiteral(value.x)}, ${kotlinNumberLiteral(value.y)}, ${kotlinNumberLiteral(value.z)}, ${kotlinNumberLiteral(value.w)})"
+        is DualQuaternionf -> "org.joml.DualQuaternionf(org.joml.Quaternionf(${kotlinNumberLiteral(value.real.x)}, ${kotlinNumberLiteral(value.real.y)}, ${kotlinNumberLiteral(value.real.z)}, ${kotlinNumberLiteral(value.real.w)}), org.joml.Quaternionf(${kotlinNumberLiteral(value.dual.x)}, ${kotlinNumberLiteral(value.dual.y)}, ${kotlinNumberLiteral(value.dual.z)}, ${kotlinNumberLiteral(value.dual.w)}))"
+        is CameraPose -> "afield.four.util.CameraPose(${kotlinValueLiteral(value.transform)}, ${kotlinNumberLiteral(value.focusDistance)})"
         else -> "/* unsupported ${value::class.java.name} */ null"
     }
 
@@ -663,6 +748,8 @@ private fun keyframeValueText(v: Any?): String = when (v) {
     is Vector3f -> "vec(${v.x}, ${v.y}, ${v.z})"
     is Vector4f -> "vec(${v.x}, ${v.y}, ${v.z}, ${v.w})"
     is Quaternionf -> "quat(${v.x}, ${v.y}, ${v.z}, ${v.w})"
+    is DualQuaternionf -> "dualquat(real=quat(${v.real.x}, ${v.real.y}, ${v.real.z}, ${v.real.w}), dual=quat(${v.dual.x}, ${v.dual.y}, ${v.dual.z}, ${v.dual.w}))"
+    is CameraPose -> "cameraPose(position=${v.position}, focus=${v.focusDistance})"
     else -> v.toString()
 }
 

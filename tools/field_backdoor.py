@@ -988,6 +988,7 @@ class FieldBackdoor:
         open_outputs: bool,
         padding: float,
         pan_into_view: bool,
+        wait_ms: float,
         timeout: float,
     ) -> dict[str, Any]:
         resolved_uid = self.resolve_uid(uid) if uid is not None else None
@@ -1006,6 +1007,7 @@ class FieldBackdoor:
             openOutputs=open_outputs,
             padding=padding,
             panIntoView=pan_into_view,
+            waitMs=wait_ms,
             timeout=timeout,
         )
         event = await self.call_for_single_reply(
@@ -1019,6 +1021,7 @@ class FieldBackdoor:
                 "openOutputs": open_outputs,
                 "editorOnly": editor_only,
                 "padding": padding,
+                "waitMs": wait_ms,
             },
             timeout=timeout,
         )
@@ -1035,6 +1038,7 @@ class FieldBackdoor:
         path: str,
         padding: float,
         pan_into_view: bool,
+        open_outputs: bool,
         timeout: float,
     ) -> dict[str, Any]:
         resolved_uid = self.resolve_uid(uid)
@@ -1045,6 +1049,7 @@ class FieldBackdoor:
             uid=resolved_uid,
             padding=padding,
             panIntoView=pan_into_view,
+            openOutputs=open_outputs,
             timeout=timeout,
         )
         event = await self.call_for_single_reply(
@@ -1054,7 +1059,7 @@ class FieldBackdoor:
                 "path": normalized_path,
                 "padding": padding,
                 "panIntoView": pan_into_view,
-                "openOutputs": True,
+                "openOutputs": open_outputs,
             },
             timeout=timeout,
         )
@@ -1933,6 +1938,7 @@ class FieldBackdoor:
             open_outputs = parse_bool_value(first_present(payload, "openOutputs", "open-outputs", "outputs"), True)
             pan_into_view = not parse_bool_value(first_present(payload, "noPan", "no-pan"), False)
             show_editor = parse_bool_value(first_present(payload, "withEditor", "with-editor", "editor"), False)
+            wait_ms = float(first_present(payload, "waitMs", "wait-ms", "wait") or 0.0)
             summary.update({
                 "mode": mode,
                 "box": box,
@@ -1940,6 +1946,7 @@ class FieldBackdoor:
                 "padding": padding,
                 "property": property_name,
                 "openOutputs": open_outputs,
+                "waitMs": wait_ms,
             })
             if not dry_run:
                 if mode == "box":
@@ -1948,6 +1955,7 @@ class FieldBackdoor:
                         path=str(path),
                         padding=padding,
                         pan_into_view=pan_into_view,
+                        open_outputs=open_outputs,
                         timeout=timeout,
                     )
                 elif mode == "editor":
@@ -1960,6 +1968,7 @@ class FieldBackdoor:
                         open_outputs=open_outputs,
                         padding=padding,
                         pan_into_view=pan_into_view,
+                        wait_ms=wait_ms,
                         timeout=timeout,
                     )
                 elif mode in {"window", "browser-window"}:
@@ -1972,6 +1981,7 @@ class FieldBackdoor:
                         open_outputs=open_outputs,
                         padding=padding,
                         pan_into_view=pan_into_view,
+                        wait_ms=wait_ms,
                         timeout=timeout,
                     )
                 else:
@@ -2564,6 +2574,7 @@ def build_command_parser() -> argparse.ArgumentParser:
     screenshot_window.add_argument("--with-editor", action="store_true")
     screenshot_window.add_argument("--open-outputs", action="store_true")
     screenshot_window.add_argument("--no-pan", action="store_true")
+    screenshot_window.add_argument("--wait-ms", type=float, default=0.0)
     screenshot_window.add_argument("--timeout", type=float)
 
     screenshot_editor = subparsers.add_parser("screenshot-editor", add_help=False)
@@ -2579,7 +2590,8 @@ def build_command_parser() -> argparse.ArgumentParser:
     screenshot_box.add_argument("uid")
     screenshot_box.add_argument("path")
     screenshot_box.add_argument("--padding", type=float, default=12.0)
-    screenshot_box.add_argument("--open-outputs", action="store_true")
+    screenshot_box.add_argument("--open-outputs", dest="open_outputs", action="store_true", default=True)
+    screenshot_box.add_argument("--no-open-outputs", dest="open_outputs", action="store_false")
     screenshot_box.add_argument("--no-pan", action="store_true")
     screenshot_box.add_argument("--timeout", type=float)
 
@@ -2889,6 +2901,7 @@ async def dispatch_command(
             open_outputs=args.open_outputs,
             padding=12.0,
             pan_into_view=not args.no_pan,
+            wait_ms=args.wait_ms,
             timeout=timeout,
         )
         ok = bool(data.get("ok"))
@@ -2913,6 +2926,7 @@ async def dispatch_command(
             open_outputs=args.open_outputs,
             padding=args.padding,
             pan_into_view=not args.no_pan,
+            wait_ms=0.0,
             timeout=timeout,
         )
         ok = bool(data.get("ok"))
@@ -2933,6 +2947,7 @@ async def dispatch_command(
             path=args.path,
             padding=args.padding,
             pan_into_view=not args.no_pan,
+            open_outputs=args.open_outputs,
             timeout=timeout,
         )
         ok = bool(data.get("ok"))

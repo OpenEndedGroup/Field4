@@ -31,6 +31,10 @@ object PngEncoder {
         
         // IHDR chunk (image header)
         writeChunk(output, "IHDR", createIHDR(width, height))
+
+        // Mark screenshot/export PNGs as sRGB. Browsers assume this in practice,
+        // but the explicit chunk keeps native viewers and docs captures aligned.
+        writeChunk(output, "sRGB", byteArrayOf(0))
         
         // IDAT chunk (image data)
         writeChunk(output, "IDAT", createIDAT(pixels, width, height))
@@ -51,7 +55,7 @@ object PngEncoder {
      * origin is bottom-left. Vulkan image-to-buffer readbacks usually want false.
      * @return ByteArray containing the complete PNG file data
      */
-    fun encodeFromBuffer(buffer: ByteBuffer, width: Int, height: Int, flipY: Boolean = true): ByteArray {
+    fun encodeFromBuffer(buffer: ByteBuffer, width: Int, height: Int, flipY: Boolean = false): ByteArray {
         // Reset buffer position
         buffer.rewind()
         

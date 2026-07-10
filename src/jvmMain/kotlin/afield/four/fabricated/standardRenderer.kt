@@ -9,6 +9,7 @@ import afield.four.buffers.defaultBuffer
 import afield.four.modules.*
 import afield.four.targets.RenderTarget
 import afield.four.targets.RenderToTexture
+import afield.four.texture.LoadedTexture
 import afield.four.texture.TextureSampler
 import afield.four.util.Camera
 import afield.four.util.Options
@@ -31,17 +32,21 @@ import kotlin.math.abs
  */
 object StandardRenderer {
 
-	data class Config(
-		val renderWidth: Int = 0,
-		val renderHeight: Int = 0,
-		val shadowWidth: Int = 1024,
-		val shadowHeight: Int = 1024,
+		data class Config(
+			val renderWidth: Int = 0,
+			val renderHeight: Int = 0,
+			val shadowWidth: Int = 1024,
+			val shadowHeight: Int = 1024,
 		val hdrFormat: Int = VK_FORMAT_R16G16B16A16_SFLOAT,
 		val normalFormat: Int = VK_FORMAT_R16G16B16A16_SFLOAT,
 		val positionFormat: Int = VK_FORMAT_R16G16B16A16_SFLOAT,
-		val motionFormat: Int = VK_FORMAT_R16G16_SFLOAT,
-		val colorFormat: Int = VK_FORMAT_B8G8R8A8_SRGB
-	)
+			val motionFormat: Int = VK_FORMAT_R16G16B16A16_SFLOAT,
+			val colorFormat: Int = VK_FORMAT_B8G8R8A8_SRGB,
+			val environmentTexture: LoadedTexture? = null,
+			val environmentStrength: Float = 0f,
+			val environmentRotation: Float = 0f,
+			val backgroundColor: Vector3f = Vector3f(0f, 0f, 0f)
+		)
 
 		data class SceneDefaults(
 			val camera: Camera,
@@ -62,7 +67,11 @@ object StandardRenderer {
 			var aoRadius: Float = DEFAULT_AO_RADIUS,
 			var aoBias: Float = DEFAULT_AO_BIAS,
 			var aoIntensity: Float = DEFAULT_AO_INTENSITY,
-			var motionBlurStrength: Float = DEFAULT_MOTION_BLUR_STRENGTH,
+				var environmentTexture: LoadedTexture? = null,
+				var environmentStrength: Float = 0f,
+				var environmentRotation: Float = 0f,
+				val backgroundColor: Vector3f = Vector3f(0f, 0f, 0f),
+				var motionBlurStrength: Float = DEFAULT_MOTION_BLUR_STRENGTH,
 			var motionBlurClamp: Float = DEFAULT_MOTION_BLUR_CLAMP,
 			var motionBlurDepthReject: Float = DEFAULT_MOTION_BLUR_DEPTH_REJECT,
 			var aaBlend: Float = DEFAULT_AA_BLEND,
@@ -158,13 +167,13 @@ object StandardRenderer {
 
 			fun setNode(node: FabricateNode): MeshPair {
 				node.updateFromRoot()
-				return setModel(node.worldMatrix())
+				return setModel(Matrix4f(node.worldMatrix))
 			}
 
 			fun bindNode(node: FabricateNode, updateRoot: Boolean = true): MeshPair =
 				bindModel {
 					if (updateRoot) node.updateFromRoot()
-					node.worldMatrix()
+					Matrix4f(node.worldMatrix)
 				}
 		}
 
@@ -329,13 +338,13 @@ object StandardRenderer {
 
 			fun setNode(node: FabricateNode): PullingMeshPair {
 				node.updateFromRoot()
-				return setModel(node.worldMatrix())
+				return setModel(Matrix4f(node.worldMatrix))
 			}
 
 			fun bindNode(node: FabricateNode, updateRoot: Boolean = true): PullingMeshPair =
 				bindModel {
 					if (updateRoot) node.updateFromRoot()
-					node.worldMatrix()
+					Matrix4f(node.worldMatrix)
 				}
 		}
 
@@ -349,6 +358,61 @@ object StandardRenderer {
 			renderer: Renderer = fromContext()
 		): PullingMeshPair {
 			val g = gBufferModule.makePullingMesh(name, maxVertices, renderer)
+			val s = shadowModule.makePullingMesh(name, maxVertices, renderer, positionBuffer = g.position, normalBuffer = g.normal)
+			return PullingMeshPair(g, s)
+		}
+
+		fun registerTexturedPullingMesh(
+			name: String = "textured-pulling",
+			maxVertices: Int = 64,
+			material: FabricateMaterial,
+			renderer: Renderer = fromContext()
+		): PullingMeshPair {
+			val baseColorTexture = material.baseColorTexture
+				?: LoadedTexture.stubTexture(renderer, floatArrayOf(1f, 1f, 1f, 1f))
+			val normalTexture = material.normalTexture
+				?: LoadedTexture.stubTexture(renderer, floatArrayOf(0.5f, 0.5f, 1f, 1f))
+			val metallicRoughnessTexture = material.metallicRoughnessTexture
+				?: LoadedTexture.stubTexture(renderer, floatArrayOf(1f, 1f, 0f, 1f))
+				val occlusionTexture = material.occlusionTexture
+					?: LoadedTexture.stubTexture(renderer, floatArrayOf(1f, 1f, 1f, 1f))
+				val emissiveTexture = material.emissiveTexture
+					?: LoadedTexture.stubTexture(renderer, floatArrayOf(0f, 0f, 0f, 1f))
+				val clearcoatTexture = material.clearcoatTexture
+					?: LoadedTexture.stubTexture(renderer, floatArrayOf(1f, 1f, 1f, 1f))
+			val sampler = baseColorTexture.defaultSampler ?: baseColorTexture.setDefaultSampler(
+				addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+				addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT
+			)
+				listOf(normalTexture, metallicRoughnessTexture, occlusionTexture, emissiveTexture, clearcoatTexture).forEach { texture ->
+				if (texture.defaultSampler == null) {
+					texture.setDefaultSampler(
+						addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+						addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT
+					)
+				}
+			}
+			val texturedModule = Module(parameters(renderer) {
+				this.name = "prefab-gbuffer-textured-$name"
+				gBuffer.apply()
+				blend = false
+				vertex = gBufferTexturedVertex
+				fragment = gBufferTexturedFragment
+				textureResolver = { tex ->
+					when (tex.name) {
+						"baseColorTex" -> fromViews(listOf(baseColorTexture), tex.name, sampler)
+						"normalTex" -> fromViews(listOf(normalTexture), tex.name, normalTexture.defaultSampler ?: sampler)
+							"metallicRoughnessTex" -> fromViews(listOf(metallicRoughnessTexture), tex.name, metallicRoughnessTexture.defaultSampler ?: sampler)
+							"occlusionTex" -> fromViews(listOf(occlusionTexture), tex.name, occlusionTexture.defaultSampler ?: sampler)
+							"emissiveTex" -> fromViews(listOf(emissiveTexture), tex.name, emissiveTexture.defaultSampler ?: sampler)
+							"clearcoatTex" -> fromViews(listOf(clearcoatTexture), tex.name, clearcoatTexture.defaultSampler ?: sampler)
+							else -> null
+						}
+					}
+			}).pointer()
+			texturedModule.seedDefaultCameraUniforms(scene)
+			gBuffer += "gbuffer-textured-$name" to texturedModule
+			val g = texturedModule.makeTexturedPullingMesh(name, maxVertices, renderer)
 			val s = shadowModule.makePullingMesh(name, maxVertices, renderer, positionBuffer = g.position, normalBuffer = g.normal)
 			return PullingMeshPair(g, s)
 		}
@@ -656,6 +720,10 @@ object StandardRenderer {
 
 	fun build(renderer: Renderer = fromContext(), config: Config = Config()): Bundle {
 		val scene = SceneDefaults.create(renderer)
+		scene.environmentTexture = config.environmentTexture
+		scene.environmentStrength = config.environmentStrength
+		scene.environmentRotation = config.environmentRotation
+		scene.backgroundColor.set(config.backgroundColor)
 		val resolved = resolveConfig(renderer, config)
 
 			val gBuffer = RenderToTexture {
@@ -795,7 +863,18 @@ object StandardRenderer {
 					"shadowMap" -> (shadow.depthSampledImageView ?: shadow.depthImageView)?.let {
 						fromViews(listOf(it), tex.name, shadowSampler)
 					}
-					"aoTex" -> fromViews(listOf(ao.imageViewArray[0]), tex.name, aoSampler)
+						"aoTex" -> fromViews(listOf(ao.imageViewArray[0]), tex.name, aoSampler)
+						"gMotionMaterial" -> fromViews(listOf(gBuffer.imageViewArray[3]), tex.name, gBufferSampler)
+						"environmentTex" -> {
+						val environment = scene.environmentTexture ?: LoadedTexture.stubTexture(renderer, floatArrayOf(0f, 0f, 0f, 1f)).also {
+							it.transferNow()
+						}
+						val sampler = environment.defaultSampler ?: environment.setDefaultSampler(
+							addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+							addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE
+						)
+						fromViews(listOf(environment), tex.name, sampler)
+					}
 					else -> null
 				}
 			}
@@ -919,10 +998,12 @@ object StandardRenderer {
 	 * their GPU addresses into the mesh push constants. Buffers are host-visible + addressable so
 	 * you can stream data each frame using `DynamicallyWriteable` semantics.
 	 */
-	data class PullingMesh(
+		data class PullingMesh(
 		val mesh: Mesh,
 		val position: FrameBufferGroup,
-		val normal: FrameBufferGroup
+		val normal: FrameBufferGroup,
+		val uv: FrameBufferGroup? = null,
+		val tangent: FrameBufferGroup? = null
 	) {
 		fun setVertexCount(vertexCount: Int): PullingMesh {
 			require(vertexCount >= 0) { "vertexCount must be non-negative" }
@@ -972,6 +1053,46 @@ object StandardRenderer {
 
 			current.meshes[name] = mesh
 			return PullingMesh(mesh, position, normal)
+	}
+
+	fun ModulePointer.makeTexturedPullingMesh(
+		name: String = "textured-pulling-mesh",
+		maxVertices: Int = 10,
+		renderer: Renderer = current.parameters.renderer,
+		positionBuffer: FrameBufferGroup? = null,
+		normalBuffer: FrameBufferGroup? = null
+	): PullingMesh {
+		val mesh = Mesh(renderer, this)
+		mesh.resize(0, 0, this)
+
+		val position = positionBuffer ?: defaultBuffer(name = "positionBuffer") {
+			perFrame = true
+			size = maxVertices.vec4s
+		}.buffer
+
+		val normal = normalBuffer ?: defaultBuffer(name = "normalBuffer") {
+			perFrame = true
+			size = maxVertices.vec4s
+		}.buffer
+
+		val uv = defaultBuffer(name = "uvBuffer") {
+			perFrame = true
+			size = maxVertices.vec4s
+		}.buffer
+
+		val tangent = defaultBuffer(name = "tangentBuffer") {
+			perFrame = true
+			size = maxVertices.vec4s
+		}.buffer
+
+		mesh.push.bind("positionBuffer") { position }
+		mesh.push.bind("normalBuffer") { normal }
+		mesh.push.bind("uvBuffer") { uv }
+		mesh.push.bind("tangentBuffer") { tangent }
+		mesh.seedDefaultSurfaceState()
+
+		current.meshes[name] = mesh
+		return PullingMesh(mesh, position, normal, uv, tangent)
 	}
 
 	private fun Structure.seedDefault(name: String, value: () -> Any) {
@@ -1160,9 +1281,18 @@ object StandardRenderer {
 		push.seedDefault("ao") { DEFAULT_MESH_AO }
 		push.seedDefault("checkerScale") { DEFAULT_CHECKER_SCALE }
 		push.seedDefault("checkerColor") { defaultCheckerColor() }
-		push.seedDefault("checkerMix") { DEFAULT_CHECKER_MIX }
-		return this
-	}
+			push.seedDefault("checkerMix") { DEFAULT_CHECKER_MIX }
+			push.seedDefault("emissiveFactor") { Vector4f(0f, 0f, 0f, 1f) }
+			push.seedDefault("clearcoatFactor") { 0f }
+			push.seedDefault("clearcoatRoughness") { 0f }
+			push.seedDefault("uvTransform") { Vector4f(0f, 0f, 1f, 1f) }
+			push.seedDefault("hasNormalMap") { 0f }
+				push.seedDefault("hasMetallicRoughnessMap") { 0f }
+				push.seedDefault("hasOcclusionMap") { 0f }
+				push.seedDefault("hasEmissiveMap") { 0f }
+				push.seedDefault("hasClearcoatMap") { 0f }
+				return this
+			}
 
 	private fun Mesh.setModelMatrix(model: Matrix4f): Mesh {
 		return installModelBindings { Matrix4f(model) }
@@ -1184,9 +1314,12 @@ object StandardRenderer {
 			push.seedDefaultBinding("shadowStrength") { scene.shadowStrength }
 			push.seedDefaultBinding("ambientColor") { Vector3f(scene.ambientColor) }
 			push.seedDefaultBinding("aoStrength") { scene.aoStrength }
-			push.seedDefaultBinding("shadowSoftness") { scene.shadowSoftness }
-			return this
-		}
+				push.seedDefaultBinding("shadowSoftness") { scene.shadowSoftness }
+				push.seedDefaultBinding("environmentStrength") { scene.environmentStrength }
+				push.seedDefaultBinding("environmentRotation") { scene.environmentRotation }
+				push.seedDefaultBinding("backgroundColor") { Vector3f(scene.backgroundColor) }
+				return this
+			}
 
 			private fun Mesh.seedDefaultAntiAliasState(scene: SceneDefaults): Mesh {
 				push.seedDefaultBinding("aaBlend") { scene.aaBlend }
@@ -1295,6 +1428,12 @@ object StandardRenderer {
 				float checkerScale;
 				vec4 checkerColor;
 				float checkerMix;
+				vec4 emissiveFactor;
+				vec4 uvTransform;
+				float hasNormalMap;
+				float hasMetallicRoughnessMap;
+				float hasOcclusionMap;
+				float hasEmissiveMap;
 			} push;
 
 			layout(location = 0) out vec3 vWorldPos;
@@ -1361,6 +1500,182 @@ object StandardRenderer {
 				outPositionDepth = vec4(vWorldPos, gl_FragCoord.z);
 				outMotionVectors = vec4(motion, 0.0, 1.0);
 			}
+		"""
+
+		private const val gBufferTexturedVertex = """
+			#version 450
+			#extension GL_EXT_buffer_reference : require
+			#extension GL_EXT_scalar_block_layout : require
+
+			layout(std430, buffer_reference) readonly buffer VertexPositions {
+				vec4 positions[];
+			};
+
+			layout(std430, buffer_reference) readonly buffer VertexNormals {
+				vec4 normals[];
+			};
+
+			layout(std430, buffer_reference) readonly buffer VertexUvs {
+				vec4 uvs[];
+			};
+
+			layout(std430, buffer_reference) readonly buffer VertexTangents {
+				vec4 tangents[];
+			};
+
+			layout(set = 0, binding = 0) uniform Camera {
+				mat4 view;
+				mat4 proj;
+				mat4 prevView;
+				mat4 prevProj;
+				vec3 cameraPos;
+			} uCamera;
+
+			layout(push_constant) uniform ModelData {
+				layout(offset = 0) VertexPositions positionBuffer;
+				layout(offset = 8) VertexNormals normalBuffer;
+				layout(offset = 16) VertexUvs uvBuffer;
+				layout(offset = 24) VertexTangents tangentBuffer;
+				layout(offset = 32) mat4 model;
+				layout(offset = 96) mat4 prevModel;
+				layout(offset = 160) vec4 baseColor;
+				layout(offset = 176) float metallic;
+				layout(offset = 180) float roughness;
+				layout(offset = 184) float ao;
+				layout(offset = 188) float checkerScale;
+				layout(offset = 192) vec4 checkerColor;
+				layout(offset = 208) float checkerMix;
+				layout(offset = 240) vec4 uvTransform;
+			} push;
+
+			layout(location = 0) out vec3 vWorldPos;
+			layout(location = 1) out vec3 vNormal;
+			layout(location = 2) out vec2 vUv;
+			layout(location = 3) out vec4 vCurrentClip;
+			layout(location = 4) out vec4 vPreviousClip;
+			layout(location = 5) out vec4 vTangent;
+
+			void main() {
+				vec3 pos = push.positionBuffer.positions[gl_VertexIndex].xyz;
+				vec3 nrm = push.normalBuffer.normals[gl_VertexIndex].xyz;
+				vec4 uv = push.uvBuffer.uvs[gl_VertexIndex];
+				vec4 tangent = push.tangentBuffer.tangents[gl_VertexIndex];
+
+				vec4 worldPos = push.model * vec4(pos, 1.0);
+				vec4 prevWorldPos = push.prevModel * vec4(pos, 1.0);
+				vWorldPos = worldPos.xyz;
+				vNormal = normalize(mat3(push.model) * nrm);
+				vUv = vec2(uv.x, 1.0 - uv.y) * push.uvTransform.zw + push.uvTransform.xy;
+				vCurrentClip = uCamera.proj * uCamera.view * worldPos;
+				vPreviousClip = uCamera.prevProj * uCamera.prevView * prevWorldPos;
+				vTangent = vec4(normalize(mat3(push.model) * tangent.xyz), tangent.w);
+				gl_Position = vCurrentClip;
+			}
+		"""
+
+		private const val gBufferTexturedFragment = """
+			#version 450
+			layout(location = 0) in vec3 vWorldPos;
+			layout(location = 1) in vec3 vNormal;
+			layout(location = 2) in vec2 vUv;
+			layout(location = 3) in vec4 vCurrentClip;
+			layout(location = 4) in vec4 vPreviousClip;
+			layout(location = 5) in vec4 vTangent;
+
+			layout(set = 0, binding = 1) uniform sampler2D baseColorTex;
+			layout(set = 0, binding = 2) uniform sampler2D normalTex;
+			layout(set = 0, binding = 3) uniform sampler2D metallicRoughnessTex;
+			layout(set = 0, binding = 4) uniform sampler2D occlusionTex;
+				layout(set = 0, binding = 5) uniform sampler2D emissiveTex;
+				layout(set = 0, binding = 6) uniform sampler2D clearcoatTex;
+
+			layout(location = 0) out vec4 outAlbedoRoughness;
+			layout(location = 1) out vec4 outNormalMetallic;
+			layout(location = 2) out vec4 outPositionDepth;
+			layout(location = 3) out vec4 outMotionVectors;
+
+			layout(push_constant) uniform ModelData {
+				layout(offset = 32) mat4 model;
+				layout(offset = 96) mat4 prevModel;
+				layout(offset = 160) vec4 baseColor;
+				layout(offset = 176) float metallic;
+				layout(offset = 180) float roughness;
+				layout(offset = 184) float ao;
+				layout(offset = 188) float checkerScale;
+				layout(offset = 192) vec4 checkerColor;
+					layout(offset = 208) float checkerMix;
+					layout(offset = 224) vec4 emissiveFactor;
+					layout(offset = 240) vec4 uvTransform;
+					layout(offset = 256) float hasNormalMap;
+						layout(offset = 260) float hasMetallicRoughnessMap;
+						layout(offset = 264) float hasOcclusionMap;
+						layout(offset = 268) float hasEmissiveMap;
+						layout(offset = 272) float clearcoatFactor;
+						layout(offset = 276) float clearcoatRoughness;
+						layout(offset = 280) float hasClearcoatMap;
+					} push;
+
+					vec3 mappedNormal(vec3 baseNormal) {
+						vec3 n = normalize(baseNormal);
+						if (push.hasNormalMap <= 0.5) return n;
+						vec3 mapNormal = texture(normalTex, vUv).xyz * 2.0 - 1.0;
+						mapNormal.xy *= 1.45;
+						if (abs(vTangent.w) > 0.5 && dot(vTangent.xyz, vTangent.xyz) > 1e-8) {
+							vec3 t = normalize(vTangent.xyz - n * dot(vTangent.xyz, n));
+							vec3 b = normalize(cross(n, t) * -vTangent.w);
+							return normalize(mat3(t, b, n) * mapNormal);
+						}
+						vec3 q0 = dFdx(vWorldPos);
+						vec3 q1 = dFdy(vWorldPos);
+						vec2 st0 = dFdx(vUv);
+						vec2 st1 = dFdy(vUv);
+						vec3 q1perp = cross(q1, n);
+						vec3 q0perp = cross(n, q0);
+						vec3 t = q1perp * st0.x + q0perp * st1.x;
+						vec3 b = q1perp * st0.y + q0perp * st1.y;
+						float det = max(dot(t, t), dot(b, b));
+						if (det < 1e-12) return n;
+						return normalize(mat3(t * inversesqrt(det), b * inversesqrt(det), n) * mapNormal);
+					}
+
+				void main() {
+				vec3 n = mappedNormal(normalize(vNormal));
+				float currentW = max(abs(vCurrentClip.w), 1e-5);
+				float previousW = max(abs(vPreviousClip.w), 1e-5);
+				vec2 currentUv = (vCurrentClip.xy / currentW) * vec2(0.5, -0.5) + vec2(0.5);
+				vec2 previousUv = (vPreviousClip.xy / previousW) * vec2(0.5, -0.5) + vec2(0.5);
+				vec2 motion = currentUv - previousUv;
+				vec4 texel = texture(baseColorTex, vUv);
+				vec3 albedo = texel.rgb * push.baseColor.rgb;
+					float roughness = push.roughness;
+					float metallic = push.metallic;
+						if (push.hasMetallicRoughnessMap > 0.5) {
+							vec4 mr = texture(metallicRoughnessTex, vUv);
+							roughness *= mr.g;
+							metallic *= mr.b;
+						}
+						if (push.hasOcclusionMap > 0.5) {
+							float occlusion = texture(occlusionTex, vUv).r;
+							albedo *= mix(1.0, occlusion, clamp(push.ao, 0.0, 1.0));
+						}
+						if (push.hasEmissiveMap > 0.5) {
+							albedo += texture(emissiveTex, vUv).rgb * push.emissiveFactor.rgb;
+						}
+						float clearcoat = clamp(push.clearcoatFactor, 0.0, 1.0);
+						if (push.hasClearcoatMap > 0.5) {
+							clearcoat *= texture(clearcoatTex, vUv).r;
+						}
+						float clearcoatRoughness = clamp(push.clearcoatRoughness, 0.0, 1.0);
+					if (push.checkerMix > 0.0) {
+						float checkerMask = mod(floor(vWorldPos.x * push.checkerScale) + floor(vWorldPos.z * push.checkerScale), 2.0);
+						vec3 proceduralChecker = mix(albedo, push.checkerColor.rgb, checkerMask);
+						albedo = mix(albedo, proceduralChecker, clamp(push.checkerMix, 0.0, 1.0));
+					}
+				outAlbedoRoughness = vec4(albedo, clamp(roughness, 0.04, 1.0));
+					outNormalMetallic = vec4(n, clamp(metallic, 0.0, 1.0));
+					outPositionDepth = vec4(vWorldPos, gl_FragCoord.z);
+					outMotionVectors = vec4(motion, clearcoat, clearcoatRoughness);
+				}
 		"""
 
 	private const val shadowVertex = """
@@ -1831,8 +2146,10 @@ object StandardRenderer {
 			layout(set = 0, binding = 0) uniform sampler2D gAlbedoRoughness;
 		layout(set = 0, binding = 1) uniform sampler2D gNormalMetallic;
 		layout(set = 0, binding = 2) uniform sampler2D gPositionDepth;
-		layout(set = 0, binding = 3) uniform sampler2D shadowMap;
-		layout(set = 0, binding = 4) uniform sampler2D aoTex;
+			layout(set = 0, binding = 3) uniform sampler2D shadowMap;
+			layout(set = 0, binding = 4) uniform sampler2D aoTex;
+			layout(set = 0, binding = 6) uniform sampler2D environmentTex;
+			layout(set = 0, binding = 7) uniform sampler2D gMotionMaterial;
 
 		layout(set = 0, binding = 5) uniform LightData {
 			mat4 lightViewProj;
@@ -1842,13 +2159,16 @@ object StandardRenderer {
 			float lightIntensity;
 		} uLight;
 
-		layout(push_constant) uniform LightPush {
-			vec3 cameraPos;
-			float shadowStrength;
-			vec3 ambientColor;
-			float aoStrength;
-			float shadowSoftness;
-		} push;
+			layout(push_constant) uniform LightPush {
+				vec3 cameraPos;
+				float shadowStrength;
+				vec3 ambientColor;
+				float aoStrength;
+				float shadowSoftness;
+				float environmentStrength;
+				float environmentRotation;
+				vec3 backgroundColor;
+			} push;
 
 		layout(location = 0) out vec4 outColor;
 
@@ -1878,6 +2198,22 @@ object StandardRenderer {
 			return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 		}
 
+		vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
+			vec3 grazing = max(vec3(1.0 - roughness), F0);
+			return F0 + (grazing - F0) * pow(1.0 - cosTheta, 5.0);
+		}
+
+		vec2 directionToEquirect(vec3 dir) {
+			dir = normalize(dir);
+			float u = atan(dir.z, dir.x) / (2.0 * 3.14159265) + 0.5 + push.environmentRotation;
+			float v = asin(clamp(dir.y, -1.0, 1.0)) / 3.14159265 + 0.5;
+			return vec2(fract(u), clamp(1.0 - v, 0.0, 1.0));
+		}
+
+		vec3 sampleEnvironment(vec3 dir, float lod) {
+			return textureLod(environmentTex, directionToEquirect(dir), lod).rgb;
+		}
+
 			float pcfShadow(vec3 worldPos) {
 				vec4 lightSpace = uLight.lightViewProj * vec4(worldPos, 1.0);
 				vec3 projCoords = lightSpace.xyz / lightSpace.w;
@@ -1900,13 +2236,20 @@ object StandardRenderer {
 
 		void main() {
 			vec4 albedoRough = texture(gAlbedoRoughness, vUv);
-			vec4 normalMetallic = texture(gNormalMetallic, vUv);
-			vec4 positionDepth = texture(gPositionDepth, vUv);
-			vec3 albedo = albedoRough.rgb;
-			float roughness = clamp(albedoRough.a, 0.04, 1.0);
-			vec3 n = normalize(normalMetallic.xyz);
-			float metallic = clamp(normalMetallic.w, 0.0, 1.0);
-			vec3 worldPos = positionDepth.xyz;
+					vec4 normalMetallic = texture(gNormalMetallic, vUv);
+					vec4 positionDepth = texture(gPositionDepth, vUv);
+					vec4 motionMaterial = texture(gMotionMaterial, vUv);
+					if (length(normalMetallic.xyz) < 0.01) {
+					outColor = vec4(push.backgroundColor, 1.0);
+					return;
+				}
+				vec3 albedo = albedoRough.rgb;
+				float roughness = clamp(albedoRough.a, 0.04, 1.0);
+				vec3 n = normalize(normalMetallic.xyz);
+				float metallic = clamp(normalMetallic.w, 0.0, 1.0);
+				float clearcoat = clamp(motionMaterial.b, 0.0, 1.0);
+				float clearcoatRoughness = clamp(motionMaterial.a, 0.03, 1.0);
+				vec3 worldPos = positionDepth.xyz;
 
 			vec3 v = normalize(push.cameraPos - worldPos);
 			vec3 l = normalize(-uLight.lightDir);
@@ -1917,9 +2260,12 @@ object StandardRenderer {
 			float G = geometrySmith(n, v, l, roughness);
 			vec3 F = fresnelSchlick(max(dot(h, v), 0.0), F0);
 
-			vec3 numerator = NDF * G * F;
-			float denom = 4.0 * max(dot(n, v), 0.0) * max(dot(n, l), 0.0) + 1e-4;
-			vec3 specular = numerator / denom;
+				vec3 numerator = NDF * G * F;
+				float denom = 4.0 * max(dot(n, v), 0.0) * max(dot(n, l), 0.0) + 1e-4;
+				vec3 specular = numerator / denom;
+				vec3 Fcc = fresnelSchlick(max(dot(h, v), 0.0), vec3(0.04));
+				vec3 clearcoatSpecular = (distributionGGX(n, h, clearcoatRoughness) * geometrySmith(n, v, l, clearcoatRoughness) * Fcc)
+					/ denom;
 
 			vec3 kS = F;
 			vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
@@ -1928,9 +2274,21 @@ object StandardRenderer {
 			float shadow = pcfShadow(worldPos) * push.shadowStrength;
 			float ao = mix(1.0, texture(aoTex, vUv).r, push.aoStrength);
 
-			vec3 Lo = (kD * albedo / 3.14159 + specular) * uLight.lightColor * uLight.lightIntensity * nDotL * (1.0 - shadow);
-			vec3 ambient = push.ambientColor * albedo * ao;
-			vec3 color = ambient + Lo;
+					vec3 directSurface = kD * albedo / 3.14159 + specular * (1.0 - clearcoat * 0.10) + clearcoatSpecular * clearcoat * 0.28;
+				vec3 Lo = directSurface * uLight.lightColor * uLight.lightIntensity * nDotL * (1.0 - shadow);
+				vec3 reflected = reflect(-v, n);
+				float envAmount = max(push.environmentStrength, 0.0);
+				float envMaxLod = float(max(textureQueryLevels(environmentTex) - 1, 0));
+				vec3 envDiffuse = sampleEnvironment(n, envMaxLod);
+				vec3 envSpecular = sampleEnvironment(reflected, roughness * roughness * envMaxLod);
+				vec3 envClearcoat = sampleEnvironment(reflected, clearcoatRoughness * clearcoatRoughness * envMaxLod);
+				vec3 F_ibl = fresnelSchlickRoughness(max(dot(n, v), 0.0), F0, roughness);
+				vec3 Fcc_ibl = fresnelSchlickRoughness(max(dot(n, v), 0.0), vec3(0.04), clearcoatRoughness);
+				vec3 kD_ibl = (vec3(1.0) - F_ibl) * (1.0 - metallic);
+				vec3 ambient = push.ambientColor * albedo * ao + envDiffuse * kD_ibl * albedo * ao * envAmount * 0.72;
+				vec3 iblSpecular = envSpecular * F_ibl * envAmount * mix(1.0, 0.48, roughness);
+				vec3 iblClearcoat = envClearcoat * Fcc_ibl * envAmount * clearcoat * mix(0.38, 0.18, clearcoatRoughness);
+				vec3 color = ambient + Lo + iblSpecular * (1.0 - clearcoat * 0.10) + iblClearcoat;
 			outColor = vec4(color, 1.0);
 		}
 	"""

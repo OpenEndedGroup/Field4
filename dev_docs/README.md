@@ -21,5 +21,7 @@
 - [`animation/ANIMATE_BLOCK_SYNTAX.md`](./animation/ANIMATE_BLOCK_SYNTAX.md)
 - [`ai/DOCS_SEARCH_FEATURE.md`](./ai/DOCS_SEARCH_FEATURE.md)
 - [`stdlib/GRAPH_CONNECTIVITY_LIBRARY.md`](./stdlib/GRAPH_CONNECTIVITY_LIBRARY.md)
+- [`COMPLETION_ENGINE.md`](./COMPLETION_ENGINE.md)
+- [`FABRICATE_RENDERER_ARCHITECTURE.md`](./FABRICATE_RENDERER_ARCHITECTURE.md)
 
 `AGENTS.md` remains in the repository root because agent tooling expects it there.

@@ -68,18 +68,18 @@ internal object GpuImageCapture {
 
             VK_FORMAT_R16G16B16A16_SFLOAT -> repeat(pixelCount) {
                 put(
-                    floatChannelToByte(halfFloatToFloat(staging.getShort())),
-                    floatChannelToByte(halfFloatToFloat(staging.getShort())),
-                    floatChannelToByte(halfFloatToFloat(staging.getShort())),
+                    linearFloatChannelToSrgbByte(halfFloatToFloat(staging.getShort())),
+                    linearFloatChannelToSrgbByte(halfFloatToFloat(staging.getShort())),
+                    linearFloatChannelToSrgbByte(halfFloatToFloat(staging.getShort())),
                     floatChannelToByte(halfFloatToFloat(staging.getShort()))
                 )
             }
 
             VK_FORMAT_R32G32B32A32_SFLOAT -> repeat(pixelCount) {
                 put(
-                    floatChannelToByte(staging.getFloat()),
-                    floatChannelToByte(staging.getFloat()),
-                    floatChannelToByte(staging.getFloat()),
+                    linearFloatChannelToSrgbByte(staging.getFloat()),
+                    linearFloatChannelToSrgbByte(staging.getFloat()),
+                    linearFloatChannelToSrgbByte(staging.getFloat()),
                     floatChannelToByte(staging.getFloat())
                 )
             }
@@ -147,5 +147,17 @@ internal object GpuImageCapture {
         if (!value.isFinite() || value <= 0f) return 0
         if (value >= 1f) return 255.toByte()
         return (value * 255f + 0.5f).toInt().toByte()
+    }
+
+    private fun linearFloatChannelToSrgbByte(value: Float): Byte {
+        if (!value.isFinite() || value <= 0f) return 0
+        val encoded = if (value >= 1f) {
+            1f
+        } else if (value <= 0.0031308f) {
+            value * 12.92f
+        } else {
+            1.055f * Math.pow(value.toDouble(), 1.0 / 2.4).toFloat() - 0.055f
+        }
+        return floatChannelToByte(encoded)
     }
 }

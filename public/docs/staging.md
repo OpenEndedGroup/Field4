@@ -23,14 +23,28 @@ For graphics captures, the docs runner also takes ownership of the configured `F
 
 Native graphics screenshots can opt into background trimming with `trim-native=true` on the runner fence. Use it for `capture="native-window"` examples where the renderer produces a small subject inside a large black window.
 
-The current build modes are:
+The docs build is a uv one-liner from the repository root. `uv` supplies the
+Python dependency environment, `tools/build_zensical_docs.py` preprocesses the
+runnable Field fences into `public/.zensical-generated/`, writes
+`public/zensical.generated.yml`, and then invokes Zensical.
+
+Use this when every screenshot or video should be regenerated:
 
 ```diffstatic {data-lang=bash}
-FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 \
-  uv run --project . --group docs python tools/build_zensical_docs.py --clean
+FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py --clean
 ```
 
-Use `always` when every screenshot or video should be regenerated. Use `incremental` while writing normal docs, `strict` when runner changes should invalidate cached captures, and `never` when you only want to rebuild the site HTML from already-generated assets.
+Use this for a fast HTML-only rebuild from existing captures:
+
+```diffstatic {data-lang=bash}
+FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --clean
+```
+
+Do not install Zensical or MkDocs packages by hand for the normal docs flow;
+install `uv` if it is missing, then run the command above. Use `incremental`
+while writing normal docs, `strict` when runner changes should invalidate
+cached captures, and `never` when you only want to rebuild the site HTML from
+already-generated assets.
 
 The practical test matrix is:
 
@@ -48,7 +62,7 @@ Reusable transcript examples live under `dev_docs/agents/transcripts/`. The most
 
 ## Field systems
 
-- [Fabricate Renderer](fabricate_renderer.md) checks the simplest path through `StandardRenderer`: a default scene, material response, shadows, and ambient occlusion.
+- [Fabricate Renderer](fabricate_renderer.md) covers the `StandardRenderer` bundle, scene graph, render planning, frame graph, post stack, glTF import, material response, shadows, and ambient occlusion.
 - [afield.four Graphics](afield_four_graphics.md) exercises the lower-level renderer path using the transcript-driven renderer parent described above.
 - [Ray Tracing Examples](ray_tracing_examples.md) uses the same graphics-context capture route for Vulkan ray tracing examples.
 - [Interactive Guides](interactive_guides.md) shows how boxes can teach a document: slide notes, selections, callbacks, templated values, chat, and callout lines.
@@ -77,4 +91,4 @@ Reusable transcript examples live under `dev_docs/agents/transcripts/`. The most
 - [Boolean Networks Examples](boolean_networks_examples.md) connects wiring diagrams, state spaces, attractors, and rhythm grids.
 - [Boolean Network Music Examples](boolean_network_music_examples.md) maps Boolean network steps into `NoteProcess` and live Dirt triggers.
 
-Missing from this section, on purpose for now: a proper guide to `afield.four`, the Vulkan renderer, modules, buffers, targets, shader plumbing, and the fabricated layer that sits on top of it. The Fabricate page is only a renderer smoke test, not that guide.
+Missing from this section, on purpose for now: a full guide to the low-level Vulkan renderer internals, especially device setup, synchronization, descriptor ownership, and shader reflection. The Fabricate page is now the user-facing entry point for the fabricated layer; `afield.four Graphics` remains the lower-level examples page.
