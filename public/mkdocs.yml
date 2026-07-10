@@ -10,6 +10,7 @@ nav:
   - Feature Overview: funFeatures.md
   - AI Overview: aiFeatures.md
   - Kotlin Overview: kotlin_overview.md
+  - Building & Testing: building_and_testing.md
   - Reference:
     - FLine Examples: fline_examples.md
     - Visualizers & Controls: visualizers.md
