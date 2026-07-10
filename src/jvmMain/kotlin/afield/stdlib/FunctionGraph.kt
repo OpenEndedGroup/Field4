@@ -400,18 +400,13 @@ fun Functions.Fn.graphSvg(
             else -> tspan(op, fieldCyan, weight = "700")
         }
         val role = tree.edgeRole?.takeIf { it.isNotBlank() }
-        val roleFirst = role == "source"
         return buildString {
-            if (roleFirst) {
+            if (role != null) {
                 append(tspan(role, "#dddddd", style = "italic"))
                 append(separatorTspan())
                 append(head)
             } else {
                 append(head)
-                if (role != null) {
-                    append(separatorTspan())
-                    append(tspan(role, "#dddddd", style = "italic"))
-                }
             }
         }
     }
