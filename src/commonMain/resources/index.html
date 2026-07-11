@@ -182,6 +182,19 @@
         const pre = document.querySelector("#splash-screen pre");
         if (!splash || !pre) return;
 
+        // The splash intro animation runs on every page load. The docs capture
+        // browser reloads the page for each screenshot, so it would replay this
+        // per-char drift animation once per example -- pure overhead there. Skip it
+        // under automation (Playwright sets navigator.webdriver, incl. headed) and
+        // honor an explicit ?nosplash / ?splash=off / window.__fieldNoSplash opt-out.
+        const __sp = new URLSearchParams(location.search);
+        if (navigator.webdriver === true || window.__fieldNoSplash === true ||
+            __sp.has("nosplash") || __sp.get("splash") === "off") {
+            splash.classList.add("hidden");
+            splash.style.display = "none";
+            return;
+        }
+
         const text = pre.textContent ?? "";
         let runId = 0;
         let timers = [];
