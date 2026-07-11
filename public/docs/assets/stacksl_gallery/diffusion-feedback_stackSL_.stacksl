@@ -1,0 +1,5 @@
+0.004 blur
+0.975 *
+uv 5 * 0.25t + fbm 0.62 threshold 0.05 *
++
+saturate

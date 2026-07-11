@@ -17,6 +17,414 @@ vec4 prefix_paletteMist(vec4 prefix_in) { ... }
 
 This keeps generated names out of the global shader namespace. The Field property for source text is `stackSL`; sidecar files use `.stacksl`.
 
+## Rendered gallery
+
+Every image below is a live render, not a mock-up. The whole gallery is produced
+inside a *single* Field document: one renderer, one offscreen target, and one
+`{{ stack.auto.program }}` fragment slot (see [Kotlin and template use](#kotlin-and-template-use)).
+The harness walks the program list, re-binds the slot for each one — so the new
+shader module simply replaces the previous one under the same name — waits a few
+frames, and reads the texture back to a PNG. The entire page comes from one
+graphics context instead of a JVM restart per screenshot. The harness is
+`StackSLGalleryHarness`; each program is fed to a fullscreen fragment shader as
+`program(vec4(uv, hash, time))`.
+
+The programs are not baked into the harness — each is an editable box in a
+canonical_graphics-style workspace at `assets/stacksl_gallery/`
+(`<name>_stackSL_.stacksl` plus a fullscreen `fragment`/`vertex` and the `code`
+that binds `module.program = stackSL`). It is one Field document; you can browse
+and live-edit the boxes below. Edit a `.stacksl` file and regenerate.
+
+<iframe
+  src="/offline.html?file=/field4/assets/stacksl_gallery/metadata.edn"
+  title="StackSL gallery workspace"
+  style="width:100%; height:560px; border:1px solid #444; border-radius:8px; background:#111;"
+  loading="lazy"
+  allowfullscreen>
+</iframe>
+
+<!--
+FIELD_TEST
+id: docs.stacksl.gallery
+runner: backdoor-box
+graphicsContext: true
+tags: [docs, stacksl, shaders, graphics]
+timeoutSec: 300
+execution: launch
+waitSec: 45.0
+expect:
+  allowMissingOutput: true
+  image:
+    path: /tmp/docs-stacksl-gallery-hero.png
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/stacksl/_gallery-hero.png" source-image="/tmp/docs-stacksl-gallery-hero.png" wait="45.0" timeout="300" execution="launch" embed=false graphics-context=true name="stacksl-gallery" hidden=true fabricate-scene="stacksl-gallery"}
+```
+
+**Normalized coordinates** — the initial stack value, clamped.
+
+![StackSL: normalized coordinates](assets/stacksl/stacksl-uv-coordinates.png)
+
+```diffstatic {data-lang=stacksl}
+uv saturate
+```
+
+**FBM into a cosine palette** — distort coordinates, make a scalar field, color it.
+
+![StackSL: FBM into a cosine palette](assets/stacksl/stacksl-fbm-palette.png)
+
+```diffstatic {data-lang=stacksl}
+uv 5.0 *
+time 0.12 *
++
+fbm
+palette
+saturate
+```
+
+**Centered soft ring** — `pulse` around a radius.
+
+![StackSL: centered soft ring](assets/stacksl/stacksl-soft-ring.png)
+
+```diffstatic {data-lang=stacksl}
+p length 0.5 0.08 pulse white *
+```
+
+**Kaleidoscope and twist** — domain transforms stacked before the field.
+
+![StackSL: kaleidoscope and twist](assets/stacksl/stacksl-kaleido-twist.png)
+
+```diffstatic {data-lang=stacksl}
+p 6 kaleido
+1.7 twist
+3.0 *
+fbm
+palette
+saturate
+```
+
+**Polar warp through a sigmoid** — rotate in polar space, then shape.
+
+![StackSL: polar warp through a sigmoid](assets/stacksl/stacksl-polar-sigmoid.png)
+
+```diffstatic {data-lang=stacksl}
+p polar
+dup y 0.2t + >y
+cart
+fbm
+sigmoid
+palette
+```
+
+**Ramp, posterize, bias** — quantized shaping.
+
+![StackSL: ramp, posterize, bias](assets/stacksl/stacksl-posterize-shaper.png)
+
+```diffstatic {data-lang=stacksl}
+uv 5 * fbm
+0.2 0.8 ramp
+6 posterize
+0.62 bias
+palette
+```
+
+**Frequency modulation** — a compact phase modulator.
+
+![StackSL: frequency modulation](assets/stacksl/stacksl-fm-palette.png)
+
+```diffstatic {data-lang=stacksl}
+uv 14.0 * time +
+fm
+palette
+```
+
+**Reusable definitions** — `warp` and `field` become prefixed GLSL functions.
+
+![StackSL: reusable definitions](assets/stacksl/stacksl-definitions.png)
+
+```diffstatic {data-lang=stacksl}
+: warp
+  uv 6.0 * time + sin
+  0.35 *
+  uv +
+;
+
+: field
+  warp fbm
+;
+
+field palette saturate
+```
+
+**One subroutine, two coordinates** — call `ridge` twice and blend.
+
+![StackSL: one subroutine, two coordinates](assets/stacksl/stacksl-subroutine-ridges.png)
+
+```diffstatic {data-lang=stacksl}
+: ridge
+  fbm 0.45 0.08 pulse
+;
+
+p 5.0 * 0.2t + ridge
+p 7.0 * 0.13t - ridge
+0.5 * +
+palette
+```
+
+**Perturb lightness in OKLab** — do the math in a perceptual space, return to RGB.
+
+![StackSL: perturb lightness in OKLab](assets/stacksl/stacksl-oklab-shift.png)
+
+```diffstatic {data-lang=stacksl}
+uv 5.0 * fbm palette
+rgb2oklab
+time sin 0.05 * 0 0 0 vec4
+add
+oklab2rgb
+saturate
+```
+
+**RYB paint mixing** — treat the value as red/yellow/blue and convert.
+
+![StackSL: RYB paint mixing](assets/stacksl/stacksl-ryb-paint.png)
+
+```diffstatic {data-lang=stacksl}
+uv 0.5 + ryb saturate
+```
+
+**Explicit color grade** — lift/gain/gamma over an FBM palette.
+
+![StackSL: explicit color grade](assets/stacksl/stacksl-grade-fields.png)
+
+```diffstatic {data-lang=stacksl}
+uv 6.0 * fbm palette
+0.02 0.00 -0.01 0.0 vec4
+1.15 1.05 0.95 1.0 vec4
+0.85 0.95 1.10 1.0 vec4
+grade
+saturate
+```
+
+**Directional phasor noise** — `phacelle` builds oriented cellular structure.
+
+![StackSL: directional phasor noise](assets/stacksl/stacksl-phasor-noise.png)
+
+```diffstatic {data-lang=stacksl}
+p 40 * phacelle palette saturate
+```
+
+**Radial standing waves** — a wave modifier driven by radius.
+
+![StackSL: radial standing waves](assets/stacksl/stacksl-radial-waves.png)
+
+```diffstatic {data-lang=stacksl}
+p ]wr14 palette saturate
+```
+
+**Mirrored tiling** — `mirror` folds coordinates into a symmetric weave.
+
+![StackSL: mirrored tiling](assets/stacksl/stacksl-mirror-tiles.png)
+
+```diffstatic {data-lang=stacksl}
+uv 4 * mirror fbm palette saturate
+```
+
+**Tiled repetition** — `tile` wraps coordinates into a repeating grid.
+
+![StackSL: tiled repetition](assets/stacksl/stacksl-tiled-grid.png)
+
+```diffstatic {data-lang=stacksl}
+uv 3 tile fbm palette saturate
+```
+
+**Hard threshold mask** — a two-tone cut of the noise field.
+
+![StackSL: hard threshold mask](assets/stacksl/stacksl-hard-threshold.png)
+
+```diffstatic {data-lang=stacksl}
+uv 5 * fbm 0.45 threshold orange * saturate
+```
+
+**Custom cosine palette** — supply `t a b c d` for your own color scheme.
+
+![StackSL: custom cosine palette](assets/stacksl/stacksl-custom-palette.png)
+
+```diffstatic {data-lang=stacksl}
+uv 3 * fbm
+0.5 0.5 0.5 1 vec4
+0.5 0.5 0.5 1 vec4
+1.0 1.0 1.0 1 vec4
+0.0 0.33 0.67 1 vec4
+palette
+```
+
+**Sigmoid contrast** — push the field through a logistic S-curve.
+
+![StackSL: sigmoid contrast](assets/stacksl/stacksl-sigmoid-punch.png)
+
+```diffstatic {data-lang=stacksl}
+uv 4 * fbm 8 sigmoid palette saturate
+```
+
+**Twisted swirl** — rotate coordinates by radius before the field.
+
+![StackSL: twisted swirl](assets/stacksl/stacksl-twist-swirl.png)
+
+```diffstatic {data-lang=stacksl}
+p 5.0 twist fbm palette saturate
+```
+
+**Log-spiral flow** — `spiral` twists by radius and log-radius.
+
+![StackSL: log-spiral flow](assets/stacksl/stacksl-spiral-flow.png)
+
+```diffstatic {data-lang=stacksl}
+p 3 spiral fbm palette saturate
+```
+
+**Single-octave value noise** — `noise` is smoother/blockier than `fbm`.
+
+![StackSL: single-octave value noise](assets/stacksl/stacksl-value-noise.png)
+
+```diffstatic {data-lang=stacksl}
+uv 6 * noise palette saturate
+```
+
+**Sample-and-hold blocks** — `sh` steps a hashed value across space.
+
+![StackSL: sample-and-hold blocks](assets/stacksl/stacksl-sample-hold.png)
+
+```diffstatic {data-lang=stacksl}
+uv 6 * ]sh10 palette saturate
+```
+
+**Word references** — `'ridge ... apply` inlines a named word as a value.
+
+![StackSL: word references](assets/stacksl/stacksl-word-reference.png)
+
+```diffstatic {data-lang=stacksl}
+: ridge fbm 0.42 0.08 pulse ;
+'ridge p 5 * apply palette saturate
+```
+
+**Local marks** — `=c` names a value, reused twice without a definition.
+
+![StackSL: local marks](assets/stacksl/stacksl-local-marks.png)
+
+```diffstatic {data-lang=stacksl}
+uv 8 * =c
+c fbm
+c 0.35 + fbm
+0.5 mix
+palette saturate
+```
+
+**Sine stripes** — a plain function of `uv.x` colored by the palette.
+
+![StackSL: sine stripes](assets/stacksl/stacksl-stripe-bands.png)
+
+```diffstatic {data-lang=stacksl}
+uv x 18 * sin 0.5 + 0.5 * palette saturate
+```
+
+**Contrast and tone map** — grade the palette output.
+
+![StackSL: contrast and tone map](assets/stacksl/stacksl-tonemap-grade.png)
+
+```diffstatic {data-lang=stacksl}
+uv 5 * fbm palette 1.7 contrast tonemap saturate
+```
+
+## Animated
+
+Time-driven programs read `input.w`, so the same fullscreen harness animates them
+by sweeping a `time` push constant and encoding the frames to mp4 — again in one
+graphics context, one shader build per clip (see
+`StackSLGalleryHarness.renderAnimations`). Mark a workspace box `animate: true` in
+its `metadata.yaml` to add it here.
+
+<!--
+FIELD_TEST
+id: docs.stacksl.animations
+runner: backdoor-box
+graphicsContext: true
+tags: [docs, stacksl, shaders, graphics, video]
+timeoutSec: 600
+execution: launch
+waitSec: 120.0
+expect:
+  allowMissingOutput: true
+  image:
+    path: /tmp/docs-stacksl-animations-hero.png
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/stacksl/_animations-hero.png" source-image="/tmp/docs-stacksl-animations-hero.png" wait="120.0" timeout="600" execution="launch" embed=false graphics-context=true name="stacksl-animations" hidden=true fabricate-scene="stacksl-animations"}
+```
+
+**FBM drifting through a palette** — `uv 5.0 * time 0.12 * + fbm palette saturate`
+
+<video src="../assets/stacksl/stacksl-fbm-palette.mp4" autoplay loop muted playsinline
+       style="width:100%;max-width:512px;border-radius:8px;border:1px solid #333;">
+</video>
+
+**Frequency modulation** — `uv 14.0 * time + fm palette`
+
+<video src="../assets/stacksl/stacksl-fm-palette.mp4" autoplay loop muted playsinline
+       style="width:100%;max-width:512px;border-radius:8px;border:1px solid #333;">
+</video>
+
+**Polar rotation** — `p polar ... 0.2t ... cart fbm sigmoid palette`
+
+<video src="../assets/stacksl/stacksl-polar-sigmoid.mp4" autoplay loop muted playsinline
+       style="width:100%;max-width:512px;border-radius:8px;border:1px solid #333;">
+</video>
+
+**Definitions warping over time** — `warp` folds `time` into a sine domain offset
+
+<video src="../assets/stacksl/stacksl-definitions.mp4" autoplay loop muted playsinline
+       style="width:100%;max-width:512px;border-radius:8px;border:1px solid #333;">
+</video>
+
+**Drifting ridges** — one subroutine sampled at two time-shifted coordinates
+
+<video src="../assets/stacksl/stacksl-subroutine-ridges.mp4" autoplay loop muted playsinline
+       style="width:100%;max-width:512px;border-radius:8px;border:1px solid #333;">
+</video>
+
+**Feedback trails (ping-pong)** — the loop *is* the animation. This one samples
+the previous frame through `source`, decays it, advects it, and injects a moving
+colored band — so the image feeds back into itself each frame. This is the
+artificial-life / reaction pattern StackSL is built for; the harness renders it
+with a `PingPongRenderToTexture` so the previous frame is available while the
+current one is written.
+
+```diffstatic {data-lang=stacksl}
+0.0025 0.004 vec2 sample.w
+0.94 *
+uv y 0.15t fract 0.02 pulse 0.15t palette * 0.8 *
++
+saturate
+```
+
+<video src="../assets/stacksl/stacksl-feedback-trails.mp4" autoplay loop muted playsinline
+       style="width:100%;max-width:512px;border-radius:8px;border:1px solid #333;">
+</video>
+
+**Diffusion (blur feedback)** — a neighborhood word (`blur`) reads the previous
+frame, so each step diffuses the last one while sparse noise is injected and
+decays. This is the reaction/growth direction StackSL's neighborhood fields
+(`blur`, `laplace`, `sobel`, `curl`) are for.
+
+```diffstatic {data-lang=stacksl}
+0.004 blur
+0.975 *
+uv 5 * 0.25t + fbm 0.62 threshold 0.05 *
++
+saturate
+```
+
+<video src="../assets/stacksl/stacksl-diffusion-feedback.mp4" autoplay loop muted playsinline
+       style="width:100%;max-width:512px;border-radius:8px;border:1px solid #333;">
+</video>
+
 ## The input convention
 
 The input vector is usually read as:
@@ -534,6 +942,67 @@ void main() {
 If the surrounding shader already declares the sampler uniforms, call the compiler with `declareSamplers = false` and keep the generated helper/function code only. With `sampleTextures = listOf("otherView")`, sample words call helpers with `otherView` directly.
 
 For shader templates using `stack.auto`, the sampler can be selected inline. `{{ stack.auto.foo }}` keeps the default sampler name `source`; `{{ stack.auto.foo@otherView }}` compiles the same generated function but points sample words at `otherView`. This also composes with entrypoint selection: `{{ stack.auto.foo:bar@otherView }}` uses the StackSL word `bar` and its dependencies while sampling `otherView`.
+
+## `stack.auto`: push-constant-style injection
+
+`{{ stack.auto.NAME }}` is the shader-side of live coding. You write a slot in
+GLSL and drive it from Kotlin, the same way a push constant is a slot you write
+from the host — except here the slot is a whole `vec4 NAME(vec4 NAME_in)`
+function whose body is StackSL.
+
+Put the slot in a fullscreen fragment shader:
+
+```diffstatic {data-lang=glsl}
+#version 450
+layout(location = 0) in vec2 fragUV;
+layout(location = 0) out vec4 outColor;
+
+{{ stack.auto.program }}
+
+void main() {
+    vec4 stackInput = vec4(fragUV, 0.0, 0.0);
+    outColor = vec4(program(stackInput).rgb, 1.0);
+}
+```
+
+Template expansion emits the `program` function exactly once per stage. Until
+Kotlin binds it, the slot is the stable fallback `vec4 program(vec4 program_in) { return vec4(0.0); }`,
+so the shader always compiles.
+
+Every discovered `stack.auto.*` name becomes an assignable property on the
+shader module. Assigning it compiles the StackSL first, and only swaps the
+running shader if that succeeds (a bad program leaves the previous one in
+place), which is exactly what makes it safe to type into live:
+
+```diffstatic {data-lang=kotlin}
+val module = moduleHere { fragment = fullscreenFragment }
+val mesh = Mesh()
+module += mesh named "fullscreen"
+renderer += module
+
+module.program = "uv 4.0 * fbm palette saturate"   // binds and hot-reloads
+```
+
+Before — `uv 4.0 * fbm palette saturate`:
+
+![stack.auto before rebinding](assets/stacksl/stacksl-auto-before.png)
+
+Re-assigning the same slot swaps the function in place — no new module, no
+window teardown:
+
+```diffstatic {data-lang=kotlin}
+module.program = "p 6 kaleido fbm palette saturate"
+```
+
+After:
+
+![stack.auto after rebinding](assets/stacksl/stacksl-auto-after.png)
+
+The gallery above is built on exactly this: one module, one slot, re-bound once
+per program. Because a module re-registered under the same name replaces the
+previous one, the same trick works if you rebuild the whole module instead of
+just its `stack.auto` body — handy when the surrounding GLSL, not only the
+StackSL, is what you are editing.
 
 ## Built-in vocabulary
 

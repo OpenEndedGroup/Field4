@@ -1,0 +1,6 @@
+p polar
+dup y 0.2t + >y
+cart
+fbm
+sigmoid
+palette

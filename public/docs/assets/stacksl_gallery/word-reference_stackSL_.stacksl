@@ -1,0 +1,2 @@
+: ridge fbm 0.42 0.08 pulse ;
+'ridge p 5 * apply palette saturate

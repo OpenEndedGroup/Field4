@@ -71,6 +71,18 @@ FABRICATE_DOCS_SCENES: dict[str, tuple[str, str]] = {
         "renderToneMapBloom",
         "fabricate tonemap bloom ready",
     ),
+    # Not a StandardRenderer scene: this delegates to StackSLGalleryHarness and
+    # writes the whole StackSL gallery (many PNGs) in one graphics context. The
+    # method still lives on StandardRendererDocsHarness so it flows through the
+    # existing fabricate-scene generator unchanged.
+    "stacksl-gallery": (
+        "renderStackSLGallery",
+        "stacksl gallery ready",
+    ),
+    "stacksl-animations": (
+        "renderStackSLAnimations",
+        "stacksl animations ready",
+    ),
 }
 
 HARNESS_RELATIVE_PATH = "src/jvmMain/kotlin/afield/four/fabricated/StandardRendererDocsHarness.kt"

@@ -57,6 +57,8 @@ object StackSLSmokeTest {
             compilesHigherOrderPhacelleNoise()
             compilesExternalHostGlslEscapeHatches()
             expandsStackAutoSamplerOverrides()
+            compilesDocsGalleryPrograms()
+            loadsGalleryWorkspaceMetadataEdn()
             compilesCreativeFreedomVariants()
             println("StackSL compiler smoke tests passed")
             true
@@ -835,6 +837,60 @@ object StackSLSmokeTest {
         )
         require("foo_sample(noiseFieldView" in entrypoint) { entrypoint }
         require("foo_sample(source" !in entrypoint) { entrypoint }
+    }
+
+    private fun compilesDocsGalleryPrograms() {
+        val gallery = afield.four.fabricated.StackSLGalleryHarness
+        val examples = gallery.loadExamples()
+        require(examples.isNotEmpty()) { "StackSL docs gallery has no examples" }
+
+        val box = Box("stacksl-gallery-smoke")
+        examples.forEach { example ->
+            val result = StackSLCompiler.compile(
+                example.program,
+                StackSLCompileOptions(
+                    prefix = "program",
+                    includeHeader = false,
+                    declareSamplers = false,
+                    sampleTextures = listOf("source") // matches the {{ stack.auto.program }} default sampler
+                )
+            )
+            require(result.ok) {
+                "StackSL gallery program '${example.name}' failed to compile:\n" +
+                    result.diagnostics.filter { it.severity == StackSLSeverity.ERROR }.joinToString("\n")
+            }
+            // The gallery injects each program through the documented stack.auto path,
+            // so make sure the template actually emits `vec4 program(...)`.
+            box.stackAutoShaderSources["program"] = example.program
+            val expanded = preprocess(box, "{{ stack.auto.program }}", ShaderKind.FRAGMENT_SHADER)
+            require("vec4 program(vec4 program_in)" in expanded) {
+                "stack.auto expansion for gallery program '${example.name}' missing entrypoint:\n$expanded"
+            }
+        }
+    }
+
+    private fun loadsGalleryWorkspaceMetadataEdn() {
+        // The gallery workspace is a real canonical_graphics-style Field document.
+        // Parse its metadata.edn through Field's own EDN reader so a malformed
+        // document (or a dropped stackSL property) fails here rather than only in
+        // the offline viewer.
+        val edn = java.io.File(
+            System.getProperty("user.dir"),
+            "${afield.four.fabricated.StackSLGalleryHarness.WORKSPACE_DIR}/metadata.edn"
+        )
+        require(edn.exists()) { "gallery workspace metadata.edn missing: ${edn.absolutePath}" }
+
+        val transfers = afield.SavingContext().readEdnTransfersFromString(edn.readText())
+        val boxes = transfers.filter { it.id != "root" }
+        val expected = afield.four.fabricated.StackSLGalleryHarness.loadExamples().map { it.name }.toSet()
+        val boxIds = boxes.map { it.id }.toSet()
+        require(boxIds.containsAll(expected)) {
+            "metadata.edn is missing boxes for workspace examples: ${expected - boxIds}"
+        }
+        val missingStackSL = boxes.filter { "stackSL" !in it.properties.keys }.map { it.id }
+        require(missingStackSL.isEmpty()) {
+            "gallery workspace boxes lack a stackSL property: $missingStackSL"
+        }
     }
 
     private fun compilesCreativeFreedomVariants() {

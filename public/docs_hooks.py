@@ -2387,6 +2387,7 @@ def effective_capture_mode(options: RunnerOptions) -> str:
 SOURCE_BOX_PROPERTIES: tuple[tuple[str, str], ...] = (
     ("preamble", "kt"),
     ("code", "kt"),
+    ("stackSL", "stacksl"),
     ("vertex", "glsl"),
     ("fragment", "glsl"),
     ("compute", "glsl"),
@@ -2714,22 +2715,27 @@ def build_backdoor_command(
     if options.macro_file:
         pass
     elif options.run_box is None and capture_mode == "editor":
+        # Target the box explicitly rather than "@last": under graphics-context the
+        # box is created via a macro (so "@last" is stale) and must match the box
+        # that record-editor records below (default_target_uid). In the non
+        # graphics-context case default_target_uid is "@last", preserving behaviour.
+        editor_target = default_target_uid
         backdoor_commands.append(shlex.join([
             "set",
-            "@last",
+            editor_target,
             options.property_name,
             "--file", "-",
         ]))
         backdoor_commands.append(shlex.join([
             "editor-open",
-            "@last",
+            editor_target,
             "--property", options.property_name,
             "--padding", str(options.padding),
             "--timeout", str(options.timeout),
         ]))
         backdoor_commands.append(shlex.join([
             "launch" if options.execution == "launch" else "run",
-            "@last",
+            editor_target,
             "--property", options.property_name,
             "--timeout", str(options.timeout),
         ]))

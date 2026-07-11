@@ -77,6 +77,55 @@ object StandardRendererDocsHarness {
         bundle.present(renderer = activeRenderer)
     }
 
+    /**
+     * Renders the whole StackSL gallery (see [StackSLGalleryHarness]) inside a
+     * single graphics context, writing every `stacksl-*.png` into
+     * `public/docs/assets/stacksl/`, then copies the hero image to [outputPath]
+     * so the docs fence can embed one representative capture. This is the
+     * "one Field document, many renders" path: the entire gallery is produced
+     * without restarting the JVM per screenshot.
+     */
+    suspend fun renderStackSLGallery(
+        outputPath: String,
+        renderer: Renderer = rendererFromContextOrDocument()
+    ): File {
+        val assetsDir = File(System.getProperty("user.dir"), "public/docs/assets/stacksl")
+        lprintln("info,doc", "stacksl gallery output dir: ${assetsDir.absolutePath}")
+        val hero = StackSLGalleryHarness.renderGallery(assetsDir, renderer)
+        val target = File(outputPath)
+        target.parentFile?.mkdirs()
+        target.delete()
+        target.writeBytes(hero.readBytes())
+        require(target.length() > 0L) { "stacksl gallery hero copy wrote an empty PNG" }
+        return target
+    }
+
+    /**
+     * Renders an mp4 per animated StackSL example (see
+     * [StackSLGalleryHarness.renderAnimations]) into `public/docs/assets/stacksl/`,
+     * then writes a still hero to [outputPath] for the docs fence to validate.
+     * Same single-graphics-context path as [renderStackSLGallery].
+     */
+    suspend fun renderStackSLAnimations(
+        outputPath: String,
+        renderer: Renderer = rendererFromContextOrDocument()
+    ): File {
+        val assetsDir = File(System.getProperty("user.dir"), "public/docs/assets/stacksl")
+        val mp4s = StackSLGalleryHarness.renderAnimations(assetsDir, renderer)
+        lprintln("info,doc", "stacksl animations wrote ${mp4s.size} mp4(s) to ${assetsDir.absolutePath}")
+        val target = File(outputPath)
+        target.parentFile?.mkdirs()
+        target.delete()
+        // The fence only needs a valid still for visual validation; reuse a gallery frame.
+        val hero = File(assetsDir, "stacksl-${StackSLGalleryHarness.loadExamples().first().name}.png")
+            .takeIf { it.exists() }
+            ?: assetsDir.listFiles { f -> f.name.startsWith("stacksl-") && f.name.endsWith(".png") }?.firstOrNull()
+            ?: error("stacksl animations: no gallery still available for the fence hero")
+        target.writeBytes(hero.readBytes())
+        require(target.length() > 0L) { "stacksl animations hero copy wrote an empty PNG" }
+        return target
+    }
+
     suspend fun renderMetalnessComparison(
         outputPath: String,
         renderer: Renderer = rendererFromContextOrDocument(),
