@@ -12,7 +12,9 @@ import signal
 import socket
 import subprocess
 import sys
+import threading
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from types import SimpleNamespace
 from pathlib import Path
@@ -201,6 +203,7 @@ class RunnerState:
         self.summary_logged = False
         self.screenshots_run = 0
         self.videos_run = 0
+        self.captures_started = 0
         self.cache_hits = 0
         self.assets_reused = 0
         self.missing_assets = 0
@@ -905,6 +908,29 @@ class RunnerState:
         self.videos_run += 1
         self.save()
 
+    @contextmanager
+    def _progress_heartbeat(self, label: str, *, interval: float = 8.0):
+        """Emit a periodic 'still working' line while a blocking capture runs.
+
+        A single capture (especially a graphics-context one, which cold-boots a
+        fresh Field JVM) can be silent for 20-40s. Without a heartbeat that reads
+        as a hang. A daemon thread logs elapsed time every `interval` seconds until
+        the wrapped block returns.
+        """
+        stop = threading.Event()
+        start = time.monotonic()
+
+        def beat() -> None:
+            while not stop.wait(interval):
+                LOG.info("Field docs runner … still capturing %s (%.0fs)", label, time.monotonic() - start)
+
+        thread = threading.Thread(target=beat, name="docs-capture-heartbeat", daemon=True)
+        thread.start()
+        try:
+            yield
+        finally:
+            stop.set()
+
     def ensure_screenshot(self, *, code: str, options: RunnerOptions, page_path: Path, block_index: int) -> None:
         screenshot_path = resolve_output_path(page_path, options.screenshot)
         screenshot_path.parent.mkdir(parents=True, exist_ok=True)
@@ -996,7 +1022,15 @@ class RunnerState:
             source_image_min_mtime=source_image_min_mtime,
         )
         command = invocation.process_command
-        LOG.info("Field docs runner executing %s for %s", page_path.name, screenshot_path)
+        self.captures_started += 1
+        LOG.info(
+            "Field docs runner [%d] capturing %s%s -> %s",
+            self.captures_started,
+            page_path.name,
+            " (graphics-context)" if options.graphics_context else "",
+            screenshot_path.name,
+        )
+        capture_label = f"{page_path.name} -> {screenshot_path.name}"
         completed: subprocess.CompletedProcess[str] | None = None
         # Warm-session fast path (opt-in): reuse one persistent daemon + attached
         # page across non-graphics captures. On any failure, fall through to the
@@ -1017,17 +1051,18 @@ class RunnerState:
             if completed is not None:
                 break
             try:
-                completed = subprocess.run(
-                    command,
-                    cwd=self.repo_root,
-                    input=code,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                    capture_output=True,
-                    check=False,
-                    timeout=runner_subprocess_timeout(options=options, is_video=False),
-                )
+                with self._progress_heartbeat(capture_label):
+                    completed = subprocess.run(
+                        command,
+                        cwd=self.repo_root,
+                        input=code,
+                        text=True,
+                        encoding="utf-8",
+                        errors="replace",
+                        capture_output=True,
+                        check=False,
+                        timeout=runner_subprocess_timeout(options=options, is_video=False),
+                    )
             except subprocess.TimeoutExpired as exc:
                 if attempt < RUNNER_RETRIES:
                     LOG.warning(

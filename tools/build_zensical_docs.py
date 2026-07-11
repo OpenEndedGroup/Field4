@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import logging
 import os
 import shutil
 import subprocess
@@ -11,6 +12,26 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+
+
+def _configure_logging() -> None:
+    """Surface the docs runner's per-capture progress.
+
+    The runner logs rich progress through `logging.getLogger("mkdocs.field_runner")`
+    at INFO, but running the hook standalone (outside `mkdocs`) leaves the root
+    logger unconfigured, so only WARNINGs reach the terminal and a build looks
+    silent/hung between the sparse warnings. Configure a concise INFO handler once
+    (respect FIELD_DOCS_LOG_LEVEL for override) so `capturing ... / completed ...`
+    lines are visible.
+    """
+    if logging.getLogger().handlers:
+        return
+    level = os.environ.get("FIELD_DOCS_LOG_LEVEL", "INFO").upper()
+    logging.basicConfig(
+        level=getattr(logging, level, logging.INFO),
+        format="%(asctime)s %(message)s",
+        datefmt="%H:%M:%S",
+    )
 
 
 class DocsConfig(dict):
@@ -79,6 +100,7 @@ def build_generated_config(*, public_dir: Path, generated_root: Path) -> Path:
 
 
 def preprocess_docs(*, public_dir: Path, generated_docs: Path, page_filters: tuple[str, ...] = ()) -> None:
+    _configure_logging()
     sys.path.insert(0, str(public_dir))
     import docs_hooks  # type: ignore[import-not-found]
 
