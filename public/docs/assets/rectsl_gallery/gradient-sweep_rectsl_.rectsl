@@ -1,0 +1,12 @@
+#rectsl
+wall 18 8 meters
+duration 6
+fps 30
+
+"panel" rect
+  0 0 xy
+  15 6 wh
+  0xff2d55 0x2d7bff  -7.5 -3  7.5 3  linear fill
+  '( 0 -0.3  3 0.3  6 -0.3 ) rot
+  '( 0 0.7  3 1.0  6 0.7 ) scale
+;

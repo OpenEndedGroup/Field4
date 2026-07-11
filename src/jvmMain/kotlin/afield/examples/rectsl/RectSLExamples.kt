@@ -1,6 +1,9 @@
 package afield.examples.rectsl
 
 import afield.rectsl.RectAnimationOracle
+import afield.rectsl.lowerSampledScene
+import afield.rectsl.rectMaterialShaderCode
+import java.io.File
 
 /*
 FIELD_TEST
@@ -108,6 +111,50 @@ object RectSLExamples {
                 "$name failed:\n" + result.diagnostics.joinToString("\n")
             }
         }
+
+        checkGalleryWorkspace()
         println("rectsl examples passed")
+    }
+
+    /**
+     * Every RectSL docs-gallery program (loose `*_rectsl_.rectsl` files under
+     * `public/docs/assets/rectsl_gallery/`, rendered by `RectSLGalleryHarness`) must
+     * compile, sample, lower to a non-empty mesh, and have its StackSL materials
+     * compile — all CPU-only, so this guards the gallery without a GPU. Silently
+     * skips if the workspace is absent (partial checkout).
+     */
+    private fun checkGalleryWorkspace() {
+        val dir = File(System.getProperty("user.dir"), "public/docs/assets/rectsl_gallery")
+        val files = dir.listFiles { f -> f.name.endsWith("_rectsl_.rectsl") } ?: return
+        check(files.isNotEmpty()) { "rectsl gallery workspace has no programs: ${dir.absolutePath}" }
+        val names = mutableSetOf<String>()
+        files.sortedBy { it.name }.forEach { f ->
+            val name = f.name.removeSuffix("_rectsl_.rectsl")
+            names += name
+            val result = RectAnimationOracle.compile(f.readText())
+            val program = result.program
+            check(result.ok && program != null) {
+                "gallery '$name' failed to compile:\n" + result.diagnostics.joinToString("\n")
+            }
+            val mesh = lowerSampledScene(program.sample(program.duration * 0.5))
+            check(mesh.vertices.isNotEmpty()) { "gallery '$name' lowered to an empty mesh (nothing to draw)" }
+            val shader = rectMaterialShaderCode(program)
+            check(shader.ok) {
+                "gallery '$name' materials failed to compile:\n" + shader.diagnostics.joinToString("\n")
+            }
+        }
+
+        // The workspace is also a real openable Field document (offline viewer +
+        // download/inspect). Parse metadata.edn through Field's own EDN reader so a
+        // malformed document fails here rather than only in the viewer, and confirm
+        // it carries a box per example.
+        val edn = File(dir, "metadata.edn")
+        check(edn.exists()) { "gallery workspace metadata.edn missing: ${edn.absolutePath}" }
+        val transfers = afield.SavingContext().readEdnTransfersFromString(edn.readText())
+        val boxIds = transfers.filter { it.id != "root" }.map { it.id }.toSet()
+        check(boxIds.containsAll(names)) {
+            "metadata.edn is missing boxes for workspace examples: ${names - boxIds}"
+        }
+        println("rectsl gallery workspace compiled ${files.size} program(s); metadata.edn boxes=${boxIds.size}")
     }
 }

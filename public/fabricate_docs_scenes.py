@@ -83,6 +83,17 @@ FABRICATE_DOCS_SCENES: dict[str, tuple[str, str]] = {
         "renderStackSLAnimations",
         "stacksl animations ready",
     ),
+    # RectSL twins of the StackSL scenes: delegate to RectSLGalleryHarness and
+    # write the whole RectSL gallery (stills) / animations (mp4s) in one graphics
+    # context. See the note above on stacksl-gallery.
+    "rectsl-gallery": (
+        "renderRectSLGallery",
+        "rectsl gallery ready",
+    ),
+    "rectsl-animations": (
+        "renderRectSLAnimations",
+        "rectsl animations ready",
+    ),
 }
 
 HARNESS_RELATIVE_PATH = "src/jvmMain/kotlin/afield/four/fabricated/StandardRendererDocsHarness.kt"

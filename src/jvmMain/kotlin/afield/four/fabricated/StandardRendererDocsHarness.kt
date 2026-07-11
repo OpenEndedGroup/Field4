@@ -126,6 +126,53 @@ object StandardRendererDocsHarness {
         return target
     }
 
+    /**
+     * Renders the whole RectSL gallery (see [RectSLGalleryHarness]) inside a single
+     * graphics context, writing a representative still `rectsl-*.png` per program
+     * into `public/docs/assets/rectsl/`, then copies the hero image to [outputPath].
+     * The RectSL twin of [renderStackSLGallery].
+     */
+    suspend fun renderRectSLGallery(
+        outputPath: String,
+        renderer: Renderer = rendererFromContextOrDocument()
+    ): File {
+        val assetsDir = File(System.getProperty("user.dir"), "public/docs/assets/rectsl")
+        lprintln("info,doc", "rectsl gallery output dir: ${assetsDir.absolutePath}")
+        val hero = RectSLGalleryHarness.renderGallery(assetsDir, renderer)
+        val target = File(outputPath)
+        target.parentFile?.mkdirs()
+        target.delete()
+        target.writeBytes(hero.readBytes())
+        require(target.length() > 0L) { "rectsl gallery hero copy wrote an empty PNG" }
+        return target
+    }
+
+    /**
+     * Renders an mp4 per animated RectSL example (see
+     * [RectSLGalleryHarness.renderAnimations]) into `public/docs/assets/rectsl/`,
+     * then writes a still hero to [outputPath] for the docs fence to validate.
+     * Same single-graphics-context path as [renderRectSLGallery].
+     */
+    suspend fun renderRectSLAnimations(
+        outputPath: String,
+        renderer: Renderer = rendererFromContextOrDocument()
+    ): File {
+        val assetsDir = File(System.getProperty("user.dir"), "public/docs/assets/rectsl")
+        val mp4s = RectSLGalleryHarness.renderAnimations(assetsDir, renderer)
+        lprintln("info,doc", "rectsl animations wrote ${mp4s.size} mp4(s) to ${assetsDir.absolutePath}")
+        val target = File(outputPath)
+        target.parentFile?.mkdirs()
+        target.delete()
+        // The fence only needs a valid still for visual validation; reuse a gallery frame.
+        val hero = File(assetsDir, "rectsl-${RectSLGalleryHarness.loadExamples().first().name}.png")
+            .takeIf { it.exists() }
+            ?: assetsDir.listFiles { f -> f.name.startsWith("rectsl-") && f.name.endsWith(".png") }?.firstOrNull()
+            ?: error("rectsl animations: no gallery still available for the fence hero")
+        target.writeBytes(hero.readBytes())
+        require(target.length() > 0L) { "rectsl animations hero copy wrote an empty PNG" }
+        return target
+    }
+
     suspend fun renderMetalnessComparison(
         outputPath: String,
         renderer: Renderer = rendererFromContextOrDocument(),

@@ -881,7 +881,9 @@ object StackSLSmokeTest {
         require(edn.exists()) { "gallery workspace metadata.edn missing: ${edn.absolutePath}" }
 
         val transfers = afield.SavingContext().readEdnTransfersFromString(edn.readText())
-        val boxes = transfers.filter { it.id != "root" }
+        // Exclude the window/renderer parent box: it owns the graphics context the
+        // example boxes inherit and carries no stackSL of its own.
+        val boxes = transfers.filter { it.id != "root" && it.id != "renderer" }
         val expected = afield.four.fabricated.StackSLGalleryHarness.loadExamples().map { it.name }.toSet()
         val boxIds = boxes.map { it.id }.toSet()
         require(boxIds.containsAll(expected)) {

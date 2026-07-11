@@ -3215,7 +3215,7 @@ private fun rectSLFrameTimes(duration: Double, fps: Double, includeFinalFrame: B
     }
 }
 
-private fun WallSpec.worldToClip(): Matrix4f =
+internal fun WallSpec.worldToClip(): Matrix4f =
     when (origin) {
         Origin.Center -> Matrix4f().ortho(
             (-width * 0.5).toFloat(),
