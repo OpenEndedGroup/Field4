@@ -4147,12 +4147,19 @@ class Server {
                         // Without this they're served with no Cache-Control, so every
                         // load re-downloads them -- and the docs capture browser reloads
                         // the page for each screenshot, so it was re-fetching the multi-MB
-                        // afield.mjs + fonts on every capture. Assets are immutable for a
-                        // server run; JS/CSS get a modest max-age (a dev who rebuilds JS
-                        // also restarts the server, giving a fresh browser context), fonts
-                        // and images longer.
+                        // afield.mjs + fonts on every capture.
+                        //
+                        // But we deliberately do NOT cache for the Electron desktop app
+                        // (the real-user entry point): it loads the page once per tab, so
+                        // caching gains it nothing, and a stale disk cache would serve an
+                        // old afield.mjs after a dev rebuild (Ktor emits no Last-Modified/
+                        // ETag, so there's no revalidation to save us). Electron is
+                        // identifiable by its User-Agent; everything else (the Playwright
+                        // capture browser, plain browsers) gets the cache. Assets are
+                        // immutable for a server run, so a plain max-age is safe there.
                         val assetCache: StaticContentConfig<File>.() -> Unit = {
-                            cacheControl { file ->
+                            modify { file, call ->
+                                if ("Electron" in call.request.headers[HttpHeaders.UserAgent].orEmpty()) return@modify
                                 val seconds = when (file.extension.lowercase()) {
                                     "mjs", "js", "css", "wasm", "map" -> 3600
                                     "woff2", "woff", "ttf", "otf", "eot" -> 604800
@@ -4160,8 +4167,7 @@ class Server {
                                     else -> 0
                                 }
                                 if (seconds > 0)
-                                    listOf(CacheControl.MaxAge(maxAgeSeconds = seconds, visibility = CacheControl.Visibility.Public))
-                                else emptyList()
+                                    call.response.headers.append(HttpHeaders.CacheControl, "public, max-age=$seconds")
                             }
                         }
                         staticFiles(remotePath = "", dir = File("./build/js/packages/afield/kotlin"), block = assetCache)
