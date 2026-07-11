@@ -153,6 +153,26 @@ def preprocess_docs(*, public_dir: Path, generated_docs: Path, page_filters: tup
     copy_non_markdown_files(source_docs, generated_docs)
 
 
+def emit_offline_viewer(*, site_dir: Path) -> None:
+    """Copy the offline document viewer into the built site.
+
+    The docs embed a read-only Field viewer via `<iframe src="/offline.html?...">`.
+    `offline.html` and its bundle (Monaco, fonts, the viewer JS) are otherwise only
+    served by the running Field app, so a plain static serving of the built site
+    would 404 the iframe. Emitting the bundle into the site dir makes the viewer
+    self-contained: `/offline.html` and its relative assets resolve against the
+    site root, and the viewer resolves `?file=` paths relative to that same root.
+
+    Reuses `tools/sync_offline_assets.py` so the canonical source files stay the
+    single source of truth. Metadata examples and the distribution README/manifest
+    are skipped -- the docs carry their own `assets/*/metadata.edn` files.
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import sync_offline_assets  # type: ignore[import-not-found]
+
+    sync_offline_assets.sync_target(site_dir, metadata=False, docs=False)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Preprocess Field docs runner fences, then build with Zensical.",
@@ -199,7 +219,10 @@ def main() -> int:
     command = [sys.executable, "-m", "zensical", "build", "-f", str(generated_config)]
     if args.strict:
         command.append("--strict")
-    return subprocess.run(command, cwd=public_dir, check=False).returncode
+    returncode = subprocess.run(command, cwd=public_dir, check=False).returncode
+    if returncode == 0:
+        emit_offline_viewer(site_dir=public_dir / "field4")
+    return returncode
 
 
 if __name__ == "__main__":

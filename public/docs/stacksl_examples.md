@@ -17,6 +17,16 @@ vec4 prefix_paletteMist(vec4 prefix_in) { ... }
 
 This keeps generated names out of the global shader namespace. The Field property for source text is `stackSL`; sidecar files use `.stacksl`.
 
+The embedded viewer below collects a few representative programs from this page as StackSL boxes. Click a box to read its source; the "Open in Field·4" button sends the gallery to a running desktop app.
+
+<iframe
+    src="/offline.html?file=/field4/assets/stacksl_gallery/metadata.edn"
+    title="StackSL examples (offline viewer)"
+    style="width:100%; height:680px; border:1px solid #444; border-radius:8px; background:#111;"
+    loading="lazy"
+    allowfullscreen>
+</iframe>
+
 ## The input convention
 
 The input vector is usually read as:

@@ -57,6 +57,12 @@ http://your-server.com/offline.html?file=http://example.com/path/to/metadata.edn
 </a>
 ```
 
+### Embedding in the Field docs site
+
+The Zensical docs embed the viewer directly with `<iframe src="/offline.html?file=/field4/assets/<workspace>/metadata.edn">`. `tools/build_zensical_docs.py` copies the viewer bundle (via `tools/sync_offline_assets.py`) into the built site (`public/field4/`) after every successful build, so `/offline.html` and its assets are self-contained when the site is served statically — no running Field server required.
+
+Because the `?file=` path is authored as an absolute `/field4/...` URL, the viewer tries several candidate resolutions (as-is, then with the leading site segment stripped) so the same iframe works whether the site is served at its root (e.g. `python -m http.server` in `public/field4`) or mounted under `/field4/`. If none resolve, it fails fast with a visible error instead of hanging.
+
 ## How It Works
 
 1. **EDN Parser**: A lightweight JavaScript parser reads Field's EDN metadata format

@@ -1,0 +1,86 @@
+{:version 2
+ :boxes [{:id "root"
+          :properties {:name "root"
+                       :children #{#afield/box "stacksl-tint"
+                                   #afield/box "stacksl-coord"
+                                   #afield/box "stacksl-pulse"
+                                   #afield/box "stacksl-fbm"
+                                   #afield/box "stacksl-defs"
+                                   #afield/box "stacksl-marks"
+                                   #afield/box "stacksl-ema"
+                                   #afield/box "stacksl-domain"
+                                   #afield/box "stacksl-oklab"}
+                       :parents #{}}}
+
+         {:id "stacksl-tint"
+          :properties {:name "Tint the input toward blue"
+                       :frame #afield/rect [40.0 40.0 320.0 200.0]
+                       :parents #{#afield/box "root"}
+                       :children #{}
+                       :code_language "StackSL"
+                       :stackSL "# every stack value is a vec4; the input\n# vector starts on the stack.\nblue mix"}}
+
+         {:id "stacksl-coord"
+          :properties {:name "Normalized coordinate color"
+                       :frame #afield/rect [400.0 40.0 320.0 200.0]
+                       :parents #{#afield/box "root"}
+                       :children #{}
+                       :code_language "StackSL"
+                       :stackSL "# uv pushes vec4(input.xy, 0, 1);\n# saturate clamps to [0,1].\nuv saturate"}}
+
+         {:id "stacksl-pulse"
+          :properties {:name "Turn time into a grayscale pulse"
+                       :frame #afield/rect [760.0 40.0 320.0 200.0]
+                       :parents #{#afield/box "root"}
+                       :children #{}
+                       :code_language "StackSL"
+                       :stackSL "# time is vec4(input.w); map the sine\n# from [-1,1] into [0,1].\ntime sin 0.5 * 0.5 +"}}
+
+         {:id "stacksl-fbm"
+          :properties {:name "FBM into a cosine palette"
+                       :frame #afield/rect [40.0 300.0 320.0 240.0]
+                       :parents #{#afield/box "root"}
+                       :children #{}
+                       :code_language "StackSL"
+                       :stackSL "# distort coordinates, make a scalar\n# field, then color it.\nuv 5.0 *\ntime 0.12 *\n+\nfbm\npalette\nsaturate"}}
+
+         {:id "stacksl-defs"
+          :properties {:name "Reusable StackSL definitions"
+                       :frame #afield/rect [400.0 300.0 320.0 240.0]
+                       :parents #{#afield/box "root"}
+                       :children #{}
+                       :code_language "StackSL"
+                       :stackSL ": warp\n  uv 8.0 * time + sin\n  0.18 *\n  uv +\n;\n\n: field\n  warp fbm\n;\n\nfield palette contrast tonemap"}}
+
+         {:id "stacksl-marks"
+          :properties {:name "Local named marks"
+                       :frame #afield/rect [760.0 300.0 320.0 240.0]
+                       :parents #{#afield/box "root"}
+                       :children #{}
+                       :code_language "StackSL"
+                       :stackSL "# =name copies the top into a mark;\n# bare name pushes it again.\nuv 8 * =coord\ncoord fbm\ncoord 0.2t + fbm\n0.5 mix\npalette\nsaturate"}}
+
+         {:id "stacksl-ema"
+          :properties {:name "Ping-pong EMA feedback"
+                       :frame #afield/rect [40.0 600.0 320.0 240.0]
+                       :parents #{#afield/box "root"}
+                       :children #{}
+                       :code_language "StackSL"
+                       :stackSL "uv 4.0 * time + fbm palette   # current\nprev                          # previous at input.xy\n0.06                          # alpha\nema\nsaturate"}}
+
+         {:id "stacksl-domain"
+          :properties {:name "Domain transforms and shapers"
+                       :frame #afield/rect [400.0 600.0 320.0 240.0]
+                       :parents #{#afield/box "root"}
+                       :children #{}
+                       :code_language "StackSL"
+                       :stackSL "p 7 kaleido\n1.7 twist\n4 tile\nfbm\n0.35 gain\n0.45 0.12 band\npalette\nsaturate"}}
+
+         {:id "stacksl-oklab"
+          :properties {:name "OKLab color mixing"
+                       :frame #afield/rect [760.0 600.0 320.0 240.0]
+                       :parents #{#afield/box "root"}
+                       :children #{}
+                       :code_language "StackSL"
+                       :stackSL "# mix two colors in perceptual OKLab,\n# then convert back to RGB.\nred rgb2oklab\nblue rgb2oklab\n0.5 mix\noklab\nsaturate"}}]
+ :persistentProperties ["frame" "name" "stackSL" "code_language" "children" "parents"]}
