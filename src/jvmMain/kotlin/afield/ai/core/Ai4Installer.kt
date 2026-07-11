@@ -2128,6 +2128,14 @@ fun installAi4() {
                 )
             }
 
+            // Append any caller-supplied instruction (e.g. from the error-suggestion "Ask AI4"
+            // buttons) to the fixed per-kind directive so cursor/rewrite/error requests can be
+            // shaped without a bespoke kind.
+            fun withExtraPrompt(base: String): String {
+                val extra = exec.extraPrompt.trim()
+                return if (extra.isEmpty()) base else "$base\n\n$extra"
+            }
+
             try {
                 when (exec.kind) {
                     "chat" -> {
@@ -2251,7 +2259,7 @@ fun installAi4() {
                             state = state,
                             code = exec.prompt,
                             lang = lang,
-                            userPrompt = "Complete the code at <cursor>.",
+                            userPrompt = withExtraPrompt("Complete the code at <cursor>."),
                             attachments = contextAttachments,
                             resolveAttachment = resolveAttachment,
                             listDefinitions = listDefinitions,
@@ -2283,7 +2291,7 @@ fun installAi4() {
                             state = state,
                             code = exec.prompt,
                             lang = lang,
-                            userPrompt = "Rewrite only the code between <rewrite> and </rewrite>.",
+                            userPrompt = withExtraPrompt("Rewrite only the code between <rewrite> and </rewrite>."),
                             attachments = contextAttachments,
                             resolveAttachment = resolveAttachment,
                             listDefinitions = listDefinitions,
@@ -2315,7 +2323,7 @@ fun installAi4() {
                             state = state,
                             code = exec.prompt,
                             lang = lang,
-                            userPrompt = "Fix the error described between <error> and </error>.",
+                            userPrompt = withExtraPrompt("Fix the error described between <error> and </error>."),
                             attachments = contextAttachments,
                             resolveAttachment = resolveAttachment,
                             listDefinitions = listDefinitions,

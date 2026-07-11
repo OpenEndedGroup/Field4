@@ -2678,6 +2678,72 @@ body {
     color: #ffffff;
 }
 
+/* Actionable error suggestions: one "Apply / Ask AI4" row per fix, under an error output. */
+.field-fix-suggestions {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.field-fix-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.field-fix-label {
+    color: #f2f2f2;
+    font-weight: 600;
+    font-family: var(--field-monospace, monospace);
+}
+
+.field-fix-detail {
+    color: #9a9a9a;
+    font-style: normal;
+    opacity: 0.85;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.field-fix-apply,
+.field-fix-ai {
+    flex: 0 0 auto;
+    cursor: pointer;
+    font-size: inherit;
+    line-height: 1.2;
+    padding: 1px 8px;
+    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    background: rgba(255, 255, 255, 0.08);
+    color: #e8e8e8;
+    user-select: none;
+    transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.field-fix-apply:hover {
+    background: rgba(158, 227, 125, 0.22);
+    border-color: rgba(158, 227, 125, 0.6);
+    color: #ffffff;
+}
+
+.field-fix-ai:hover {
+    background: rgba(142, 200, 255, 0.22);
+    border-color: rgba(142, 200, 255, 0.6);
+    color: #ffffff;
+}
+
+.field-fix-apply:active,
+.field-fix-ai:active {
+    transform: translateY(1px);
+}
+
 .macro-recorder-box-symbol {
     color: #9a9a9a;
     font-weight: 360;

@@ -1225,6 +1225,7 @@ class KotlinExecution : BoxExecution {
                 if (first && it.severity.ordinal > ScriptDiagnostic.Severity.WARNING.ordinal) {
                     first = false
                     val message = improveMessage(box, it.message, code, it)
+                    val fixes = suggestionsFor(box, it.message, code, it)
                     val location = it.location
                     val output = if (location != null) {
                         Output(
@@ -1236,7 +1237,8 @@ class KotlinExecution : BoxExecution {
                             kind = "error",
                             property = property,
                             html = message,
-                            frame = Runloop.runLoop.frame.toInt()
+                            frame = Runloop.runLoop.frame.toInt(),
+                            suggestions = fixes
                         )
                     } else {
                         Output(
@@ -1245,7 +1247,8 @@ class KotlinExecution : BoxExecution {
                             kind = "error",
                             property = property,
                             html = message,
-                            frame = Runloop.runLoop.frame.toInt()
+                            frame = Runloop.runLoop.frame.toInt(),
+                            suggestions = fixes
                         )
                     }
                     dispatchExecutionOutput(box, reply, output, originSession = originSession)
@@ -1870,6 +1873,7 @@ class KotlinExecution : BoxExecution {
                             }
                             if (first && it.severity.ordinal > ScriptDiagnostic.Severity.WARNING.ordinal) {
                                 var message = it.message
+                                val fixes = suggestionsFor(box, message, code, it)
                                 message = improveMessage(box, message, code, it)
                                 first = false
                                 if (it.location != null) {
@@ -1885,7 +1889,8 @@ class KotlinExecution : BoxExecution {
                                             kind = "error",
                                             property = property,
                                             html = message,
-                                            frame = Runloop.runLoop.frame.toInt()
+                                            frame = Runloop.runLoop.frame.toInt(),
+                                            suggestions = fixes
                                         ),
                                         originSession = originSession
                                     )
@@ -1899,7 +1904,8 @@ class KotlinExecution : BoxExecution {
                                             kind = "error",
                                             property = property,
                                             html = message,
-                                            frame = Runloop.runLoop.frame.toInt()
+                                            frame = Runloop.runLoop.frame.toInt(),
+                                            suggestions = fixes
                                         ),
                                         originSession = originSession
                                     )
@@ -2838,18 +2844,126 @@ fun improveMessage(
 ): String {
     val hints = mutableListOf<String>()
 
-    unresolvedReferenceName(errorMessage)?.let { missing ->
-        val suggestions = suggestResolvableSymbols(b, missing, code, diagnostic)
-        if (suggestions.isNotEmpty()) {
-            hints += unresolvedReferenceHint(suggestions)
-        }
-    }
-
+    // Note: "Did you mean" / "add import" suggestions are no longer appended here as inert text.
+    // They are surfaced as structured, actionable rows via suggestionsFor() (Apply / Ask AI4
+    // buttons in the error output area). The numeric-mismatch hint stays as explanatory context.
     numericMismatchHint(errorMessage)?.let { hints += escapeNotifyHtml(it) }
 
     val escapedMessage = escapeNotifyHtml(errorMessage)
     if (hints.isEmpty()) return escapedMessage
     return appendErrorHints(escapedMessage, hints)
+}
+
+/**
+ * Structured, actionable fixes for an error message — the data behind the Apply / Ask AI4
+ * buttons in the error output area. Reuses the same ranking engine as [improveMessage]
+ * ([suggestResolvableSymbols], [numericMismatchHint]) but returns [OutputSuggestion]s instead of
+ * baked HTML. Position ([OutputSuggestion.line]/[OutputSuggestion.column]) comes from the
+ * diagnostic so the client can locate and replace the offending token.
+ */
+fun suggestionsFor(
+    b: Box,
+    errorMessage: String,
+    code: String? = null,
+    diagnostic: ScriptDiagnostic? = null
+): List<OutputSuggestion> {
+    val out = mutableListOf<OutputSuggestion>()
+    val line = diagnostic?.location?.start?.line ?: -1
+    val column = diagnostic?.location?.start?.col ?: -1
+
+    unresolvedReferenceName(errorMessage)?.let { missing ->
+        suggestResolvableSymbols(b, missing, code, diagnostic).forEach { s ->
+            val importFqn = s.detail
+                .takeIf { it.startsWith("add import ") }
+                ?.removePrefix("add import ")
+                ?.trim()
+                .orEmpty()
+            if (importFqn.isNotEmpty()) {
+                // Import (optionally also a rename when the class name differs from the token).
+                val rename = if (!s.name.equals(missing, ignoreCase = true)) s.name else ""
+                out += OutputSuggestion(
+                    kind = "import",
+                    label = importFqn,
+                    detail = if (rename.isNotEmpty()) "import + rename to ${s.name}" else "add import",
+                    token = missing,
+                    replacement = rename,
+                    importFqn = importFqn,
+                    line = line,
+                    column = column,
+                    aiInstruction = buildString {
+                        append("Add the missing import `import $importFqn`")
+                        if (rename.isNotEmpty()) append(" and replace `$missing` with `${s.name}`")
+                        append(" to resolve the unresolved reference `$missing`.")
+                    }
+                )
+            } else {
+                // Rename to an existing symbol.
+                out += OutputSuggestion(
+                    kind = "rename",
+                    label = s.name,
+                    detail = s.detail,
+                    token = missing,
+                    replacement = s.name,
+                    line = line,
+                    column = column,
+                    aiInstruction = "Replace the unresolved reference `$missing` with `${s.name}`."
+                )
+            }
+        }
+    }
+
+    numericWrapHelper(errorMessage)?.let { helper ->
+        val typeName = when (helper) {
+            ".d" -> "Double"
+            ".f" -> "Float"
+            ".i" -> "Int"
+            ".l" -> "Long"
+            else -> "the expected type"
+        }
+        out += OutputSuggestion(
+            kind = "wrap",
+            label = "make value $typeName",
+            detail = "fix the numeric type mismatch",
+            replacement = helper,
+            line = line,
+            column = column,
+            aiInstruction = "Fix the numeric type mismatch by converting the offending value to " +
+                "$typeName — rewrite a numeric literal cleanly, or use Field's `$helper` helper on an expression."
+        )
+    }
+
+    if (out.isEmpty() && errorMessage.contains("Overload resolution ambiguity", ignoreCase = true)) {
+        out += OutputSuggestion(
+            kind = "generic",
+            label = "resolve overload ambiguity",
+            detail = "let AI4 disambiguate the call",
+            line = line,
+            column = column,
+            aiInstruction = "Resolve the overload resolution ambiguity in this call, " +
+                "disambiguating the arguments or adding explicit types as needed."
+        )
+    }
+
+    return out
+}
+
+/** The Field numeric helper (`.d`/`.f`/`.i`/`.l`) that resolves a numeric argument-type mismatch, or null. */
+private fun numericWrapHelper(errorMessage: String): String? {
+    val match = Regex(
+        """Argument type mismatch:\s*actual type is ['"`]([^'"`]+)['"`],\s*but ['"`]([^'"`]+)['"`]\s+was expected""",
+        RegexOption.IGNORE_CASE
+    ).find(errorMessage) ?: return null
+    val actual = simplifyTypeForOutput(match.groupValues[1].substringBefore('?'))
+    val expected = simplifyTypeForOutput(match.groupValues[2].substringBefore('?'))
+    val numericTypes = setOf("Byte", "Short", "Int", "Long", "Float", "Double")
+    if (actual !in numericTypes || expected !in numericTypes) return null
+    return when (expected) {
+        "Double" -> ".d"
+        "Float" -> ".f"
+        "Int" -> ".i"
+        "Long" -> ".l"
+        else -> null
+    }
 }
 
 private data class ErrorMessageSuggestion(

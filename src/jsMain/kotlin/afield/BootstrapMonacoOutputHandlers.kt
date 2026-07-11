@@ -395,6 +395,28 @@ private fun dynamicOutputStack(raw: dynamic): List<OutputStackLocation> {
     return out
 }
 
+private fun dynamicOutputSuggestions(raw: dynamic): List<OutputSuggestion> {
+    val suggestions = raw?.suggestions ?: return emptyList()
+    val length = (suggestions.length as? Number)?.toInt() ?: return emptyList()
+    val out = mutableListOf<OutputSuggestion>()
+    for (i in 0 until length) {
+        val item = suggestions[i] ?: continue
+        val kind = item.kind as? String ?: continue
+        out += OutputSuggestion(
+            kind = kind,
+            label = item.label as? String ?: "",
+            detail = item.detail as? String ?: "",
+            token = item.token as? String ?: "",
+            replacement = item.replacement as? String ?: "",
+            importFqn = item.importFqn as? String ?: "",
+            line = (item.line as? Number)?.toInt() ?: -1,
+            column = (item.column as? Number)?.toInt() ?: -1,
+            aiInstruction = item.aiInstruction as? String ?: ""
+        )
+    }
+    return out
+}
+
 fun routeMonacoOutput(payload: Output, uidOverride: String = ""): Boolean {
     val uid = uidOverride.ifBlank { payload.uid }
     if (uid.isBlank()) return true
@@ -459,7 +481,7 @@ fun routeMonacoOutput(payload: Output, uidOverride: String = ""): Boolean {
                     clearErrors(w.globalEditor)
                 } else {
                     val formatted = formatErrorOutputHtml(html, uid)
-                    addOutput(w.globalEditor, formatted, line, "error", annotation, frameMarker, startColumn, endLine, endColumn)
+                    addOutput(w.globalEditor, formatted, line, "error", annotation, frameMarker, startColumn, endLine, endColumn, payload.suggestions, uid, property)
                     setStackTraceHints(w.globalEditor, stackLocationsFor(payload, uid, property))
                     w.lastErrorIs = arrayOf(line - 1, html)
                 }
@@ -469,7 +491,7 @@ fun routeMonacoOutput(payload: Output, uidOverride: String = ""): Boolean {
                     clearErrors(embeddedEditor.editor)
                 } else {
                     val formatted = formatErrorOutputHtml(html, uid)
-                    addOutput(embeddedEditor.editor, formatted, line, "error", annotation, frameMarker, startColumn, endLine, endColumn)
+                    addOutput(embeddedEditor.editor, formatted, line, "error", annotation, frameMarker, startColumn, endLine, endColumn, payload.suggestions, uid, property)
                     setStackTraceHints(embeddedEditor.editor, stackLocationsFor(payload, uid, property))
                 }
             }
@@ -501,7 +523,8 @@ fun monacoHandleOutput(payload: dynamic, message: dynamic, uid: String): Boolean
             startColumn = (payload.startColumn as? Number)?.toInt() ?: -1,
             endLine = (payload.endLine as? Number)?.toInt() ?: -1,
             endColumn = (payload.endColumn as? Number)?.toInt() ?: -1,
-            stack = dynamicOutputStack(payload)
+            stack = dynamicOutputStack(payload),
+            suggestions = dynamicOutputSuggestions(payload)
         ),
         uid
     )

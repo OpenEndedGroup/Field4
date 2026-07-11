@@ -92,7 +92,32 @@ data class Output(
     val startColumn: Int = -1,
     val endLine: Int = -1,
     val endColumn: Int = -1,
-    val stack: List<OutputStackLocation> = emptyList()
+    val stack: List<OutputStackLocation> = emptyList(),
+    val suggestions: List<OutputSuggestion> = emptyList()
+)
+
+/**
+ * A single actionable fix for a compile/runtime error, rendered in the error output area as a
+ * row with two buttons: "Apply" (does the edit directly via Monaco executeEdits) and "Ask AI4"
+ * (hands the fix to the assistant with a shaped prompt). See suggestionsFor() on the JVM side.
+ *
+ * [kind] discriminates how "Apply" behaves client-side:
+ *   - "rename"   replace the offending token at [line]/[column] with [replacement]
+ *   - "import"   insert `import <importFqn>`; if [replacement] is set, also rename the token
+ *   - "wrap"     append a helper (e.g. `.d`/`.f`) to the offending value; best-effort
+ *   - "generic"  no safe mechanical edit — "Apply" notifies; "Ask AI4" is the real path
+ */
+@Serializable
+data class OutputSuggestion(
+    val kind: String,
+    val label: String,
+    val detail: String = "",
+    val token: String = "",
+    val replacement: String = "",
+    val importFqn: String = "",
+    val line: Int = -1,
+    val column: Int = -1,
+    val aiInstruction: String = ""
 )
 
 @Serializable

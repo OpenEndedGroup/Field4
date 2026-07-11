@@ -1274,6 +1274,247 @@ fun addPromptBox(editor: dynamic, belowLine: Int, acceptCallback: dynamic) {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Actionable error suggestions ("Did you mean" / "add import" / numeric-wrap).
+// Rendered as rows under an error output, each with an "Apply" button (direct
+// Monaco edit) and an "Ask AI4" button (shaped ai-assist request). Structured
+// data comes from the JVM via Output.suggestions (see suggestionsFor()).
+// ---------------------------------------------------------------------------
+
+/** Resolve the Monaco range of the identifier at (line, column); null if it doesn't match [expectToken]. */
+private fun fixWordRangeAt(editor: dynamic, line: Int, column: Int, expectToken: String): dynamic {
+    if (line < 1) return null
+    val model = editor.getModel() ?: return null
+    val lineCount = (model.getLineCount() as? Number)?.toInt() ?: return null
+    if (line > lineCount) return null
+    val col = if (column >= 1) column else 1
+    val word = model.getWordAtPosition(js("{ lineNumber: line, column: col }")) ?: return null
+    val w = (word.word as? String) ?: return null
+    if (w.isEmpty()) return null
+    if (expectToken.isNotEmpty() && w != expectToken) return null
+    return newRange(line, (word.startColumn as Number).toInt(), line, (word.endColumn as Number).toInt())
+}
+
+private fun notifyFixCantApply() {
+    notify("Couldn't apply automatically — try Ask AI4", "*field-fix")
+}
+
+private fun applyEdit(editor: dynamic, range: dynamic, text: String) {
+    val edit = js("{}")
+    edit.range = range
+    edit.text = text
+    edit.forceMoveMarkers = true
+    editor.executeEdits("field-fix", arrayOf(edit))
+}
+
+/** Insert `import <fqn>` after the last existing import (or package, or at the top). No-op if already present. */
+private fun insertImportLine(editor: dynamic, fqn: String) {
+    if (fqn.isBlank()) return
+    val model = editor.getModel() ?: return
+    val importLine = "import $fqn"
+    val lines = (model.getValue() as String).split("\n")
+    if (lines.any { val t = it.trim(); t == importLine || t == "$importLine;" }) return
+
+    var lastImport = -1
+    var packageLine = -1
+    for (idx in lines.indices) {
+        val t = lines[idx].trim()
+        when {
+            t.startsWith("import ") -> lastImport = idx
+            t.startsWith("package ") -> packageLine = idx
+        }
+    }
+    val insertLine0 = when {
+        lastImport >= 0 -> lastImport + 1
+        packageLine >= 0 -> packageLine + 1
+        else -> 0
+    }
+    val ln = insertLine0 + 1 // 1-based
+    val lineCount = (model.getLineCount() as Number).toInt()
+    if (ln > lineCount) {
+        val lastLen = (model.getLineMaxColumn(lineCount) as Number).toInt()
+        applyEdit(editor, newRange(lineCount, lastLen, lineCount, lastLen), "\n$importLine")
+    } else {
+        applyEdit(editor, newRange(ln, 1, ln, 1), "$importLine\n")
+    }
+}
+
+/** The numeric literal (with any type suffix) spanning [line]/[column], as (range, text), or null. */
+private fun numericLiteralAt(model: dynamic, line: Int, column: Int): Pair<dynamic, String>? {
+    if (line < 1) return null
+    val lineCount = (model.getLineCount() as? Number)?.toInt() ?: return null
+    if (line > lineCount) return null
+    val text = model.getLineContent(line) as String
+    val col0 = (column - 1).coerceIn(0, text.length)
+    val regex = Regex("""(?<![\w.])(?:\d[\d_]*(?:\.\d[\d_]*)?|\.\d[\d_]*)(?:[eE][+-]?\d+)?[fFlL]?""")
+    for (m in regex.findAll(text)) {
+        val start = m.range.first
+        val end = m.range.last + 1
+        if (col0 in start..end) {
+            return newRange(line, start + 1, line, end + 1) to m.value
+        }
+    }
+    return null
+}
+
+/**
+ * Rewrite a numeric literal to a clean literal of the target type implied by [helper]
+ * (`.d`->Double, `.f`->Float, `.i`->Int, `.l`->Long). Returns null when a clean rewrite would
+ * silently lose precision (fractional literal -> Int/Long), so the caller can fall back to the
+ * explicit `.i`/`.l` helper append instead.
+ */
+private fun rewriteNumericLiteral(text: String, helper: String): String? {
+    val mantissa = if (text.isNotEmpty() && text.last() in "fFlL") text.dropLast(1) else text
+    val fractional = mantissa.contains('.') || mantissa.contains('e') || mantissa.contains('E')
+    return when (helper) {
+        ".d" -> if (fractional) mantissa else "$mantissa.0"
+        ".f" -> "${mantissa}f"
+        ".i" -> if (fractional) null else mantissa
+        ".l" -> if (fractional) null else "${mantissa}L"
+        else -> null
+    }
+}
+
+private fun applyFixSuggestion(editor: dynamic, s: OutputSuggestion) {
+    when (s.kind) {
+        "rename" -> {
+            val range = fixWordRangeAt(editor, s.line, s.column, s.token)
+            if (range == null) { notifyFixCantApply(); return }
+            applyEdit(editor, range, s.replacement)
+            editor.focus()
+        }
+        "import" -> {
+            // Rename first (original coords) if the class name differs, then insert the import at the top.
+            if (s.replacement.isNotEmpty()) {
+                val range = fixWordRangeAt(editor, s.line, s.column, s.token)
+                if (range == null) { notifyFixCantApply(); return }
+                applyEdit(editor, range, s.replacement)
+            }
+            insertImportLine(editor, s.importFqn)
+            editor.focus()
+        }
+        "wrap" -> {
+            val model = editor.getModel() ?: run { notifyFixCantApply(); return }
+            // Numeric literals get rewritten to a clean literal of the target type
+            // (0.2f -> 0.2, 3 -> 3.0) rather than the funky `0.2f.d` helper append.
+            val lit = numericLiteralAt(model, s.line, s.column)
+            if (lit != null) {
+                val (litRange, litText) = lit
+                applyEdit(editor, litRange, rewriteNumericLiteral(litText, s.replacement) ?: (litText + s.replacement))
+                editor.focus()
+                return
+            }
+            // Non-literal expression/variable: fall back to appending the helper (`x` -> `x.d`).
+            val range = fixWordRangeAt(editor, s.line, s.column, "")
+            if (range == null) { notifyFixCantApply(); return }
+            val existing = model.getValueInRange(range) as String
+            applyEdit(editor, range, existing + s.replacement)
+            editor.focus()
+        }
+        else -> notifyFixCantApply()
+    }
+}
+
+private fun askAi4ForSuggestion(editor: dynamic, s: OutputSuggestion, boxUid: String, boxProperty: String) {
+    if (boxUid.isBlank()) { notifyFixCantApply(); return }
+    val w = js("window")
+    val model = editor.getModel() ?: return
+    val fullText = model.getValue() as String
+    val line = s.line
+    val instruction = s.aiInstruction
+
+    fun offsetAt(lineNumber: Int, col: Int): Int =
+        (model.getOffsetAt(js("{ lineNumber: lineNumber, column: col }")) as Number).toInt()
+
+    // Focus AI4 on the offending token when we can locate it, else the whole error line, else the file.
+    val range = if (s.token.isNotEmpty()) fixWordRangeAt(editor, s.line, s.column, s.token) else null
+    val wrapped: String = when {
+        range != null -> {
+            val startOff = offsetAt((range.startLineNumber as Number).toInt(), (range.startColumn as Number).toInt())
+            val endOff = offsetAt((range.endLineNumber as Number).toInt(), (range.endColumn as Number).toInt())
+            fullText.substring(0, startOff) + "<rewrite>" + fullText.substring(startOff, endOff) +
+                "</rewrite>" + fullText.substring(endOff)
+        }
+        line >= 1 && line <= (model.getLineCount() as Number).toInt() -> {
+            val startOff = offsetAt(line, 1)
+            val endOff = offsetAt(line, (model.getLineMaxColumn(line) as Number).toInt())
+            fullText.substring(0, startOff) + "<rewrite>" + fullText.substring(startOff, endOff) +
+                "</rewrite>" + fullText.substring(endOff)
+        }
+        else -> "<rewrite>$fullText</rewrite>"
+    }
+
+    val property = boxProperty.ifBlank { (w.currentSelectedProperty as? String) ?: "code" }
+    val opener = w.openAiChatForBox
+    if (opener != null) opener(boxUid, property)
+
+    val payload = js("{}")
+    payload.uid = boxUid
+    payload.prompt = wrapped
+    payload.extraPrompt = instruction
+    payload.property = property
+    payload.kind = "rewrite"
+    send("ai-assist", payload)
+}
+
+/** Append one "Apply / Ask AI4" row per structured suggestion to an error output's inner node. */
+private fun appendErrorSuggestions(
+    editor: dynamic,
+    container: HTMLElement,
+    suggestions: dynamic,
+    boxUid: String,
+    boxProperty: String
+) {
+    if (suggestions == null || suggestions == undefined) return
+    // Always a genuine Kotlin List<OutputSuggestion> here (Output arrives typed via routeMonacoOutput).
+    val list = suggestions.unsafeCast<List<OutputSuggestion>>()
+    if (list.isEmpty()) return
+
+    val wrap = document.createElement("div") as HTMLElement
+    wrap.className = "field-fix-suggestions"
+
+    for (s in list) {
+        val row = document.createElement("div") as HTMLElement
+        row.className = "field-fix-row"
+
+        val label = document.createElement("span") as HTMLElement
+        label.className = "field-fix-label"
+        label.textContent = s.label
+        row.appendChild(label)
+
+        val detail = s.detail
+        if (detail.isNotBlank()) {
+            val det = document.createElement("span") as HTMLElement
+            det.className = "field-fix-detail"
+            det.textContent = detail
+            row.appendChild(det)
+        }
+
+        val apply = document.createElement("button") as HTMLElement
+        apply.className = "field-fix-apply"
+        apply.textContent = "Apply"
+        apply.setAttribute("title", "Apply this fix directly")
+        apply.addEventListener("click", { e: dynamic ->
+            e.stopPropagation(); e.preventDefault()
+            applyFixSuggestion(editor, s)
+        })
+        row.appendChild(apply)
+
+        val ai = document.createElement("button") as HTMLElement
+        ai.className = "field-fix-ai"
+        ai.textContent = "Ask AI4"
+        ai.setAttribute("title", "Ask AI4 to make this fix")
+        ai.addEventListener("click", { e: dynamic ->
+            e.stopPropagation(); e.preventDefault()
+            askAi4ForSuggestion(editor, s, boxUid, boxProperty)
+        })
+        row.appendChild(ai)
+
+        wrap.appendChild(row)
+    }
+    container.appendChild(wrap)
+}
+
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun addOutput(
@@ -1285,7 +1526,10 @@ fun addOutput(
     frameMarker: Int,
     markerStartColumn: Int,
     markerEndLine: Int,
-    markerEndColumn: Int
+    markerEndColumn: Int,
+    suggestions: dynamic = null,
+    boxUid: String = "",
+    boxProperty: String = "code"
 ) {
     var textClean = text
     val isHTML = looksLikeHTML(text)
@@ -1365,6 +1609,12 @@ fun addOutput(
             annotationNode.innerHTML = annotation ?: ""
         }
 
+        if (extraClass == "error") {
+            (found.domNodeInner as? HTMLElement)?.let {
+                appendErrorSuggestions(editor, it, suggestions, boxUid, boxProperty)
+            }
+        }
+
         val domNode = found.domNode as HTMLElement
         domNode.className = ""
         domNode.classList.add("execution_output")
@@ -1435,6 +1685,7 @@ fun addOutput(
             domNodeInner.classList.add("inner_output")
             if (extraClass == "error") {
                 domNodeInner.classList.add("copyable-error-output")
+                appendErrorSuggestions(editor, domNodeInner, suggestions, boxUid, boxProperty)
             }
             domNodeInner.style.background = "rgba(0,0,0,1)"
             domNodeInner.style.borderRadius = "8px"
