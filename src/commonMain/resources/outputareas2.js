@@ -673,6 +673,14 @@ function disclosureInterface(container) {
                 d.cw.scrollTop = st.scrollTop || 0;
                 d.cw.scrollLeft = st.scrollLeft || 0;
                 d.wrap.style.width = `${w}px`;
+                // We just resized d.cw. Content sized relative to the container will
+                // resize too and fire d.contentResizeObserver; mark a short window so
+                // that self-caused resize is NOT treated as a real content change and
+                // does not reschedule auto-size. Without this, content whose natural
+                // size tracks the container (e.g. forth-visualization-helpers) drove an
+                // applyOpen->resize->markContentChanged->auto-size feedback loop of
+                // ~11k layout passes per capture -> visible flicker and an apparent hang.
+                d.selfResizeUntil = Date.now() + 250;
         }
 
         function primeAutoSizeForOpen(id, d) {
@@ -753,6 +761,11 @@ function disclosureInterface(container) {
 
                 if (!d.contentResizeObserver && typeof ResizeObserver !== "undefined") {
                         d.contentResizeObserver = new ResizeObserver(() => {
+                                // Ignore resizes we caused ourselves in applyOpen (see
+                                // d.selfResizeUntil) -- reacting to them reschedules auto-size
+                                // and forms a non-converging feedback loop. Real content
+                                // growth still arrives via the MutationObserver path.
+                                if (d.selfResizeUntil && Date.now() < d.selfResizeUntil) return;
                                 markContentChanged(id, "resize");
                         });
                 }
