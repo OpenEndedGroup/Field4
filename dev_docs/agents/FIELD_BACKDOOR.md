@@ -197,6 +197,12 @@ Each `--command` runs in order. `@last` means “the most recently created box i
 
 ## Transcript Macros
 
+> **The canonical automation format is documented in full in
+> [`OPERATION_TRANSCRIPT.md`](./OPERATION_TRANSCRIPT.md)** — the complete op vocabulary
+> (`create edit move connect execute launch stop wait await save delete`), the
+> loud-`launch` contract, output/error observability, and the build → run → capture →
+> save → reopen lifecycle. This section is just the backdoor command surface for it.
+
 Use `macro` or `transcript` commands when you want durable semantic automation:
 
 ```bash
@@ -344,6 +350,7 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json \
 Rules:
 - scratch is for disposable experiments
 - `--document <name>` is for a saved workspace document
+- **`--document` is resolved relative to the workspace root** (session key = `{workspace}/{document}`). Passing an *absolute* path yields a bogus `.../AFieldWorkspace//abs/path` and loads an empty document, after which box-referencing ops are skipped or CLI `run`/`launch` silently create empty boxes. To reopen a document produced by the transcript `save` op, save it *into* a workspace dir and open it by its relative name (or set `--workspace` to the save location's parent).
 - if Field is already running, the backdoor attaches to that process rather than changing its startup options
 - `playwright-open` always targets the backdoor's current attached session, so it is the reliable way to get a browser onto a scratch document
 - `--with-playwright` opens or reuses Playwright immediately after the backdoor attaches to its current session, and again after any later `open ...` command
@@ -631,6 +638,8 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json \
 ```
 
 `run` waits for the execution strand to finish and returns the events produced during that command.
+
+> Note: `run`/`launch <uid>` always **send** the `--value` (empty if you omit it), which overrides the box's stored code — you'll see `codeLength: 0` and no output. To run a box's *stored* code (e.g. after loading a saved document), use a transcript `execute`/`launch` op with no inline `code:` (the stored-code fallback), not bare CLI `run`. See [`OPERATION_TRANSCRIPT.md`](./OPERATION_TRANSCRIPT.md#execute-vs-launch).
 
 ### Launch a Box
 

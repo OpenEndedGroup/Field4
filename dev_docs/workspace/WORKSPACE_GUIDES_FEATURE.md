@@ -1,5 +1,13 @@
 # Agent Guides in Workspaces - Feature Summary
 
+> **Updated (2026-07):** the copied onboarding set is now **`README.md`** (human
+> orientation) + **`AGENTS.md`** (agent onboarding, auto-discovered by agent tooling),
+> sourced from `templates/WORKSPACE_README.md` and `templates/WORKSPACE_AGENTS.md`. The
+> older `AGENT_GUIDE.md` / `AGENT_QUICK_REF.md` copies described below were retired with
+> the sidecar-first agent path; the canonical automation reference now lives in
+> `dev_docs/agents/` (`OPERATION_TRANSCRIPT.md`, `FIELD_BACKDOOR.md`). The diagrams below
+> are kept as historical design record.
+
 ## Problem Statement
 
 > "Shall we place the agent guides _inside_ new field workspaces / document directories so that agents working there have a guide?"

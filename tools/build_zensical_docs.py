@@ -8,6 +8,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -200,7 +201,19 @@ def main() -> int:
     generated_docs = generated_root / "docs"
 
     if generated_docs.exists():
-        shutil.rmtree(generated_docs)
+        # macOS (Finder/Spotlight) can re-create a .DS_Store inside a directory between
+        # rmtree clearing its contents and the final rmdir, so rmdir fails with
+        # "Directory not empty". Retry a few times; each pass clears whatever reappeared.
+        for attempt in range(5):
+            try:
+                shutil.rmtree(generated_docs)
+                break
+            except OSError:
+                if not generated_docs.exists():
+                    break
+                if attempt == 4:
+                    raise
+                time.sleep(0.1)
     generated_root.mkdir(parents=True, exist_ok=True)
     generated_docs.mkdir(parents=True, exist_ok=True)
 

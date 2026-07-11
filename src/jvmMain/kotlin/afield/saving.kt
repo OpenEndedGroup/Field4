@@ -1577,11 +1577,14 @@ class SavingContext {
             val workspace = File(workspaceDir)
             if (!workspace.exists() || !workspace.isDirectory) return
 
-            // Copy the workspace onboarding README into new workspaces. It points agents
-            // at the canonical automation docs under dev_docs/agents/ (FIELD_BACKDOOR.md,
-            // OPERATION_TRANSCRIPT.md); we no longer copy standalone guide files.
+            // Copy the workspace onboarding set into new workspaces:
+            //   README.md  — human orientation (what this folder is, how to open it)
+            //   AGENTS.md  — agent onboarding, auto-discovered by agent tooling; onboards
+            //                an agent that opens this folder to the transcript/backdoor path.
+            // Both point at the canonical automation docs under dev_docs/agents/.
             val guidesToCopy = mapOf(
-                "templates/WORKSPACE_README.md" to "README.md"
+                "templates/WORKSPACE_README.md" to "README.md",
+                "templates/WORKSPACE_AGENTS.md" to "AGENTS.md"
             )
 
             // Get the repository root (go up from wherever we are)

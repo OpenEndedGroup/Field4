@@ -1,137 +1,44 @@
-# Field4 Workspace
+# A Field workspace
 
-Welcome to this Field4 workspace! This directory contains boxes (code units) that can be edited live while Field is running.
+Welcome. This folder is a **Field document** — a live-coding canvas made of *boxes*
+(units of Kotlin, GLSL shaders, or other small languages) that you can edit and run
+while Field is running.
 
-## For AI Agents Working Here
+- **Open it in Field**: launch Field and open this document by name, or point Field's
+  `--workspace` at the folder that contains it.
+- **`metadata.edn`** is the document: it lists the boxes and their properties. Field
+  manages it for you — you rarely need to edit it by hand.
+- **`<box>_<property>_.{kt,glsl,yaml,js}`** are *sidecar* files: the larger text
+  properties of each box (code, shaders, metadata) kept as editable files on disk.
 
-Field4 has a **self-healing metadata system** that makes it easy for you to work on files in this workspace without manually managing metadata.
+## Two ways to work here
 
-### Quick Start
+**1. Edit files directly.** Create or edit a sidecar file and Field's file watcher picks
+it up within a few seconds — handy for quick manual edits.
 
-**Create a new box:**
 ```bash
-# Just create a file with this pattern: <boxId>_<property>_.<extension>
-echo 'println("Hello from AI!")' > my-box_code_.kt
+# create a box by creating a file named <boxId>_<property>_.<ext>
+echo 'println("hello from a new box")' > hello_code_.kt
 ```
 
-Within 5-10 seconds, Field will:
-- Detect your new file
-- Auto-create a box named "My Box"
-- Position it in the UI
-- Load your code
-- Save everything to metadata.edn
+Field detects `hello_code_.kt`, creates a box `hello`, positions it, loads the code, and
+saves to `metadata.edn`. The underscore before the dot (`_.`) is required. Supported
+properties: `code` (`.kt`), `fragment`/`vertex`/`compute` (`.glsl`), `metadata`
+(`.yaml`), `customization` (`.js`).
 
-**Edit existing boxes:**
-```bash
-# Edit any file - changes sync immediately
-echo 'println("Updated code!")' > my-box_code_.kt
-```
+**2. Drive Field programmatically.** To *run* code, capture output and errors, take
+screenshots, build documents, and save them — use the agent automation path. If you are
+an AI agent, **read [`AGENTS.md`](./AGENTS.md) in this folder** — it onboards you to that
+path. Humans can read it too; it's the fast way to script Field.
 
-### Supported File Types
+## The full reference
 
-| File Pattern | Purpose |
-|--------------|---------|
-| `id_code_.kt` | Kotlin code |
-| `id_fragment_.glsl` | Fragment shader |
-| `id_vertex_.glsl` | Vertex shader |
-| `id_compute_.glsl` | Compute shader |
-| `id_metadata_.yaml` | Box metadata/tags |
-| `id_customization_.js` | JavaScript |
+The manual file mechanics live in Field's `dev_docs/FileWatchManager.md`. The automation
+path is documented in `dev_docs/agents/` in the Field repository:
 
-**Important:** The underscore before the dot (`_.`) is required!
+- `dev_docs/agents/README.md` — the map of the agent path
+- `dev_docs/agents/OPERATION_TRANSCRIPT.md` — build / edit / launch / save documents
+- `dev_docs/agents/FIELD_BACKDOOR.md` — run code, capture output, screenshots, video
 
-### What You Don't Need to Do
-
-❌ Don't manually edit `metadata.edn` (Field handles it)
-❌ Don't worry about frame positions (auto-calculated)
-❌ Don't manage box IDs (just use descriptive names)
-
-### Workspace Structure
-
-```
-workspace/
-├── README.md              ← You are here
-├── metadata.edn           ← Auto-managed box definitions
-├── boxid_code_.kt         ← Kotlin code files
-├── boxid_fragment_.glsl   ← Shader files
-└── boxid_metadata_.yaml   ← Metadata files
-```
-
-### Best Practices
-
-**Good box IDs:**
-- `particle-system`, `shader-utils`, `physics-engine`
-- Use lowercase with hyphens
-- Descriptive and meaningful
-
-**Avoid:**
-- Spaces in IDs (use hyphens instead)
-- Generic names like `box1`, `test`, `temp`
-- Special characters except `-` and `_`
-
-### Common Tasks
-
-**Add a shader to a box:**
-```bash
-echo 'void main() { gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0); }' > my-box_fragment_.glsl
-```
-
-**Add metadata/tags:**
-```bash
-cat > my-box_metadata_.yaml << 'EOF'
-tags:
-  - graphics
-  - demo
-description: My awesome box
-EOF
-```
-
-**Create multiple related boxes:**
-```bash
-for i in {1..3}; do
-  echo "println(\"Box $i\")" > demo-$i_code_.kt
-done
-```
-
-### Troubleshooting
-
-**Box not appearing?**
-- Check filename format: `boxid_property_.extension`
-- Verify extension is supported (see table above)
-- Wait 5-10 seconds for detection
-- Check Field's console for errors
-
-**Changes not syncing?**
-- Ensure Field is running
-- Check file completed writing
-- Look for errors in Field's console
-- Verify the 15-second grace period hasn't triggered
-
-### Full Documentation
-
-The files above are the manual, on-disk way to edit a workspace. To *drive* Field
-programmatically — run code, capture output/errors, take screenshots, build and
-save documents, or read and rewrite saved macros — use the agent automation path:
-- **`dev_docs/agents/README.md`** - the map of the agent path (in the Field repo)
-- **`dev_docs/agents/FIELD_BACKDOOR.md`** - the low-level run/capture/screenshot harness
-- **`dev_docs/agents/OPERATION_TRANSCRIPT.md`** - the canonical build/edit/launch/save automation format
-- **Field4 Console** - check logs for real-time feedback
-
-### Need Help?
-
-- Check Field's console output for detailed logs
-- Look for messages like: `info,file-watch: Auto-created box...`
-- See `dev_docs/agents/` in the Field repo for the full automation reference
-- Check the `FileWatchManager.kt` source code for file-sync implementation details
-
----
-
-**Auto-Management Features:**
-- ✅ Orphan file detection (every 5 seconds)
-- ✅ Auto-box creation with smart naming
-- ✅ Non-overlapping frame positioning
-- ✅ Live file synchronization
-- ✅ Metadata reconciliation
-- ✅ 15-second grace period for safety
-
-Happy coding! 🚀
+Field's console logs every file operation (`info,file-watch: Auto-created box: …`) — a
+good first place to look when something doesn't sync.
