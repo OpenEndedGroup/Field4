@@ -86,7 +86,9 @@ theme:
   font: false
   custom_dir: overrides
   features:
-    - navigation.path
+    # navigation.path (breadcrumbs) disabled: rendered under the fixed frosted
+    # header and redundant with the nav rail after the zensical port.
+    # - navigation.path
     # - navigation.expand
     - content.code.copy
 
@@ -95,6 +97,9 @@ extra_css:
   - assets/code-diff-player/code-diff-player.css
 
 extra_javascript:
+  # homepage-video.js must precede dot-grid.js: it sets the
+  # data-field-homepage flag that dot-grid.js reads to suppress itself.
+  - assets/homepage-video.js
   - assets/dot-grid.js
   - assets/lesswrong-rail.js
   - assets/image-lightbox.js

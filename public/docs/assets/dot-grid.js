@@ -15,8 +15,8 @@
   var BIG_ALPHA  = 0.60;
   var IDLE_OP    = 0.12;      // overall layer opacity at rest
   var SCROLL_OP  = 0.45;      // overall layer opacity while scrolling
-  var FADE_IN    = 120;       // ms to reach scroll opacity
-  var FADE_OUT   = 900;       // ms to settle back to idle
+  var FADE_IN    = 200;       // ms to reach scroll opacity
+  var FADE_OUT   = 200;       // ms to settle back to idle
 
   /* ── bail on homepage ───────────────────────────────────── */
   if (document.documentElement.getAttribute("data-field-homepage") === "true") return;

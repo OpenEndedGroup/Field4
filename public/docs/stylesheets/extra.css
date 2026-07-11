@@ -121,6 +121,15 @@ h3 {
     backdrop-filter: blur(20px) brightness(0.8);
 }
 
+/* Breadcrumb path (navigation.path) rendered under the fixed frosted header;
+   redundant with the nav rail and visually hidden behind the header, so drop it.
+   The theme sets `.md-path:not([hidden]){display:block}`, so match that
+   specificity (and override with !important) to keep it hidden. */
+.md-path,
+.md-path:not([hidden]) {
+    display: none !important;
+}
+
 .md-typeset img.field-docs-image-native-sized {
     width: min(100%, var(--field-docs-native-max-width));
 }
@@ -666,6 +675,14 @@ html[data-field-homepage="true"] .md-content__inner {
 .md-nav__link:hover {
     color: #fff !important;
     opacity: 1;
+}
+
+/* Active nav item: inverse video (black on white) instead of the theme's
+   translucent red accent pill (--md-accent-fg-color--transparent). Matches the
+   theme selector's specificity; !important overrides the white color set above. */
+.md-nav--primary .md-nav__item .md-nav__link--active {
+    background: #fff !important;
+    color: #000 !important;
 }
 
 .md-nav__title {
