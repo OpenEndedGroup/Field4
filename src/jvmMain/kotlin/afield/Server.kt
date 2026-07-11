@@ -1335,17 +1335,28 @@ private fun ensurePlaywrightPageOnce(targetUrl: String): PlaywrightPageHandle {
     val browser = globalPlaywrightBrowser ?: run {
         val pw = globalPlaywright ?: Playwright.create().also { globalPlaywright = it }
         createdBrowser = true
+        // Enable hardware GL for the capture browser. Headless chromium defaults to
+        // SwiftShader (software rasterization), which pegs the CPU rasterizing docs
+        // capture content and makes a MODE=always build ~2.5x slower (~230s vs ~130s
+        // on forth+fline; 23min vs 9min full). --enable-gpu + --ignore-gpu-blocklist
+        // gets it onto the real GPU; on macOS force the Metal ANGLE backend (verified
+        // ANGLE Metal + the 2.5x). If no GPU is available (e.g. some CI), chromium
+        // falls back to software rendering on its own, so this only ever helps.
+        val browserArgs = buildList {
+            add("--disable-background-timer-throttling")
+            add("--disable-backgrounding-occluded-windows")
+            add("--disable-renderer-backgrounding")
+            add("--disable-frame-rate-limit")
+            add("--enable-gpu")
+            add("--ignore-gpu-blocklist")
+            if (System.getProperty("os.name").orEmpty().lowercase(Locale.US).contains("mac")) {
+                add("--use-angle=metal")
+            }
+        }
         pw.chromium().launch(
             BrowserType.LaunchOptions()
                 .setHeadless(!visibleBackdoorPlaywright)
-                .setArgs(
-                    listOf(
-                        "--disable-background-timer-throttling",
-                        "--disable-backgrounding-occluded-windows",
-                        "--disable-renderer-backgrounding",
-                        "--disable-frame-rate-limit"
-                    )
-                )
+                .setArgs(browserArgs)
         ).also { globalPlaywrightBrowser = it }
     }
 

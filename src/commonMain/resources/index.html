@@ -345,6 +345,24 @@
         }
     })();
 
+    // In the docs capture / automation browser, neutralize the continuous
+    // "executing" stripe animation. `.running` animates background-position every
+    // frame -- a repaint (not GPU-composited) that runs for the ENTIRE time a box
+    // executes, i.e. for the whole duration of every capture. On the headless
+    // software GL that pins the CPU and makes a full build ~2.5x slower than the
+    // hardware-GL (headed) path. The static stripe still shows; only the per-frame
+    // drift stops. Off automatically under automation (Playwright's
+    // navigator.webdriver) or via ?noanim / window.__fieldCaptureMode.
+    (() => {
+        const sp = new URLSearchParams(location.search);
+        const automation = navigator.webdriver === true || window.__fieldCaptureMode === true
+            || sp.has("noanim") || sp.get("anim") === "off";
+        if (!automation) return;
+        const style = document.createElement("style");
+        style.textContent = ".running,.running-launching,.running-continued,.running-ending{animation:none!important}";
+        (document.head || document.documentElement).appendChild(style);
+    })();
+
 </script>
 
 </body>
