@@ -4143,10 +4143,31 @@ class Server {
                                 call.respond(HttpStatusCode.NotFound, "index.html not found")
                             }
                         }
-                        staticFiles(remotePath = "", dir = File("./build/js/packages/afield/kotlin"))
-                        staticFiles(remotePath = "", dir = File("./src/jsMain/resources/"))
-                        staticFiles(remotePath = "", dir = File("./src/jsMain/resources/monaco"))
-                        staticFiles(remotePath = "", dir = File("./src/commonMain/resources/"))
+                        // Cache static assets so page reloads don't re-fetch them.
+                        // Without this they're served with no Cache-Control, so every
+                        // load re-downloads them -- and the docs capture browser reloads
+                        // the page for each screenshot, so it was re-fetching the multi-MB
+                        // afield.mjs + fonts on every capture. Assets are immutable for a
+                        // server run; JS/CSS get a modest max-age (a dev who rebuilds JS
+                        // also restarts the server, giving a fresh browser context), fonts
+                        // and images longer.
+                        val assetCache: StaticContentConfig<File>.() -> Unit = {
+                            cacheControl { file ->
+                                val seconds = when (file.extension.lowercase()) {
+                                    "mjs", "js", "css", "wasm", "map" -> 3600
+                                    "woff2", "woff", "ttf", "otf", "eot" -> 604800
+                                    "png", "jpg", "jpeg", "gif", "svg", "webp", "ico" -> 86400
+                                    else -> 0
+                                }
+                                if (seconds > 0)
+                                    listOf(CacheControl.MaxAge(maxAgeSeconds = seconds, visibility = CacheControl.Visibility.Public))
+                                else emptyList()
+                            }
+                        }
+                        staticFiles(remotePath = "", dir = File("./build/js/packages/afield/kotlin"), block = assetCache)
+                        staticFiles(remotePath = "", dir = File("./src/jsMain/resources/"), block = assetCache)
+                        staticFiles(remotePath = "", dir = File("./src/jsMain/resources/monaco"), block = assetCache)
+                        staticFiles(remotePath = "", dir = File("./src/commonMain/resources/"), block = assetCache)
 
                         val indexHtmlInterceptor = createRouteScopedPlugin("IndexHtmlInterceptor") {
                             onCall { call ->
