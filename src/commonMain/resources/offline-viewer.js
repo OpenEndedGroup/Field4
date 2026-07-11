@@ -67,8 +67,14 @@ window.addEventListener('DOMContentLoaded', async () => {
         // Show document info
         showDocumentInfo(data, ednFileUrl);
 
-        // Initialize Monaco editor
-        await initializeMonaco();
+        // Initialize Monaco editor. A failure here (e.g. the Monaco bundle isn't
+        // deployed alongside the viewer) must not blank the already-rendered box
+        // graph -- degrade to a graph-only, editor-less view instead.
+        try {
+            await initializeMonaco();
+        } catch (monacoError) {
+            console.warn('Monaco editor unavailable; showing box graph only.', monacoError);
+        }
 
         // Cache literate view element
         literateViewEl = document.getElementById('literate-view');
@@ -91,17 +97,61 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-async function fetchEdnFile(url) {
-    // Try to fetch the file
-    try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+// The `?file=` value is authored as an absolute site path (e.g.
+// `/field4/assets/foo/metadata.edn`) so it resolves when the docs are deployed
+// under a `/field4/` mount, or served by the running Field app. But a plain
+// static serving of the built site roots *at* the site dir, so the same asset
+// lives at `/assets/foo/metadata.edn` (no `/field4` prefix) and the offline
+// viewer itself sits at `/offline.html`. Rather than bake one mount point into
+// every doc iframe, derive candidate URLs and try each so the same page works
+// whether it is served at the site root or under a sub-path.
+function ednFileCandidates(fileParam) {
+    const candidates = [];
+    const seen = new Set();
+    const add = (value) => {
+        if (typeof value !== 'string' || value.length === 0) return;
+        if (seen.has(value)) return;
+        seen.add(value);
+        candidates.push(value);
+    };
+
+    add(fileParam);
+
+    // The build emits the offline viewer into the site dir, so `/offline.html`
+    // and `assets/...` share a root. Strip a leading `/<site>/` segment so an
+    // absolute `/field4/assets/...` path also resolves when that dir *is* the
+    // server root (asset then lives at `/assets/...`).
+    if (fileParam.startsWith('/')) {
+        const withoutLeadingSlash = fileParam.replace(/^\/+/, '');
+        const firstSlash = withoutLeadingSlash.indexOf('/');
+        if (firstSlash > 0) {
+            add('/' + withoutLeadingSlash.slice(firstSlash + 1));
         }
-        return await response.text();
-    } catch (error) {
-        throw new Error(`Failed to fetch ${url}: ${error.message}`);
+        // Also try resolving relative to the viewer's own location.
+        add(withoutLeadingSlash);
     }
+
+    return candidates;
+}
+
+async function fetchEdnFile(url) {
+    const candidates = ednFileCandidates(url);
+    const failures = [];
+
+    for (const candidate of candidates) {
+        try {
+            const response = await fetch(candidate);
+            if (!response.ok) {
+                failures.push(`${candidate} → HTTP ${response.status}`);
+                continue;
+            }
+            return await response.text();
+        } catch (error) {
+            failures.push(`${candidate} → ${error.message}`);
+        }
+    }
+
+    throw new Error(`Failed to fetch ${url} (tried ${candidates.length}: ${failures.join('; ')})`);
 }
 
 function hasDisplayableCode(props = {}) {
@@ -456,8 +506,26 @@ function getLanguageForProperty(property) {
 
 async function initializeMonaco() {
     return new Promise((resolve, reject) => {
+        // Monaco's AMD loader (min/vs/loader.js) is a separate <script>. If it
+        // failed to load (e.g. the viewer bundle isn't fully deployed), `require`
+        // is undefined and its callback would otherwise never fire -- leaving the
+        // viewer spinning. Guard both the missing-loader case and a loader that
+        // never resolves so the box graph still renders read-only without an editor.
+        if (typeof require === 'undefined') {
+            reject(new Error('Monaco loader (min/vs/loader.js) is not available'));
+            return;
+        }
+        let settled = false;
+        const timer = setTimeout(() => {
+            if (settled) return;
+            settled = true;
+            reject(new Error('Monaco editor timed out while loading'));
+        }, 15000);
         require.config({ paths: { vs: './min/vs' } });
         require(['vs/editor/editor.main'], () => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
             try {
                 monacoEditor = monaco.editor.create(document.getElementById('editor'), {
                     value: '',

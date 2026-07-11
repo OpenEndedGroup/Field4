@@ -7,7 +7,7 @@ The screenshots keep that machine state visible. Blue RAM cells are the initial 
 The embedded viewer's "Open in Field4" button opens a prepared Nano document with a Nano root already set up.
 
 <iframe
-    src="/offline.html?file=/field.nano_examples.edn"
+    src="/offline.html?file=/field4/assets/nano_examples/metadata.edn"
     title="Nano examples (offline viewer)"
     style="width:100%; height:680px; border:1px solid #444; border-radius:8px; background:#111;"
     loading="lazy"
