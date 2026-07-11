@@ -1000,7 +1000,13 @@ class ShaderFieldProbe(
         return buffer(from = null, name = FIELD_PROBE_BUFFER_NAME) {
             size = FIELD_PROBE_HEADER_BYTES.toLong() + FIELD_PROBE_MAX_SAMPLES.toLong() * 16L
             storage()
-            hosted()
+            // The GPU writes this buffer (atomics + reservoir) and the CPU reads it back every
+            // frame. streamReads() requests HOST_VISIBLE | HOST_CACHED so the readback lands in
+            // cached memory; plain hosted() gives write-combined memory whose CPU reads are
+            // extremely slow on discrete GPUs. Flushes (header reset) and invalidates (readback)
+            // are already issued by mapAndWrite/mapAndReadBytes, so non-coherent cached memory
+            // stays correct.
+            streamReads()
             perFrame = true
         }.also {
             bufferParameters = it

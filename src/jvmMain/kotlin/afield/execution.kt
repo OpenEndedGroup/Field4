@@ -51,6 +51,12 @@ fun installKEActions(root: Box) {
 interface BoxExecution {
 
     fun executeFragment(inside: Box, execute: Execute, reply: ((Message) -> Unit))
+    // Awaited variant: runs the fragment to completion (used by scripted transcript
+    // drivers so a following op / the run result observes its output). Default just
+    // fires the normal (fire-and-forget) path for engines that don't support waiting.
+    suspend fun executeFragmentAndWait(inside: Box, execute: Execute, reply: ((Message) -> Unit)) {
+        executeFragment(inside, execute, reply)
+    }
     fun executeAll(inside: Box, execute: Execute, reply: ((Message) -> Unit))
     fun launchAll(
         inside: Box,
@@ -1537,6 +1543,31 @@ class KotlinExecution : BoxExecution {
         }
 
 
+    }
+
+    override suspend fun executeFragmentAndWait(inside: Box, execute: Execute, reply: ((Message) -> Unit)) {
+        val originSession = thisSession.get()
+        val ln = Math.max(0, execute.line)
+        val code = ("\n" * ln) + execute.code.trimEnd()
+        val wm = ++inside.fragmentGeneration
+        inside._currentlyExecutingFragment = true
+        send(Message("is-running").payload(IsRunning(execute.uid, true, wm, "__fragment__")))
+        // Run on the main dispatcher (drained by the runloop) and JOIN so the caller
+        // observes completion + output — the awaited analogue of executeFragment.
+        inMain {
+            executeInBox(
+                inside,
+                code,
+                reply,
+                originSession,
+                0,
+                property = execute.property,
+                runSetupBlocks = true,
+                finishedHandler = {
+                    inside._currentlyExecutingFragment = false
+                    send(Message("is-running").payload(IsRunning(execute.uid, false, wm, "__fragment__")))
+                }) {}
+        }.join()
     }
 
     override fun executeAll(inside: Box, execute: Execute, reply: ((Message) -> Unit)) {

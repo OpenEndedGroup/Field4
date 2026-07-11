@@ -42,10 +42,12 @@ Current useful verbs:
 - `edit` / `set` / `set-string`: set text-like properties with `from` and `to`.
 - `move` / `frame` / `set-rect`: update a box frame.
 - `connect` / `disconnect`: change parent-child graph topology.
-- `execute`: run a code fragment once.
-- `launch`: launch code as a running job; undo stops it.
+- `execute`: run a code fragment once and await it (output is captured into the run result). If the op carries no `code`, it falls back to the box's stored `code` (or the `property` you name), so a `create` that sets code followed by a bare `execute` runs that stored code.
+- `launch`: **the primary execution verb** — launch code as a running job (renderer/compute/draw boxes are all launched); undo stops it. Like `execute`, a bare `launch` with no inline `code` runs the box's stored `code` (or named `property`), and startup output is captured into the run result. `launch` fails **loud**, never silently: if the target box is not present it reports `` `launch` target box `X` is not present in the document (present: …) `` (listing the boxes that _are_ loaded), and if the resolved property has no code it reports `` has no code to run ``. Either makes the run `success=false` with the reason in `errors`/`message` — so a wrong box id or a mis-resolved document path is obvious immediately rather than a quiet no-op.
 - `stop`: stop a running job.
 - `wait`: sleep for `millis`, `ms`, or `seconds`; `frames` waits for real `Runloop.frame` advancement.
+- `await` / `sync` / `settle` / `wait-pending`: barrier — advance `Runloop` frames until no box has a currently-executing fragment (and launched jobs have reached their first frame), then settle a few extra frames. Write `wait: pending`. Use this after fire-and-forget `execute`/`launch` ops so their print output is captured and any published buffers are populated before a later box reads them or a screenshot is taken.
+- `save` / `save-document` / `save-as`: persist the current (transient) document's live boxes to a `metadata.edn` document at `path` (aliases: `to`, `fn`, `document`). Tombstoned boxes and the synthetic root are excluded; box preambles are regenerated in the snapshot. Awaits the background write (30s cap) so the document folder exists on disk when the op returns. This is how an agent turns an assembled scene into a loadable document.
 
 Backdoor replay also supports capture verbs:
 
@@ -81,6 +83,7 @@ For renderer boxes, keep `start(renderer::run)` as the final expression of the l
 - `graphics_renderer_launch.yaml`: creates the reusable `agent_graphics_context` renderer box, launches it with `start(renderer::run)`, prints `agent graphics renderer ready`, and waits three Runloop frames. Run this before child `afield.four` graphics transcripts.
 - `afield_four_traditional_triangle.yaml`: creates a graphics child box for the stable backdoor graphics parent `agent_graphics_context` and draws a native Vulkan triangle.
 - `graphics_context_bootstrap.yaml`: older combined renderer/child smoke transcript; prefer composing `graphics_renderer_launch.yaml` with a focused child transcript for new docs/tests.
+- `threebox.yaml`: self-contained capstone. One transcript builds a three-box particle system on a blank canvas — a renderer box (owns `Window` + `Renderer`, pumps the loop), a compute box (simulates particles into a `buffer_reference` buffer and probes speed via `{% include "fieldProbe" %}`, publishing the buffer as `prop<FrameBufferGroup>(outputPositions)`), and a draw box (reads `outputPositions` and renders). Requires a GPU/Vulkan window; needs `--with-playwright` for the screenshot step. Demonstrates cross-box property publish/read, the `await` barrier between launches, and `native-screenshot` capture in one run.
 
 ## Growth Rules
 

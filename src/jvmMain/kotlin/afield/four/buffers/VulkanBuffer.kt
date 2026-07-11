@@ -176,11 +176,22 @@ class VulkanBuffer(
 
             val allocCI = VmaAllocationCreateInfo.calloc(stack).apply {
                 usage(Vma.VMA_MEMORY_USAGE_AUTO)
+                // Choose RANDOM host access for anything the CPU will *read* back, so VMA
+                // lands the allocation in HOST_CACHED memory. The two read signals are:
+                //   - an explicit HOST_CACHED request (readback buffers, e.g. streamReads()), and
+                //   - a transfer-destination-only staging buffer (uploaded, then read).
+                // Everything else is a sequential CPU->GPU write, where write-combined memory is
+                // ideal. Getting this wrong is expensive: SEQUENTIAL_WRITE steers VMA toward
+                // uncached/write-combined memory, and CPU reads from that are pathologically slow
+                // on discrete GPUs (no caching or prefetch) — the classic slow-readback trap.
+                val wantsHostReads =
+                    reqMask and VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT != 0 && (
+                        reqMask and VK_MEMORY_PROPERTY_HOST_CACHED_BIT != 0 ||
+                            (usageBits and VK_BUFFER_USAGE_TRANSFER_DST_BIT != 0 &&
+                                usageBits and VK_BUFFER_USAGE_TRANSFER_SRC_BIT == 0)
+                    )
                 val hostAccessFlag =
-                    if (reqMask and VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT != 0 &&
-                        usageBits and VK_BUFFER_USAGE_TRANSFER_DST_BIT != 0 &&
-                        usageBits and VK_BUFFER_USAGE_TRANSFER_SRC_BIT == 0
-                    ) {
+                    if (wantsHostReads) {
                         Vma.VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT
                     } else {
                         Vma.VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT

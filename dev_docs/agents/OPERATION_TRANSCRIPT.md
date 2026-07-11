@@ -1,0 +1,370 @@
+# OperationTranscript — the canonical automation format
+
+`OperationTranscript` is how an agent **builds, edits, runs, and saves Field documents**
+without touching the browser UI. It is a small YAML language of *operations* that
+Field applies to a live document. The agent backdoor (`tools/field_backdoor.py`) is the
+transport and capture harness around it; the transcript is the durable, semantic layer.
+
+Two formats, two jobs:
+
+- **`metadata.edn`** is the *document* format — what a Field document **is** on disk
+  (and in the pasteboard, and in the history repo). Boxes, properties, sidecar files.
+- **An OperationTranscript YAML** is the *puppeting* format — a script for **making,
+  editing, running, and interacting with** a document. Running a transcript can produce
+  a `metadata.edn` document (via the `save` op) that you can reopen later.
+
+If you only remember one thing: **build the document with transcript ops, prove it ran
+by reading the captured `output`, capture a screenshot if you need a picture, then
+`save` it to a `metadata.edn` you can reopen.**
+
+For the low-level harness (server lifecycle, Playwright, screenshots, video, JVM
+smoke), see [`FIELD_BACKDOOR.md`](./FIELD_BACKDOOR.md). For runnable, curated examples,
+see [`transcripts/README.md`](./transcripts/README.md). This doc is the language and
+lifecycle reference.
+
+---
+
+## Running a transcript
+
+A transcript is written into the current document as a named macro, then run:
+
+```bash
+uv run --project . --group backdoor python tools/field_backdoor.py --json --scratch --port 9477 \
+  --command 'macro write my_scene --file /path/to/my_scene.yaml' \
+  --command 'macro run my_scene'
+```
+
+- `--scratch` opens a disposable transient document — the right default for building
+  something from nothing. Use `--document <name>` to operate on a saved workspace
+  document instead (see the gotcha below about how that name resolves).
+- `macro write <name> --file <path>` stores the YAML as a macro on the document.
+  `--content '<yaml>'` works too, but `--file` avoids all shell quoting.
+- `macro run <name>` applies the operations in order and returns a machine-readable
+  result (see [Observability](#observability)).
+
+The YAML shape is a top-level `operations:` list. Each entry is a single-key map whose
+key is the **verb** and whose value is the **payload**:
+
+```yaml
+name: my_scene            # optional; macro write --name overrides
+description: A short note  # optional
+operations:
+  - create:
+      box: hello
+      name: Hello
+      frame: { x: 40.0, y: 40.0, w: 200.0, h: 120.0 }
+      properties:
+        code: |
+          println("hello from a transcript")
+  - launch:
+      box: hello
+      property: code
+  - await:
+      wait: pending
+```
+
+---
+
+## The operation vocabulary
+
+Every verb, its aliases, and the payload keys it reads. Box references (`box`) accept
+any of `box` / `uid` / `id` / `target`.
+
+| Verb (aliases) | What it does | Key payload fields |
+|---|---|---|
+| `create` (`new-box`, `box`) | Create or revive a box, set name/frame/properties, connect under root | `box`, `name`, `frame`, `properties` |
+| `edit` (`set`, `set-string`) | Change a text-like property | `box`, `property`, `from`, `to` |
+| `move` (`frame`, `set-rect`) | Move/resize a box | `box`, `to` (or `frame`) |
+| `connect` / `disconnect` | Change parent→child graph topology | `parent`, `child` |
+| `execute` (`execute-fragment`) | Run a code fragment **once**, awaited | `box`, `property`, `code` |
+| `launch` (`launch-all`, `launch-fragment`) | Launch code as a running job, awaited to first frame | `box`, `property`, `code`, `strand` |
+| `stop` (`stop-all`, `stop-box`) | Stop a running job | `box` |
+| `wait` | Sleep, or wait N real runloop frames | `millis`/`ms`/`seconds`, `frames`, `pending` |
+| `await` (`sync`, `settle`, `wait-pending`) | **Barrier**: drain all pending fragments/launches | `wait: pending` |
+| `save` (`save-document`, `save-as`) | Persist the live boxes to a `metadata.edn` document | `path` (or `to`/`fn`/`document`) |
+| `delete` (`tombstone`) | Tombstone a box (undo revives) | `box` |
+
+Undo (`macro undo <name>`) reverses supported ops: `create`↔tombstone, `edit` swaps
+`from`/`to`, `connect`↔`disconnect`, `launch`→`stop`, etc. `execute`, `wait`, `await`,
+and `save` are not reversible and are skipped on undo.
+
+### create
+
+```yaml
+- create:
+    box: particles              # stable id — reuse it in later ops
+    name: Particle Sim          # display name (also `title`)
+    frame: { x: 240.0, y: 40.0, w: 160.0, h: 90.0 }
+    properties:                 # any box property, incl. sidecar-backed text
+      code: |
+        println("built")
+      compute: |
+        #version 450
+        ...
+```
+
+`create` sets each entry of `properties` with `setPropertyRaw` and connects the box
+under the document root. Prefer **stable ids** (`particles`, `renderer`) over generated
+ones — later `connect`/`launch`/`edit` ops reference the box by that id, and `box(id)`
+is memoised per session so every op sees the same instance.
+
+### connect / disconnect
+
+`connect` is a **direct back-end graph mutation** (`parent.connect(child)`), not a
+front-end RPC. `parent` accepts `parent`/`from`/`source`/`box`; `child` accepts
+`child`/`to`/`target`. This is the transcript equivalent of selecting the parent and
+pressing `g` in the UI. For `afield.four`, a graphics example box must be connected
+**beneath** the renderer box before it launches, so it inherits the `Renderer` context.
+
+### execute vs launch
+
+Both run code. Both **await** completion so the code's output is captured (see
+[Observability](#observability)). Both fall back to the box's **stored** code when the
+op carries no inline `code:` — so a `create` that sets `code`, followed by a bare
+`execute`/`launch`, runs that stored code:
+
+```yaml
+- create:  { box: b, properties: { code: 'println("stored")' } }
+- launch:  { box: b, property: code }   # runs the stored code — no need to repeat it
+```
+
+- **`execute`** runs a fragment once and returns (`executeFragmentAndWait` — it joins,
+  so it does not stall a headless server). Use it for one-shot setup or a computed result.
+- **`launch`** starts a running job and awaits its first frame. **This is the primary
+  execution verb** — renderers, compute loops, and draw loops are all launched. A
+  renderer box's launched code should end in `start(renderer::run)`.
+
+`property` selects which property holds the code (default `code`; use `compute`,
+`fragment`, etc. for shader properties). `strand` (default `default`) names the
+execution strand.
+
+### launch fails loud — by design
+
+`launch` never silently does nothing. If it cannot run real code, the run reports
+`success=false` and the reason names the box:
+
+- **Missing box** — `` `launch` target box `X` is not present in the document (present: a, b, c) ``
+  (it lists the boxes that *are* loaded — usually the fastest way to spot a typo or a
+  document that didn't load).
+- **Empty code** — `` `launch` target box `X` has no code to run: neither the op nor the
+  box's `code` property carries any code ``.
+
+Each loud failure is logged (`error,operation-transcript`), notified, and folded into
+the run's `errors` list. A bare `create`+`launch` that resolves and runs real code
+reports `applied=N skipped=0 errors=0` with the code's output in `output`.
+
+### wait and await
+
+- `wait` sleeps a fixed time (`millis`/`ms`/`seconds`, capped) or advances a fixed
+  number of real runloop frames (`frames`). Reserve it for genuinely time-based waits.
+- **`await`** (aka `sync`/`settle`/`wait-pending`, or `wait: { pending: true }`) is the
+  **barrier**: it advances runloop frames until no box has a currently-executing
+  fragment and launched jobs have reached their first frame, then settles a few extra
+  frames. Put an `await` after fire-and-forget work so its output is captured and any
+  published buffers are populated before a later box reads them or you screenshot.
+
+### save
+
+```yaml
+- save:
+    path: /abs/or/workspace-relative/path/to/newDoc
+```
+
+`save` snapshots the live boxes (excluding the synthetic root and tombstoned boxes) and
+writes a full **`metadata.edn` document** at `path` — `metadata.edn`, one
+`<box>_<property>_.{kt,glsl,…}` sidecar per large text property, plus `document.md` /
+`README.md` / `history_metrics.edn`. The op **awaits** the background write, so the
+folder exists on disk when it returns. Box preambles are regenerated in the snapshot,
+so a reopened document recompiles cleanly. This is how an agent turns an assembled
+scene into a loadable document.
+
+---
+
+## Observability
+
+`macro run` returns one JSON object. Read it, don't guess:
+
+```json
+{
+  "success": true,
+  "message": "Ran macro 'my_scene': applied=2 skipped=0 errors=0.",
+  "applied": 2,
+  "skipped": 0,
+  "errors": [],
+  "output": [
+    { "uid": "hello", "line": 1, "html": "hello from a transcript" }
+  ]
+}
+```
+
+- **`success`** is `false` if any op errored (including a loud `launch` failure).
+- **`applied` / `skipped` / `errors`** count what happened. `skipped` with no `errors`
+  and the note *"No operations changed anything"* usually means a box id didn't resolve.
+- **`output`** collects `print` / `_print` / `println` and inline display output from
+  every `execute`/`launch` in the run, tagged by `uid` and source `line`. This is your
+  proof the code actually ran. Compile errors and runtime exceptions surface here too.
+
+`print`/`_print`/`println` inside launched or executed code all reach `output`. There is
+no need to reach for the browser to see whether code ran — read `output`.
+
+---
+
+## The document lifecycle (build → run → capture → save → reopen)
+
+The whole point of the format, end to end:
+
+1. **Open a transient document** — `--scratch` (or a named `--document`).
+2. **Build** — `create` boxes (with code/shaders), `connect` the graph.
+3. **Run** — `launch` (or `execute`); read `output` to confirm it ran clean.
+4. **Barrier** — `await` so all work has settled.
+5. **Capture** (optional) — a backdoor `screenshot`/`native-screenshot`/`record-*`
+   command for a picture or video (see [`FIELD_BACKDOOR.md`](./FIELD_BACKDOOR.md)).
+6. **Save** (optional) — `save` to a `metadata.edn` document.
+7. **Reopen** — `--document <name>` loads it back; a bare `launch`/`execute` reruns the
+   stored code and reproduces the original output.
+
+This round-trip is verified: a saved document reopened in a fresh session loads its
+boxes (correct id + name), and a bare `launch` of a loaded box reruns its stored code
+(`applied=… skipped=0 errors=0`) and reproduces its output — code sidecar **and**
+regenerated preamble both survive.
+
+---
+
+## Gotchas
+
+- **`--document` is resolved relative to the workspace root.** The backdoor computes the
+  session key as `{workspace}/{document}`. Passing an *absolute* path yields a bogus
+  `.../AFieldWorkspace//abs/path` and loads an **empty** document (`boxes: []`) — after
+  which ops that reference your boxes are skipped, or CLI `launch`/`run` silently create
+  an empty box. To reopen a saved document, either `save` it **into** a workspace dir and
+  open it by its relative name, or point `--workspace` at the save location's parent.
+- **The CLI `run`/`launch <uid>` commands always send `--value`** (empty if you omit it),
+  which *overrides* the box's stored code — you'll see `codeLength: 0` and no output. To
+  run a box's **stored** code, use a transcript `execute`/`launch` op with no inline
+  `code:` (the stored-code fallback), not the bare CLI `run`/`launch`.
+- **Inline `code:` in YAML mangles Kotlin string templates.** `"${expr}"` inside a
+  transcript code block can be eaten by interpolation; build strings with `+`
+  concatenation (`"n=" + n`) in transcript-authored code.
+- **EDN vs YAML quoting.** `metadata.edn` is EDN (Clojure data); transcripts are YAML.
+  The `\"` you sometimes see in logs is normal JSON log escaping, not corruption —
+  `--file` round-trips code cleanly.
+
+---
+
+## Worked example A — a canvas document
+
+Build one box, run it (reading its output), and save it to a reopenable document.
+`savetest.yaml`:
+
+```yaml
+name: savetest
+description: Create a box, run it (observable), then persist as metadata.edn.
+operations:
+  - create:
+      box: sv_box
+      name: save probe
+      frame: { x: 40.0, y: 40.0, w: 160.0, h: 90.0 }
+      properties:
+        code: |
+          prop<Int>(savemarker) = 12321
+          println("save test alive, marker=" + savemarker)
+  - launch:
+      box: sv_box
+      property: code
+  - await:
+      wait: pending
+  - save:
+      path: /Users/you/Documents/AFieldWorkspace/savetest
+```
+
+```bash
+uv run --project . --group backdoor python tools/field_backdoor.py --json --scratch --port 9477 \
+  --command 'macro write savetest --file savetest.yaml' \
+  --command 'macro run savetest'
+```
+
+Expect `applied=4 skipped=0 errors=0` and
+`output: [{ "uid": "sv_box", "html": "save test alive, marker=12321" }]`, and a
+`metadata.edn` document written under the workspace. Reopen it with
+`--document savetest` and a bare `launch: { box: sv_box }` reruns the stored code.
+
+`prop<Int>(savemarker) = 12321` in a box lets that box read `savemarker` bare later —
+that is how Field properties work: a `prop<T>(name)` in a parent injects the accessor,
+and the value propagates to children via the regenerated preamble. Deleting a preamble
+is never fatal; it is regenerated the next time the box runs.
+
+## Worked example B — afield.four Vulkan (renderer + compute + draw)
+
+The capstone: one transcript builds a three-box native graphics system on a blank
+canvas — a **renderer** box that owns the `Window`/`Renderer` and pumps the loop, a
+**compute** box that simulates particles into a `buffer_reference` buffer (and probes
+per-particle speed with `{% include "fieldProbe" %}`), publishing the buffer as
+`prop<FrameBufferGroup>(outputPositions)`, and a **draw** box that reads
+`outputPositions` and renders. The full transcript is
+[`transcripts/threebox.yaml`](./transcripts/threebox.yaml). Its shape:
+
+```yaml
+operations:
+  - create: { box: tb_renderer, name: renderer, properties: { code: |
+        prop<Window>(window); prop<Renderer>(renderer)
+        once.renderer { window = Window("Field three-box"); Renderer(window) }
+        println("renderer ready")
+        start(renderer::run) } }
+  - create: { box: tb_compute, name: compute, properties: { compute: |
+        #version 450
+        ... buffer_reference push_constant + {% include "fieldProbe" %} ...
+      code: |
+        prop<FrameBufferGroup>(outputPositions) = outData
+        println("compute launched, N=" + N) } }
+  - create: { box: tb_draw,    name: draw,    properties: { code: |
+        // reads outputPositions, draws the particles
+        println("draw launched") } }
+  - connect: { parent: tb_renderer, child: tb_compute }
+  - connect: { parent: tb_renderer, child: tb_draw }
+  - launch:  { box: tb_renderer }      # renderer first — it owns the loop
+  - await:   { wait: pending }
+  - launch:  { box: tb_compute }       # publishes outputPositions
+  - await:   { wait: pending }
+  - launch:  { box: tb_draw }          # reads outputPositions
+  - await:   { wait: pending }
+```
+
+Run it with `--with-playwright` (for capture) and a `native-screenshot` after the final
+`await`. The renderer/compute/draw `output` lines confirm all three boxes ran; the
+native screenshot shows the rendered particle cloud. The topology rule is load-bearing:
+graphics children must be connected beneath the launched renderer, and the renderer must
+be launched first. See [`FIELD_BACKDOOR.md`](./FIELD_BACKDOOR.md#graphics-context-mode)
+and [`transcripts/graphics_renderer_launch.yaml`](./transcripts/graphics_renderer_launch.yaml)
+for the reusable renderer-parent pattern the docs runner uses.
+
+---
+
+## Reading and rewriting a user's saved macros
+
+Macros are documents' saved automations — a user can record or write them, and an agent
+can inspect and adapt them. The backdoor `macro`/`transcript` command surface:
+
+| Command | Purpose |
+|---|---|
+| `macro list` | list the macros saved on the current document/project |
+| `macro state` | the transcript recorder's current state |
+| `macro read <name>` | print a macro's YAML so you can understand what it does |
+| `macro page --offset 0 --limit 80` | page through the live operation transcript |
+| `macro write <name> --file <path>` | write/replace a macro from YAML |
+| `macro run <name> [--selection <uid>]` | apply a macro |
+| `macro undo <name> [--selection <uid>]` | reverse a macro's supported ops |
+| `macro save-selection <name> --indices 3,4,5` | save chosen transcript entries as a macro |
+
+Typical adapt loop: `macro read <theirs>` to understand it, edit the YAML for your ends
+(rename target boxes, change properties, add a `save`), `macro write <yours> --file …`,
+then `macro run <yours>`. For blank-canvas / multi-box construction, use stable ids and
+run **without** `--selection` — selection remapping is meant for single-box edit macros.
+
+---
+
+## See also
+
+- [`FIELD_BACKDOOR.md`](./FIELD_BACKDOOR.md) — the run/capture/screenshot/video harness and CLI.
+- [`transcripts/README.md`](./transcripts/README.md) — curated runnable transcript corpus.
+- [`AGENT_BACKDOOR_CLEANUP_PLAN.md`](./AGENT_BACKDOOR_CLEANUP_PLAN.md) — why transcripts are the canonical layer and the backdoor is the harness.
+- [`../DOCS_RUNNER_GPU_CAPTURES.md`](../DOCS_RUNNER_GPU_CAPTURES.md) — driving GPU/compute/probe captures from `diffstatic_runner` fences.

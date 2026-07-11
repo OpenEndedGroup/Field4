@@ -346,6 +346,14 @@ data class TranscriptEntry(
 )
 
 @Serializable
+data class MacroOutputLine(
+    val uid: String = "",
+    val kind: String = "normal",
+    val line: Int = -1,
+    val html: String = ""
+)
+
+@Serializable
 data class MacroTranscriptCommandResponse(
     val success: Boolean,
     val message: String,
@@ -371,7 +379,8 @@ data class MacroTranscriptCommandResponse(
     val limit: Int = 0,
     val total: Int = 0,
     val hasMore: Boolean = false,
-    val prompt: String = ""
+    val prompt: String = "",
+    val output: List<MacroOutputLine> = emptyList()
 )
 
 @Serializable

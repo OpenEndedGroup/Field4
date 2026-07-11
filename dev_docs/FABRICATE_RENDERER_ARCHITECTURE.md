@@ -70,6 +70,10 @@ Lighting used to be a single hard-coded directional light in `SceneDefaults`. `F
 
 Keep `syncLights()` an explicit call (like `sortTransparentMeshes()`); do not make lighting silently re-upload every frame. GLSL that Kotlin cannot check is validated GPU-free by `FabricateShaderCompileTest` (shaderc → SPIR-V); add new Fabricate shaders there.
 
+## Image-Based Lighting
+
+The environment radiance mip chain (`LoadedTexture.fromExrFile(prefilterEnvironment = true)`, `ggxPrefilterMips`) is prefiltered with a **linear** roughness→mip mapping: mip `level` holds roughness `level / (mipLevels - 1)`. The deferred lighting pass must therefore sample specular/clearcoat reflections at `roughness * envMaxLod` (linear), not `roughness * roughness * envMaxLod`. The squared form under-blurs mid-roughness surfaces — a ~0.3-roughness metal (the ToyCar paint, which is metallic with no diffuse term) reads as glossy candy instead of softly reflecting the sky. If you change the prefilter's per-mip roughness curve, change the sampling LOD to match. Verified against three.js `MeshPhysicalMaterial` + `PMREMGenerator` for the ToyCar sample: same material (`metalness≈1`, `roughness≈0.3` from the ORM texture, `clearcoat=1`) renders as soft satin, not mirror.
+
 ## Editable Shader Boxes
 
 `FabricateShaderBoxes.kt` binds the renderer's built-in shaders to boxes so they edit/hot-reload like user shaders. `bundle.shaderModules()` enumerates the built-in `ModulePointer`s (deferred passes + post-stack effects + textured g-buffer variants, de-duplicated by identity); `bundle.bindShadersToBoxes()` spawns one box per module via `box(id)` and calls `Box.attachShader(module)` (from `afield.stdlib.shaders`). This reuses the existing shader-box machinery: `attachShader` installs the `alt r` / `alt shift enter` actions, copies the module's source into the box's `vertex`/`fragment` properties, and `reloadShader` rebuilds by copying the module's existing `Parameters` — so `textureResolver`, attachment formats, and push seeding survive every edit; only GLSL changes.

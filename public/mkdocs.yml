@@ -9,6 +9,13 @@ nav:
   - Survival Guide: survivalGuide.md
   - Feature Overview: funFeatures.md
   - AI Overview: aiFeatures.md
+  - History & Inspection:
+    - Your History with Field: history_overview.md
+    - Document History: document_history.md
+    - Inline History (History Lens): history_lens.md
+    - AI Tool-Use History: ai_tool_use_history.md
+    - AI Documentation Polish: ai_doc_polish.md
+    - The Semantic Index: semantic_index.md
   - Kotlin Overview: kotlin_overview.md
   - Building & Testing: building_and_testing.md
   - Reference:
@@ -20,6 +27,7 @@ nav:
         - Fabricate Renderer: fabricate_renderer.md
         - Ray Tracing Examples: ray_tracing_examples.md
         - afield.four Graphics: afield_four_graphics.md
+        - Field Probes: field_probes.md
         - Interactive Guides: interactive_guides.md
         - Guide Chat: guide_chat.md
       - Small Languages:

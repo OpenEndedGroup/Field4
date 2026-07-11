@@ -791,6 +791,14 @@ class FLine : HasProperties {
         return this
     }
 
+    /**
+     * Variadic form of [data]. Lets you write `f.data("m l l z", 0,0, 1,0, 1,1)` instead of
+     * building a `List<Any>` by hand. Parameters may be a mix of [Number] runs, [Vec2] and [Vec3];
+     * see [data] for the format grammar (`m` move, `l` line, `c` cubic, `s` smooth, `z` close,
+     * `( )` groups, trailing `+` greedy repeat).
+     */
+    fun data(format: String, vararg parameters: Any): FLine = data(format, parameters.asList())
+
 
     /**
      * Walk the path into line segments. Callback receives:
@@ -1088,6 +1096,38 @@ class FLine : HasProperties {
     }
 
     /**
+     * Append a point as a [lineTo] (or a [moveTo] if this line is empty): `f += vec(1, 2)`.
+     */
+    operator fun plusAssign(p: Vec3) {
+        if (nodes.isEmpty()) moveTo(p) else lineTo(p)
+    }
+
+    /**
+     * 2D overload of [plusAssign].
+     */
+    operator fun plusAssign(p: Vec2) {
+        if (nodes.isEmpty()) moveTo(p) else lineTo(p)
+    }
+
+    // --- builder-scoped pen operators -------------------------------------------
+    // These are members, so they are only in scope when an FLine is the receiver —
+    // i.e. inside `fline { }`, `copy { }`, or `invoke { }`. `-v` draws (lineTo), `+v`
+    // lifts the pen and starts a new subpath (moveTo). A leading `-` on an empty line
+    // auto-promotes to a moveTo, so `-` alone suffices for a single open path.
+
+    /** Draw a segment to [this] point (the dash *looks* like a segment). Starts the path if empty. */
+    operator fun Vec3.unaryMinus(): FLine = if (nodes.isEmpty()) moveTo(this) else lineTo(this)
+
+    /** 2D overload of the draw operator. */
+    operator fun Vec2.unaryMinus(): FLine = if (nodes.isEmpty()) moveTo(this) else lineTo(this)
+
+    /** Lift the pen and start a new subpath at [this] point. */
+    operator fun Vec3.unaryPlus(): FLine = moveTo(this)
+
+    /** 2D overload of the pen-up operator. */
+    operator fun Vec2.unaryPlus(): FLine = moveTo(this)
+
+    /**
      * One Vec4 color per drawing instruction. Resolution order:
      *  node.properties["color"] if Vec4 → previous color → fline.properties["color"] if Vec4 → default vec4(0.8,0.8,0.8,0.5)
      */
@@ -1125,6 +1165,24 @@ class FLine : HasProperties {
     fun clear() {
         this.nodes.clear()
         rev++
+    }
+
+    companion object {
+        /**
+         * Collection-literal constructor. The first point becomes a [moveTo], the rest [lineTo] —
+         * a polyline. Kotlin resolves a `[...]` literal in a typed context to this `operator fun of`
+         * (only one `of` overload may be `vararg`); it also works as an ordinary `FLine.of(...)` call.
+         *
+         * Elements may be any mix of [Number] runs, [Vec2] and [Vec3], packed into points by the
+         * same rules as [data]'s parameter handling:
+         * ```
+         * val tri:    FLine = [vec(0, 0), vec(1, 0), vec(0.5, 1)]
+         * val square: FLine = [0, 0, 1, 0, 1, 1, 0, 1]
+         * ```
+         */
+        operator fun of(vararg params: Any): FLine = FLine().apply {
+            parametersToPoints(params.asList()).forEachIndexed { i, p -> if (i == 0) moveTo(p) else lineTo(p) }
+        }
     }
 
 }

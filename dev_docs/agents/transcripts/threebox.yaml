@@ -1,0 +1,117 @@
+name: threebox
+description: Self-contained renderer + compute + draw particle system.
+operations:
+  # 1. renderer box (owns Window + Renderer, pumps the loop)
+  - create:
+      box: tb_renderer
+      name: renderer
+      frame: { x: 40.0, y: 40.0, w: 160.0, h: 90.0 }
+      properties:
+        code: |
+          import afield.four.util.Options
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          Options.profiling = false
+          once.renderer {
+              window = Window("Field three-box")
+              Renderer(window)
+          }
+          println("renderer ready")
+          start(renderer::run)
+  # 2. compute box: simulate particles, publish the buffer, probe speed
+  - create:
+      box: tb_compute
+      name: compute particles
+      frame: { x: 240.0, y: 40.0, w: 160.0, h: 90.0 }
+      properties:
+        compute: |
+          #version 450
+          #extension GL_EXT_buffer_reference : require
+          layout(local_size_x = 64) in;
+          layout(std430, buffer_reference) buffer inData { vec4 a[]; };
+          layout(std430, buffer_reference) buffer outData { vec4 a[]; };
+          layout(push_constant) uniform dat {
+              inData inData;
+              outData outData;
+              float something;
+          } pc;
+          {% include "fieldProbe" %}
+          void main() {
+              uint idx = gl_GlobalInvocationID.x;
+              pc.outData.a[idx].x = pc.inData.a[idx].x*cos(pc.something*pc.inData.a[idx].z) + pc.inData.a[idx].y*sin(pc.something*pc.inData.a[idx].w);
+              pc.outData.a[idx].y = -pc.inData.a[idx].x*sin(pc.something*pc.inData.a[idx].w) + pc.inData.a[idx].y*cos(pc.something*pc.inData.a[idx].z*0.03);
+              pc.outData.a[idx].zw = pc.inData.a[idx].zw;
+              vec2 delta = pc.outData.a[idx].xy - pc.inData.a[idx].xy;
+              fieldProbe(length(delta));
+          }
+        code: |
+          var module = computeModuleHere {}
+          var m = ComputeMesh()
+          module += "step" to m
+          renderer += "compute" to module
+          val N = 100000
+          var inData = defaultBuffer { size = N.vec4s }.buffer
+          var outData = defaultBuffer { size = N.vec4s }.buffer
+          m.inData = { inData }
+          m.outData = { outData }
+          var x = 0.0
+          m.something = { x += 0.01; x.f }
+          fieldProbeHere(samples = 4096).display("probe")
+          prop<FrameBufferGroup>(outputPositions) = outData
+          m.x = N / 64; m.y = 1; m.z = 1
+          inData.write { for (i in 0 until N) put(vec(Math.random(), Math.random(), Math.random(), Math.random())) }
+          println("compute launched, N=" + N)
+  # 3. draw box: read the shared buffer, draw quads
+  - create:
+      box: tb_draw
+      name: draw particles
+      frame: { x: 440.0, y: 40.0, w: 160.0, h: 90.0 }
+      properties:
+        vertex: |
+          #version 450
+          #extension GL_EXT_buffer_reference : require
+          layout(std430, buffer_reference) buffer inData { vec4 pos[]; };
+          layout(location = 0) out vec2 tc;
+          layout(push_constant) uniform push {
+              inData inData;
+              float aspectRatio;
+          } pc;
+          const vec3[6] part = vec3[6](vec3(0,0,0),vec3(1,0,0),vec3(1,1,0),vec3(0,0,0),vec3(1,1,0),vec3(0,1,0));
+          void main() {
+              float scale = 1.0 * pc.inData.pos[gl_VertexIndex/6].w;
+              vec3 p = (part[gl_VertexIndex%6]-vec3(0.5,0.5,0))*scale;
+              p.xy += pc.inData.pos[gl_VertexIndex/6].xy*10.0;
+              p.xy *= vec2(1/pc.aspectRatio, 1);
+              gl_Position = vec4(p*0.04, 1);
+              tc = part[gl_VertexIndex%6].xy;
+          }
+        fragment: |
+          #version 450
+          layout(location = 0) out vec4 uFragColor;
+          layout(location = 0) in vec2 tc;
+          void main() {
+              float d = max(0.0, 0.5-length(tc-vec2(0.5)));
+              float w = fwidth(d);
+              d = smoothstep(0.1, 0.1+w, d)*smoothstep(0.14+w, 0.14, d);
+              uFragColor = vec4(1.0, 0.8, 0.4, d*0.2);
+              if (d<0.01) discard;
+          }
+        code: |
+          var module = moduleHere { primitiveType = triangles }
+          var m = Mesh()
+          module += "mesh" to m
+          renderer += "draw" to module
+          val N = 100000
+          m.inData = { outputPositions }
+          m.aspectRatio = { window.width/window.height.toFloat() }
+          m.set(N*2*3, 0) {}
+          println("draw launched")
+  - connect: { parent: tb_renderer, child: tb_compute }
+  - connect: { parent: tb_compute, child: tb_draw }
+  - launch: { box: tb_renderer, property: code, strand: renderer }
+  - await: {}
+  - launch: { box: tb_compute, property: code }
+  - await: {}
+  - launch: { box: tb_draw, property: code }
+  - await: {}

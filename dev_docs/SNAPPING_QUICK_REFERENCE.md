@@ -74,7 +74,7 @@ See these files for more details:
 - **SNAPPING_SYSTEM.md** - User guide with feature overview
 - **SNAPPING_ENHANCEMENTS.md** - Technical implementation details
 - **SNAPPING_VISUAL_EXAMPLES.md** - Visual diagrams and examples
-- **IMPLEMENTATION_COMPLETE.md** - Comprehensive technical summary
+- **workspace/IMPLEMENTATION_SUMMARY.md** - Broader workspace implementation summary
 
 ## Testing
 
@@ -165,6 +165,6 @@ Next step: Build and run application to verify behavior.
 ## Contact
 
 For questions or issues with this implementation:
-- See IMPLEMENTATION_COMPLETE.md for full technical details
+- See SNAPPING_ENHANCEMENTS.md for implementation details
 - Check SNAPPING_ENHANCEMENTS.md for architecture info
 - Review SNAPPING_VISUAL_EXAMPLES.md for visual examples

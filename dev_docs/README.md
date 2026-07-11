@@ -14,8 +14,9 @@
 
 ## Good Entry Points
 
-- [`agents/AGENT_GUIDE.md`](./agents/AGENT_GUIDE.md)
-- [`agents/FIELD_BACKDOOR.md`](./agents/FIELD_BACKDOOR.md)
+- [`agents/README.md`](./agents/README.md) — the map of the agent automation path (start here)
+- [`agents/OPERATION_TRANSCRIPT.md`](./agents/OPERATION_TRANSCRIPT.md) — canonical build/edit/launch/save automation format
+- [`agents/FIELD_BACKDOOR.md`](./agents/FIELD_BACKDOOR.md) — low-level run/capture/screenshot harness
 - [`testing/SMOKE_TEST_ANNOTATION_STRATEGY.md`](./testing/SMOKE_TEST_ANNOTATION_STRATEGY.md)
 - [`workspace/ARCHITECTURE_COMPLETE.md`](./workspace/ARCHITECTURE_COMPLETE.md)
 - [`animation/ANIMATE_BLOCK_SYNTAX.md`](./animation/ANIMATE_BLOCK_SYNTAX.md)
@@ -23,5 +24,6 @@
 - [`stdlib/GRAPH_CONNECTIVITY_LIBRARY.md`](./stdlib/GRAPH_CONNECTIVITY_LIBRARY.md)
 - [`COMPLETION_ENGINE.md`](./COMPLETION_ENGINE.md)
 - [`FABRICATE_RENDERER_ARCHITECTURE.md`](./FABRICATE_RENDERER_ARCHITECTURE.md)
+- [`DOCS_RUNNER_GPU_CAPTURES.md`](./DOCS_RUNNER_GPU_CAPTURES.md) — authoring `diffstatic_runner` fences for GPU/compute/probe captures, and the compute+draw-in-one-box limitation
 
 `AGENTS.md` remains in the repository root because agent tooling expects it there.

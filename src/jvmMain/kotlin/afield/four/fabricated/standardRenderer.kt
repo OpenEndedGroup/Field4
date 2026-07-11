@@ -2430,21 +2430,28 @@ object StandardRenderer {
 			float shadow = pcfShadow(worldPos) * push.shadowStrength;
 			float ao = mix(1.0, texture(aoTex, vUv).r, push.aoStrength);
 
-					vec3 directSurface = kD * albedo / 3.14159 + specular * (1.0 - clearcoat * 0.10) + clearcoatSpecular * clearcoat * 0.28;
+					float clearcoatEnvRoughness = max(clearcoatRoughness, 0.22);
+						float coatAtten = 1.0 - clearcoat * 0.18;
+						vec3 directSurface = kD * albedo / 3.14159 + specular * coatAtten + clearcoatSpecular * clearcoat * 0.18;
 				vec3 Lo = directSurface * uLight.lightColor * uLight.lightIntensity * nDotL * (1.0 - shadow);
 				vec3 reflected = reflect(-v, n);
 				float envAmount = max(push.environmentStrength, 0.0);
 				float envMaxLod = float(max(textureQueryLevels(environmentTex) - 1, 0));
 				vec3 envDiffuse = sampleEnvironment(n, envMaxLod);
-				vec3 envSpecular = sampleEnvironment(reflected, roughness * roughness * envMaxLod);
-				vec3 envClearcoat = sampleEnvironment(reflected, clearcoatRoughness * clearcoatRoughness * envMaxLod);
+				// The radiance mip chain is prefiltered with a LINEAR roughness->mip mapping
+				// (roughness = level / (mipLevels - 1)), so sample the LOD linearly in roughness.
+				// Using roughness*roughness here under-blurred mid-roughness surfaces, making satin
+				// metals (e.g. the ToyCar paint at ~0.3 roughness) read as glossy candy instead of
+				// softly reflecting the environment.
+				vec3 envSpecular = sampleEnvironment(reflected, roughness * envMaxLod);
+				vec3 envClearcoat = sampleEnvironment(reflected, clearcoatEnvRoughness * envMaxLod);
 				vec3 F_ibl = fresnelSchlickRoughness(max(dot(n, v), 0.0), F0, roughness);
-				vec3 Fcc_ibl = fresnelSchlickRoughness(max(dot(n, v), 0.0), vec3(0.04), clearcoatRoughness);
+				vec3 Fcc_ibl = fresnelSchlickRoughness(max(dot(n, v), 0.0), vec3(0.04), clearcoatEnvRoughness);
 				vec3 kD_ibl = (vec3(1.0) - F_ibl) * (1.0 - metallic);
 				vec3 ambient = push.ambientColor * albedo * ao + envDiffuse * kD_ibl * albedo * ao * envAmount * 0.72;
 				vec3 iblSpecular = envSpecular * F_ibl * envAmount * mix(1.0, 0.48, roughness);
-				vec3 iblClearcoat = envClearcoat * Fcc_ibl * envAmount * clearcoat * mix(0.38, 0.18, clearcoatRoughness);
-				vec3 color = ambient + Lo + iblSpecular * (1.0 - clearcoat * 0.10) + iblClearcoat;
+				vec3 iblClearcoat = envClearcoat * Fcc_ibl * envAmount * clearcoat * mix(0.22, 0.12, clearcoatEnvRoughness);
+				vec3 color = ambient + Lo + iblSpecular * coatAtten + iblClearcoat;
 
 				// Additional scene lights (points, spots, extra directionals) from the lights buffer.
 				// The key/shadowed directional light is already handled above via uLight.

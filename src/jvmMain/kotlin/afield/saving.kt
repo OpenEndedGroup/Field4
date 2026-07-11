@@ -1577,11 +1577,11 @@ class SavingContext {
             val workspace = File(workspaceDir)
             if (!workspace.exists() || !workspace.isDirectory) return
 
-            // Define the guide files to copy
+            // Copy the workspace onboarding README into new workspaces. It points agents
+            // at the canonical automation docs under dev_docs/agents/ (FIELD_BACKDOOR.md,
+            // OPERATION_TRANSCRIPT.md); we no longer copy standalone guide files.
             val guidesToCopy = mapOf(
-                "templates/WORKSPACE_README.md" to "README.md",
-                "AGENT_GUIDE.md" to "AGENT_GUIDE.md",
-                "AGENT_QUICK_REF.md" to "AGENT_QUICK_REF.md"
+                "templates/WORKSPACE_README.md" to "README.md"
             )
 
             // Get the repository root (go up from wherever we are)
@@ -1621,8 +1621,7 @@ class SavingContext {
         while (attempts > 0 && current.parent != null) {
             // Check for repository markers
             if (File(current, "build.gradle.kts").exists() ||
-                File(current, ".git").exists() ||
-                File(current, "AGENT_GUIDE.md").exists()
+                File(current, ".git").exists()
             ) {
                 return current
             }

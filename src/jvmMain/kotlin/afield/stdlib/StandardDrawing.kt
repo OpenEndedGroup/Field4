@@ -17,6 +17,27 @@ fun rect(x: Number, y: Number, w: Number, h: Number) =
  */
 inline fun fline(block: FLine.() -> Unit): FLine = FLine().apply(block)
 
+/**
+ * A single straight segment written as a range: `vec(0, 0)..vec(1, 1)`.
+ * Composes with `+=` for chaining, e.g. `f += vec(2, 0)..vec(3, 3)`.
+ */
+operator fun Vec3.rangeTo(other: Vec3): FLine = fline { moveTo(this@rangeTo); lineTo(other) }
+
+/** 2D overload of the segment range operator. */
+operator fun Vec2.rangeTo(other: Vec2): FLine = fline { moveTo(this@rangeTo); lineTo(other) }
+
+/**
+ * Add a [moveTo] and immediately style the resulting node: `moveTo(v) { color = RED }`.
+ */
+inline fun FLine.moveTo(v: Vec3, style: FLine.Node.() -> Unit): FLine = moveTo(v).also { here.style() }
+
+/** Add a [lineTo] and immediately style the resulting node. */
+inline fun FLine.lineTo(v: Vec3, style: FLine.Node.() -> Unit): FLine = lineTo(v).also { here.style() }
+
+/** Add a cubic and immediately style the resulting node. */
+inline fun FLine.cubicTo(c1: Vec3, c2: Vec3, to: Vec3, style: FLine.Node.() -> Unit): FLine =
+    cubicTo(c1, c2, to).also { here.style() }
+
 var FLine.color by Delegation<Vector4f> { vec(1.0, 1.0, 1.0, 1.0) }
 var FLine.Node.color by Delegation<Vector4f> { vec(1.0, 1.0, 1.0, 1.0) }
 var FLine.thickness by Delegation<Double?>()

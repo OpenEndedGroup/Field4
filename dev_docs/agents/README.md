@@ -1,0 +1,55 @@
+# Agents & Field — the automation path
+
+This directory documents how an agent drives Field: run code, capture output and
+errors, take screenshots and video, build and save documents, and read and rewrite the
+macros users have saved. It is the map; the linked docs are the detail.
+
+The canonical model (see [`AGENT_BACKDOOR_CLEANUP_PLAN.md`](./AGENT_BACKDOOR_CLEANUP_PLAN.md)):
+
+- **`OperationTranscript`** is the semantic automation layer — a YAML language for
+  building, editing, launching, and saving documents. This is what you reach for to
+  *do things* to a document.
+- **The agent backdoor** (`tools/field_backdoor.py`) is the transport and capture
+  harness — server lifecycle, output/error capture, Playwright, screenshots, video,
+  JVM smoke. It carries transcripts and takes the pictures.
+
+The repo-wide entry point is [`../../AGENTS.md`](../../AGENTS.md); this folder is the
+detailed reference it points into.
+
+## I want to…
+
+| Goal | Read | In one line |
+|---|---|---|
+| **Run code and see its output/errors** | [`OPERATION_TRANSCRIPT.md`](./OPERATION_TRANSCRIPT.md) → [`FIELD_BACKDOOR.md`](./FIELD_BACKDOOR.md) | `launch`/`execute` ops await and capture `output`; loud on failure |
+| **Take a screenshot or record a video** | [`FIELD_BACKDOOR.md`](./FIELD_BACKDOOR.md) | `screenshot-*` / `native-screenshot` / `record-*` with `--with-playwright` |
+| **Collect errors deterministically** | [`OPERATION_TRANSCRIPT.md`](./OPERATION_TRANSCRIPT.md#observability) | read `success` / `errors` / `output` from the run result |
+| **Build a document from nothing** | [`OPERATION_TRANSCRIPT.md`](./OPERATION_TRANSCRIPT.md) | `create` + `connect` + `launch` on a `--scratch` doc |
+| **Save what you built as a document** | [`OPERATION_TRANSCRIPT.md`](./OPERATION_TRANSCRIPT.md#save) | the `save` op writes a reopenable `metadata.edn` |
+| **Drive native `afield.four` graphics** | [`OPERATION_TRANSCRIPT.md`](./OPERATION_TRANSCRIPT.md#worked-example-b--afieldfour-vulkan-renderer--compute--draw), [`transcripts/`](./transcripts/) | launch a renderer parent, connect children beneath it |
+| **Understand a macro a user saved** | [`OPERATION_TRANSCRIPT.md`](./OPERATION_TRANSCRIPT.md#reading-and-rewriting-a-users-saved-macros) | `macro list` / `macro read <name>` |
+| **Rewrite a macro for your own ends** | [`OPERATION_TRANSCRIPT.md`](./OPERATION_TRANSCRIPT.md#reading-and-rewriting-a-users-saved-macros) | edit the YAML, `macro write`, `macro run` |
+| **Copy-paste a working example** | [`transcripts/README.md`](./transcripts/README.md) | curated, runnable transcript corpus |
+| **Capture examples for the docs site** | [`../DOCS_RUNNER_GPU_CAPTURES.md`](../DOCS_RUNNER_GPU_CAPTURES.md) | `diffstatic_runner` fences, incl. GPU/compute/probe |
+
+## The core docs
+
+- **[`OPERATION_TRANSCRIPT.md`](./OPERATION_TRANSCRIPT.md)** — the canonical automation
+  format: the full op vocabulary, the loud-`launch` contract, observability, the
+  build→run→capture→save→reopen lifecycle, and worked canvas + Vulkan examples. **Start here.**
+- **[`FIELD_BACKDOOR.md`](./FIELD_BACKDOOR.md)** — the backdoor CLI: server lifecycle,
+  batch/interactive modes, `--graphics-context`, screenshots, video, `page-eval`, logs.
+- **[`AGENT_QUICK_REF.md`](./AGENT_QUICK_REF.md)** — a one-page cheat-sheet of the most-used commands.
+- **[`transcripts/README.md`](./transcripts/README.md)** — the runnable example corpus.
+
+## Supporting infrastructure
+
+- **[`CODE_USE_TELEMETRY.md`](./CODE_USE_TELEMETRY.md)** — which snippets compiled/ran, with what result.
+- **[`SEMANTIC_RETRIEVAL.md`](./SEMANTIC_RETRIEVAL.md)** — natural-language code/doc discovery.
+- **[`TRANSCRIPT_SELF_IMPROVEMENT_LOOPS.md`](./TRANSCRIPT_SELF_IMPROVEMENT_LOOPS.md)** — turning real runs into reviewed Field improvements.
+- **[`AGENT_BACKDOOR_CLEANUP_PLAN.md`](./AGENT_BACKDOOR_CLEANUP_PLAN.md)** — the transcript/backdoor split and its boundaries.
+
+> The manual, on-disk way to edit a workspace — writing `boxid_code_.kt` sidecar files
+> and letting Field's `FileWatchManager` pick them up — is a *file-editing* convenience,
+> not the automation path. It's documented as a component in
+> [`../FileWatchManager.md`](../FileWatchManager.md) and
+> [`../workspace/`](../workspace/). To *drive* Field, use the transcript/backdoor path above.

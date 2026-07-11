@@ -364,7 +364,4 @@ lastWindowToOpen?.onPoll?.add("screenshot") {
 ## See Also
 
 - `src/jvmMain/kotlin/afield/four/util/Window.kt` - Window screenshot methods
-- `IMAGE_UPLOAD_FEATURE.md` - Complete image upload documentation
-- LWJGL Vulkan documentation: https://www.lwjgl.org/guide
-- `IMAGE_UPLOAD_FEATURE.md` - Complete image upload documentation
 - LWJGL Vulkan documentation: https://www.lwjgl.org/guide

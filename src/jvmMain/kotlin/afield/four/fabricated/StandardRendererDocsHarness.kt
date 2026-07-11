@@ -516,8 +516,10 @@ object StandardRendererDocsHarness {
             )
         ) { bundle, activeRenderer ->
             bundle.scene.projection.fov = -50.0 * PI / 180.0
-            bundle.scene.camera.at.set(1.225f, 1.00f, -1.625f)
-            bundle.scene.camera.target.set(0f, 0.28f, 0f)
+            // Cheat the eye down a touch so we read the car more side-on than plan-view; this keeps
+            // the softly-lit roof from dominating and matches the three.js reference framing.
+            bundle.scene.camera.at.set(1.225f, 0.78f, -1.625f)
+            bundle.scene.camera.target.set(0f, 0.32f, 0f)
             bundle.scene.lightDirection.set(Vector3f(-0.36f, -0.58f, 0.72f).normalize())
             bundle.scene.lightIntensity = 2.45f
             bundle.scene.ambientColor.set(0.055f, 0.055f, 0.06f)

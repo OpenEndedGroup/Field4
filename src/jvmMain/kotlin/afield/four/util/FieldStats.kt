@@ -315,7 +315,9 @@ class ShaderFieldStats(
             size = resultBufferBytes
             storage()
             dest()
-            hosted()
+            // CPU reads the reduced result back each frame; ask for HOST_CACHED memory
+            // (streamReads) so the readback is not served from write-combined memory.
+            streamReads()
         }.also { it.toBuffer(renderer) }
 
         resetModule = buildResetModule(renderer)

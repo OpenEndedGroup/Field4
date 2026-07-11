@@ -521,6 +521,89 @@ val tri = fline {
 lines(tri, w = 420.0, h = 300.0, fitToSize = true)
 ```
 
+## Terser construction: pen operators, literals, and the `data` mini-language
+
+The four calls above are the foundation, but for quick sketches there’s a shorter vocabulary layered on top. None of it replaces `moveTo`/`lineTo`/`cubicTo` — it just desugars to them — so you can mix and match freely.
+
+```diffstatic {data-lang=kotlin}
+:::static
+// 1) Collection literals — a `[ ... ]` in a typed context builds a polyline
+//    (first point -> moveTo, the rest -> lineTo). Elements may be a mix of
+//    Number runs, Vec2 and Vec3.
+val poly:   FLine = [vec(0, 0), vec(1, 0), vec(1, 1)]
+val square: FLine = [0, 0, 1, 0, 1, 1, 0, 1]
+
+// 2) Pen operators — MEMBERS of FLine, so they only light up when an FLine is the
+//    receiver, i.e. inside `fline { }`, `copy { }`. `-v` draws, `+v` lifts the pen.
+operator fun Vec3.unaryMinus(): FLine   // -v : lineTo (a dash looks like a segment); moveTo if the line is empty
+operator fun Vec2.unaryMinus(): FLine
+operator fun Vec3.unaryPlus(): FLine    // +v : moveTo — pen up, start a new subpath
+operator fun Vec2.unaryPlus(): FLine
+
+// 3) A segment as a range, plus point/line appends
+operator fun Vec3.rangeTo(other: Vec3): FLine   // vec(a)..vec(b)  == a two-point line
+operator fun Vec2.rangeTo(other: Vec2): FLine
+operator fun FLine.plusAssign(p: Vec3)          // f += vec(...)   appends a lineTo
+operator fun FLine.plusAssign(p: Vec2)          // (FLine += FLine still concatenates paths)
+
+// 4) Node-scoped styling — style the node you just added, inline
+fun FLine.moveTo(v: Vec3, style: FLine.Node.() -> Unit): FLine
+fun FLine.lineTo(v: Vec3, style: FLine.Node.() -> Unit): FLine
+fun FLine.cubicTo(c1: Vec3, c2: Vec3, to: Vec3, style: FLine.Node.() -> Unit): FLine
+
+// 5) The `data` string mini-language (now variadic — no hand-rolled list)
+fun FLine.data(format: String, vararg parameters: Any): FLine
+```
+
+The `data` format is a tiny path grammar: `m` moveTo, `l` lineTo, `c` cubicTo (3 points), `s` smoothTo, `z` close, `( )` groups, and a trailing `+` that greedily repeats a group over the remaining points. Parameters are packed into points (a run of numbers becomes `x,y[,z]`; `Vec2`/`Vec3` pass through). So `data("m l+", 0,0, 1,0, 1,1)` is “move to the first point, then line to every point after it”.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/terser_construction.png" embed=true}
+:::static
+
+// Pen operators inside fline { }: `-` draws, `+` lifts the pen to a new subpath.
+val zig = fline {
+    -vec(40, 40)     // first point -> promoted to moveTo
+    -vec(140, 40)    // lineTo
+    -vec(140, 140)
+    +vec(200, 40)    // pen up: a second subpath starts here
+    -vec(300, 140)
+    thickness = 3.0
+    color = vec(0.98, 0.88, 0.28, 1.0)
+}
+
+// Collection literal: first point is a moveTo, the rest lineTo.
+val tri: FLine = [vec(60, 220), vec(180, 300), vec(300, 220)]
+tri.apply { close(); thickness = 2.0; color = vec(0.4, 1.0, 0.6, 1.0) }
+
+// `..` makes a segment; `+=` extends it with another point.
+val seg = (vec(340, 40)..vec(460, 40)).apply {
+    thickness = 2.0
+    color = vec(1.0, 0.5, 0.25, 1.0)
+}
+seg += vec(460, 160)
+
+// The `data` mini-language, driven variadically, with per-node styling on the box.
+val box = FLine().data("m l l l z", 340, 200, 460, 200, 460, 300, 340, 300).apply {
+    stroked = true
+    color = vec(0.34, 0.82, 1.0, 1.0)
+}
+
+lines(listOf(zig, tri, seg, box), w = 520.0, h = 340.0, fitToSize = true)
+```
+
+Node-scoped styling is handy when a single node needs to stand out — for example a colored, larger point at the end of a stroke:
+
+```diffstatic {data-lang=kotlin}
+:::static
+fline {
+    moveTo(vec(0, 0, 0))
+    lineTo(vec(100, 0, 0)) { color = vec(1, 0.5, 0.2, 1); pointSize = 6.0 }
+    pointed = true
+}
+```
+
+A note on scope: the `+`/`-` pen operators and the `style`-lambda overloads only resolve when an `FLine` is the receiver, which in practice means inside `fline { }` (or `copy { }`). Collection literals, `..`, and `+=` work anywhere. And because collection literals resolve against the *expected* type, they only fire where that type is known — an assignment, argument, or return — never a bare `[ ... ]`.
+
 ## Multiple subpaths: `breakNext()` and `pieces()`
 
 One `FLine` can contain multiple disjoint strokes (multiple `moveTo`-initiated subpaths). This section shows how to force a new subpath while building (`breakNext`) and how to split an existing line into separate pieces (`pieces`).

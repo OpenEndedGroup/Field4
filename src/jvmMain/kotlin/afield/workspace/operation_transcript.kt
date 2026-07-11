@@ -1,7 +1,12 @@
 package afield
 
 import afield.logger.lprintln
+import afield.stdlib._currentlyExecutingFragment
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
 import org.yaml.snakeyaml.Yaml
 import java.io.File
 import java.time.Instant
@@ -38,7 +43,8 @@ object OperationTranscript {
         val limit: Int = 0,
         val total: Int = 0,
         val hasMore: Boolean = false,
-        val prompt: String = ""
+        val prompt: String = "",
+        val output: List<MacroOutputLine> = emptyList()
     )
 
     data class MacroRunResult(
@@ -49,7 +55,10 @@ object OperationTranscript {
         val targetBoxes: List<String>,
         val applied: Int,
         val skipped: Int,
-        val errors: List<String> = emptyList()
+        val errors: List<String> = emptyList(),
+        // Box output/errors emitted while executing/launching boxes during this run,
+        // so an agent driving a transcript can see println/_print output and errors.
+        val output: List<MacroOutputLine> = emptyList()
     )
 
     private data class DocumentState(
@@ -313,6 +322,8 @@ object OperationTranscript {
         val errors = mutableListOf<String>()
         var applied = 0
         var skipped = 0
+        val collected = java.util.Collections.synchronizedList(mutableListOf<MacroOutputLine>())
+        val collect: (Message) -> Unit = { msg -> captureMacroOutput(msg, collected) }
 
         targets.forEach { target ->
             val primarySource = firstOperationBox(operations)
@@ -333,13 +344,17 @@ object OperationTranscript {
                         )
                         index++
                     }
+                    val groupDiagnostics = mutableListOf<String>()
                     val result = runCatching {
-                        applyMacroLaunchGroup(launchGroup, boxMap)
+                        applyMacroLaunchGroup(launchGroup, boxMap, collect, groupDiagnostics)
                     }
                     if (result.isSuccess) {
                         val (groupApplied, groupSkipped) = result.getOrThrow()
                         applied += groupApplied
                         skipped += groupSkipped
+                        // Surface loud launch failures (missing box / empty code) so the run
+                        // reports success=false and the message names what went wrong.
+                        errors += groupDiagnostics
                     } else {
                         skipped += launchGroup.size
                         errors += result.exceptionOrNull()?.message ?: "Unknown macro launch group failure."
@@ -357,7 +372,7 @@ object OperationTranscript {
                     launchCount = launchCount
                 )
                 val result = runCatching {
-                    applyMacroOperation(op, boxMap, normalizedDirection, strict, context)
+                    applyMacroOperation(op, boxMap, normalizedDirection, strict, context, collect)
                 }
                 if (result.isSuccess) {
                     if (result.getOrDefault(false)) applied++ else skipped++
@@ -382,7 +397,8 @@ object OperationTranscript {
             targetBoxes = targetBoxes,
             applied = applied,
             skipped = skipped,
-            errors = errors
+            errors = errors,
+            output = collected.toList()
         )
     }
 
@@ -1181,7 +1197,8 @@ object OperationTranscript {
         boxMap: Map<String, String>,
         direction: String,
         strict: Boolean,
-        context: MacroReplayContext = MacroReplayContext()
+        context: MacroReplayContext = MacroReplayContext(),
+        collect: (Message) -> Unit = {}
     ): Boolean {
         val verb = operation.keys.firstOrNull()?.lowercase() ?: return false
         val payload = operation.values.firstOrNull() as? Map<*, *> ?: return false
@@ -1273,16 +1290,20 @@ object OperationTranscript {
                 if (direction == "undo") return false
                 val target = mappedBox() ?: return false
                 val exec = executeFromPayload(target.id, payload, fallbackType = "fragment")
-                target.ke.executeFragment(target, exec) { send(it) }
+                // Await completion (like the launch path) so the fragment's output is
+                // captured into the run result — fire-and-forget stalls headlessly.
+                runBlocking { target.ke.executeFragmentAndWait(target, exec) { send(it); collect(it) } }
                 true
             }
             "launch", "launch-all", "launch-fragment" -> {
-                val target = mappedBox() ?: return false
                 if (direction == "undo") {
+                    val target = mappedBox() ?: return false
                     target.ke.stop(target)
                     return true
                 }
-                val (applied, _) = applyMacroLaunchGroup(listOf(operation to context), boxMap)
+                // Route through the group path so an unresolved box / empty code becomes a
+                // loud, logged diagnostic instead of a silent skip.
+                val (applied, _) = applyMacroLaunchGroup(listOf(operation to context), boxMap, collect)
                 applied > 0
             }
             "stop", "stop-all", "stop-box" -> {
@@ -1302,6 +1323,29 @@ object OperationTranscript {
                 } else if (frames != null && frames >= 0L) {
                     waitForRunloopFrames(frames.coerceIn(0L, 30_000L))
                 }
+                if (payload["pending"].asBooleanOrDefault(false)) awaitPending(payload)
+                true
+            }
+            // Barrier op: wait for all previously-fired executeFragments to finish and
+            // launches to reach their first frame, so their output is captured/observable.
+            "await", "sync", "settle", "wait-pending" -> {
+                if (direction == "undo") return false
+                awaitPending(payload)
+                true
+            }
+            // Persist the current (transient) document's boxes as a metadata.edn document
+            // at the given path, so an agent can save the assembled scene if desired.
+            "save", "save-document", "save-as" -> {
+                if (direction == "undo") return false
+                val path = (payload["path"] ?: payload["to"] ?: payload["fn"] ?: payload["document"])
+                    ?.toString()?.takeIf { it.isNotBlank() } ?: return false
+                val info = thisSessionInfo.get()
+                val boxes = info.boxes.values
+                    .filter { it.id != "root" && it.id != METAROOT_ID && !it.getPropertyRaw("_tombstone").isTrue() }
+                    .toSet()
+                val latch = java.util.concurrent.CountDownLatch(1)
+                SavingContext().save(path, boxes, onComplete = { latch.countDown() })
+                latch.await(30, java.util.concurrent.TimeUnit.SECONDS)
                 true
             }
             "marker" -> false
@@ -1311,10 +1355,27 @@ object OperationTranscript {
 
     private fun applyMacroLaunchGroup(
         operations: List<Pair<Map<String, Any?>, MacroReplayContext>>,
-        boxMap: Map<String, String>
+        boxMap: Map<String, String>,
+        collect: (Message) -> Unit = {},
+        diagnostics: MutableList<String>? = null
     ): Pair<Int, Int> {
-        val launches = operations.mapNotNull { (operation, context) ->
-            macroLaunchRequest(operation, boxMap, context)
+        // Resolve every op explicitly. A launch that can't find its box or has no code
+        // to run is a loud, specific failure (logged + notified + surfaced in `errors`),
+        // never a silent skip — this is the documented execution verb, so it must be
+        // obvious when it does nothing.
+        val launches = mutableListOf<MacroLaunchRequest>()
+        var skipped = 0
+        operations.forEach { (operation, context) ->
+            when (val resolution = resolveLaunch(operation, boxMap, context)) {
+                is LaunchResolution.Ready -> launches.add(resolution.request)
+                is LaunchResolution.Failed -> {
+                    skipped++
+                    lprintln("error,operation-transcript", "macro launch failed: ${resolution.reason}")
+                    diagnostics?.add(resolution.reason)
+                    notify(resolution.reason, "macro-launch-error")
+                }
+                LaunchResolution.NotLaunch -> skipped++
+            }
         }
         if (launches.isEmpty()) return 0 to operations.size
 
@@ -1329,30 +1390,57 @@ object OperationTranscript {
         val requests = launches.map { it.target to it.exec }
         if (requests.all { (target, _) -> target.ke is KotlinExecution }) {
             runBlocking {
-                KotlinExecution.launchBatchAndWait(requests) { send(it) }
+                KotlinExecution.launchBatchAndWait(requests) { send(it); collect(it) }
             }
         } else {
             requests.forEach { (target, exec) ->
-                target.ke.launchAll(target, exec, exec.code, strand = exec.strand, reply = { send(it) })
+                target.ke.launchAll(target, exec, exec.code, strand = exec.strand, reply = { send(it); collect(it) })
             }
         }
 
-        return launches.size to (operations.size - launches.size)
+        return launches.size to skipped
     }
 
-    private fun macroLaunchRequest(
+    private sealed interface LaunchResolution {
+        data class Ready(val request: MacroLaunchRequest) : LaunchResolution
+        data class Failed(val reason: String) : LaunchResolution
+        object NotLaunch : LaunchResolution
+    }
+
+    private fun resolveLaunch(
         operation: Map<String, Any?>,
         boxMap: Map<String, String>,
         context: MacroReplayContext
-    ): MacroLaunchRequest? {
-        val verb = operation.keys.firstOrNull()?.lowercase() ?: return null
-        if (verb !in launchVerbs) return null
-        val payload = operation.values.firstOrNull() as? Map<*, *> ?: return null
-        val raw = (payload["box"] ?: payload["uid"] ?: payload["id"] ?: payload["target"])?.toString() ?: return null
+    ): LaunchResolution {
+        val verb = operation.keys.firstOrNull()?.lowercase() ?: return LaunchResolution.NotLaunch
+        if (verb !in launchVerbs) return LaunchResolution.NotLaunch
+        val payload = operation.values.firstOrNull() as? Map<*, *>
+            ?: return LaunchResolution.Failed("`$verb` op has no payload map")
+        val raw = (payload["box"] ?: payload["uid"] ?: payload["id"] ?: payload["target"])?.toString()
+            ?: return LaunchResolution.Failed("`$verb` op is missing a box id (expected `box`, `uid`, `id`, or `target`)")
         val mapped = boxMap[raw] ?: raw
-        val target = runCatching { box(mapped, createIfMissing = false) }.getOrNull() ?: return null
+        val info = thisSessionInfo.get()
+        val target = info.boxes[mapped]
+            ?: return LaunchResolution.Failed(
+                "`$verb` target box `$mapped` is not present in the document${describePresentBoxes(info)}"
+            )
         val exec = executeFromPayload(target.id, payload, fallbackType = payload["type"]?.toString() ?: "launch")
-        return MacroLaunchRequest(target, exec, context)
+        if (exec.code.isBlank()) {
+            return LaunchResolution.Failed(
+                "`$verb` target box `$mapped` has no code to run: neither the op nor the box's " +
+                    "`${exec.property}` property carries any code"
+            )
+        }
+        return LaunchResolution.Ready(MacroLaunchRequest(target, exec, context))
+    }
+
+    private fun describePresentBoxes(info: SessionInformation): String {
+        val ids = info.boxes.keys.filter { it != "root" && it != METAROOT_ID }.sorted()
+        return if (ids.isEmpty()) {
+            " (no user boxes are loaded — check the document/workspace path: `--document` is resolved relative to the workspace root)"
+        } else {
+            " (present: ${ids.joinToString(", ")})"
+        }
     }
 
     private fun notifyMacroLaunch(target: Box, execute: Execute, context: MacroReplayContext) {
@@ -1414,16 +1502,76 @@ object OperationTranscript {
         }
     }
 
-    private fun executeFromPayload(uid: String, payload: Map<*, *>, fallbackType: String): Execute =
-        Execute(
+    // Barrier: advance runloop frames until every previously-fired executeFragment has
+    // finished (no box still has `_currentlyExecutingFragment`), holding for a couple of
+    // settle frames so launches reach their first rendered frame. Bounded by maxFrames.
+    // Pumping frames (not Thread.sleep) is what lets the queued inMain fragment work run
+    // and its output flow back through the `collect` reply into the run result.
+    private fun awaitPending(payload: Map<*, *>) {
+        val info = runCatching { thisSessionInfo.get() }.getOrNull() ?: return
+        val maxFrames = payload["maxFrames"]?.asLongOrDefault(-1L)?.takeIf { it >= 0L } ?: 600L
+        val settleFrames = payload["settleFrames"]?.asLongOrDefault(-1L)?.takeIf { it >= 0L } ?: 2L
+        val startFrame = Runloop.runLoop.frame
+        var idle = 0L
+        while (Runloop.runLoop.frame - startFrame < maxFrames) {
+            val anyFragment = info.boxes.values.any {
+                runCatching { it._currentlyExecutingFragment }.getOrDefault(false)
+            }
+            val advanced = Runloop.runLoop.frame - startFrame
+            if (!anyFragment) {
+                idle++
+                if (idle >= settleFrames && advanced >= 1L) break
+            } else {
+                idle = 0L
+            }
+            val before = Runloop.runLoop.frame
+            while (Runloop.runLoop.frame == before && Runloop.runLoop.frame - startFrame < maxFrames) {
+                Thread.sleep(1L)
+            }
+        }
+    }
+
+    // Capture box output/error messages (from execute/launch replies) so a transcript
+    // run can report what the boxes printed. Only "output" messages carry box stdout.
+    private fun captureMacroOutput(message: Message, sink: MutableList<MacroOutputLine>) {
+        if (message.name != "output") return
+        val payload = message.payload as? JsonObject ?: return
+        fun str(k: String) = (payload[k] as? JsonPrimitive)?.contentOrNull
+        fun int(k: String) = (payload[k] as? JsonPrimitive)?.intOrNull
+        val html = str("html")?.trim().orEmpty()
+        if (html.isEmpty()) return
+        sink.add(
+            MacroOutputLine(
+                uid = str("uid").orEmpty(),
+                kind = str("kind") ?: "normal",
+                line = int("line") ?: -1,
+                html = html
+            )
+        )
+    }
+
+    private fun executeFromPayload(uid: String, payload: Map<*, *>, fallbackType: String): Execute {
+        val property = (payload["property"] ?: payload["prop"] ?: "code").toString()
+        // Fall back to the box's stored property when the op carries no code, so a
+        // `create` (which sets e.g. `code`) followed by a bare `execute`/`launch`
+        // runs that stored code instead of an empty string (which silently no-ops).
+        val explicitCode = payload["code"]?.toString()
+        val code = if (!explicitCode.isNullOrEmpty()) {
+            explicitCode
+        } else {
+            runCatching { box(uid, createIfMissing = false).getPropertyRaw(property) as? String }
+                .getOrNull().orEmpty()
+        }
+        return Execute(
             uid = uid,
             type = (payload["type"] ?: fallbackType).toString(),
             line = payload["line"].asIntOrDefault(0),
-            code = payload["code"]?.toString().orEmpty(),
+            code = code,
             singleLine = payload["singleLine"].asBooleanOrDefault(false),
-            property = (payload["property"] ?: payload["prop"] ?: "code").toString(),
+            property = property,
             strand = (payload["strand"] ?: "default").toString().ifBlank { "default" }
         )
+    }
 
     private fun transformText(current: String, expected: String, replacement: String, strict: Boolean): String? {
         if (current == expected) return replacement

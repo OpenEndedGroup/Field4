@@ -51,7 +51,6 @@ echo 'println("Updated code!")' > my-box_code_.kt
 ```
 workspace/
 ├── README.md              ← You are here
-├── AGENT_GUIDE.md        ← Full documentation
 ├── metadata.edn           ← Auto-managed box definitions
 ├── boxid_code_.kt         ← Kotlin code files
 ├── boxid_fragment_.glsl   ← Shader files
@@ -110,17 +109,20 @@ done
 
 ### Full Documentation
 
-For complete documentation, see:
-- **AGENT_GUIDE.md** - Comprehensive guide (in this directory or repository root)
-- **AGENT_QUICK_REF.md** - Quick reference card (in repository root)
-- **Field4 Console** - Check logs for real-time feedback
+The files above are the manual, on-disk way to edit a workspace. To *drive* Field
+programmatically — run code, capture output/errors, take screenshots, build and
+save documents, or read and rewrite saved macros — use the agent automation path:
+- **`dev_docs/agents/README.md`** - the map of the agent path (in the Field repo)
+- **`dev_docs/agents/FIELD_BACKDOOR.md`** - the low-level run/capture/screenshot harness
+- **`dev_docs/agents/OPERATION_TRANSCRIPT.md`** - the canonical build/edit/launch/save automation format
+- **Field4 Console** - check logs for real-time feedback
 
 ### Need Help?
 
 - Check Field's console output for detailed logs
 - Look for messages like: `info,file-watch: Auto-created box...`
-- Review the full AGENT_GUIDE.md for advanced usage
-- Check the FileWatchManager.kt source code for implementation details
+- See `dev_docs/agents/` in the Field repo for the full automation reference
+- Check the `FileWatchManager.kt` source code for file-sync implementation details
 
 ---
 
