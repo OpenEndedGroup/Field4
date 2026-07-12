@@ -914,6 +914,17 @@ tasks.register<JavaExec>("runTrackingResonatorResynthesisExample") {
     jvmArgs("--add-modules", "jdk.incubator.vector")
 }
 
+tasks.register<JavaExec>("runEvolveWorkedExample") {
+    group = "application"
+    description = "CPU-only worked example of the Functions evolve harness: writes an SVG overlay + trace under public/docs/assets/evolve/."
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
+    })
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.examples.functions.EvolveWorkedExample")
+    jvmArgs("--add-modules", "jdk.incubator.vector")
+}
+
 
 
 tasks.named<JavaExec>("runJvm").configure {
