@@ -3532,6 +3532,25 @@ The dashed grey curve is the seed cosine; the red curve is the target; the blue 
 | 23 | prune | -0.1568 |
 
 The story reads top to bottom. Iteration 1 is the structural leap: `substituteOp` turns the cosine into a sine and more than halves the error in a single step. The middle rows are `jitter`/`nudge` walking the amplitude leaf down from 1.0 toward 0.5, interleaved with `prune` steps that shed now-redundant structure without hurting the fit (the small `complexityWeight` rewards the simpler graph). After 12 accepted improvements across 120 iterations (961 total evaluations) the search settles. Because every draw goes through one seeded `Random`, re-running reproduces this trace and a byte-identical SVG exactly — the property that makes an evolved gesture safe to keep in live art.
+#### Variety generation — novelty search for a *set* of gestures
+
+`matchFitness` pulls every candidate toward one target. Often you want the opposite: a *diverse family* of gestures rather than one best match. `evolveVariety(...)` grows a behaviourally distinct set by **novelty search**, reusing the same `evolve` machinery and the same seeded-`Random` determinism.
+
+The key idea is a *behavioural* coordinate — what a graph does, not how it is built. `Fn.behaviour(domain, samples)` samples `evalSafe` on an even grid into an `FnBehaviour` descriptor (with a `distanceTo`), the counterpart to the structural view from `graphMetrics`. `noveltyFitness(archive, ...)` then rewards a candidate for being far (mean of its k-nearest neighbours) from an archive of already-seen behaviours — a drop-in `(Fn) -> Double` you can hand to plain `evolve`. `evolveVariety` orchestrates it: each slot evolves against a growing archive, adopts the winner, and drifts the seed onto it so the next slot has rich material to mutate *away* from.
+
+```diffstatic {data-lang=kotlin}
+val variety = evolveVariety(
+    seed = sin(2.0) * 0.5,
+    count = 6,          // how many mutually-distant gestures to return
+    iterations = 48,
+    rngSeed = 7L,       // same seed + inputs -> identical set
+    neighbours = 3      // k-nearest novelty
+)
+println("spread = ${variety.meanPairwiseDistance}")
+variety.results.forEachIndexed { i, fn -> fn.browseGraph(channel = "variety-$i") }
+```
+
+`FnVarietyRun` exposes the `results`, their `behaviours`, the underlying per-slot `runs`, and `meanPairwiseDistance` — the average behavioural distance across the set, a defensible diversity metric. Because novelty is scored purely from sampled behaviour, the returned graphs are genuinely spread out in *what they do*, not merely distinct in structure. As always the run is fully deterministic: the same `rngSeed` and inputs reproduce the identical family, so an evolved *set* of gestures is as repeatable in live art as a single evolved one.
 
 ### Rewrite plot example
 
