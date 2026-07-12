@@ -3565,6 +3565,8 @@ Here is an actual `normalize = true` run — the same CPU-only harness as above 
 
 Six slots grown from a single `sin(2.0) * 0.5` seed, `meanPairwiseDistance = 1.51` across the set — every cell is a genuinely different shape (all six polylines are distinct), not the same wave rescaled. Re-running regenerates a byte-identical montage. Try it without `normalize` and watch the spread balloon into the billions while the montage degenerates to one spike: a compact demonstration of *why the metric matters* in open-ended generation.
 
+**Replay it live.** A loadable operation transcript, [`assets/evolve/variety-evolution.operations.yaml`](assets/evolve/variety-evolution.operations.yaml), builds and runs this in a fresh Field document — one box that grows the set and plots each gesture. Replay it with `field_backdoor.py --scratch` (`macro write … && macro run …`) or hand the YAML to the `field_run_transcript` MCP tool. See [Automating Field](automating_field.md) for the transcript path.
+
 ### Rewrite plot example
 
 This example rewrites a nested graph in two ways: it changes a descendant `saw` into a `triangle`, then uses Kotlin RHS code to scale numeric values under `sin` by depth.
