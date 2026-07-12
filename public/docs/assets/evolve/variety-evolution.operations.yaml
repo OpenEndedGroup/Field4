@@ -1,0 +1,43 @@
+# Variety evolution — a loadable demo of afield.stdlib.evolveVariety.
+#
+# Open a FRESH Field4 document and replay this transcript to experience the feature:
+#
+#   uv run --project . --group backdoor python tools/field_backdoor.py --json --scratch \
+#     --graphics-context --with-playwright \
+#     --command 'macro write variety-evolution --file public/docs/assets/evolve/variety-evolution.operations.yaml' \
+#     --command 'macro run variety-evolution'
+#
+# or, with Field running and a document attached, hand the YAML below to the
+# `field_run_transcript` MCP tool. It creates one box that grows a *set* of six
+# behaviourally distinct gestures from a single seed by shape-normalized novelty
+# search, and plots each — one seed evolved six different ways.
+operations:
+  - create:
+      box: variety-evolution
+      name: variety-evolution
+      frame: { x: 40.0, y: 40.0, w: 620.0, h: 980.0 }
+      properties:
+        code: |
+          // Variety evolution — novelty search over Fn graphs (afield.stdlib.evolveVariety).
+          // Grows a *set* of behaviourally distinct gestures from one seed, then plots each.
+          // Run this box: the six plots below are one seed evolved six different ways.
+          import afield.stdlib.Functions
+          import afield.stdlib.evolveVariety
+
+          with(Functions) {
+              val variety = evolveVariety(
+                  seed = sin(2.0) * 0.5,   // one modest seed gesture
+                  count = 6,               // how many mutually-distant gestures to grow
+                  iterations = 48,
+                  rngSeed = 7L,            // deterministic: same seed + inputs -> identical set
+                  neighbours = 3,          // k-nearest novelty
+                  normalize = true         // measure novelty by *shape*, not amplitude
+              )
+              _print("variety spread (mean pairwise behavioural distance) = ${variety.meanPairwiseDistance}")
+              variety.results.forEachIndexed { i, fn ->
+                  fn.plot(channel = "variety-$i", title = "variety-$i", heightPx = 150)
+              }
+          }
+  - launch:
+      box: variety-evolution
+      property: code
