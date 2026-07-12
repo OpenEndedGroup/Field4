@@ -1802,6 +1802,46 @@ class FieldBackdoor:
             raise BackdoorError("macro-transcript-command returned an invalid payload")
         return payload
 
+    async def set_property(
+        self, *, uid: str, property_name: str, value: str, timeout: float
+    ) -> dict[str, Any]:
+        """Set a single string property on a box (e.g. notes). Direct setter."""
+        event = await self.call_for_single_reply(
+            "agent-set-property",
+            {"uid": uid, "property": property_name, "value": value},
+            timeout=timeout,
+        )
+        payload = event.get("payload")
+        if not isinstance(payload, dict):
+            raise BackdoorError("agent-set-property returned an invalid payload")
+        return payload
+
+    async def ai_tools_list(self, *, timeout: float) -> list[dict[str, Any]]:
+        """List the ai4 agent tools available for the attached document."""
+        event = await self.call_for_single_reply("agent-ai-tools-list", {}, timeout=timeout)
+        payload = event.get("payload")
+        tools = payload.get("tools") if isinstance(payload, dict) else None
+        return tools if isinstance(tools, list) else []
+
+    async def ai_tool_call(
+        self,
+        *,
+        name: str,
+        arguments: dict[str, Any] | None,
+        timeout: float,
+        focus_box: str | None = None,
+    ) -> dict[str, Any]:
+        """Invoke a named ai4 tool via the provider-neutral registry."""
+        event = await self.call_for_single_reply(
+            "agent-ai-tool-call",
+            {"name": name, "arguments": arguments or {}, "focusBox": focus_box},
+            timeout=timeout,
+        )
+        payload = event.get("payload")
+        if not isinstance(payload, dict):
+            raise BackdoorError("agent-ai-tool-call returned an invalid payload")
+        return payload
+
     async def replay_operations(
         self,
         entries: list[Any],

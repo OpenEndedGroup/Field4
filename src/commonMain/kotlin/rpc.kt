@@ -456,6 +456,7 @@ data class AgentBoxSnapshot(
     val callable_s: String? = null,
     val customization: String? = null,
     val metadata: String? = null,
+    val notes: String? = null,
     val code_language: String? = null,
     val autorun: Boolean = false,
     val layers: String? = null,
@@ -506,6 +507,47 @@ data class AgentCreateBoxResponse(
 data class AgentWaitFramesRequest(
     val frames: Long = 0,
     val timeoutSec: Double = 20.0
+)
+
+/**
+ * Provider-neutral ai4 tool surface over the backdoor. `agent-ai-tools-list`
+ * returns the tools available for the attached document (name/description/inputSchema);
+ * `agent-ai-tool-call` invokes one by name. Surfaced over MCP by tools/field_mcp.py.
+ */
+@Serializable
+data class AgentAiToolsListResponse(
+    val tools: JsonElement
+)
+
+@Serializable
+data class AgentAiToolCallRequest(
+    val name: String,
+    val arguments: JsonElement? = null,
+    val focusBox: String? = null
+)
+
+@Serializable
+data class AgentAiToolCallResponse(
+    val name: String,
+    val ok: Boolean,
+    val result: JsonElement? = null,
+    val error: String? = null
+)
+
+/** Set a single string property on a box (e.g. `notes`). Direct, reliable setter. */
+@Serializable
+data class AgentSetPropertyRequest(
+    val uid: String,
+    val property: String,
+    val value: String
+)
+
+@Serializable
+data class AgentSetPropertyResponse(
+    val ok: Boolean,
+    val uid: String,
+    val property: String,
+    val message: String = ""
 )
 
 @Serializable

@@ -601,8 +601,19 @@ function parseLiterateSegments(text) {
         return /^\/\//.test(trimmed) || /^#/.test(trimmed) || /^;/.test(trimmed);
     };
 
+    // Track whether we're inside a Kotlin triple-quoted string. Lines inside
+    // such a string are always code, even when they look like comments — an
+    // embedded RectSL/StackSL program uses `#rectsl` headers and lone `;`
+    // terminators, which would otherwise be yanked out as prose and desync the
+    // code highlighting across the `"""` boundaries.
+    let insideTriple = false;
+
     lines.forEach(line => {
-        const comment = isCommentLine(line);
+        const startedInsideTriple = insideTriple;
+        const tripleCount = (line.match(/"""/g) || []).length;
+        if (tripleCount % 2 === 1) insideTriple = !insideTriple;
+
+        const comment = !startedInsideTriple && isCommentLine(line);
         if (comment) {
             if (current.type !== 'comment') pushCurrent();
             current.type = 'comment';

@@ -30,7 +30,7 @@ particles advected by a simple force field, drawn as soft quads. We instrument
 the one quantity that is otherwise invisible — each particle's **speed**.
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 720px);">
-	<source src="../assets/field_probes/probe-card.mp4" type="video/mp4">
+	<source src="assets/field_probes/probe-card.mp4" type="video/mp4">
 </video>
 
 ---

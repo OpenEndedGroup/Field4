@@ -1,12 +1,12 @@
 
-<link rel="stylesheet" href="../assets/theme/darcula.css">
-<link rel="stylesheet" href="../assets/theme/material.css">
-<link rel="stylesheet" href="../assets/codemirror.css">
-<script src="../assets/codemirror.js"></script>
-<script src="../assets/mode/javascript/javascript.js"></script>
-<script src="../assets/mode/htmlmixed/htmlmixed.js"></script>
-<script src="../assets/mode/xml/xml.js"></script>
-<script src="../assets/mode/css/css.js"></script>
+<link rel="stylesheet" href="assets/theme/darcula.css">
+<link rel="stylesheet" href="assets/theme/material.css">
+<link rel="stylesheet" href="assets/codemirror.css">
+<script src="assets/codemirror.js"></script>
+<script src="assets/mode/javascript/javascript.js"></script>
+<script src="assets/mode/htmlmixed/htmlmixed.js"></script>
+<script src="assets/mode/xml/xml.js"></script>
+<script src="assets/mode/css/css.js"></script>
 
 # Sketch 1 — a warm up
 

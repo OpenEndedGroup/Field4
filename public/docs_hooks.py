@@ -1330,12 +1330,13 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                 out.append("\n")
                 out.append(f"![{options.alt or options.box_name}]({markdown_path_for(page_path, options.screenshot)})\n")
             if options.video and video_succeeded:
-                video_rel = embedded_asset_path_for(
-                    page_path=page_path,
-                    asset=options.video,
-                    docs_dir=state.docs_dir,
-                    use_directory_urls=bool(state.config["use_directory_urls"]),
-                )
+                # Emit a docs-root-relative path (e.g. "assets/foo.mp4"), the same
+                # convention used for the screenshot embed above. zensical rewrites
+                # raw-HTML src attributes for the page's URL depth just like it does
+                # markdown links; handing it an already page-relative "../assets/..."
+                # gets double-rewritten to "../../assets/..." and 404s on a site
+                # served under a base path (e.g. /field4/).
+                video_rel = markdown_path_for(page_path, options.video)
                 out.append("\n")
                 out.append(f'<video controls autoplay loop muted playsinline style="max-width:100%">\n')
                 out.append(f'  <source src="{video_rel}" type="video/mp4">\n')
@@ -1751,24 +1752,6 @@ def markdown_path_for(page_path: Path, screenshot: str) -> str:
     absolute = resolve_output_path(page_path, screenshot)
     return Path(os.path.relpath(absolute, start=page_path.parent)).as_posix()
 
-
-def embedded_asset_path_for(*, page_path: Path, asset: str, docs_dir: Path, use_directory_urls: bool) -> str:
-    absolute = resolve_output_path(page_path, asset)
-    try:
-        page_relative = page_path.relative_to(docs_dir)
-        asset_relative = absolute.relative_to(docs_dir)
-    except ValueError:
-        return markdown_path_for(page_path, asset)
-
-    if use_directory_urls:
-        if page_relative.name == "index.md":
-            rendered_dir = page_relative.parent
-        else:
-            rendered_dir = page_relative.with_suffix("")
-    else:
-        rendered_dir = page_relative.with_suffix(".html").parent
-
-    return Path(os.path.relpath(asset_relative, start=rendered_dir)).as_posix()
 
 
 def register_generated_file(*, files: Any, docs_dir: Path, site_dir: Path, use_directory_urls: bool, output_path: Path) -> None:

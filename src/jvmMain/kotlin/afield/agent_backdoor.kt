@@ -2,6 +2,8 @@ package afield
 
 import afield.four.Renderer
 import afield.ai.core.AI4_AUTO_NAME_PROPERTY
+import afield.ai.core.Ai4BackdoorTools
+import afield.ai.core.aiToolMapper
 import afield.four.synth.musicClock
 import afield.four.synth.patClock
 import afield.four.util.Window
@@ -610,6 +612,7 @@ private fun snapshotFor(box: Box): AgentBoxSnapshot {
         callable_s = box.getPropertyRaw("callable_s") as? String,
         customization = box.getPropertyRaw("customization") as? String,
         metadata = box.getPropertyRaw("metadata") as? String,
+        notes = box.getPropertyRaw("notes") as? String,
         code_language = box.getPropertyRaw("code_language") as? String,
         autorun = box.getPropertyRaw("autorun").isTrue(),
         layers = box.getPropertyRaw("layers") as? String,
@@ -918,6 +921,87 @@ fun installAgentBackdoorHandlers() {
     handlers["agent-snapshot"] = mutableSetOf({ _, reply ->
         val info = thisSessionInfo.get()
         reply(Message("agent-snapshot").payload(buildAgentSnapshot(info)))
+        Handled.yes
+    })
+
+    // Provider-neutral ai4 tool surface (Tier-1: Macro*/SemanticRetrieval*/agent memory).
+    // Reuses the same ToolRegistry the OpenAI harness uses; gates hide any tool whose
+    // provider is not wired for the backdoor context. Surfaced over MCP by field_mcp.py.
+    handlers["agent-ai-tools-list"] = mutableSetOf({ _, reply ->
+        val info = thisSessionInfo.get()
+        val ctx = Ai4BackdoorTools.buildContext(info)
+        val tools = Ai4BackdoorTools.registry.describe(ctx)
+        reply(Message("agent-ai-tools-list").payload(AgentAiToolsListResponse(tools = tools)))
+        Handled.yes
+    })
+
+    handlers["agent-ai-tool-call"] = mutableSetOf({ message, reply ->
+        val request = Json.decodeFromJsonElement<AgentAiToolCallRequest>(message.payload!!)
+        val session = thisSession.get()
+        val info = thisSessionInfo.get()
+        // Tools may run a transcript or hit an index; run off the socket thread with
+        // the session thread-locals rebound (mirrors the macro-transcript-command path).
+        agentBackdoorScope.launch {
+            thisSession.set(session)
+            thisSessionInfo.set(info)
+            try {
+                val ctx = Ai4BackdoorTools.buildContext(info)
+                val argsJson = request.arguments?.toString() ?: "{}"
+                val result = Ai4BackdoorTools.registry.executeByName(ctx, request.name, argsJson)
+                val resultJson = Json.parseToJsonElement(aiToolMapper.writeValueAsString(result))
+                reply(
+                    Message("agent-ai-tool-call").payload(
+                        AgentAiToolCallResponse(name = request.name, ok = true, result = resultJson)
+                    )
+                )
+            } catch (t: Throwable) {
+                lprintln("error,agent-backdoor", "ai tool '${request.name}' failed: ${t.message}")
+                lprintln("error,agent-backdoor", t.stackTraceToString())
+                reply(
+                    Message("agent-ai-tool-call").payload(
+                        AgentAiToolCallResponse(
+                            name = request.name,
+                            ok = false,
+                            error = t.message ?: t.javaClass.simpleName
+                        )
+                    )
+                )
+            } finally {
+                thisSession.remove()
+                thisSessionInfo.remove()
+            }
+        }
+        Handled.yes
+    })
+
+    handlers["agent-set-property"] = mutableSetOf({ message, reply ->
+        val request = Json.decodeFromJsonElement<AgentSetPropertyRequest>(message.payload!!)
+        val info = thisSessionInfo.get()
+        val target = info.boxes[request.uid]
+        if (target == null) {
+            reply(
+                Message("agent-set-property").payload(
+                    AgentSetPropertyResponse(
+                        ok = false, uid = request.uid, property = request.property,
+                        message = "No box '${request.uid}' in ${info.documentName}."
+                    )
+                )
+            )
+            return@mutableSetOf Handled.yes
+        }
+        // Direct set (string), reusing the create-box property path: handles sidecar
+        // persistence for ioSeparateProperties like `notes` (written as a .md sidecar).
+        applyAgentProperty(target, request.property, JsonPrimitive(request.value))
+        needsResync.add(target to request.property)
+        doResync()
+        reply(
+            Message("agent-set-property").payload(
+                AgentSetPropertyResponse(
+                    ok = true, uid = request.uid, property = request.property,
+                    message = "Set ${request.property} on ${target.name.ifBlank { request.uid }} (${request.value.length} chars)."
+                )
+            )
+        )
         Handled.yes
     })
 

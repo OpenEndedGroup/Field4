@@ -29,6 +29,7 @@ detailed reference it points into.
 | **Understand a macro a user saved** | [`OPERATION_TRANSCRIPT.md`](./OPERATION_TRANSCRIPT.md#reading-and-rewriting-a-users-saved-macros) | `macro list` / `macro read <name>` |
 | **Rewrite a macro for your own ends** | [`OPERATION_TRANSCRIPT.md`](./OPERATION_TRANSCRIPT.md#reading-and-rewriting-a-users-saved-macros) | edit the YAML, `macro write`, `macro run` |
 | **Copy-paste a working example** | [`transcripts/README.md`](./transcripts/README.md) | curated, runnable transcript corpus |
+| **Talk to Field from Claude Code/Desktop** | [`FIELD_MCP.md`](./FIELD_MCP.md) | local stdio MCP server over the backdoor; `uv sync --group backdoor` then approve the `field` server |
 | **Capture examples for the docs site** | [`../DOCS_RUNNER_GPU_CAPTURES.md`](../DOCS_RUNNER_GPU_CAPTURES.md) | `diffstatic_runner` fences, incl. GPU/compute/probe |
 
 ## The core docs
@@ -39,6 +40,7 @@ detailed reference it points into.
 - **[`FIELD_BACKDOOR.md`](./FIELD_BACKDOOR.md)** — the backdoor CLI: server lifecycle,
   batch/interactive modes, `--graphics-context`, screenshots, video, `page-eval`, logs.
 - **[`AGENT_QUICK_REF.md`](./AGENT_QUICK_REF.md)** — a one-page cheat-sheet of the most-used commands.
+- **[`FIELD_MCP.md`](./FIELD_MCP.md)** — expose Field to Claude Code/Desktop as a local stdio MCP server (`tools/field_mcp.py` + `.mcp.json`), including the `uv sync --group backdoor` prerequisite.
 - **[`transcripts/README.md`](./transcripts/README.md)** — the runnable example corpus.
 
 ## Supporting infrastructure

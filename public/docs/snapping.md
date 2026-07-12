@@ -3,7 +3,7 @@
 Field can snap boxes while you drag or resize them. The snapping system is designed for quick layout cleanup rather than a separate mode or tool palette.
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 460px);">
-	<source src="../assets/snapping-guide.mp4" type="video/mp4">
+	<source src="assets/snapping-guide.mp4" type="video/mp4">
 </video>
 
 ## Turn snapping on

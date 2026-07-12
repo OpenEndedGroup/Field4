@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "field": {
+      "command": ".venv/bin/python3",
+      "args": ["tools/field_mcp.py"],
+      "env": {
+        "PORT": "9092"
+      }
+    }
+  }
+}

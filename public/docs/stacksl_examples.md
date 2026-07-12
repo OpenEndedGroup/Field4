@@ -361,31 +361,31 @@ expect:
 
 **FBM drifting through a palette** — `uv 5.0 * time 0.12 * + fbm palette saturate`
 
-<video src="../assets/stacksl/stacksl-fbm-palette.mp4" autoplay loop muted playsinline
+<video src="assets/stacksl/stacksl-fbm-palette.mp4" autoplay loop muted playsinline
        style="width:100%;max-width:512px;border-radius:8px;border:1px solid #333;">
 </video>
 
 **Frequency modulation** — `uv 14.0 * time + fm palette`
 
-<video src="../assets/stacksl/stacksl-fm-palette.mp4" autoplay loop muted playsinline
+<video src="assets/stacksl/stacksl-fm-palette.mp4" autoplay loop muted playsinline
        style="width:100%;max-width:512px;border-radius:8px;border:1px solid #333;">
 </video>
 
 **Polar rotation** — `p polar ... 0.2t ... cart fbm sigmoid palette`
 
-<video src="../assets/stacksl/stacksl-polar-sigmoid.mp4" autoplay loop muted playsinline
+<video src="assets/stacksl/stacksl-polar-sigmoid.mp4" autoplay loop muted playsinline
        style="width:100%;max-width:512px;border-radius:8px;border:1px solid #333;">
 </video>
 
 **Definitions warping over time** — `warp` folds `time` into a sine domain offset
 
-<video src="../assets/stacksl/stacksl-definitions.mp4" autoplay loop muted playsinline
+<video src="assets/stacksl/stacksl-definitions.mp4" autoplay loop muted playsinline
        style="width:100%;max-width:512px;border-radius:8px;border:1px solid #333;">
 </video>
 
 **Drifting ridges** — one subroutine sampled at two time-shifted coordinates
 
-<video src="../assets/stacksl/stacksl-subroutine-ridges.mp4" autoplay loop muted playsinline
+<video src="assets/stacksl/stacksl-subroutine-ridges.mp4" autoplay loop muted playsinline
        style="width:100%;max-width:512px;border-radius:8px;border:1px solid #333;">
 </video>
 
@@ -404,7 +404,7 @@ uv y 0.15t fract 0.02 pulse 0.15t palette * 0.8 *
 saturate
 ```
 
-<video src="../assets/stacksl/stacksl-feedback-trails.mp4" autoplay loop muted playsinline
+<video src="assets/stacksl/stacksl-feedback-trails.mp4" autoplay loop muted playsinline
        style="width:100%;max-width:512px;border-radius:8px;border:1px solid #333;">
 </video>
 
@@ -421,7 +421,7 @@ uv 5 * 0.25t + fbm 0.62 threshold 0.05 *
 saturate
 ```
 
-<video src="../assets/stacksl/stacksl-diffusion-feedback.mp4" autoplay loop muted playsinline
+<video src="assets/stacksl/stacksl-diffusion-feedback.mp4" autoplay loop muted playsinline
        style="width:100%;max-width:512px;border-radius:8px;border:1px solid #333;">
 </video>
 

@@ -93,6 +93,406 @@ private fun macroRunToolResult(
     )
 }
 
+// --- Pure code-tool helpers (promoted to top level so both installAi4()'s chat
+// handler and Ai4CodeToolProviders/the backdoor share one implementation). These
+// close over nothing request-scoped; unqualified call sites inside installAi4()
+// still resolve here after the nested copies are removed. ---
+
+data class FileRef(val document: String, val uid: String, val property: String)
+
+fun fileRefFor(docName: String, uid: String, property: String): String =
+    "afield://$docName/$uid/$property"
+
+fun boxLabel(target: Box): String = target.name.trim().ifBlank { target.id }
+
+fun diagnosticToCompileDiagnostic(diagnostic: ScriptDiagnostic): CompileDiagnostic {
+    val location = diagnostic.location
+    return CompileDiagnostic(
+        severity = diagnostic.severity.name,
+        message = diagnostic.message,
+        line = location?.start?.line ?: -1,
+        column = location?.start?.col ?: -1,
+        endLine = location?.end?.line ?: -1,
+        endColumn = location?.end?.col ?: -1,
+        code = diagnostic.code.toString()
+    )
+}
+
+data class SetupSnapshot(
+    val preamble: String,
+    val preambleCache: String,
+    val intro: String,
+    val introCache: String,
+    val attic: String,
+    val atticCache: String
+)
+
+fun setupSnapshot(target: Box): SetupSnapshot = SetupSnapshot(
+    preamble = target.getPropertyRaw("preamble", "") as? String ?: "",
+    preambleCache = target.getPropertyRaw("_preamble", "") as? String ?: "",
+    intro = target.getPropertyRaw("introduction", "") as? String ?: "",
+    introCache = target.getPropertyRaw("_introduction", "") as? String ?: "",
+    attic = target.getPropertyRaw("attic", "") as? String ?: "",
+    atticCache = target.getPropertyRaw("_attic", "") as? String ?: ""
+)
+
+fun setupChanges(before: SetupSnapshot, after: SetupSnapshot): List<SetupPropertyChange> = listOf(
+    SetupPropertyChange(
+        property = "preamble",
+        changed = before.preamble != after.preamble,
+        cacheChanged = before.preambleCache != after.preambleCache,
+        beforeChars = before.preamble.length,
+        afterChars = after.preamble.length
+    ),
+    SetupPropertyChange(
+        property = "intro",
+        changed = before.intro != after.intro,
+        cacheChanged = before.introCache != after.introCache,
+        beforeChars = before.intro.length,
+        afterChars = after.intro.length
+    ),
+    SetupPropertyChange(
+        property = "attic",
+        changed = before.attic != after.attic,
+        cacheChanged = before.atticCache != after.atticCache,
+        beforeChars = before.attic.length,
+        afterChars = after.attic.length
+    )
+)
+
+fun clipToolText(value: String, requestedMaxChars: Int): String {
+    val maxChars = requestedMaxChars.coerceIn(64, 100_000)
+    if (value.length <= maxChars) return value
+    return value.take(maxChars) + "\n...<truncated ${value.length - maxChars} chars>"
+}
+
+fun safeString(value: Any?): String = runCatching { value.toString() }
+    .getOrElse { throwable -> "<toString failed: ${throwable.message ?: throwable::class.java.simpleName}>" }
+
+fun runtimeTypeName(value: Any?): String =
+    value?.let { shortenType(it::class.qualifiedName ?: it::class.java.name) } ?: "null"
+
+fun primitiveKind(value: Any?): String = when (value) {
+    null -> "null"
+    is Boolean -> "Boolean"
+    is Byte -> "Byte"
+    is Short -> "Short"
+    is Int -> "Int"
+    is Long -> "Long"
+    is Float -> "Float"
+    is Double -> "Double"
+    is Char -> "Char"
+    is String -> "String"
+    else -> ""
+}
+
+fun primitiveToolValue(value: Any?): Any? = when (value) {
+    is Boolean, is Byte, is Short, is Int, is Long, is Float, is Double, is String -> value
+    is Char -> value.toString()
+    else -> null
+}
+
+/**
+ * Box-scoped Kotlin code tools (CompileKotlin, EvaluateKotlin), extracted from the
+ * ai-assist chat handler so the OpenAI harness and the MCP backdoor share one
+ * implementation. Context is supplied via four closures; everything else resolves
+ * to the promoted top-level helpers above. `refResolver` replaces the chat handler's
+ * `exec`-coupled `requestedRefOrCurrent` — the backdoor passes an explicit-target
+ * resolver with no "current box" fallback.
+ */
+class Ai4CodeToolProviders(
+    private val docName: String,
+    private val refResolver: (String, String) -> FileRef,
+    private val boxByIdOrNull: (String) -> Box?,
+    private val stagedOrCurrentSource: (Box, String, String?) -> String?,
+) {
+    val evaluateKotlinExpression: (EvaluateKotlinExpressionRequest) -> EvaluateKotlinExpressionResult =
+        evaluateKotlinExpression@{ req ->
+            val expression = req.expression.trim()
+            if (expression.isBlank()) {
+                return@evaluateKotlinExpression EvaluateKotlinExpressionResult(
+                    success = false,
+                    target = req.target,
+                    boxUid = "",
+                    boxName = "",
+                    expression = req.expression,
+                    valueKind = "error",
+                    message = "Expression is empty."
+                )
+            }
+
+            val ref = refResolver(req.target, "code")
+            if (ref.document != docName) {
+                return@evaluateKotlinExpression EvaluateKotlinExpressionResult(
+                    success = false,
+                    target = req.target,
+                    boxUid = ref.uid,
+                    boxName = "",
+                    expression = expression,
+                    valueKind = "error",
+                    message = "Unknown document '${ref.document}'."
+                )
+            }
+            val target = boxByIdOrNull(ref.uid)
+                ?: return@evaluateKotlinExpression EvaluateKotlinExpressionResult(
+                    success = false,
+                    target = req.target,
+                    boxUid = ref.uid,
+                    boxName = "",
+                    expression = expression,
+                    valueKind = "error",
+                    message = "Unknown box '${ref.uid}'."
+                )
+
+            notify("Evaluating Kotlin expression for ${target.id}", "AI4")
+            val diagnostics = mutableListOf<CompileDiagnostic>()
+            var resultValue: ResultValue? = null
+
+            runCatching {
+                runBlocking {
+                    Box.withBoxContext(target) {
+                        val prepared = target.ki.compileSnippet(
+                            expression,
+                            implicits = listOf(target),
+                            onCompileError = { list ->
+                                diagnostics += list.map(::diagnosticToCompileDiagnostic)
+                            }
+                        )
+                        if (prepared != null) {
+                            resultValue = withContext(Runloop.runLoop.main) {
+                                prepared.eval(
+                                    updateContext = false,
+                                    implicits = listOf(target),
+                                    onEvalError = { list ->
+                                        diagnostics += list.map(::diagnosticToCompileDiagnostic)
+                                    },
+                                    onEvalException = { throwable ->
+                                        diagnostics += CompileDiagnostic(
+                                            severity = "ERROR",
+                                            message = throwable.message ?: throwable::class.java.name
+                                        )
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }.onFailure { throwable ->
+                diagnostics += CompileDiagnostic(
+                    severity = "ERROR",
+                    message = throwable.message ?: throwable::class.java.name
+                )
+            }
+
+            val targetRef = fileRefFor(docName, target.id, ref.property)
+            when (val result = resultValue) {
+                is ResultValue.Value -> {
+                    val value = result.value
+                    val kind = if (value == null) "null" else if (primitiveKind(value).isNotBlank()) "primitive" else "object"
+                    val stringValue = clipToolText(safeString(value), req.maxChars)
+                    val html = if (req.renderHtml) {
+                        clipToolText(
+                            runCatching { value.h }
+                                .getOrElse { throwable ->
+                                    "<pre>.h visualization failed: ${safeString(throwable.message ?: throwable::class.java.simpleName)}</pre>"
+                                },
+                            req.maxChars
+                        )
+                    } else ""
+                    EvaluateKotlinExpressionResult(
+                        success = true,
+                        target = targetRef,
+                        boxUid = target.id,
+                        boxName = boxLabel(target),
+                        expression = expression,
+                        valueKind = kind,
+                        type = runCatching { shortenType(result.type) }.getOrDefault(runtimeTypeName(value)),
+                        runtimeType = runtimeTypeName(value),
+                        primitiveValue = primitiveToolValue(value),
+                        primitiveKind = primitiveKind(value),
+                        stringValue = stringValue,
+                        html = html,
+                        diagnostics = diagnostics,
+                        message = "Expression evaluated."
+                    )
+                }
+
+                is ResultValue.Unit -> EvaluateKotlinExpressionResult(
+                    success = true,
+                    target = targetRef,
+                    boxUid = target.id,
+                    boxName = boxLabel(target),
+                    expression = expression,
+                    valueKind = "unit",
+                    type = "Unit",
+                    runtimeType = "Unit",
+                    stringValue = "Unit",
+                    diagnostics = diagnostics,
+                    message = "Expression evaluated to Unit."
+                )
+
+                is ResultValue.NotEvaluated -> EvaluateKotlinExpressionResult(
+                    success = false,
+                    target = targetRef,
+                    boxUid = target.id,
+                    boxName = boxLabel(target),
+                    expression = expression,
+                    valueKind = "not_evaluated",
+                    diagnostics = diagnostics,
+                    message = "Expression was not evaluated."
+                )
+
+                is ResultValue.Error -> EvaluateKotlinExpressionResult(
+                    success = false,
+                    target = targetRef,
+                    boxUid = target.id,
+                    boxName = boxLabel(target),
+                    expression = expression,
+                    valueKind = "error",
+                    diagnostics = diagnostics,
+                    message = result.error.message ?: result.error::class.java.name
+                )
+
+                null -> EvaluateKotlinExpressionResult(
+                    success = false,
+                    target = targetRef,
+                    boxUid = target.id,
+                    boxName = boxLabel(target),
+                    expression = expression,
+                    valueKind = "error",
+                    diagnostics = diagnostics,
+                    message = if (diagnostics.isEmpty()) "Expression did not produce a result." else "Expression failed."
+                )
+            }
+        }
+
+    val compileKotlin: (CompileKotlinRequest) -> CompileKotlinResult = compileKotlin@{ req ->
+        val ref = refResolver(req.file, "code")
+        if (ref.document != docName) {
+            return@compileKotlin CompileKotlinResult(
+                success = false,
+                file = req.file,
+                message = "Unknown document '${ref.document}'."
+            )
+        }
+        if (ref.property != "code") {
+            return@compileKotlin CompileKotlinResult(
+                success = false,
+                file = fileRefFor(docName, ref.uid, ref.property),
+                message = "CompileKotlin only supports the code property; got '${ref.property}'."
+            )
+        }
+        val target = boxByIdOrNull(ref.uid)
+            ?: return@compileKotlin CompileKotlinResult(
+                success = false,
+                file = fileRefFor(docName, ref.uid, ref.property),
+                message = "Unknown box '${ref.uid}'."
+            )
+        val source = stagedOrCurrentSource(target, ref.property, req.source)
+            ?: return@compileKotlin CompileKotlinResult(
+                success = false,
+                file = fileRefFor(docName, target.id, ref.property),
+                message = "No Kotlin source is available for ${target.id}/${ref.property}."
+            )
+
+        notify("Compiling Kotlin for ${target.id}", "AI4")
+
+        val diagnostics = mutableListOf<CompileDiagnostic>()
+        val before = setupSnapshot(target)
+        var snippetsCompiled = 0
+        var failed = false
+
+        runCatching {
+            runBlocking {
+                Box.withBoxContext(target) {
+                    val lines = source.trimEnd().lines()
+                    val breaks = lines.mapIndexedNotNull { index, line ->
+                        if (line.trim().startsWith("//%-") || line.trim().startsWith("/*%-*/")) index else null
+                    } + lines.size
+
+                    var at = 0
+                    var lineCounter = 0
+                    for (breakIndex in breaks) {
+                        val snippetSource = lines.subList(at, breakIndex).joinToString("\n")
+                        val expanded = if (KotlinEngineConfig.offloadCompilation) {
+                            withContext(target.ki.compilationDispatcher) { target.ki.applyMacros(target, snippetSource) }
+                        } else {
+                            target.ki.applyMacros(target, snippetSource)
+                        }
+                        val compiledSource = expanded.split("\n").joinToString("\n") { line ->
+                            lineCounter++
+                            line.replace("__line__", "${lineCounter - 1}")
+                        }
+
+                        if (req.runSetupBlocks) {
+                            val setupCompileError: (List<ScriptDiagnostic>) -> Unit = { list ->
+                                diagnostics += list.map(::diagnosticToCompileDiagnostic)
+                            }
+                            val setupEvalError: (List<ScriptDiagnostic>) -> Unit = { list ->
+                                diagnostics += list.map(::diagnosticToCompileDiagnostic)
+                            }
+                            val setupEvalException: (Throwable) -> Unit = { throwable ->
+                                diagnostics += CompileDiagnostic(
+                                    severity = "ERROR",
+                                    message = "Setup block exception: ${throwable.message ?: throwable::class.java.name}"
+                                )
+                            }
+                            withContext(Runloop.runLoop.main) {
+                                checkPreambleAndExecute(target, setupCompileError, setupEvalError, setupEvalException)
+                                checkIntroductionAndExecute(target, setupCompileError, setupEvalError, setupEvalException)
+                                checkAtticAndExecute(target, setupCompileError, setupEvalError, setupEvalException)
+                            }
+                        }
+
+                        val prepared = target.ki.compileSnippet(
+                            compiledSource,
+                            implicits = listOf(target),
+                            onCompileError = { list ->
+                                diagnostics += list.map(::diagnosticToCompileDiagnostic)
+                            }
+                        )
+                        if (prepared == null) {
+                            failed = true
+                            break
+                        }
+                        snippetsCompiled++
+                        at = breakIndex
+                    }
+                }
+            }
+        }.onFailure { throwable ->
+            failed = true
+            diagnostics += CompileDiagnostic(
+                severity = "ERROR",
+                message = throwable.message ?: throwable::class.java.name
+            )
+        }
+
+        val after = setupSnapshot(target)
+        val hasHardDiagnostic = diagnostics.any { severity ->
+            val normalized = severity.severity.uppercase()
+            normalized != "DEBUG" && normalized != "INFO" && normalized != "WARNING"
+        }
+        val success = !failed && !hasHardDiagnostic
+        val changed = setupChanges(before, after)
+        val changedNames = changed.filter { it.changed || it.cacheChanged }.joinToString(", ") { it.property }
+        val message = buildString {
+            append(if (success) "Kotlin compiled successfully" else "Kotlin compile failed")
+            append(" for ${target.id}; snippets=$snippetsCompiled")
+            if (changedNames.isNotBlank()) append("; setup changed: $changedNames")
+        }
+        notify(message, "AI4")
+
+        CompileKotlinResult(
+            success = success,
+            file = fileRefFor(docName, target.id, "code"),
+            message = message,
+            diagnostics = diagnostics,
+            setupChanges = changed
+        )
+    }
+}
+
 private const val AI4_CONNECTED_RENDER_EXAMPLE_REF = "afield://ai4-examples/connected-compute-render"
 
 private val AI4_CONNECTED_RENDER_EXAMPLE = """
@@ -268,8 +668,6 @@ fun installAi4() {
         return "AI4 could not initialize OpenAI support: ${t.message ?: t::class.java.simpleName}"
     }
 
-    data class FileRef(val document: String, val uid: String, val property: String)
-
     fun currentSessionInfoOrNull(): SessionInformation? =
         runCatching { thisSessionInfo.get() }.getOrNull()
 
@@ -279,9 +677,6 @@ fun installAi4() {
             ?.takeIf { it.isNotBlank() }
             ?.let { File(it).name }
             ?: "global-chat"
-
-    fun fileRefFor(docName: String, uid: String, property: String): String =
-        "afield://$docName/$uid/$property"
 
     fun parseFileRef(raw: String, defaultProperty: String? = null): FileRef? {
         if (!raw.startsWith("afield://")) return null
@@ -529,9 +924,6 @@ fun installAi4() {
 
         fun textPropertyContents(target: Box, property: String): String? =
             (target.getPropertyRaw(property) as? String)?.takeIf { it.isNotBlank() }
-
-        fun boxLabel(target: Box): String =
-            target.name.trim().ifBlank { target.id }
 
         fun resolveBoxByChatName(rawName: String): Box? {
             val requested = rawName.trim()
@@ -947,61 +1339,6 @@ fun installAi4() {
             )
         }
 
-        fun diagnosticToCompileDiagnostic(diagnostic: ScriptDiagnostic): CompileDiagnostic {
-            val location = diagnostic.location
-            return CompileDiagnostic(
-                severity = diagnostic.severity.name,
-                message = diagnostic.message,
-                line = location?.start?.line ?: -1,
-                column = location?.start?.col ?: -1,
-                endLine = location?.end?.line ?: -1,
-                endColumn = location?.end?.col ?: -1,
-                code = diagnostic.code.toString()
-            )
-        }
-
-        data class SetupSnapshot(
-            val preamble: String,
-            val preambleCache: String,
-            val intro: String,
-            val introCache: String,
-            val attic: String,
-            val atticCache: String
-        )
-
-        fun setupSnapshot(target: Box): SetupSnapshot = SetupSnapshot(
-            preamble = target.getPropertyRaw("preamble", "") as? String ?: "",
-            preambleCache = target.getPropertyRaw("_preamble", "") as? String ?: "",
-            intro = target.getPropertyRaw("introduction", "") as? String ?: "",
-            introCache = target.getPropertyRaw("_introduction", "") as? String ?: "",
-            attic = target.getPropertyRaw("attic", "") as? String ?: "",
-            atticCache = target.getPropertyRaw("_attic", "") as? String ?: ""
-        )
-
-        fun setupChanges(before: SetupSnapshot, after: SetupSnapshot): List<SetupPropertyChange> = listOf(
-            SetupPropertyChange(
-                property = "preamble",
-                changed = before.preamble != after.preamble,
-                cacheChanged = before.preambleCache != after.preambleCache,
-                beforeChars = before.preamble.length,
-                afterChars = after.preamble.length
-            ),
-            SetupPropertyChange(
-                property = "intro",
-                changed = before.intro != after.intro,
-                cacheChanged = before.introCache != after.introCache,
-                beforeChars = before.intro.length,
-                afterChars = after.intro.length
-            ),
-            SetupPropertyChange(
-                property = "attic",
-                changed = before.attic != after.attic,
-                cacheChanged = before.atticCache != after.atticCache,
-                beforeChars = before.attic.length,
-                afterChars = after.attic.length
-            )
-        )
-
         fun requestedRefOrCurrent(raw: String, defaultProperty: String = exec.property.ifBlank { "code" }): FileRef {
             val trimmed = raw.trim()
             if (trimmed.isBlank()) return FileRef(docName, box.id, defaultProperty)
@@ -1021,38 +1358,6 @@ fun installAi4() {
 
         fun visualVerificationAvailable(): Boolean =
             exec.images.isNotEmpty() || chatHistoryByKey[fileKey].orEmpty().contains("data:image/")
-
-        fun clipToolText(value: String, requestedMaxChars: Int): String {
-            val maxChars = requestedMaxChars.coerceIn(64, 100_000)
-            if (value.length <= maxChars) return value
-            return value.take(maxChars) + "\n...<truncated ${value.length - maxChars} chars>"
-        }
-
-        fun safeString(value: Any?): String = runCatching { value.toString() }
-            .getOrElse { throwable -> "<toString failed: ${throwable.message ?: throwable::class.java.simpleName}>" }
-
-        fun runtimeTypeName(value: Any?): String =
-            value?.let { shortenType(it::class.qualifiedName ?: it::class.java.name) } ?: "null"
-
-        fun primitiveKind(value: Any?): String = when (value) {
-            null -> "null"
-            is Boolean -> "Boolean"
-            is Byte -> "Byte"
-            is Short -> "Short"
-            is Int -> "Int"
-            is Long -> "Long"
-            is Float -> "Float"
-            is Double -> "Double"
-            is Char -> "Char"
-            is String -> "String"
-            else -> ""
-        }
-
-        fun primitiveToolValue(value: Any?): Any? = when (value) {
-            is Boolean, is Byte, is Short, is Int, is Long, is Float, is Double, is String -> value
-            is Char -> value.toString()
-            else -> null
-        }
 
         val listKotlinContextVariables: (ListKotlinContextVariablesRequest) -> ListKotlinContextVariablesResult =
             listKotlinContextVariables@{ req ->
@@ -1104,291 +1409,14 @@ fun installAi4() {
                 )
             }
 
-        val evaluateKotlinExpression: (EvaluateKotlinExpressionRequest) -> EvaluateKotlinExpressionResult =
-            evaluateKotlinExpression@{ req ->
-                val expression = req.expression.trim()
-                if (expression.isBlank()) {
-                    return@evaluateKotlinExpression EvaluateKotlinExpressionResult(
-                        success = false,
-                        target = req.target,
-                        boxUid = "",
-                        boxName = "",
-                        expression = req.expression,
-                        valueKind = "error",
-                        message = "Expression is empty."
-                    )
-                }
-
-                val ref = requestedRefOrCurrent(req.target, defaultProperty = "code")
-                if (ref.document != docName) {
-                    return@evaluateKotlinExpression EvaluateKotlinExpressionResult(
-                        success = false,
-                        target = req.target,
-                        boxUid = ref.uid,
-                        boxName = "",
-                        expression = expression,
-                        valueKind = "error",
-                        message = "Unknown document '${ref.document}'."
-                    )
-                }
-                val target = boxByIdOrNull(ref.uid)
-                    ?: return@evaluateKotlinExpression EvaluateKotlinExpressionResult(
-                        success = false,
-                        target = req.target,
-                        boxUid = ref.uid,
-                        boxName = "",
-                        expression = expression,
-                        valueKind = "error",
-                        message = "Unknown box '${ref.uid}'."
-                    )
-
-                notify("Evaluating Kotlin expression for ${target.id}", "AI4")
-                val diagnostics = mutableListOf<CompileDiagnostic>()
-                var resultValue: ResultValue? = null
-
-                runCatching {
-                    runBlocking {
-                        Box.withBoxContext(target) {
-                            val prepared = target.ki.compileSnippet(
-                                expression,
-                                implicits = listOf(target),
-                                onCompileError = { list ->
-                                    diagnostics += list.map(::diagnosticToCompileDiagnostic)
-                                }
-                            )
-                            if (prepared != null) {
-                                resultValue = withContext(Runloop.runLoop.main) {
-                                    prepared.eval(
-                                        updateContext = false,
-                                        implicits = listOf(target),
-                                        onEvalError = { list ->
-                                            diagnostics += list.map(::diagnosticToCompileDiagnostic)
-                                        },
-                                        onEvalException = { throwable ->
-                                            diagnostics += CompileDiagnostic(
-                                                severity = "ERROR",
-                                                message = throwable.message ?: throwable::class.java.name
-                                            )
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }.onFailure { throwable ->
-                    diagnostics += CompileDiagnostic(
-                        severity = "ERROR",
-                        message = throwable.message ?: throwable::class.java.name
-                    )
-                }
-
-                val targetRef = fileRefFor(docName, target.id, ref.property)
-                when (val result = resultValue) {
-                    is ResultValue.Value -> {
-                        val value = result.value
-                        val kind = if (value == null) "null" else if (primitiveKind(value).isNotBlank()) "primitive" else "object"
-                        val stringValue = clipToolText(safeString(value), req.maxChars)
-                        val html = if (req.renderHtml) {
-                            clipToolText(
-                                runCatching { value.h }
-                                    .getOrElse { throwable ->
-                                        "<pre>.h visualization failed: ${safeString(throwable.message ?: throwable::class.java.simpleName)}</pre>"
-                                    },
-                                req.maxChars
-                            )
-                        } else ""
-                        EvaluateKotlinExpressionResult(
-                            success = true,
-                            target = targetRef,
-                            boxUid = target.id,
-                            boxName = boxLabel(target),
-                            expression = expression,
-                            valueKind = kind,
-                            type = runCatching { shortenType(result.type) }.getOrDefault(runtimeTypeName(value)),
-                            runtimeType = runtimeTypeName(value),
-                            primitiveValue = primitiveToolValue(value),
-                            primitiveKind = primitiveKind(value),
-                            stringValue = stringValue,
-                            html = html,
-                            diagnostics = diagnostics,
-                            message = "Expression evaluated."
-                        )
-                    }
-
-                    is ResultValue.Unit -> EvaluateKotlinExpressionResult(
-                        success = true,
-                        target = targetRef,
-                        boxUid = target.id,
-                        boxName = boxLabel(target),
-                        expression = expression,
-                        valueKind = "unit",
-                        type = "Unit",
-                        runtimeType = "Unit",
-                        stringValue = "Unit",
-                        diagnostics = diagnostics,
-                        message = "Expression evaluated to Unit."
-                    )
-
-                    is ResultValue.NotEvaluated -> EvaluateKotlinExpressionResult(
-                        success = false,
-                        target = targetRef,
-                        boxUid = target.id,
-                        boxName = boxLabel(target),
-                        expression = expression,
-                        valueKind = "not_evaluated",
-                        diagnostics = diagnostics,
-                        message = "Expression was not evaluated."
-                    )
-
-                    is ResultValue.Error -> EvaluateKotlinExpressionResult(
-                        success = false,
-                        target = targetRef,
-                        boxUid = target.id,
-                        boxName = boxLabel(target),
-                        expression = expression,
-                        valueKind = "error",
-                        diagnostics = diagnostics,
-                        message = result.error.message ?: result.error::class.java.name
-                    )
-
-                    null -> EvaluateKotlinExpressionResult(
-                        success = false,
-                        target = targetRef,
-                        boxUid = target.id,
-                        boxName = boxLabel(target),
-                        expression = expression,
-                        valueKind = "error",
-                        diagnostics = diagnostics,
-                        message = if (diagnostics.isEmpty()) "Expression did not produce a result." else "Expression failed."
-                    )
-                }
-            }
-
-        val compileKotlin: (CompileKotlinRequest) -> CompileKotlinResult = compileKotlin@{ req ->
-            val ref = requestedRefOrCurrent(req.file, defaultProperty = "code")
-            if (ref.document != docName) {
-                return@compileKotlin CompileKotlinResult(
-                    success = false,
-                    file = req.file,
-                    message = "Unknown document '${ref.document}'."
-                )
-            }
-            if (ref.property != "code") {
-                return@compileKotlin CompileKotlinResult(
-                    success = false,
-                    file = fileRefFor(docName, ref.uid, ref.property),
-                    message = "CompileKotlin only supports the code property; got '${ref.property}'."
-                )
-            }
-            val target = boxByIdOrNull(ref.uid)
-                ?: return@compileKotlin CompileKotlinResult(
-                    success = false,
-                    file = fileRefFor(docName, ref.uid, ref.property),
-                    message = "Unknown box '${ref.uid}'."
-                )
-            val source = stagedOrCurrentSource(target, ref.property, req.source)
-                ?: return@compileKotlin CompileKotlinResult(
-                    success = false,
-                    file = fileRefFor(docName, target.id, ref.property),
-                    message = "No Kotlin source is available for ${target.id}/${ref.property}."
-                )
-
-            notify("Compiling Kotlin for ${target.id}", "AI4")
-
-            val diagnostics = mutableListOf<CompileDiagnostic>()
-            val before = setupSnapshot(target)
-            var snippetsCompiled = 0
-            var failed = false
-
-            runCatching {
-                runBlocking {
-                    Box.withBoxContext(target) {
-                        val lines = source.trimEnd().lines()
-                        val breaks = lines.mapIndexedNotNull { index, line ->
-                            if (line.trim().startsWith("//%-") || line.trim().startsWith("/*%-*/")) index else null
-                        } + lines.size
-
-                        var at = 0
-                        var lineCounter = 0
-                        for (breakIndex in breaks) {
-                            val snippetSource = lines.subList(at, breakIndex).joinToString("\n")
-                            val expanded = if (KotlinEngineConfig.offloadCompilation) {
-                                withContext(target.ki.compilationDispatcher) { target.ki.applyMacros(target, snippetSource) }
-                            } else {
-                                target.ki.applyMacros(target, snippetSource)
-                            }
-                            val compiledSource = expanded.split("\n").joinToString("\n") { line ->
-                                lineCounter++
-                                line.replace("__line__", "${lineCounter - 1}")
-                            }
-
-                            if (req.runSetupBlocks) {
-                                val setupCompileError: (List<ScriptDiagnostic>) -> Unit = { list ->
-                                    diagnostics += list.map(::diagnosticToCompileDiagnostic)
-                                }
-                                val setupEvalError: (List<ScriptDiagnostic>) -> Unit = { list ->
-                                    diagnostics += list.map(::diagnosticToCompileDiagnostic)
-                                }
-                                val setupEvalException: (Throwable) -> Unit = { throwable ->
-                                    diagnostics += CompileDiagnostic(
-                                        severity = "ERROR",
-                                        message = "Setup block exception: ${throwable.message ?: throwable::class.java.name}"
-                                    )
-                                }
-                                withContext(Runloop.runLoop.main) {
-                                    checkPreambleAndExecute(target, setupCompileError, setupEvalError, setupEvalException)
-                                    checkIntroductionAndExecute(target, setupCompileError, setupEvalError, setupEvalException)
-                                    checkAtticAndExecute(target, setupCompileError, setupEvalError, setupEvalException)
-                                }
-                            }
-
-                            val prepared = target.ki.compileSnippet(
-                                compiledSource,
-                                implicits = listOf(target),
-                                onCompileError = { list ->
-                                    diagnostics += list.map(::diagnosticToCompileDiagnostic)
-                                }
-                            )
-                            if (prepared == null) {
-                                failed = true
-                                break
-                            }
-                            snippetsCompiled++
-                            at = breakIndex
-                        }
-                    }
-                }
-            }.onFailure { throwable ->
-                failed = true
-                diagnostics += CompileDiagnostic(
-                    severity = "ERROR",
-                    message = throwable.message ?: throwable::class.java.name
-                )
-            }
-
-            val after = setupSnapshot(target)
-            val hasHardDiagnostic = diagnostics.any { severity ->
-                val normalized = severity.severity.uppercase()
-                normalized != "DEBUG" && normalized != "INFO" && normalized != "WARNING"
-            }
-            val success = !failed && !hasHardDiagnostic
-            val changed = setupChanges(before, after)
-            val changedNames = changed.filter { it.changed || it.cacheChanged }.joinToString(", ") { it.property }
-            val message = buildString {
-                append(if (success) "Kotlin compiled successfully" else "Kotlin compile failed")
-                append(" for ${target.id}; snippets=$snippetsCompiled")
-                if (changedNames.isNotBlank()) append("; setup changed: $changedNames")
-            }
-            notify(message, "AI4")
-
-            CompileKotlinResult(
-                success = success,
-                file = fileRefFor(docName, target.id, "code"),
-                message = message,
-                diagnostics = diagnostics,
-                setupChanges = changed
-            )
-        }
+        val codeToolProviders = Ai4CodeToolProviders(
+            docName = docName,
+            refResolver = { raw, dp -> requestedRefOrCurrent(raw, dp) },
+            boxByIdOrNull = { uid -> boxByIdOrNull(uid) },
+            stagedOrCurrentSource = { t, prop, explicit -> stagedOrCurrentSource(t, prop, explicit) },
+        )
+        val evaluateKotlinExpression = codeToolProviders.evaluateKotlinExpression
+        val compileKotlin = codeToolProviders.compileKotlin
 
         val shaderProperties = setOf(
             "vertex",

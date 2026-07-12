@@ -17,12 +17,25 @@ import afield.ai.SemanticRetrievalModelInfo
 import afield.ai.SemanticRetrievalStatus
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonClassDescription
+import com.fasterxml.jackson.annotation.JsonPropertyDescription
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.openai.models.responses.ResponseCreateParams
 import com.openai.models.responses.ResponseFunctionToolCall
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
+import kotlin.reflect.KType
+import kotlin.reflect.full.findAnnotation
+import kotlin.reflect.full.primaryConstructor
+import kotlin.reflect.jvm.jvmErasure
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 /**
  * Commentary tool: model uses this for non-code notes/questions/alternatives.
@@ -693,6 +706,119 @@ internal class ToolRegistry {
         val args: Any = call.arguments(handler.cls)
         return handler.fn(ctx, args)
     }
+
+    // --- Provider-neutral face (used by the MCP backdoor bridge) -----------
+    // The OpenAI path above binds tools to ResponseCreateParams / ResponseFunctionToolCall.
+    // These two methods expose the exact same registry + gates + handlers to any
+    // transport that speaks plain JSON — currently the agent backdoor's
+    // agent-ai-tools-list / agent-ai-tool-call handlers, surfaced over MCP.
+
+    /** Tools available under [ctx], as MCP-style descriptors {name, description, inputSchema}. */
+    fun describe(ctx: ToolExecutionContext): JsonArray = buildJsonArray {
+        handlers.values
+            .filter { it.available(ctx) }
+            .sortedBy { it.cls.simpleName }
+            .forEach { h ->
+                add(buildJsonObject {
+                    put("name", h.cls.simpleName)
+                    val desc = h.cls.kotlin.findAnnotation<JsonClassDescription>()?.value
+                    if (!desc.isNullOrBlank()) put("description", desc)
+                    put("inputSchema", ToolSchema.forClass(h.cls))
+                })
+            }
+    }
+
+    /** True if [name] is registered and its gate passes under [ctx]. */
+    fun isAvailable(ctx: ToolExecutionContext, name: String): Boolean =
+        handlers[name]?.available(ctx) == true
+
+    /**
+     * Deserialize [argsJson] into the tool's request class (Jackson, matching the
+     * OpenAI path's `call.arguments(cls)`) and invoke the handler. The result is a
+     * plain Jackson data class; callers serialize it with [aiToolMapper].
+     */
+    fun executeByName(ctx: ToolExecutionContext, name: String, argsJson: String): Any {
+        val h = handlers[name]
+            ?: throw IllegalArgumentException("No tool registered for: $name")
+        if (!h.available(ctx)) {
+            throw IllegalStateException("Tool '$name' is not available in this context (its provider is not wired).")
+        }
+        @Suppress("UNCHECKED_CAST")
+        val handler = h as Handler<Any>
+        val args: Any = aiToolMapper.readValue(argsJson.ifBlank { "{}" }, handler.cls)
+        return handler.fn(ctx, args)
+    }
+}
+
+/** Shared Jackson mapper for the provider-neutral tool face (Kotlin data classes). */
+internal val aiToolMapper: ObjectMapper = ObjectMapper().registerKotlinModule()
+
+/**
+ * Minimal Kotlin-reflection JSON-Schema emitter for the tool request classes.
+ * Self-contained (no OpenAI-SDK-internal coupling) so the MCP schema cannot drift
+ * on an SDK upgrade. Reads @JsonClassDescription/@JsonPropertyDescription and skips
+ * @JsonIgnore and placeholder `unused` fields.
+ */
+internal object ToolSchema {
+    fun forClass(cls: Class<*>): JsonObject {
+        val ctor = cls.kotlin.primaryConstructor
+        val required = mutableListOf<String>()
+        val properties = buildJsonObject {
+            ctor?.parameters?.forEach { param ->
+                val pname = param.name ?: return@forEach
+                if (pname == "unused") return@forEach
+                if (param.findAnnotation<JsonIgnore>() != null) return@forEach
+                put(pname, propertySchema(param.type, param.findAnnotation<JsonPropertyDescription>()?.value))
+                if (!param.isOptional && !param.type.isMarkedNullable) required += pname
+            }
+        }
+        return buildJsonObject {
+            put("type", "object")
+            put("properties", properties)
+            if (required.isNotEmpty()) put("required", JsonArray(required.map { JsonPrimitive(it) }))
+        }
+    }
+
+    private fun propertySchema(type: KType, description: String?): JsonObject {
+        val base = schemaForType(type)
+        if (description.isNullOrBlank()) return base
+        return buildJsonObject {
+            base.forEach { (k, v) -> put(k, v) }
+            put("description", description)
+        }
+    }
+
+    private fun schemaForType(type: KType): JsonObject {
+        val cls = type.jvmErasure
+        return when {
+            cls == String::class || cls == Char::class -> typeObject("string")
+            cls == Boolean::class -> typeObject("boolean")
+            cls == Int::class || cls == Long::class || cls == Short::class || cls == Byte::class ->
+                typeObject("integer")
+            cls == Double::class || cls == Float::class -> typeObject("number")
+            List::class.java.isAssignableFrom(cls.java) || Set::class.java.isAssignableFrom(cls.java) -> {
+                val item = type.arguments.firstOrNull()?.type
+                buildJsonObject {
+                    put("type", "array")
+                    put("items", item?.let { schemaForType(it) } ?: typeObject("string"))
+                }
+            }
+            Map::class.java.isAssignableFrom(cls.java) -> {
+                val value = type.arguments.getOrNull(1)?.type
+                buildJsonObject {
+                    put("type", "object")
+                    put("additionalProperties", value?.let { schemaForType(it) } ?: typeObject("string"))
+                }
+            }
+            cls.java.isEnum -> buildJsonObject {
+                put("type", "string")
+                put("enum", JsonArray(cls.java.enumConstants.map { JsonPrimitive(it.toString()) }))
+            }
+            else -> typeObject("object")
+        }
+    }
+
+    private fun typeObject(t: String): JsonObject = buildJsonObject { put("type", t) }
 }
 
 fun validateNoMarkers(code: String) {
