@@ -3493,6 +3493,46 @@ run.best.browseGraph(channel = "evolved")
 
 `matchFitness(...)` scores a candidate by how closely it matches a target on a shared time-base, minus an optional `graphMetrics` complexity penalty (parsimony pressure). Supply any `(Fn) -> Double` for a different objective. Like `rewriteUntilStable`, the loop is bounded by `iterations` so a search can never disappear into the animation loop.
 
+#### A worked run (CPU-only, reproducible)
+
+Prose is easy to distrust, so here is an actual run — no GPU, no window, just the harness. The worked example lives in `afield.examples.functions.EvolveWorkedExample` (run it with `./gradlew runEvolveWorkedExample`); it renders the plot below and the trace table as committed evidence, and a `@Test` asserts the numbers are reproducible.
+
+The setup is deliberately adversarial in two independent ways at once. The **target** is a half-amplitude sine, `sin(frequency = 1.0, amplitude = 0.5)`. The **seed** is a full-amplitude *cosine*, `cos(frequency = 1.0, amplitude = 1.0)` — the wrong op *and* the wrong amplitude. To reach the target a run must both transmute the operator (via `substituteOp`, staying inside the oscillator family) and dial in the numeric leaves (via `jitter`/`nudge`), with `prune` trimming structure for parsimony. Everything runs under a fixed `rngSeed = 3`.
+
+```kotlin
+val target = sin(frequency = 1.0, amplitude = 0.5)
+val seed = cos(frequency = 1.0, amplitude = 1.0)
+val run = evolve(
+    seed = seed,
+    iterations = 120,
+    lambda = 8,
+    rngSeed = 3L,
+    fitness = matchFitness(target, samples = 160, complexityWeight = 0.01)
+)
+```
+
+![Target vs seed vs evolved-best sine functions, showing the evolved curve tracking the target](assets/evolve/evolve-overlay.svg)
+
+The dashed grey curve is the seed cosine; the red curve is the target; the blue curve is `run.best`. The blue tracks the red almost exactly — the fitness (negative RMSE minus a small complexity penalty) climbs from **−0.8421** at the seed to **−0.1568** at the best, an ~81% reduction in error. The accepted-mutation trace shows *how*:
+
+| iteration | accepted mutation | score (−RMSE − penalty) |
+| --- | --- | --- |
+| 0 (seed) | — | -0.8421 |
+| 1 | substituteOp | -0.4024 |
+| 3 | jitter | -0.3572 |
+| 4 | nudge | -0.3209 |
+| 5 | nudge | -0.3148 |
+| 7 | prune | -0.3048 |
+| 8 | prune | -0.2948 |
+| 13 | prune | -0.2844 |
+| 16 | prune | -0.2744 |
+| 17 | jitter | -0.2600 |
+| 18 | nudge | -0.2252 |
+| 19 | prune | -0.1718 |
+| 23 | prune | -0.1568 |
+
+The story reads top to bottom. Iteration 1 is the structural leap: `substituteOp` turns the cosine into a sine and more than halves the error in a single step. The middle rows are `jitter`/`nudge` walking the amplitude leaf down from 1.0 toward 0.5, interleaved with `prune` steps that shed now-redundant structure without hurting the fit (the small `complexityWeight` rewards the simpler graph). After 12 accepted improvements across 120 iterations (961 total evaluations) the search settles. Because every draw goes through one seeded `Random`, re-running reproduces this trace and a byte-identical SVG exactly — the property that makes an evolved gesture safe to keep in live art.
+
 ### Rewrite plot example
 
 This example rewrites a nested graph in two ways: it changes a descendant `saw` into a `triangle`, then uses Kotlin RHS code to scale numeric values under `sin` by depth.
