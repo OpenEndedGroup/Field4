@@ -102,7 +102,7 @@ class FunctionsGraphRewriteTest {
     }
 
     @Test
-    fun editorOpVocabularyNeverNamesAnOpTheRegistryDoesNotKnow() {
+    fun editorOpVocabularyMirrorsTheRegistryInBothDirections() {
         val js = File("src/commonMain/resources/fnrewrite.js").readText()
         fun setLiteral(name: String): List<String> {
             val body = Regex("""const\s+$name\s*=\s*new\s+Set\(\[(.*?)]\)""", RegexOption.DOT_MATCHES_ALL)
@@ -112,11 +112,33 @@ class FunctionsGraphRewriteTest {
 
         val opWords = setLiteral("opWords")
         assertTrue(opWords.isNotEmpty())
+
+        // Forward: the editor never names an op the registry does not know.
         val unknown = opWords.filterNot { OpRegistry.knows(it) }
         assertTrue(unknown.isEmpty(), "editor opWords not known to OpRegistry: $unknown")
 
+        // Reverse: the editor never *omits* a transmutation target. `transmutableOps`
+        // are exactly the canonical ops `op=` can rebuild a node into, i.e. what a
+        // user types after `op=` and expects highlighted/autocompleted; a missing one
+        // is a silent editor gap for a real feature. This is deliberately scoped to
+        // transmutation targets, NOT all of `OpRegistry.knownOps`: the registry's own
+        // contract is that data-carrying ops (piecewise, timeline, rbf, sequence, …)
+        // are *known* but are not transmutation targets, and `fnrewrite.js` documents
+        // `opWords` as a curated subset of `knownOps`. Requiring every known op would
+        // fight that design and need a large allow-list; requiring every transmutable
+        // op is the principled completeness boundary and needs no allow-list today
+        // (every transmutation target is already surfaced). The forward check above
+        // still licenses the extra highlighted-but-not-transmutable words (delay,
+        // mirror, repeat, warp, timeline).
+        val surfaced = opWords.mapTo(HashSet()) { it.lowercase() }
+        val missingFromEditor = OpRegistry.transmutableOps.filterNot { it.lowercase() in surfaced }
+        assertTrue(
+            missingFromEditor.isEmpty(),
+            "OpRegistry transmutation targets missing from editor opWords: $missingFromEditor"
+        )
+
         // The core transmutable oscillators must stay highlighted in the editor.
-        assertTrue(opWords.map { it.lowercase() }.containsAll(listOf("sin", "cos", "saw", "triangle", "square")))
+        assertTrue(surfaced.containsAll(listOf("sin", "cos", "saw", "triangle", "square")))
     }
 
     @Test
