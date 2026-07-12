@@ -19,7 +19,6 @@ import org.lwjgl.vulkan.VK10.VK_FORMAT_R8_UNORM
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.channels.FileChannel
-import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.StandardOpenOption
@@ -282,12 +281,6 @@ open class LoadedTexture protected constructor(
             return mips
         }
 
-        private fun checkExr(result: Int, action: String) {
-            if (result != TinyEXR.EXR_SUCCESS) {
-                throw RuntimeException("TinyEXR $action failed: ${TinyEXR.exr_result_to_string(result)} ($result)")
-            }
-        }
-
         private fun decodeFile(path: String): DecodedImage {
             MemoryStack.stackPush().use { stack ->
                 val w = stack.mallocInt(1)
@@ -311,143 +304,51 @@ open class LoadedTexture protected constructor(
         }
 
         private fun decodeExrFile(path: String): DecodedImage {
-            val fileBytes = Files.readAllBytes(Paths.get(path))
-            val encoded = MemoryUtil.memAlloc(fileBytes.size)
-            encoded.put(fileBytes)
-            encoded.flip()
-
-            var context = TinyEXR.EXR_NULL_HANDLE
-            var decoder = TinyEXR.EXR_NULL_HANDLE
-            var image = TinyEXR.EXR_NULL_HANDLE
-            var part = TinyEXR.EXR_NULL_HANDLE
-            var commandBuffer = TinyEXR.EXR_NULL_HANDLE
-            var fence = TinyEXR.EXR_NULL_HANDLE
-            var interleaved: ByteBuffer? = null
-            var rgba: ByteBuffer? = null
-
-            try {
-                MemoryStack.stackPush().use { stack ->
-                    val contextPtr = stack.mallocPointer(1)
-                    val contextInfo = ExrContextCreateInfo.calloc(stack)
-                        .api_version(TinyEXR.TINYEXR_C_API_VERSION)
-                        .allocator(TinyEXR.exr_get_default_allocator())
-                        .flags(TinyEXR.EXR_CONTEXT_SINGLE_THREADED)
-                        .max_threads(1)
-                    checkExr(TinyEXR.exr_context_create(contextInfo, contextPtr), "create context")
-                    context = contextPtr[0]
-
-                    val source = ExrDataSource.calloc(stack)
-                    checkExr(TinyEXR.exr_data_source_from_memory(encoded, source), "create memory source")
-
-                    val decoderPtr = stack.mallocPointer(1)
-                    val decoderInfo = ExrDecoderCreateInfo.calloc(stack)
-                        .source(source)
-                    checkExr(TinyEXR.exr_decoder_create(context, decoderInfo, decoderPtr), "create decoder")
-                    decoder = decoderPtr[0]
-
-                    val imagePtr = stack.mallocPointer(1)
-                    checkExr(TinyEXR.exr_decoder_parse_header(decoder, imagePtr), "parse header")
-                    image = imagePtr[0]
-
-                    val partPtr = stack.mallocPointer(1)
-                    checkExr(TinyEXR.exr_image_get_part(image, 0, partPtr), "get first part")
-                    part = partPtr[0]
-
-                    val partInfo = ExrPartInfo.calloc(stack)
-                    checkExr(TinyEXR.exr_part_get_info(part, partInfo), "read part info")
-                    val width = partInfo.width()
-                    val height = partInfo.height()
-                    val channelCount = partInfo.num_channels()
-                    require(width > 0 && height > 0) { "EXR [$path] has invalid size ${width}x${height}" }
-                    require(channelCount in 1..30) {
-                        "EXR [$path] has unsupported channel count $channelCount"
-                    }
-
-                    val pixelCount = width * height
-                    interleaved = MemoryUtil.memAlloc(pixelCount * channelCount * java.lang.Float.BYTES)
-                    rgba = MemoryUtil.memAlloc(pixelCount * 4 * java.lang.Float.BYTES)
-
-                    val commandPtr = stack.mallocPointer(1)
-                    val commandInfo = ExrCommandBufferCreateInfo.calloc(stack)
-                        .decoder(decoder)
-                        .max_commands(1)
-                        .flags(TinyEXR.EXR_CMD_ONE_TIME_SUBMIT)
-                    checkExr(
-                        TinyEXR.exr_command_buffer_create(context, commandInfo, commandPtr),
-                        "create command buffer"
-                    )
-                    commandBuffer = commandPtr[0]
-
-                    checkExr(TinyEXR.exr_command_buffer_begin(commandBuffer), "begin command buffer")
-                    val request = ExrFullImageRequest.calloc(stack)
-                        .part(part)
-                        .output { output ->
-                            output.set(interleaved, 0)
-                        }
-                        .channels_mask((1 shl channelCount) - 1)
-                        .output_pixel_type(TinyEXR.EXR_PIXEL_FLOAT)
-                        .output_layout(TinyEXR.EXR_LAYOUT_INTERLEAVED)
-                        .target_level(0)
-                    checkExr(TinyEXR.exr_cmd_request_full_image(commandBuffer, request), "request full image")
-                    checkExr(TinyEXR.exr_command_buffer_end(commandBuffer), "end command buffer")
-
-                    val fencePtr = stack.mallocPointer(1)
-                    val fenceInfo = ExrFenceCreateInfo.calloc(stack)
-                    checkExr(TinyEXR.exr_fence_create(context, fenceInfo, fencePtr), "create fence")
-                    fence = fencePtr[0]
-
-                    val submitInfo = ExrSubmitInfo.calloc(stack)
-                        .command_buffers(stack.pointers(commandBuffer))
-                        .signal_fence(fence)
-                    checkExr(TinyEXR.exr_submit(decoder, submitInfo), "submit decode")
-                    checkExr(TinyEXR.exr_fence_wait(fence, 5_000_000_000L), "wait for decode")
-
-                    val channelsByName = linkedMapOf<String, Int>()
-                    val channelInfo = ExrChannelInfo.calloc(stack)
-                    for (channelIndex in 0 until channelCount) {
-                        checkExr(
-                            TinyEXR.exr_part_get_channel(part, channelIndex, channelInfo),
-                            "read channel $channelIndex"
-                        )
-                        val channelName = channelInfo.nameString()
-                        channelsByName[channelName] = channelIndex
-                        val suffix = channelName.substringAfterLast('.', channelName)
-                        channelsByName.putIfAbsent(suffix, channelIndex)
-                        channelsByName.putIfAbsent(suffix.uppercase(), channelIndex)
-                    }
-
-                    val interleavedBuffer = interleaved
-                    val rgbaBuffer = rgba
-                    val interleavedFloats = interleavedBuffer.order(ByteOrder.nativeOrder()).asFloatBuffer()
-                    val rgbaFloats = rgbaBuffer.order(ByteOrder.nativeOrder()).asFloatBuffer()
-                    fun channelValue(name: String, pixel: Int, fallback: Float): Float {
-                        val index = channelsByName[name] ?: channelsByName[name.uppercase()] ?: return fallback
-                        return interleavedFloats.get(pixel * channelCount + index)
-                    }
-
-                    for (pixel in 0 until pixelCount) {
-                        rgbaFloats.put(pixel * 4, channelValue("R", pixel, 0f))
-                        rgbaFloats.put(pixel * 4 + 1, channelValue("G", pixel, 0f))
-                        rgbaFloats.put(pixel * 4 + 2, channelValue("B", pixel, 0f))
-                        rgbaFloats.put(pixel * 4 + 3, channelValue("A", pixel, 1f))
-                    }
-                    rgbaBuffer.position(0)
-                    rgbaBuffer.limit(pixelCount * 4 * java.lang.Float.BYTES)
-
-                    return DecodedImage(rgbaBuffer, width, height)
+            // Classic TinyEXR RGBA loader. This used to call the experimental async
+            // exr_context_/command_buffer_/fence_ GPU-decode API, but that binding was
+            // removed from the LWJGL 3.4.2-SNAPSHOT upstream (the mutable snapshot dropped
+            // it), which broke a clean compile. LoadEXRWithLayer(..., layer = null) is the
+            // stable convenience path present in every tinyexr build: it parses the version
+            // and header, decodes, and hands back a malloc'd interleaved RGBA float image.
+            MemoryStack.stackPush().use { stack ->
+                val out = stack.mallocPointer(1)
+                val w = stack.mallocInt(1)
+                val h = stack.mallocInt(1)
+                val err = stack.mallocPointer(1)
+                val filenameBuf = stack.UTF8(path)
+                // Call the native directly so the layer can be NULL (load the default/first
+                // layer). The type-safe LoadEXRWithLayer overloads both require a non-null layer.
+                val result = TinyEXR.nLoadEXRWithLayer(
+                    MemoryUtil.memAddress(out),
+                    MemoryUtil.memAddress(w),
+                    MemoryUtil.memAddress(h),
+                    MemoryUtil.memAddress(filenameBuf),
+                    MemoryUtil.NULL,
+                    MemoryUtil.memAddress(err)
+                )
+                if (result != TinyEXR.TINYEXR_SUCCESS) {
+                    val errPtr = err.get(0)
+                    val message = if (errPtr != MemoryUtil.NULL) MemoryUtil.memUTF8(errPtr) else "unknown error"
+                    if (errPtr != MemoryUtil.NULL) TinyEXR.nFreeEXRErrorMessage(errPtr)
+                    throw RuntimeException("TinyEXR failed to load EXR [$path]: $message ($result)")
                 }
-            } catch (t: Throwable) {
-                rgba?.let { MemoryUtil.memFree(it) }
-                throw t
-            } finally {
-                if (fence != TinyEXR.EXR_NULL_HANDLE) TinyEXR.exr_fence_destroy(fence)
-                if (commandBuffer != TinyEXR.EXR_NULL_HANDLE) TinyEXR.exr_command_buffer_destroy(commandBuffer)
-                if (part != TinyEXR.EXR_NULL_HANDLE) TinyEXR.exr_part_destroy(part)
-                if (image != TinyEXR.EXR_NULL_HANDLE) TinyEXR.exr_image_destroy(image)
-                if (decoder != TinyEXR.EXR_NULL_HANDLE) TinyEXR.exr_decoder_destroy(decoder)
-                if (context != TinyEXR.EXR_NULL_HANDLE) TinyEXR.exr_context_destroy(context)
-                interleaved?.let { MemoryUtil.memFree(it) }
-                MemoryUtil.memFree(encoded)
+
+                val width = w.get(0)
+                val height = h.get(0)
+                require(width > 0 && height > 0) { "EXR [$path] has invalid size ${width}x${height}" }
+
+                // TinyEXR malloc'd width*height*4 floats (RGBA). Copy into a buffer we own,
+                // then free the library's allocation so ownership matches the STB paths above.
+                val floatCount = width * height * 4
+                val srcAddress = out.get(0)
+                val src = MemoryUtil.memFloatBuffer(srcAddress, floatCount)
+                val rgba = MemoryUtil.memAlloc(floatCount * java.lang.Float.BYTES)
+                val rgbaFloats = rgba.order(ByteOrder.nativeOrder()).asFloatBuffer()
+                for (i in 0 until floatCount) rgbaFloats.put(i, src.get(i))
+                MemoryUtil.nmemFree(srcAddress)
+                rgba.position(0)
+                rgba.limit(floatCount * java.lang.Float.BYTES)
+                return DecodedImage(rgba, width, height)
             }
         }
 
