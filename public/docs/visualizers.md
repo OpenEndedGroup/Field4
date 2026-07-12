@@ -141,10 +141,11 @@ timeoutSec: 120
 execution: launch
 waitSec: 5.0
 expect:
-  outputContains:
-    - "inline piano roll launched"
-  eventKinds:
-    - output
+  # The box's println lands on process stdout, not on a collectable "output" event,
+  # and the pianoRoll() visualizer draws to the editor rather than emitting output
+  # events — so neither outputContains (which scans events) nor eventKinds:[output]
+  # can see it. The editor screenshot is the reliable signal the visualizer rendered.
+  allowMissingOutput: true
   screenshot:
     kind: editor
     padding: 10

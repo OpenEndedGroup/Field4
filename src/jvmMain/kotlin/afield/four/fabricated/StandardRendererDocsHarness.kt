@@ -246,7 +246,7 @@ object StandardRendererDocsHarness {
         window: Window = renderer.window
     ): File {
         val bundle = StandardRenderer.build(renderer)
-        configureGroundedTorusScene(bundle, renderer)
+        configureAoContactScene(bundle, renderer)
         bundle.present(renderer = renderer)
         bundle.applyScenePlan()
         bundle.attachTo(renderer)
@@ -918,6 +918,108 @@ object StandardRendererDocsHarness {
             ),
             slices = 64,
             stacks = 64
+        )
+    }
+
+    /**
+     * A tight cluster of bright matte spheres resting on the floor. AO in this renderer
+     * only modulates the small ambient floor (direct light is never occluded), so it is
+     * visible only where a surface is starved of direct light — a deep, shadowed crevice.
+     * Touching spheres create exactly that: the contact valleys are self-shadowed and
+     * ambient-dominated, so toggling AO swings them from a soft grey to a firm dark seam.
+     * Bright, non-metallic, rough material keeps the ambient term (and thus the AO
+     * difference) as large as the shader allows.
+     */
+    private fun configureAoContactScene(bundle: StandardRenderer.Bundle, renderer: Renderer) {
+        bundle.scene.camera.at.set(0f, 1.45f, -3.05f)
+        bundle.scene.camera.target.set(0f, -0.18f, 0.15f)
+        // A steep, near-overhead key. AO here only modulates the small ambient term, so it
+        // is visible only where direct light is scarce; a top-down key keeps the sphere
+        // tops bright while leaving the contact seams direct-light-starved and thus
+        // ambient- (hence AO-) dominated.
+        bundle.scene.lightDirection.set(Vector3f(-0.16f, -1.0f, -0.12f).normalize())
+        // Knock the key well down from the default 4.0 so the ambient floor is a large
+        // share of the shading — otherwise the ~0.09 ambient (the only thing AO touches)
+        // is swamped and AO on/off is indistinguishable.
+        bundle.scene.lightIntensity = 1.4f
+        // Max AO and a wider gather so the touching-sphere valleys occlude deeply.
+        bundle.scene.aoStrength = 1.0f
+        bundle.scene.aoRadius = 0.55f
+        bundle.scene.shadowExtent = 5.5f
+        bundle.scene.shadowBias = 0.0025f
+
+        val floor = bundle.registerPullingMesh(name = "floor", maxVertices = 4096, renderer = renderer)
+        val floorWrite = StandardShapes.disk(
+            positions = floor.gBuffer.position,
+            normals = floor.gBuffer.normal,
+            radius = 3.4f,
+            slices = 96,
+            stacks = 1,
+            config = StandardShapes.WriteConfig(append = false)
+        )
+        floor.setVertexCount(floorWrite.writtenVertices)
+        bindFabricateMesh(
+            bundle = bundle,
+            name = "floor",
+            mesh = floor,
+            model = Matrix4f().translate(0f, -0.85f, 0f).rotateX((-PI * 0.5).toFloat()),
+            material = material(color = Vector4f(0.78f, 0.78f, 0.82f, 1f), metallic = 0.0f, roughness = 0.94f),
+            boundsRadius = 3.4f
+        )
+
+        // Bright matte pebbles. radius R, centers 2R apart so neighbours just touch and
+        // leave a cusp-deep valley between them. Front row of three along X, back row of
+        // two hex-nestled into the front gaps to close the valleys off from the sky.
+        val r = 0.62f
+        val cy = -0.85f + r // rest on the floor
+        val ballMaterial = material(color = Vector4f(0.86f, 0.86f, 0.89f, 1f), metallic = 0.0f, roughness = 0.95f)
+        val backZ = -0.35f + 2f * r * 0.866f
+        val centers = listOf(
+            Triple(-2f * r, cy, -0.35f),
+            Triple(0f, cy, -0.35f),
+            Triple(2f * r, cy, -0.35f),
+            Triple(-r, cy, backZ),
+            Triple(r, cy, backZ)
+        )
+        centers.forEachIndexed { index, (x, y, z) ->
+            registerSphereNode(
+                bundle = bundle,
+                renderer = renderer,
+                name = "ao-ball-$index",
+                center = Vector3f(x, y, z),
+                radius = r,
+                material = ballMaterial
+            )
+        }
+    }
+
+    private fun registerSphereNode(
+        bundle: StandardRenderer.Bundle,
+        renderer: Renderer,
+        name: String,
+        center: Vector3f,
+        radius: Float,
+        material: FabricateMaterial,
+        slices: Int = 44,
+        stacks: Int = 44
+    ): StandardRenderer.Bundle.PullingMeshPair {
+        val mesh = bundle.registerPullingMesh(name = name, maxVertices = slices * stacks * 6 + 256, renderer = renderer)
+        val write = StandardShapes.sphere(
+            positions = mesh.gBuffer.position,
+            normals = mesh.gBuffer.normal,
+            radius = radius,
+            slices = slices,
+            stacks = stacks,
+            config = StandardShapes.WriteConfig(append = false)
+        )
+        mesh.setVertexCount(write.writtenVertices)
+        return bindFabricateMesh(
+            bundle = bundle,
+            name = name,
+            mesh = mesh,
+            model = Matrix4f().translate(center.x, center.y, center.z),
+            material = material,
+            boundsRadius = radius * 1.05f
         )
     }
 

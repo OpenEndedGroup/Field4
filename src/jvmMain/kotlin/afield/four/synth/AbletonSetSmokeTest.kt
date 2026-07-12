@@ -103,7 +103,10 @@ object AbletonSetSmokeTest {
             "Expected interpolated automation value 5.45, got $middle"
         }
 
-        val before = automation.bracketAt(-20.0)
+        // Query before the first breakpoint. Ableton anchors the envelope's opening
+        // value at the -63072000 sentinel, so "pre-first" means a time earlier than
+        // that, not merely a negative time (-20 sits between the sentinel and t=0).
+        val before = automation.bracketAt(-70_000_000.0)
         require(before.first == null && before.second?.time == -63072000.0) {
             "Expected pre-first bracket null..-63072000, got $before"
         }

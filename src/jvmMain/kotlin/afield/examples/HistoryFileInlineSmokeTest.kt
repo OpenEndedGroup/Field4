@@ -85,7 +85,12 @@ object HistoryFileInlineSmokeTest {
 
         val diff = HistoryManager.computeDiffStats(documentDir.toString(), versions)[1]
             ?: error("Expected diff stats for current version")
-        require(diff.totalLinesAdded >= 2 && diff.totalLinesRemoved >= 2) {
+        // The inline sidecar drives box "sample" from print("old") -> print("current")
+        // (an in-place modification -> counted as a changed line, not add+remove) and
+        // brings box "empty" in with a fresh line (an added line). Removals are zero
+        // here: nothing shrank. Assert the change is detected via the change/add
+        // categories rather than the old "a change is one add + one remove" model.
+        require(diff.totalLinesChanged >= 1 && diff.totalLinesAdded >= 1) {
             "Expected file-inline code changes in history diff, got $diff"
         }
         require(diff.changedCodeBoxes == listOf("sample", "empty")) {

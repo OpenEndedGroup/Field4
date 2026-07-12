@@ -259,7 +259,13 @@ def normalize_comment_body(body: str) -> list[str]:
 def build_tokens(lines: list[str], start_line: int) -> list[Token]:
     tokens: list[Token] = []
     for offset, raw_line in enumerate(lines):
-        if not raw_line.strip():
+        stripped = raw_line.strip()
+        if not stripped:
+            continue
+        # Full-line YAML comments: skip them so annotations can be documented inline.
+        # Only whole-line "#..." is treated as a comment; inline "#" after a value is
+        # left intact (values here are ids/numbers/quoted strings/list items).
+        if stripped.startswith("#"):
             continue
         indent = len(raw_line) - len(raw_line.lstrip(" "))
         tokens.append(Token(indent=indent, text=raw_line.strip(), line_no=start_line + offset))

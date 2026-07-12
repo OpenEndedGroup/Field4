@@ -727,7 +727,7 @@ expect:
 
 ## Ambient Occlusion
 
-The left side disables ambient occlusion. The right side uses the default AO setup. The useful difference is the small darkening where nearby surfaces crowd each other.
+The left side disables ambient occlusion; the right side turns it on. Both show the same cluster of matte spheres resting together on the floor. AO only modulates the ambient term here (direct light is never occluded), so its effect is clearest in the contact valleys between touching spheres — where the surfaces are starved of direct light and lit mostly by ambient. Turning AO on drops those seams from a soft grey to a firm dark crease.
 
 AO is also just a scene parameter in this harness:
 
@@ -755,9 +755,11 @@ expect:
   image:
     path: /tmp/docs-fabricate-ao-native.png
     lumaComparisons:
-      - darker: [0.66, 0.53, 0.08, 0.08]
-        lighter: [0.16, 0.53, 0.08, 0.08]
-        marginGt: 6
+      # Same contact valley between two front spheres, sampled in each half: the
+      # right/AO-on copy (x=0.70) sits ~12 luma below the left/AO-off copy (x=0.20).
+      - darker: [0.70, 0.62, 0.03, 0.05]
+        lighter: [0.20, 0.62, 0.03, 0.05]
+        marginGt: 7
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-ao.png" source-image="/tmp/docs-fabricate-ao-native.png" wait="30.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-ao" hidden=true fabricate-scene="ambient-occlusion"}
 ```

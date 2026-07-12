@@ -8,6 +8,7 @@ import json
 import os
 import re
 import shlex
+import signal
 import subprocess
 import sys
 import time
@@ -35,19 +36,114 @@ class RunnerError(RuntimeError):
     pass
 
 
+def probe_field_responsive(port: int, *, timeout: float = 20.0) -> bool:
+    """Functional liveness probe.
+
+    ``health_check`` only proves the HTTP layer answers -- a wedged long-session
+    JVM (dead GPU context / stalled event loop) keeps returning ``/health`` "ok"
+    while every real backdoor round-trip times out. That stale Field, reused off
+    the default port, silently poisons a whole run. So drive ONE real round-trip
+    (``snapshot``) with a short budget: responsive == exit 0 and a parseable ok
+    result. A hang trips the subprocess timeout and reads as unresponsive.
+    """
+    cmd = [
+        sys.executable, str(BACKDOOR_PATH), "--json",
+        "--port", str(port), "--timeout", str(timeout),
+        "--command", "snapshot",
+    ]
+    try:
+        proc = subprocess.run(
+            cmd, cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=timeout + 15.0,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return False
+    if proc.returncode != 0 or not proc.stdout.strip():
+        return False
+    try:
+        results = json_stream_loads(proc.stdout, test_id="probe")
+    except RunnerError:
+        return False
+    return bool(results) and bool(results[-1].get("ok"))
+
+
+def _pids_listening_on(port: int) -> list[int]:
+    try:
+        out = subprocess.run(
+            ["lsof", f"-tiTCP:{port}", "-sTCP:LISTEN"],
+            capture_output=True, text=True, timeout=10,
+        ).stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    pids: list[int] = []
+    for token in out.split():
+        try:
+            pids.append(int(token))
+        except ValueError:
+            pass
+    return pids
+
+
+def recycle_field(port: int, ctx: Any, *, grace: float = 12.0) -> None:
+    """Retire a Field already serving the port so we can boot a fresh one.
+
+    SIGINT (kill -2) first so it runs its shutdown hooks and disposes GPU/window
+    resources (a bare SIGKILL leaks those); wait for the port to free; escalate to
+    SIGKILL only if it won't go. Raise rather than reuse or double-bind the port.
+    """
+    if os.name == "nt":
+        raise SystemExit(
+            f"Field on port {port} must be recycled for a clean boot, but automatic "
+            f"recycle is not implemented on Windows; kill it manually and re-run."
+        )
+    pids = _pids_listening_on(port)
+    for pid in pids:
+        try:
+            os.kill(pid, signal.SIGINT)
+        except ProcessLookupError:
+            pass
+    deadline = time.monotonic() + grace
+    while time.monotonic() < deadline:
+        if not health_check(port, ctx):
+            return
+        time.sleep(0.5)
+    for pid in _pids_listening_on(port):
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+    deadline = time.monotonic() + 5.0
+    while time.monotonic() < deadline:
+        if not health_check(port, ctx):
+            return
+        time.sleep(0.5)
+    raise SystemExit(f"Could not free wedged Field on port {port} (SIGINT and SIGKILL both failed).")
+
+
 def ensure_persistent_field(port: int, *, boot_timeout: float = 180.0) -> subprocess.Popen[Any] | None:
-    """Guarantee one warm Field for the whole run.
+    """Guarantee one warm, *responsive* Field for the whole run.
 
     Historically the first test's backdoor process cold-booted the JVM and then
     KILLED it on close (a self-started server is torn down at exit), so every
     subsequent test cold-booted again -- ~16s of JVM boot per test. Starting one
-    persistent Field up front (and leaving it healthy) means each test's backdoor
-    reuses it and does not tear it down. Returns the process we started, or None
-    if a healthy Field was already serving the port (which we then leave alone).
+    persistent Field up front means each test's backdoor reuses it (within THIS
+    run) and does not tear it down. Returns the process we started.
+
+    We never reuse a Field left over from a PRIOR run. Cross-run reuse is unsafe:
+    even when the snapshot probe reports the event loop healthy, a reused JVM's
+    GPU/raytracing pipeline wedges -- heavy renders then hang to their full timeout,
+    silently corrupting the run (this is the failure the nightly kept hitting). So
+    if any Field is already on the port we probe it (for telemetry only) and then
+    recycle it (SIGINT + fresh boot), guaranteeing a clean GPU context every run.
     """
     ctx = make_unverified_ssl_context()
     if health_check(port, ctx):
-        return None
+        state = "responsive" if probe_field_responsive(port, timeout=8.0) else "wedged (failed snapshot probe)"
+        print(
+            f"Field already serving port {port} ({state}); recycling it for a clean boot "
+            f"(SIGINT + restart) -- never reusing a cross-run JVM.",
+            file=sys.stderr, flush=True,
+        )
+        recycle_field(port, ctx)
     log_path = REPO_ROOT / ".field-backdoor" / "logs" / f"smoke-prewarm-field-{port}.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
     log_file = log_path.open("w", encoding="utf-8")
@@ -120,6 +216,33 @@ def filter_tests(
             continue
         selected.append(test)
     return selected
+
+
+def current_platform_tokens() -> set[str]:
+    """Case-insensitive aliases for the running platform, matched against a test's
+    `skipOn` list."""
+    if sys.platform == "darwin":
+        return {"darwin", "mac", "macos", "osx"}
+    if sys.platform.startswith("linux"):
+        return {"linux"}
+    if sys.platform.startswith("win") or os.name == "nt":
+        return {"win", "win32", "windows"}
+    return {sys.platform}
+
+
+def platform_skip_reason(test: dict[str, Any]) -> str | None:
+    """A FIELD_TEST may declare `skipOn: [darwin, ...]` to opt out on platforms
+    where it cannot run reliably (e.g. raytracing on macOS). Returns the matching
+    token if this test should be skipped on the current platform, else None."""
+    raw = test.get("skipOn")
+    if raw is None:
+        return None
+    entries = [raw] if isinstance(raw, str) else list(raw)
+    tokens = current_platform_tokens()
+    for entry in entries:
+        if str(entry).strip().lower() in tokens:
+            return str(entry)
+    return None
 
 
 def sanitize_test_id(test_id: str) -> str:
@@ -898,41 +1021,57 @@ def main() -> int:
         refresh_catalog=args.refresh_catalog,
         roots=args.roots,
     )
-    tests = filter_tests(
+    selected = filter_tests(
         list(catalog.get("tests") or []),
         ids=set(args.ids or []),
         tags=set(args.tags or []),
         runner_names=set(args.runners or []),
     )
 
-    if not tests:
+    if not selected:
         raise SystemExit("No tests matched the requested filters.")
+
+    # In --json mode stdout is reserved for the final report blob, so per-test
+    # progress goes to stderr (flushed per line) instead of being suppressed.
+    # `2>&1 | tee` then streams it live; a bare stdout pipe still parses as JSON.
+    def progress(message: str) -> None:
+        stream = sys.stderr if args.json else sys.stdout
+        print(message, file=stream, flush=True)
+
+    # Per-platform opt-outs (e.g. `skipOn: [darwin]` for raytracing on macOS,
+    # where the GPU RT pipeline is unreliable). Skips are reported, never silently
+    # dropped, and are counted separately from pass/fail.
+    tests: list[dict[str, Any]] = []
+    skipped: list[dict[str, Any]] = []
+    for test in selected:
+        reason = platform_skip_reason(test)
+        if reason:
+            skipped.append(test)
+            progress(f"SKIP {test.get('id')} (skipOn '{reason}' matches {sys.platform})")
+        else:
+            tests.append(test)
 
     results: list[dict[str, Any]] = []
     passed = 0
     failed = 0
+    total = len(tests)
 
     field_proc: subprocess.Popen[Any] | None = None
-    if not args.no_prewarm:
+    if tests and not args.no_prewarm:
         field_proc = ensure_persistent_field(args.port)
-        if not args.json:
-            if field_proc is None:
-                print(f"Reusing existing Field on port {args.port}")
-            else:
-                print(f"Started persistent Field on port {args.port} for this run")
+        progress(f"Started persistent Field on port {args.port} for this run")
 
     try:
-        for test in tests:
+        for index, test in enumerate(tests, start=1):
             result = run_one_test(test, port=args.port, workspace=args.workspace)
             results.append(result)
             if result["ok"]:
                 passed += 1
             else:
                 failed += 1
-            if not args.json:
-                print(format_result_line(result))
-                for failure in result["failures"]:
-                    print(f"  {failure}")
+            progress(f"[{index}/{total}] {format_result_line(result)}")
+            for failure in result["failures"]:
+                progress(f"  {failure}")
             if failed and args.fail_fast:
                 break
     finally:
@@ -943,6 +1082,11 @@ def main() -> int:
         "selectedCount": len(tests),
         "passed": passed,
         "failed": failed,
+        "skippedCount": len(skipped),
+        "skipped": [
+            {"id": t.get("id"), "reason": f"skipOn {platform_skip_reason(t)} on {sys.platform}"}
+            for t in skipped
+        ],
         "results": results,
     }
     results_path.parent.mkdir(parents=True, exist_ok=True)
@@ -951,7 +1095,8 @@ def main() -> int:
     if args.json:
         print(json.dumps(report, indent=2))
     else:
-        print(f"Summary: {passed} passed, {failed} failed")
+        skip_note = f", {len(skipped)} skipped" if skipped else ""
+        print(f"Summary: {passed} passed, {failed} failed{skip_note}")
         print(f"Results: {results_path}")
 
     return 0 if failed == 0 else 1
