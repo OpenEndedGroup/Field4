@@ -44,4 +44,53 @@ distance.
 
 ## Execution
 
-(filled in below)
+Implemented as a fitness + orchestration layer on the existing harness — no new graph
+machinery needed.
+
+### Files changed and why
+- `src/jvmMain/kotlin/afield/stdlib/FunctionEvolve.kt` (+~180 lines): added
+  `FnBehaviour` (value-based `equals`/`hashCode` because it wraps a `DoubleArray`) with
+  `distanceTo`; `Fn.behaviour(domain, samples)` (even-grid `evalSafe`, non-finite → 0.0,
+  plus `finiteFraction`); `noveltyFitness(archive, …)` (k-nearest behavioural novelty +
+  validity bonus, a drop-in `(Fn) -> Double` for `evolve`); `FnVarietyRun` (with
+  `meanPairwiseDistance`); and `evolveVariety(seed, count, …)` (per-slot
+  `rngSeed*31 + slot`, archive-growing novelty search, seed drift onto each winner).
+  Matches the file's doc-comment style, `require(...)` guards, and `FnEvolveRun` data-class
+  shape.
+- `src/jvmTest/kotlin/afield/stdlib/FunctionVarietyTest.kt` (new): 4 tests — descriptor
+  distance sanity, reproducibility (same seed → identical `graphSignature`s and spread),
+  diversity vs. baseline, and argument guards.
+- `public/docs/functions_examples.md`: new "Variety generation — novelty search" subsection
+  after the `evolve(...)` prose (~line 3494), with a runnable `evolveVariety` snippet.
+
+### Verification (verified)
+Ran the module-scoped test from the worktree root:
+`./gradlew jvmTest --tests "afield.stdlib.FunctionVarietyTest"` → **BUILD SUCCESSFUL**,
+`tests="4" skipped="0" failures="0" errors="0"` (all four passed, incl. the strict
+`variety.meanPairwiseDistance > baselineSpread` diversity assertion and same-seed
+reproducibility).
+
+**Important caveat on how I ran it:** the committed `jvmTest` source set does **not**
+compile as-is — two pre-existing, unrelated broken test files
+(`src/jvmTest/kotlin/organic/FLineLinearizerTest.kt`,
+`PointMatcherTest.kt`) reference symbols (`linearize`, `PointMatcher`,
+`FLINE_LINEAR_VERTEX_STRIDE`) that exist nowhere in the source tree. They fail to compile
+on the base commit, independent of my change. To observe my test pass I temporarily moved
+those two files out of the tree, ran, and moved them back (they are unchanged and remain
+committed as-is; `git status` for `organic/` is clean). My production code
+(`compileKotlinJvm`) compiled cleanly with no new errors (only pre-existing warnings).
+
+### Risks & unknowns
+- The diversity assertion uses a fixed seed and a `matchFitness`-toward-a-constant
+  baseline; the margin was comfortably positive but is not enormous — a future change to
+  the mutation palette or RNG stream could narrow it. It is a genuine behavioural property,
+  not a tautology, so it should stay robust.
+- I could not run the full `jvmTest` suite because of the two pre-existing broken
+  `organic/` tests; only my new test class was exercised.
+
+### Recommendation
+**Merge.** The feature is self-contained, deterministic, matches the file's API/style, and
+its verifying test passes. It directly serves the user's stated #1 theme (genetic variety
+generation) and adds no new dependencies or graph primitives. The only wrinkle is the
+pre-existing broken `organic/` tests, which are out of scope here and worth a separate
+fix.

@@ -3493,6 +3493,26 @@ run.best.browseGraph(channel = "evolved")
 
 `matchFitness(...)` scores a candidate by how closely it matches a target on a shared time-base, minus an optional `graphMetrics` complexity penalty (parsimony pressure). Supply any `(Fn) -> Double` for a different objective. Like `rewriteUntilStable`, the loop is bounded by `iterations` so a search can never disappear into the animation loop.
 
+#### Variety generation — novelty search for a *set* of gestures
+
+`matchFitness` pulls every candidate toward one target. Often you want the opposite: a *diverse family* of gestures rather than one best match. `evolveVariety(...)` grows a behaviourally distinct set by **novelty search**, reusing the same `evolve` machinery and the same seeded-`Random` determinism.
+
+The key idea is a *behavioural* coordinate — what a graph does, not how it is built. `Fn.behaviour(domain, samples)` samples `evalSafe` on an even grid into an `FnBehaviour` descriptor (with a `distanceTo`), the counterpart to the structural view from `graphMetrics`. `noveltyFitness(archive, ...)` then rewards a candidate for being far (mean of its k-nearest neighbours) from an archive of already-seen behaviours — a drop-in `(Fn) -> Double` you can hand to plain `evolve`. `evolveVariety` orchestrates it: each slot evolves against a growing archive, adopts the winner, and drifts the seed onto it so the next slot has rich material to mutate *away* from.
+
+```diffstatic {data-lang=kotlin}
+val variety = evolveVariety(
+    seed = sin(2.0) * 0.5,
+    count = 6,          // how many mutually-distant gestures to return
+    iterations = 48,
+    rngSeed = 7L,       // same seed + inputs -> identical set
+    neighbours = 3      // k-nearest novelty
+)
+println("spread = ${variety.meanPairwiseDistance}")
+variety.results.forEachIndexed { i, fn -> fn.browseGraph(channel = "variety-$i") }
+```
+
+`FnVarietyRun` exposes the `results`, their `behaviours`, the underlying per-slot `runs`, and `meanPairwiseDistance` — the average behavioural distance across the set, a defensible diversity metric. Because novelty is scored purely from sampled behaviour, the returned graphs are genuinely spread out in *what they do*, not merely distinct in structure. As always the run is fully deterministic: the same `rngSeed` and inputs reproduce the identical family, so an evolved *set* of gestures is as repeatable in live art as a single evolved one.
+
 ### Rewrite plot example
 
 This example rewrites a nested graph in two ways: it changes a descendant `saw` into a `triangle`, then uses Kotlin RHS code to scale numeric values under `sin` by depth.
