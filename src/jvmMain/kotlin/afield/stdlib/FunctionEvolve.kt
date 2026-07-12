@@ -238,10 +238,19 @@ data class FnBehaviour(
  * line up. Non-finite readings are recorded as `0.0` in [FnBehaviour.samples] but counted
  * against [FnBehaviour.finiteFraction], letting novelty search notice — and penalize —
  * candidates that mostly blow up.
+ *
+ * With [normalize] the sampled signal is reduced to a z-score (subtract the mean, divide by
+ * the RMS) so the descriptor captures *shape* independent of amplitude and offset. This
+ * matters for novelty search: the raw coordinate measures distance in value-space, so a
+ * search rewarded for novelty can "win" trivially by scaling an amplitude — behaviourally
+ * distant, but the same gesture louder. Normalizing forces novelty to explore genuinely
+ * different shapes (sine vs saw vs pulse) instead of the same shape rescaled. A flat signal
+ * (zero variance) normalizes to zeros rather than dividing by ~0.
  */
 fun Functions.Fn.behaviour(
     domain: Functions.Domain = Functions.Domain.DEFAULT,
-    samples: Int = 32
+    samples: Int = 32,
+    normalize: Boolean = false
 ): FnBehaviour {
     val count = samples.coerceIn(2, 8192)
     val readings = DoubleArray(count)
@@ -252,6 +261,20 @@ fun Functions.Fn.behaviour(
         if (y.isFinite()) {
             readings[index] = y
             finite++
+        }
+    }
+    if (normalize) {
+        var mean = 0.0
+        for (v in readings) mean += v
+        mean /= count
+        var sumSq = 0.0
+        for (index in readings.indices) {
+            readings[index] -= mean
+            sumSq += readings[index] * readings[index]
+        }
+        val rms = kotlin.math.sqrt(sumSq / count)
+        if (rms > 1e-12) {
+            for (index in readings.indices) readings[index] /= rms
         }
     }
     return FnBehaviour(readings, domain, finite / count.toDouble())
@@ -272,12 +295,13 @@ fun noveltyFitness(
     domain: Functions.Domain = Functions.Domain.DEFAULT,
     samples: Int = 32,
     neighbours: Int = 3,
-    validityWeight: Double = 0.25
+    validityWeight: Double = 0.25,
+    normalize: Boolean = false
 ): (Functions.Fn) -> Double {
     require(neighbours > 0) { "neighbours must be positive" }
     val frozen = archive.toList()
     return { candidate ->
-        val behaviour = candidate.behaviour(domain, samples)
+        val behaviour = candidate.behaviour(domain, samples, normalize)
         val novelty = if (frozen.isEmpty()) {
             0.0
         } else {
@@ -323,6 +347,11 @@ data class FnVarietyRun(
  * Deterministic in the same disciplined way as [evolve]: each slot derives its own seed
  * (`rngSeed * 31 + slot`), so the same [rngSeed] and inputs yield an identical set — the
  * property that lets an evolved *family* of gestures be reproduced in live art.
+ *
+ * Set [normalize] to explore *shape* rather than amplitude: without it, novelty distance is
+ * measured in raw value-space and the search tends to drift toward ever-louder versions of
+ * the same gesture; with it, descriptors are z-scored so the set spreads across genuinely
+ * different waveforms. See [Functions.Fn.behaviour].
  */
 fun evolveVariety(
     seed: Functions.Fn,
@@ -334,6 +363,7 @@ fun evolveVariety(
     samples: Int = 32,
     neighbours: Int = 3,
     validityWeight: Double = 0.25,
+    normalize: Boolean = false,
     mutations: List<Pair<String, FnMutation>> = FnMutations.defaults()
 ): FnVarietyRun {
     require(count > 0) { "count must be positive" }
@@ -345,7 +375,7 @@ fun evolveVariety(
     var current = seed
 
     for (slot in 0 until count) {
-        val fitness = noveltyFitness(archive, domain, samples, neighbours, validityWeight)
+        val fitness = noveltyFitness(archive, domain, samples, neighbours, validityWeight, normalize)
         val run = evolve(
             seed = current,
             iterations = iterations,
@@ -356,7 +386,7 @@ fun evolveVariety(
         )
         runs += run
         results += run.best
-        archive += run.best.behaviour(domain, samples)
+        archive += run.best.behaviour(domain, samples, normalize)
         current = run.best
     }
 

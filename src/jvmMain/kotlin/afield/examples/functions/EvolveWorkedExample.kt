@@ -1,8 +1,10 @@
 package afield.examples.functions
 
 import afield.stdlib.FnEvolveRun
+import afield.stdlib.FnVarietyRun
 import afield.stdlib.Functions
 import afield.stdlib.evolve
+import afield.stdlib.evolveVariety
 import afield.stdlib.matchFitness
 import java.io.File
 
@@ -29,6 +31,11 @@ expect:
  * the `Domain`) overlaying target / seed / evolved-best, plus a Markdown trace table
  * of the accepted mutations.
  *
+ * It then does the counterpart the marquee feature deserves: [evolveVariety] grows a
+ * *set* of behaviourally distinct gestures by novelty search, and [render] lays them out
+ * as a small-multiples montage — the visual argument for variety generation (a grid of
+ * genuinely different shapes from one seed, not one curve chasing a target).
+ *
  * The artifacts land under `public/docs/assets/evolve/` and are embedded in
  * `public/docs/functions_examples.md`. Because everything is seeded, re-running this
  * regenerates byte-identical evidence, which is exactly the property the doc claims.
@@ -41,13 +48,23 @@ object EvolveWorkedExample {
     const val LAMBDA: Int = 8
     const val SAMPLES: Int = 160
 
+    // Variety-montage run. Mirrors the `evolveVariety(...)` snippet in the docs so the
+    // rendered montage and the documented call stay in lockstep.
+    const val VARIETY_COUNT: Int = 6
+    const val VARIETY_ITERATIONS: Int = 48
+    const val VARIETY_RNG_SEED: Long = 7L
+    const val VARIETY_NEIGHBOURS: Int = 3
+    const val VARIETY_SAMPLES: Int = 120
+
     /** Output directory, relative to the project root (the cwd for jvm-main / jvmTest). */
     fun defaultOutDir(): File = File(System.getProperty("user.dir"), "public/docs/assets/evolve")
 
     data class Artifacts(
         val run: FnEvolveRun,
         val plotSvg: File,
-        val traceMarkdown: File
+        val traceMarkdown: File,
+        val variety: FnVarietyRun,
+        val varietySvg: File
     )
 
     /**
@@ -94,7 +111,39 @@ object EvolveWorkedExample {
         val traceFile = File(outDir, "evolve-trace.md")
         traceFile.writeText(trace)
 
-        Artifacts(run, plotSvg, traceFile)
+        // Variety generation: grow a set of behaviourally distinct gestures from one seed.
+        // The seed is a modest sine; novelty search pushes each slot away from the ones
+        // already found, so the montage shows what the *set* looks like, not one match.
+        val varietySeed = sin(2.0) * 0.5
+        // `normalize = true` is the whole point: it z-scores each behaviour descriptor so
+        // novelty measures *shape*, not amplitude. Without it the default palette drifts
+        // toward ever-louder copies of one gesture (magnitude is the cheapest way to be
+        // "novel" in raw value-space); with it the set spreads across genuinely different
+        // waveforms, and the default mutation palette works as-is (duplicateSubtree only
+        // rescales, which normalization ignores, so it can no longer run away).
+        val variety = evolveVariety(
+            seed = varietySeed,
+            count = VARIETY_COUNT,
+            iterations = VARIETY_ITERATIONS,
+            rngSeed = VARIETY_RNG_SEED,
+            samples = VARIETY_SAMPLES,
+            neighbours = VARIETY_NEIGHBOURS,
+            normalize = true
+        )
+        // Plot the stored *normalized* behaviours (the shape coordinate novelty explored),
+        // so every cell shares one z-scored scale and the montage reads as pure shape variety.
+        val montage = svgMontage(
+            width = 720,
+            cols = 3,
+            cellHeight = 132,
+            domain = domain,
+            spread = variety.meanPairwiseDistance,
+            cells = variety.behaviours.mapIndexed { i, b -> "variety-$i" to b.samples }
+        )
+        val varietySvg = File(outDir, "evolve-variety.svg")
+        varietySvg.writeText(montage)
+
+        Artifacts(run, plotSvg, traceFile, variety, varietySvg)
     }
 
     private data class Series(
@@ -205,6 +254,91 @@ object EvolveWorkedExample {
         sb.toString()
     }
 
+    /**
+     * A small-multiples montage: one mini line-plot per [cells] entry, laid out in a grid
+     * of [cols] columns. Every cell shares one auto-fitted y-range so the shapes are
+     * directly comparable — the point is to *see* that the set is behaviourally spread out.
+     */
+    private fun svgMontage(
+        width: Int,
+        cols: Int,
+        cellHeight: Int,
+        domain: Functions.Domain,
+        spread: Double,
+        cells: List<Pair<String, DoubleArray>>
+    ): String {
+        val headerH = 30.0
+        val gap = 10.0
+        val rows = (cells.size + cols - 1) / cols
+        val cellW = (width - gap * (cols + 1)) / cols
+        val height = (headerH + gap + rows * (cellHeight + gap)).toInt()
+
+        val n = cells.firstOrNull()?.second?.size?.coerceAtLeast(2) ?: 2
+        val xs = DoubleArray(n) { domain.min + domain.length * it / (n - 1).toDouble() }
+
+        // One shared y-range across every cell, so equal vertical space means equal value.
+        var yMin = Double.POSITIVE_INFINITY
+        var yMax = Double.NEGATIVE_INFINITY
+        val sampled = cells.map { (_, ys) ->
+            for (v in ys) if (v.isFinite()) {
+                if (v < yMin) yMin = v
+                if (v > yMax) yMax = v
+            }
+            ys
+        }
+        if (!yMin.isFinite() || !yMax.isFinite()) { yMin = -1.0; yMax = 1.0 }
+        if (yMax - yMin < 1e-9) { yMin -= 1.0; yMax += 1.0 }
+        val yPad = (yMax - yMin) * 0.08
+        yMin -= yPad; yMax += yPad
+
+        fun f(v: Double): String = ((v * 100.0).toLong() / 100.0).toString()
+
+        val sb = StringBuilder()
+        sb.append(
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 $width $height\" " +
+                "font-family=\"system-ui, sans-serif\" font-size=\"11\">\n"
+        )
+        sb.append("  <rect x=\"0\" y=\"0\" width=\"$width\" height=\"$height\" rx=\"6\" " +
+            "fill=\"var(--fig-bg, #fbfbfc)\"/>\n")
+        sb.append("  <text x=\"${f(gap)}\" y=\"20\" fill=\"var(--fg, #222222)\" " +
+            "font-weight=\"600\">evolveVariety — ${cells.size} behaviourally distinct gestures " +
+            "(spread = ${String.format("%.3f", spread)})</text>\n")
+
+        cells.forEachIndexed { idx, (label, _) ->
+            val col = idx % cols
+            val row = idx / cols
+            val x0 = gap + col * (cellW + gap)
+            val y0 = headerH + gap + row * (cellHeight + gap)
+            // Cell frame.
+            sb.append("  <rect x=\"${f(x0)}\" y=\"${f(y0)}\" width=\"${f(cellW)}\" " +
+                "height=\"$cellHeight\" fill=\"none\" stroke=\"var(--grid, #cccccc)\" stroke-width=\"1\"/>\n")
+
+            val padIn = 6.0
+            val pw = cellW - 2 * padIn
+            val ph = cellHeight - 2 * padIn
+            fun sx(x: Double): Double = x0 + padIn + domain.alphaOf(x) * pw
+            fun sy(y: Double): Double = y0 + padIn + (1.0 - (y - yMin) / (yMax - yMin)) * ph
+
+            if (yMin < 0.0 && yMax > 0.0) {
+                val z = f(sy(0.0))
+                sb.append("  <line x1=\"${f(x0 + padIn)}\" y1=\"$z\" x2=\"${f(x0 + padIn + pw)}\" " +
+                    "y2=\"$z\" stroke=\"var(--grid, #cccccc)\" stroke-width=\"1\" stroke-dasharray=\"2 3\"/>\n")
+            }
+            val ys = sampled[idx]
+            val pts = StringBuilder()
+            for (i in 0 until n) {
+                val v = ys[i]
+                if (v.isFinite()) pts.append("${f(sx(xs[i]))},${f(sy(v))} ")
+            }
+            sb.append("  <polyline fill=\"none\" stroke=\"var(--series-c, #1f77b4)\" " +
+                "stroke-width=\"2\" points=\"${pts.toString().trim()}\"/>\n")
+            sb.append("  <text x=\"${f(x0 + padIn)}\" y=\"${f(y0 + 13)}\" " +
+                "fill=\"var(--muted, #666666)\">$label</text>\n")
+        }
+        sb.append("</svg>\n")
+        return sb.toString()
+    }
+
     private fun traceMarkdown(run: FnEvolveRun): String {
         fun r(v: Double): String = String.format("%.4f", v)
         val sb = StringBuilder()
@@ -231,9 +365,16 @@ object EvolveWorkedExample {
         println("  acceptedMutations=${run.steps.size} evaluations=${run.evaluations}")
         println("  plot   -> ${artifacts.plotSvg}")
         println("  trace  -> ${artifacts.traceMarkdown}")
+        val variety = artifacts.variety
+        println("evolveVariety: count=$VARIETY_COUNT iterations=$VARIETY_ITERATIONS seed=$VARIETY_RNG_SEED")
+        println("  results=${variety.results.size} meanPairwiseDistance=${variety.meanPairwiseDistance}")
+        println("  montage -> ${artifacts.varietySvg}")
         check(run.improved) { "expected evolution to improve on the seed" }
         check(artifacts.plotSvg.length() > 0) { "empty plot svg" }
         check(artifacts.traceMarkdown.length() > 0) { "empty trace" }
+        check(variety.results.size == VARIETY_COUNT) { "expected $VARIETY_COUNT variety results" }
+        check(variety.meanPairwiseDistance > 0.0) { "variety set should be behaviourally spread out" }
+        check(artifacts.varietySvg.length() > 0) { "empty variety montage svg" }
         println("evolve worked example passed")
     }
 }

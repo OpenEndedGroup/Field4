@@ -3544,13 +3544,26 @@ val variety = evolveVariety(
     count = 6,          // how many mutually-distant gestures to return
     iterations = 48,
     rngSeed = 7L,       // same seed + inputs -> identical set
-    neighbours = 3      // k-nearest novelty
+    neighbours = 3,     // k-nearest novelty
+    normalize = true    // measure distance in *shape*, not amplitude (see below)
 )
 println("spread = ${variety.meanPairwiseDistance}")
 variety.results.forEachIndexed { i, fn -> fn.browseGraph(channel = "variety-$i") }
 ```
 
 `FnVarietyRun` exposes the `results`, their `behaviours`, the underlying per-slot `runs`, and `meanPairwiseDistance` — the average behavioural distance across the set, a defensible diversity metric. Because novelty is scored purely from sampled behaviour, the returned graphs are genuinely spread out in *what they do*, not merely distinct in structure. As always the run is fully deterministic: the same `rngSeed` and inputs reproduce the identical family, so an evolved *set* of gestures is as repeatable in live art as a single evolved one.
+
+##### Shape vs amplitude: the `normalize` flag
+
+There is a subtlety worth understanding, because it decides whether variety search gives you what you actually want. By default `behaviour(...)` records the raw sampled signal, so `distanceTo` measures distance in *value space*. Under that metric the cheapest way for a candidate to look "novel" is simply to be **louder** — scale an amplitude and you are far from everything in the archive without changing the gesture at all. Left unchecked, a novelty run drifts toward ever-bigger magnitudes: one gesture that blows up, the rest collapsed against it.
+
+Passing `normalize = true` z-scores each descriptor (subtract the mean, divide by the RMS) before measuring distance, so amplitude and offset fall out and novelty is forced to explore *shape* — sine versus saw versus pulse versus something pruned flat. As a bonus the default mutation palette now behaves: `duplicateSubtree` only rescales a copy, which normalization ignores, so it can no longer run away. This is the counterpart of the structural cost from `graphMetrics` — one asks "how big is the graph", the other "how different is what it does".
+
+Here is an actual `normalize = true` run — the same CPU-only harness as above (`./gradlew runEvolveWorkedExample`), plotting each result's z-scored behaviour so the cells share one scale and read as pure shape:
+
+![Six behaviourally distinct evolved gestures from one seed, each a normalized waveform](assets/evolve/evolve-variety.svg)
+
+Six slots grown from a single `sin(2.0) * 0.5` seed, `meanPairwiseDistance = 1.51` across the set — every cell is a genuinely different shape (all six polylines are distinct), not the same wave rescaled. Re-running regenerates a byte-identical montage. Try it without `normalize` and watch the spread balloon into the billions while the montage degenerates to one spike: a compact demonstration of *why the metric matters* in open-ended generation.
 
 ### Rewrite plot example
 
