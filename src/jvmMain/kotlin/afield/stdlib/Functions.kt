@@ -246,6 +246,10 @@ object Functions {
 
     enum class StretchShape { LINEAR, SMOOTHSTEP, SMOOTHERSTEP }
 
+    /** Rectifier polarity for the [rectify] waveshaping transform: half-wave clamps the
+     * negative excursion to zero; full-wave reflects it (|x|). */
+    enum class RectifyMode { HALF, FULL }
+
     /** Common normalized-time shapes for procedural motion and value tweening. */
     /**
      * Named motion curves for [tween], [Fn.ease], and other alpha-shaping helpers.
@@ -4683,6 +4687,31 @@ canvas {
 
     fun crush(bits: Int): FnTransform = FnTransform("crush($bits)") { source ->
         source.bitCrush(bits).withName("crush")
+    }
+
+    /**
+     * Waveshaping / distortion transforms — the value-domain (west-coast) counterparts
+     * to the time-domain [hold] / [crush] pair. Each is a thin factory over a pure value
+     * shaper (see [Fn.fold], [Fn.rectify], [Fn.abs], [Fn.quantize]) so it composes in
+     * `through` / `pipe` / `/` chains and surfaces in the type-aware infix completion.
+     * They shape the signal's VALUE, distinct from `hold`/`stepHold` which clock its time.
+     */
+    fun fold(threshold: Number = 1.0): FnTransform = fold(param(threshold))
+
+    fun fold(threshold: Fn): FnTransform = FnTransform("fold") { source ->
+        source.fold(threshold).withName("fold")
+    }
+
+    fun rectify(mode: RectifyMode = RectifyMode.FULL): FnTransform =
+        FnTransform("rectify(${mode.name.lowercase()})") { source ->
+            when (mode) {
+                RectifyMode.HALF -> source.rectify()
+                RectifyMode.FULL -> source.abs()
+            }.withName("rectify")
+        }
+
+    fun quantize(levels: Int): FnTransform = FnTransform("quantize($levels)") { source ->
+        source.quantize(levels).withName("quantize")
     }
 
     fun copyPaste(from: Domain, to: Domain, stretch: Boolean = true, edge: EdgeMode = EdgeMode.CLAMP): FnTransform =
