@@ -37,6 +37,10 @@ import java.util.concurrent.atomic.AtomicReference
  * The per-frame `frame` tick is deferred with [Renderer.afterCurrentGraphicsFrameComplete] — the
  * fence-first correctness gate, so the encoder never reads a half-written frame.
  *
+ * The **receiver** end of this stream is the visionOS shell at `~/temp/field4_visionos`
+ * (`Field4Vision/RTT/`: UDP reassembly → VideoToolbox decode → RealityKit). The wire contract is
+ * `native/field-encode/WIRE_FORMAT.md`.
+ *
  * macOS / MoltenVK only.
  */
 class FieldRTTStreamer(
