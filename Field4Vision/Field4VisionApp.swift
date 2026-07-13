@@ -7,10 +7,15 @@ import SwiftUI
 /// the shell just hosts the existing front end and lets docks float in space.
 @main
 struct Field4VisionApp: App {
+    // The RTT stream (GPU/immersive half) is app-scoped: the main window drives it (start/stop,
+    // status) and the ImmersiveSpace presents it, so both share one instance via the environment.
+    @State private var rtt = RTTStream()
+
     var body: some Scene {
         // Main window: the dock/tab manager.
         WindowGroup {
             ContentView()
+                .environment(rtt)
         }
         .windowResizability(.contentSize)
 
@@ -30,7 +35,19 @@ struct Field4VisionApp: App {
         .defaultWindowPlacement { _, _ in
             WindowPlacement(.utilityPanel)
         }
+
+        // The RTT receiver's present half: a dimmed immersive theatre showing the decoded UDP
+        // stream (see WIRE_FORMAT.md → "Implementing the receiver"). Mixed style so the dimmed
+        // passthrough (preferredSurroundingsEffect in ImmersiveStreamView) stays visible around
+        // the world-locked screen.
+        ImmersiveSpace(id: Field4VisionApp.rttSpaceID) {
+            ImmersiveStreamView()
+                .environment(rtt)
+        }
+        .immersionStyle(selection: .constant(.mixed), in: .mixed)
     }
+
+    static let rttSpaceID = "RTTImmersive"
 }
 
 /// A free-floating WebDock window (an undocked dock, or a `window.open("_blank")` target). It

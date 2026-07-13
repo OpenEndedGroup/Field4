@@ -7,7 +7,11 @@ struct ContentView: View {
     @State private var manager = DockManager()
     @State private var columnVisibility: NavigationSplitViewVisibility = .doubleColumn
     @State private var didAutoOpenEditor = false
+    @State private var immersiveOpen = false
     @Environment(\.openWindow) private var openWindow
+    @Environment(RTTStream.self) private var rtt
+    @Environment(\.openImmersiveSpace) private var openImmersiveSpace
+    @Environment(\.dismissImmersiveSpace) private var dismissImmersiveSpace
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
@@ -72,6 +76,21 @@ struct ContentView: View {
                         } label: {
                             Label("Undock", systemImage: "rectangle.badge.plus")
                         }
+                        // The GPU/immersive half: start the RTT receiver and open the dimmed
+                        // theatre (or tear both down). The stream keeps running independent of the
+                        // rail so the receiver's diagnostics stay live.
+                        Button {
+                            Task { await toggleImmersive() }
+                        } label: {
+                            Label(immersiveOpen ? "Exit Immersive" : "Immersive",
+                                  systemImage: immersiveOpen ? "arrow.down.right.and.arrow.up.left" : "cube.transparent")
+                        }
+                        if rtt.isRunning {
+                            Text(rtt.status)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
                     }
                 }
         }
@@ -82,6 +101,25 @@ struct ContentView: View {
                 try? await Task.sleep(for: .seconds(1.2))
                 openWindow(value: manager.floatingEditorURL())
             }
+        }
+    }
+
+    /// Open/close the RTT theatre. The receiver starts before the space so packets are already
+    /// being reassembled when the screen appears; closing stops it to free the socket.
+    private func toggleImmersive() async {
+        if immersiveOpen {
+            await dismissImmersiveSpace()
+            rtt.stop()
+            immersiveOpen = false
+            return
+        }
+        rtt.start()
+        switch await openImmersiveSpace(id: Field4VisionApp.rttSpaceID) {
+        case .opened:
+            immersiveOpen = true
+        default:
+            rtt.stop()
+            immersiveOpen = false
         }
     }
 
@@ -114,4 +152,5 @@ struct ContentView: View {
 
 #Preview(windowStyle: .automatic) {
     ContentView()
+        .environment(RTTStream())
 }
