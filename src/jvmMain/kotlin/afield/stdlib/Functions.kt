@@ -5535,11 +5535,13 @@ canvas {
             node("fold", children = listOf(fnEdge("source", this), fnEdge("threshold", threshold)), rebuild = { it[0].fold(it[1]) })
         ) { x ->
             val th = threshold.eval(x)
-            if (th == 0.0) 0.0 else {
+            if (th <= 0.0) 0.0 else {
+                // West-coast wavefolder: pass the signal through unchanged while it stays
+                // within [-th, th], reflecting it back each time it crosses the threshold.
+                // asin(sin(.)) is exactly that triangle — continuous, odd-symmetric, bounded
+                // to [-th, th], and equal to the input near zero.
                 val value = eval(x)
-                val t = value % (th * 4.0)
-                val v = if (t > th * 2.0) t - th * 4.0 else t
-                kotlin.math.abs(v - th) - th
+                (2.0 * th / PI) * kotlin.math.asin(kotlin.math.sin(PI * value / (2.0 * th)))
             }
         }
     }
