@@ -24,15 +24,18 @@ import java.util.concurrent.atomic.AtomicReference
  * up by global ID here, and *import* them as the RTT backing (`RTTParameters.importMetalIOSurface`).
  *
  * ### Usage (from a Field box)
+ * Attach your content module to **every** ring surface; the streamer self-registers and renders
+ * exactly the active surface each tick, so do **not** add the surfaces to `renderer.renderList`:
  * ```
- * val streamer = FieldRTTStreamer(renderer, dest = "127.0.0.1:9001", width = 1280, height = 720)
- * val target = streamer.start().first()   // an imported, VideoToolbox-encodable RTT
- * renderer.renderList += "streamTarget" to target
- * // ... attach a module + mesh that draws into `target` each frame (your "6. RTT" idiom) ...
+ * val streamer = FieldRTTStreamer(renderer, dest = "127.0.0.1:9001", width = 1280, height = 720, ringSize = 3)
+ * val surfaces = streamer.start()
+ * val module = moduleHere { surfaces.first().apply() }; module += "mesh" to m
+ * surfaces.forEach { it += "content" to module }
  * // stop later: streamer.stop()
  * ```
- * For a ring (`ringSize > 1`), render each frame into `surfaces[streamer.activeSlot]` so you never
- * overwrite the surface the encoder is currently reading.
+ * With `ringSize > 1` the streamer round-robins which surface it renders+encodes, giving the encoder
+ * a full ring of tick-intervals to read each frame (render-ahead). `ringSize = 1` is fine at the
+ * throttled rate; a ring adds headroom at high fps/resolution.
  *
  * The per-frame `frame` tick is deferred with [Renderer.afterCurrentGraphicsFrameComplete] — the
  * fence-first correctness gate, so the encoder never reads a half-written frame.
@@ -144,19 +147,25 @@ class FieldRTTStreamer(
      * encoder's per-frame ready tick until this frame's fence signals — the correctness gate.
      */
     override fun render(command: CommandBuffer, index: Int) {
-        if (!streaming) return
+        if (!streaming || surfaces.isEmpty()) return
 
-        // Emit at the configured `fps`, NOT at the renderer's rate. Field renders ~60fps; ticking
+        // Emit at the configured `fps`, NOT at the renderer's rate. Field renders ~60-90fps; ticking
         // every frame floods the transport, and a receiver that can't keep up (e.g. the sim's
         // software decoder) drops fragments → P-frames decode against missing references → garbage
-        // until the next IDR. Throttling to `fps` also gives the encoder a full frame-interval to
-        // read each surface, so a single-surface ring is safe.
+        // until the next IDR.
         val now = System.nanoTime()
         val intervalNanos = 1_000_000_000L / maxOf(1, fps)
         if (lastSentNanos != 0L && now - lastSentNanos < intervalNanos) return
         lastSentNanos = now
 
+        // Render the box's content into exactly the active ring surface, then encode it. Rendering
+        // only this one (not all N) is what makes the ring real: while the encoder reads slot N, the
+        // next tick renders slot N+1, so a surface isn't overwritten for `ringSize` tick-intervals.
+        // This target lives in `others` (rendered outside the main pass), so driving the RTT's own
+        // render pass here is the same call path as registering it in the render list.
         val slot = (seq % surfaces.size).toInt()
+        surfaces[slot].render(command, index)
+
         val s = seq
         val pts = (now - startNanos) / 1000   // microseconds since start
         val forceIdr = s == 0L

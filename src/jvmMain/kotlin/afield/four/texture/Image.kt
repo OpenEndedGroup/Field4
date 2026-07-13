@@ -77,6 +77,14 @@ class Image(private val device: Device, val imageData: ImageData) {
             val memReqs = VkMemoryRequirements.calloc(stack)
             VK10.vkGetImageMemoryRequirements(device.vkDevice, vkImage, memReqs)
 
+            // For an imported IOSurface, MoltenVK backs the MTLTexture's pixels with the surface, so
+            // this allocate+bind may be redundant. Log the reported size once so we can decide
+            // whether to skip it (0 ⇒ safe to skip; non-zero ⇒ MoltenVK still wants bound memory).
+            if (imageData.importMetalIOSurface != 0L) {
+                afield.logger.lprintln("info,field-stream",
+                    "imported-IOSurface image: memReqs.size=${memReqs.size()} (binding anyway; pixels live in the IOSurface)")
+            }
+
             // Select memory size and type
             val memAlloc = VkMemoryAllocateInfo.calloc(stack)
                 .sType(VK10.VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO)
