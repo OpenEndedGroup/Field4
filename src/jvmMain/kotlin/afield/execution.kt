@@ -663,7 +663,10 @@ private fun completionCandidateName(variant: SourceCodeCompletionVariant): Strin
  *
  * The operator's parameter type is discovered generically (no hard-coded operator list) by asking
  * the same completion engine to complete the operator token itself: an infix function `foo`
- * surfaces as a candidate whose display text is `foo(ParamType)`. Results are cached per
+ * surfaces as a candidate whose display text is `foo(ParamType)`. Because infix operators are
+ * routinely overloaded on operand type (e.g. `Fn.over(Domain)` and `Fn.over(ClosedRange<*>)`), the
+ * resolution collects the parameter type of EVERY matching overload into a set and a candidate is
+ * boosted when its return type matches ANY of them. Results are cached per
  * (operator, code-before-operator) so typing the operand doesn't recompute it each keystroke.
  */
 internal object InfixCompletion {
@@ -671,8 +674,8 @@ internal object InfixCompletion {
     const val OPERAND_MATCH_BOOST = 160
 
     private const val maxCacheEntries = 64
-    private val paramTypeCache = object : LinkedHashMap<String, String?>(maxCacheEntries, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String?>?): Boolean = size > maxCacheEntries
+    private val paramTypeCache = object : LinkedHashMap<String, Set<String>>(maxCacheEntries, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Set<String>>?): Boolean = size > maxCacheEntries
     }
 
     private val infixStopWords = setOf(
@@ -682,6 +685,23 @@ internal object InfixCompletion {
     )
 
     private fun isIdentChar(c: Char) = c.isLetterOrDigit() || c == '_'
+
+    /**
+     * True when [params] contains a comma at bracket-depth 0, i.e. one that separates multiple
+     * parameters rather than generic type arguments (so `Map<String, Int>` is treated as a single
+     * parameter, but `Domain, Int` is not). Used to skip multi-parameter (non-infix) entries.
+     */
+    private fun hasTopLevelComma(params: String): Boolean {
+        var depth = 0
+        for (c in params) {
+            when (c) {
+                '<', '(', '[' -> depth++
+                '>', ')', ']' -> if (depth > 0) depth--
+                ',' -> if (depth == 0) return true
+            }
+        }
+        return false
+    }
 
     private data class InfixSite(val operator: String, val operatorEnd: Int, val codeBeforeOperator: String)
 
@@ -715,41 +735,53 @@ internal object InfixCompletion {
     }
 
     /**
-     * The declared operand type of the infix operator at [cursor] (already type-shortened, e.g.
-     * `FnTransform`), or null when the cursor is not at an infix operand site or the operator can't
-     * be resolved. [complete] is the engine's completion entry point (kept as a parameter so this
-     * stays engine-agnostic and easy to test).
+     * The declared operand type(s) of the infix operator at [cursor], already type-shortened (e.g.
+     * `{FnTransform}`, or `{Domain, ClosedRange}` for an operator overloaded on operand type).
+     * Returns an empty set when the cursor is not at an infix operand site or no overload can be
+     * resolved. Every matching single-parameter overload contributes its parameter type, so a later
+     * candidate is boosted when it matches ANY overload rather than only the first. [complete] is
+     * the engine's completion entry point (kept as a parameter so this stays engine-agnostic and
+     * easy to test).
      */
-    suspend fun expectedOperandType(
+    suspend fun expectedOperandTypes(
         allCode: String,
         cursor: Int,
         complete: suspend (String, Int) -> CompletionResult
-    ): String? {
-        val site = parseInfixSite(allCode, cursor) ?: return null
+    ): Set<String> {
+        val site = parseInfixSite(allCode, cursor) ?: return emptySet()
         val cacheKey = "${site.operator}::${site.codeBeforeOperator.hashCode()}::${site.codeBeforeOperator.length}"
-        synchronized(paramTypeCache) { if (paramTypeCache.containsKey(cacheKey)) return paramTypeCache[cacheKey] }
+        synchronized(paramTypeCache) { paramTypeCache[cacheKey]?.let { return it } }
 
-        val resolved = runCatching {
-            val result = complete(allCode, site.operatorEnd) as? CompletionResult.Success ?: return@runCatching null
-            val entry = result.metadata.firstOrNull {
-                it.icon == "method" &&
-                    it.displayText.substringBefore('(').substringAfterLast('.').trim() == site.operator &&
-                    '(' in it.displayText
-            } ?: return@runCatching null
-            // Infix functions take exactly one parameter; the display text is `operator(ParamType)`.
-            val paramType = entry.displayText.substringAfter('(').substringBeforeLast(')').trim()
-            if (paramType.isBlank() || ',' in paramType) null else shortenType(paramType).trim().ifBlank { null }
-        }.getOrNull()
+        val resolved: Set<String> = runCatching {
+            val result = complete(allCode, site.operatorEnd) as? CompletionResult.Success ?: return@runCatching emptySet()
+            result.metadata.asSequence()
+                .filter {
+                    it.icon == "method" &&
+                        it.displayText.substringBefore('(').substringAfterLast('.').trim() == site.operator &&
+                        '(' in it.displayText
+                }
+                // Infix functions take exactly one parameter; the display text is `operator(ParamType)`.
+                // Skip multi-parameter (non-infix) overloads, ignoring commas inside generic arguments.
+                .mapNotNull {
+                    val paramType = it.displayText.substringAfter('(').substringBeforeLast(')').trim()
+                    if (paramType.isBlank() || hasTopLevelComma(paramType)) null
+                    else shortenType(paramType).trim().ifBlank { null }
+                }
+                .toSet()
+        }.getOrDefault(emptySet())
 
         synchronized(paramTypeCache) { paramTypeCache[cacheKey] = resolved }
         return resolved
     }
 
-    /** True when [candidate]'s return type ([SourceCodeCompletionVariant.tail]) matches [expectedType]. */
-    fun matchesOperandType(candidate: SourceCodeCompletionVariant, expectedType: String): Boolean {
-        if (expectedType.isBlank()) return false
+    /**
+     * True when [candidate]'s return type ([SourceCodeCompletionVariant.tail]) matches any of the
+     * [expectedTypes] resolved from the infix operator's overloads.
+     */
+    fun matchesOperandType(candidate: SourceCodeCompletionVariant, expectedTypes: Set<String>): Boolean {
+        if (expectedTypes.isEmpty()) return false
         val returnType = shortenType(candidate.tail).trim()
-        return returnType.isNotBlank() && returnType == expectedType
+        return returnType.isNotBlank() && returnType in expectedTypes
     }
 }
 
@@ -2647,7 +2679,7 @@ class KotlinExecution : BoxExecution {
             return
         }
 
-        fun completionFor(c: CompletionResult.Success, infixExpectedType: String? = null): List<Metadata> {
+        fun completionFor(c: CompletionResult.Success, infixExpectedTypes: Set<String> = emptySet()): List<Metadata> {
             val activeToken = allCode.substring(c.bounds.start, c.bounds.end).trim()
             val argumentCallable = callableBeforeArgumentCursor(allCode, position)
             return c.metadata.mapNotNull {
@@ -2806,7 +2838,7 @@ class KotlinExecution : BoxExecution {
                     }
                     return@mapNotNull null
                 }
-                if (infixExpectedType != null && InfixCompletion.matchesOperandType(it, infixExpectedType)) {
+                if (infixExpectedTypes.isNotEmpty() && InfixCompletion.matchesOperandType(it, infixExpectedTypes)) {
                     categorizedMetadata.copy(contextScore = InfixCompletion.OPERAND_MATCH_BOOST)
                 } else {
                     categorizedMetadata
@@ -2881,11 +2913,11 @@ class KotlinExecution : BoxExecution {
                 }
                 when (c) {
                     is CompletionResult.Success -> {
-                        val infixExpectedType = runCatching {
-                            InfixCompletion.expectedOperandType(allCode, position) { s, cur -> inside.ki.complete(s, cur) }
-                        }.getOrNull()
-                        if (completionTraceEnabled() && infixExpectedType != null) {
-                            completionTrace("completion infix-operand expectedType='$infixExpectedType' uid='${inside.id}' position=$position")
+                        val infixExpectedTypes = runCatching {
+                            InfixCompletion.expectedOperandTypes(allCode, position) { s, cur -> inside.ki.complete(s, cur) }
+                        }.getOrDefault(emptySet())
+                        if (completionTraceEnabled() && infixExpectedTypes.isNotEmpty()) {
+                            completionTrace("completion infix-operand expectedTypes='${infixExpectedTypes.joinToString(",")}' uid='${inside.id}' position=$position")
                         }
                         val synthetic = KotlinCompletionSupport.namedArgumentCompletions(inside, allCode, position)
                         val tokenBounds = runCatching { getTokenBounds(allCode, position) }
@@ -2901,7 +2933,7 @@ class KotlinExecution : BoxExecution {
                         val completions = Completion(
                             boundsStart = boundsStart,
                             boundsEnd = boundsEnd,
-                            metadata = ((synthetic?.metadata ?: emptyList()) + fieldSnippets + completionFor(c, infixExpectedType) + importHelpFor(c))
+                            metadata = ((synthetic?.metadata ?: emptyList()) + fieldSnippets + completionFor(c, infixExpectedTypes) + importHelpFor(c))
                                 .map(KotlinCompletionSupport::withCategoryDocumentationHeader)
                         )
 
