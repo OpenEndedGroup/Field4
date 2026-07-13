@@ -4,30 +4,6 @@ import CoreVideo
 import RealityKit
 import QuartzCore
 
-/// Owns the decode side of the pipeline (reassembled frame → VideoToolbox → CVPixelBuffer),
-/// living entirely on the receiver's serial queue. Kept off the main actor so `RTTStream` can be
-/// `@MainActor` for SwiftUI without dragging decoder state onto the main thread; the only thing
-/// that crosses back is the finished pixel buffer via `onPixelBuffer`.
-final class RTTDecodePipeline {
-    var onPixelBuffer: ((CVPixelBuffer, UInt64) -> Void)?
-
-    private var decoder: VideoDecoder?
-    private var codec: RTTWire.Codec?
-
-    /// Feed one reassembled access unit. Recreates the decoder if the stream's codec changes.
-    func ingest(_ frame: ReassembledFrame) {
-        if decoder == nil || codec != frame.codec {
-            let dec = VideoDecoder(codec: frame.codec)
-            dec.onPixelBuffer = { [weak self] pixelBuffer, pts in
-                self?.onPixelBuffer?(pixelBuffer, pts)
-            }
-            decoder = dec
-            codec = frame.codec
-        }
-        decoder?.decode(frame)
-    }
-}
-
 /// Top-level RTT pipeline: UDP receiver → reassembler → decoder → Metal texture, exposing an
 /// observable `displayTexture` for the RealityKit present layer plus light diagnostics.
 ///
@@ -82,7 +58,7 @@ final class RTTStream {
         // Captures `pipeline` strongly; the closure runs on the receiver's serial queue, which is
         // the only thing that ever touches the pipeline (so decode submission stays single-threaded
         // and ordered). No self-owned decoder state is read off-main.
-        receiver.onFrame = { frame in pipeline.ingest(frame) }
+        receiver.onFrame = { frame in pipeline.submit(frame) }
         self.receiver = receiver
         receiver.start()
 
