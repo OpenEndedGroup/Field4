@@ -325,6 +325,24 @@ start(renderScene)
 
 If you see `must pass in a value for context parameter afield.four.Renderer`, debug the box graph first: confirm the renderer box was launched, its render loop is running, and the example box is a child of it. Do not paper over this with longer sleeps or display/window screenshot fallbacks.
 
+### Documents that already have a window box (do NOT use `--graphics-context`)
+
+`--graphics-context` is only for snippets/documents that lack their own renderer. If the document already contains a **window box** (one that creates its own `Window`/`Renderer` and calls `start(renderer::run)`), do not add `--graphics-context` — you'd get a second, conflicting renderer. Instead just **launch the window box, then the graphics box**:
+
+```bash
+uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 \
+  --command 'open my_doc' \
+  --command 'launch <window-box-uid> --file window.kt' \
+  --command 'launch <graphics-box-uid> --file graphics.kt' \
+  --command 'sleep 20'
+```
+
+Three things that will otherwise waste your time (hard-won):
+
+- **`launch`/`run <uid>` always sends `--value` — empty if you omit it — which overrides the box's stored code.** So a bare `launch <uid>` runs an *empty* box (`codeLength: 0`, no pump, no output). Always pass `--file`/`--value` (or drive stored code via an OperationTranscript `launch` op with no inline code). This is the #1 cause of "I launched it but nothing happened."
+- **`launch`, not `run`, gives you a message pump.** The window box's `start(renderer::run)` render loop only keeps ticking while the box stays launched; a one-shot `run` executes the fragment and stops. Confirm the pump with `wait-native-renderer --frames 5` (do not wait on `println` output — render-loop liveness is a different system).
+- **Renderers are disposed on document detach** (`SessionInformation.cleanup()` → `disposeBoxRenderer` per box, releasing the native GLFW/Vulkan surface). So (a) keep the backdoor session attached — a trailing `sleep` — for as long as you need frames, and (b) do not `open` a *different* document over a session whose current document has a **live** renderer (e.g. one a human GUI is actively rendering): the detach will tear that renderer down. Devices are per-`Renderer` (each `Renderer` owns its own `VkInstance`/`VkDevice`), so this is per-document teardown, not a shared-device bug.
+
 ## Scratch vs Named Documents
 
 Scratch is the default:
