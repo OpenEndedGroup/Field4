@@ -2,6 +2,7 @@ package afield.ai.core
 
 import afield.Box
 import afield.SavingContext
+import afield.documents
 import afield.inMain
 import afield.isTrue
 import afield.logger.lprintln
@@ -83,6 +84,12 @@ internal object Ai4AutoBoxNamer {
         )
         if (message == AUTO_SAVE_MESSAGE) {
             lprintln("info,ai.boxnames", "AI4 auto box naming skipped for $document: ignoring its own autosave")
+            return
+        }
+        // Never rename boxes in agent-backdoor-loaded documents — the agent's box names are
+        // intentional (e.g. window/sender) and the auto-namer would rewrite them (HDR Window, …).
+        if (documents.values.any { it.agentManaged && (it.filename == document || it.documentName == document) }) {
+            lprintln("info,ai.boxnames", "AI4 auto box naming skipped for $document: agent-managed (backdoor) session")
             return
         }
         val enabled = enabledCheck()

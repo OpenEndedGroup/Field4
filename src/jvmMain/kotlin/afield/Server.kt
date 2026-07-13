@@ -281,6 +281,11 @@ class SessionInformation(
     @Volatile
     var loading: Boolean = false
 
+    // Sessions the agent backdoor created/loaded. Used to skip AI auto box-naming for them — an
+    // agent's boxes have deliberate names (e.g. window/sender) that the auto-namer must not rewrite.
+    @Volatile
+    var agentManaged: Boolean = false
+
     // Track sidecar-bearing properties that need to be written to disk on next save.
     val pendingSidecarSaves = ConcurrentHashMap.newKeySet<Pair<String, String>>()
     private val pendingSidecarSaveVersions = ConcurrentHashMap<Pair<String, String>, Long>()

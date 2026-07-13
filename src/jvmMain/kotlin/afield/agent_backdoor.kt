@@ -140,6 +140,7 @@ private fun createSessionInformation(target: DocumentTarget): SessionInformation
         root = root,
         ephemeral = target.scratch
     )
+    info.agentManaged = true   // backdoor-loaded: keep the agent's box names (no AI auto-rename)
     root.inside = info
     attachRootToMetaroot(root)
     return info
