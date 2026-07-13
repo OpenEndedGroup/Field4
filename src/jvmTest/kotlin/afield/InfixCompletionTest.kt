@@ -5,7 +5,6 @@ import kotlin.script.experimental.api.SourceCodeCompletionVariant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -16,20 +15,20 @@ import kotlin.test.assertTrue
  */
 class InfixCompletionTest {
 
-    /** A completion engine that only knows how to complete the infix operator token. */
-    private fun operatorEngine(operatorName: String, paramType: String): suspend (String, Int) -> CompletionResult =
+    /** A completion engine that knows how to complete one infix operator with one or more overloads. */
+    private fun operatorEngine(operatorName: String, vararg paramTypes: String): suspend (String, Int) -> CompletionResult =
         { code, cursor ->
             val bounds = getTokenBounds(code, cursor)
             val token = code.substring(bounds.start, bounds.end)
             val matches = if (operatorName.startsWith(token) && token.isNotEmpty()) {
-                listOf(
+                paramTypes.map { paramType ->
                     SourceCodeCompletionVariant(
                         text = "$operatorName(",
                         displayText = "$operatorName($paramType)",
                         tail = "Functions.Fn",
                         icon = "method"
                     )
-                )
+                }
             } else emptyList()
             CompletionResult.Success(matches.map { it.text }, bounds, matches, code, cursor)
         }
@@ -38,31 +37,60 @@ class InfixCompletionTest {
     fun resolvesInfixOperandTypeAfterOperator() = runBlocking {
         val code = "with(Functions) {\n    (pulseBurst(10) through ).plot(\"source\")\n}"
         val cursor = code.indexOf("through ") + "through ".length
-        val expected = InfixCompletion.expectedOperandType(code, cursor, operatorEngine("through", "Functions.FnTransform"))
-        assertEquals("FnTransform", expected)
+        val expected = InfixCompletion.expectedOperandTypes(code, cursor, operatorEngine("through", "Functions.FnTransform"))
+        assertEquals(setOf("FnTransform"), expected)
     }
 
     @Test
     fun resolvesWhilePartialOperandTyped() = runBlocking {
         val code = "with(Functions) {\n    (pulseBurst(10) through str).plot(\"source\")\n}"
         val cursor = code.indexOf("through str") + "through str".length
-        val expected = InfixCompletion.expectedOperandType(code, cursor, operatorEngine("through", "Functions.FnTransform"))
-        assertEquals("FnTransform", expected)
+        val expected = InfixCompletion.expectedOperandTypes(code, cursor, operatorEngine("through", "Functions.FnTransform"))
+        assertEquals(setOf("FnTransform"), expected)
     }
 
     @Test
     fun ignoresWhenCursorIsGluedToOperatorToken() = runBlocking {
         // Still typing the operator name itself — not yet an operand site.
         val code = "(pulseBurst(10) throu"
-        val expected = InfixCompletion.expectedOperandType(code, code.length, operatorEngine("through", "Functions.FnTransform"))
-        assertNull(expected)
+        val expected = InfixCompletion.expectedOperandTypes(code, code.length, operatorEngine("through", "Functions.FnTransform"))
+        assertTrue(expected.isEmpty())
     }
 
     @Test
     fun ignoresKeywordsInReceiverPosition() = runBlocking {
         val code = "return foo"
-        val expected = InfixCompletion.expectedOperandType(code, code.length, operatorEngine("foo", "Whatever"))
-        assertNull(expected)
+        val expected = InfixCompletion.expectedOperandTypes(code, code.length, operatorEngine("foo", "Whatever"))
+        assertTrue(expected.isEmpty())
+    }
+
+    @Test
+    fun resolvesEveryOverloadOperandType() = runBlocking {
+        // `over` is overloaded on operand type: `Fn.over(Domain)` and `Fn.over(ClosedRange<*>)`.
+        val code = "with(Functions) {\n    (pulseBurst(10) over ).plot(\"source\")\n}"
+        val cursor = code.indexOf("over ") + "over ".length
+        val expected = InfixCompletion.expectedOperandTypes(
+            code, cursor, operatorEngine("over", "Functions.Domain", "kotlin.ranges.ClosedRange<*>")
+        )
+        assertEquals(setOf("Domain", "ClosedRange<*>"), expected)
+    }
+
+    @Test
+    fun matchesAnyOverloadReturnType() {
+        // Both overload operand types should be boosted; an unrelated type should not.
+        val expectedTypes = setOf("Domain", "ClosedRange<*>")
+        val domain = SourceCodeCompletionVariant(
+            text = "domain(", displayText = "domain(...)", tail = "Functions.Domain", icon = "method"
+        )
+        val range = SourceCodeCompletionVariant(
+            text = "range(", displayText = "range(...)", tail = "kotlin.ranges.ClosedRange<*>", icon = "method"
+        )
+        val unrelated = SourceCodeCompletionVariant(
+            text = "cos(", displayText = "cos(...)", tail = "Functions.Fn", icon = "method"
+        )
+        assertTrue(InfixCompletion.matchesOperandType(domain, expectedTypes))
+        assertTrue(InfixCompletion.matchesOperandType(range, expectedTypes))
+        assertFalse(InfixCompletion.matchesOperandType(unrelated, expectedTypes))
     }
 
     @Test
@@ -73,7 +101,19 @@ class InfixCompletionTest {
         val fn = SourceCodeCompletionVariant(
             text = "cos(", displayText = "cos(...)", tail = "Functions.Fn", icon = "method"
         )
-        assertTrue(InfixCompletion.matchesOperandType(transform, "FnTransform"))
-        assertFalse(InfixCompletion.matchesOperandType(fn, "FnTransform"))
+        assertTrue(InfixCompletion.matchesOperandType(transform, setOf("FnTransform")))
+        assertFalse(InfixCompletion.matchesOperandType(fn, setOf("FnTransform")))
+    }
+
+    @Test
+    fun skipsMultiParameterEntriesButKeepsGenericSingleParam() = runBlocking {
+        // A non-infix multi-param overload (`f(A, B)`) must be dropped, while a single generic
+        // param whose type arguments contain a comma (`Map<String, Int>`) must be kept.
+        val code = "with(Functions) {\n    (pulseBurst(10) merge ).plot(\"source\")\n}"
+        val cursor = code.indexOf("merge ") + "merge ".length
+        val expected = InfixCompletion.expectedOperandTypes(
+            code, cursor, operatorEngine("merge", "kotlin.collections.Map<String, Int>", "Functions.Domain, Int")
+        )
+        assertEquals(setOf("Map<String, Int>"), expected)
     }
 }
