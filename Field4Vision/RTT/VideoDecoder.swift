@@ -23,6 +23,10 @@ final class VideoDecoder {
     /// session if the stream's SPS/PPS change (resolution change, new IDR params).
     private var paramSetKey: Data?
 
+    /// NAL-structure diagnostic, opt-in via FIELD4_RTT_NAL_DEBUG=1 (see `decode`).
+    private static let nalDebug = ProcessInfo.processInfo.environment["FIELD4_RTT_NAL_DEBUG"] == "1"
+    private var nalDebugCount = 0
+
     init(codec: RTTWire.Codec) {
         self.codec = codec
     }
@@ -43,6 +47,24 @@ final class VideoDecoder {
     func decode(_ frame: ReassembledFrame) {
         let nals = Self.splitAnnexB(frame.annexB)
         guard !nals.isEmpty else { return }
+
+        // NAL structure probe (FIELD4_RTT_NAL_DEBUG=1): dump per-frame NAL types + sizes for the
+        // first frames so a foreign sender's P-frame encoding can be inspected. A well-formed
+        // reference P-frame is HEVC NAL type 1 (TRAIL_R); type 0 (TRAIL_N) is a non-reference frame
+        // and won't be kept in the DPB → downstream P-frames concealing to grey.
+        if Self.nalDebug, nalDebugCount < 8 {
+            nalDebugCount += 1
+            let desc = nals.map { "\(Self.hevcNalType($0))(\($0.count)B)" }.joined(separator: " ")
+            shellLog.notice("RTT NALs seq=\(frame.frameSeq) pts=\(frame.ptsMicros) kf=\(frame.isKeyframe) → \(desc, privacy: .public)")
+            // Hex-dump SPS (whole) and the first bytes of each VCL NAL (slice header lives here) so a
+            // sender's reference/POC config can be diffed against a known-good encoder.
+            for nal in nals {
+                let t = (nal.first ?? 0) >> 1 & 0x3F
+                let dump = (t == 33) ? nal : nal.prefix(16)   // whole SPS; slice-header head otherwise
+                let hex = dump.map { String(format: "%02x", $0) }.joined(separator: " ")
+                shellLog.notice("RTT hex \(Self.hevcNalType(nal), privacy: .public): \(hex, privacy: .public)")
+            }
+        }
 
         // Keyframes carry VPS/SPS/PPS inline — (re)build the format description + session from them.
         if frame.isKeyframe {
@@ -255,6 +277,22 @@ final class VideoDecoder {
             let type = first & 0x1F
             return type == 7 || type == 8                    // SPS / PPS
         }
+    }
+
+    /// HEVC NAL unit type (`(byte0 >> 1) & 0x3F`) as a short label for the debug dump. Key types:
+    /// 0=TRAIL_N (non-ref), 1=TRAIL_R (ref P/B), 19/20=IDR, 21=CRA, 32=VPS, 33=SPS, 34=PPS.
+    private static func hevcNalType(_ nal: Data) -> String {
+        guard let first = nal.first else { return "?" }
+        let t = (first >> 1) & 0x3F
+        let name: String
+        switch t {
+        case 0: name = "TRAIL_N"; case 1: name = "TRAIL_R"
+        case 19: name = "IDR_W_RADL"; case 20: name = "IDR_N_LP"; case 21: name = "CRA"
+        case 32: name = "VPS"; case 33: name = "SPS"; case 34: name = "PPS"
+        case 39, 40: name = "SEI"
+        default: name = "t\(t)"
+        }
+        return "\(name)#\(t)"
     }
 
     private static func fingerprint(_ paramSets: [Data]) -> Data {
