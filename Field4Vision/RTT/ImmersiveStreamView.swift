@@ -35,7 +35,15 @@ struct ImmersiveStreamView: View {
     private let screenHeight: Float = 1.0
 
     var body: some View {
-        RealityView { content in
+        // Observe the decoded-frame counter so SwiftUI re-runs `update` on every new frame. The
+        // converter updates the LowLevelTexture in place, but RealityKit only re-samples it when the
+        // scene actually redraws — and a static immersive scene doesn't redraw on its own (starkly so
+        // in the simulator, which idle-throttles). Without this the quad shows a stale frame until
+        // some interaction (dragging a window) forces a redraw. Reading the counter here + nudging
+        // the entity below makes each decoded frame drive a redraw.
+        let tick = stream.decodedFrameCount
+
+        return RealityView { content in
             screen.model = ModelComponent(
                 mesh: .generatePlane(width: 16.0 / 9.0 * screenHeight, height: screenHeight),
                 materials: [UnlitMaterial(color: .black)])
@@ -44,6 +52,10 @@ struct ImmersiveStreamView: View {
         } update: { _ in
             guard let texture = stream.displayTexture else { return }
             let stereo = stream.isStereo
+
+            // Imperceptible per-frame transform change → forces RealityKit to redraw + re-sample the
+            // in-place-updated texture. (~0.1 mm of z jitter, keyed to the live frame counter.)
+            screen.position.z = -2.0 + (tick % 2 == 0 ? 0.0 : 0.0001)
 
             // Rebuild the material when the texture identity or the mono/stereo mode changes (the
             // texture updates in place otherwise — RealityKit keeps sampling the latest contents).

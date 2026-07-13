@@ -69,8 +69,11 @@ final class VideoDecoder {
         guard let sampleBuffer = Self.makeSampleBuffer(vcl: vcl, format: formatDesc,
                                                        ptsMicros: frame.ptsMicros) else { return }
 
-        // Low-latency: decode synchronously, don't ask VT to reorder (encoder already disabled it).
-        let flags: VTDecodeFrameFlags = [._EnableTemporalProcessing]
+        // Low-latency I/P stream (no B-frames): decode in submission order, no temporal reordering.
+        // `_EnableTemporalProcessing` told VT to reorder for B-frames and left it mishandling the
+        // P-frame reference chain (P-frames concealed to grey). Empty flags = decode in order,
+        // output immediately, keeping the previous frame in the DPB as the P-frame reference.
+        let flags: VTDecodeFrameFlags = []
         _ = VTDecompressionSessionDecodeFrame(
             session, sampleBuffer: sampleBuffer, flags: flags, infoFlagsOut: nil
         ) { [weak self] status, _, imageBuffer, pts, _ in
@@ -189,10 +192,13 @@ final class VideoDecoder {
 
         var sampleBuffer: CMSampleBuffer?
         var sampleSize = bytes.count
+        // No B-frames ⇒ decode order == presentation order, so DTS == PTS. Giving VT a real,
+        // monotonic decode timestamp (not `.invalid`) lets it order the DPB and thread references.
+        let ts = CMTime(value: CMTimeValue(ptsMicros), timescale: 1_000_000)
         var timing = CMSampleTimingInfo(
             duration: .invalid,
-            presentationTimeStamp: CMTime(value: CMTimeValue(ptsMicros), timescale: 1_000_000),
-            decodeTimeStamp: .invalid)
+            presentationTimeStamp: ts,
+            decodeTimeStamp: ts)
         st = CMSampleBufferCreateReady(
             allocator: kCFAllocatorDefault,
             dataBuffer: blockBuffer,
