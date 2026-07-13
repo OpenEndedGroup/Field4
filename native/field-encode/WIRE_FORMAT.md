@@ -44,7 +44,7 @@ datagram: a fixed 20-byte header + payload.
 ```
 offset size field       notes
 0      1    version     = 1
-1      1    flags       bit0 KEYFRAME  bit1 FRAME_END  bit2 PARAM_SETS(informational)
+1      1    flags       bit0 KEYFRAME  bit1 FRAME_END  bit2 PARAM_SETS(informational)  bit3 STEREO_SBS
 2      1    codec       0 = HEVC, 1 = H.264
 3      1    reserved    = 0
 4      4    frameSeq    u32, the producer's `seq`
@@ -56,7 +56,10 @@ offset size field       notes
 
 Default payload ≤ **1200 bytes** (safe under a 1500 MTU; raise if jumbo frames are on).
 `KEYFRAME` is set on **every** fragment of an IDR frame; `FRAME_END` marks the last
-fragment (`fragIndex == fragCount-1`).
+fragment (`fragIndex == fragCount-1`). `STEREO_SBS` (also set on every fragment, a
+stream-level fact) means the access unit is a **side-by-side stereo pair** (left|right in
+one double-wide frame): the receiver presents it per-eye (Camera Index Switch sampling the
+L/R halves). The producer owns making the content actually SBS; the flag only carries intent.
 
 ### Receiver reassembly
 
