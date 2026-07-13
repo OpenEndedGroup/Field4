@@ -175,6 +175,14 @@ All are additive and orthogonal (e.g. `?noeditor&transparent&shaderSelectionCont
     debug flag.
   - **Backpressure** — decode runs on the recv queue; a dedicated decode queue + drop-to-newest
     would harden it if a producer ever bursts past the receiver.
+  - **Linux / NVENC sender** — a second sender binary (in `~/field4`, alongside `native/field-encode`)
+    behind the **same** `WIRE_FORMAT.md` contract, so **this receiver needs zero changes** — it never
+    learns which backend produced the stream. Capture forks on OS: instead of the Mac's IOSurface +
+    `VK_EXT_metal_objects`, export the `VkImage` via `VK_KHR_external_memory_fd` → import as CUDA
+    external memory → register as an NVENC input surface (Sunshine/ALVR's path), and hand a
+    dma-buf/fd instead of an `IOSurfaceID`. Same control + UDP wire format out. Stays on SBS
+    single-stream (no MV-HEVC on Linux). See `~/field4/dev_docs/vision_frontend.md` → "Backends" and
+    "The sender seam".
 
 ## Multiple scenes
 
