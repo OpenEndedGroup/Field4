@@ -807,7 +807,7 @@ object Functions {
             strings = mapOf("easing" to easing.name),
             rebuild = { children -> tween(children[0], children[1], domain, easing) }
         ) { x ->
-            val t = easeAlpha(domain.alphaOf(x), easing)
+            val t = easeAlpha(domain.finiteSweep().alphaOf(x), easing)
             blend(from.eval(x), to.eval(x), t)
         }
     }
@@ -847,7 +847,7 @@ object Functions {
         phase: Fn = param(0.0),
         amplitude: Fn = param(1.0),
         offset: Fn = param(0.0),
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn {
         val d = intersectDomains(domain, frequency, phase, amplitude, offset)
         return graphFn(
@@ -881,7 +881,7 @@ object Functions {
         phase: Fn = param(0.0),
         amplitude: Fn = param(1.0),
         offset: Fn = param(0.0),
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn {
         val d = intersectDomains(domain, frequency, phase, amplitude, offset)
         return graphFn(
@@ -915,7 +915,7 @@ object Functions {
         phase: Fn = param(0.0),
         amplitude: Fn = param(1.0),
         offset: Fn = param(0.0),
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn {
         val d = intersectDomains(domain, period, phase, amplitude, offset)
         return graphFn(
@@ -955,7 +955,7 @@ object Functions {
         phase: Fn = param(0.0),
         amplitude: Fn = param(1.0),
         offset: Fn = param(0.0),
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn {
         val d = intersectDomains(domain, period, phase, amplitude, offset)
         return graphFn(
@@ -996,7 +996,7 @@ object Functions {
         duty: Fn = param(0.5),
         amplitude: Fn = param(1.0),
         offset: Fn = param(0.0),
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn {
         val d = intersectDomains(domain, period, phase, duty, amplitude, offset)
         return graphFn(
@@ -1051,7 +1051,7 @@ object Functions {
         dutyMod: Fn = param(0.0),
         ampMod: Fn = param(1.0),
         phaseMod: Fn = param(0.0),
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn {
         val d = intersectDomains(domain, period, phase, duty, amplitude, offset, rise, fall, curve, profileSigma, jitter, dutyMod, ampMod, phaseMod)
         return graphFn(
@@ -1163,7 +1163,7 @@ object Functions {
         dutyMod: Number = 0.0,
         ampMod: Number = 1.0,
         phaseMod: Number = 0.0,
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn = pulseTrain(param(period), param(phase), param(duty), param(amplitude), param(offset), param(rise), param(fall), edge, param(curve), profile, param(profileSigma), param(jitter), seed, bipolar, param(dutyMod), param(ampMod), param(phaseMod), domain)
 
     fun pulseTrain(
@@ -1205,7 +1205,7 @@ object Functions {
         dutyMod: Any = 0.0,
         ampMod: Any = 1.0,
         phaseMod: Any = 0.0,
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn = pulseTrain(
         asParam(period, "period"),
         asParam(phase, "phase"),
@@ -1266,7 +1266,7 @@ object Functions {
         dutyMod: Fn = param(0.0),
         ampMod: Fn = param(1.0),
         phaseMod: Fn = param(0.0),
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn {
         val dd = intersectDomains(domain, period, width)
         val dutyFn = graphFn(
@@ -1332,7 +1332,7 @@ object Functions {
         dutyMod: Number = 0.0,
         ampMod: Number = 1.0,
         phaseMod: Number = 0.0,
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn = pulseTrainWidth(param(period), param(width), param(phase), param(amplitude), param(offset), param(rise), param(fall), edge, param(curve), profile, param(profileSigma), param(jitter), seed, bipolar, param(dutyMod), param(ampMod), param(phaseMod), domain)
 
     fun pulseTrainWidth(
@@ -1374,7 +1374,7 @@ object Functions {
         dutyMod: Any = 0.0,
         ampMod: Any = 1.0,
         phaseMod: Any = 0.0,
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn = pulseTrainWidth(
         asParam(period, "period"),
         asParam(width, "width"),
@@ -1435,7 +1435,7 @@ object Functions {
         dutyMod: Fn = param(0.0),
         ampMod: Fn = param(1.0),
         phaseMod: Fn = param(0.0),
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn {
         val dd = intersectDomains(domain, frequency)
         val periodFn = graphFn(
@@ -1501,7 +1501,7 @@ object Functions {
         dutyMod: Number = 0.0,
         ampMod: Number = 1.0,
         phaseMod: Number = 0.0,
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn = pulseTrainHz(param(frequency), param(phase), param(duty), param(amplitude), param(offset), param(rise), param(fall), edge, param(curve), profile, param(profileSigma), param(jitter), seed, bipolar, param(dutyMod), param(ampMod), param(phaseMod), domain)
 
     fun pulseTrainHz(
@@ -1543,7 +1543,7 @@ object Functions {
         dutyMod: Any = 0.0,
         ampMod: Any = 1.0,
         phaseMod: Any = 0.0,
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn = pulseTrainHz(
         asParam(frequency, "frequency"),
         asParam(phase, "phase"),
@@ -1605,7 +1605,7 @@ object Functions {
         dutyMod: Fn = param(0.0),
         ampMod: Fn = param(1.0),
         phaseMod: Fn = param(0.0),
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn {
         if (pattern.isEmpty()) return zero(domain)
         val d = intersectDomains(domain, period, phase, duty, amplitude, offset, rise, fall, curve, profileSigma, jitter, dutyMod, ampMod, phaseMod)
@@ -1699,7 +1699,7 @@ object Functions {
         dutyMod: Number = 0.0,
         ampMod: Number = 1.0,
         phaseMod: Number = 0.0,
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn = pulseTrainPattern(pattern, param(period), param(phase), param(duty), param(amplitude), param(offset), param(rise), param(fall), edge, param(curve), profile, param(profileSigma), param(jitter), seed, bipolar, param(dutyMod), param(ampMod), param(phaseMod), domain)
 
     fun pulseTrainPattern(
@@ -1743,7 +1743,7 @@ object Functions {
         dutyMod: Any = 0.0,
         ampMod: Any = 1.0,
         phaseMod: Any = 0.0,
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn = pulseTrainPattern(
         pattern,
         asParam(period, "period"),
@@ -1797,7 +1797,7 @@ object Functions {
         sigma: Fn = param(0.15),
         jitter: Fn = param(0.0),
         seed: Long = 0L,
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn = pulseTrainWidth(
         period = period,
         width = width,
@@ -1822,7 +1822,7 @@ object Functions {
         sigma: Number = 0.15,
         jitter: Number = 0.0,
         seed: Long = 0L,
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn = impulseTrain(param(period), param(phase), param(width), param(amplitude), param(offset), param(sigma), param(jitter), seed, domain)
 
     fun impulseTrain(
@@ -1846,7 +1846,7 @@ object Functions {
         sigma: Any = 0.15,
         jitter: Any = 0.0,
         seed: Long = 0L,
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn = impulseTrain(
         asParam(period, "period"),
         asParam(phase, "phase"),
@@ -1885,7 +1885,7 @@ object Functions {
         curve: Fn = param(2.0),
         profile: PulseProfile = PulseProfile.RECT,
         profileSigma: Fn = param(0.15),
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn {
         if (count <= 0) return zero(domain)
         val d = intersectDomains(domain, period, start, phase, duty, amplitude, offset, rise, fall, curve, profileSigma)
@@ -1948,7 +1948,7 @@ object Functions {
         curve: Number = 2.0,
         profile: PulseProfile = PulseProfile.RECT,
         profileSigma: Number = 0.15,
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn = pulseBurst(count, param(period), param(start), param(phase), param(duty), param(amplitude), param(offset), param(rise), param(fall), edge, param(curve), profile, param(profileSigma), domain)
 
     fun pulseBurst(
@@ -1982,7 +1982,7 @@ object Functions {
         curve: Any = 2.0,
         profile: PulseProfile = PulseProfile.RECT,
         profileSigma: Any = 0.15,
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn = pulseBurst(
         count,
         asParam(period, "period"),
@@ -2161,11 +2161,12 @@ object Functions {
     ): DoubleArray {
         if (count <= 0) return DoubleArray(0)
         if (sampleDomain._isEmpty) return DoubleArray(count) { outside }
-        val len = sampleDomain.length
+        val sweep = sampleDomain.finiteSweep()
+        val len = sweep.length
         val steps = if (includeEnd) max(1, count - 1) else count
         val step = if (steps == 0) 0.0 else len / steps.toDouble()
         return DoubleArray(count) { i ->
-            val x = sampleDomain.min + step * i.toDouble()
+            val x = sweep.min + step * i.toDouble()
             evalSafe(x, outside, edge)
         }
     }
@@ -2186,11 +2187,12 @@ object Functions {
         outside: Double = 0.0
     ): DoubleArray {
         if (step == 0.0) return DoubleArray(0)
-        if (sampleDomain._isEmpty || !sampleDomain.length.isFinite()) return DoubleArray(0)
-        val len = sampleDomain.length
+        if (sampleDomain._isEmpty) return DoubleArray(0)
+        val sweep = sampleDomain.finiteSweep()
+        val len = sweep.length
         val s = kotlin.math.abs(step)
         val count = if (includeEnd) (floor(len / s) + 1).toInt() else floor(len / s).toInt()
-        return toDoubleArray(count, sampleDomain, includeEnd, edge, outside)
+        return toDoubleArray(count, sweep, includeEnd, edge, outside)
     }
 
     fun Fn.toDoubleArray(
@@ -2217,11 +2219,12 @@ object Functions {
     ): List<Vec2> {
         if (count <= 0) return emptyList()
         if (sampleDomain._isEmpty) return List(count) { Vec2(0f, outside.toFloat()) }
-        val len = sampleDomain.length
+        val sweep = sampleDomain.finiteSweep()
+        val len = sweep.length
         val steps = if (includeEnd) max(1, count - 1) else count
         val step = if (steps == 0) 0.0 else len / steps.toDouble()
         return List(count) { i ->
-            val x = sampleDomain.min + step * i.toDouble()
+            val x = sweep.min + step * i.toDouble()
             Vec2(x.toFloat(), evalSafe(x, outside, edge).toFloat())
         }
     }
@@ -2278,6 +2281,22 @@ object Functions {
             min.isFinite() -> Domain.of(min - 0.5, min + 0.5)
             else -> default
         }
+    }
+
+    /**
+     * Resolves an implicit sample domain to a finite window for enumeration.
+     *
+     * Oscillators and other unbounded functions default to [Domain.ALL], which
+     * has no finite extent to walk at a fixed count or step. When a sampler is
+     * handed such a domain (typically because the caller passed no explicit
+     * window) it previews over [plotSafe]'s finite fallback. Empty and finite
+     * domains — including point domains — pass through unchanged, so existing
+     * behavior for bounded functions is preserved exactly.
+     */
+    private fun Domain.finiteSweep(): Domain = when {
+        _isEmpty -> this
+        isFinite -> this
+        else -> plotSafe()
     }
 
     private fun yPlotDomain(samples: List<PlotSample>, requested: Domain?): Domain {
@@ -3108,7 +3127,7 @@ canvas {
     // Streaming helpers
     class FunctionCursor(
         val fn: Fn,
-        var x: Double = fn.domain.min,
+        var x: Double = fn.domain.finiteSweep().min,
         var step: Double = 1.0
     ) {
         /** Samples at the current position without advancing. */
@@ -3146,7 +3165,7 @@ canvas {
             return this
         }
 
-        fun reset(position: Double = fn.domain.min): FunctionCursor = seek(position)
+        fun reset(position: Double = fn.domain.finiteSweep().min): FunctionCursor = seek(position)
 
         fun copy(x: Double = this.x, step: Double = this.step): FunctionCursor = FunctionCursor(fn, x, step)
 
@@ -3158,9 +3177,9 @@ canvas {
         )
     }
 
-    fun Fn.cursor(start: Double = domain.min, step: Double = 1.0): FunctionCursor = FunctionCursor(this, start, step)
+    fun Fn.cursor(start: Double = domain.finiteSweep().min, step: Double = 1.0): FunctionCursor = FunctionCursor(this, start, step)
 
-    fun Fn.stream(start: Double = domain.min, step: Double = 1.0): Sequence<Double> = sequence {
+    fun Fn.stream(start: Double = domain.finiteSweep().min, step: Double = 1.0): Sequence<Double> = sequence {
         var x = start
         while (true) {
             yield(eval(x))
@@ -3202,7 +3221,7 @@ canvas {
         }
     }
 
-    fun Fn.streamWithX(start: Double = domain.min, step: Double = 1.0): Sequence<Pair<Double, Double>> = sequence {
+    fun Fn.streamWithX(start: Double = domain.finiteSweep().min, step: Double = 1.0): Sequence<Pair<Double, Double>> = sequence {
         var x = start
         while (true) {
             yield(x to eval(x))
@@ -3778,7 +3797,7 @@ canvas {
             numbers = mapOf("fadeIn" to fadeIn, "fadeOut" to fadeOut),
             rebuild = { spliceWindow(fadeIn, fadeOut, domain) }
         ) { x ->
-            val t = clamp01(domain.alphaOf(x))
+            val t = clamp01(domain.finiteSweep().alphaOf(x))
             val inW = if (fi == 0.0 || t >= fi) 1.0 else smoothstep(t / fi)
             val outStart = 1.0 - fo
             val outW = if (fo == 0.0 || t <= outStart) 1.0 else smoothstep((1.0 - t) / fo)
@@ -4936,7 +4955,7 @@ canvas {
         phase: Number = 0.0,
         amplitude: Number = 1.0,
         offset: Number = 0.0,
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn =
         sin(frequency = param(frequency), phase = param(phase), amplitude = param(amplitude), offset = param(offset), domain = domain)
 
@@ -4954,7 +4973,7 @@ canvas {
         phase: Any = 0.0,
         amplitude: Any = 1.0,
         offset: Any = 0.0,
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn =
         sin(frequency = asParam(frequency, "frequency"), phase = asParam(phase, "phase"), amplitude = asParam(amplitude, "amplitude"), offset = asParam(offset, "offset"), domain = domain)
 
@@ -4972,7 +4991,7 @@ canvas {
         phase: Number = 0.0,
         amplitude: Number = 1.0,
         offset: Number = 0.0,
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn =
         cos(frequency = param(frequency), phase = param(phase), amplitude = param(amplitude), offset = param(offset), domain = domain)
 
@@ -4990,7 +5009,7 @@ canvas {
         phase: Any = 0.0,
         amplitude: Any = 1.0,
         offset: Any = 0.0,
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn =
         cos(frequency = asParam(frequency, "frequency"), phase = asParam(phase, "phase"), amplitude = asParam(amplitude, "amplitude"), offset = asParam(offset, "offset"), domain = domain)
 
@@ -5008,7 +5027,7 @@ canvas {
         phase: Number = 0.0,
         amplitude: Number = 1.0,
         offset: Number = 0.0,
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn =
         saw(period = param(period), phase = param(phase), amplitude = param(amplitude), offset = param(offset), domain = domain)
 
@@ -5026,7 +5045,7 @@ canvas {
         phase: Any = 0.0,
         amplitude: Any = 1.0,
         offset: Any = 0.0,
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn =
         saw(period = asParam(period, "period"), phase = asParam(phase, "phase"), amplitude = asParam(amplitude, "amplitude"), offset = asParam(offset, "offset"), domain = domain)
 
@@ -5044,7 +5063,7 @@ canvas {
         phase: Number = 0.0,
         amplitude: Number = 1.0,
         offset: Number = 0.0,
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn =
         triangle(period = param(period), phase = param(phase), amplitude = param(amplitude), offset = param(offset), domain = domain)
 
@@ -5062,7 +5081,7 @@ canvas {
         phase: Any = 0.0,
         amplitude: Any = 1.0,
         offset: Any = 0.0,
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn =
         triangle(period = asParam(period, "period"), phase = asParam(phase, "phase"), amplitude = asParam(amplitude, "amplitude"), offset = asParam(offset, "offset"), domain = domain)
 
@@ -5081,7 +5100,7 @@ canvas {
         duty: Number = 0.5,
         amplitude: Number = 1.0,
         offset: Number = 0.0,
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn =
         square(period = param(period), phase = param(phase), duty = param(duty), amplitude = param(amplitude), offset = param(offset), domain = domain)
 
@@ -5101,7 +5120,7 @@ canvas {
         duty: Any = 0.5,
         amplitude: Any = 1.0,
         offset: Any = 0.0,
-        domain: Domain = Domain.DEFAULT
+        domain: Domain = Domain.ALL
     ): Fn =
         square(period = asParam(period, "period"), phase = asParam(phase, "phase"), duty = asParam(duty, "duty"), amplitude = asParam(amplitude, "amplitude"), offset = asParam(offset, "offset"), domain = domain)
 
@@ -5163,12 +5182,13 @@ canvas {
         yOffset: Double = 0.0
     ): FLine {
         val line = FLine()
-        if (samples <= 0 || sampleDomain._isEmpty || !sampleDomain.length.isFinite()) return line
-        val len = sampleDomain.length
+        if (samples <= 0 || sampleDomain._isEmpty) return line
+        val sweep = sampleDomain.finiteSweep()
+        val len = sweep.length
         val steps = if (includeEnd) max(1, samples - 1) else samples
         val step = if (steps == 0) 0.0 else len / steps.toDouble()
         for (i in 0 until samples) {
-            val x = sampleDomain.min + step * i.toDouble()
+            val x = sweep.min + step * i.toDouble()
             val y = eval(x)
             val px = xOffset + x * xScale
             val py = yOffset + y * yScale
@@ -5842,7 +5862,7 @@ canvas {
 
     fun Fn.repeat(
         period: Fn = param(1.0),
-        origin: Fn = param(domain.min),
+        origin: Fn = param(domain.finiteSweep().min),
         domainOverride: Domain = Domain.ALL
     ): Fn {
         val d = intersectDomains(domainOverride, period, origin)
@@ -5864,15 +5884,15 @@ canvas {
         }
     }
 
-    fun Fn.repeat(period: Number, origin: Number = domain.min, domainOverride: Domain = Domain.ALL): Fn =
+    fun Fn.repeat(period: Number, origin: Number = domain.finiteSweep().min, domainOverride: Domain = Domain.ALL): Fn =
         repeat(param(period), param(origin), domainOverride)
 
-    fun Fn.repeat(period: Any, origin: Any = domain.min, domainOverride: Domain = Domain.ALL): Fn =
+    fun Fn.repeat(period: Any, origin: Any = domain.finiteSweep().min, domainOverride: Domain = Domain.ALL): Fn =
         repeat(asParam(period, "period"), asParam(origin, "origin"), domainOverride)
 
     fun Fn.mirrorRepeat(
         period: Fn = param(1.0),
-        origin: Fn = param(domain.min),
+        origin: Fn = param(domain.finiteSweep().min),
         domainOverride: Domain = Domain.ALL
     ): Fn {
         val d = intersectDomains(domainOverride, period, origin)
@@ -5897,13 +5917,13 @@ canvas {
         }
     }
 
-    fun Fn.mirrorRepeat(period: Number, origin: Number = domain.min, domainOverride: Domain = Domain.ALL): Fn =
+    fun Fn.mirrorRepeat(period: Number, origin: Number = domain.finiteSweep().min, domainOverride: Domain = Domain.ALL): Fn =
         mirrorRepeat(param(period), param(origin), domainOverride)
 
-    fun Fn.mirrorRepeat(period: Any, origin: Any = domain.min, domainOverride: Domain = Domain.ALL): Fn =
+    fun Fn.mirrorRepeat(period: Any, origin: Any = domain.finiteSweep().min, domainOverride: Domain = Domain.ALL): Fn =
         mirrorRepeat(asParam(period, "period"), asParam(origin, "origin"), domainOverride)
 
-    fun Fn.tile(count: Int, period: Fn = param(domain.length), origin: Fn = param(domain.min)): Fn {
+    fun Fn.tile(count: Int, period: Fn = param(domain.finiteSweep().length), origin: Fn = param(domain.finiteSweep().min)): Fn {
         if (count <= 0) return zero(domain)
         val base = repeat(period, origin, domainOverride = Domain.ALL)
         val d = intersectDomains(domain, period, origin)
@@ -5925,10 +5945,10 @@ canvas {
         }
     }
 
-    fun Fn.tile(count: Int, period: Number, origin: Number = domain.min): Fn =
+    fun Fn.tile(count: Int, period: Number, origin: Number = domain.finiteSweep().min): Fn =
         tile(count, param(period), param(origin))
 
-    fun Fn.tile(count: Int, period: Any, origin: Any = domain.min): Fn =
+    fun Fn.tile(count: Int, period: Any, origin: Any = domain.finiteSweep().min): Fn =
         tile(count, asParam(period, "period"), asParam(origin, "origin"))
 
     fun Fn.pad(left: Fn = param(0.0), right: Fn = param(0.0), value: Fn = param(0.0)): Fn {
@@ -6005,7 +6025,7 @@ canvas {
         }
     }
 
-    fun Fn.integral(step: Double = 1e-3, origin: Double = domain.min): Fn =
+    fun Fn.integral(step: Double = 1e-3, origin: Double = domain.finiteSweep().min): Fn =
         graphFn(
             domain,
             "integral",
@@ -6138,7 +6158,7 @@ canvas {
     // Windows
     fun hannWindow(domain: Domain = Domain.DEFAULT): Fn =
         graphFn(domain, "hann", "hannWindow", rebuild = { hannWindow(domain) }) { x ->
-            val t = clamp01(domain.alphaOf(x))
+            val t = clamp01(domain.finiteSweep().alphaOf(x))
             0.5 - 0.5 * kotlin.math.cos(TAU * t)
         }
 
@@ -6147,7 +6167,7 @@ canvas {
 
     fun hammingWindow(domain: Domain = Domain.DEFAULT): Fn =
         graphFn(domain, "hamming", "hammingWindow", rebuild = { hammingWindow(domain) }) { x ->
-            val t = clamp01(domain.alphaOf(x))
+            val t = clamp01(domain.finiteSweep().alphaOf(x))
             0.54 - 0.46 * kotlin.math.cos(TAU * t)
         }
 
@@ -6156,7 +6176,7 @@ canvas {
 
     fun blackmanWindow(domain: Domain = Domain.DEFAULT): Fn =
         graphFn(domain, "blackman", "blackmanWindow", rebuild = { blackmanWindow(domain) }) { x ->
-            val t = clamp01(domain.alphaOf(x))
+            val t = clamp01(domain.finiteSweep().alphaOf(x))
             0.42 - 0.5 * kotlin.math.cos(TAU * t) + 0.08 * kotlin.math.cos(TAU * 2.0 * t)
         }
 
@@ -6173,7 +6193,7 @@ canvas {
             strings = mapOf("shapeDomain" to domain.toString()),
             rebuild = { children -> gaussianWindow(domain, children[0]) }
         ) { x ->
-            val t = domain.alphaOf(x) - 0.5
+            val t = domain.finiteSweep().alphaOf(x) - 0.5
             val s = sigma.eval(x)
             if (s == 0.0) 0.0 else kotlin.math.exp(-0.5 * (t / s).pow(2.0))
         }
@@ -6207,15 +6227,16 @@ canvas {
     private data class SampleStats(val min: Double, val max: Double, val mean: Double, val variance: Double)
 
     private fun sampleStatsRandom(fn: Fn, domain: Domain, samples: Int, seed: Long): SampleStats? {
-        if (samples <= 0 || domain._isEmpty || !domain.length.isFinite()) return null
-        val len = domain.length
+        if (samples <= 0 || domain._isEmpty) return null
+        val sweep = domain.finiteSweep()
+        val len = sweep.length
         var minV = Double.POSITIVE_INFINITY
         var maxV = Double.NEGATIVE_INFINITY
         var mean = 0.0
         var m2 = 0.0
         var n = 0
         for (i in 0 until samples) {
-            val x = domain.min + hashToUnit(seed, i.toLong()) * len
+            val x = sweep.min + hashToUnit(seed, i.toLong()) * len
             val v = fn.eval(x)
             if (!v.isFinite()) continue
             if (v < minV) minV = v
@@ -6768,10 +6789,11 @@ canvas {
             if (!range.isFinite() || range == 0.0) return@lazy null
             val count = max(2, bins)
             val hist = DoubleArray(count)
-            val len = sampleDomain.length
+            val sweep = sampleDomain.finiteSweep()
+            val len = sweep.length
             var valid = 0
             for (i in 0 until samples) {
-                val x = sampleDomain.min + hashToUnit(seed + 1L, i.toLong()) * len
+                val x = sweep.min + hashToUnit(seed + 1L, i.toLong()) * len
                 val v = eval(x)
                 if (!v.isFinite()) continue
                 val u = ((v - stats.min) / range).coerceIn(0.0, 1.0)
@@ -6831,12 +6853,13 @@ canvas {
     ): Fn = whitenCdf(sampleDomain.toDomain(), samples, bins, seed, targetMin, targetMax, clamp)
 
     fun Fn.sampleUniform(count: Int, sampleDomain: Domain = domain, includeEnd: Boolean = true): List<Sample> {
-        if (count <= 0 || sampleDomain._isEmpty || !sampleDomain.length.isFinite()) return emptyList()
-        val len = sampleDomain.length
+        if (count <= 0 || sampleDomain._isEmpty) return emptyList()
+        val sweep = sampleDomain.finiteSweep()
+        val len = sweep.length
         val steps = if (includeEnd) max(1, count - 1) else count
         val step = if (steps == 0) 0.0 else len / steps.toDouble()
         return List(count) { i ->
-            val x = sampleDomain.min + step * i.toDouble()
+            val x = sweep.min + step * i.toDouble()
             Sample(x, eval(x))
         }
     }
@@ -6845,13 +6868,14 @@ canvas {
         sampleUniform(count, sampleDomain.toDomain(), includeEnd)
 
     fun Fn.sampleJittered(count: Int, sampleDomain: Domain = domain, jitter: Double = 0.25, seed: Long = 0L): List<Sample> {
-        if (count <= 0 || sampleDomain._isEmpty || !sampleDomain.length.isFinite()) return emptyList()
-        val len = sampleDomain.length
+        if (count <= 0 || sampleDomain._isEmpty) return emptyList()
+        val sweep = sampleDomain.finiteSweep()
+        val len = sweep.length
         val step = if (count == 0) 0.0 else len / count.toDouble()
         return List(count) { i ->
-            val base = sampleDomain.min + step * (i + 0.5)
+            val base = sweep.min + step * (i + 0.5)
             val j = (hashToUnit(seed, i.toLong()) - 0.5) * jitter * step
-            val x = (base + j).coerceIn(sampleDomain.min, sampleDomain.max)
+            val x = (base + j).coerceIn(sweep.min, sweep.max)
             Sample(x, eval(x))
         }
     }
@@ -6860,10 +6884,11 @@ canvas {
         sampleJittered(count, sampleDomain.toDomain(), jitter, seed)
 
     fun Fn.sampleRandom(count: Int, sampleDomain: Domain = domain, seed: Long = 0L): List<Sample> {
-        if (count <= 0 || sampleDomain._isEmpty || !sampleDomain.length.isFinite()) return emptyList()
-        val len = sampleDomain.length
+        if (count <= 0 || sampleDomain._isEmpty) return emptyList()
+        val sweep = sampleDomain.finiteSweep()
+        val len = sweep.length
         return List(count) { i ->
-            val x = sampleDomain.min + hashToUnit(seed, i.toLong()) * len
+            val x = sweep.min + hashToUnit(seed, i.toLong()) * len
             Sample(x, eval(x))
         }
     }
@@ -6878,13 +6903,14 @@ canvas {
         seed: Long = 0L,
         maxRejects: Int = 10000
     ): List<Sample> {
-        if (count <= 0 || sampleDomain._isEmpty || !sampleDomain.length.isFinite()) return emptyList()
-        val len = sampleDomain.length
+        if (count <= 0 || sampleDomain._isEmpty) return emptyList()
+        val sweep = sampleDomain.finiteSweep()
+        val len = sweep.length
         val out = ArrayList<Sample>(count)
         var tries = 0
         var i = 0L
         while (out.size < count && tries < maxRejects) {
-            val x = sampleDomain.min + hashToUnit(seed, i) * len
+            val x = sweep.min + hashToUnit(seed, i) * len
             val p = clamp01(density.eval(x))
             val r = hashToUnit(seed + 1L, i)
             if (r < p) out += Sample(x, eval(x))
@@ -6902,13 +6928,14 @@ canvas {
         maxRejects: Int = 10000
     ): List<Sample> = sampleByDensity(count, sampleDomain.toDomain(), density, seed, maxRejects)
 
-    fun Fn.sampleZeroCrossings(sampleDomain: Domain = domain, step: Double = sampleDomain.length / 128.0): List<Sample> {
-        if (sampleDomain._isEmpty || step == 0.0 || !sampleDomain.length.isFinite()) return emptyList()
+    fun Fn.sampleZeroCrossings(sampleDomain: Domain = domain, step: Double = sampleDomain.finiteSweep().length / 128.0): List<Sample> {
+        if (sampleDomain._isEmpty || step == 0.0) return emptyList()
+        val sweep = sampleDomain.finiteSweep()
         val out = ArrayList<Sample>()
-        var x = sampleDomain.min
+        var x = sweep.min
         var prev = eval(x)
         x += step
-        while (x <= sampleDomain.max) {
+        while (x <= sweep.max) {
             val y = eval(x)
             if (prev == 0.0) out += Sample(x - step, 0.0)
             if (prev * y < 0.0) {
@@ -6925,15 +6952,16 @@ canvas {
     fun Fn.sampleZeroCrossings(sampleDomain: ClosedRange<*>, step: Double = sampleDomain.toDomain().length / 128.0): List<Sample> =
         sampleZeroCrossings(sampleDomain.toDomain(), step)
 
-    fun Fn.samplePeaks(count: Int, sampleDomain: Domain = domain, step: Double = sampleDomain.length / 256.0): List<Sample> {
-        if (count <= 0 || sampleDomain._isEmpty || step == 0.0 || !sampleDomain.length.isFinite()) return emptyList()
+    fun Fn.samplePeaks(count: Int, sampleDomain: Domain = domain, step: Double = sampleDomain.finiteSweep().length / 256.0): List<Sample> {
+        if (count <= 0 || sampleDomain._isEmpty || step == 0.0) return emptyList()
+        val sweep = sampleDomain.finiteSweep()
         val candidates = ArrayList<Sample>()
-        var x = sampleDomain.min
+        var x = sweep.min
         var prev = eval(x)
         x += step
         var current = eval(x)
         x += step
-        while (x <= sampleDomain.max) {
+        while (x <= sweep.max) {
             val next = eval(x)
             if (current >= prev && current >= next) {
                 candidates += Sample(x - step, current)
@@ -7071,7 +7099,7 @@ canvas {
     )
 
     // Time-series style streaming filters
-    fun Fn.lowpassStream(alpha: Double, start: Double = domain.min, step: Double = 1.0, initial: Double = 0.0): Sequence<Double> = sequence {
+    fun Fn.lowpassStream(alpha: Double, start: Double = domain.finiteSweep().min, step: Double = 1.0, initial: Double = 0.0): Sequence<Double> = sequence {
         var x = start
         var y = initial
         val a = alpha.coerceIn(0.0, 1.0)
@@ -7083,7 +7111,7 @@ canvas {
         }
     }
 
-    fun Fn.highpassStream(alpha: Double, start: Double = domain.min, step: Double = 1.0, initial: Double = 0.0): Sequence<Double> = sequence {
+    fun Fn.highpassStream(alpha: Double, start: Double = domain.finiteSweep().min, step: Double = 1.0, initial: Double = 0.0): Sequence<Double> = sequence {
         var x = start
         var y = initial
         var lastInput = 0.0
