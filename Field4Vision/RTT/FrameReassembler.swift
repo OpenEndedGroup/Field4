@@ -48,10 +48,24 @@ final class FrameReassembler {
         self.window = max(1, window)
     }
 
+    /// A keyframe at or below this seq, arriving after we've emitted much higher seqs, means the
+    /// sender restarted (its monotonic `seq` reset to 0) — a new stream, not a straggler. The
+    /// receiver keeps running across sender restarts, so we must recognise this and re-lock.
+    private let restartSeqWindow: UInt32 = 8
+
     /// Feed one parsed fragment. Returns a complete frame if this fragment finished one.
     func ingest(_ pkt: RTTPacket) -> ReassembledFrame? {
         if let hi = highestEmitted, seqNotNewer(pkt.frameSeq, than: hi) {
-            return nil   // straggler for a frame we've already moved past
+            // Older than the last frame we emitted. Two cases: an ordinary straggler (drop it), or
+            // a *stream restart* — the sender relaunched and its seq counter reset to ~0 while our
+            // `highestEmitted` is still stuck at the old stream's high-water mark, which would make
+            // us reject the entire new stream forever. A keyframe near seq 0 (every IDR fragment is
+            // flagged KEYFRAME) after a high-water mark is the unambiguous restart signal.
+            if pkt.isKeyframe, pkt.frameSeq <= restartSeqWindow, hi > restartSeqWindow {
+                reset()   // fall through and ingest this fragment as the new stream's first frame
+            } else {
+                return nil
+            }
         }
 
         var partial = partials[pkt.frameSeq] ?? Partial(
@@ -113,6 +127,12 @@ final class FrameReassembler {
             partials[key] = nil
             droppedFrames += 1
         }
+    }
+
+    /// Forget all in-flight state so the next stream (sender restart) can lock on from its IDR.
+    private func reset() {
+        partials.removeAll()
+        highestEmitted = nil
     }
 
     /// `a` is not newer than `b`, accounting for u32 wraparound (frames run for a long time). Uses
