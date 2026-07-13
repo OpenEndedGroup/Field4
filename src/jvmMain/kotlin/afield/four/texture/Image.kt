@@ -50,9 +50,16 @@ class Image(private val device: Device, val imageData: ImageData) {
                 .tiling(VK10.VK_IMAGE_TILING_OPTIMAL)
                 .usage(imageData.usage)
 
-            // Make the backing MTLTexture IOSurface-exportable (MoltenVK) so the image can be
-            // handed zero-copy to a hardware video encoder. Opt-in; inert otherwise.
-            if (imageData.exportMetalIOSurface) {
+            // Back the image with an externally-created IOSurface (MoltenVK), or make its backing
+            // MTLTexture IOSurface-exportable. Both are for zero-copy hand-off to a hardware video
+            // encoder; import wins because a surface born via IOSurfaceCreate carries a real
+            // pixelFormat (CoreVideo-wrappable), whereas MoltenVK's export leaves pixelFormat = 0.
+            if (imageData.importMetalIOSurface != 0L) {
+                val importInfo = VkImportMetalIOSurfaceInfoEXT.calloc(stack)
+                    .sType(EXTMetalObjects.VK_STRUCTURE_TYPE_IMPORT_METAL_IO_SURFACE_INFO_EXT)
+                    .ioSurface(imageData.importMetalIOSurface)
+                imageCreateInfo.pNext(importInfo.address())
+            } else if (imageData.exportMetalIOSurface) {
                 val exportInfo = VkExportMetalObjectCreateInfoEXT.calloc(stack)
                     .sType(EXTMetalObjects.VK_STRUCTURE_TYPE_EXPORT_METAL_OBJECT_CREATE_INFO_EXT)
                     .exportObjectType(EXTMetalObjects.VK_EXPORT_METAL_OBJECT_TYPE_METAL_IOSURFACE_BIT_EXT)
@@ -160,6 +167,13 @@ class Image(private val device: Device, val imageData: ImageData) {
          * (chains VkExportMetalObjectCreateInfoEXT). Enables [Image.exportMetalIOSurfaceRef].
          */
         var exportMetalIOSurface: Boolean = false
+
+        /**
+         * MoltenVK only: back this image with the given externally-created IOSurface (its
+         * IOSurfaceRef pointer), via VkImportMetalIOSurfaceInfoEXT. Takes precedence over
+         * [exportMetalIOSurface]. The IOSurface's format/size must match this image's.
+         */
+        var importMetalIOSurface: Long = 0
         var width: Int = 0
 
         init {

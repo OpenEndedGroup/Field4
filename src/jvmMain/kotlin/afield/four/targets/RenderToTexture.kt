@@ -70,7 +70,13 @@ data class RTTParameters(
 
     // Create color attachments with IOSurface-exportable backing (MoltenVK) so the RTT can be
     // handed zero-copy to a hardware video encoder (field-encode). Opt-in; macOS/MoltenVK only.
-    var exportMetalIOSurface: Boolean = false
+    var exportMetalIOSurface: Boolean = false,
+
+    // Back color attachment 0 with an externally-created IOSurface (its IOSurfaceRef pointer),
+    // instead of exporting one. Preferred for streaming: an IOSurfaceCreate-born surface carries a
+    // real pixelFormat that CoreVideo/VideoToolbox can wrap (MoltenVK's export leaves it 0).
+    // macOS/MoltenVK only; the surface's format/size must match this RTT's.
+    var importMetalIOSurface: Long = 0
 )
 
 /**
@@ -618,6 +624,9 @@ open class RenderToTexture(
                     .debugName(imageDebugName("color", idx))
                     .aliasSingleLayerDescriptors(forceColorArrayView)
                 data.exportMetalIOSurface = this.parameters.exportMetalIOSurface
+                // Import applies to color attachment 0 only (a streamed RTT is single-attachment;
+                // a ring is N separate RTTs, each importing its own surface).
+                if (idx == 0) data.importMetalIOSurface = this.parameters.importMetalIOSurface
 
                 val img = Image(renderer.device, data)
                 val ivd = ImageViewData()

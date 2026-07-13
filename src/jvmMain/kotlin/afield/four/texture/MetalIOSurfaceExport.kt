@@ -28,6 +28,18 @@ object MetalIOSurface {
     }
 
     private val pIOSurfaceGetID: Long by lazy { ioSurfaceLibrary.getFunctionAddress("IOSurfaceGetID") }
+    private val pIOSurfaceLookup: Long by lazy { ioSurfaceLibrary.getFunctionAddress("IOSurfaceLookup") }
+
+    /**
+     * `IOSurfaceRef IOSurfaceLookup(IOSurfaceID)` — resolve a process-global id back to a local
+     * IOSurfaceRef pointer (0 if not found). The inverse of [ioSurfaceId]: use it to *import* a
+     * surface another process created (e.g. one the `field-encode` helper allocated and returned),
+     * then pass the pointer to `RTTParameters.importMetalIOSurface`.
+     */
+    fun lookup(id: Long): Long {
+        if (id == 0L) return 0L
+        return JNI.callPP(id and 0xFFFF_FFFFL, pIOSurfaceLookup)
+    }
 
     /**
      * `IOSurfaceID IOSurfaceGetID(IOSurfaceRef)` — returns the process-global id as an unsigned

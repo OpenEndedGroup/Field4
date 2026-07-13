@@ -95,14 +95,28 @@ class FieldEncodeProcess(
         return true
     }
 
-    /** Attach to Field's IOSurface-backed RTT ring and begin a stream to `dest` ("host:port"). */
+    /**
+     * Allocate a ring of `count` IOSurfaces in the helper and get their global IDs back (via an
+     * `{"ev":"allocated","ids":[…]}` event on [onEvent]). Field imports these by ID as its RTT
+     * backing — they carry a real pixelFormat, unlike MoltenVK's export. Precedes [open].
+     */
+    fun alloc(width: Int, height: Int, count: Int) = send(
+        JSONObject().put("cmd", "alloc")
+            .put("width", width).put("height", height).put("count", count)
+    )
+
+    /**
+     * Set up the encoder + UDP stream to `dest` ("host:port"). Pass `surfaces` (global IOSurfaceIDs)
+     * to look them up here (legacy); omit to use the ring created by a prior [alloc].
+     */
     fun open(
-        surfaces: List<Long>, width: Int, height: Int, fps: Int, bitrateKbps: Int,
+        width: Int, height: Int, fps: Int, bitrateKbps: Int,
         dest: String, codec: String = "hevc", idrIntervalMs: Int = 1000,
+        surfaces: List<Long> = emptyList(),
     ) = send(
         JSONObject()
             .put("cmd", "open")
-            .put("surfaces", JSONArray(surfaces))
+            .apply { if (surfaces.isNotEmpty()) put("surfaces", JSONArray(surfaces)) }
             .put("width", width).put("height", height).put("fps", fps)
             .put("bitrateKbps", bitrateKbps).put("dest", dest)
             .put("codec", codec).put("idrIntervalMs", idrIntervalMs)
