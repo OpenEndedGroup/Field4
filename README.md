@@ -158,7 +158,11 @@ All are additive and orthogonal (e.g. `?noeditor&transparent&shaderSelectionCont
 - **RTT streaming — spine done, verified end-to-end** (receiver in `RTT/` here; sender
   `FieldRTTStreamer` + `field-encode` in `~/field4`). Field renders into an imported IOSurface RTT →
   HEVC → UDP → this receiver decodes and presents, correct colour, and survives sender restarts.
-  Remaining:
+  Hardening sweep **done** (all committed + verified): **ring>1** render-ahead
+  (`FieldRTTStreamer(ringSize=N)`, streamer draws the active slot round-robin — verified streaming at
+  ringSize=3), **backpressure** (dedicated decode queue + drop-to-keyframe), **diagnostic gating**
+  (`FIELD_ENCODE_VERBOSE`), and the **`Image.kt` import/memory** question (answered: `memReqs.size` is
+  non-zero, so MoltenVK wants the bound memory — keep the allocate+bind). Remaining:
   - **Stereo dock** — swap the mono `UnlitMaterial` in `ImmersiveStreamView` for a
     `ShaderGraphMaterial` with a **Camera Index Switch** node sampling the SBS left/right halves per
     eye (authored in Reality Composer Pro; the converter already produces the full SBS frame, so only
@@ -167,14 +171,6 @@ All are additive and orthogonal (e.g. `?noeditor&transparent&shaderSelectionCont
     non-interactive; confirm real smoothness + interaction on hardware.
   - **`/vision/stream` route** — start/stop a stream for the active document from a server route in
     `~/field4` `Server.kt` (alongside the `/vision` placeholder), instead of a Field box.
-  - **Ring > 1** — `FieldRTTStreamer(ringSize=N)` + render into `activeSlot` for render-ahead; a
-    single surface is fine at the throttled rate but has no headroom.
-  - **`Image.kt` import + memory** — the imported-IOSurface image still allocates+binds
-    `VkDeviceMemory` (worked in practice); confirm it isn't wasteful/undefined.
-  - **Diagnostic cleanup** — `field-encode`'s per-surface dump logging is verbose; gate behind a
-    debug flag.
-  - **Backpressure** — decode runs on the recv queue; a dedicated decode queue + drop-to-newest
-    would harden it if a producer ever bursts past the receiver.
   - **Linux / NVENC sender** — a second sender binary (in `~/field4`, alongside `native/field-encode`)
     behind the **same** `WIRE_FORMAT.md` contract, so **this receiver needs zero changes** — it never
     learns which backend produced the stream. Capture forks on OS: instead of the Mac's IOSurface +
