@@ -31,6 +31,7 @@ enum Command {
         var dest: String       // "host:port"
         var codec: String?     // "hevc" (default) | "h264"
         var idrIntervalMs: Int?
+        var stereo: Bool?      // frames are side-by-side stereo → set flagStereoSbs on the wire
     }
 
     struct Frame: Decodable {
@@ -93,6 +94,10 @@ enum Wire {
     static let flagKeyframe: UInt8   = 1 << 0
     static let flagFrameEnd: UInt8   = 1 << 1
     static let flagParamSets: UInt8  = 1 << 2
+    // The access unit is a side-by-side stereo pair (left|right in one double-wide frame). Set on
+    // every fragment (stream-level fact) so a mid-stream joiner knows to present it per-eye. The
+    // producer owns making the content actually SBS; this flag only carries the intent.
+    static let flagStereoSbs: UInt8  = 1 << 3
 
     static let codecHEVC: UInt8 = 0
     static let codecH264: UInt8 = 1

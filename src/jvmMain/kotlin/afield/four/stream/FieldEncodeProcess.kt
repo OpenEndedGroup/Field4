@@ -112,7 +112,7 @@ class FieldEncodeProcess(
     fun open(
         width: Int, height: Int, fps: Int, bitrateKbps: Int,
         dest: String, codec: String = "hevc", idrIntervalMs: Int = 1000,
-        surfaces: List<Long> = emptyList(),
+        surfaces: List<Long> = emptyList(), stereo: Boolean = false,
     ) = send(
         JSONObject()
             .put("cmd", "open")
@@ -120,6 +120,7 @@ class FieldEncodeProcess(
             .put("width", width).put("height", height).put("fps", fps)
             .put("bitrateKbps", bitrateKbps).put("dest", dest)
             .put("codec", codec).put("idrIntervalMs", idrIntervalMs)
+            .put("stereo", stereo)
     )
 
     /** Signal that ring surface [surface] is rendered and ready to encode now. */

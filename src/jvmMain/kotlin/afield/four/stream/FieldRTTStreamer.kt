@@ -56,6 +56,10 @@ class FieldRTTStreamer(
     private val bitrateKbps: Int = 20_000,
     private val codec: String = "hevc",
     private val idrIntervalMs: Int = 1000,
+    // Mark the stream as side-by-side stereo (left|right in each double-wide frame). Sets the wire
+    // STEREO_SBS flag so the receiver presents it per-eye. Producing actual SBS content into the RTT
+    // is the caller's job — a wider RTT (width already covers both eyes) with the two views drawn.
+    private val stereo: Boolean = false,
     private val colorFormat: Int = VK_FORMAT_B8G8R8A8_UNORM,
     private val name: String = "field-stream",
     private val encoder: FieldEncodeProcess = FieldEncodeProcess(),
@@ -121,7 +125,7 @@ class FieldRTTStreamer(
 
         // 3. open the stream (surfaces already live in the helper from alloc) and start ticking.
         encoder.open(width = width, height = height, fps = fps, bitrateKbps = bitrateKbps,
-                     dest = dest, codec = codec, idrIntervalMs = idrIntervalMs)
+                     dest = dest, codec = codec, idrIntervalMs = idrIntervalMs, stereo = stereo)
         renderer.renderList += name to this
 
         seq = 0

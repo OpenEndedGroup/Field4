@@ -10,6 +10,7 @@ final class Engine {
     private var sender: UDPSender?
     private var surfaces: [IOSurfaceRef] = []
     private var codecHEVC = true
+    private var stereoSbs = false
     private let outLock = NSLock()
 
     func handle(_ cmd: Command) {
@@ -60,6 +61,7 @@ final class Engine {
     private func open(_ o: Command.Open) {
         guard setup(width: o.width, height: o.height, fps: o.fps, bitrateKbps: o.bitrateKbps,
                     dest: o.dest, codec: o.codec, idrIntervalMs: o.idrIntervalMs) else { return }
+        stereoSbs = o.stereo ?? false
         let ids = o.surfaces ?? []
         if !ids.isEmpty {
             // Legacy path: look up surfaces created elsewhere by global ID.
@@ -178,6 +180,7 @@ final class Engine {
             var flags: UInt8 = 0
             if keyframe { flags |= Wire.flagKeyframe }
             if frag == fragCount - 1 { flags |= Wire.flagFrameEnd }
+            if stereoSbs { flags |= Wire.flagStereoSbs }
             var pkt = Wire.header(flags: flags, codec: codec, frameSeq: seq,
                                   fragIndex: frag, fragCount: fragCount, ptsMicros: pts)
             pkt.append(contentsOf: annexB[offset..<offset + chunk])
