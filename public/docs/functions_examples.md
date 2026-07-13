@@ -2289,6 +2289,46 @@ with(Functions) {
 }
 ```
 
+#### fold / rectify / quantize (waveshaping)
+
+The waveshaping / distortion transforms are the value-domain (west-coast) counterparts to the time-domain `hold` / `crush` pair: they reshape a signal's *amplitude* rather than its clock. They are ordinary `FnTransform` factories, so they compose in `through` / `pipe` / `/` chains and surface in the type-aware infix completion like every other transform.
+
+- `fold(threshold)` — a west-coast **wavefolder**. Within `[-threshold, threshold]` the signal passes through unchanged; each time it would cross the threshold it is reflected back into the band. The result is continuous, odd-symmetric, and always bounded to `[-threshold, threshold]` — unlike `clipAt`, folding turns overshoot into extra harmonics instead of a flat top.
+- `rectify(mode)` — half- or full-wave **rectifier**. `RectifyMode.FULL` (the default) yields `|x|`; `RectifyMode.HALF` clamps the negative excursion to zero.
+- `quantize(levels)` — an amplitude **staircase** that snaps the value to exactly `levels` evenly-spaced steps across `[-1, 1]` (bitcrush of the *value*, distinct from the time-domain `stepHold`).
+
+**Simple**
+
+This should fold the ramp back on itself past `0.7`, so the rising line becomes a triangle bounded to `[-0.7, 0.7]`.
+
+```diffstatic {data-lang=kotlin}
+val f = (ramp(-2.0, 2.0) over (0.0..1.0)) / fold(0.7)
+```
+
+**Creative**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/fold-rectify-quantize.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-fold-rectify-quantize"}
+:::static
+import afield.Keyframe
+import afield.stdlib.Functions
+
+with(Functions) {
+    // A loud sine, folded then rectified then staircased — a full distortion chain.
+    val f = (sin(3.0) * 1.6 / fold(0.7) / rectify() / quantize(8)) over (0.0..2.0)
+    f.plot("waveshaped")
+    // Compare the raw transfer curves by sweeping a ramp through each shaper.
+    val sweep = ((sin(0.5) * 2.0) over (0.0..2.0))
+    (sweep / fold(0.6)).plot("fold(0.6)")
+    (sweep / quantize(5)).plot("quantize(5)")
+}
+```
+
+The committed montage below is rendered by the CPU-only `WaveshapeWorkedExample` harness (`./gradlew runWaveshapeWorkedExample`), which sweeps a ramp `-2..2` through each transform so every cell reads as the transform's *transfer curve* — the shape it imposes on its input. It is a pure function of the source signals, so re-running regenerates a byte-identical SVG.
+
+![Transfer curves of the waveshaping transforms: fold triangle, full/half rectifier, quantize staircase, and a folded sine](assets/functions/waveshape-transforms.svg)
+
+**Replay it live.** A loadable operation transcript, [`assets/functions/waveshape-transforms.operations.yaml`](assets/functions/waveshape-transforms.operations.yaml), builds and plots the whole family in a fresh Field document. Replay it with `field_backdoor.py --scratch` (`macro write … && macro run …`) or hand the YAML to the `field_run_transcript` MCP tool. See [Automating Field](automating_field.md) for the transcript path.
+
 #### copyPaste / randomRepeat / randomCopyPaste
 
 Copy and repeat transforms reuse source fragments deterministically or randomly.
