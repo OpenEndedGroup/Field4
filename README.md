@@ -6,11 +6,24 @@ it renders the *existing* Field server endpoints (`/welcome`, `/index.html?file=
 `WKWebView`s that float in space. No Field4 changes are required to *run* it; the display-mode
 features below are additive server-side niceties.
 
-Full architecture + rationale: `dev_docs/vision_frontend.md` in the **field4** repo. Streaming
-(RTT) contract: `native/field-encode/WIRE_FORMAT.md` in the field4 repo.
-
 > This project is a **separate Xcode project, deliberately outside the field4 repo** (visionOS
 > can't be built from the Field4 toolchain). Xcode 26.5 / visionOS 26.x SDK.
+
+## Companion repo (the field4 backend + sender)
+
+The Field backend, its Vulkan renderer, and the **RTT stream sender** live in the field4 repo at
+**`~/field4`** on this machine (note: *not* `~/temp/field4`, which is an older copy without the
+sender). Key cross-references there:
+
+- `dev_docs/vision_frontend.md` — full architecture + rationale (the "sender seam" section).
+- `native/field-encode/WIRE_FORMAT.md` — the UDP media + control contract this shell's receiver
+  implements against (authoritative).
+- `native/field-encode/` — the macOS VideoToolbox **sender** co-process (`field-encode`).
+- `src/jvmMain/kotlin/afield/four/stream/FieldRTTStreamer.kt` — the **producer**: allocates an
+  IOSurface ring in the helper, imports it as an RTT backing, renders into it, and ticks the
+  encoder. `FieldEncodeProcess.kt` is the JSON stdin/stdout driver.
+
+This shell is the **receiver** end of that pipeline (see `RTT/` below).
 
 ## Files
 
@@ -67,14 +80,20 @@ Full architecture + rationale: `dev_docs/vision_frontend.md` in the **field4** r
   going solid only when a box is selected (`:has(.box.selected)`).
 - **Toasts** tuck clear of the window's rounded corner (state-aware `--shell-corner-inset`:
   0 when the rail covers the corner, ~56 when collapsed or in a standalone window).
-- **RTT receiver (UDP → decode)** — the "Immersive" ornament button starts the receiver and opens a
-  dimmed immersive theatre showing the decoded stream on a world-locked screen. The **receive →
-  reassemble → VideoToolbox decode** half is **verified end-to-end against the real `field-encode`
-  sender** (`--selftest`): HEVC and H.264, correct 20-byte header parse, VPS/SPS/PPS pulled from the
-  inline keyframe params, decoded to `420v` NV12 at the sender's resolution, clean reassembly of what
-  arrives (loss under an unpaced blast is discarded per spec). The **present** half (Metal NV12→RGBA
-  → `LowLevelTexture` → RealityKit) builds against visionOS 26 but wants a device to confirm visually
-  (see gotchas — the headless sim can't drive the ornament tap or place a second spatial window).
+- **RTT streaming — full spine, end-to-end.** The "Immersive" ornament button starts the receiver
+  and opens a dimmed theatre showing the decoded stream on a world-locked screen. **Verified with
+  the real Field sender** (`FieldRTTStreamer` in `~/field4`, see Companion repo): Field renders into
+  an imported IOSurface-backed RTT → VideoToolbox HEVC → UDP → this receiver reassembles →
+  VideoToolbox decode → `LowLevelTexture` → material, **with correct colour**. Also verified against
+  `field-encode --selftest` (HEVC + H.264, correct header parse, inline VPS/SPS/PPS, `420v` NV12).
+  - **Sender restarts are handled** — relaunch Field (its `seq` resets to 0) without reinstalling
+    this app; the reassembler detects the restart (keyframe near seq 0 after a high-water mark) and
+    re-locks on the new IDR. (Before the fix, a restarted stream was dropped as stragglers forever.)
+  - **Rate** — the sender emits at its configured `fps`, not the render rate; keep it low (~15) for
+    the *simulator*'s software decoder (a 60/90fps flood there causes reference-loss flicker). On
+    device, hardware decode is real-time.
+  - **Present smoothness is device work** — the visionOS *simulator* paints the immersive scene at
+    ~1fps and is non-interactive, so the decode fps (status label) far exceeds what you see there.
 
 ## field4-repo dependencies (server must serve these)
 
@@ -136,21 +155,26 @@ All are additive and orthogonal (e.g. `?noeditor&transparent&shaderSelectionCont
   **history panel is canvas-scoped** → broadcast a "show-history" **intent** over the shared context
   (generalize `shaderSelectionContext` into a shared-UI-context carrying selection *and* intents).
   Double-tap-⌘ to evict editor focus is native + minor → deferred.
-- **RTT receiver (the GPU / immersive half)** — **skeleton landed** in `RTT/` (see Files + What
-  works). The receive→reassemble→decode chain is verified against the `field-encode` `--selftest`
-  sender for HEVC and H.264; the present chain (Metal NV12→RGBA → `LowLevelTexture` → RealityKit)
-  builds and runs. Remaining:
+- **RTT streaming — spine done, verified end-to-end** (receiver in `RTT/` here; sender
+  `FieldRTTStreamer` + `field-encode` in `~/field4`). Field renders into an imported IOSurface RTT →
+  HEVC → UDP → this receiver decodes and presents, correct colour, and survives sender restarts.
+  Remaining:
   - **Stereo dock** — swap the mono `UnlitMaterial` in `ImmersiveStreamView` for a
     `ShaderGraphMaterial` with a **Camera Index Switch** node sampling the SBS left/right halves per
     eye (authored in Reality Composer Pro; the converter already produces the full SBS frame, so only
     the material changes). Refs: `~/temp/openimmersive`, Apple's SBS→MV-HEVC sample.
-  - **Device verification** — confirm the immersive theatre visually on hardware; the headless sim
-    can't drive the ornament tap or place the immersive screen (see gotchas).
-  - **Live producer** — exercise against Field's *actual* RTT IOSurface (vs the synthetic self-test
-    surface); IOSurface-backing the RTT is the producer's job (field4 repo), not the receiver's.
-  - **Backpressure** — decode currently runs on the recv queue; under a full-speed unpaced blast the
-    socket buffer overflows and whole frames drop. Real-time (paced) streaming keeps up, but a
-    dedicated decode queue + drop-to-newest would harden it if the producer ever bursts.
+  - **Device verification of present** — the sim paints the immersive scene at ~1fps and is
+    non-interactive; confirm real smoothness + interaction on hardware.
+  - **`/vision/stream` route** — start/stop a stream for the active document from a server route in
+    `~/field4` `Server.kt` (alongside the `/vision` placeholder), instead of a Field box.
+  - **Ring > 1** — `FieldRTTStreamer(ringSize=N)` + render into `activeSlot` for render-ahead; a
+    single surface is fine at the throttled rate but has no headroom.
+  - **`Image.kt` import + memory** — the imported-IOSurface image still allocates+binds
+    `VkDeviceMemory` (worked in practice); confirm it isn't wasteful/undefined.
+  - **Diagnostic cleanup** — `field-encode`'s per-surface dump logging is verbose; gate behind a
+    debug flag.
+  - **Backpressure** — decode runs on the recv queue; a dedicated decode queue + drop-to-newest
+    would harden it if a producer ever bursts past the receiver.
 
 ## Multiple scenes
 
@@ -164,5 +188,6 @@ The project keeps `GENERATE_INFOPLIST_FILE = YES` and Xcode merges the generated
 this base. If `openWindow` ever silently no-ops again, this is the first thing to check.
 
 ---
-*Handoff written at the end of a long session with several power/CI interruptions; everything
-above is on disk. The field4-side changes are uncommitted in that repo (entangled with other WIP).*
+*The RTT sender is now committed in `~/field4` (commits: "Add field-encode co-process helper" and
+"Wire Field's RTT into the field-encode streamer (import path)"). The receiver + its restart fix
+and sim-testing affordances are committed here. Present smoothness/interaction remains device work.*
