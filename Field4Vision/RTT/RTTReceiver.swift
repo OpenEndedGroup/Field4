@@ -65,8 +65,10 @@ final class RTTReceiver {
             }
         }
         guard bindResult == 0 else {
+            let msg = "bind(:\(port)) failed: \(errnoString())"
+            shellLog.error("RTT receiver \(msg, privacy: .public)")
             close(s)
-            onError?("bind(:\(port)) failed: \(errnoString())")
+            onError?(msg)
             return
         }
 

@@ -106,6 +106,9 @@ final class RTTStream {
         }
         frameSize = CGSize(width: CVPixelBufferGetWidth(pixelBuffer),
                            height: CVPixelBufferGetHeight(pixelBuffer))
+        if decodedFrameCount == 0 {
+            shellLog.notice("RTT first decoded frame \(Int(self.frameSize.width))×\(Int(self.frameSize.height))")
+        }
         decodedFrameCount += 1
         tickFPS()
     }
@@ -120,6 +123,7 @@ final class RTTStream {
             fpsWindowStart = now
             if isRunning {
                 status = "Streaming \(Int(frameSize.width))×\(Int(frameSize.height)) @ \(Int(measuredFPS.rounded())) fps"
+                shellLog.notice("RTT \(self.status, privacy: .public)")
             }
         }
     }

@@ -101,7 +101,20 @@ struct ContentView: View {
                 try? await Task.sleep(for: .seconds(1.2))
                 openWindow(value: manager.floatingEditorURL())
             }
+            // Headless testing: `FIELD4_RTT_AUTOSTART=1` binds the RTT receiver (and opens the
+            // theatre) on launch, so the sim can receive a stream without a tap on the ornament
+            // (which simctl can't drive). Pass via `SIMCTL_CHILD_FIELD4_RTT_AUTOSTART=1`.
+            if ProcessInfo.processInfo.environment["FIELD4_RTT_AUTOSTART"] == "1", !immersiveOpen {
+                await toggleImmersive()
+            }
         }
+    }
+
+    /// Receiver port — overridable via `FIELD4_RTT_PORT` (e.g. when Field itself holds the default
+    /// 9000 on the shared host stack during same-Mac simulator testing).
+    private var rttPort: UInt16 {
+        if let s = ProcessInfo.processInfo.environment["FIELD4_RTT_PORT"], let p = UInt16(s) { return p }
+        return RTTStream.defaultPort
     }
 
     /// Open/close the RTT theatre. The receiver starts before the space so packets are already
@@ -113,7 +126,7 @@ struct ContentView: View {
             immersiveOpen = false
             return
         }
-        rtt.start()
+        rtt.start(port: rttPort)
         switch await openImmersiveSpace(id: Field4VisionApp.rttSpaceID) {
         case .opened:
             immersiveOpen = true
