@@ -479,6 +479,120 @@ with(Functions) {
 }
 ```
 
+## Shaping signals — the Functions transform pipeline
+
+The reference below lists every constructor and combiner in isolation. This section is the
+opposite view: how the small handful of infix operators fit together into a *pipeline*, so
+you can read a stack like `pulseBurst(10) through gain(0.6) over (0.0..4.0)` at a glance and
+write your own without hunting through the catalogue.
+
+### The mental model
+
+A pipeline has two kinds of thing in it:
+
+- a **source** `Fn` — a signal you can sample at any `x` (`ramp`, `cos`, `pulseBurst`, …);
+- a **`FnTransform`** — a *reusable edit*, a packaged `(Fn) -> Fn`, produced by a builder
+  like `gain(0.6)`, `delay(0.1)`, `lowPass(0.08)`, or `softClipBy(1.2)`.
+
+You *shape* a source by sending it `through` a transform. The result is another `Fn`, so you
+can send that through the next transform, and so on. Nothing here is a second interpreter:
+the declarative layer is thin Kotlin that only rearranges pure, freely-sampleable functions
+(this is the same "recipe, not a decompiler" property the [rewrite section](#rewrite-limitations)
+relies on). A `FnTransform` holds no state and can be reused across as many sources as you
+like — build a shaping chain once, name it, apply it everywhere.
+
+### The operators
+
+| Operator | Shape | Meaning |
+| --- | --- | --- |
+| `source through t` | `Fn through FnTransform → Fn` | Apply transform `t` to the source. |
+| `source pipe t` | `Fn pipe FnTransform → Fn` | Readable alias for `through`. |
+| `source / t` | `Fn / FnTransform → Fn` | Compact alias for `through` (matches the audio style). |
+| `t1 then t2` | `FnTransform then FnTransform → FnTransform` | Compose two transforms into one (apply `t1`, then `t2`). |
+| `t1 / t2` | `FnTransform / FnTransform → FnTransform` | Compact alias for composing transforms. |
+| `source over (a..b)` | `Fn over ClosedRange → Fn` | Relabel the public domain to `a..b` (placement, no resampling). |
+| `source stretch (a..b)` | `Fn stretch ClosedRange → Fn` | Remap the source's domain across `a..b` (replays the whole source over the new interval). |
+| `a then b` | `Fn then Fn → Fn` | Concatenate two functions end-to-end on a timeline. |
+| `a overlapping n with b` | `Fn overlapping Number with Fn → Fn` | Join `a` and `b` with an `n`-wide crossfade. |
+
+Two overloads are worth pointing at because they share a name: `then` composes *transforms*
+when both sides are `FnTransform` (`gain(0.6) then lowPass(0.08)`), and *concatenates
+functions* when both sides are `Fn` (`intro then verse`). The compiler picks by operand
+type — which is exactly what the editor's completion leans on (below). For the
+`over` / `stretch` distinction — relabelling versus remapping — see
+[`over ... vs stretch ...`](#over-vs-stretch) above; here we only use them to place a
+finished pipeline on a timeline.
+
+### Building up a pipeline
+
+Start with a source and send it `through` a single transform. `gain` scales the signal:
+
+```diffstatic {data-lang=kotlin}
+val burst = pulseBurst(10) through gain(0.6)
+burst.plot("source")
+```
+
+Chain transforms with `then`. Because `then` on two `FnTransform`s composes them, you can
+name a shaping chain and reuse it. Here the source is smoothed, then softly clipped:
+
+```diffstatic {data-lang=kotlin}
+val soften = lowPass(0.08) then softClipBy(1.2)
+val shaped = cos(3.0) through soften
+shaped.plot("shaped")
+```
+
+`through` returns an `Fn`, so pipeline steps and plain arithmetic mix freely. The `/` alias
+keeps long stacks compact — `source / a / b` is `source through a through b`:
+
+```diffstatic {data-lang=kotlin}
+val gesture = (pulseBurst(8) / gain(0.8) / delay(0.05) / hold(0.02)) + cos(2.0) * 0.1
+gesture.plot("gesture")
+```
+
+Once a gesture is shaped, place it in time with `over` (relabel its domain) — useful when the
+pipeline result feeds a longer timeline:
+
+```diffstatic {data-lang=kotlin}
+val placed = (ramp(0.0, 1.0) through bias(-0.5) through gain(2.0)) over (0.0..4.0)
+placed.plot("placed")
+```
+
+And a fuller gesture that layers the vocabulary — a tone whose time-base slows across the
+interval, roughened by turbulence and mirrored about its centre:
+
+```diffstatic {data-lang=kotlin}
+val tornTape = (cos(5.0)
+    / slower(2.0)
+    / turbulence(amount = 0.04, frequency = 11.0)
+    / mirror()) over (0.0..4.0)
+tornTape.plot("tornTape")
+```
+
+Every builder used above (`gain`, `bias`, `delay`, `hold`, `lowPass`, `softClipBy`, `slower`,
+`turbulence`, `mirror`, `stretch`, …) returns a `FnTransform`, so any of them slots into a
+`through` / `/` / `then` chain interchangeably. The full set lives in the
+[reference below](#algebra-and-mapping) and under [`FnTransform`](#fntransform).
+
+### The editor helps you discover operators
+
+You rarely need to memorise which builders exist. After you type an infix operator and a
+space — `pulseBurst(10) through ` — the editor's **type-aware infix completion** boosts the
+operands that actually fit. Because `through` (like `pipe` and `/`) declares its operand as
+`FnTransform`, every `FnTransform`-returning builder (`gain`, `delay`, `lowPass`, `mirror`, …)
+floats to the top of the completion list instead of being buried in the alphabetical tail of
+everything in scope.
+
+This is generic, not a hard-coded list: the completion engine discovers the operator's
+declared parameter type by completing the operator token itself (an infix `foo` surfaces as
+`foo(ParamType)`), then rewards candidates whose return type matches. So the same help
+appears after `then ` (want another `FnTransform`), and the mechanism keeps working as new
+transform builders are added. Implementation: `InfixCompletion` in
+`src/jvmMain/kotlin/afield/execution.kt` (commit `3f731751`).
+
+Once you can build one gesture this way, you can evolve a whole *family* of them: the
+[variety-generation section](#variety-generation-novelty-search-for-a-set-of-gestures)
+grows a set of behaviourally distinct shapes from a seed using the same pure-`Fn` machinery.
+
 ## Expanded reference: simple + creative patterns
 
 All snippets below assume:
