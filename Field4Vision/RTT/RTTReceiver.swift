@@ -24,6 +24,7 @@ final class RTTReceiver {
     // Diagnostics (read from any thread; single writer on the recv queue).
     private(set) var datagramsReceived = 0
     private(set) var bytesReceived = 0
+    private(set) var malformedDatagrams = 0
 
     init(port: UInt16, reassembler: FrameReassembler = FrameReassembler()) {
         self.port = port
@@ -104,9 +105,23 @@ final class RTTReceiver {
             bytesReceived += n
 
             let datagram = Data(bytes: buf, count: n)
-            guard let pkt = RTTPacket(datagram: datagram) else { continue }  // malformed / bad version
+            guard let pkt = RTTPacket(datagram: datagram) else {
+                // Malformed — the prime failure mode for a new/foreign sender. Log the reason
+                // (throttled) so a bad wire format isn't a silent black hole.
+                malformedDatagrams += 1
+                if malformedDatagrams == 1 || malformedDatagrams % 256 == 0 {
+                    shellLog.error("RTT dropped malformed datagram #\(self.malformedDatagrams): \(Self.rejectReason(buf, n), privacy: .public)")
+                }
+                continue
+            }
             if let frame = reassembler.ingest(pkt) {
                 onFrame?(frame)
+            }
+
+            // Periodic rx heartbeat: makes "arriving but not completing" visible (loss, bad
+            // fragCount/fragIndex → datagrams climb while completed stays flat).
+            if datagramsReceived % 300 == 0 {
+                shellLog.notice("RTT rx: \(self.datagramsReceived) datagrams, \(self.reassembler.completedFrames) frames, \(self.reassembler.droppedFrames) dropped, \(self.malformedDatagrams) malformed")
             }
         }
 
@@ -116,6 +131,17 @@ final class RTTReceiver {
     }
 
     private func errnoString() -> String { String(cString: strerror(errno)) }
+
+    /// Reconstruct *why* `RTTPacket.init` rejected a datagram (mirrors its guards), so a malformed
+    /// stream reports the actual fault — wrong version, bad codec, short header, or frag range.
+    private static func rejectReason(_ buf: [UInt8], _ n: Int) -> String {
+        if n < RTTWire.headerSize { return "short (\(n)B < \(RTTWire.headerSize))" }
+        if buf[0] != RTTWire.version { return "version=\(buf[0]) (want \(RTTWire.version)), first bytes \(buf[0]) \(buf[1]) \(buf[2]) \(buf[3])" }
+        if RTTWire.Codec(rawValue: buf[2]) == nil { return "codec=\(buf[2]) (want 0=HEVC/1=H264)" }
+        let fragIndex = (UInt16(buf[8]) << 8) | UInt16(buf[9])
+        let fragCount = (UInt16(buf[10]) << 8) | UInt16(buf[11])
+        return "frag \(fragIndex)/\(fragCount) out of range"
+    }
 
     /// "ip:port" for a received datagram's source (IPv4 or IPv6), for smoketest logging.
     private static func peerString(_ src: inout sockaddr_storage) -> String {
