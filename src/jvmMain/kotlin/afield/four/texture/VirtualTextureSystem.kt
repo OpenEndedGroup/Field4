@@ -2353,7 +2353,7 @@ class VirtualTextureSystem(
         }
 
         lprintln(
-            "info,vt",
+            "info,vt,upload",
             "vt frame=$frame vis=$visibleTexCount/${config.virtualTexCount} miss=$missingVisibleCount req+$dReq up+$dUp pub+$dPub dec+$dDecS fail+$dDecF cancel+$dCanc allocFail+$dAllocF thumb(h+$dTh w+$dTw f+$dTwf) zero+$dDecZ miss+$dMiss " +
                 "q(decode=${decodeQueue.size}, ready=${readyUploads.size}, pending=${pendingBatches.size}) | $bandSummary"
         )

@@ -822,7 +822,7 @@ class Renderer(
         lastVertexUploadStatsLogNs = now
         fun mib(bytes: Long): Double = bytes.toDouble() / (1024.0 * 1024.0)
         lprintln(
-            "info,perf",
+            "info,perf,upload",
             "vertex_upload frame=${stats.frameId} total=${"%.3f".format(mib(stats.totalBytes))}MiB recorded=${"%.3f".format(mib(stats.recordedBytes))}MiB immediate=${"%.3f".format(mib(stats.immediateBytes))}MiB"
         )
     }
@@ -1834,14 +1834,14 @@ class Renderer(
         var initialTime = System.nanoTime()
         var frame = 0
         while (running && windows.any { !it.shouldClose() }) {
-            print(".")
+            afield.logger.PinnedConsole.beat("render")
             windows.forEach { it.pollEvents() }
             update()
             render()
             frame++
             val now = System.nanoTime()
             if (now - initialTime >= PERF_LOG_INTERVAL_NS) {
-                print(" fps=${1_000_000_000.0 * frame / (now - initialTime)} ")
+                lprintln("info,perf,fps", "fps=${1_000_000_000.0 * frame / (now - initialTime)}")
                 initialTime = now
                 frame = 0
             }
@@ -1856,13 +1856,14 @@ class Renderer(
             logTime("pollEvents") { windows.forEach { it.pollEvents() } }
             logTime("render") { render() }
             frame++
+            afield.logger.PinnedConsole.beat("render")
             val now = System.nanoTime()
             if (lastRunFpsLogNs == 0L) {
                 lastRunFpsLogNs = now
                 lastRunFpsFrame = frame
             } else if (now - lastRunFpsLogNs >= PERF_LOG_INTERVAL_NS) {
                 val framesSinceLastLog = frame - lastRunFpsFrame
-                lprintln("info,perf", "fps=${1_000_000_000.0 * framesSinceLastLog / (now - lastRunFpsLogNs)} Thread = ${Thread.currentThread().name} = ${System.identityHashCode(Thread.currentThread().name)} ${isMainThread}")
+                lprintln("info,perf,fps", "fps=${1_000_000_000.0 * framesSinceLastLog / (now - lastRunFpsLogNs)} Thread = ${Thread.currentThread().name} = ${System.identityHashCode(Thread.currentThread().name)} ${isMainThread}")
                 lastRunFpsLogNs = now
                 lastRunFpsFrame = frame
             }

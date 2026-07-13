@@ -46,6 +46,10 @@ object LogDispatcher {
         sinks.add(sink)
     }
 
+    fun removeSink(sink: LogSink) {
+        sinks.remove(sink)
+    }
+
     fun log(event: LogEvent) {
         sinks.forEach { sink ->
             runCatching { sink.log(event) }

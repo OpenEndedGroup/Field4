@@ -66,6 +66,7 @@ class Runloop {
             mainThread = Thread.currentThread()
         }
         schedulingState.install(Thread.currentThread())
+        lprintln("info,startup", "entering run loop")
         while (true) {
             val frameStartNs = System.nanoTime()
             preRun.update()
@@ -73,6 +74,8 @@ class Runloop {
             postRun.update()
             val workNs = System.nanoTime() - frameStartNs
             frame++
+            // First completed frame = Field is up. Announce ready and collapse the startup row.
+            if (frame == 1L) afield.logger.PinnedConsole.finishStartup()
             timingMonitor.record(frame, frameStartNs, workNs)
 
             if (shouldSleep) {

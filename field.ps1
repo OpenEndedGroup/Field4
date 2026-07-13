@@ -114,10 +114,92 @@ function Ensure-SemanticSidecar {
     Start-SemanticSidecar $port
 }
 
+function Ensure-LaunchSpec {
+    $argsFile = "build\field-launch\args"
+    $javaFile = "build\field-launch\java"
+    $needs = (-not (Test-Path $argsFile)) -or (-not (Test-Path $javaFile)) -or ($env:FIELD_REFRESH -eq "1")
+    if (-not $needs -and ((Get-Item "build.gradle.kts").LastWriteTime -gt (Get-Item $argsFile).LastWriteTime)) {
+        $needs = $true
+    }
+    if ($needs) {
+        Write-Host "field: resolving launch spec via Gradle (set FIELD_REFRESH=1 to redo)..." -ForegroundColor DarkCyan
+        & .\gradlew.bat -q dumpFieldLaunch
+    }
+}
+
+function Stop-Tree {
+    param([System.Diagnostics.Process] $Proc)
+    if ($null -eq $Proc -or $Proc.HasExited) { return }
+    # /T kills the whole child tree (backend spawns native/UI children); /F forces it.
+    & taskkill.exe /PID $Proc.Id /T /F 2>$null | Out-Null
+}
+
 function Run-Field {
     Ensure-SemanticSidecar
-    & .\gradlew.bat runDesktop
-    return $LASTEXITCODE
+    Ensure-LaunchSpec
+
+    if (-not $env:PORT) { $env:PORT = "9092" }
+    if (-not $env:AFIELD_PORT_FALLBACK_COUNT) { $env:AFIELD_PORT_FALLBACK_COUNT = "1" }
+    $port = $env:PORT
+
+    $javaBin = (Get-Content "build\field-launch\java" -Raw).Trim()
+    $argsFileAbs = (Resolve-Path "build\field-launch\args").Path
+
+    # Backend shares THIS console (-NoNewWindow) so its stdout stays a real TTY and the pinned console
+    # (startup ribbon, fps/upload rows, render spinner) renders. Electron (a GUI, no tty needed) runs
+    # alongside — this is how the two coexist. runDesktop can't, because the Gradle daemon has no console.
+    $backend = Start-Process -FilePath $javaBin -ArgumentList (@("@$argsFileAbs") + $args) -NoNewWindow -PassThru
+
+    # Trust the dev server's self-signed cert for the health/app-url probes (works on PS 5.1 and 7).
+    try {
+        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
+    } catch {}
+
+    $electron = $null
+    try {
+        # Wait (~120s) for the backend to come up, then open the Electron shell against it.
+        $deadline = (Get-Date).AddSeconds(120)
+        while ((Get-Date) -lt $deadline -and -not $backend.HasExited) {
+            try {
+                $h = Invoke-RestMethod -Uri "https://localhost:$port/health" -TimeoutSec 2 -ErrorAction Stop
+                if ("$h" -match "ok") { break }
+            } catch {}
+            Start-Sleep -Milliseconds 250
+        }
+
+        $electronBin = if (Test-Path "build\field-launch\electron") { (Get-Content "build\field-launch\electron" -Raw).Trim() } else { "" }
+        if (-not $backend.HasExited -and $electronBin -and (Test-Path $electronBin)) {
+            $appUrl = "https://localhost:$port/index.html"
+            try {
+                $u = Invoke-RestMethod -Uri "https://localhost:$port/app-url" -TimeoutSec 2 -ErrorAction Stop
+                if ("$u".Trim()) { $appUrl = "$u".Trim() }
+            } catch {}
+            $env:APP_URL = $appUrl
+            if (-not $env:WITH_DEVTOOLS) { $env:WITH_DEVTOOLS = "0" }
+            $electronDir = (Get-Content "build\field-launch\electron-dir" -Raw).Trim()
+            $eArgs = @()
+            if (Test-Path "build\field-launch\electron-args") { $eArgs = @(Get-Content "build\field-launch\electron-args" | Where-Object { $_ -ne "" }) }
+            $electron = Start-Process -FilePath $electronBin -ArgumentList ($eArgs + ".") -WorkingDirectory $electronDir -PassThru
+        }
+
+        # Wait until either exits, then stop the other.
+        while (-not $backend.HasExited -and ($null -eq $electron -or -not $electron.HasExited)) {
+            Start-Sleep -Milliseconds 500
+        }
+    } finally {
+        Stop-Tree $electron
+        Stop-Tree $backend
+        # Guarantee the terminal is restored (drop scroll region + leave the alternate screen) even if
+        # the backend was hard-killed and its JVM shutdown hook never ran. No-op if not in the alt buffer.
+        if (-not [Console]::IsOutputRedirected) {
+            $esc = [char]27
+            [Console]::Out.Write("$esc[r$esc[?1049l")
+        }
+    }
+
+    if (-not $backend.HasExited) { $backend.WaitForExit() }
+    return $backend.ExitCode
 }
 
 Write-Host "===================================" -ForegroundColor Cyan
@@ -125,7 +207,7 @@ Write-Host "Starting Field4..." -ForegroundColor Cyan
 Write-Host "===================================" -ForegroundColor Cyan
 Write-Host ""
 
-$exitCode = Run-Field
+$exitCode = Run-Field @args
 
 if ($exitCode -ne 0) {
     Write-Host ""

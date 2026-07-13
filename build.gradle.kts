@@ -650,6 +650,10 @@ kotlin {
                 implementation("org.slf4j:slf4j-api:2.0.16")
                 runtimeOnly("org.slf4j:slf4j-simple:2.0.16")
 
+                // Cross-platform terminal styling + capability/size detection (enables Windows VT).
+                // Backs afield.logger.PinnedConsole.
+                implementation("com.github.ajalt.mordant:mordant:3.0.2")
+
                 implementation("eu.sirotin.kotunil:kotunil-jvm:4.2.3")
 
                 implementation(project.dependencies.platform("org.lwjgl:lwjgl-bom:$lwjglVersion"))
@@ -1306,6 +1310,59 @@ val electronInstall = tasks.register("electronInstall") {
             }
             logger.lifecycle("Prepared macOS executable alias: ${field4Executable.absolutePath}")
         }
+    }
+}
+
+tasks.register("dumpFieldLaunch") {
+    group = "application"
+    description = "Writes build/field-launch/{java,args} so ./field.sh and .\\field.ps1 can launch " +
+        "afield.Server directly in a terminal (stdout stays a TTY, so the pinned console renders)."
+    dependsOn(tasks.named("jvmJar"))
+    dependsOn(tasks.named("generateLocalKeystore"))
+    dependsOn(electronInstall)
+    outputs.upToDateWhen { false }
+
+    doLast {
+        val runJvmTask = tasks.named<JavaExec>("runJvm").get()
+        val javaExecutable = runJvmTask.javaLauncher.get().executablePath.asFile.absolutePath
+        val mainClass = runJvmTask.mainClass.orNull
+            ?: throw GradleException("runJvm has no mainClass configured")
+
+        // Mirror runDesktop's backend args: the executable's default JVM args + requiredRunJvmArgs().
+        val jvmArgs = (runJvmTask.jvmArgs ?: emptyList()).map { it.toString() }.toMutableList()
+        requiredRunJvmArgs().forEach { if (it !in jvmArgs) jvmArgs += it }
+
+        val outDir = File(project.layout.buildDirectory.asFile.get(), "field-launch")
+        outDir.mkdirs()
+        File(outDir, "java").writeText(javaExecutable + System.lineSeparator())
+        // Java @argfile: one token per line. Paths are assumed free of whitespace, as elsewhere in
+        // this build (see the runDesktop Windows @argfile at the classpath block below).
+        File(outDir, "args").writeText(
+            buildString {
+                jvmArgs.forEach { appendLine(it) }
+                appendLine("-cp")
+                appendLine(runJvmTask.classpath.asPath)
+                appendLine(mainClass)
+            }
+        )
+
+        // Electron launch spec, so field.sh / field.ps1 can open the Electron shell alongside the
+        // terminal-hosted backend (same binary/args/dir runDesktop uses). The scripts orchestrate both.
+        val os = System.getProperty("os.name").lowercase()
+        val electronArgs = if (os.contains("windows") || os.contains("mac")) {
+            emptyList()
+        } else {
+            listOf(
+                "--ignore-gpu-blocklist", "--disable-gpu-process-crash-limit",
+                "--enable-gpu-rasterization", "--enable-zero-copy", "--ozone-platform-hint=auto",
+            )
+        }
+        File(outDir, "electron").writeText(electronHostBinary().absolutePath + System.lineSeparator())
+        File(outDir, "electron-dir").writeText(electronDir.asFile.absolutePath + System.lineSeparator())
+        File(outDir, "electron-args").writeText(
+            electronArgs.joinToString(separator = System.lineSeparator(), postfix = if (electronArgs.isEmpty()) "" else System.lineSeparator())
+        )
+        logger.lifecycle("Wrote ${outDir}/ — launch Field with ./field.sh (macOS/Linux) or .\\field.ps1 (Windows).")
     }
 }
 

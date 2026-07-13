@@ -55,13 +55,24 @@ fun runAll(time: String, vararg args: Any?) {
         lprintln("info,di", "runAll precache time is ${ns / 1_000_000} ms")
 
     lblock("info,di", "runall at `$time`") {
-        fieldSourceCache[time]?.sortedBy { it.first }?.forEach {
-            //lblock("debug,di", "method ${it.second.name} (from ${it.second.declaringClass.name})") {
-            it.second.invoke(null, *selectInvocationArgs(it.second, args))
-            //}
+        val units = fieldSourceCache[time]?.sortedBy { it.first }.orEmpty()
+        val announce = time in startupPhases
+        units.forEachIndexed { i, unit ->
+            val method = unit.second
+            // Tick the pinned "startup" row through each boot-time unit as it runs.
+            if (announce) {
+                lprintln(
+                    "info,startup",
+                    "$time · ${method.declaringClass.simpleName}.${method.name} (${i + 1}/${units.size})"
+                )
+            }
+            method.invoke(null, *selectInvocationArgs(method, args))
         }
     }
 }
+
+/** Boot-time phases whose units are announced on the pinned "startup" channel (see PinnedConsole). */
+private val startupPhases = setOf(early, plugins, installHandlers)
 
 private fun selectInvocationArgs(method: Method, providedArgs: Array<out Any?>): Array<Any?> {
     val parameterTypes = method.parameterTypes

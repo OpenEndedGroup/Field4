@@ -102,9 +102,71 @@ ensure_semantic_sidecar() {
     nohup ./gradlew -p tools/code-use-semantic-sidecar run --args="--port $PORT --workspace $DIR" >> "$LOG_FILE" 2>&1 < /dev/null &
 }
 
+ensure_launch_spec() {
+    ARGS_FILE="build/field-launch/args"
+    JAVA_FILE="build/field-launch/java"
+    if [ ! -f "$ARGS_FILE" ] || [ ! -f "$JAVA_FILE" ] || [ "build.gradle.kts" -nt "$ARGS_FILE" ] || [ "${FIELD_REFRESH:-0}" = "1" ]; then
+        echo "field: resolving launch spec via Gradle (one-time; set FIELD_REFRESH=1 to redo)…" >&2
+        ./gradlew -q dumpFieldLaunch
+    fi
+}
+
+launch_electron_when_ready() {
+    # Background helper: wait for the backend to serve, then open the Electron shell against it.
+    ELECTRON_BIN="$(cat build/field-launch/electron 2>/dev/null || true)"
+    { [ -n "$ELECTRON_BIN" ] && [ -x "$ELECTRON_BIN" ]; } || return 0
+    i=0
+    while [ "$i" -lt 480 ]; do   # ~120s
+        if command -v curl >/dev/null 2>&1; then
+            case "$(curl -sk --max-time 2 "https://localhost:$PORT/health" 2>/dev/null)" in *ok*) break ;; esac
+        else
+            [ "$i" -ge 20 ] && break
+        fi
+        sleep 0.25
+        i=$((i + 1))
+    done
+    APP_URL=""
+    command -v curl >/dev/null 2>&1 && APP_URL="$(curl -sk --max-time 2 "https://localhost:$PORT/app-url" 2>/dev/null || true)"
+    [ -n "$APP_URL" ] || APP_URL="https://localhost:$PORT/index.html"
+    set --   # collect per-OS electron args (may be empty)
+    if [ -f build/field-launch/electron-args ]; then
+        while IFS= read -r earg; do [ -n "$earg" ] && set -- "$@" "$earg"; done < build/field-launch/electron-args
+    fi
+    cd "$(cat build/field-launch/electron-dir)" || return 0
+    APP_URL="$APP_URL" WITH_DEVTOOLS="${WITH_DEVTOOLS:-0}" exec "$ELECTRON_BIN" "$@" .
+}
+
 run_field() {
     ensure_semantic_sidecar
-    ./gradlew runDesktop
+    ensure_launch_spec
+
+    PORT="${PORT:-9092}"; export PORT
+    export AFIELD_PORT_FALLBACK_COUNT="${AFIELD_PORT_FALLBACK_COUNT:-1}"
+
+    JAVA_BIN="$(cat build/field-launch/java)"
+    # Backend in the background but still attached to THIS terminal — including stdin, so terminal-size
+    # detection (Mordant runs `stty`, which reads stdin) sees the real rows/cols and the scroll region
+    # uses the whole window. This script runs without job control, so the backgrounded backend stays in
+    # the foreground process group and can hold the tty without SIGTTIN. fd 1 stays the tty -> the pinned
+    # console renders. The Electron shell (a GUI, no tty needed) runs alongside; that's how they coexist.
+    "$JAVA_BIN" "@build/field-launch/args" "$@" &
+    BACKEND_PID=$!
+
+    launch_electron_when_ready &
+    ELECTRON_PID=$!
+
+    # Ctrl-C / TERM stop both; and if either exits on its own, stop the other. On EXIT, guarantee the
+    # terminal is restored (drop scroll region + leave the alternate screen) even if the backend was
+    # hard-killed and its JVM shutdown hook never ran. Emitting these when not in the alt buffer is a
+    # harmless no-op.
+    restore_terminal() { [ -t 1 ] && printf '\033[r\033[?1049l' 2>/dev/null; }
+    trap 'restore_terminal' EXIT
+    trap 'kill "$BACKEND_PID" "$ELECTRON_PID" 2>/dev/null' INT TERM
+    while kill -0 "$BACKEND_PID" 2>/dev/null && kill -0 "$ELECTRON_PID" 2>/dev/null; do
+        sleep 0.5
+    done
+    kill "$BACKEND_PID" "$ELECTRON_PID" 2>/dev/null
+    wait "$BACKEND_PID" 2>/dev/null
 }
 
 # Function to run Field4 in a new terminal
@@ -129,7 +191,7 @@ run_in_terminal() {
 # Check if we're running in a terminal
 if [ -t 0 ] || [ "$AFIELD_FIELD_SH_NO_TERMINAL" = "1" ]; then
     # Running in a terminal, just execute
-    run_field
+    run_field "$@"
 else
     # Not in a terminal (likely double-clicked), open one
     run_in_terminal
