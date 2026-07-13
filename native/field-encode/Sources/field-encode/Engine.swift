@@ -100,10 +100,15 @@ final class Engine {
         emit(Event(ev: "selftestDone", seq: UInt32(frames)))
     }
 
+    /// Verbose diagnostics (per-surface dumps) only when `FIELD_ENCODE_VERBOSE` is set — otherwise
+    /// the helper stays quiet on the happy path (Field logs every stderr line).
+    static let verbose = ProcessInfo.processInfo.environment["FIELD_ENCODE_VERBOSE"] != nil
+
     /// Log a resolved IOSurface's CV-relevant properties to stderr (Field surfaces them as
     /// `[info,field-encode]`). `pixelFormat` is the OSType — decode it as a FourCC so we can see
     /// whether it's `BGRA` (kCVPixelFormatType_32BGRA, what VideoToolbox wants) or something else.
     private static func dumpSurface(_ s: IOSurfaceRef, index: Int) {
+        guard verbose else { return }
         let fmt = IOSurfaceGetPixelFormat(s)
         let w = IOSurfaceGetWidth(s), h = IOSurfaceGetHeight(s)
         let bpr = IOSurfaceGetBytesPerRow(s), bpe = IOSurfaceGetBytesPerElement(s)
