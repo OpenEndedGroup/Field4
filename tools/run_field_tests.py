@@ -1074,6 +1074,13 @@ def main() -> int:
                 progress(f"  {failure}")
             if failed and args.fail_fast:
                 break
+            # Graphics-context tests wedge the GPU/window state in the persistent server.
+            # Recycle after each such test so the next test gets a clean JVM.
+            if not args.no_prewarm and graphics_context_config(test) is not None and index < total:
+                progress(f"  recycling Field after graphics-context test (GPU state reset)")
+                ctx = make_unverified_ssl_context()
+                recycle_field(args.port, ctx)
+                field_proc = ensure_persistent_field(args.port)
     finally:
         stop_persistent_field(field_proc)
 
