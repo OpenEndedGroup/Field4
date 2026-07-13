@@ -15,6 +15,7 @@ import afield.ai.SemanticRetrievalConfigSaveRequest
 import afield.ai.SemanticRetrievalDeleteCacheRequest
 import afield.ai.SemanticRetrievalDownloadRequest
 import afield.debug.RuntimeDebugProbeService
+import afield.four.stream.FieldRTTStreamer
 import afield.four.util.FramePresentationLog
 import afield.four.util.Options
 import afield.graphics.getFLineEditSession
@@ -1689,6 +1690,7 @@ class Server {
 
         @OptIn(DelicateCoroutinesApi::class, BetaOpenAI::class)
         fun server() {
+            lprintln("info,startup", "preparing runtime…")
             Options.doVulkanSDK()
 
             lprintln("info,server", "app directory is $app")
@@ -3883,6 +3885,74 @@ class Server {
                                     call.respond(HttpStatusCode.NotFound, "vision index.html not found")
                                 }
                             }
+
+                            // Thin lifecycle control for the streaming docks: toggle an open
+                            // document's graphics/streaming boxes on/off over HTTP, so a stream can
+                            // be started/stopped without hand-running boxes in the editor. Content
+                            // stays in the boxes (e.g. a FieldRTTStreamer box); this only flips them.
+                            //   POST /vision/stream?action=start&doc=<name>[&boxes=uid1,uid2]
+                            //   POST /vision/stream?action=stop&doc=<name>
+                            // The document must already be open (attached). `boxes` is an ordered
+                            // list (renderer-owning box first); default is every non-root box.
+                            post("/stream") {
+                                val q = call.request.queryParameters
+                                val action = (q["action"] ?: "start").lowercase()
+                                val docName = q["doc"]
+                                val info = documents.values.firstOrNull {
+                                    docName == null || it.documentName == docName || it.filename == docName
+                                }
+                                if (info == null) {
+                                    call.respond(HttpStatusCode.NotFound,
+                                        "no open document" + (docName?.let { " named '$it'" } ?: "") +
+                                            "; open it first")
+                                    return@post
+                                }
+                                val boxSpec = q["boxes"]
+                                val targets = if (!boxSpec.isNullOrBlank())
+                                    boxSpec.split(",").mapNotNull { uid -> info.boxes[uid.trim()] }
+                                else info.boxes.values.filter {
+                                    it.id != "root" && !it.getPropertyRaw("_tombstone").isTrue()
+                                }.sortedByDescending { it.name.equals("window", ignoreCase = true) }
+                                if (targets.isEmpty()) {
+                                    call.respond(HttpStatusCode.BadRequest,
+                                        "no matching boxes in '${info.documentName}'")
+                                    return@post
+                                }
+                                when (action) {
+                                    "start" -> GlobalScope.launch {
+                                        // Begin in order (renderer-owning box first), with a beat
+                                        // between so a window box's Renderer is up before a
+                                        // dependent box inherits it.
+                                        targets.forEach { box ->
+                                            runCatching { box.begin() }.onFailure {
+                                                lprintln("warning,vision-stream",
+                                                    "begin ${box.name}: ${it.message}")
+                                            }
+                                            delay(400)
+                                        }
+                                    }
+                                    "stop" -> targets.reversed().forEach { box ->
+                                        // Close the encoder + drop the streamer from the render list
+                                        // before stopping the box, so the co-process doesn't orphan.
+                                        (box.getPropertyRaw("streamer") as? FieldRTTStreamer)
+                                            ?.let { runCatching { it.stop() } }
+                                        runCatching { stop(box) }.onFailure {
+                                            lprintln("warning,vision-stream",
+                                                "stop ${box.name}: ${it.message}")
+                                        }
+                                    }
+                                    else -> {
+                                        call.respond(HttpStatusCode.BadRequest,
+                                            "action must be 'start' or 'stop'")
+                                        return@post
+                                    }
+                                }
+                                call.respondText(
+                                    """{"ok":true,"action":"$action","document":"${info.documentName}",""" +
+                                        """"boxes":[${targets.joinToString(",") { "\"${it.name}\"" }}]}""",
+                                    ContentType.Application.Json
+                                )
+                            }
                         }
 
                         post("/api/import-offline-doc") {
@@ -4351,6 +4421,7 @@ class Server {
 
             globalServerPort = port
             globalLoopbackHttpPort = loopbackHttpPortFor(port)
+            lprintln("info,startup", "server listening on https://localhost:$port")
             val initialURL = desktopStartupDocumentName()
                 ?.let { "https://localhost:${port}/index.html?file=${URLEncoder.encode(it, "UTF-8")}" }
                 ?: "https://localhost:${port}/welcome"
@@ -4370,6 +4441,7 @@ class Server {
 //                    thread { openSystemBrowser(initialURL) }
             } else {
                 thread {
+                    lprintln("info,startup", "opening UI window…")
                     Playwright.create().let { pw ->
                         globalPlaywright = pw
                         val browser = pw.chromium().launch(
@@ -4434,6 +4506,12 @@ class Server {
 //            }
 
 //            Configuration.GLFW_CHECK_THREAD0.set(false)
+
+            // Pin a "startup" channel (plus any AFIELD_PIN_CHANNELS) to a non-scrolling region at the
+            // top of the terminal so the boot stages annotate in place; degrades to plain stdout on
+            // non-TTYs. The startup row collapses a few seconds after the first frame renders.
+            afield.logger.PinnedConsole.installWithStartup()
+            lprintln("info,startup", "booting Field…")
 
             runAll(early)
 
