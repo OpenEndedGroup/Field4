@@ -925,6 +925,17 @@ tasks.register<JavaExec>("runEvolveWorkedExample") {
     jvmArgs("--add-modules", "jdk.incubator.vector")
 }
 
+tasks.register<JavaExec>("runWaveshapeWorkedExample") {
+    group = "application"
+    description = "CPU-only worked example of the waveshaping fold/rectify/quantize transforms: writes an SVG montage under public/docs/assets/functions/."
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
+    })
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.examples.functions.WaveshapeWorkedExample")
+    jvmArgs("--add-modules", "jdk.incubator.vector")
+}
+
 
 
 tasks.named<JavaExec>("runJvm").configure {

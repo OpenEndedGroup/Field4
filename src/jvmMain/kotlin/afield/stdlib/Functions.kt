@@ -246,6 +246,10 @@ object Functions {
 
     enum class StretchShape { LINEAR, SMOOTHSTEP, SMOOTHERSTEP }
 
+    /** Rectifier polarity for the [rectify] waveshaping transform: half-wave clamps the
+     * negative excursion to zero; full-wave reflects it (|x|). */
+    enum class RectifyMode { HALF, FULL }
+
     /** Common normalized-time shapes for procedural motion and value tweening. */
     /**
      * Named motion curves for [tween], [Fn.ease], and other alpha-shaping helpers.
@@ -4685,6 +4689,31 @@ canvas {
         source.bitCrush(bits).withName("crush")
     }
 
+    /**
+     * Waveshaping / distortion transforms — the value-domain (west-coast) counterparts
+     * to the time-domain [hold] / [crush] pair. Each is a thin factory over a pure value
+     * shaper (see [Fn.fold], [Fn.rectify], [Fn.abs], [Fn.quantize]) so it composes in
+     * `through` / `pipe` / `/` chains and surfaces in the type-aware infix completion.
+     * They shape the signal's VALUE, distinct from `hold`/`stepHold` which clock its time.
+     */
+    fun fold(threshold: Number = 1.0): FnTransform = fold(param(threshold))
+
+    fun fold(threshold: Fn): FnTransform = FnTransform("fold") { source ->
+        source.fold(threshold).withName("fold")
+    }
+
+    fun rectify(mode: RectifyMode = RectifyMode.FULL): FnTransform =
+        FnTransform("rectify(${mode.name.lowercase()})") { source ->
+            when (mode) {
+                RectifyMode.HALF -> source.rectify()
+                RectifyMode.FULL -> source.abs()
+            }.withName("rectify")
+        }
+
+    fun quantize(levels: Int): FnTransform = FnTransform("quantize($levels)") { source ->
+        source.quantize(levels).withName("quantize")
+    }
+
     fun copyPaste(from: Domain, to: Domain, stretch: Boolean = true, edge: EdgeMode = EdgeMode.CLAMP): FnTransform =
         FnTransform("copyPaste") { source ->
             val d = source.domain.union(to)
@@ -5506,11 +5535,13 @@ canvas {
             node("fold", children = listOf(fnEdge("source", this), fnEdge("threshold", threshold)), rebuild = { it[0].fold(it[1]) })
         ) { x ->
             val th = threshold.eval(x)
-            if (th == 0.0) 0.0 else {
+            if (th <= 0.0) 0.0 else {
+                // West-coast wavefolder: pass the signal through unchanged while it stays
+                // within [-th, th], reflecting it back each time it crosses the threshold.
+                // asin(sin(.)) is exactly that triangle — continuous, odd-symmetric, bounded
+                // to [-th, th], and equal to the input near zero.
                 val value = eval(x)
-                val t = value % (th * 4.0)
-                val v = if (t > th * 2.0) t - th * 4.0 else t
-                kotlin.math.abs(v - th) - th
+                (2.0 * th / PI) * kotlin.math.asin(kotlin.math.sin(PI * value / (2.0 * th)))
             }
         }
     }

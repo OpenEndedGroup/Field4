@@ -1,0 +1,46 @@
+# Waveshaping transforms — a loadable demo of the fold / rectify / quantize FnTransform family.
+#
+# Open a FRESH Field4 document and replay this transcript to experience the feature:
+#
+#   uv run --project . --group backdoor python tools/field_backdoor.py --json --scratch \
+#     --graphics-context --with-playwright \
+#     --command 'macro write waveshape-transforms --file public/docs/assets/functions/waveshape-transforms.operations.yaml' \
+#     --command 'macro run waveshape-transforms'
+#
+# or, with Field running and a document attached, hand the YAML below to the
+# `field_run_transcript` MCP tool. It creates one box that plots each waveshaping
+# transform's transfer curve (a ramp swept through it) plus a full distortion chain
+# applied to a loud sine — fold / rectify / quantize, the value-domain distortion
+# family of the Functions small language.
+operations:
+  - create:
+      box: waveshape-transforms
+      name: waveshape-transforms
+      frame: { x: 40.0, y: 40.0, w: 620.0, h: 1040.0 }
+      properties:
+        code: |
+          // Waveshaping / distortion transforms — fold / rectify / quantize.
+          // The value-domain (west-coast) counterparts to the time-domain hold / crush.
+          // Run this box: each plot is one transform's transfer curve (a ramp swept
+          // through it), then a full fold -> rectify -> quantize chain on a loud sine.
+          import afield.stdlib.Functions
+
+          with(Functions) {
+              // A ramp sweeping -2..2 across the domain: plotting a transform of it
+              // draws the transform's transfer curve directly.
+              val sweep = ((identity() * 4.0) - 2.0) over (0.0..1.0)
+
+              sweep.withName("input sweep -2..2").plot(channel = "sweep", title = "input: ramp -2..2", heightPx = 150)
+              (sweep / fold(0.7)).plot(channel = "fold", title = "fold(0.7) — wavefolder, bounded to +/-0.7", heightPx = 150)
+              (sweep / rectify(Functions.RectifyMode.FULL)).plot(channel = "rectFull", title = "rectify(FULL) — |x|", heightPx = 150)
+              (sweep / rectify(Functions.RectifyMode.HALF)).plot(channel = "rectHalf", title = "rectify(HALF) — clamp negatives", heightPx = 150)
+              (sweep / quantize(6)).plot(channel = "quantize", title = "quantize(6) — 6-level staircase", heightPx = 150)
+
+              // A full distortion chain on a loud sine: fold, then full-wave rectify,
+              // then quantize. Compose exactly like every other FnTransform.
+              val chain = (sin(3.0) * 1.6 / fold(0.7) / rectify() / quantize(8)) over (0.0..2.0)
+              chain.withName("fold / rectify / quantize").plot(channel = "chain", title = "sine x1.6 / fold / rectify / quantize", heightPx = 160)
+          }
+  - launch:
+      box: waveshape-transforms
+      property: code
