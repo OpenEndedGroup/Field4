@@ -11,6 +11,7 @@ import kotlinx.serialization.json.JsonElement
 import org.yaml.snakeyaml.Yaml
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import kotlin.math.max
@@ -684,16 +685,63 @@ fun updateRecentDocuments(raw: String?, documentName: String, maxEntries: Int = 
     return updated.take(maxEntries).joinToString("\n")
 }
 
-fun welcomeDir(base: String, recents: List<String>): List<WelcomeEntry> {
+/**
+ * A workspace document discovered by [welcomeDirCandidates], described only by cheap `stat`
+ * metadata. Turning one into a [WelcomeEntry] (box count + tags) requires parsing its metadata
+ * file, which [summarizeWelcomeCandidate] does lazily.
+ */
+data class WelcomeDirCandidate(
+    val filename: String,
+    val dir: File,
+    val metadataFile: File,
+    val lastModifiedEpochMs: Long,
+    val sizeBytes: Long
+)
+
+private data class WelcomeSummaryCacheEntry(
+    val lastModifiedEpochMs: Long,
+    val sizeBytes: Long,
+    val summary: WorkspaceDocumentSummary
+)
+
+// Parsed per-document summaries, keyed by metadata-file path and invalidated when the file's
+// size or mtime changes. Bounded by the number of documents in the workspace; each value is a
+// box count plus a short tag list, so it stays small. This is what turns the welcome screen from
+// "re-parse every box of every document on every refresh" into "parse once, then O(N) stats".
+private val welcomeSummaryCache = ConcurrentHashMap<String, WelcomeSummaryCacheEntry>()
+
+private fun cachedWorkspaceDocumentSummary(
+    savingContext: SavingContext,
+    candidate: WelcomeDirCandidate
+): WorkspaceDocumentSummary {
+    val path = candidate.metadataFile.absolutePath
+    welcomeSummaryCache[path]?.let { cached ->
+        if (cached.lastModifiedEpochMs == candidate.lastModifiedEpochMs &&
+            cached.sizeBytes == candidate.sizeBytes
+        ) {
+            return cached.summary
+        }
+    }
+    val summary = readWorkspaceDocumentSummary(savingContext, candidate.dir, candidate.metadataFile)
+    welcomeSummaryCache[path] = WelcomeSummaryCacheEntry(
+        candidate.lastModifiedEpochMs, candidate.sizeBytes, summary
+    )
+    return summary
+}
+
+/**
+ * Cheap first pass over the workspace: `stat` every document directory and order it the way the
+ * welcome screen wants (recency first, then most-recently-modified). No metadata is parsed here,
+ * so this stays fast even for large workspaces and lets callers stream summaries in final order.
+ */
+fun welcomeDirCandidates(base: String, recents: List<String>): List<WelcomeDirCandidate> {
     val baseDir = File(base)
     if (!baseDir.exists() || !baseDir.isDirectory) {
         return emptyList()
     }
 
     val recencyOrder = recents.withIndex().associate { it.value to it.index }
-    val entries = mutableListOf<WelcomeEntry>()
-    val now = System.currentTimeMillis()
-    val s = SavingContext()
+    val candidates = mutableListOf<WelcomeDirCandidate>()
 
     baseDir.listFiles()?.filter { it.isDirectory && it.name != PROJECTS_DIR }?.forEach { dir ->
         val metadataEdnFile = File(dir, SavingContext.METADATA_EDN)
@@ -704,27 +752,51 @@ fun welcomeDir(base: String, recents: List<String>): List<WelcomeEntry> {
             else -> null
         } ?: return@forEach
 
-        try {
-            val summary = readWorkspaceDocumentSummary(s, dir, metadataFile)
-
-            val modifiedAt = metadataFile.lastModified()
-            entries += WelcomeEntry(
-                filename = dir.name,
-                numBoxes = summary.numBoxes,
-                sizeBytes = metadataFile.length(),
-                lastModifiedEpochMs = modifiedAt,
-                lastModifiedAgoMs = now - modifiedAt,
-                tags = summary.tags
-            )
-        } catch (e: Exception) {
-            lprintln("warning,welcome", "Skipping ${dir.name}: ${e.message}")
-        }
+        candidates += WelcomeDirCandidate(
+            filename = dir.name,
+            dir = dir,
+            metadataFile = metadataFile,
+            lastModifiedEpochMs = metadataFile.lastModified(),
+            sizeBytes = metadataFile.length()
+        )
     }
 
-    return entries.sortedWith(
-        compareBy<WelcomeEntry> { recencyOrder[it.filename] ?: Int.MAX_VALUE }
+    return candidates.sortedWith(
+        compareBy<WelcomeDirCandidate> { recencyOrder[it.filename] ?: Int.MAX_VALUE }
             .thenByDescending { it.lastModifiedEpochMs }
     )
+}
+
+/**
+ * Expensive per-document step: parse (or reuse a cached parse of) the document metadata to obtain
+ * its box count and tags. Returns null if the document can't be read.
+ */
+fun summarizeWelcomeCandidate(
+    candidate: WelcomeDirCandidate,
+    now: Long = System.currentTimeMillis(),
+    savingContext: SavingContext = SavingContext()
+): WelcomeEntry? {
+    return try {
+        val summary = cachedWorkspaceDocumentSummary(savingContext, candidate)
+        WelcomeEntry(
+            filename = candidate.filename,
+            numBoxes = summary.numBoxes,
+            sizeBytes = candidate.sizeBytes,
+            lastModifiedEpochMs = candidate.lastModifiedEpochMs,
+            lastModifiedAgoMs = now - candidate.lastModifiedEpochMs,
+            tags = summary.tags
+        )
+    } catch (e: Exception) {
+        lprintln("warning,welcome", "Skipping ${candidate.filename}: ${e.message}")
+        null
+    }
+}
+
+fun welcomeDir(base: String, recents: List<String>): List<WelcomeEntry> {
+    val now = System.currentTimeMillis()
+    val savingContext = SavingContext()
+    return welcomeDirCandidates(base, recents)
+        .mapNotNull { summarizeWelcomeCandidate(it, now, savingContext) }
 }
 
 fun projectsDir(base: String): File {

@@ -4154,6 +4154,60 @@
         `).join("");
     }
 
+    // Proof-of-life streaming: read the NDJSON document stream and paint each document as it
+    // arrives, instead of blocking on the full /api/welcome-docs payload. Returns true if at
+    // least one document was streamed. The canonical loadWelcomeDocs() still runs afterwards to
+    // fill in settings/projects/tags and reconcile state (it hits a warm server-side cache).
+    async function streamWelcomeDocs() {
+        try {
+            const response = await fetch("/api/welcome-docs/stream", { cache: "no-store" });
+            if (!response.ok || !response.body || !response.body.getReader) return false;
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            const streamed = [];
+            state.documents = streamed;
+
+            let renderQueued = false;
+            const scheduleRender = () => {
+                if (renderQueued) return;
+                renderQueued = true;
+                const run = () => { renderQueued = false; renderList(); };
+                if (typeof requestAnimationFrame === "function") requestAnimationFrame(run);
+                else setTimeout(run, 16);
+            };
+
+            let buffer = "";
+            const consume = (chunk) => {
+                buffer += chunk;
+                let newline;
+                while ((newline = buffer.indexOf("\n")) >= 0) {
+                    const line = buffer.slice(0, newline).trim();
+                    buffer = buffer.slice(newline + 1);
+                    if (!line) continue;
+                    try {
+                        streamed.push(JSON.parse(line));
+                        scheduleRender();
+                    } catch (_) {
+                        // ignore partial/garbled lines
+                    }
+                }
+            };
+
+            for (;;) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                consume(decoder.decode(value, { stream: true }));
+            }
+            consume(decoder.decode());
+            renderList();
+            return streamed.length > 0;
+        } catch (error) {
+            console.error("Failed to stream welcome docs", error);
+            return false;
+        }
+    }
+
     async function loadWelcomeDocs() {
         try {
             const response = await fetch("/api/welcome-docs", { cache: "no-store" });
@@ -5856,7 +5910,9 @@
     renderMavenClasspath();
     renderOscSettings();
     installHandlers();
-    loadWelcomeDocs();
+    // Stream documents in for an immediate first paint, then fetch the full payload (settings,
+    // projects, tags) which reconciles state against a now-warm server-side cache.
+    streamWelcomeDocs().finally(() => loadWelcomeDocs());
     loadWelcomeChangelog();
     loadMavenClasspath();
     connectWelcomeEvents();

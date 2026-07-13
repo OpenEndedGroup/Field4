@@ -366,6 +366,7 @@ object SemanticRetrievalService {
     private const val INTENT_VECTOR = "intentVector"
     private const val IMPLEMENTATION_VECTOR = "implementationVector"
     private const val META_FILE = "field-semantic-search.meta"
+    private const val SETTINGS_STATUS_TTL_MS = 15_000L
     val availableCorpora: List<String> = listOf("field-internals", "workspace", "documentation")
 
     private val cacheRoot: Path = Paths.get(
@@ -470,7 +471,84 @@ object SemanticRetrievalService {
         return computeStatus("Semantic retrieval index has not been built in this process.")
     }
 
+    // settingsStatus() is polled by the welcome screen (and re-fetched on every workspace event).
+    // Beyond the fingerprint it opens the Lucene index twice and does two recursive directory-size
+    // walks, so serve a short-lived cached copy to collapse bursts of polls into one computation.
+    @Volatile
+    private var settingsStatusCache: Pair<Long, SemanticRetrievalSettingsStatus>? = null
+
+    // Single-flight guard for background settings-status recomputes from settingsStatusSnapshot().
+    private val settingsRefreshLock = Any()
+    private var settingsRefreshing = false
+
     fun settingsStatus(): SemanticRetrievalSettingsStatus {
+        settingsStatusCache?.let {
+            if (System.currentTimeMillis() - it.first < SETTINGS_STATUS_TTL_MS) return it.second
+        }
+        val computed = computeSettingsStatus()
+        settingsStatusCache = System.currentTimeMillis() to computed
+        return computed
+    }
+
+    /**
+     * Non-blocking counterpart to [settingsStatus] for the welcome screen. Returns the last
+     * computed status immediately (or a cheap placeholder before the first compute finishes) and
+     * refreshes in the background when stale. Keeps the one-time corpus-fingerprint rescan and the
+     * Lucene/directory-size walks off the caller's thread so they can't stall the shared
+     * workspace-search dispatcher — and, through it, a document the user opens right after.
+     */
+    fun settingsStatusSnapshot(): SemanticRetrievalSettingsStatus {
+        val cached = settingsStatusCache
+        if (cached == null || System.currentTimeMillis() - cached.first >= SETTINGS_STATUS_TTL_MS) {
+            triggerSettingsRefresh()
+        }
+        return cached?.second ?: settingsStatusPlaceholder()
+    }
+
+    private fun triggerSettingsRefresh() {
+        synchronized(settingsRefreshLock) {
+            if (settingsRefreshing) return
+            settingsRefreshing = true
+        }
+        thread(name = "semantic-settings-status", isDaemon = true) {
+            try {
+                val computed = computeSettingsStatus()
+                settingsStatusCache = System.currentTimeMillis() to computed
+            } catch (_: Throwable) {
+                // Keep the prior snapshot; the next poll retries.
+            } finally {
+                synchronized(settingsRefreshLock) { settingsRefreshing = false }
+            }
+        }
+    }
+
+    private fun settingsStatusPlaceholder(): SemanticRetrievalSettingsStatus {
+        val config = currentConfig()
+        val model = OnnxSemanticEmbedder.Config.fromSettings(config)
+        val status = lastStatus ?: SemanticRetrievalStatus(
+            enabled = config.enabled,
+            indexPath = indexPath().absolutePathString(),
+            indexExists = false,
+            message = "Gathering semantic search status…"
+        )
+        return SemanticRetrievalSettingsStatus(
+            config = config,
+            status = status,
+            model = modelInfo(),
+            presets = presets,
+            modelFile = fileState(model.modelPath?.absolutePathString().orEmpty()),
+            tokenizerFile = fileState(model.tokenizerPath?.absolutePathString().orEmpty()),
+            indexSizeBytes = 0L,
+            modelCacheSizeBytes = 0L,
+            configPath = configPath.absolutePathString(),
+            cacheRoot = cacheRoot.absolutePathString(),
+            downloadRunning = downloadRunning,
+            rebuild = rebuildStatus,
+            message = "Gathering semantic search status…"
+        )
+    }
+
+    private fun computeSettingsStatus(): SemanticRetrievalSettingsStatus {
         val config = currentConfig()
         val model = OnnxSemanticEmbedder.Config.fromSettings(config)
         val effectiveModel = model.modelPath?.absolutePathString().orEmpty()
@@ -553,6 +631,7 @@ object SemanticRetrievalService {
             }
             else -> error("Unknown semantic search cache target '${request.target}'.")
         }
+        invalidateStatusCaches()
         settingsStatus().copy(message = "Deleted semantic search ${request.target} cache.")
     }
 
@@ -599,6 +678,9 @@ object SemanticRetrievalService {
             indexedCapsules = indexedCapsules
         )
         rebuildStatus = finished
+        // The index/meta just changed, so cached statuses (staleness, doc counts, sizes) are now
+        // out of date.
+        invalidateStatusCaches()
         broadcastWelcomeEvent("semantic-search-rebuild")
         return finished
     }
@@ -802,7 +884,11 @@ object SemanticRetrievalService {
         val config = currentConfig()
         val meta = readMeta()
         val exists = indexExists()
-        val currentFingerprint = currentCorpusFingerprint()
+        // The fingerprint is a full-workspace scan (parses every document's metadata). It only
+        // feeds the "index stale?" comparison and the displayed current fingerprint, both of which
+        // are meaningless until an index has actually been built — so skip the scan entirely when
+        // no index exists (the common case on the welcome screen).
+        val currentFingerprint = if (exists) currentCorpusFingerprint() else ""
         val indexedFingerprint = meta["corpusFingerprint"].orEmpty()
         val documents = if (exists) {
             runCatching {
@@ -892,7 +978,14 @@ object SemanticRetrievalService {
         embedder?.close()
         embedder = null
         embedderMessage = ""
+        invalidateStatusCaches()
+    }
+
+    // Drop every memoized status so the next read reflects a config/index/workspace change.
+    private fun invalidateStatusCaches() {
         lastStatus = null
+        settingsStatusCache = null
+        fingerprintCache = null
     }
 
     private fun semanticEmbeddingBatchSize(): Int =
@@ -1385,7 +1478,43 @@ object SemanticRetrievalService {
         return payload.sha256Id()
     }
 
-    private fun currentCorpusFingerprint(): String = corpusFingerprint(workspaceSidecarRecords())
+    // Memoize the (expensive) corpus fingerprint against a cheap signature built purely from
+    // per-document metadata.edn mtime+size — no EDN parsing. Saving a document rewrites its
+    // metadata.edn, so this signature changes whenever content that could affect the fingerprint
+    // changes, and we only pay the full scan again after a real edit.
+    @Volatile
+    private var fingerprintCache: Pair<String, String>? = null
+
+    private fun currentCorpusFingerprint(): String {
+        val signature = workspaceFingerprintSignature()
+        fingerprintCache?.let { if (it.first == signature) return it.second }
+        val fingerprint = corpusFingerprint(workspaceSidecarRecords())
+        fingerprintCache = signature to fingerprint
+        return fingerprint
+    }
+
+    private fun workspaceFingerprintSignature(): String {
+        val root = workspaceRootPath() ?: return ""
+        if (!Files.isDirectory(root)) return ""
+        return runCatching {
+            Files.list(root).use { stream ->
+                stream
+                    .filter { Files.isDirectory(it) }
+                    .map { dir ->
+                        val meta = dir.resolve(SavingContext.METADATA_EDN)
+                        if (!Files.isRegularFile(meta)) return@map ""
+                        val name = dir.fileName?.toString().orEmpty()
+                        val mtime = runCatching { Files.getLastModifiedTime(meta).toMillis() }.getOrDefault(0L)
+                        val size = runCatching { Files.size(meta) }.getOrDefault(0L)
+                        "$name:$mtime:$size"
+                    }
+                    .filter { it.isNotBlank() }
+                    .sorted()
+                    .toList()
+                    .joinToString("\n")
+            }
+        }.getOrDefault("")
+    }
 
     private fun Any?.isTrueLike(): Boolean = when (this) {
         is Boolean -> this

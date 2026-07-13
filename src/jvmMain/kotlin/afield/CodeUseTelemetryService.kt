@@ -295,6 +295,7 @@ object CodeUseTelemetryService {
     private const val QUEUE_CAPACITY = 4096
     private const val ANALYSIS_QUEUE_CAPACITY = 2048
     private const val MAX_SOURCE_CHARS = 1_000_000
+    private const val SUMMARY_CACHE_TTL_MS = 5_000L
     private val json = Json {
         encodeDefaults = true
         ignoreUnknownKeys = true
@@ -320,6 +321,16 @@ object CodeUseTelemetryService {
 
     @Volatile
     private var schemaReady = false
+
+    // The welcome screen polls summary() repeatedly; the counts it needs come from several full
+    // COUNT(*) scans over the telemetry SQLite tables. Serve a short-lived cached copy so bursts
+    // of polls don't each re-scan the database.
+    @Volatile
+    private var summaryCache: Pair<Long, CodeUseSummary>? = null
+
+    // Single-flight guard for background summary recomputes kicked off by summarySnapshot().
+    private val summaryRefreshLock = Any()
+    private var summaryRefreshing = false
 
     @Volatile
     private var fallbackDefinitionsCache: Pair<Long, List<KotlinDefinitionRecord>>? = null
@@ -448,6 +459,72 @@ object CodeUseTelemetryService {
     fun summary(): CodeUseSummary {
         refreshQuietMode()
         start()
+        summaryCache?.let { if (now() - it.first < SUMMARY_CACHE_TTL_MS) return it.second }
+        val computed = computeSummary()
+        summaryCache = now() to computed
+        return computed
+    }
+
+    /**
+     * Non-blocking counterpart to [summary] for hot polling paths such as the welcome screen.
+     * Returns the most recent computed summary immediately (even if a little stale), or a cheap
+     * "still gathering" placeholder if none has been computed yet, and kicks off a background
+     * recompute when the cache is stale. It never runs the full-table SQLite scans on the caller's
+     * thread, so it can't stall Netty request or workspace-search dispatcher threads — the cold
+     * first computeSummary() (which can take many seconds on a large database) no longer blocks the
+     * welcome response or, by dispatcher starvation, a document the user clicks right after.
+     */
+    fun summarySnapshot(): CodeUseSummary {
+        refreshQuietMode()
+        start()
+        val cached = summaryCache
+        if (cached == null || now() - cached.first >= SUMMARY_CACHE_TTL_MS) {
+            triggerSummaryRefresh()
+        }
+        return cached?.second ?: computingSummaryPlaceholder()
+    }
+
+    private fun triggerSummaryRefresh() {
+        synchronized(summaryRefreshLock) {
+            if (summaryRefreshing) return
+            summaryRefreshing = true
+        }
+        thread(name = "code-use-telemetry-summary", isDaemon = true) {
+            try {
+                val computed = computeSummary()
+                summaryCache = now() to computed
+            } catch (_: Throwable) {
+                // Leave the previous snapshot in place; the next poll retries.
+            } finally {
+                synchronized(summaryRefreshLock) { summaryRefreshing = false }
+            }
+        }
+    }
+
+    private fun computingSummaryPlaceholder(): CodeUseSummary {
+        val health = semanticSidecarHealthCache?.second
+        val message = if (enabled) "Gathering code-use statistics…" else "Code-use telemetry is disabled."
+        return CodeUseSummary(
+            enabled = enabled,
+            databasePath = databasePath.absolutePathString(),
+            queueSize = queue.size,
+            droppedEvents = droppedEvents.get(),
+            quietMode = quietMode,
+            analyzerQueueSize = analysisQueue.size,
+            droppedAnalysisJobs = droppedAnalysisJobs.get(),
+            analyzerCompletedJobs = analyzerCompletedJobs.get(),
+            analyzerJobsPerMinute = analyzerJobsPerMinute(),
+            catchupQueuedJobs = catchupQueuedJobs.get(),
+            analyzerBackend = health?.let { storeAnalyzerBackend(it) } ?: "source-index",
+            analyzerMessage = message,
+            semanticBackend = health?.backend ?: "source-index-fallback",
+            semanticMessage = health?.message.orEmpty(),
+            semanticSidecarUrl = health?.url ?: semanticSidecarUrl,
+            message = message
+        )
+    }
+
+    private fun computeSummary(): CodeUseSummary {
         val semanticHealth = semanticSidecarHealthStatus()
         if (!enabled) {
             return CodeUseSummary(

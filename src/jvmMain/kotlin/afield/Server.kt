@@ -2992,6 +2992,10 @@ class Server {
 
                     install(Compression) {
                         gzip()
+                        // The welcome-docs stream flushes one NDJSON line per document as it is
+                        // parsed; routing it through the gzip buffer would coalesce those flushes
+                        // and defeat the point of streaming, so leave it uncompressed.
+                        excludeContentType(ContentType.parse("application/x-ndjson"))
                     }
 
                     install(WebSockets) {
@@ -3091,6 +3095,13 @@ class Server {
                                 .getOrElse { File(home).absolutePath }
                             val defaultWorkspace = runCatching { displayWorkspacePath(defaultWorkspacePath()) }
                                 .getOrElse { defaultWorkspacePath() }
+                            // Non-blocking snapshots: these return the last computed value instantly
+                            // and refresh in the background, so the welcome poll never runs the
+                            // telemetry SQLite scans or the semantic corpus rescan on a request or
+                            // workspace-search dispatcher thread (which would otherwise stall a
+                            // document the user clicks right after the list appears).
+                            val codeUseSummary = CodeUseTelemetryService.summarySnapshot()
+                            val semanticSettings = SemanticRetrievalService.settingsStatusSnapshot()
                             call.respond(
                                 WelcomeDocsResponse(
                                     docs,
@@ -3107,10 +3118,56 @@ class Server {
                                     PythonInterface.currentPythonSettingsStatus(),
                                     CompletionDocPolishMonitor.status(),
                                     AiToolUseImprovementMonitor.status(),
-                                    CodeUseTelemetryService.summary(),
-                                    SemanticRetrievalService.settingsStatus()
+                                    codeUseSummary,
+                                    semanticSettings
                                 )
                             )
+                        }
+
+                        // Streaming counterpart to /api/welcome-docs: emits one WelcomeEntry per
+                        // line (NDJSON) as each document's metadata is summarized, in the same
+                        // sorted order, so the welcome screen can paint documents as they arrive
+                        // instead of blocking on the whole workspace scan.
+                        get("/api/welcome-docs/stream") {
+                            val recentDocuments = parseRecentDocuments(recentFns)
+                            val liveWorkspaceCounts = documents.values
+                                .asSequence()
+                                .filter { it.sessions.isNotEmpty() && !it.ephemeral }
+                                .groupingBy { it.documentName }
+                                .fold(0) { count, info -> count + info.sessions.size }
+                            val runningExecutionCounts = documents.values
+                                .asSequence()
+                                .filter { !it.ephemeral }
+                                .map { info ->
+                                    info.documentName to info.boxes.values.count { box ->
+                                        box.currentRunningStates.isNotEmpty() ||
+                                                box.jobs.any { job -> !job.isCancelled && job.isActive }
+                                    }
+                                }
+                                .filter { (_, count) -> count > 0 }
+                                .groupBy({ it.first }, { it.second })
+                                .mapValues { (_, counts) -> counts.sum() }
+
+                            val candidates = withContext(workspaceSearchDispatcher) {
+                                welcomeDirCandidates(home, recentDocuments)
+                            }
+
+                            call.respondTextWriter(ContentType.parse("application/x-ndjson")) {
+                                val now = System.currentTimeMillis()
+                                val savingContext = SavingContext()
+                                for (candidate in candidates) {
+                                    val entry = withContext(workspaceSearchDispatcher) {
+                                        summarizeWelcomeCandidate(candidate, now, savingContext)
+                                    } ?: continue
+                                    val merged = entry.copy(
+                                        runningSessionCount = liveWorkspaceCounts[entry.filename] ?: 0,
+                                        runningExecutionCount = runningExecutionCounts[entry.filename] ?: 0
+                                    )
+                                    write(Json.encodeToString(merged))
+                                    write("\n")
+                                    flush()
+                                }
+                            }
                         }
 
                         get("/api/completion-doc-polish") {

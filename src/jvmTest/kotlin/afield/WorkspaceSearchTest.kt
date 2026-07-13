@@ -45,4 +45,68 @@ class WorkspaceSearchTest {
             workspace.deleteRecursively()
         }
     }
+
+    private fun writeDocument(workspace: File, name: String, boxes: String) {
+        val doc = File(workspace, name).apply { mkdirs() }
+        File(doc, SavingContext.METADATA_EDN).writeText(
+            "{:version 2\n :boxes [$boxes]}",
+            Charsets.UTF_8
+        )
+    }
+
+    @Test
+    fun welcomeDirReportsBoxCountsAndTags() {
+        val workspace = Files.createTempDirectory("field-welcome-dir").toFile()
+        try {
+            writeDocument(
+                workspace, "alpha",
+                """{:id "root" :properties {:name "Root" :metadata "tags:\n  - demo"}}
+                   {:id "b1" :properties {:name "Box One"}}"""
+            )
+            writeDocument(
+                workspace, "beta",
+                """{:id "b1" :properties {:name "Only Box"}}"""
+            )
+
+            val docs = welcomeDir(workspace.absolutePath, emptyList())
+
+            assertEquals(setOf("alpha", "beta"), docs.map { it.filename }.toSet())
+            val alpha = docs.single { it.filename == "alpha" }
+            val beta = docs.single { it.filename == "beta" }
+            assertEquals(2, alpha.numBoxes)
+            assertEquals(1, beta.numBoxes)
+            assertTrue(alpha.tags.contains("demo"), "expected 'demo' tag, got ${alpha.tags}")
+        } finally {
+            workspace.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun streamingCandidatesMatchWelcomeDir() {
+        val workspace = Files.createTempDirectory("field-welcome-stream").toFile()
+        try {
+            writeDocument(workspace, "one", """{:id "b" :properties {:name "B"}}""")
+            writeDocument(
+                workspace, "two",
+                """{:id "root" :properties {:name "R" :metadata "tags:\n  - t2"}}
+                   {:id "b" :properties {:name "B"}}"""
+            )
+
+            // The bulk path and the streaming path (candidates + per-doc summarize) must produce
+            // identical entries in identical order, since the client renders the streamed rows.
+            val bulk = welcomeDir(workspace.absolutePath, emptyList())
+            val streamed = welcomeDirCandidates(workspace.absolutePath, emptyList())
+                .mapNotNull { summarizeWelcomeCandidate(it) }
+
+            assertEquals(bulk.map { it.filename }, streamed.map { it.filename })
+            assertEquals(bulk.map { it.numBoxes }, streamed.map { it.numBoxes })
+            assertEquals(bulk.map { it.tags }, streamed.map { it.tags })
+
+            // A second call (warm summary cache) must still return the same data.
+            val cached = welcomeDir(workspace.absolutePath, emptyList())
+            assertEquals(bulk.map { it.filename to it.numBoxes }, cached.map { it.filename to it.numBoxes })
+        } finally {
+            workspace.deleteRecursively()
+        }
+    }
 }
