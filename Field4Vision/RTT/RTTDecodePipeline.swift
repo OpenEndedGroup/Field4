@@ -12,7 +12,7 @@ import CoreVideo
 /// actor so `RTTStream` can be `@MainActor` for SwiftUI without dragging decoder state onto main; the
 /// only thing crossing back is the finished pixel buffer via [onPixelBuffer].
 final class RTTDecodePipeline {
-    var onPixelBuffer: ((CVPixelBuffer, UInt64) -> Void)?
+    var onPixelBuffer: ((CVPixelBuffer, UInt64, _ stereo: Bool) -> Void)?
 
     private let decodeQueue = DispatchQueue(label: "com.field4.vision.rtt.decode", qos: .userInitiated)
     private let lock = NSLock()
@@ -74,8 +74,8 @@ final class RTTDecodePipeline {
     private func decode(_ frame: ReassembledFrame) {
         if decoder == nil || codec != frame.codec {
             let dec = VideoDecoder(codec: frame.codec)
-            dec.onPixelBuffer = { [weak self] pixelBuffer, pts in
-                self?.onPixelBuffer?(pixelBuffer, pts)
+            dec.onPixelBuffer = { [weak self] pixelBuffer, pts, stereo in
+                self?.onPixelBuffer?(pixelBuffer, pts, stereo)
             }
             decoder = dec
             codec = frame.codec

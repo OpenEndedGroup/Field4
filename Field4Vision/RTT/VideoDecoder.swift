@@ -14,7 +14,7 @@ import CoreVideo
 final class VideoDecoder {
     /// Decoded frames, in decode order (reordering is disabled on the encoder). Called on whatever
     /// queue VideoToolbox uses; the caller hops as needed.
-    var onPixelBuffer: ((CVPixelBuffer, _ ptsMicros: UInt64) -> Void)?
+    var onPixelBuffer: ((CVPixelBuffer, _ ptsMicros: UInt64, _ stereo: Bool) -> Void)?
 
     private var session: VTDecompressionSession?
     private var formatDesc: CMFormatDescription?
@@ -79,7 +79,7 @@ final class VideoDecoder {
                 return
             }
             let micros = pts.isValid ? UInt64(CMTimeGetSeconds(pts) * 1_000_000) : frame.ptsMicros
-            self?.onPixelBuffer?(imageBuffer, micros)
+            self?.onPixelBuffer?(imageBuffer, micros, frame.stereo)
         }
     }
 

@@ -17,6 +17,7 @@ enum RTTWire {
     static let flagKeyframe: UInt8  = 1 << 0   // set on *every* fragment of an IDR frame
     static let flagFrameEnd: UInt8  = 1 << 1   // set on the last fragment (fragIndex == fragCount-1)
     static let flagParamSets: UInt8 = 1 << 2   // informational
+    static let flagStereoSbs: UInt8 = 1 << 3   // frame is side-by-side stereo (left|right) → present per-eye
 
     enum Codec: UInt8 {
         case hevc = 0
@@ -39,6 +40,7 @@ struct RTTPacket {
 
     var isKeyframe: Bool { flags & RTTWire.flagKeyframe != 0 }
     var isFrameEnd: Bool { flags & RTTWire.flagFrameEnd != 0 }
+    var isStereoSbs: Bool { flags & RTTWire.flagStereoSbs != 0 }
 
     /// Parse one datagram. Returns nil (and never traps) on anything malformed: a short buffer,
     /// an unknown version, an unknown codec, or an out-of-range fragment index. A one-way lossy

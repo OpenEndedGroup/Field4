@@ -19,6 +19,8 @@ final class RTTStream {
 
     var isRunning = false
     var status = "Idle"
+    /// The current stream is side-by-side stereo (decoded frame is left|right) — present per-eye.
+    var isStereo = false
     var frameSize = CGSize.zero
     var decodedFrameCount = 0
     var measuredFPS = 0.0
@@ -43,8 +45,8 @@ final class RTTStream {
 
         // Decode pipeline: lives on the recv queue; hands finished frames back to the main actor.
         let pipeline = RTTDecodePipeline()
-        pipeline.onPixelBuffer = { [weak self] pixelBuffer, _ in
-            Task { @MainActor in self?.present(pixelBuffer) }
+        pipeline.onPixelBuffer = { [weak self] pixelBuffer, _, stereo in
+            Task { @MainActor in self?.present(pixelBuffer, stereo: stereo) }
         }
         self.pipeline = pipeline
 
@@ -75,7 +77,8 @@ final class RTTStream {
     }
 
     /// Main-actor: upload the decoded frame to the display texture and update stats.
-    private func present(_ pixelBuffer: CVPixelBuffer) {
+    private func present(_ pixelBuffer: CVPixelBuffer, stereo: Bool) {
+        if isStereo != stereo { isStereo = stereo }
         let resource = converter?.update(with: pixelBuffer)
         if let resource, resource !== displayTexture {
             displayTexture = resource
@@ -98,7 +101,8 @@ final class RTTStream {
             fpsWindowCount = 0
             fpsWindowStart = now
             if isRunning {
-                status = "Streaming \(Int(frameSize.width))×\(Int(frameSize.height)) @ \(Int(measuredFPS.rounded())) fps"
+                let mode = isStereo ? " (stereo SBS)" : ""
+                status = "Streaming \(Int(frameSize.width))×\(Int(frameSize.height)) @ \(Int(measuredFPS.rounded())) fps\(mode)"
                 shellLog.notice("RTT \(self.status, privacy: .public)")
             }
         }

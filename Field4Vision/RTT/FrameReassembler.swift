@@ -6,6 +6,8 @@ struct ReassembledFrame {
     var ptsMicros: UInt64
     var codec: RTTWire.Codec
     var isKeyframe: Bool
+    /// The decoded frame is a side-by-side stereo pair (left|right) to present per-eye.
+    var stereo: Bool
     /// Full access unit: `00 00 00 01`-prefixed NAL units, with VPS/SPS/PPS inline on keyframes.
     var annexB: Data
 }
@@ -30,6 +32,7 @@ final class FrameReassembler {
         let fragCount: Int
         let codec: RTTWire.Codec
         var isKeyframe: Bool
+        var stereo: Bool
         var ptsMicros: UInt64
         var fragments: [Data?]      // indexed by fragIndex; nil = not yet arrived
         var received: Int
@@ -72,15 +75,17 @@ final class FrameReassembler {
             fragCount: Int(pkt.fragCount),
             codec: pkt.codec,
             isKeyframe: pkt.isKeyframe,
+            stereo: pkt.isStereoSbs,
             ptsMicros: pkt.ptsMicros,
             fragments: Array(repeating: nil, count: Int(pkt.fragCount)),
             received: 0
         )
 
-        // KEYFRAME is set on every fragment of an IDR; OR them so a late-arriving fragment can't
-        // unset it. Same idea for pts — take the value that rode in with each fragment (identical
+        // KEYFRAME / STEREO_SBS are set on every fragment; OR them so a late-arriving fragment can't
+        // unset them. Same idea for pts — take the value that rode in with each fragment (identical
         // across a frame in practice).
         partial.isKeyframe = partial.isKeyframe || pkt.isKeyframe
+        partial.stereo = partial.stereo || pkt.isStereoSbs
         partial.ptsMicros = pkt.ptsMicros
 
         let idx = Int(pkt.fragIndex)
@@ -101,6 +106,7 @@ final class FrameReassembler {
                                     ptsMicros: partial.ptsMicros,
                                     codec: partial.codec,
                                     isKeyframe: partial.isKeyframe,
+                                    stereo: partial.stereo,
                                     annexB: annexB)
         }
 
