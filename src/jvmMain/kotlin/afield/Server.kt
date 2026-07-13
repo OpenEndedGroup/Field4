@@ -975,6 +975,7 @@ private fun sendWithOutputBackPressure(
     message: Message,
     encoded: String = Json.encodeToString(message)
 ) {
+    NetStats.sent(encoded.length) // one text frame per session; _send() fans out through here
     if (!isBackPressuredOutputMessage(message)) {
         GlobalScope.launch {
             session.send(encoded)
@@ -1707,6 +1708,7 @@ class Server {
             runAll(plugins)
             runAll(installHandlers)
             UserThemeManager.start()
+            NetStats.start() // pinned "net" row: WebSocket packet/KB rates to/from the front end
 
             inMain {
                 while (true) {
@@ -4093,6 +4095,7 @@ class Server {
                                 for (frame in incoming) {
                                     if (frame is Frame.Text) {
                                         val text = frame.readText()
+                                        NetStats.received(frame.data.size) // front end -> backend, raw wire bytes
                                         sessions.entries.removeIf { (session, info) ->
                                             if (session.outgoing.isClosedForSend) {
                                                 detachDocumentSession(session, info)

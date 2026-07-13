@@ -33,6 +33,34 @@ On Windows:
 .\field.ps1
 ```
 
+This is the one command you need: it builds Field (compiling the Kotlin/JVM
+backend and the JavaScript front end via the Gradle wrapper), then launches the
+backend and the Electron window together.
+
+The **first run compiles the whole project and downloads large native
+dependencies** (LWJGL graphics/audio, Lucene, ONNX Runtime, and others), so
+expect it to take several minutes and a good chunk of bandwidth. Subsequent
+launches are incremental and start in a few seconds. If the build fails, the
+script stops and prints the Gradle errors instead of launching a stale build —
+fix them and re-run.
+
+The backend runs in the terminal you launched from, with a live status console
+pinned at the top (startup progress, frame rate, GPU uploads, compile/evaluate
+timings, and front-end network traffic); everything else scrolls below it. You
+can scroll back through the log with PageUp/PageDown or the mouse wheel, and
+press End to return to following the latest output.
+
+Once you know your build is current, you can skip the build check for a faster
+relaunch:
+
+```bash
+AFIELD_SKIP_BUILD=1 ./field.sh
+```
+
+```powershell
+$env:AFIELD_SKIP_BUILD = "1"; .\field.ps1
+```
+
 ## OpenAI Features
 
 Some experimental AI-assisted editing, documentation search, and autocomplete

@@ -102,12 +102,21 @@ ensure_semantic_sidecar() {
     nohup ./gradlew -p tools/code-use-semantic-sidecar run --args="--port $PORT --workspace $DIR" >> "$LOG_FILE" 2>&1 < /dev/null &
 }
 
-ensure_launch_spec() {
-    ARGS_FILE="build/field-launch/args"
-    JAVA_FILE="build/field-launch/java"
-    if [ ! -f "$ARGS_FILE" ] || [ ! -f "$JAVA_FILE" ] || [ "build.gradle.kts" -nt "$ARGS_FILE" ] || [ "${FIELD_REFRESH:-0}" = "1" ]; then
-        echo "field: resolving launch spec via Gradle (one-time; set FIELD_REFRESH=1 to redo)…" >&2
-        ./gradlew -q dumpFieldLaunch
+build_field() {
+    # Always build before launching so a fresh clone (and every edit-and-relaunch) actually runs
+    # current code. `jvmJar` is the one target that does it all: it compiles Kotlin/JVM, runs the JS
+    # webpack (jsBrowserDevelopmentWebpack), and bundles afield.mjs into the served static/ resources.
+    # `dumpFieldLaunch` then writes the java+classpath+electron launch spec. Both are incremental, so
+    # this is a quick up-to-date check once built. Set AFIELD_SKIP_BUILD=1 to skip when you know the
+    # build is current. Gradle output is shown (not -q): the first build compiles the whole project.
+    if [ "${AFIELD_SKIP_BUILD:-0}" = "1" ] && [ -f build/field-launch/args ]; then
+        echo "field: AFIELD_SKIP_BUILD=1 — skipping build" >&2
+        return 0
+    fi
+    echo "field: building (JVM + JS; the first run compiles everything and can take a few minutes)…" >&2
+    if ! ./gradlew jvmJar dumpFieldLaunch; then
+        echo "field: BUILD FAILED — fix the errors above, then re-run ./field.sh" >&2
+        return 1
     fi
 }
 
@@ -138,7 +147,7 @@ launch_electron_when_ready() {
 
 run_field() {
     ensure_semantic_sidecar
-    ensure_launch_spec
+    build_field || exit 1
 
     PORT="${PORT:-9092}"; export PORT
     export AFIELD_PORT_FALLBACK_COUNT="${AFIELD_PORT_FALLBACK_COUNT:-1}"
@@ -159,7 +168,11 @@ run_field() {
     # terminal is restored (drop scroll region + leave the alternate screen) even if the backend was
     # hard-killed and its JVM shutdown hook never ran. Emitting these when not in the alt buffer is a
     # harmless no-op.
-    restore_terminal() { [ -t 1 ] && printf '\033[r\033[?1049l' 2>/dev/null; }
+    restore_terminal() {
+        [ -t 1 ] || return 0
+        stty sane </dev/tty 2>/dev/null                         # undo raw mode if scrollback was on
+        printf '\033[?1000l\033[?1006l\033[r\033[?1049l' 2>/dev/null # mouse off, drop region, leave alt
+    }
     trap 'restore_terminal' EXIT
     trap 'kill "$BACKEND_PID" "$ELECTRON_PID" 2>/dev/null' INT TERM
     while kill -0 "$BACKEND_PID" 2>/dev/null && kill -0 "$ELECTRON_PID" 2>/dev/null; do

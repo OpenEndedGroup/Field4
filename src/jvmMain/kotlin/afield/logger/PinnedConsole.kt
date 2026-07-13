@@ -5,12 +5,6 @@ import afield.ai.core.LogDispatcher
 import afield.ai.core.LogEvent
 import afield.ai.core.LogSink
 import afield.ai.core.StdoutLog
-import com.github.ajalt.mordant.input.InputEvent
-import com.github.ajalt.mordant.input.KeyboardEvent
-import com.github.ajalt.mordant.input.MouseEvent
-import com.github.ajalt.mordant.input.MouseTracking
-import com.github.ajalt.mordant.input.RawModeScope
-import com.github.ajalt.mordant.input.enterRawModeOrNull
 import com.github.ajalt.mordant.rendering.AnsiLevel
 import com.github.ajalt.mordant.rendering.TextColors
 import com.github.ajalt.mordant.rendering.TextStyle
@@ -21,7 +15,6 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.thread
 import kotlin.concurrent.withLock
 import kotlin.system.exitProcess
-import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * A [LogSink] that pins chosen channels to a small, non-scrolling region at the *top* of the
@@ -58,11 +51,13 @@ object PinnedConsole {
     /**
      * Channels pinned by default once startup collapses — the worst per-frame terminal scrollers.
      * `fps` = the renderer's frames-per-second line; `upload` = vertex + virtual-texture GPU uploads;
-     * `perf` = the remaining `info,perf` dumps (GPU scopes, CPU spans, per-module perf, …). Order
-     * matters: `fps`/`upload` precede `perf`, so those lines route to their own rows (matchedPin picks
-     * the first pinned tag present in the channel) and only the leftover perf lines fall to the perf row.
+     * `perf` = the remaining `info,perf` dumps (GPU scopes, CPU spans, per-module perf, …); `net` =
+     * WebSocket packet/KB rates to/from the front end (see NetStats); `compile`/`evaluate` = the Kotlin
+     * compile/evaluate timers. Order matters: `fps`/`upload` precede `perf`, so those lines route to
+     * their own rows (matchedPin picks the first pinned tag present in the channel) and only the
+     * leftover perf lines fall to the perf row.
      */
-    private val DEFAULT_PINS = listOf("fps", "upload", "perf")
+    private val DEFAULT_PINS = listOf("fps", "upload", "perf", "net", "compile", "evaluate")
 
     @Volatile private var startedAtNanos: Long? = null
     private val startupFinished = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -142,8 +137,24 @@ object PinnedConsole {
 
 private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
 
-    private class Pinned(val message: String, val channel: String, val timestamp: java.time.Instant)
-    private class OpenBlock(val text: String, val start: java.time.Instant)
+    /**
+     * A displayed pinned channel. Created only when the channel first emits (never speculative), and
+     * removed after [EXPIRE_NANOS] of silence; dimmed after [DIM_NANOS]. Holds either a single latest
+     * line, or — while an lblock is open on the channel — a [BlockState] rendered as a scrolling panel.
+     */
+    private class PinnedEntry {
+        var lastNanos = 0L
+        var at: java.time.Instant = java.time.Instant.EPOCH
+        var channel = ""
+        var dim = false
+        var line: String? = null
+        var block: BlockState? = null
+    }
+
+    /** An open lblock on a pinned channel: a title plus the last few lines emitted inside its scope. */
+    private class BlockState(val id: String, val title: String, val start: java.time.Instant) {
+        val body = ArrayDeque<String>() // recent in-scope lines; capped to BLOCK_HEIGHT (oldest drop = scroll)
+    }
 
     /** A spinner row driven by cheap per-frame [beat] calls instead of one log line per frame. */
     private class Heartbeat(val label: String) {
@@ -164,12 +175,14 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
 
     private val lock = ReentrantLock()
 
-    /** pinned tag -> latest value; iteration order = display order. Guarded by [lock]. */
+    /** The watch list: tags eligible to be pinned. Display order follows this order. Guarded by [lock]. */
     private val pinnedTags = LinkedHashSet(initialTags)
-    private val values = HashMap<String, Pinned>()
 
-    /** Open lblock BEGINs on pinned channels, keyed by blockId, so END can show elapsed time. Guarded by [lock]. */
-    private val openBlocks = HashMap<String, OpenBlock>()
+    /** tag -> live entry. Present only for tags that have emitted recently (see [sweepEntries]). */
+    private val entries = HashMap<String, PinnedEntry>()
+
+    /** Open lblock ids -> owning entry, so END closes the right block and nested lines route to it. */
+    private val openBlocks = HashMap<String, PinnedEntry>()
 
     /** Heartbeat/spinner rows, keyed by channel. Counts are bumped lock-free; structure changes under [lock]. */
     private val heartbeats = java.util.concurrent.ConcurrentHashMap<String, Heartbeat>()
@@ -199,16 +212,18 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
     @Volatile private var running = enabled
 
     /**
-     * Opt-in scrollback (`AFIELD_PIN_SCROLLBACK=1`): keep a ring buffer of non-pinned lines and render
-     * the region ourselves as a pager (PageUp/PageDown/arrows/Home/End + mouse wheel) instead of letting
-     * the terminal scroll it. Requires raw-mode input, which disables the tty's Ctrl-C signal — so we
-     * catch Ctrl-C/q as keys and exit. Off by default: the log region just terminal-scrolls as before.
+     * Scrollback pager — on by default; set `AFIELD_PIN_SCROLLBACK=0` (or `false`) to disable. Keeps a
+     * ring buffer of non-pinned lines and renders the log region ourselves as a pager (PageUp/PageDown/
+     * arrows/Home/End + mouse wheel) instead of letting the terminal scroll it. Input is read from
+     * /dev/tty via `stty` with ISIG kept, so Ctrl-C still signals normally. When disabled (or on
+     * Windows, where the tty control is POSIX-only) the log region just terminal-scrolls as before.
      */
     private val scrollback: Boolean =
-        enabled && System.getenv("AFIELD_PIN_SCROLLBACK").let { it == "1" || it == "true" }
+        enabled && System.getenv("AFIELD_PIN_SCROLLBACK").let { it != "0" && it != "false" }
     private val history = ArrayDeque<String>()   // rendered non-pinned lines (no trailing newline). Guarded by [lock].
     private var scrollUp = 0                      // logical lines the view bottom sits above the newest; 0 = following
-    private var rawScope: RawModeScope? = null
+    @Volatile private var inputActive = false     // stty tweaked + mouse tracking on (needs restoring on shutdown)
+    private var savedStty: String? = null         // original `stty -g` settings, to restore verbatim
 
     init {
         if (enabled) {
@@ -237,18 +252,17 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
     }
 
     override fun log(event: LogEvent) {
-        val tag = matchedPin(event.channel)
         if (!enabled) {
             // Degraded: nothing is pinned; keep the current stdout look, but mark would-be pins.
+            val tag = matchedPin(event.channel)
             if (tag != null) StdoutLog.log(event.copy(channel = "pin,${event.channel}"))
             else StdoutLog.log(event)
             return
         }
         lock.withLock {
-            if (tag != null) {
-                updatePinned(tag, event)
+            if (routePinned(event)) {
                 dirty = true
-                if (reservedRows <= 0) emitScrolling(event) // no room for a region: still show it
+                if (reservedRows <= 0) emitScrolling(event) // no region to draw the pin into: still show it
             } else {
                 emitScrolling(event)
             }
@@ -272,28 +286,87 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
     }
 
     /**
-     * Fold one event into a pinned channel's single row. [lblock] emits a BEGIN then an END event
-     * (each carrying a [LogEvent.blockId]): we show "▸ msg" while the block runs and "✓ msg (N ms)"
-     * when it ends, stripping the internal block-id suffix. A plain lprintln line just shows its
-     * (cleaned) message. Nested lblocks/lines simply overwrite the row with the most recent activity.
+     * Route [event] to a pinned channel if it belongs to one — as the channel's latest line, or, while
+     * an lblock is open, into that block's scrolling body. Entries are created lazily here so a channel
+     * is never shown before it emits. Returns true if the event was consumed by a pinned entry.
      */
-    private fun updatePinned(tag: String, event: LogEvent) {
-        when (event.boundary) {
-            BlockBoundary.BEGIN -> {
-                val text = cleanMessage(event.message)
-                event.blockId?.let { openBlocks[it] = OpenBlock(text, event.timestamp) }
-                values[tag] = Pinned("▸ $text", event.channel, event.timestamp)
+    private fun routePinned(event: LogEvent): Boolean {
+        // Close an open block on its END → "✓ title (N ms)". Swallow orphan END markers either way.
+        if (event.boundary == BlockBoundary.END) {
+            val e = event.blockId?.let { openBlocks.remove(it) }
+            if (e != null) {
+                val b = e.block
+                val ms = if (b != null) java.time.Duration.between(b.start, event.timestamp).toMillis() else 0
+                e.line = "✓ ${b?.title ?: cleanMessage(event.message)} ($ms ms)"
+                e.block = null
+                touch(e, event)
             }
-            BlockBoundary.END -> {
-                val begun = event.blockId?.let { openBlocks.remove(it) }
-                if (begun != null) {
-                    val ms = java.time.Duration.between(begun.start, event.timestamp).toMillis()
-                    values[tag] = Pinned("✓ ${begun.text} ($ms ms)", event.channel, event.timestamp)
-                }
-                // If we never saw the BEGIN (pinned mid-block), ignore the bare "- 'uuid'" end marker.
-            }
-            null -> values[tag] = Pinned(cleanMessage(event.message), event.channel, event.timestamp)
+            return true
         }
+        // A line emitted inside an open pinned block's scope (its indent carries the block id).
+        if (event.indent.isNotEmpty()) {
+            val e = openBlockForIndent(event.indent)
+            if (e != null) {
+                appendBlockLine(e, cleanMessage(event.message))
+                touch(e, event)
+                return true
+            }
+        }
+        val tag = matchedPin(event.channel) ?: return false
+        val e = entries.getOrPut(tag) { PinnedEntry() }
+        touch(e, event)
+        if (event.boundary == BlockBoundary.BEGIN) {
+            e.block = BlockState(event.blockId ?: "", cleanMessage(event.message), event.timestamp)
+            e.line = null
+            event.blockId?.let { openBlocks[it] = e }
+        } else if (e.block != null) {
+            appendBlockLine(e, cleanMessage(event.message)) // a line on the block's own channel
+        } else {
+            e.line = cleanMessage(event.message)
+        }
+        return true
+    }
+
+    private fun touch(e: PinnedEntry, event: LogEvent) {
+        e.lastNanos = System.nanoTime()
+        e.at = event.timestamp
+        e.channel = event.channel
+        e.dim = false
+    }
+
+    private fun appendBlockLine(e: PinnedEntry, line: String) {
+        val b = e.block ?: return
+        b.body.addLast(line)
+        while (b.body.size > BLOCK_HEIGHT) b.body.removeFirst() // keep the last BLOCK_HEIGHT (scroll)
+    }
+
+    /** Find an open block whose id appears as a token in [indent] (lblock pushes "<id>\t" per level). */
+    private fun openBlockForIndent(indent: String): PinnedEntry? {
+        if (openBlocks.isEmpty()) return null
+        val tokens = indent.split('\t')
+        for ((id, e) in openBlocks) if (id.isNotEmpty() && id in tokens) return e
+        return null
+    }
+
+    /** Sweep entries for the dim/expire lifecycle. Must hold [lock]; sets [dirty] on any visible change. */
+    private fun sweepEntries() {
+        if (entries.isEmpty()) return
+        val now = System.nanoTime()
+        val it = entries.entries.iterator()
+        var changed = false
+        while (it.hasNext()) {
+            val e = it.next().value
+            val age = now - e.lastNanos
+            if (age > EXPIRE_NANOS) {
+                e.block?.id?.let { openBlocks.remove(it) }
+                it.remove()
+                changed = true
+            } else {
+                val d = age > DIM_NANOS
+                if (d != e.dim) { e.dim = d; changed = true }
+            }
+        }
+        if (changed) dirty = true
     }
 
     /** Strip lblock's trailing " - '&lt;uuid&gt;'" block-id marker; a no-op for ordinary messages. */
@@ -301,13 +374,15 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
 
     // --- runtime API (called via PinnedConsole) ---
 
-    fun addPinnedTag(tag: String) = lock.withLock { if (pinnedTags.add(tag)) dirty = true }
+    fun addPinnedTag(tag: String) = lock.withLock { pinnedTags.add(tag); Unit } // shows once it emits
 
     fun removePinnedTag(tag: String) = lock.withLock {
-        if (pinnedTags.remove(tag)) { values.remove(tag); dirty = true }
+        pinnedTags.remove(tag)
+        entries.remove(tag)?.block?.id?.let { openBlocks.remove(it) }
+        dirty = true
     }
 
-    fun clearPinned(tag: String) = lock.withLock { if (values.remove(tag) != null) dirty = true }
+    fun clearPinned(tag: String) = lock.withLock { if (entries.remove(tag) != null) dirty = true }
 
     /** Cheap per-frame pulse: bumps [channel]'s spinner row (created on first call). Lock-free steady state. */
     fun beat(channel: String) {
@@ -325,71 +400,132 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
     fun shutdown() {
         running = false
         if (!enabled) return
-        runCatching { rawScope?.close() } // restore cooked tty mode + disable mouse tracking (scrollback)
+        if (inputActive) {
+            runCatching { savedStty?.let { setStty(it) } ?: setStty("sane") } // restore cooked tty mode
+        }
         lock.withLock {
-            // Drop the scroll region, then leave the alternate screen — restoring the terminal to
-            // exactly what it showed before Field started.
-            write("${CSI}r$LEAVE_ALT")
+            // Disable mouse tracking, drop the scroll region, then leave the alternate screen —
+            // restoring the terminal to exactly what it showed before Field started.
+            write((if (inputActive) MOUSE_OFF else "") + "${CSI}r$LEAVE_ALT")
         }
     }
 
     // --- scrollback pager input (only active when AFIELD_PIN_SCROLLBACK=1) ---
+    //
+    // Mordant's raw-mode/input is dead in this JVM (same native-integration gap that breaks its size
+    // detection), so we drive the tty ourselves: `stty -echo -icanon min 1 time 0` for immediate,
+    // unechoed keys — crucially keeping ISIG, so Ctrl-C stays a real signal and the normal shutdown
+    // path still works — plus SGR mouse reporting for the wheel. POSIX only; a no-op on Windows.
+    //
+    // Read keystrokes from /dev/tty, NOT System.in: field.sh backgrounds the backend (`java … &`) and
+    // POSIX shells redirect an async command's stdin to /dev/null, so System.in is EOF. /dev/tty is the
+    // controlling terminal regardless of how fd 0 was wired (same reason we size via `stty < /dev/tty`).
 
     private fun startInputLoop() {
+        if (System.getProperty("os.name").orEmpty().lowercase().contains("win")) return
+        val input = try { java.io.FileInputStream("/dev/tty") } catch (_: Throwable) { null } ?: return
+        savedStty = captureStty()
+        if (!setStty("-echo", "-icanon", "min", "1", "time", "0")) {
+            runCatching { input.close() }
+            return
+        }
+        write(MOUSE_ON)
+        inputActive = true
         thread(isDaemon = true, name = "pinned-console-input") {
-            val scope = try {
-                terminal.enterRawModeOrNull(MouseTracking.Normal)
-            } catch (_: Throwable) {
-                null
-            } ?: return@thread // raw mode unavailable → no scrolling, but the follow view still works
-            rawScope = scope
-            try {
+            input.use { inp ->
+                val buf = ByteArray(64)
                 while (running) {
-                    val ev = try {
-                        scope.readEventOrNull(200.milliseconds)
-                    } catch (_: Throwable) {
-                        null
-                    } ?: continue
-                    lock.withLock { handleInput(ev) }
+                    val n = try { inp.read(buf) } catch (_: Throwable) { -1 }
+                    if (n < 0) break
+                    val chunk = String(buf, 0, n, Charsets.ISO_8859_1) // 1 byte -> 1 char, escapes intact
+                    lock.withLock { parseInput(chunk) }
                 }
-            } finally {
-                runCatching { scope.close() }
             }
         }
     }
 
-    private fun handleInput(ev: InputEvent) {
-        val logRows = (cachedH - reservedRows).coerceAtLeast(1)
+    /** Scan a chunk of raw terminal input for scroll keys and SGR wheel events. */
+    private fun parseInput(s: String) {
+        val page = (cachedH - reservedRows - 1).coerceAtLeast(1)
+        val esc = '\u001B'
+        var i = 0
+        while (i < s.length) {
+            if (s[i] == esc) {
+                val rest = s.substring(i)
+                when {
+                    rest.startsWith("$esc[5~") -> { scrollBy(page); i += 4 }            // PageUp
+                    rest.startsWith("$esc[6~") -> { scrollBy(-page); i += 4 }           // PageDown
+                    rest.startsWith("$esc[A") -> { scrollBy(1); i += 3 }                // Up
+                    rest.startsWith("$esc[B") -> { scrollBy(-1); i += 3 }               // Down
+                    rest.startsWith("$esc[1~") -> { scrollTop(); i += 4 }               // Home
+                    rest.startsWith("$esc[H") || rest.startsWith("${esc}OH") -> { scrollTop(); i += 3 }
+                    rest.startsWith("$esc[4~") -> { scrollBottom(); i += 4 }            // End
+                    rest.startsWith("$esc[F") || rest.startsWith("${esc}OF") -> { scrollBottom(); i += 3 }
+                    rest.startsWith("$esc[<") -> i += parseMouse(rest)                   // SGR mouse
+                    else -> i += 1                                                       // unknown escape: skip ESC
+                }
+            } else {
+                when (s[i]) {
+                    'q', 'Q' -> quit()
+                    'k' -> scrollBy(1)
+                    'j' -> scrollBy(-1)
+                    'b' -> scrollBy(page)
+                    ' ' -> scrollBy(-page)
+                    'g' -> scrollTop()
+                    'G' -> scrollBottom()
+                }
+                i += 1
+            }
+        }
+    }
+
+    /** Parse an SGR mouse report `ESC[<b;x;y(M|m)` starting at [rest]; returns bytes consumed. */
+    private fun parseMouse(rest: String): Int {
+        val term = rest.indexOfFirst { it == 'M' || it == 'm' }
+        if (term < 0) return rest.length // incomplete; drop it
+        val b = rest.substring(3, term).substringBefore(';').toIntOrNull() // after "ESC[<"
+        when (b) {
+            64 -> scrollBy(WHEEL_LINES)   // wheel up
+            65 -> scrollBy(-WHEEL_LINES)  // wheel down
+        }
+        return term + 1
+    }
+
+    private fun scrollBy(delta: Int) {
         val maxUp = maxOf(0, history.size - 1)
-        val before = scrollUp
-        when (ev) {
-            is KeyboardEvent -> {
-                if (ev.ctrl && ev.key.equals("c", ignoreCase = true)) return quit()
-                when (ev.key) {
-                    "q", "Q" -> return quit()
-                    "PageUp" -> scrollUp += logRows - 1
-                    "PageDown" -> scrollUp -= logRows - 1
-                    "ArrowUp", "k" -> scrollUp += 1
-                    "ArrowDown", "j" -> scrollUp -= 1
-                    "Home", "g" -> scrollUp = maxUp
-                    "End", "G" -> scrollUp = 0
-                    else -> return
-                }
-            }
-            is MouseEvent -> when {
-                ev.wheelUp -> scrollUp += WHEEL_LINES
-                ev.wheelDown -> scrollUp -= WHEEL_LINES
-                else -> return
-            }
-            else -> return
-        }
-        scrollUp = scrollUp.coerceIn(0, maxUp)
-        if (scrollUp != before) logDirty = true
+        val next = (scrollUp + delta).coerceIn(0, maxUp)
+        if (next != scrollUp) { scrollUp = next; logDirty = true; dirty = true } // dirty: refresh the rule's indicator
     }
 
-    /** Raw mode disables the tty's Ctrl-C signal, so mimic quit ourselves; exitProcess runs the shutdown hook. */
+    private fun scrollTop() = scrollBy(history.size)
+    private fun scrollBottom() { if (scrollUp != 0) { scrollUp = 0; logDirty = true; dirty = true } }
+
+    /** ISIG is kept on, so Ctrl-C already signals; 'q' quits via a normal exit (runs the shutdown hook). */
     private fun quit() {
         thread(isDaemon = true, name = "pinned-console-quit") { exitProcess(130) }
+    }
+
+    private fun captureStty(): String? = try {
+        val p = ProcessBuilder("stty", "-g")
+            .redirectInput(java.io.File("/dev/tty"))
+            .redirectError(ProcessBuilder.Redirect.DISCARD)
+            .start()
+        val out = p.inputStream.bufferedReader().use { it.readLine() }?.trim()
+        p.waitFor(1, java.util.concurrent.TimeUnit.SECONDS)
+        out?.takeIf { it.isNotEmpty() }
+    } catch (_: Throwable) {
+        null
+    }
+
+    private fun setStty(vararg args: String): Boolean = try {
+        val p = ProcessBuilder(listOf("stty", *args))
+            .redirectInput(java.io.File("/dev/tty"))
+            .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+            .redirectError(ProcessBuilder.Redirect.DISCARD)
+            .start()
+        p.waitFor(1, java.util.concurrent.TimeUnit.SECONDS) && p.exitValue() == 0
+    } catch (_: Throwable) {
+        false
     }
 
     // --- painting ---
@@ -408,6 +544,7 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
                     logDirty = true
                 }
             }
+            sweepEntries()
             animateHeartbeats()
             if (headerHeight() != reservedRows) {
                 ensureRegion()
@@ -454,12 +591,20 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
         if (anyLive) dirty = true // keep repainting to animate the spinner
     }
 
-    /** Rows the header wants: one per pinned tag + one per heartbeat + a separator rule, if tall enough. */
+    /** Rows the header wants: each live entry (blocks are multi-line) + heartbeats + rule, if tall enough. */
     private fun headerHeight(): Int {
-        val rows = pinnedTags.size + heartbeatOrder.size
+        var rows = 0
+        for (tag in pinnedTags) rows += entries[tag]?.let { entryHeight(it) } ?: 0
+        rows += heartbeatOrder.size
         if (rows == 0) return 0
         val want = rows + 1
         return if (cachedH >= want + MIN_SCROLL_ROWS) want else 0
+    }
+
+    /** A single-line channel is 1 row; an open block is a header + up to BLOCK_HEIGHT body rows. */
+    private fun entryHeight(e: PinnedEntry): Int {
+        val b = e.block ?: return 1
+        return 1 + minOf(BLOCK_HEIGHT, b.body.size)
     }
 
     /** (Re)establish the DECSTBM scroll region so the top [headerHeight] rows never scroll. */
@@ -492,14 +637,13 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
         write(sb)
     }
 
-    /** Emit the pinned rows + heartbeat rows + rule into rows 1..reservedRows (absolute positioning). */
+    /** Emit the pinned entries + heartbeat rows + rule into rows 1..reservedRows (absolute positioning). */
     private fun appendHeaderRows(sb: StringBuilder) {
         val w = cachedW
         var row = 1
         for (tag in pinnedTags) {
-            sb.append(CSI).append(row).append(";1H").append(CLEAR_LINE)
-            sb.append(renderPinRow(tag, w))
-            row++
+            val e = entries[tag] ?: continue
+            row = appendEntry(sb, tag, e, row, w)
         }
         for (key in heartbeatOrder) {
             val hb = heartbeats[key] ?: continue
@@ -509,6 +653,38 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
         }
         sb.append(CSI).append(row).append(";1H").append(CLEAR_LINE)
         sb.append(rule(w))
+    }
+
+    /** Render one pinned entry (single line, or a block header + indented scrolling body). Returns next row. */
+    private fun appendEntry(sb: StringBuilder, tag: String, e: PinnedEntry, startRow: Int, w: Int): Int {
+        var row = startRow
+        val head = if (e.dim) DIM else colorFor(levelOf(e.channel))
+        val label = tag.take(LABEL_WIDTH).padEnd(LABEL_WIDTH)
+        val time = timeFmt.format(e.at)
+        val block = e.block
+        sb.append(CSI).append(row).append(";1H").append(CLEAR_LINE)
+        if (block != null) {
+            sb.append(styledRow(head, "▸ $label ${block.title}", time, w))
+            row++
+            val bodyStyle = if (e.dim) DIM else TextColors.gray
+            for (line in block.body) {
+                sb.append(CSI).append(row).append(";1H").append(CLEAR_LINE)
+                sb.append(styledRow(bodyStyle, "    $line", "", w)) // 4-space indent for block body
+                row++
+            }
+        } else {
+            sb.append(styledRow(head, "$BULLET $label ${(e.line ?: "").replace('\n', ' ')}", time, w))
+            row++
+        }
+        return row
+    }
+
+    /** Clip [leftPlain] to fit beside [rightPlain] within [w], style the left with [style], dim the right. */
+    private fun styledRow(style: TextStyle, leftPlain: String, rightPlain: String, w: Int): String {
+        val budget = (w - rightPlain.length).coerceAtLeast(1)
+        val left = if (leftPlain.length > budget) leftPlain.take((budget - 1).coerceAtLeast(0)) + "…"
+        else leftPlain.padEnd(budget)
+        return style(left) + DIM(rightPlain)
     }
 
     /** Scrollback pager: render the visible window of [history] into the log region (rows below the header). */
@@ -571,22 +747,6 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
             left.padEnd(leftBudget)
         }
         val color = if (hb.live) TextColors.brightGreen else TextColors.gray
-        return color(left) + DIM(right)
-    }
-
-    private fun renderPinRow(tag: String, w: Int): String {
-        val v = values[tag]
-        val right = if (v == null) "" else " ${timeFmt.format(v.timestamp)}"
-        val leftBudget = (w - right.length).coerceAtLeast(1)
-        val label = tag.take(LABEL_WIDTH).padEnd(LABEL_WIDTH)
-        val msg = (v?.message ?: "—").replace('\n', ' ').replace('\r', ' ')
-        var left = "$BULLET $label $msg"
-        left = if (left.length > leftBudget) {
-            left.take((leftBudget - 1).coerceAtLeast(0)) + "…"
-        } else {
-            left.padEnd(leftBudget)
-        }
-        val color = colorFor(v?.channel?.let(::levelOf))
         return color(left) + DIM(right)
     }
 
@@ -684,10 +844,16 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
         const val LEAVE_ALT = "\u001B[?1049l"   // switch back, restoring the saved screen
         const val CLEAR_HOME = "\u001B[2J\u001B[H"
 
+        const val MOUSE_ON = "$CSI?1000h$CSI?1006h"   // SGR mouse reporting (for the scroll wheel)
+        const val MOUSE_OFF = "$CSI?1000l$CSI?1006l"
+
         const val LABEL_WIDTH = 12
         const val MIN_SCROLL_ROWS = 3       // keep at least this many scrolling rows, else no region
         const val HISTORY_MAX = 10_000      // scrollback ring-buffer capacity (logical lines)
         const val WHEEL_LINES = 3           // lines scrolled per mouse-wheel notch
+        const val BLOCK_HEIGHT = 5          // max body rows shown for an open pinned lblock (scrolls beyond)
+        const val DIM_NANOS = 10_000_000_000L    // no output for 10s -> dim the entry
+        const val EXPIRE_NANOS = 20_000_000_000L // no output for 20s -> remove the entry's row
         const val SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"    // braille spinner frames
         const val IDLE_GLYPH = '·'
         const val HEARTBEAT_IDLE_NANOS = 1_500_000_000L  // no beat for 1.5s ⇒ idle (spinner stops)

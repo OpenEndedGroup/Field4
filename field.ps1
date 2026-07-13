@@ -114,17 +114,22 @@ function Ensure-SemanticSidecar {
     Start-SemanticSidecar $port
 }
 
-function Ensure-LaunchSpec {
-    $argsFile = "build\field-launch\args"
-    $javaFile = "build\field-launch\java"
-    $needs = (-not (Test-Path $argsFile)) -or (-not (Test-Path $javaFile)) -or ($env:FIELD_REFRESH -eq "1")
-    if (-not $needs -and ((Get-Item "build.gradle.kts").LastWriteTime -gt (Get-Item $argsFile).LastWriteTime)) {
-        $needs = $true
+function Build-Field {
+    # Always build before launching so a fresh clone (and every edit-and-relaunch) runs current code.
+    # jvmJar compiles Kotlin/JVM, runs the JS webpack, and bundles afield.mjs into the served static/;
+    # dumpFieldLaunch writes the launch spec. Incremental, so quick once built. Set AFIELD_SKIP_BUILD=1
+    # to skip. Gradle output is shown: the first build compiles the whole project (a few minutes).
+    if ($env:AFIELD_SKIP_BUILD -eq "1" -and (Test-Path "build\field-launch\args")) {
+        Write-Host "field: AFIELD_SKIP_BUILD=1 - skipping build" -ForegroundColor DarkCyan
+        return $true
     }
-    if ($needs) {
-        Write-Host "field: resolving launch spec via Gradle (set FIELD_REFRESH=1 to redo)..." -ForegroundColor DarkCyan
-        & .\gradlew.bat -q dumpFieldLaunch
+    Write-Host "field: building (JVM + JS; the first run compiles everything, a few minutes)..." -ForegroundColor DarkCyan
+    & .\gradlew.bat jvmJar dumpFieldLaunch
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "field: BUILD FAILED - fix the errors above, then re-run .\field.ps1" -ForegroundColor Red
+        return $false
     }
+    return $true
 }
 
 function Stop-Tree {
@@ -136,7 +141,7 @@ function Stop-Tree {
 
 function Run-Field {
     Ensure-SemanticSidecar
-    Ensure-LaunchSpec
+    if (-not (Build-Field)) { return 1 }
 
     if (-not $env:PORT) { $env:PORT = "9092" }
     if (-not $env:AFIELD_PORT_FALLBACK_COUNT) { $env:AFIELD_PORT_FALLBACK_COUNT = "1" }
@@ -194,7 +199,7 @@ function Run-Field {
         # the backend was hard-killed and its JVM shutdown hook never ran. No-op if not in the alt buffer.
         if (-not [Console]::IsOutputRedirected) {
             $esc = [char]27
-            [Console]::Out.Write("$esc[r$esc[?1049l")
+            [Console]::Out.Write("$esc[?1000l$esc[?1006l$esc[r$esc[?1049l")
         }
     }
 
