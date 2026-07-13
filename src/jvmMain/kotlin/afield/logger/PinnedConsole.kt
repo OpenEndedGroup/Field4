@@ -5,6 +5,12 @@ import afield.ai.core.LogDispatcher
 import afield.ai.core.LogEvent
 import afield.ai.core.LogSink
 import afield.ai.core.StdoutLog
+import com.github.ajalt.mordant.input.InputEvent
+import com.github.ajalt.mordant.input.KeyboardEvent
+import com.github.ajalt.mordant.input.MouseEvent
+import com.github.ajalt.mordant.input.MouseTracking
+import com.github.ajalt.mordant.input.RawModeScope
+import com.github.ajalt.mordant.input.enterRawModeOrNull
 import com.github.ajalt.mordant.rendering.AnsiLevel
 import com.github.ajalt.mordant.rendering.TextColors
 import com.github.ajalt.mordant.rendering.TextStyle
@@ -14,6 +20,8 @@ import java.time.format.DateTimeFormatter
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.thread
 import kotlin.concurrent.withLock
+import kotlin.system.exitProcess
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * A [LogSink] that pins chosen channels to a small, non-scrolling region at the *top* of the
@@ -167,7 +175,8 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
     private val heartbeats = java.util.concurrent.ConcurrentHashMap<String, Heartbeat>()
     private val heartbeatOrder = java.util.concurrent.CopyOnWriteArrayList<String>()
 
-    @Volatile private var dirty = false
+    @Volatile private var dirty = false      // header needs a repaint (pins / spinner)
+    @Volatile private var logDirty = false   // log viewport needs a repaint (scrollback mode only)
     private var reservedRows = -1   // header rows currently fenced off; -1 = never established
     private var cachedW = 80
     private var cachedH = 24
@@ -189,6 +198,18 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
 
     @Volatile private var running = enabled
 
+    /**
+     * Opt-in scrollback (`AFIELD_PIN_SCROLLBACK=1`): keep a ring buffer of non-pinned lines and render
+     * the region ourselves as a pager (PageUp/PageDown/arrows/Home/End + mouse wheel) instead of letting
+     * the terminal scroll it. Requires raw-mode input, which disables the tty's Ctrl-C signal — so we
+     * catch Ctrl-C/q as keys and exit. Off by default: the log region just terminal-scrolls as before.
+     */
+    private val scrollback: Boolean =
+        enabled && System.getenv("AFIELD_PIN_SCROLLBACK").let { it == "1" || it == "true" }
+    private val history = ArrayDeque<String>()   // rendered non-pinned lines (no trailing newline). Guarded by [lock].
+    private var scrollUp = 0                      // logical lines the view bottom sits above the newest; 0 = following
+    private var rawScope: RawModeScope? = null
+
     init {
         if (enabled) {
             lock.withLock {
@@ -197,6 +218,7 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
                 write("$ENTER_ALT$CLEAR_HOME")
                 ensureRegion()
                 dirty = true
+                logDirty = true
             }
             thread(isDaemon = true, name = "pinned-console") {
                 var tick = 0
@@ -210,6 +232,7 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
                     frame(checkSize = tick % SIZE_CHECK_EVERY == 0)
                 }
             }
+            if (scrollback) startInputLoop()
         }
     }
 
@@ -225,10 +248,26 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
             if (tag != null) {
                 updatePinned(tag, event)
                 dirty = true
-                if (reservedRows <= 0) write(formatScrolling(event)) // no room for a region: still show it
+                if (reservedRows <= 0) emitScrolling(event) // no room for a region: still show it
             } else {
-                write(formatScrolling(event))
+                emitScrolling(event)
             }
+        }
+    }
+
+    /** Route a non-pinned line either into the scrollback buffer (pager mode) or straight to the tty. */
+    private fun emitScrolling(event: LogEvent) {
+        val content = formatScrolling(event)
+        if (scrollback && reservedRows > 0) {
+            for (line in content.split('\n')) history.addLast(line)
+            while (history.size > HISTORY_MAX) history.removeFirst()
+            // While paused (scrolled up), keep the same lines in view as new ones arrive below.
+            if (scrollUp > 0) {
+                scrollUp = (scrollUp + content.count { it == '\n' } + 1).coerceAtMost(maxOf(0, history.size - 1))
+            }
+            logDirty = true
+        } else {
+            write("$content\n")
         }
     }
 
@@ -286,11 +325,71 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
     fun shutdown() {
         running = false
         if (!enabled) return
+        runCatching { rawScope?.close() } // restore cooked tty mode + disable mouse tracking (scrollback)
         lock.withLock {
             // Drop the scroll region, then leave the alternate screen — restoring the terminal to
             // exactly what it showed before Field started.
             write("${CSI}r$LEAVE_ALT")
         }
+    }
+
+    // --- scrollback pager input (only active when AFIELD_PIN_SCROLLBACK=1) ---
+
+    private fun startInputLoop() {
+        thread(isDaemon = true, name = "pinned-console-input") {
+            val scope = try {
+                terminal.enterRawModeOrNull(MouseTracking.Normal)
+            } catch (_: Throwable) {
+                null
+            } ?: return@thread // raw mode unavailable → no scrolling, but the follow view still works
+            rawScope = scope
+            try {
+                while (running) {
+                    val ev = try {
+                        scope.readEventOrNull(200.milliseconds)
+                    } catch (_: Throwable) {
+                        null
+                    } ?: continue
+                    lock.withLock { handleInput(ev) }
+                }
+            } finally {
+                runCatching { scope.close() }
+            }
+        }
+    }
+
+    private fun handleInput(ev: InputEvent) {
+        val logRows = (cachedH - reservedRows).coerceAtLeast(1)
+        val maxUp = maxOf(0, history.size - 1)
+        val before = scrollUp
+        when (ev) {
+            is KeyboardEvent -> {
+                if (ev.ctrl && ev.key.equals("c", ignoreCase = true)) return quit()
+                when (ev.key) {
+                    "q", "Q" -> return quit()
+                    "PageUp" -> scrollUp += logRows - 1
+                    "PageDown" -> scrollUp -= logRows - 1
+                    "ArrowUp", "k" -> scrollUp += 1
+                    "ArrowDown", "j" -> scrollUp -= 1
+                    "Home", "g" -> scrollUp = maxUp
+                    "End", "G" -> scrollUp = 0
+                    else -> return
+                }
+            }
+            is MouseEvent -> when {
+                ev.wheelUp -> scrollUp += WHEEL_LINES
+                ev.wheelDown -> scrollUp -= WHEEL_LINES
+                else -> return
+            }
+            else -> return
+        }
+        scrollUp = scrollUp.coerceIn(0, maxUp)
+        if (scrollUp != before) logDirty = true
+    }
+
+    /** Raw mode disables the tty's Ctrl-C signal, so mimic quit ourselves; exitProcess runs the shutdown hook. */
+    private fun quit() {
+        thread(isDaemon = true, name = "pinned-console-quit") { exitProcess(130) }
     }
 
     // --- painting ---
@@ -306,14 +405,28 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
                     cachedH = h
                     ensureRegion()
                     dirty = true
+                    logDirty = true
                 }
             }
             animateHeartbeats()
             if (headerHeight() != reservedRows) {
                 ensureRegion()
                 dirty = true
+                logDirty = true
             }
-            if (dirty) {
+            if (scrollback) {
+                // We own the whole screen: repaint header rows on `dirty`, the log viewport on `logDirty`,
+                // in one write, then park the cursor at the bottom so stray output lands harmlessly there.
+                if (dirty || logDirty) {
+                    val sb = StringBuilder()
+                    if (dirty && reservedRows > 0) appendHeaderRows(sb)
+                    if (logDirty && reservedRows > 0) appendLogRows(sb)
+                    sb.append(CSI).append(cachedH).append(";1H")
+                    write(sb)
+                    dirty = false
+                    logDirty = false
+                }
+            } else if (dirty) {
                 dirty = false
                 if (reservedRows > 0) paintHeader()
             }
@@ -370,10 +483,18 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
         reservedRows = needed
     }
 
+    /** Non-scrollback repaint: save/restore the cursor around the header so terminal scrolling is undisturbed. */
     private fun paintHeader() {
-        val w = cachedW
         val sb = StringBuilder()
         sb.append(SAVE)
+        appendHeaderRows(sb)
+        sb.append(RESTORE)
+        write(sb)
+    }
+
+    /** Emit the pinned rows + heartbeat rows + rule into rows 1..reservedRows (absolute positioning). */
+    private fun appendHeaderRows(sb: StringBuilder) {
+        val w = cachedW
         var row = 1
         for (tag in pinnedTags) {
             sb.append(CSI).append(row).append(";1H").append(CLEAR_LINE)
@@ -388,8 +509,54 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
         }
         sb.append(CSI).append(row).append(";1H").append(CLEAR_LINE)
         sb.append(rule(w))
-        sb.append(RESTORE)
-        write(sb)
+    }
+
+    /** Scrollback pager: render the visible window of [history] into the log region (rows below the header). */
+    private fun appendLogRows(sb: StringBuilder) {
+        val logTop = reservedRows + 1
+        val logRows = cachedH - reservedRows
+        if (logRows <= 0) return
+        val size = history.size
+        val maxUp = maxOf(0, size - 1)
+        if (scrollUp > maxUp) scrollUp = maxUp
+        var idx = size - 1 - scrollUp          // index of the bottom visible line
+        var row = logTop + logRows - 1
+        while (row >= logTop) {                // paint bottom-up; blank rows above the oldest line
+            sb.append(CSI).append(row).append(";1H").append(CLEAR_LINE)
+            if (idx in 0 until size) sb.append(clipVisible(history[idx], cachedW))
+            row--
+            idx--
+        }
+    }
+
+    /** Clip a (possibly ANSI-styled) line to [width] visible columns, passing escape sequences through. */
+    private fun clipVisible(s: String, width: Int): String {
+        if (width <= 0) return ""
+        val sb = StringBuilder()
+        var visible = 0
+        var i = 0
+        while (i < s.length) {
+            val c = s[i]
+            if (c == '\u001B') {
+                val start = i
+                i++
+                if (i < s.length && s[i] == '[') {
+                    i++
+                    while (i < s.length && s[i] !in '@'..'~') i++
+                    if (i < s.length) i++
+                } else if (i < s.length) {
+                    i++
+                }
+                sb.append(s, start, i)
+            } else {
+                if (visible >= width) break
+                sb.append(c)
+                visible++
+                i++
+            }
+        }
+        sb.append(RESET) // don't let a truncated style bleed past the row
+        return sb.toString()
     }
 
     private fun renderHeartbeatRow(hb: Heartbeat, w: Int): String {
@@ -423,7 +590,15 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
         return color(left) + DIM(right)
     }
 
-    private fun rule(w: Int): String = DIM("─".repeat(w.coerceAtLeast(0)))
+    private fun rule(w: Int): String {
+        if (w <= 0) return ""
+        if (!scrollback) return DIM("─".repeat(w))
+        // Show the pager state on the rule: "following" the tail, or how many newer lines are below.
+        val label = if (scrollUp <= 0) " following " else " ▼ $scrollUp newer · End to follow "
+        val dashes = (w - label.length).coerceAtLeast(0)
+        val plain = ("─".repeat(dashes) + label).take(w) // clip plain text, then style, so width is exact
+        return DIM(plain)
+    }
 
     // --- helpers ---
 
@@ -488,7 +663,7 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
             BlockBoundary.END -> "<|< "
             null -> ""
         }
-        return channelPart + event.indent + marker + event.message + "\n"
+        return channelPart + event.indent + marker + event.message
     }
 
     /** All output goes through Mordant's terminal so Windows VT processing is enabled. */
@@ -511,6 +686,8 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
 
         const val LABEL_WIDTH = 12
         const val MIN_SCROLL_ROWS = 3       // keep at least this many scrolling rows, else no region
+        const val HISTORY_MAX = 10_000      // scrollback ring-buffer capacity (logical lines)
+        const val WHEEL_LINES = 3           // lines scrolled per mouse-wheel notch
         const val SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"    // braille spinner frames
         const val IDLE_GLYPH = '·'
         const val HEARTBEAT_IDLE_NANOS = 1_500_000_000L  // no beat for 1.5s ⇒ idle (spinner stops)
