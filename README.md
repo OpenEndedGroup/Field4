@@ -168,9 +168,12 @@ All are additive and orthogonal (e.g. `?noeditor&transparent&shaderSelectionCont
     eye (authored in Reality Composer Pro; the converter already produces the full SBS frame, so only
     the material changes). Refs: `~/temp/openimmersive`, Apple's SBS→MV-HEVC sample.
   - **Device verification of present** — the sim paints the immersive scene at ~1fps and is
-    non-interactive; confirm real smoothness + interaction on hardware.
-  - **`/vision/stream` route** — start/stop a stream for the active document from a server route in
-    `~/field4` `Server.kt` (alongside the `/vision` placeholder), instead of a Field box.
+    non-interactive; confirm real smoothness + interaction on hardware. (App compiles for device;
+    needs your signing team + a connected Vision Pro. Sender `dest` = the headset's IP:9001.)
+  - ~~**`/vision/stream` route**~~ — **done**: `POST /vision/stream?action=start|stop&doc=<name>` in
+    `~/field4` `Server.kt` toggles a document's boxes over HTTP (thin lifecycle; content stays in the
+    boxes; `stop` closes the `field-encode` co-process cleanly). Demo doc: `rtt_stream_demo`
+    (window + sender, ringSize=3) in the default workspace. Verified start→decode, stop→halt via curl.
   - **Linux / NVENC sender** — a second sender binary (in `~/field4`, alongside `native/field-encode`)
     behind the **same** `WIRE_FORMAT.md` contract, so **this receiver needs zero changes** — it never
     learns which backend produced the stream. Capture forks on OS: instead of the Mac's IOSurface +
