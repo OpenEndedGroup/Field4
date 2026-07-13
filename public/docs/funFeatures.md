@@ -236,6 +236,29 @@ Yields (when launched):
 	<source src="assets/Screen-Recording-2026-03-21-at-13.48.57.mp4" type="video/mp4">
 </video>
 
+`progressBar` is the low-level primitive — you drive it and you clear it. For the common cases there are friendlier helpers that manage the bar for you and clean up after themselves:
+
+```diffstatic {data-lang=kotlin}
+// Wrap any iterable / range / count — the bar tracks the loop and removes itself at the end:
+for (i in tqdm(0 until 10000)) {
+    // ...heavy work...
+}
+
+// For routines: report a fraction (with a tqdm-style rate + ETA)...
+withProgress("solving") { p ->
+    repeat(steps) { i -> /* ...work... */; p.update(i + 1L, steps.toLong()) }
+}
+
+// ...or .pulse() when there's no known total (an indeterminate "still working" bar):
+val p = progressReporter("reducing")
+while (notDone()) { stepOnce(); p.pulse() }
+p.finish()
+```
+
+These are polite by default: nothing is sent to the front end unless the work runs longer than ~2s, a finished bar lingers for a beat and then removes itself, and the whole thing is a complete no-op when the code isn't running inside a box. Because they hang off the box context, long-running library routines can offer a bar without you asking — `evolveVariety`, sorting-network `anneal`, wave-function-collapse `run`, interaction-net `reduce`, and friends already do.
+
+Turn them all off with `ProgressBars.enabled = false`, or tune `ProgressBars.showDelayMillis` (the grace period) and `ProgressBars.lingerMillis` (how long a completed bar sticks around).
+
 # Multi-language, multi-paradigm
 
 Field's primary language for live coding is Kotlin, which we've found to be expressive and fun (but by no means flawless). We've added a compile-time macro system to it for extra flexibility and joy and the graphics system does some GLSL-driven code-generation. All in all it's working for it quite well. However, being on the JVM does give us access to some other options.

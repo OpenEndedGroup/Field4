@@ -1173,6 +1173,45 @@ fun macroTranscriptUndoOnSelection() {
     sendMacroTranscriptCommand(MacroTranscriptCommandRequest(command = "undo", name = name, selection = getSelectedIds()))
 }
 
+/**
+ * Load a dropped operation-transcript / macro YAML file into the current document's
+ * macro scope under a name derived from the file, then run it against the current
+ * selection. Mirrors the MCP write-then-run flow (tools/field_mcp.py tool_run_transcript).
+ */
+fun runDroppedTranscript(fileName: String, content: String) {
+    if (content.isBlank()) {
+        notify("Dropped transcript '$fileName' is empty.", "error")
+        return
+    }
+    val macroName = fileName
+        .substringAfterLast('/')
+        .substringAfterLast('\\')
+        .substringBeforeLast('.')
+        .ifBlank { "dropped-transcript" }
+    // Write the content verbatim: the macro is keyed by the `name` parameter
+    // (sanitizeMacroName), not by any `name:` line in the YAML. Rewriting the
+    // content's first `name:` would corrupt transcripts whose first `name:` is a
+    // nested box name rather than a top-level macro name.
+    notify("Loading transcript '$macroName'...", "macro")
+    sendMacroTranscriptCommand(
+        MacroTranscriptCommandRequest(command = "write", name = macroName, content = content, scope = "document"),
+        announce = false
+    ) { writeResponse ->
+        if (!writeResponse.success) {
+            notify("Could not load transcript '$macroName': ${writeResponse.message}", "error")
+            return@sendMacroTranscriptCommand
+        }
+        sendMacroTranscriptCommand(
+            MacroTranscriptCommandRequest(
+                command = "run",
+                name = macroName,
+                selection = getSelectedIds(),
+                scope = "document"
+            )
+        )
+    }
+}
+
 fun recordSelectedBoxMp4() {
     val box = requireSingleSelectedBox() ?: return
     val uid = box.uid as? String ?: return

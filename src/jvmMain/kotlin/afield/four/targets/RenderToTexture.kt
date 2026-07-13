@@ -66,7 +66,11 @@ data class RTTParameters(
     var depthLoadOp: Int = VK_ATTACHMENT_LOAD_OP_CLEAR,
     var depthStoreOp: Int = VK_ATTACHMENT_STORE_OP_STORE,
     var depthSampled: Boolean = false,              // set true only if you intend to sample the depth later
-    var debugName: String = ""
+    var debugName: String = "",
+
+    // Create color attachments with IOSurface-exportable backing (MoltenVK) so the RTT can be
+    // handed zero-copy to a hardware video encoder (field-encode). Opt-in; macOS/MoltenVK only.
+    var exportMetalIOSurface: Boolean = false
 )
 
 /**
@@ -613,6 +617,7 @@ open class RenderToTexture(
                     .mipLevels(mipLevels)
                     .debugName(imageDebugName("color", idx))
                     .aliasSingleLayerDescriptors(forceColorArrayView)
+                data.exportMetalIOSurface = this.parameters.exportMetalIOSurface
 
                 val img = Image(renderer.device, data)
                 val ivd = ImageViewData()

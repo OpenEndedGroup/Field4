@@ -116,6 +116,7 @@ fun evolve(
     lambda: Int = 6,
     rngSeed: Long = 0L,
     mutations: List<Pair<String, FnMutation>> = FnMutations.defaults(),
+    onIteration: ((iteration: Int, total: Int) -> Unit)? = null,
     fitness: (Functions.Fn) -> Double
 ): FnEvolveRun {
     require(iterations >= 0) { "iterations must be non-negative" }
@@ -129,27 +130,39 @@ fun evolve(
     var evaluations = 1
     val steps = mutableListOf<FnEvolveStep>()
 
-    for (iteration in 1..iterations) {
-        var roundBest: Functions.Fn? = null
-        var roundScore = bestScore
-        var roundMutation = ""
-        repeat(lambda) {
-            val (name, mutation) = mutations[rng.nextInt(mutations.size)]
-            val candidate = runCatching { mutation.mutate(best, rng) }.getOrDefault(best)
-            val score = runCatching { fitness(candidate) }.getOrDefault(Double.NEGATIVE_INFINITY)
-            evaluations++
-            if (score > roundScore) {
-                roundScore = score
-                roundBest = candidate
-                roundMutation = name
+    // Politely offer a progress bar (with a tqdm-style ETA) unless the caller reports progress
+    // itself. Inert outside a box, globally disableable, and only surfaces if the search runs
+    // long enough to be worth mentioning — see afield.ProgressReporter.
+    val reporter = if (onIteration == null) afield.progressReporter("evolve") else null
+    val report: (Int, Int) -> Unit =
+        onIteration ?: { iteration, total -> reporter?.update(iteration.toLong(), total.toLong()) }
+
+    try {
+        for (iteration in 1..iterations) {
+            var roundBest: Functions.Fn? = null
+            var roundScore = bestScore
+            var roundMutation = ""
+            repeat(lambda) {
+                val (name, mutation) = mutations[rng.nextInt(mutations.size)]
+                val candidate = runCatching { mutation.mutate(best, rng) }.getOrDefault(best)
+                val score = runCatching { fitness(candidate) }.getOrDefault(Double.NEGATIVE_INFINITY)
+                evaluations++
+                if (score > roundScore) {
+                    roundScore = score
+                    roundBest = candidate
+                    roundMutation = name
+                }
             }
+            val winner = roundBest
+            if (winner != null && roundScore > bestScore) {
+                best = winner
+                bestScore = roundScore
+                steps += FnEvolveStep(iteration, roundMutation, roundScore)
+            }
+            report(iteration, iterations)
         }
-        val winner = roundBest
-        if (winner != null && roundScore > bestScore) {
-            best = winner
-            bestScore = roundScore
-            steps += FnEvolveStep(iteration, roundMutation, roundScore)
-        }
+    } finally {
+        reporter?.finish()
     }
 
     return FnEvolveRun(best, bestScore, initialScore, steps, iterations, evaluations)
@@ -374,20 +387,39 @@ fun evolveVariety(
     val runs = mutableListOf<FnEvolveRun>()
     var current = seed
 
-    for (slot in 0 until count) {
-        val fitness = noveltyFitness(archive, domain, samples, neighbours, validityWeight, normalize)
-        val run = evolve(
-            seed = current,
-            iterations = iterations,
-            lambda = lambda,
-            rngSeed = rngSeed * 31 + slot,
-            mutations = mutations,
-            fitness = fitness
-        )
-        runs += run
-        results += run.best
-        archive += run.best.behaviour(domain, samples, normalize)
-        current = run.best
+    // Offer a transient progress bar to the box we're running in. Inert (a complete no-op)
+    // when there's no active box or when progress bars are globally disabled; removes itself
+    // from the output-area stack on completion. Total work = count slots x iterations each.
+    val progress = afield.progressReporter("evolve variety")
+    val totalIterations = count.toLong() * iterations.toLong()
+    var completedIterations = 0L
+    try {
+        for (slot in 0 until count) {
+            val fitness = noveltyFitness(archive, domain, samples, neighbours, validityWeight, normalize)
+            val slotBase = completedIterations
+            val run = evolve(
+                seed = current,
+                iterations = iterations,
+                lambda = lambda,
+                rngSeed = rngSeed * 31 + slot,
+                mutations = mutations,
+                onIteration = { iteration, total ->
+                    progress.update(
+                        done = slotBase + iteration,
+                        total = totalIterations,
+                        details = "slot ${slot + 1}/$count · iter $iteration/$total"
+                    )
+                },
+                fitness = fitness
+            )
+            completedIterations += iterations.toLong()
+            runs += run
+            results += run.best
+            archive += run.best.behaviour(domain, samples, normalize)
+            current = run.best
+        }
+    } finally {
+        progress.finish()
     }
 
     return FnVarietyRun(results, archive.toList(), runs)

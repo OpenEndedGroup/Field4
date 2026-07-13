@@ -296,8 +296,11 @@ private fun monitorSelection() {
 
         val nextLen = (currentSelectedCode.length as? Number)?.toInt() ?: 0
 
+        // Display mode from ?editorOnly / ?noeditor (see Main.kt). In no-editor the editor never
+        // shows (and must not steal focus); in editor-only it stays visible even with no selection.
+        val displayMode = (w.fieldDisplayMode as? String) ?: "normal"
         if (nextLen == 1) {
-            w.showMonaco()
+            if (displayMode != "no-editor") w.showMonaco()
             var code = currentSelectedCode[0][currentSelectedProperty] as? String
             if (code == null) code = ""
             val state = currentSelectedCode[0]["${currentSelectedProperty}_editorState"] as? String
@@ -312,7 +315,7 @@ private fun monitorSelection() {
             }
             model.setEOL(0)
             w.unpauseLineTracking()
-            if (state != null && !suppressRestore) {
+            if (state != null && !suppressRestore && displayMode != "no-editor") {
                 window.setTimeout({
                     globalEditor.restoreViewState(js("JSON.parse")(state))
                     globalEditor.focus()
@@ -320,7 +323,8 @@ private fun monitorSelection() {
             }
             currentValueAtOrigination = code
         } else {
-            w.hideMonaco()
+            // editor-only keeps the (empty) editor on screen; everything else hides it on deselect.
+            if (displayMode == "editor-only") w.showMonaco() else w.hideMonaco()
         }
 
         if (nextLen > 0) {

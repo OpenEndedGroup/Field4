@@ -651,6 +651,108 @@ private fun completionCandidateName(variant: SourceCodeCompletionVariant): Strin
         .trim()
 }
 
+/**
+ * Type-aware completion after infix functions.
+ *
+ * When the cursor sits at the operand of an infix call — `receiver operatorName <caret>` — the
+ * plain Kotlin REPL completion returns every symbol in scope alphabetically, burying the values
+ * that actually fit. This resolves the infix operator's declared parameter type and lets the
+ * completion handler boost candidates whose return type matches it, so e.g. after
+ * `pulseBurst(10) through ` the ~dozens of `FnTransform`-producing builders float to the top
+ * instead of the generic long tail.
+ *
+ * The operator's parameter type is discovered generically (no hard-coded operator list) by asking
+ * the same completion engine to complete the operator token itself: an infix function `foo`
+ * surfaces as a candidate whose display text is `foo(ParamType)`. Results are cached per
+ * (operator, code-before-operator) so typing the operand doesn't recompute it each keystroke.
+ */
+internal object InfixCompletion {
+    /** Ranking boost applied to type-matching operands; comfortably above category+recency, below a strong prefix hit. */
+    const val OPERAND_MATCH_BOOST = 160
+
+    private const val maxCacheEntries = 64
+    private val paramTypeCache = object : LinkedHashMap<String, String?>(maxCacheEntries, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String?>?): Boolean = size > maxCacheEntries
+    }
+
+    private val infixStopWords = setOf(
+        "return", "in", "is", "as", "if", "else", "when", "while", "for", "do", "throw",
+        "by", "where", "true", "false", "null", "this", "super", "import", "package",
+        "val", "var", "fun", "class", "object", "interface", "typealias"
+    )
+
+    private fun isIdentChar(c: Char) = c.isLetterOrDigit() || c == '_'
+
+    private data class InfixSite(val operator: String, val operatorEnd: Int, val codeBeforeOperator: String)
+
+    /** Backward-parse `receiver operatorName <operandPrefix>|` and return the operator token, or null if not an infix operand site. */
+    private fun parseInfixSite(allCode: String, cursor: Int): InfixSite? {
+        val pos = cursor.coerceIn(0, allCode.length)
+
+        // Skip the operand prefix currently being typed.
+        var operandStart = pos
+        while (operandStart > 0 && isIdentChar(allCode[operandStart - 1])) operandStart--
+        // There must be whitespace between the operator and the operand (infix requires it).
+        if (operandStart == 0 || !allCode[operandStart - 1].isWhitespace()) return null
+
+        var i = operandStart
+        while (i > 0 && allCode[i - 1].isWhitespace()) i--
+        val operatorEnd = i
+        while (i > 0 && isIdentChar(allCode[i - 1])) i--
+        val operator = allCode.substring(i, operatorEnd)
+        if (operator.isEmpty() || !operator[0].isLetter() || operator in infixStopWords) return null
+
+        // Whatever precedes the operator must terminate a value expression (the receiver), and the
+        // operator must not itself be a `.member` access.
+        var r = i
+        while (r > 0 && allCode[r - 1].isWhitespace()) r--
+        if (r == 0) return null
+        val before = allCode[r - 1]
+        val receiverPrecedes = before == ')' || before == ']' || before == '"' || before == '`' || isIdentChar(before)
+        if (!receiverPrecedes || before == '.') return null
+
+        return InfixSite(operator = operator, operatorEnd = operatorEnd, codeBeforeOperator = allCode.substring(0, operatorEnd))
+    }
+
+    /**
+     * The declared operand type of the infix operator at [cursor] (already type-shortened, e.g.
+     * `FnTransform`), or null when the cursor is not at an infix operand site or the operator can't
+     * be resolved. [complete] is the engine's completion entry point (kept as a parameter so this
+     * stays engine-agnostic and easy to test).
+     */
+    suspend fun expectedOperandType(
+        allCode: String,
+        cursor: Int,
+        complete: suspend (String, Int) -> CompletionResult
+    ): String? {
+        val site = parseInfixSite(allCode, cursor) ?: return null
+        val cacheKey = "${site.operator}::${site.codeBeforeOperator.hashCode()}::${site.codeBeforeOperator.length}"
+        synchronized(paramTypeCache) { if (paramTypeCache.containsKey(cacheKey)) return paramTypeCache[cacheKey] }
+
+        val resolved = runCatching {
+            val result = complete(allCode, site.operatorEnd) as? CompletionResult.Success ?: return@runCatching null
+            val entry = result.metadata.firstOrNull {
+                it.icon == "method" &&
+                    it.displayText.substringBefore('(').substringAfterLast('.').trim() == site.operator &&
+                    '(' in it.displayText
+            } ?: return@runCatching null
+            // Infix functions take exactly one parameter; the display text is `operator(ParamType)`.
+            val paramType = entry.displayText.substringAfter('(').substringBeforeLast(')').trim()
+            if (paramType.isBlank() || ',' in paramType) null else shortenType(paramType).trim().ifBlank { null }
+        }.getOrNull()
+
+        synchronized(paramTypeCache) { paramTypeCache[cacheKey] = resolved }
+        return resolved
+    }
+
+    /** True when [candidate]'s return type ([SourceCodeCompletionVariant.tail]) matches [expectedType]. */
+    fun matchesOperandType(candidate: SourceCodeCompletionVariant, expectedType: String): Boolean {
+        if (expectedType.isBlank()) return false
+        val returnType = shortenType(candidate.tail).trim()
+        return returnType.isNotBlank() && returnType == expectedType
+    }
+}
+
 private fun symbolContextResponse(symbol: String = "", html: String = ""): SymbolContextResponse {
     return SymbolContextResponse(
         symbol = symbol,
@@ -2545,7 +2647,7 @@ class KotlinExecution : BoxExecution {
             return
         }
 
-        fun completionFor(c: CompletionResult.Success): List<Metadata> {
+        fun completionFor(c: CompletionResult.Success, infixExpectedType: String? = null): List<Metadata> {
             val activeToken = allCode.substring(c.bounds.start, c.bounds.end).trim()
             val argumentCallable = callableBeforeArgumentCursor(allCode, position)
             return c.metadata.mapNotNull {
@@ -2704,7 +2806,11 @@ class KotlinExecution : BoxExecution {
                     }
                     return@mapNotNull null
                 }
-                categorizedMetadata
+                if (infixExpectedType != null && InfixCompletion.matchesOperandType(it, infixExpectedType)) {
+                    categorizedMetadata.copy(contextScore = InfixCompletion.OPERAND_MATCH_BOOST)
+                } else {
+                    categorizedMetadata
+                }
             }
         }
 
@@ -2775,6 +2881,12 @@ class KotlinExecution : BoxExecution {
                 }
                 when (c) {
                     is CompletionResult.Success -> {
+                        val infixExpectedType = runCatching {
+                            InfixCompletion.expectedOperandType(allCode, position) { s, cur -> inside.ki.complete(s, cur) }
+                        }.getOrNull()
+                        if (completionTraceEnabled() && infixExpectedType != null) {
+                            completionTrace("completion infix-operand expectedType='$infixExpectedType' uid='${inside.id}' position=$position")
+                        }
                         val synthetic = KotlinCompletionSupport.namedArgumentCompletions(inside, allCode, position)
                         val tokenBounds = runCatching { getTokenBounds(allCode, position) }
                             .getOrElse { CompletionTokenBounds(position, position) }
@@ -2789,7 +2901,7 @@ class KotlinExecution : BoxExecution {
                         val completions = Completion(
                             boundsStart = boundsStart,
                             boundsEnd = boundsEnd,
-                            metadata = ((synthetic?.metadata ?: emptyList()) + fieldSnippets + completionFor(c) + importHelpFor(c))
+                            metadata = ((synthetic?.metadata ?: emptyList()) + fieldSnippets + completionFor(c, infixExpectedType) + importHelpFor(c))
                                 .map(KotlinCompletionSupport::withCategoryDocumentationHeader)
                         )
 

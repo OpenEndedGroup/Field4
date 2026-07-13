@@ -37,6 +37,20 @@
 </head>
 <body>
 
+<script>
+  // Apply display-mode body classes as early as possible — before the app bundle runs — so an
+  // ?editorOnly / ?noeditor / ?transparent view doesn't flash the full chrome while loading.
+  // (Main.kt also sets these; classList.add is idempotent.)
+  (() => {
+    const p = new URLSearchParams(location.search);
+    const on = (k) => { const v = p.get(k); return v === "" || v === "1" || v === "true"; };
+    const mode = on("editorOnly") ? "editor-only" : on("noeditor") ? "no-editor" : "normal";
+    document.body.classList.add("mode-" + mode);
+    if (on("transparent")) document.body.classList.add("mode-transparent");
+    window.fieldDisplayMode = mode;
+  })();
+</script>
+
 <div id="splash-screen">
     <pre class="f4drift">
           _____                    _____                    _____                    _____            _____

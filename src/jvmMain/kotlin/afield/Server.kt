@@ -451,6 +451,25 @@ fun SessionInformation.autorunBoxes(targetBoxes: Collection<Box>, delayMs: Long 
 var sessions = ConcurrentHashMap<WebSocketSession, SessionInformation>()
 var documents = ConcurrentHashMap<String, SessionInformation>()
 private val welcomeEventSessions = ConcurrentHashMap.newKeySet<WebSocketSession>()
+
+// Sessions grouped by an arbitrary "selection context" name (Hello.shaderSelectionContext).
+// Every socket sharing a context receives each other's selection changes, so e.g. an
+// editor-only dock and a canvas-only dock can share one selection. Server-mediated because
+// separate WKWebView processes (the visionOS docks) can't share BroadcastChannel/localStorage.
+private val selectionContextSessions = ConcurrentHashMap<String, MutableSet<WebSocketSession>>()
+
+private fun joinSelectionContext(context: String, session: WebSocketSession) {
+    selectionContextSessions.getOrPut(context) { ConcurrentHashMap.newKeySet() }.add(session)
+}
+
+private fun leaveSelectionContexts(session: WebSocketSession) {
+    selectionContextSessions.values.forEach { it.remove(session) }
+    selectionContextSessions.entries.removeIf { it.value.isEmpty() }
+}
+
+private fun selectionContextOf(session: WebSocketSession): String? =
+    selectionContextSessions.entries.firstOrNull { it.value.contains(session) }?.key
+
 private val aiKotlinNotifyThrottle = ConcurrentHashMap<String, Long>()
 private val aiKotlinCompletionsInFlight = AtomicInteger(0)
 
@@ -1276,6 +1295,9 @@ private fun indexInitialFramePreviewScript(file: String?, scratch: Boolean, sess
 }
 
 private fun injectInitialFramePreview(html: String, call: ApplicationCall): String {
+    // An editor-only view hides the canvas entirely, so the box-placeholder pre-render would just
+    // flash stray boxes before Monaco appears. Skip it there.
+    if (call.request.queryParameters.contains("editorOnly")) return html
     val file = call.request.queryParameters["file"]
     val scratch = call.request.queryParameters["scratch"]?.trim()?.lowercase(Locale.US) in setOf("1", "true", "yes")
     val sessionKey = call.request.queryParameters["sessionKey"]
@@ -1639,7 +1661,7 @@ class Server {
                 "-keypass", password,
                 "-validity", "3650",
                 "-dname", "CN=localhost, OU=Field, O=Field, L=Local, ST=Local, C=US",
-                "-ext", "SAN=DNS:localhost,IP:127.0.0.1"
+                "-ext", "SAN=DNS:localhost,DNS:mi2,IP:127.0.0.1"
             )
 
             val process = ProcessBuilder(command).inheritIO().start()
@@ -1934,6 +1956,10 @@ class Server {
                     scratch = hello.scratch,
                     sessionKey = hello.sessionKey
                 )
+
+                hello.shaderSelectionContext?.takeIf { it.isNotBlank() }?.let {
+                    joinSelectionContext(it, thisSession.get())
+                }
 
                 Handled.yes
             })
@@ -2451,6 +2477,14 @@ class Server {
             handlers["controller-selection"] = mutableSetOf({ message, reply ->
                 val selection = Json.decodeFromJsonElement<ControllerSelectionState>(message.payload!!)
                 recordControllerSelection(thisSessionInfo.get(), selection)
+                // Fan the selection out to peers sharing this session's selection context
+                // (never back to the originator, or it would echo).
+                val me = thisSession.get()
+                selectionContextOf(me)?.let { context ->
+                    selectionContextSessions[context]?.forEach { peer ->
+                        if (peer != me) _send(peer, message)
+                    }
+                }
                 Handled.yes
             })
 
@@ -3834,6 +3868,23 @@ class Server {
                             }
                         }
 
+                        // Experimental visionOS front end — PLACEHOLDER / reserved fork point
+                        // (see dev_docs/vision_frontend.md). The Kotlin/JS fork is deferred: KMP won't
+                        // give a clean second bundle sharing only commonMain, and the native shell points
+                        // at /welcome + /index.html first anyway. This route serves a static placeholder so
+                        // the prefix is claimed and documented; it grows a real bundle at first divergence.
+                        // Served raw: we deliberately skip filter()/injectInitialFramePreview().
+                        route("/vision") {
+                            handle {
+                                val indexFile = File("./src/jsVision/resources/index.html")
+                                if (indexFile.exists()) {
+                                    call.respondText(indexFile.readText(Charsets.UTF_8), ContentType.Text.Html)
+                                } else {
+                                    call.respond(HttpStatusCode.NotFound, "vision index.html not found")
+                                }
+                            }
+                        }
+
                         post("/api/import-offline-doc") {
                             try {
                                 val payload = call.receive<OfflineImportRequest>()
@@ -3960,6 +4011,7 @@ class Server {
                                 }
                             } finally {
                                 detachDocumentSession(ts)
+                                leaveSelectionContexts(ts)
                                 // Clean up back pressure state for this session.
                                 sessionOutputPressure.remove(ts)
                             }

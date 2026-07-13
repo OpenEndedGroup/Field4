@@ -240,7 +240,13 @@ data class Metadata(
     val receiverDocumentation: String = "",
     val receiverDocumentationSourceName: String = "",
     val receiverDocumentationSourcePath: String = "",
-    val receiverDocumentationSourceLine: Int = -1
+    val receiverDocumentationSourceLine: Int = -1,
+    /**
+     * Client-side ranking boost added on top of fuzzy/category/recency scoring. Used to float
+     * context-appropriate candidates to the top of the completion list — e.g. after an infix
+     * function, the values whose type matches the operator's expected operand. 0 = no boost.
+     */
+    val contextScore: Int = 0
 )
 
 
@@ -337,7 +343,11 @@ data class Hello(
     val filename: String,
     val username: String,
     val sessionKey: String? = null,
-    val scratch: Boolean = false
+    val scratch: Boolean = false,
+    // Optional shared-selection channel: all sessions that pass the same non-blank context name
+    // receive each other's selection changes (server-mediated). Lets an editor-only dock and a
+    // canvas-only dock share one selection. See ?shaderSelectionContext / ?editorOnly / ?noeditor.
+    val shaderSelectionContext: String? = null
 )
 
 @Serializable

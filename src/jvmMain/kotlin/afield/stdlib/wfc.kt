@@ -470,6 +470,9 @@ class WfcRules private constructor(
     }
 }
 
+/** How many WFC steps between progress-bar samples, keeping the resolved-tile scan off the hot path. */
+private const val PROGRESS_STRIDE = 16
+
 enum class WfcStatus { Running, Solved, Contradiction }
 
 data class WfcObservation(val x: Int, val y: Int, val tile: Int)
@@ -568,12 +571,36 @@ class WfcSolver(
     }
 
     fun run(maxSteps: Int = Int.MAX_VALUE): WfcStatus {
+        // Offer resolved-tiles / total-tiles to whichever box is running us (no-op if none).
+        // The count isn't guaranteed monotonic, so we clamp the running bar below 100% and only
+        // report completion when the solver itself reaches Solved.
+        val progress = afield.progressReporter("wfc")
         var steps = 0
-        while (steps < maxSteps && status == WfcStatus.Running) {
-            step()
-            steps++
+        try {
+            while (steps < maxSteps && status == WfcStatus.Running) {
+                step()
+                steps++
+                if (steps % PROGRESS_STRIDE == 0) {
+                    val resolved = resolvedCellCount().coerceAtMost(cellCount - 1)
+                    progress.update(resolved.toLong(), cellCount.toLong())
+                }
+            }
+            if (status == WfcStatus.Solved) progress.update(cellCount.toLong(), cellCount.toLong())
+        } finally {
+            progress.finish()
         }
         return status
+    }
+
+    /** Cells collapsed to a single possibility — the WFC notion of "done" is all of them. */
+    private fun resolvedCellCount(): Int {
+        var resolved = 0
+        var cell = 0
+        while (cell < cellCount) {
+            if (cellBitCount(cell) == 1) resolved++
+            cell++
+        }
+        return resolved
     }
 
     fun resolvedTileGridOrNull(): IntArray? {

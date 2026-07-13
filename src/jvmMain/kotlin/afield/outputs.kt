@@ -109,6 +109,22 @@ private fun buildInlineProgressBarHtml(value: Double, details: String? = null): 
     """.trimIndent()
 }
 
+private fun buildIndeterminateProgressBarHtml(details: String? = null): String {
+    val detailsHtml = details
+        ?.takeIf { it.isNotBlank() }
+        ?.let { """<span class="field-inline-progress-details">${escapeHtml(it)}</span>""" }
+        ?: ""
+    // No fill width — the sliver animates across the track to signal "working, total unknown".
+    return """
+        <span class="field-inline-progress">
+            <span class="field-inline-progress-track">
+                <span class="field-inline-progress-fill field-inline-progress-fill--indeterminate"></span>
+            </span>
+            $detailsHtml
+        </span>
+    """.trimIndent()
+}
+
 private fun formatProgressDuration(seconds: Double): String {
     if (!seconds.isFinite()) return "--:--"
     val total = seconds.coerceAtLeast(0.0).toLong()
@@ -122,10 +138,228 @@ private fun formatProgressDuration(seconds: Double): String {
     }
 }
 
-fun Box.progressBar(name: String, value: Double, details: String? = null) {
+/** The inline output-area channel a progress bar named [name] lives on (e.g. `*progress`). */
+private fun progressInlineChannel(name: String): String {
     val channel = name.trim().ifEmpty { "progress" }
-    val inlineChannel = if (channel.startsWith("*")) channel else "*$channel"
-    display(inlineChannel, buildInlineProgressBarHtml(value, details))
+    return if (channel.startsWith("*")) channel else "*$channel"
+}
+
+fun Box.progressBar(name: String, value: Double, details: String? = null) {
+    display(progressInlineChannel(name), buildInlineProgressBarHtml(value, details))
+}
+
+/** An indeterminate ("still working", no known total) progress bar named [name]. */
+fun Box.progressBarIndeterminate(name: String, details: String? = null) {
+    display(progressInlineChannel(name), buildIndeterminateProgressBarHtml(details))
+}
+
+/** Remove a progress bar named [name] from this box's output-area stack. */
+fun Box.progressBarClear(name: String) {
+    displayClear(progressInlineChannel(name))
+}
+
+/**
+ * Global switch for the transient progress bars offered by [progressReporter] and [Box.tqdm].
+ *
+ * Set [enabled] to `false` to make every progress reporter created afterwards inert — nothing
+ * is drawn and nothing is sent to any box. Reporters capture this at construction time, so a
+ * long-running routine keeps whatever state it started with.
+ *
+ * [lingerMillis] is how long a *completed* bar stays on screen before it removes itself, so a
+ * finished 100% frame is visible for a beat rather than vanishing the instant work ends. It is
+ * the default for [progressReporter]/[withProgress]/[Box.tqdm]; set to `0` to remove instantly.
+ * (An aborted bar — early return or exception — is always removed immediately, with no linger.)
+ *
+ * [showDelayMillis] is a grace period: a bar sends *nothing* to the front end until it has been
+ * alive this long. Work that finishes quickly therefore never shows a bar at all — the front
+ * end is not troubled for a job that was over in a blink. Set to `0` to show immediately.
+ */
+object ProgressBars {
+    @Volatile
+    var enabled: Boolean = true
+
+    @Volatile
+    var lingerMillis: Long = 1000L
+
+    @Volatile
+    var showDelayMillis: Long = 2000L
+}
+
+/**
+ * A transient tqdm-style progress bar bound to whichever `Box` is currently executing.
+ *
+ * Obtain one with [progressReporter]; a routine can then report progress without knowing or
+ * caring where it runs. When there is no active [Box.context] — or when [ProgressBars.enabled]
+ * is `false` — the reporter is *inert*: every method is a complete no-op, so library code may
+ * report progress unconditionally.
+ *
+ * Reaching `1.0` (through any `update`/[step]) removes the bar from the box's output-area
+ * stack; [finish]/[close] do the same explicitly. This is what makes the bar transient — it
+ * shows while work is happening and disappears the moment it completes.
+ */
+class ProgressReporter internal constructor(
+    private val box: Box?,
+    private val name: String,
+    private val lingerMillis: Long = ProgressBars.lingerMillis,
+    showDelayMillis: Long = ProgressBars.showDelayMillis,
+) : AutoCloseable {
+    private val startedAt = System.nanoTime()
+    private val showDelayNanos = showDelayMillis.coerceAtLeast(0L) * 1_000_000L
+    private var lastEmit = 0L
+    private var shown = false
+    private var finished = false
+    private var seen = 0L
+    private var pulses = 0L
+
+    /** True when attached to a live box and not yet finished — i.e. it may still draw. */
+    val active: Boolean get() = box != null && !finished
+
+    /**
+     * Decide whether to draw a frame right now, applying the grace period and the redraw
+     * throttle, and record the emission. Returns false (drawing nothing) when still inside the
+     * grace period, when throttled, or when already finished — quietly finishing if a terminal
+     * frame arrives before the bar was ever shown, so no message reaches the front end.
+     */
+    private fun shouldEmit(terminal: Boolean): Boolean {
+        if (finished) return false
+        val now = System.nanoTime()
+        if (now - startedAt < showDelayNanos) {
+            // Still in the grace period: stay invisible. Finishing quickly means never showing.
+            if (terminal) finished = true
+            return false
+        }
+        // Throttle intermediate frames so a tight loop can't flood the client; the first visible
+        // frame and every terminal frame always go through.
+        if (!terminal && shown && now - lastEmit < MIN_INTERVAL_NANOS) return false
+        shown = true
+        lastEmit = now
+        return true
+    }
+
+    /** Draw the bar at [fraction] of the way done (clamped to 0..1). Reaching 1.0 completes it. */
+    fun update(fraction: Double, details: String? = null) {
+        val target = box ?: return
+        val clamped = fraction.coerceIn(0.0, 1.0)
+        val terminal = clamped >= 1.0
+        if (!shouldEmit(terminal)) return
+        target.progressBar(name, clamped, details)
+        if (terminal) complete(target)
+    }
+
+    /** Draw the bar at [done]/[total], with a default tqdm-style rate/ETA line if [details] is null. */
+    fun update(done: Long, total: Long, details: String? = null) {
+        seen = done
+        val target = box ?: return
+        val clamped = (if (total <= 0L) 1.0 else done.toDouble() / total.toDouble()).coerceIn(0.0, 1.0)
+        val terminal = clamped >= 1.0
+        if (!shouldEmit(terminal)) return
+        target.progressBar(name, clamped, details ?: defaultDetails(done, total))
+        if (terminal) complete(target)
+    }
+
+    /** Advance by [by] out of [total] and redraw. */
+    fun step(total: Long, by: Long = 1L, details: String? = null) = update(seen + by, total, details)
+
+    /**
+     * Report indeterminate activity — one "beat" of work whose total is unknown (e.g. a reduce
+     * that runs to a fixpoint). Shows an animated bar with a step count and elapsed time rather
+     * than a fraction. Never auto-completes; the bar is removed by [finish]/[close]. Like every
+     * method here, it is a no-op outside a box, while disabled, or during the grace period.
+     */
+    fun pulse(details: String? = null) {
+        val target = box ?: return
+        pulses++
+        if (!shouldEmit(terminal = false)) return
+        target.progressBarIndeterminate(name, details ?: defaultPulseDetails())
+    }
+
+    /** Completed at 100%: keep the finished frame up for [lingerMillis], then remove it. */
+    @OptIn(DelicateCoroutinesApi::class)
+    private fun complete(target: Box) {
+        if (finished) return
+        finished = true
+        if (!shown) return // never surfaced; nothing to remove
+        if (lingerMillis <= 0L) {
+            target.progressBarClear(name)
+            return
+        }
+        // Non-blocking: the routine returns now; the bar clears itself a beat later.
+        GlobalScope.launch {
+            delay(lingerMillis)
+            target.progressBarClear(name)
+        }
+    }
+
+    /**
+     * Remove the bar immediately. Idempotent, and a no-op when inert or already completed — so an
+     * outer `finally` won't cut short the linger of a bar that finished on its own. This is the
+     * abort path: a bar that never reached 100% is removed at once. Sends nothing if the bar was
+     * never shown (i.e. it lived and died entirely inside the grace period).
+     */
+    fun finish() {
+        val target = box ?: return
+        if (finished) return
+        finished = true
+        if (shown) target.progressBarClear(name)
+    }
+
+    override fun close() = finish()
+
+    private fun defaultDetails(done: Long, total: Long): String {
+        val elapsed = (System.nanoTime() - startedAt) / 1_000_000_000.0
+        val rate = done / elapsed.coerceAtLeast(1e-9)
+        val remaining = (total - done).coerceAtLeast(0L)
+        val eta = if (rate > 1e-9) remaining / rate else Double.POSITIVE_INFINITY
+        val rateText = String.format(Locale.US, "%.1f", rate)
+        return "$done/$total $rateText it/s ${formatProgressDuration(elapsed)}<${formatProgressDuration(eta)}"
+    }
+
+    private fun defaultPulseDetails(): String {
+        val elapsed = (System.nanoTime() - startedAt) / 1_000_000_000.0
+        val rate = pulses / elapsed.coerceAtLeast(1e-9)
+        val rateText = String.format(Locale.US, "%.1f", rate)
+        return "$pulses steps · $rateText/s · ${formatProgressDuration(elapsed)}"
+    }
+
+    private companion object {
+        const val MIN_INTERVAL_NANOS = 33_000_000L // ~30 fps ceiling on redraws
+    }
+}
+
+/**
+ * A [ProgressReporter] for the box currently executing (via [Box.context]), or an inert no-op
+ * reporter when there is no active box or when [ProgressBars.enabled] is `false`.
+ *
+ * This is the entry point for routines that want to *offer* a progress bar without depending on
+ * a `Box`: call it, drive the returned reporter, and it draws only when it happens to run inside
+ * a box with progress enabled.
+ */
+fun progressReporter(
+    name: String = "progress",
+    lingerMillis: Long = ProgressBars.lingerMillis,
+    showDelayMillis: Long = ProgressBars.showDelayMillis,
+): ProgressReporter {
+    val box = if (ProgressBars.enabled) Box.context.get() else null
+    return ProgressReporter(box, name, lingerMillis, showDelayMillis)
+}
+
+/**
+ * Run [block] with a transient progress bar, always removing the bar afterwards. A bar that
+ * reached 100% inside [block] lingers as usual; one that didn't (early return or a thrown
+ * exception) is removed immediately. The reporter is inert outside a box context.
+ */
+fun <T> withProgress(
+    name: String = "progress",
+    lingerMillis: Long = ProgressBars.lingerMillis,
+    showDelayMillis: Long = ProgressBars.showDelayMillis,
+    block: (ProgressReporter) -> T,
+): T {
+    val reporter = progressReporter(name, lingerMillis, showDelayMillis)
+    try {
+        return block(reporter)
+    } finally {
+        reporter.finish()
+    }
 }
 
 interface SizedIterable<out T> : Iterable<T> {
@@ -1514,44 +1748,34 @@ fun Box.showLayers() {
 
 fun <T> Box.tqdm(items: SizedIterable<T>, name: String = "progress"): Iterable<T> {
     val totalCount = items.size
-    val startedAt = System.nanoTime()
+    // Respect the global switch: when disabled, iterate transparently with no bar.
+    if (!ProgressBars.enabled) return items
 
-    fun stats(done: Int): String {
-        val elapsedSeconds = (System.nanoTime() - startedAt) / 1_000_000_000.0
-        val rate = done / elapsedSeconds.coerceAtLeast(1e-9)
-        val remaining = (totalCount - done).coerceAtLeast(0)
-        val etaSeconds = if (rate > 1e-9) remaining / rate else Double.POSITIVE_INFINITY
-        val rateText = String.format(Locale.US, "%.1f", rate)
-        return "$done/$totalCount $rateText it/s ${formatProgressDuration(elapsedSeconds)}<${formatProgressDuration(etaSeconds)}"
-    }
+    val reporter = ProgressReporter(this, name)
 
     if (totalCount == 0) {
-        progressBar(name, 1.0, stats(0))
+        reporter.finish()
         return items
     }
 
-    progressBar(name, 0.0, stats(0))
-    val total = totalCount.toDouble()
+    reporter.update(0L, totalCount.toLong())
 
     return Iterable {
         val base = items.iterator()
-        var index = 0
-        var finished = false
+        var index = 0L
 
         object : Iterator<T> {
             override fun hasNext(): Boolean {
                 val has = base.hasNext()
-                if (!has && !finished) {
-                    finished = true
-                    progressBar(name, 1.0, stats(totalCount))
-                }
+                // Reaching the end removes the bar from the output-area stack (idempotent).
+                if (!has) reporter.finish()
                 return has
             }
 
             override fun next(): T {
                 val value = base.next()
                 index++
-                progressBar(name, index / total, stats(index))
+                reporter.update(index, totalCount.toLong())
                 return value
             }
         }

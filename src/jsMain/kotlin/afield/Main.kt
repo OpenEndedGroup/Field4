@@ -559,6 +559,20 @@ var canvasGestures = CanvasGestures(launcher = {
 var selected = mutableSetOf<HTMLElement>()
 var selectedList = eval("[]")
 var selectedProperty = "code"
+
+// Display mode from ?editorOnly / ?noeditor: "editor-only" | "no-editor" | "normal".
+// Also mirrored onto window.fieldDisplayMode for the Monaco selection monitor to read.
+internal var fieldDisplayMode: String = "normal"
+
+// A boolean URL flag that may appear bare (?editorOnly) or valued (?editorOnly=1|true).
+private fun flagParam(params: URLSearchParams, name: String): Boolean {
+    val v = params.get(name) ?: return false
+    return v.isEmpty() || v == "1" || v == "true"
+}
+
+// True while applying a selection received from a shared-selection peer, so the resulting
+// selectBox/deselectBox churn doesn't echo the selection straight back out to the server.
+private var applyingRemoteSelection = false
 private const val editorPropertyStickinessStorageKey = "field4.editorPropertyStickiness"
 private const val editorPropertyPerBoxStoragePrefix = "field4.editorPropertyPerBox."
 private var explicitPropertySelectionInProgress = false
@@ -628,11 +642,42 @@ fun selectionContextChanged() {
 }
 
 private fun syncControllerSelection() {
+    if (applyingRemoteSelection) return
     val selectedIds = selected.mapNotNull { it.asDynamic().uid as? String }
     val signature = selectedIds.joinToString("\u0000") + "\u0001" + selectedProperty
     if (signature == lastControllerSelectionSignature) return
     lastControllerSelectionSignature = signature
     send(Message("controller-selection").payload(ControllerSelectionState(selectedIds, selectedProperty)))
+}
+
+// Apply a selection pushed from a shared-selection peer (?shaderSelectionContext). Drives the
+// same selectBox/deselectBox path a local click would, so the editor + badges update normally,
+// but suppresses the outbound echo and only touches boxes that exist in this document.
+private fun applyRemoteSelection(state: ControllerSelectionState) {
+    val targetUids = state.selectedUids.toSet()
+    applyingRemoteSelection = true
+    try {
+        if (state.property.isNotBlank()) {
+            selectedProperty = state.property
+            window.unsafeCast<dynamic>().selectedProperty = state.property
+        }
+        // Drop boxes that are no longer part of the shared selection.
+        selected.toList().forEach { el ->
+            val uid = el.asDynamic().uid as? String
+            if (uid == null || uid !in targetUids) deselectBox(el)
+        }
+        // Add newly-selected boxes that actually exist here.
+        targetUids.forEach { uid ->
+            val el = findBoxByUid(uid)
+            if (el != null && !selected.contains(el)) selectBox(el)
+        }
+    } finally {
+        applyingRemoteSelection = false
+        // Record what we just applied so a genuine local change still diffs correctly and we
+        // don't immediately re-broadcast this applied selection.
+        val appliedIds = selected.mapNotNull { it.asDynamic().uid as? String }
+        lastControllerSelectionSignature = appliedIds.joinToString("\u0000") + "\u0001" + selectedProperty
+    }
 }
 
 internal fun setSelectedEditorProperty(property: String) {
@@ -3893,6 +3938,51 @@ private data class DroppedFileProxy(
     val mimeType: String?
 )
 
+// Be liberal in what we accept as a droppable transcript — match everything the
+// server's loader (operation_transcript.kt loadMacroOperations) will actually run:
+// a top-level `operations:` / `ops:` mapping, OR a bare YAML sequence whose first
+// entry is a recognized operation verb. Indentation, inline values, and leading
+// comment/blank lines are all tolerated.
+private val OPERATION_TRANSCRIPT_MARKER = Regex("^\\s*(operations|ops)\\s*:", RegexOption.MULTILINE)
+
+// A bare top-level sequence begins with e.g. "- create:" (see the verb vocabulary in
+// operation_transcript.kt). Gating the bare-list form on a known verb keeps us from
+// hijacking an arbitrary YAML list the user meant to drop as a file proxy.
+private val BARE_OPERATION_ITEM = Regex("^-\\s+([\\w-]+)\\s*:")
+private val OPERATION_VERBS = setOf(
+    "create", "new-box", "box",
+    "execute", "execute-fragment",
+    "launch", "launch-all", "launch-fragment",
+    "edit", "set", "set-string",
+    "move", "frame", "set-rect",
+    "connect", "delete", "tombstone",
+    "wait", "marker"
+)
+
+private fun looksLikeOperationTranscript(text: String): Boolean {
+    if (OPERATION_TRANSCRIPT_MARKER.containsMatchIn(text)) return true
+    val firstMeaningful = text.lineSequence()
+        .map { it.trim() }
+        .firstOrNull { it.isNotEmpty() && !it.startsWith("#") }
+        ?: return false
+    val verb = BARE_OPERATION_ITEM.find(firstMeaningful)?.groupValues?.getOrNull(1)?.lowercase()
+    return verb != null && verb in OPERATION_VERBS
+}
+
+// Which dropped files are worth reading and sniffing as a transcript. Beyond the
+// obvious .yaml/.yml, accept .txt, JSON (valid YAML), text-ish MIME types, and
+// extensionless files — while leaving clearly-binary drops (images, video, .png …)
+// to go straight to the file-proxy menu without a wasteful full read.
+private fun isTranscriptCandidateFile(lowerName: String, mimeType: String?): Boolean {
+    if (lowerName.endsWith(".yaml") || lowerName.endsWith(".yml") ||
+        lowerName.endsWith(".txt") || lowerName.endsWith(".json")
+    ) return true
+    val mime = mimeType?.lowercase().orEmpty()
+    if (mime.startsWith("text/") || mime.contains("yaml") || mime == "application/json") return true
+    val base = lowerName.substringAfterLast('/').substringAfterLast('\\')
+    return !base.contains('.')
+}
+
 private fun decodeFileUri(raw: String?): String? {
     val line = raw
         ?.lines()
@@ -4228,6 +4318,26 @@ suspend fun main() {
     val username = searchParams.get("user") ?: "everybody"
     val sessionKey = searchParams.get("sessionKey")
     val scratch = searchParams.get("scratch") == "1" || searchParams.get("scratch") == "true"
+    // Shared-selection channel + editor/canvas display modes (see dev docs / vision_frontend).
+    val shaderSelectionContext = searchParams.get("shaderSelectionContext")?.takeIf { it.isNotBlank() }
+    fieldDisplayMode = when {
+        flagParam(searchParams, "editorOnly") -> "editor-only"
+        flagParam(searchParams, "noeditor") -> "no-editor"
+        else -> "normal"
+    }
+    window.asDynamic().fieldDisplayMode = fieldDisplayMode
+    document.body?.classList?.add(
+        when (fieldDisplayMode) {
+            "editor-only" -> "mode-editor-only"
+            "no-editor" -> "mode-no-editor"
+            else -> "mode-normal"
+        }
+    )
+    // ?transparent — glass field backdrop, opaque boxes/outputs. Orthogonal to the display mode
+    // (combine e.g. ?noeditor&transparent). Needs WebDock.isOpaque=false natively to see through.
+    if (flagParam(searchParams, "transparent")) {
+        document.body?.classList?.add("mode-transparent")
+    }
     window.asDynamic().fieldBackdoorUiReady = false
     window.asDynamic().fieldBackdoorDisconnectedOverlayActive = false
     window.asDynamic().currentDocumentFilename = filename
@@ -4905,6 +5015,16 @@ suspend fun main() {
         }
     }
 
+    // A selection pushed from a peer sharing our ?shaderSelectionContext. The server only sends
+    // this to context peers (never the originator), so applying it can't loop back on the sender.
+    handlers.put("controller-selection") { message, _ ->
+        val payload = message.payload ?: return@put Handled.no
+        val state = runCatching { Json.decodeFromJsonElement<ControllerSelectionState>(payload) }.getOrNull()
+            ?: return@put Handled.no
+        applyRemoteSelection(state)
+        Handled.yes
+    }
+
     handlers.put("set-provisional") { message, _ ->
         val set = Json.decodeFromJsonElement<ProvisionalSet>(message.payload!!)
         Provisional.clear()
@@ -5409,7 +5529,7 @@ suspend fun main() {
 
     }.first()
 
-    registerOnOpen(Message("hello").payload(Hello(filename, username, sessionKey = sessionKey, scratch = scratch)))
+    registerOnOpen(Message("hello").payload(Hello(filename, username, sessionKey = sessionKey, scratch = scratch, shaderSelectionContext = shaderSelectionContext)))
     initializeClient()
 
     overlaySVGLayer = document.getElementById("overlaysvglayer") as SVGSVGElement
@@ -5526,7 +5646,8 @@ suspend fun main() {
     syncInitialPlaceholderLayerTransform()
     updateBackgroundGrid(0.0, 0.0, panning = false)
 
-    // File drop handler: metadata.edn imports boxes; other files open a file-proxy marking menu.
+    // File drop handler: metadata.edn imports boxes; transcript/macro YAML runs itself;
+    // other files open a file-proxy marking menu.
     body.ondragover = { event ->
         event.preventDefault()
         null
@@ -5534,29 +5655,47 @@ suspend fun main() {
 
     body.ondrop = { event ->
         event.preventDefault()
-        val files = event.asDynamic().dataTransfer.files
+        val dropEvent = event.asDynamic()
+        val files = dropEvent.dataTransfer.files
         if (files.length > 0) {
             val file = files[0]
-            if (file.name == "metadata.edn") {
-                val reader = js("new FileReader()")
-                reader.onload = { loadEvent: dynamic ->
-                    val ednText = loadEvent.target.result as String
-                    console.info("[import] metadata.edn file: ${file.name}")
-                    send(Message("import-metadata-edn").payload(ImportMetadata(ednText)))
-                    notify("Importing ${file.name}...", "import")
-                }
-                reader.readAsText(file)
-            } else {
-                val dataTransfer = event.asDynamic().dataTransfer
+            val fileName = (file.name as? String)?.ifBlank { "dropped-file" } ?: "dropped-file"
+            val lowerName = fileName.lowercase()
+            val proxyFallback = {
                 showDroppedFileProxyMenu(
-                    event.asDynamic(),
+                    dropEvent,
                     DroppedFileProxy(
                         file = file,
-                        fileName = (file.name as? String)?.ifBlank { "dropped-file" } ?: "dropped-file",
-                        path = extractDroppedFilePath(file, dataTransfer),
+                        fileName = fileName,
+                        path = extractDroppedFilePath(file, dropEvent.dataTransfer),
                         mimeType = file.type as? String
                     )
                 )
+            }
+            if (fileName == "metadata.edn") {
+                val reader = js("new FileReader()")
+                reader.onload = { loadEvent: dynamic ->
+                    val ednText = loadEvent.target.result as String
+                    console.info("[import] metadata.edn file: $fileName")
+                    send(Message("import-metadata-edn").payload(ImportMetadata(ednText)))
+                    notify("Importing $fileName...", "import")
+                }
+                reader.readAsText(file)
+            } else if (isTranscriptCandidateFile(lowerName, file.type as? String)) {
+                val reader = js("new FileReader()")
+                reader.onload = { loadEvent: dynamic ->
+                    val text = loadEvent.target.result as String
+                    if (looksLikeOperationTranscript(text)) {
+                        console.info("[transcript] running dropped transcript: $fileName")
+                        runDroppedTranscript(fileName, text)
+                    } else {
+                        // Text file, but not an operation transcript — treat it as a plain file.
+                        proxyFallback()
+                    }
+                }
+                reader.readAsText(file)
+            } else {
+                proxyFallback()
             }
         }
         null

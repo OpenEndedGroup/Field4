@@ -48,6 +48,10 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
     // Cache the device's supported extensions once.
     private val supportedExtensions: Set<String> by lazy { enumerateDeviceExtensions() }
 
+    /** VK_EXT_metal_objects (MoltenVK) — required to export an RTT color image's backing IOSurface. */
+    val supportsMetalObjects: Boolean
+        get() = supportedExtensions.contains(org.lwjgl.vulkan.EXTMetalObjects.VK_EXT_METAL_OBJECTS_EXTENSION_NAME)
+
     init {
         MemoryStack.stackPush().use { stack ->
             val hasExt = { name: String -> supportedExtensions.contains(name) }
@@ -167,6 +171,8 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
 
                 if (OS == OSType.MACOS) {
                     addIfSupported(KHRPortabilitySubset.VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME)
+                    // Lets an RTT color image export its backing IOSurface for GPU video streaming.
+                    addIfSupported(org.lwjgl.vulkan.EXTMetalObjects.VK_EXT_METAL_OBJECTS_EXTENSION_NAME)
                 }
 
                 if (Options.profiling) {

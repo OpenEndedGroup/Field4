@@ -50,6 +50,15 @@ class Image(private val device: Device, val imageData: ImageData) {
                 .tiling(VK10.VK_IMAGE_TILING_OPTIMAL)
                 .usage(imageData.usage)
 
+            // Make the backing MTLTexture IOSurface-exportable (MoltenVK) so the image can be
+            // handed zero-copy to a hardware video encoder. Opt-in; inert otherwise.
+            if (imageData.exportMetalIOSurface) {
+                val exportInfo = VkExportMetalObjectCreateInfoEXT.calloc(stack)
+                    .sType(EXTMetalObjects.VK_STRUCTURE_TYPE_EXPORT_METAL_OBJECT_CREATE_INFO_EXT)
+                    .exportObjectType(EXTMetalObjects.VK_EXPORT_METAL_OBJECT_TYPE_METAL_IOSURFACE_BIT_EXT)
+                imageCreateInfo.pNext(exportInfo.address())
+            }
+
             val lp = stack.mallocLong(1)
             vkCheck(
                 VK10.vkCreateImage(device.vkDevice, imageCreateInfo, null, lp),
@@ -115,6 +124,25 @@ class Image(private val device: Device, val imageData: ImageData) {
 
     fun getLayoutFor(commandBufferHandle: Long): Int? = layoutByCommandBuffer[commandBufferHandle]
 
+    /**
+     * Export the IOSurfaceRef backing this image's MTLTexture (MoltenVK, VK_EXT_metal_objects).
+     * Requires [ImageData.exportMetalIOSurface] = true at creation and the device to have enabled
+     * VK_EXT_metal_objects. Returns the IOSurfaceRef pointer (pass to [afield.four.texture.MetalIOSurface.ioSurfaceId]),
+     * or 0 if the surface could not be exported.
+     */
+    fun exportMetalIOSurfaceRef(): Long {
+        MemoryStack.stackPush().use { stack ->
+            val ioInfo = VkExportMetalIOSurfaceInfoEXT.calloc(stack)
+                .sType(EXTMetalObjects.VK_STRUCTURE_TYPE_EXPORT_METAL_IO_SURFACE_INFO_EXT)
+                .image(vkImage)
+            val objects = VkExportMetalObjectsInfoEXT.calloc(stack)
+                .sType(EXTMetalObjects.VK_STRUCTURE_TYPE_EXPORT_METAL_OBJECTS_INFO_EXT)
+                .pNext(ioInfo.address())
+            EXTMetalObjects.vkExportMetalObjectsEXT(device.vkDevice, objects)
+            return ioInfo.ioSurface()
+        }
+    }
+
     class ImageData {
         var arrayLayers: Int = 1
         internal var format: Int
@@ -126,6 +154,12 @@ class Image(private val device: Device, val imageData: ImageData) {
         var memoryPropertyFlags: Int = VK10.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
         var sampleCount: Int = 1
         var usage: Int = 0
+
+        /**
+         * MoltenVK only: create the backing MTLTexture as IOSurface-exportable
+         * (chains VkExportMetalObjectCreateInfoEXT). Enables [Image.exportMetalIOSurfaceRef].
+         */
+        var exportMetalIOSurface: Boolean = false
         var width: Int = 0
 
         init {

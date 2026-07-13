@@ -481,6 +481,10 @@ class SortingNetwork(val n: Int, val comparators: List<SortingComparator>) {
 
             val coolingRate = ln(finalTemp / initialTemp) / iterations.toDouble()
 
+            // Politely offer a determinate progress bar (with ETA) to the running box; inert
+            // outside one, globally disableable, and only surfaces if the search runs long enough.
+            val progress = afield.progressReporter("anneal")
+            try {
             repeat(iterations) { iter ->
                 val temp = initialTemp * exp(coolingRate * iter)
 
@@ -541,9 +545,13 @@ class SortingNetwork(val n: Int, val comparators: List<SortingComparator>) {
                 }
 
                 if (onProgress != null && iter % progressEvery == 0) onProgress(iter, best)
+                progress.update((iter + 1).toLong(), iterations.toLong())
             }
 
             if (onProgress != null && iterations % progressEvery != 0) onProgress(iterations, best)
+            } finally {
+                progress.finish()
+            }
 
             return best
         }

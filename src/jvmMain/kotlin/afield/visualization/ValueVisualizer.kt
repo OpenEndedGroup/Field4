@@ -11,6 +11,7 @@ import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sqrt
 import kotlin.reflect.full.memberProperties
+import kotlin.reflect.jvm.isAccessible
 
 /**
  * Interface for objects that can provide their own HTML representation
@@ -1135,6 +1136,7 @@ object ValueVisualizer {
                 val hasMore = entries.size > previewEntries.size
                 previewEntries.forEach { prop ->
                     val propValue = try {
+                        prop.isAccessible = true
                         prop.getter.call(obj)
                     } catch (e: Exception) {
                         "[error: ${e.message}]"
@@ -1330,6 +1332,7 @@ object ValueVisualizer {
         return buildString {
             entries.subList(safeStart, nextEnd).forEach { prop ->
                 val propValue = try {
+                    prop.isAccessible = true
                     prop.getter.call(obj)
                 } catch (e: Exception) {
                     "[error: ${e.message}]"

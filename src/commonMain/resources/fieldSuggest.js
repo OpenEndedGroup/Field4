@@ -358,6 +358,7 @@ const normalizeRpcCompletion = (
     runtimeDocumentationHtml: m.runtimeDocumentationHtml || "",
     icon: m.icon || "",
     category: categoryFor(m, languageId, source),
+    contextScore: Number(m.contextScore) || 0,
     range,
     prefix: m.prefix || "",
     languageId,
@@ -685,12 +686,15 @@ const rankItems = (items, query, recencyStore, memberContext = false) => {
       const recency = recencyScoreFor(item, recencyStore, now);
       const aiLateBonus = item.source === "ai" ? 12 : 0;
       const memberScore = memberContextScore(item, memberContext);
+      // Server-supplied context boost (e.g. type-matching operands after an infix function).
+      const contextScore = Number(item.contextScore) || 0;
       const score =
         (Number.isFinite(fuzzy) ? fuzzy : -Infinity) +
         categoryScore +
         recency +
         aiLateBonus +
-        memberScore -
+        memberScore +
+        contextScore -
         originalIndex * 0.012;
       return {
         item,

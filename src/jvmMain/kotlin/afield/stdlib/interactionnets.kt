@@ -374,7 +374,16 @@ class Net internal constructor(
     }
 
     fun relax(iterations: Int = 1, config: LayoutConfig = LayoutConfig()) {
-        repeat(iterations) { stepLayout(config) }
+        // Force-directed layout is O(n^2) per step; offer a determinate bar to the running box.
+        val progress = afield.progressReporter("relax")
+        try {
+            repeat(iterations) { i ->
+                stepLayout(config)
+                progress.update((i + 1).toLong(), iterations.toLong())
+            }
+        } finally {
+            progress.finish()
+        }
     }
 
     private fun stepLayout(config: LayoutConfig) {
@@ -1144,10 +1153,17 @@ class Reducer(
     }
 
     fun reduce(net: Net, maxSteps: Int = Int.MAX_VALUE, onStep: ((Int, Net) -> Unit)? = null): Int {
+        // Runs to a fixpoint, so the total is unknown -> an indeterminate activity bar.
+        val progress = afield.progressReporter("reduce")
         var steps = 0
-        while (steps < maxSteps && stepDetailed(net) != null) {
-            steps++
-            onStep?.invoke(steps, net)
+        try {
+            while (steps < maxSteps && stepDetailed(net) != null) {
+                steps++
+                onStep?.invoke(steps, net)
+                progress.pulse()
+            }
+        } finally {
+            progress.finish()
         }
         return steps
     }
@@ -1157,11 +1173,17 @@ class Reducer(
         maxSteps: Int = Int.MAX_VALUE,
         onStep: ((Int, Net, ReductionStep) -> Unit)? = null
     ): Int {
+        val progress = afield.progressReporter("reduce")
         var steps = 0
-        while (steps < maxSteps) {
-            val detail = stepDetailed(net) ?: break
-            steps++
-            onStep?.invoke(steps, net, detail)
+        try {
+            while (steps < maxSteps) {
+                val detail = stepDetailed(net) ?: break
+                steps++
+                onStep?.invoke(steps, net, detail)
+                progress.pulse()
+            }
+        } finally {
+            progress.finish()
         }
         return steps
     }
