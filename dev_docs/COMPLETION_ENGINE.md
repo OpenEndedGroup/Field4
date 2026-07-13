@@ -17,6 +17,11 @@ Current routing:
   `complete-kotlin-ai`, and `resolve-completion` RPCs.
 - Language extensions may still expose `provideCompletionItems(...)`, but
   FieldSuggest consumes those results and renders them in its own panel.
+- Server-side, `InfixCompletion` (`src/jvmMain/kotlin/afield/execution.kt`) resolves
+  the operand type(s) after `receiver op <caret>` and boosts (`contextScore`)
+  candidates whose return type matches. It is overload-aware: an operator overloaded
+  on operand type (e.g. `Fn.over(Domain)` / `Fn.over(ClosedRange<*>)`) contributes the
+  parameter type of every single-parameter overload, so operands of any overload rank.
 
 If completion behavior needs to change, extend FieldSuggest or the server RPC
 payloads. Do not revive Monaco's native completion provider.
