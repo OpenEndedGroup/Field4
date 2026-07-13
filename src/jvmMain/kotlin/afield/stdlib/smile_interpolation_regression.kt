@@ -78,7 +78,7 @@ fun smileGaussianProcess(
         val modelPredictor: (Double) -> Double = { x -> model.predict(doubleArrayOf(x)) }
         modelPredictor
     } catch (t: Throwable) {
-        if (t is VirtualMachineError || t is ThreadDeath) throw t
+        if (t is VirtualMachineError) throw t
         System.err.println("smileGaussianProcess: native Smile backend unavailable; falling back to linear interpolation: ${t.message ?: t.javaClass.name}")
         val fallbackPredictor: (Double) -> Double = { x -> linearPredict(xCopy, yCopy, x) }
         fallbackPredictor

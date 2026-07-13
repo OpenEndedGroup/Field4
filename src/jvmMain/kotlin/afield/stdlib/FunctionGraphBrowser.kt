@@ -72,7 +72,7 @@ fun Functions.Fn.graphTrace(
         val value = match.function.graphNode().numbers["value"]
         val numeric = "number" in match.function.graphNode().tags && value != null
         val sensitivity = if (numeric && sensitivitySteps > 0) {
-            graphSweepFinal(match.context.path, value!!, sensitivitySpan, sensitivitySteps, xs)
+            graphSweepFinal(match.context.path, value, sensitivitySpan, sensitivitySteps, xs)
         } else {
             emptyList()
         }

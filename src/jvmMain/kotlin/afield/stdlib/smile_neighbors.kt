@@ -292,7 +292,7 @@ private fun buildLshOrNull(
             }
         }
     } catch (t: Throwable) {
-        if (t is VirtualMachineError || t is ThreadDeath) throw t
+        if (t is VirtualMachineError) throw t
         System.err.println("$fn: approximate LSH backend unavailable; falling back to exact nearest-neighbor search: ${t.message ?: t.javaClass.name}")
         null
     }
