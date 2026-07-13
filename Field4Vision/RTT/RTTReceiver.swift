@@ -79,14 +79,27 @@ final class RTTReceiver {
         // Max UDP payload; the sender caps fragments well under MTU, so this is comfortably large.
         let bufSize = 65_536
         var buf = [UInt8](repeating: 0, count: bufSize)
+        var loggedPeer = false
 
         while running {
-            let n = recv(s, &buf, bufSize, 0)
+            // recvfrom (not recv) so we can log the sender's source address — the "a remote box
+            // connected and is sending" signal for smoke-testing across machines (e.g. mi2:<port>).
+            var src = sockaddr_storage()
+            var srcLen = socklen_t(MemoryLayout<sockaddr_storage>.size)
+            let n = withUnsafeMutablePointer(to: &src) { sp in
+                sp.withMemoryRebound(to: sockaddr.self, capacity: 1) { sa in
+                    recvfrom(s, &buf, bufSize, 0, sa, &srcLen)
+                }
+            }
             if n < 0 {
                 if running { onError?("recv() failed: \(errnoString())") }
                 break
             }
             if n == 0 { continue }
+            if !loggedPeer {
+                loggedPeer = true
+                shellLog.notice("RTT first packet (\(n) bytes) from \(Self.peerString(&src), privacy: .public)")
+            }
             datagramsReceived += 1
             bytesReceived += n
 
@@ -103,4 +116,19 @@ final class RTTReceiver {
     }
 
     private func errnoString() -> String { String(cString: strerror(errno)) }
+
+    /// "ip:port" for a received datagram's source (IPv4 or IPv6), for smoketest logging.
+    private static func peerString(_ src: inout sockaddr_storage) -> String {
+        var host = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+        var serv = [CChar](repeating: 0, count: Int(NI_MAXSERV))
+        let len = socklen_t(src.ss_len)
+        let rc = withUnsafePointer(to: &src) { sp in
+            sp.withMemoryRebound(to: sockaddr.self, capacity: 1) { sa in
+                getnameinfo(sa, len, &host, socklen_t(host.count), &serv, socklen_t(serv.count),
+                            NI_NUMERICHOST | NI_NUMERICSERV)
+            }
+        }
+        guard rc == 0 else { return "unknown" }
+        return "\(String(cString: host)):\(String(cString: serv))"
+    }
 }
