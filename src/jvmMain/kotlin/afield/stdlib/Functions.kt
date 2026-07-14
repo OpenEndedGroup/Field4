@@ -4733,6 +4733,12 @@ canvas {
         source.quantize(levels).withName("quantize")
     }
 
+    fun chebyshev(order: Int = 2): FnTransform = chebyshev(param(order))
+
+    fun chebyshev(order: Fn): FnTransform = FnTransform("chebyshev") { source ->
+        source.chebyshev(order).withName("chebyshev")
+    }
+
     fun copyPaste(from: Domain, to: Domain, stretch: Boolean = true, edge: EdgeMode = EdgeMode.CLAMP): FnTransform =
         FnTransform("copyPaste") { source ->
             val d = source.domain.union(to)
@@ -5567,6 +5573,41 @@ canvas {
     }
 
     fun Fn.fold(threshold: Number): Fn = fold(param(threshold))
+
+    fun Fn.chebyshev(order: Fn = param(2.0)): Fn {
+        val d = intersectDomains(domain, order)
+        return graphFn(
+            d,
+            name,
+            node("chebyshev", children = listOf(fnEdge("source", this), fnEdge("order", order)), rebuild = { it[0].chebyshev(it[1]) })
+        ) { x ->
+            // Canonical harmonic-generating waveshaper: pushing a unit-amplitude cosine
+            // through the order-n Chebyshev polynomial Tₙ yields the n-th harmonic, since
+            // Tₙ(cos θ) = cos(nθ). Clamp the drive to [-1, 1] first — the standard shaper
+            // guard, matching how `fold`/`softClip` bound their input — because Tₙ diverges
+            // rapidly outside the unit interval. Order is rounded to the nearest non-negative
+            // integer, so a swept/animated `order` param becomes a harmonic sweep.
+            val n = order.eval(x).roundToInt().coerceAtLeast(0)
+            val v = eval(x).coerceIn(-1.0, 1.0)
+            when (n) {
+                0 -> 1.0
+                1 -> v
+                else -> {
+                    // Iterative Tₙ recurrence: Tₖ = 2v·Tₖ₋₁ − Tₖ₋₂.
+                    var tPrev = 1.0
+                    var tCur = v
+                    for (k in 2..n) {
+                        val tNext = 2.0 * v * tCur - tPrev
+                        tPrev = tCur
+                        tCur = tNext
+                    }
+                    tCur
+                }
+            }
+        }
+    }
+
+    fun Fn.chebyshev(order: Int): Fn = chebyshev(param(order))
 
     fun Fn.wrapY(min: Fn = param(-1.0), max: Fn = param(1.0)): Fn {
         val d = intersectDomains(domain, min, max)

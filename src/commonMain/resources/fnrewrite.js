@@ -25,7 +25,7 @@ define("bithero/fnrewrite", ["require", "vs/editor/editor.api"], function (requi
                 "hannWindow", "hammingWindow", "blackmanWindow", "gaussianWindow",
                 "add", "subtract", "multiply", "divide",
                 "shift", "scaleX", "scaleY", "offsetY", "pow", "log",
-                "clamp", "clip", "softClip", "fold", "wrapY",
+                "clamp", "clip", "softClip", "fold", "chebyshev", "wrapY",
                 "delay", "mirror", "repeat", "warp", "timeline",
         ])
 
