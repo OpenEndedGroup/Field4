@@ -7,7 +7,7 @@ import afield.*
 import afield.four.util.FieldProbeScalarBatch
 import afield.four.util.FieldProbeSnapshot
 import afield.four.util.ShaderFieldProbe
-import org.joml.Vector4f
+import afield.stdlib.linalg.Vector4f
 import java.util.ArrayDeque
 import java.util.Locale
 import kotlin.math.abs

@@ -1,5 +1,8 @@
 package afield.four.util
 
+import org.joml.translate
+import org.joml.fromAxisAngleRad
+import org.joml.transform
 import afield.four.Renderer
 import afield.four.buffers.HasUniform
 import afield.four.modules.fromContext
@@ -10,7 +13,7 @@ import afield.stdlib.vec
 import afield.stdlib.x
 import org.joml.Matrix4f
 import org.joml.Quaternionf
-import org.joml.Vector3f
+import afield.stdlib.linalg.Vector3f
 import kotlin.math.abs
 
 class Camera(val renderer: Renderer = fromContext()) {

@@ -1,5 +1,8 @@
 package afield.four.buffers
 
+import afield.stdlib.linalg.Vector2f
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector4f
 import afield.four.device.CommandBuffer
 import afield.four.modules.Introspected
 import afield.four.modules.PrimitiveType

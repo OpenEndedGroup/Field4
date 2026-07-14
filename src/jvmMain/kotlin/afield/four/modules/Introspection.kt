@@ -194,7 +194,7 @@ enum class PrimitiveType(
         2,
         4,
         VK10.VK_FORMAT_R32G32_SFLOAT,
-        "org.joml.Vector2f",
+        "afield.stdlib.linalg.Vector2f",
         "vec(0,0)",
         "x.get(buffer); buffer.position(buffer.position()+8)"
     ),
@@ -202,7 +202,7 @@ enum class PrimitiveType(
         3,
         4,
         VK10.VK_FORMAT_R32G32B32_SFLOAT,
-        "org.joml.Vector3f",
+        "afield.stdlib.linalg.Vector3f",
         "vec(0,0,0)",
         "x.get(buffer); buffer.position(buffer.position()+12)"
     ),
@@ -210,7 +210,7 @@ enum class PrimitiveType(
         4,
         4,
         VK10.VK_FORMAT_R32G32B32A32_SFLOAT,
-        "org.joml.Vector4f",
+        "afield.stdlib.linalg.Vector4f",
         "vec(0,0,0,1)",
         "x.get(buffer); buffer.position(buffer.position()+16)"
     ),
@@ -240,17 +240,17 @@ enum class PrimitiveType(
     ),
     f16vec2(
         2, 2, VK10.VK_FORMAT_R16G16_SFLOAT,
-        "org.joml.Vector2f", "vec(0,0)",
+        "afield.stdlib.linalg.Vector2f", "vec(0,0)",
         "buffer.putf16(x.x); buffer.putf16(x.y)"
     ),
     f16vec3(
         3, 2, VK10.VK_FORMAT_R16G16B16_SFLOAT,
-        "org.joml.Vector3f", "vec(0,0,0)",
+        "afield.stdlib.linalg.Vector3f", "vec(0,0,0)",
         "buffer.putf16(x.x); buffer.putf16(x.y); buffer.putf16(x.z)"
     ),
     f16vec4(
         4, 2, VK10.VK_FORMAT_R16G16B16A16_SFLOAT,
-        "org.joml.Vector4f", "vec(0,0,0,1)",
+        "afield.stdlib.linalg.Vector4f", "vec(0,0,0,1)",
         "buffer.putf16(x.x); buffer.putf16(x.y); buffer.putf16(x.z); buffer.putf16(x.w)"
     ),
     deviceptr(

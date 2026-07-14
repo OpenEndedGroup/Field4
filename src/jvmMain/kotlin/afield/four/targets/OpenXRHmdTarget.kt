@@ -1,5 +1,8 @@
 package afield.four.targets
 
+import afield.stdlib.linalg.Vector2f
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector4f
 import afield.Rect
 import afield.four.CPUSpan
 import afield.four.Renderer
@@ -25,7 +28,6 @@ import afield.stdlib.*
 import afield.stdlib.remAssign
 import org.joml.Matrix4f
 import org.joml.Quaternionf
-import org.joml.Vector3f
 import org.joml.primitives.Rectanglef
 import org.lwjgl.openxr.*
 import org.lwjgl.openxr.KHRVulkanEnable

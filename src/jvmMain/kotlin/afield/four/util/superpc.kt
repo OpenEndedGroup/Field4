@@ -35,7 +35,7 @@ package afield.four.util
 
     Types supported for normal fields:
       - Float
-      - org.joml.Vector2f / Vector3f / Vector4f
+      - afield.stdlib.linalg.Vector2f / Vector3f / Vector4f
       - Vec2h / Vec3h / Vec4h / Vec8h (fp16 transit only)
 
     Instruction payloads:
@@ -73,9 +73,9 @@ package afield.four.util
 */
 
 import afield.four.buffers.WritesToBuffer
-import org.joml.Vector2f
-import org.joml.Vector3f
-import org.joml.Vector4f
+import afield.stdlib.linalg.Vector2f
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector4f
 import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.KClass

@@ -204,7 +204,7 @@ private fun punct(v: String) = span(CLR_PUNCT, v)
 private fun name(v: String) = span(CLR_STR, "'${esc(v)}'")
 
 /** Format a vec3 compactly */
-private fun vec3(v: org.joml.Vector3f) = "${span(CLR_NUM, "%.2f".format(v.x))}, ${span(CLR_NUM, "%.2f".format(v.y))}, ${span(CLR_NUM, "%.2f".format(v.z))}"
+private fun vec3(v: afield.stdlib.linalg.Vector3f) = "${span(CLR_NUM, "%.2f".format(v.x))}, ${span(CLR_NUM, "%.2f".format(v.y))}, ${span(CLR_NUM, "%.2f".format(v.z))}"
 
 private fun row(label: String, value: String) =
     "<tr><td style='padding-right:8px;color:$CLR_DIM;white-space:nowrap'>$label</td><td>$value</td></tr>"

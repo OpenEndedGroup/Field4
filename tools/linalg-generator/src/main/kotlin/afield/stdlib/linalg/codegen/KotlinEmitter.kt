@@ -1,0 +1,379 @@
+package afield.stdlib.linalg.codegen
+
+class KotlinEmitter(private val model: AlgebraModel) {
+    fun emitJomlTransitionOperators(): String = buildString {
+        appendHeader("org.joml")
+        appendLine("import afield.stdlib.linalg.Vector2fc as FieldVector2fc")
+        appendLine("import afield.stdlib.linalg.Vector2f as FieldVector2f")
+        appendLine("import afield.stdlib.linalg.Vector3fc as FieldVector3fc")
+        appendLine("import afield.stdlib.linalg.Vector3f as FieldVector3f")
+        appendLine("import afield.stdlib.linalg.Vector4fc as FieldVector4fc")
+        appendLine("import afield.stdlib.linalg.Vector4f as FieldVector4f")
+        appendLine()
+        appendLine("// Temporary source bridge for Field files that explicitly import org.joml operators.")
+        model.vectors.forEach { type ->
+            val n = type.dimension
+            appendLine("operator fun FieldVector${n}fc.plus(other: FieldVector${n}fc): FieldVector${n}f = add(other, FieldVector${n}f())")
+            appendLine("operator fun FieldVector${n}fc.minus(other: FieldVector${n}fc): FieldVector${n}f = sub(other, FieldVector${n}f())")
+            appendLine("operator fun FieldVector${n}fc.times(other: FieldVector${n}fc): FieldVector${n}f = mul(other, FieldVector${n}f())")
+            appendLine("operator fun FieldVector${n}fc.times(scalar: Number): FieldVector${n}f = mul(scalar.toFloat(), FieldVector${n}f())")
+            appendLine("operator fun FieldVector${n}fc.div(scalar: Number): FieldVector${n}f = div(scalar.toFloat(), FieldVector${n}f())")
+            appendLine("operator fun FieldVector${n}fc.unaryMinus(): FieldVector${n}f = negate(FieldVector${n}f())")
+            appendLine()
+        }
+        appendLine("private fun FieldVector3fc.jomlCopy(): Vector3f = Vector3f(x(), y(), z())")
+        appendLine("private fun FieldVector4fc.jomlCopy(): Vector4f = Vector4f(x(), y(), z(), w())")
+        appendLine("private fun Vector3fc.fieldCopy(dest: FieldVector3f): FieldVector3f = dest.set(x(), y(), z())")
+        appendLine("private fun Vector4fc.fieldCopy(dest: FieldVector4f): FieldVector4f = dest.set(x(), y(), z(), w())")
+        appendLine()
+        appendLine("fun Quaternionfc.transform(value: FieldVector3fc, dest: FieldVector3f): FieldVector3f {")
+        appendLine("    val source = value.jomlCopy()")
+        appendLine("    return transform(source, source).fieldCopy(dest)")
+        appendLine("}")
+        appendLine("fun Quaternionfc.transform(value: FieldVector3f): FieldVector3f = transform(value, value)")
+        appendLine("fun Quaternionfc.transformField(value: FieldVector3fc, dest: FieldVector3f = FieldVector3f()): FieldVector3f {")
+        appendLine("    val source = value.jomlCopy()")
+        appendLine("    return transform(source, source).fieldCopy(dest)")
+        appendLine("}")
+        appendLine("fun Quaternionf.fromAxisAngleRad(axis: FieldVector3fc, angle: Float): Quaternionf = fromAxisAngleRad(axis.x(), axis.y(), axis.z(), angle)")
+        appendLine("fun Quaternionf.rotateTo(from: FieldVector3fc, to: FieldVector3fc): Quaternionf = rotateTo(from.jomlCopy(), to.jomlCopy())")
+        appendLine("fun Quaternionf.rotationToField(from: FieldVector3fc, to: FieldVector3fc): Quaternionf = rotationTo(from.jomlCopy(), to.jomlCopy())")
+        appendLine("fun Quaternionf.lookAlong(direction: FieldVector3fc, up: FieldVector3fc): Quaternionf = lookAlong(direction.jomlCopy(), up.jomlCopy())")
+        appendLine()
+        appendLine("fun Matrix4f.translate(value: FieldVector3fc): Matrix4f = translate(value.x(), value.y(), value.z())")
+        appendLine("fun Matrix4f.scale(value: FieldVector3fc): Matrix4f = scale(value.x(), value.y(), value.z())")
+        appendLine("fun Matrix4f.rotate(angle: Float, axis: FieldVector3fc): Matrix4f = rotate(angle, axis.x(), axis.y(), axis.z())")
+        appendLine("fun Matrix4f.lookAt(eye: FieldVector3fc, center: FieldVector3fc, up: FieldVector3fc): Matrix4f = lookAt(eye.jomlCopy(), center.jomlCopy(), up.jomlCopy())")
+        appendLine("fun Matrix4f.lookAtField(eye: FieldVector3fc, center: FieldVector3fc, up: FieldVector3fc): Matrix4f = lookAt(eye.jomlCopy(), center.jomlCopy(), up.jomlCopy())")
+        appendLine("fun Matrix4f.setTranslation(value: FieldVector3fc): Matrix4f = setTranslation(value.x(), value.y(), value.z())")
+        appendLine("fun Matrix4fc.transformPosition(value: FieldVector3fc, dest: FieldVector3f): FieldVector3f {")
+        appendLine("    val source = value.jomlCopy()")
+        appendLine("    return transformPosition(source, source).fieldCopy(dest)")
+        appendLine("}")
+        appendLine("fun Matrix4fc.transformPosition(value: FieldVector3f): FieldVector3f = transformPosition(value, value)")
+        appendLine("fun Matrix4fc.transformDirection(value: FieldVector3fc, dest: FieldVector3f): FieldVector3f {")
+        appendLine("    val source = value.jomlCopy()")
+        appendLine("    return transformDirection(source, source).fieldCopy(dest)")
+        appendLine("}")
+        appendLine("fun Matrix4fc.transformDirection(value: FieldVector3f): FieldVector3f = transformDirection(value, value)")
+        appendLine("fun Matrix4fc.getTranslation(dest: FieldVector3f): FieldVector3f = getTranslation(Vector3f()).fieldCopy(dest)")
+        appendLine("fun Matrix4fc.getScale(dest: FieldVector3f): FieldVector3f = getScale(Vector3f()).fieldCopy(dest)")
+        appendLine("fun Matrix4fc.transform(value: FieldVector4fc, dest: FieldVector4f): FieldVector4f {")
+        appendLine("    val source = value.jomlCopy()")
+        appendLine("    return transform(source, source).fieldCopy(dest)")
+        appendLine("}")
+        appendLine("fun Matrix4fc.transform(value: FieldVector4f): FieldVector4f = transform(value, value)")
+        appendLine("fun Matrix3fc.transform(value: FieldVector3fc, dest: FieldVector3f): FieldVector3f {")
+        appendLine("    val source = value.jomlCopy()")
+        appendLine("    return transform(source, source).fieldCopy(dest)")
+        appendLine("}")
+        appendLine("fun Matrix3fc.transform(value: FieldVector3f): FieldVector3f = transform(value, value)")
+        appendLine("fun Matrix3f.scaleField(value: FieldVector3fc): Matrix3f = scale(value.x(), value.y(), value.z())")
+    }
+
+    fun emitHeapVectors(): String = buildString {
+        appendHeader("afield.stdlib.linalg")
+        appendLine("import java.nio.ByteBuffer")
+        appendLine("import java.nio.FloatBuffer")
+        appendLine("import kotlin.math.*")
+        appendLine()
+        model.vectors.forEachIndexed { index, type ->
+            emitReadInterface(type)
+            appendLine()
+            emitMutableClass(type)
+            if (index != model.vectors.lastIndex) appendLine()
+        }
+    }
+
+    fun emitArenaVectors(): String = buildString {
+        appendHeader("afield.stdlib.linalg.arena")
+        appendLine("import afield.stdlib.linalg.*")
+        appendLine("import kotlin.math.*")
+        appendLine()
+        model.vectors.forEach { type ->
+            appendLine("@JvmInline")
+            appendLine("value class ${type.arenaName} internal constructor(internal val token: Long)")
+            appendLine()
+        }
+        appendLine("class FrameScope internal constructor(private val arena: FrameArena) {")
+        model.vectors.forEach { type ->
+            emitArenaType(type)
+        }
+        appendLine("}")
+    }
+
+    private fun StringBuilder.appendHeader(packageName: String) {
+        appendLine("// DO NOT EDIT — generated by tools/linalg-generator")
+        appendLine("// generator-version: 1")
+        appendLine("// model-version: field-f32-v1")
+        appendLine("package $packageName")
+        appendLine()
+    }
+
+    private fun StringBuilder.emitReadInterface(type: VectorType) {
+        appendLine("interface ${type.readName} {")
+        type.components.forEach { component ->
+            appendLine("    fun ${component.sourceName}(): Float")
+        }
+        appendLine()
+        appendLine("    operator fun get(component: Int): Float = when (component) {")
+        type.components.forEachIndexed { index, component ->
+            appendLine("        $index -> ${component.sourceName}()")
+        }
+        appendLine("        else -> throw IndexOutOfBoundsException(\"component \$component outside 0..${type.dimension - 1}\")")
+        appendLine("    }")
+        appendLine()
+        model.operations(type).forEach { operation ->
+            emitHeapInterfaceOperation(type, operation)
+            appendLine()
+        }
+        appendLine("    fun length(): Float = sqrt(lengthSquared())")
+        appendLine("    fun distance(other: ${type.readName}): Float = sqrt(distanceSquared(other))")
+        appendLine("    fun isFinite(): Boolean = ${type.components.joinToString(" && ") { "${it.sourceName}().isFinite()" }}")
+        appendLine("    fun equals(other: ${type.readName}, delta: Float): Boolean =")
+        appendLine("        ${type.components.joinToString(" && ") { "abs(${it.sourceName}() - other.${it.sourceName}()) <= delta" }}")
+        appendLine()
+        appendLine("    fun get(buffer: FloatBuffer): FloatBuffer {")
+        appendLine("        val index = buffer.position()")
+        type.components.forEachIndexed { index, component ->
+            appendLine("        buffer.put(index + $index, ${component.sourceName}())")
+        }
+        appendLine("        return buffer")
+        appendLine("    }")
+        appendLine()
+        appendLine("    fun get(index: Int, buffer: ByteBuffer): ByteBuffer {")
+        type.components.forEachIndexed { index, component ->
+            appendLine("        buffer.putFloat(index + ${index * 4}, ${component.sourceName}())")
+        }
+        appendLine("        return buffer")
+        appendLine("    }")
+        appendLine("}")
+    }
+
+    private fun StringBuilder.emitHeapInterfaceOperation(type: VectorType, operation: Operation) {
+        val parameters = buildList {
+            orderedParameters(operation).forEach {
+                when (it) {
+                    is VectorParameter -> add("${it.name}: ${type.readName}")
+                    is ScalarParameter -> add("${it.name}: Float")
+                }
+            }
+            if (operation.result == OperationResult.Destination) add("dest: ${type.heapName}")
+        }.joinToString(", ")
+        when (val result = operation.result) {
+            OperationResult.Destination -> {
+                appendLine("    fun ${operation.name}($parameters): ${type.heapName} {")
+                operation.componentExpressions.forEachIndexed { index, expression ->
+                    appendLine("        val r$index = ${renderHeap(expression)}")
+                }
+                appendLine("        return dest.set(${operation.componentExpressions.indices.joinToString { "r$it" }})")
+                appendLine("    }")
+            }
+            is OperationResult.Scalar ->
+                appendLine("    fun ${operation.name}($parameters): Float = ${renderHeap(result.expression)}")
+        }
+    }
+
+    private fun StringBuilder.emitMutableClass(type: VectorType) {
+        val zeroes = List(type.dimension) { "0.0f" }
+        appendLine("class ${type.heapName}() : ${type.readName}, Cloneable {")
+        type.components.forEach { component -> appendLine("    @JvmField var ${component.sourceName}: Float = 0.0f") }
+        appendLine()
+        appendLine("    constructor(s: Float) : this() { set(${List(type.dimension) { "s" }.joinToString()}) }")
+        appendLine(
+            "    constructor(${type.components.joinToString { "${it.sourceName}: Float" }}) : this() { " +
+                "set(${type.components.joinToString { it.sourceName }}) }"
+        )
+        appendLine("    constructor(other: ${type.readName}) : this() { set(other) }")
+        if (type.dimension == 3) {
+            appendLine("    constructor(xy: Vector2fc, z: Float) : this(xy.x(), xy.y(), z)")
+        }
+        if (type.dimension == 4) {
+            appendLine("    constructor(xyz: Vector3fc, w: Float) : this(xyz.x(), xyz.y(), xyz.z(), w)")
+            appendLine("    constructor(xy: Vector2fc, z: Float, w: Float) : this(xy.x(), xy.y(), z, w)")
+        }
+        appendLine()
+        type.components.forEach { component ->
+            appendLine("    override fun ${component.sourceName}(): Float = ${component.sourceName}")
+        }
+        appendLine()
+        appendLine("    operator fun set(component: Int, value: Float) {")
+        appendLine("        when (component) {")
+        type.components.forEachIndexed { index, component -> appendLine("            $index -> ${component.sourceName} = value") }
+        appendLine("            else -> throw IndexOutOfBoundsException(\"component \$component outside 0..${type.dimension - 1}\")")
+        appendLine("        }")
+        appendLine("    }")
+        appendLine()
+        appendLine("    fun set(s: Float): ${type.heapName} = set(${List(type.dimension) { "s" }.joinToString()})")
+        appendLine(
+            "    fun set(${type.components.joinToString { "${it.sourceName}: Float" }}): ${type.heapName} {"
+        )
+        type.components.forEach { appendLine("        this.${it.sourceName} = ${it.sourceName}") }
+        appendLine("        return this")
+        appendLine("    }")
+        appendLine(
+            "    fun set(other: ${type.readName}): ${type.heapName} = " +
+                "set(${type.components.joinToString { "other.${it.sourceName}()" }})"
+        )
+        appendLine("    fun zero(): ${type.heapName} = set(${zeroes.joinToString()})")
+        appendLine(
+            "    fun add(${type.components.joinToString { "${it.sourceName}: Float" }}): ${type.heapName} = " +
+                "set(${type.components.joinToString { "this.${it.sourceName} + ${it.sourceName}" }})"
+        )
+        appendLine(
+            "    fun sub(${type.components.joinToString { "${it.sourceName}: Float" }}): ${type.heapName} = " +
+                "set(${type.components.joinToString { "this.${it.sourceName} - ${it.sourceName}" }})"
+        )
+        appendLine(
+            "    fun mul(${type.components.joinToString { "${it.sourceName}: Float" }}): ${type.heapName} = " +
+                "set(${type.components.joinToString { "this.${it.sourceName} * ${it.sourceName}" }})"
+        )
+        appendLine()
+        model.operations(type).filter { it.result == OperationResult.Destination }.forEach { operation ->
+            val parameters = buildList {
+                orderedParameters(operation).forEach {
+                    when (it) {
+                        is VectorParameter -> add("${it.name}: ${type.readName}")
+                        is ScalarParameter -> add("${it.name}: Float")
+                    }
+                }
+            }.joinToString(", ")
+            val arguments = buildList {
+                orderedParameters(operation).forEach {
+                    add(
+                        when (it) {
+                            is VectorParameter -> it.name
+                            is ScalarParameter -> it.name
+                        }
+                    )
+                }
+                add("this")
+            }.joinToString(", ")
+            val modifier = if (operation.name == "div") "operator " else ""
+            appendLine("    ${modifier}fun ${operation.name}($parameters): ${type.heapName} = ${operation.name}($arguments)")
+        }
+        appendLine()
+        appendLine("    public override fun clone(): ${type.heapName} = ${type.heapName}(this)")
+        appendLine("    override fun equals(other: Any?): Boolean = other is ${type.readName} && ${type.components.joinToString(" && ") { "${it.sourceName}.toBits() == other.${it.sourceName}().toBits()" }}")
+        appendLine("    override fun hashCode(): Int {")
+        appendLine("        var result = 1")
+        type.components.forEach { appendLine("        result = 31 * result + ${it.sourceName}.toBits()") }
+        appendLine("        return result")
+        appendLine("    }")
+        appendLine("    override fun toString(): String = \"(${type.components.joinToString(", ") { "\$${it.sourceName}" }})\"")
+        appendLine("}")
+    }
+
+    private fun StringBuilder.emitArenaType(type: VectorType) {
+        val kind = "FrameArena.Kind.VEC${type.dimension}"
+        appendLine()
+        appendLine("    fun ${type.factoryName}(): ${type.arenaName} = ${type.arenaName}(arena.allocateVector($kind))")
+        appendLine(
+            "    fun ${type.factoryName}(${type.components.joinToString { "${it.sourceName}: Float" }}): ${type.arenaName} = " +
+                "${type.factoryName}().also { it.set(${type.components.joinToString { it.sourceName }}) }"
+        )
+        appendLine()
+        type.components.forEachIndexed { index, component ->
+            appendLine("    var ${type.arenaName}.${component.sourceName}: Float")
+            appendLine("        get() = arena.read(token, $index, $kind)")
+            appendLine("        set(value) = arena.write(token, $index, value, $kind)")
+        }
+        appendLine()
+        appendLine(
+            "    fun ${type.arenaName}.set(${type.components.joinToString { "${it.sourceName}: Float" }}): ${type.arenaName} {"
+        )
+        type.components.forEachIndexed { index, component ->
+            appendLine("        arena.write(token, $index, ${component.sourceName}, $kind)")
+        }
+        appendLine("        return this")
+        appendLine("    }")
+        appendLine(
+            "    fun ${type.arenaName}.set(other: ${type.readName}): ${type.arenaName} = " +
+                "set(${type.components.joinToString { "other.${it.sourceName}()" }})"
+        )
+        appendLine(
+            "    fun ${type.heapName}.set(other: ${type.arenaName}): ${type.heapName} = " +
+                "set(${type.components.joinToString { "other.${it.sourceName}" }})"
+        )
+        appendLine("    fun ${type.arenaName}.copyTo(dest: ${type.heapName}): ${type.heapName} = dest.set(this)")
+        appendLine()
+        model.operations(type).forEach { operation ->
+            emitArenaOperation(type, operation, kind)
+            appendLine()
+        }
+        appendLine("    fun ${type.arenaName}.length(): Float = sqrt(lengthSquared())")
+        appendLine("    fun ${type.arenaName}.distance(other: ${type.arenaName}): Float = sqrt(distanceSquared(other))")
+        appendLine("    fun ${type.arenaName}.isFinite(): Boolean = ${type.components.joinToString(" && ") { "${it.sourceName}.isFinite()" }}")
+    }
+
+    private fun StringBuilder.emitArenaOperation(type: VectorType, operation: Operation, kind: String) {
+        val parameters = buildList {
+            orderedParameters(operation).forEach {
+                when (it) {
+                    is VectorParameter -> add("${it.name}: ${type.arenaName}")
+                    is ScalarParameter -> add("${it.name}: Float")
+                }
+            }
+            if (operation.result == OperationResult.Destination) add("dest: ${type.arenaName}")
+        }.joinToString(", ")
+        when (val result = operation.result) {
+            OperationResult.Destination -> {
+                appendLine("    fun ${type.arenaName}.${operation.name}($parameters): ${type.arenaName} {")
+                operation.componentExpressions.forEachIndexed { index, expression ->
+                    appendLine("        val r$index = ${renderArena(expression, kind)}")
+                }
+                appendLine("        return dest.set(${operation.componentExpressions.indices.joinToString { "r$it" }})")
+                appendLine("    }")
+                val receiverParameters = buildList {
+                    orderedParameters(operation).forEach {
+                        when (it) {
+                            is VectorParameter -> add("${it.name}: ${type.arenaName}")
+                            is ScalarParameter -> add("${it.name}: Float")
+                        }
+                    }
+                }.joinToString(", ")
+                val receiverArguments = buildList {
+                    orderedParameters(operation).forEach {
+                        add(
+                            when (it) {
+                                is VectorParameter -> it.name
+                                is ScalarParameter -> it.name
+                            }
+                        )
+                    }
+                    add("this")
+                }.joinToString(", ")
+                appendLine("    fun ${type.arenaName}.${operation.name}($receiverParameters): ${type.arenaName} = ${operation.name}($receiverArguments)")
+            }
+            is OperationResult.Scalar ->
+                appendLine("    fun ${type.arenaName}.${operation.name}($parameters): Float = ${renderArena(result.expression, kind)}")
+        }
+    }
+
+    private fun renderHeap(expression: Expr): String = render(expression) { source, component ->
+        when (source) {
+            ValueSource.Self -> "${component.sourceName}()"
+            is ValueSource.Parameter -> "${source.name}.${component.sourceName}()"
+        }
+    }
+
+    private fun renderArena(expression: Expr, kind: String): String = render(expression) { source, component ->
+        val token = when (source) {
+            ValueSource.Self -> "token"
+            is ValueSource.Parameter -> "${source.name}.token"
+        }
+        "arena.read($token, ${component.ordinal}, $kind)"
+    }
+
+    private fun render(expression: Expr, read: (ValueSource, Component) -> String): String = when (expression) {
+        is Expr.Read -> read(expression.source, expression.component)
+        is Expr.ScalarParameter -> expression.name
+        is Expr.Constant -> expression.source
+        is Expr.Binary -> "(${render(expression.left, read)} ${expression.operator} ${render(expression.right, read)})"
+        is Expr.Call -> "${expression.function}(${expression.arguments.joinToString { render(it, read) }})"
+    }
+
+    private fun orderedParameters(operation: Operation): List<Parameter> =
+        if (operation.name == "fma") operation.scalarParameters + operation.vectorParameters
+        else operation.vectorParameters + operation.scalarParameters
+}

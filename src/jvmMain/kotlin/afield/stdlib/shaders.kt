@@ -25,8 +25,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import org.joml.Vector3f
-import org.joml.Vector4f
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector4f
 import org.lwjgl.glfw.GLFW
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R8G8B8A8_SRGB

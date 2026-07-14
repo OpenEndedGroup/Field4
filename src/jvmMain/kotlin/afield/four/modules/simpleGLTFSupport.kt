@@ -2,6 +2,11 @@
 
 package afield.four.modules
 
+import org.joml.rotate
+import org.joml.scale
+import org.joml.translate
+import org.joml.getScale
+import org.joml.getTranslation
 import afield.Box
 import afield.RunsAt
 import afield.four.Renderer
@@ -27,8 +32,8 @@ import afield.stdlib.macro_moduleHereWithDefaultShaders
 import kotlinx.coroutines.DelicateCoroutinesApi
 import org.joml.Matrix4f
 import org.joml.Quaternionf
-import org.joml.Vector3f
-import org.joml.Vector4f
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector4f
 import org.lwjgl.assimp.*
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil.*

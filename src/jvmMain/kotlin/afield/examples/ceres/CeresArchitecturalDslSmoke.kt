@@ -7,7 +7,7 @@ import afield.stdlib.ceres.SolveOptions
 import afield.stdlib.ceres.Vec3
 import afield.stdlib.ceres.geometryModel
 import kotlin.math.abs
-import org.joml.Vector3f
+import afield.stdlib.linalg.Vector3f
 
 fun main() {
     lateinit var liftedCorner: PointRef

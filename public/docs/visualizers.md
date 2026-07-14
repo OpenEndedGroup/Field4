@@ -359,10 +359,10 @@ expect:
 :::static
 controlGroup("controls") {
     slider("gain", min = 0.0, max = 1.0, step = 0.01, initialValue = 0.35) { }
-    vec2Control("orbit", initialValue = org.joml.Vector2f(0.35f, -0.2f)) { }
+    vec2Control("orbit", initialValue = afield.stdlib.linalg.Vector2f(0.35f, -0.2f)) { }
     checkbox("armed", initialValue = true) { }
     stringInput("name", initialValue = "Field") { }
-    colorPicker("accent", initialValue = org.joml.Vector4f(0.95f, 0.45f, 0.15f, 0.85f)) { }
+    colorPicker("accent", initialValue = afield.stdlib.linalg.Vector4f(0.95f, 0.45f, 0.15f, 0.85f)) { }
 }
 
 println("controls ready")
@@ -402,8 +402,8 @@ expect:
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-mixed-controls.png" wait="1.0" capture="box" open-outputs="true" w="1200" h="180" embed=true name="mixed-controls"}
 :::static
-import org.joml.Vector2f
-import org.joml.Vector4f
+import afield.stdlib.linalg.Vector2f
+import afield.stdlib.linalg.Vector4f
 
 var wind = Vector2f(-0.45f, 0.32f)
 var bloom = 0.62

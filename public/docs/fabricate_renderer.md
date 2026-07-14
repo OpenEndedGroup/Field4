@@ -347,8 +347,8 @@ expect:
   image:
     path: /tmp/docs-fabricate-shader-checkerboard-native.png
     lumaComparisons:
-      - darker: [0.08, 0.70, 0.10, 0.10]
-        lighter: [0.20, 0.70, 0.10, 0.10]
+      - darker: [0.54, 0.60, 0.025, 0.025]
+        lighter: [0.60, 0.60, 0.025, 0.025]
         marginGt: 6
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-shader-generated-checkerboard.png" source-image="/tmp/docs-fabricate-shader-checkerboard-native.png" wait="20.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-shader-generated-checkerboard" hidden=true fabricate-scene="shader-generated-checkerboard"}

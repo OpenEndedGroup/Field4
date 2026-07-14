@@ -3,9 +3,9 @@
 package afield.stdlib
 
 import afield.Box
-import org.joml.Vector2f
-import org.joml.Vector3f
-import org.joml.Vector4f
+import afield.stdlib.linalg.Vector2f
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector4f
 import java.util.*
 import kotlin.random.Random as KotlinRandom
 

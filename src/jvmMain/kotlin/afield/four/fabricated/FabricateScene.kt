@@ -1,13 +1,19 @@
 package afield.four.fabricated
 
+import org.joml.rotate
+import org.joml.scale
+import org.joml.translate
+import org.joml.getScale
+import org.joml.getTranslation
+import org.joml.transformPosition
 import afield.four.modules.GltfSupport
 import afield.four.modules.fromContext
 import afield.four.modules.sample
 import afield.four.texture.LoadedTexture
 import org.joml.Matrix4f
 import org.joml.Quaternionf
-import org.joml.Vector3f
-import org.joml.Vector4f
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector4f
 import org.lwjgl.assimp.Assimp
 import kotlin.math.max
 

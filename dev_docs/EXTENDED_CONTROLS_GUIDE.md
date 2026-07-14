@@ -48,7 +48,7 @@ vec2Control(
 - `onUpdate`: Callback receiving new Vector2f
 
 **Data Type:**
-JOML Vector2f from `org.joml.Vector2f`. The codebase has a type alias:
+JOML Vector2f from `afield.stdlib.linalg.Vector2f`. The codebase has a type alias:
 ```kotlin
 typealias Vec2 = Vector2f  // from afield.stdlib.linalg
 ```
@@ -96,7 +96,7 @@ colorPicker("Color", color, "appearance") { color = it }
 - `onUpdate`: Callback receiving new Vector4f
 
 **Data Type:**
-JOML Vector4f from `org.joml.Vector4f`. The codebase has a type alias:
+JOML Vector4f from `afield.stdlib.linalg.Vector4f`. The codebase has a type alias:
 ```kotlin
 typealias Vec4 = Vector4f  // from afield.stdlib.linalg
 // x = red, y = green, z = blue, w = alpha

@@ -1,8 +1,8 @@
 package afield.four.util
 
-import org.joml.Vector2f
-import org.joml.Vector3f
-import org.joml.Vector4f
+import afield.stdlib.linalg.Vector2f
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector4f
 import java.nio.ByteBuffer
 
 data class Vec2h(val v: Vector2f)

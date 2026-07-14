@@ -469,7 +469,7 @@ internal object KotlinCompletionSupport {
         value.startsWith("kotlin.") || value.contains(" defined in kotlin") -> "Kotlin"
         value.startsWith("java.") || value.startsWith("javax.") || value.startsWith("org.") || value.startsWith("com.") -> {
             when {
-                value.contains("org.joml") || value.contains("matrix") || value.contains("vector") || value.contains("quaternion") -> "Math"
+                value.contains("org.joml") || value.contains("afield.stdlib.linalg") || value.contains("matrix") || value.contains("vector") || value.contains("quaternion") -> "Math"
                 else -> "External"
             }
         }

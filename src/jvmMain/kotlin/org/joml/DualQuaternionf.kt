@@ -1,5 +1,11 @@
 package org.joml
 
+import org.joml.rotate
+import org.joml.translate
+import org.joml.fromAxisAngleRad
+import org.joml.transform
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector3fc
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
@@ -135,7 +141,7 @@ class DualQuaternionf {
 
     fun toMatrix(dest: Matrix4f = Matrix4f()): Matrix4f {
         val translation = getTranslation(TEMP_VEC.get())
-        return dest.identity().translate(translation).rotate(real)
+        return dest.identity().translate(translation.x, translation.y, translation.z).rotate(real)
     }
 
     fun nlerp(other: DualQuaternionf, t: Float, dest: DualQuaternionf = DualQuaternionf()): DualQuaternionf {

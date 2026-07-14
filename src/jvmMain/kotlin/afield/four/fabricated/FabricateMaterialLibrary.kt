@@ -1,7 +1,7 @@
 package afield.four.fabricated
 
-import org.joml.Vector3f
-import org.joml.Vector4f
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector4f
 import java.util.IdentityHashMap
 
 data class FabricateMaterialRecord(

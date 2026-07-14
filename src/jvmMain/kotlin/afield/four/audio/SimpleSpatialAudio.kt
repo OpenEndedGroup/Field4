@@ -2,6 +2,7 @@
 
 package afield.four.audio
 
+import org.joml.transform
 import afield.four.targets.OpenXRHmdTarget
 import afield.four.targets.SideBySideStereoTarget
 import afield.four.texture.video.AudioDecoder
@@ -10,7 +11,7 @@ import afield.stdlib.Quat
 import afield.stdlib.Sound2VecAudioSubclip
 import afield.stdlib.Vec3
 import afield.stdlib.vec
-import org.joml.Vector3f
+import afield.stdlib.linalg.Vector3f
 import org.lwjgl.openal.AL
 import org.lwjgl.openal.AL10.*
 import org.lwjgl.openal.AL11.AL_SAMPLE_OFFSET

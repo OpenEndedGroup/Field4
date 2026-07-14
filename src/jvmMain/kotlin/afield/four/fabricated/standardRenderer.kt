@@ -19,8 +19,9 @@ import afield.stdlib.Vec3
 import afield.stdlib.fromViews
 import afield.stdlib.vec
 import org.joml.Matrix4f
-import org.joml.Vector3f
-import org.joml.Vector4f
+import org.joml.lookAtField
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector4f
 import org.lwjgl.vulkan.VK10.*
 import java.util.*
 import kotlin.math.abs
@@ -99,7 +100,7 @@ object StandardRenderer {
 			direction.normalize()
 			val up = if (abs(direction.y) > 0.95f) Vector3f(0f, 0f, 1f) else Vector3f(0f, 1f, 0f)
 			val eye = Vector3f(lightTarget).sub(Vector3f(direction).mul(lightDistance))
-			val view = Matrix4f().lookAt(eye, Vector3f(lightTarget), up)
+			val view = Matrix4f().lookAtField(eye, Vector3f(lightTarget), up)
 			val projection = Matrix4f().ortho(
 				-shadowExtent,
 				shadowExtent,
