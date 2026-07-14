@@ -11,8 +11,8 @@
 # `field_run_transcript` MCP tool. It creates two boxes. The first plots a unit sine
 # and the same sine pushed through chebyshev(2..5): the canonical harmonic-generating
 # shaper, where Tₙ(cos θ) = cos(nθ), so order n produces the pure n-th harmonic; its
-# last plot sweeps the order across the window (order = 1 + 5x) — a harmonic sweep
-# that steps through six rising harmonic bands. The
+# last plot sweeps the order across the window (order = ramp 1..6) — a harmonic
+# sweep that steps through six rising harmonic bands. The
 # second box feeds a Perlin-noise source through the same op, showing that chebyshev
 # waveshapes any bounded signal, not just a clean oscillator.
 operations:
@@ -40,14 +40,13 @@ operations:
               (fundamental / chebyshev(5)).plot(channel = "h5", title = "chebyshev(5) — 5th harmonic", heightPx = 150)
 
               // Because `order` is a param CHILD (an Fn), it can vary over x, sweeping
-              // the harmonic content across the window. NOTE: ramp(a, b) is a DOMAIN
-              // normalizer (it maps x in [a, b] onto [0, 1]; ramp(0, 1) is the identity
-              // x), NOT a value line from a to b. So a 1..6 order sweep is the value
-              // 1 + 5x — built here as ramp(0, 1) * 5 + 1. order rounds to the nearest
-              // int, so this reads as six rising harmonic bands across the window.
-              val order = ((ramp(0.0, 1.0) * 5.0 + 1.0) over (0.0..1.0)).withName("order 1..6")
+              // the harmonic content across the window. `ramp(1.0, 6.0)` is a value
+              // line — 1 at x=0, 6 at x=1 — and `order` rounds to the nearest int, so
+              // this reads as six rising harmonic bands. (For normalizing an x-window
+              // down to 0..1 instead, that's `remap`.)
+              val order = ramp(1.0, 6.0) over (0.0..1.0)
               val sweep = (sin(1.0) over (0.0..1.0)).chebyshev(order)
-              sweep.withName("chebyshev(order 1..6)").plot(channel = "sweep", title = "chebyshev(order = 1 + 5x) — harmonic sweep", heightPx = 160)
+              sweep.withName("chebyshev(order 1..6)").plot(channel = "sweep", title = "chebyshev(order = ramp 1..6) — harmonic sweep", heightPx = 160)
           }
   - launch:
       box: chebyshev-waveshaper

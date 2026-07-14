@@ -687,6 +687,16 @@ object Functions {
     fun identity(domain: ClosedRange<*>): Fn =
         identity(domain.toDomain())
 
+    /**
+     * A **value ramp**: a straight line whose value goes from [start] to [end] as x
+     * sweeps the function's [domain]. `ramp(1.0, 6.0) over (0.0..1.0)` is 1 at x=0 and
+     * 6 at x=1; `ramp(0.0, 1.0)` is the identity over the default 0..1 domain. This is
+     * the linear sibling of [tween] (which eases the same endpoints). An unbounded
+     * domain is previewed over a finite window via [Domain.finiteSweep], so a ramp on
+     * `Domain.ALL` stays finite to enumerate.
+     *
+     * For the inverse operation — *normalizing* an x-window down to 0..1 — use [remap].
+     */
     fun ramp(
         start: Fn = param(0.0),
         end: Fn = param(1.0),
@@ -702,10 +712,7 @@ object Functions {
                 rebuild = { children -> ramp(children[0], children[1], domain) }
             )
         ) { x ->
-            val s = start.eval(x)
-            val e = end.eval(x)
-            val len = e - s
-            if (len == 0.0) 0.0 else (x - s) / len
+            blend(start.eval(x), end.eval(x), domain.finiteSweep().alphaOf(x))
         }
     }
 
@@ -726,6 +733,55 @@ object Functions {
 
     fun ramp(start: Any, end: Any, domain: ClosedRange<*>): Fn =
         ramp(start, end, domain.toDomain())
+
+    /**
+     * A **domain normalizer**: maps the x-window `[from, to]` onto `0..1`, i.e.
+     * `(x - from) / (to - from)`. `remap(0.0, 10.0)` turns an x in 0..10 into a 0..1
+     * alpha; `remap(0.0, 1.0)` is the identity. This is the position-of-x reading —
+     * distinct from [ramp], which produces a value that *travels* from one number to
+     * another across the domain. (Until 2026-07-14 this behaviour was misleadingly
+     * named `ramp`; it was renamed once it became clear every caller reached for `ramp`
+     * expecting the value-line semantics that [ramp] now has.)
+     */
+    fun remap(
+        from: Fn = param(0.0),
+        to: Fn = param(1.0),
+        domain: Domain = Domain.DEFAULT
+    ): Fn {
+        val d = intersectDomains(domain, from, to)
+        return graphFn(
+            d,
+            "remap",
+            node(
+                "remap",
+                children = listOf(fnEdge("from", from), fnEdge("to", to)),
+                rebuild = { children -> remap(children[0], children[1], domain) }
+            )
+        ) { x ->
+            val s = from.eval(x)
+            val e = to.eval(x)
+            val len = e - s
+            if (len == 0.0) 0.0 else (x - s) / len
+        }
+    }
+
+    fun remap(
+        from: Fn = param(0.0),
+        to: Fn = param(1.0),
+        domain: ClosedRange<*>
+    ): Fn = remap(from, to, domain.toDomain())
+
+    fun remap(from: Number, to: Number, domain: Domain = Domain.DEFAULT): Fn =
+        remap(param(from), param(to), domain)
+
+    fun remap(from: Number, to: Number, domain: ClosedRange<*>): Fn =
+        remap(from, to, domain.toDomain())
+
+    fun remap(from: Any, to: Any, domain: Domain = Domain.DEFAULT): Fn =
+        remap(asParam(from, "from"), asParam(to, "to"), domain)
+
+    fun remap(from: Any, to: Any, domain: ClosedRange<*>): Fn =
+        remap(from, to, domain.toDomain())
 
     fun step(edge: Fn = param(0.0), domain: Domain = Domain.DEFAULT): Fn {
         val d = intersectDomains(domain, edge)

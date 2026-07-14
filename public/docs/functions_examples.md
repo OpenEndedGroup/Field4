@@ -712,7 +712,7 @@ with(Functions) {
 
 #### ramp
 
-`ramp` converts an interval into a linear progress signal, often for envelopes and selectors.
+`ramp(start, end)` is a **value line**: its value travels linearly from `start` to `end` as x sweeps the domain, so `ramp(1.0, 6.0) over (0.0..1.0)` is 1 at x=0 and 6 at x=1, and `ramp(0.0, 1.0)` is the identity 0-to-1 over the default domain. It is the linear sibling of `tween`, and the go-to for envelopes, selectors, and swept parameters. (For the inverse — *normalizing* an x-window down to 0..1 — use `remap(from, to)`, which reads out the position of x within `[from, to]`.)
 
 **Simple**
 

@@ -20,7 +20,7 @@ define("bithero/fnrewrite", ["require", "vs/editor/editor.api"], function (requi
         // forward check and are not required by the reverse check.
         const opWords = new Set([
                 "sin", "cos", "saw", "triangle", "square", "pulseTrain", "pulsetrain",
-                "gaussian", "ramp", "step", "smoothstep", "tween", "ease",
+                "gaussian", "ramp", "remap", "step", "smoothstep", "tween", "ease",
                 "whiteNoise", "valueNoise", "perlinNoise", "fbm", "fbmPerlin", "randomWalk",
                 "hannWindow", "hammingWindow", "blackmanWindow", "gaussianWindow",
                 "add", "subtract", "multiply", "divide",

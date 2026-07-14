@@ -96,6 +96,7 @@ object OpRegistry {
     private fun buildRandomWalk(s: OpSource) = Functions.randomWalk(s.long("seed"), s.childOr(1.0, "step"), s.childOr(1.0, "amplitude"), s.domain)
 
     private fun buildRamp(s: OpSource) = Functions.ramp(s.childOr(0.0, "start"), s.childOr(1.0, "end"), s.domain)
+    private fun buildRemap(s: OpSource) = Functions.remap(s.childOr(0.0, "from"), s.childOr(1.0, "to"), s.domain)
     private fun buildStep(s: OpSource) = Functions.step(s.childOr(0.0, "edge"), s.domain)
     private fun buildSmoothStep(s: OpSource) = Functions.smoothStep(s.childOr(0.0, "edge0"), s.childOr(1.0, "edge1"), s.domain)
 
@@ -132,6 +133,7 @@ object OpRegistry {
         OpSpec("pulsetrain", "pulse", setOf("pulseTrain"), ::buildPulseTrain),
         OpSpec("gaussian", "shape", emptySet(), ::buildGaussian),
         OpSpec("ramp", "shape", emptySet(), ::buildRamp),
+        OpSpec("remap", "shape", emptySet(), ::buildRemap),
         OpSpec("step", "shape", emptySet(), ::buildStep),
         OpSpec("smoothstep", "shape", setOf("smoothStep"), ::buildSmoothStep),
         OpSpec("tween", "motion", emptySet(), ::buildTween),
