@@ -661,13 +661,15 @@ private fun completionCandidateName(variant: SourceCodeCompletionVariant): Strin
  * `pulseBurst(10) through ` the ~dozens of `FnTransform`-producing builders float to the top
  * instead of the generic long tail.
  *
- * The operator's parameter type is discovered generically (no hard-coded operator list) by asking
- * the same completion engine to complete the operator token itself: an infix function `foo`
- * surfaces as a candidate whose display text is `foo(ParamType)`. Because infix operators are
- * routinely overloaded on operand type (e.g. `Fn.over(Domain)` and `Fn.over(ClosedRange<*>)`), the
- * resolution collects the parameter type of EVERY matching overload into a set and a candidate is
- * boosted when its return type matches ANY of them. Results are cached per
- * (operator, code-before-operator) so typing the operand doesn't recompute it each keystroke.
+ * The operator's parameter type is discovered generically (no hard-coded operator list). The hot
+ * path ([expectedOperandTypesFast]) reads it straight from the indexed Kotlin source — the
+ * `infix fun … .<operator>(param: Type)` declarations — which is fast and cannot stall the
+ * completion request. (An engine-driven fallback, [expectedOperandTypes], completes the operator
+ * token itself and reads its `foo(ParamType)` display text; it is only used before the source index
+ * has loaded.) Because infix operators are routinely overloaded on operand type (e.g.
+ * `Fn.over(Domain)` and `Fn.over(ClosedRange<*>)`), resolution collects the parameter type of EVERY
+ * matching overload into a set and a candidate is boosted when its return type matches ANY of them.
+ * Results are cached per operator, so the cost is paid at most once per operator per session.
  */
 internal object InfixCompletion {
     /** Ranking boost applied to type-matching operands; comfortably above category+recency, below a strong prefix hit. */
@@ -704,6 +706,75 @@ internal object InfixCompletion {
     }
 
     private data class InfixSite(val operator: String, val operatorEnd: Int, val codeBeforeOperator: String)
+
+    /** Cache of operator name -> resolved operand types, from the source index. Keyed by operator alone
+     *  (an infix operator's parameter type does not depend on the surrounding edit), so it is paid at
+     *  most once per operator per session and every later completion at that operator is instant. */
+    private const val maxSourceCacheEntries = 256
+    private val sourceTypeCache = object : LinkedHashMap<String, Set<String>>(maxSourceCacheEntries, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Set<String>>?): Boolean = size > maxSourceCacheEntries
+    }
+
+    /**
+     * Fast, allocation-light resolution of the infix operator's operand type(s) directly from the
+     * indexed Kotlin source — NO second completion, so it never blocks the completion hot path.
+     * Returns the type of every `infix fun … .<operator>(param: Type)` overload found (already
+     * type-shortened), or an empty set if the cursor is not at an infix site or the operator isn't a
+     * source-declared infix function. Cached per operator.
+     */
+    fun expectedOperandTypesFast(allCode: String, cursor: Int): Set<String> {
+        val site = parseInfixSite(allCode, cursor) ?: return emptySet()
+        synchronized(sourceTypeCache) { sourceTypeCache[site.operator]?.let { return it } }
+
+        val resolved = runCatching { resolveInfixParamTypesFromSource(site.operator) }.getOrDefault(emptySet())
+        synchronized(sourceTypeCache) { sourceTypeCache[site.operator] = resolved }
+        return resolved
+    }
+
+    // Fallback copy of the on-disk index, parsed at most once and only while the live in-memory
+    // index (KotlinSourceIndex.latestIndex) hasn't been populated yet (e.g. during startup sync).
+    @Volatile
+    private var loadedIndexFallback: afield.ai.KotlinSourceIndexDb? = null
+
+    private fun sourceIndex(): afield.ai.KotlinSourceIndexDb? =
+        KotlinSourceIndex.latestIndex
+            ?: loadedIndexFallback
+            ?: KotlinSourceIndex.loadIndex()?.also { loadedIndexFallback = it }
+
+    private fun resolveInfixParamTypesFromSource(operator: String): Set<String> {
+        val index = sourceIndex() ?: return emptySet()
+        val root = Paths.get(System.getProperty("user.dir")).normalize()
+        val defs = index.definitions.filter { it.kind == "fun" && it.name.substringAfterLast('.') == operator }
+        if (defs.isEmpty()) return emptySet()
+
+        val fileTextCache = HashMap<String, List<String>>()
+        val types = LinkedHashSet<String>()
+        for (def in defs) {
+            val lines = fileTextCache.getOrPut(def.filePath) {
+                runCatching { Files.readString(root.resolve(def.filePath)).split('\n') }.getOrDefault(emptyList())
+            }
+            // The declaration may wrap; scan a couple of lines from the indexed start for the signature.
+            val start = (def.line - 1).coerceAtLeast(0)
+            val window = lines.subList(start, (start + 3).coerceAtMost(lines.size)).joinToString(" ")
+            parseInfixParamType(window, operator)?.let { types.add(it) }
+        }
+        return types
+    }
+
+    /** Extract the single parameter type from an `infix fun …<operator>(name: Type…)` declaration line, or null. */
+    internal fun parseInfixParamType(declaration: String, operator: String): String? {
+        val call = Regex("""\b${Regex.escape(operator)}\s*\(""").find(declaration) ?: return null
+        if (!Regex("""\binfix\s+fun\b""").containsMatchIn(declaration.substring(0, call.range.first))) return null
+        val open = declaration.indexOf('(', call.range.first)
+        if (open < 0) return null
+        // Infix functions take exactly one parameter, so the first close paren ends the list;
+        // parameter types here contain no nested parentheses.
+        val close = declaration.indexOf(')', open)
+        if (close < 0) return null
+        val param = declaration.substring(open + 1, close)
+        val type = param.substringAfter(':', "").trim()
+        return type.ifBlank { null }?.let { shortenType(it).trim().ifBlank { null } }
+    }
 
     /** Backward-parse `receiver operatorName <operandPrefix>|` and return the operator token, or null if not an infix operand site. */
     private fun parseInfixSite(allCode: String, cursor: Int): InfixSite? {
@@ -2913,9 +2984,11 @@ class KotlinExecution : BoxExecution {
                 }
                 when (c) {
                     is CompletionResult.Success -> {
-                        val infixExpectedTypes = runCatching {
-                            InfixCompletion.expectedOperandTypes(allCode, position) { s, cur -> inside.ki.complete(s, cur) }
-                        }.getOrDefault(emptySet())
+                        // Resolve the infix operator's operand type from indexed source: fast, cached,
+                        // and crucially NO second completion, so the completion request never stalls.
+                        // (The engine-driven InfixCompletion.expectedOperandTypes remains as a tested,
+                        // engine-agnostic reference but is deliberately kept off the hot path.)
+                        val infixExpectedTypes = InfixCompletion.expectedOperandTypesFast(allCode, position)
                         if (completionTraceEnabled() && infixExpectedTypes.isNotEmpty()) {
                             completionTrace("completion infix-operand expectedTypes='${infixExpectedTypes.joinToString(",")}' uid='${inside.id}' position=$position")
                         }
@@ -2930,11 +3003,27 @@ class KotlinExecution : BoxExecution {
                         val useTokenBounds = c.metadata.isEmpty() && fieldSnippets.isNotEmpty()
                         val boundsStart = synthetic?.bounds?.start ?: if (useTokenBounds) tokenBounds.start else c.bounds.start
                         val boundsEnd = synthetic?.bounds?.end ?: if (useTokenBounds) tokenBounds.end else c.bounds.end
+
+                        val enriched = completionFor(c, infixExpectedTypes)
+                        val infixMatches = if (infixExpectedTypes.isEmpty()) emptyList() else enriched.filter { it.contextScore > 0 }
+                        // At an infix operand with nothing typed yet, show ONLY the fitting values, so
+                        // they surface no matter how the client ranks (client-side boosting can't help
+                        // if the editor is still running an older fieldSuggest.js). Once the user types a
+                        // character we hand back the full list with the fitting values merely boosted, so
+                        // nothing is permanently hidden. Guarded on a few matches so a bad type
+                        // resolution never collapses completion to an empty/tiny list.
+                        val infixFilterActive = typedToken.isBlank() && infixMatches.size >= 3
+                        val bodyMetadata = if (infixFilterActive) infixMatches else enriched
+
                         val completions = Completion(
                             boundsStart = boundsStart,
                             boundsEnd = boundsEnd,
-                            metadata = ((synthetic?.metadata ?: emptyList()) + fieldSnippets + completionFor(c, infixExpectedTypes) + importHelpFor(c))
+                            metadata = ((synthetic?.metadata ?: emptyList()) + fieldSnippets + bodyMetadata + importHelpFor(c))
                                 .map(KotlinCompletionSupport::withCategoryDocumentationHeader)
+                                // Front-load the type-matching operands after an infix function so they
+                                // lead the list even for clients that lean on server order. Stable, so
+                                // everything else keeps its relative order.
+                                .let { if (infixExpectedTypes.isEmpty()) it else it.sortedByDescending { m -> m.contextScore } }
                         )
 
                         reply(

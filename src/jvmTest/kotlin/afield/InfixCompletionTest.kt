@@ -5,6 +5,7 @@ import kotlin.script.experimental.api.SourceCodeCompletionVariant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -91,6 +92,33 @@ class InfixCompletionTest {
         assertTrue(InfixCompletion.matchesOperandType(domain, expectedTypes))
         assertTrue(InfixCompletion.matchesOperandType(range, expectedTypes))
         assertFalse(InfixCompletion.matchesOperandType(unrelated, expectedTypes))
+    }
+
+    @Test
+    fun parsesInfixParamTypeFromSourceDeclaration() {
+        // The fast (source-index) hot path parses the operand type straight from the declaration line.
+        assertEquals(
+            "FnTransform",
+            InfixCompletion.parseInfixParamType("    infix fun Fn.through(transform: FnTransform): Fn = transform(this)", "through")
+        )
+        assertEquals(
+            "ClosedRange<*>",
+            InfixCompletion.parseInfixParamType("    infix fun Fn.over(range: ClosedRange<*>): Fn =", "over")
+        )
+        assertEquals(
+            "Generator<Out, Out2>",
+            InfixCompletion.parseInfixParamType(
+                "infix fun <In, Out, Out2> Generator<In, Out>.pipe(g: Generator<Out, Out2>) = generator2<In, Out2> {", "pipe"
+            )
+        )
+    }
+
+    @Test
+    fun parseInfixParamTypeIgnoresNonInfixAndMismatchedOperators() {
+        // A same-named non-infix function must be rejected (no `infix` modifier)...
+        assertNull(InfixCompletion.parseInfixParamType("    private fun over(token: Token) {", "over"))
+        // ...and the operator name must actually be the function being declared.
+        assertNull(InfixCompletion.parseInfixParamType("    infix fun Fn.through(transform: FnTransform): Fn", "over"))
     }
 
     @Test
