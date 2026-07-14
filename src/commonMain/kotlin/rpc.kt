@@ -323,6 +323,21 @@ data class DebugProbeRequest(
     val timeoutMs: Long = 5_000L
 )
 
+// Source-location probe: watch a symbol at a class/file + line anywhere in the
+// loaded JVM (not tied to a box or a REPL snippet). At least one of className /
+// sourceName must be set; `line` is the real 1-based source line.
+@Serializable
+data class DebugSourceProbeRequest(
+    val requestId: String,
+    val symbol: String,
+    val line: Int,
+    val className: String? = null,
+    val sourceName: String? = null,
+    val threadName: String? = null,
+    val maxHits: Int = 16,
+    val timeoutMs: Long = 5_000L
+)
+
 @Serializable
 data class DebugProbeEvent(
     val requestId: String,
@@ -335,7 +350,35 @@ data class DebugProbeEvent(
     val annotation: String = "",
     val inspectorUrl: String = "",
     val done: Boolean = false,
-    val sequence: Int = 0
+    val sequence: Int = 0,
+    // Machine-readable mirror of the HTML card, for non-UI consumers (the MCP
+    // bridge / agents). The editor renders `html`; agents read these instead.
+    val error: String? = null,
+    val samples: List<DebugProbeSampleData> = emptyList(),
+    val scope: List<DebugProbeScopeData> = emptyList()
+)
+
+@Serializable
+data class DebugProbeSampleData(
+    val hitIndex: Int,
+    val threadName: String,
+    val declaringType: String,
+    val method: String,
+    val line: Int,
+    val resolution: String,
+    val valueKind: String,
+    val valueType: String? = null,
+    val valueText: String
+)
+
+@Serializable
+data class DebugProbeScopeData(
+    val name: String,
+    val resolution: String,
+    val type: String? = null,
+    val preview: String = "",
+    val method: String? = null,
+    val line: Int = -1
 )
 
 @Serializable

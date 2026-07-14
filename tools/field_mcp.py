@@ -40,6 +40,7 @@ import re
 import sys
 import traceback
 import urllib.parse
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -79,6 +80,46 @@ SOURCE_PROPERTY_KEYS = frozenset({
 AI_TOOLS_SKIP = {
     "MacroListRequest", "MacroReadRequest", "MacroWriteRequest", "MacroRunRequest",
 }
+
+# Debug-probe error codes that are legitimate *probe outcomes* (the probe ran but
+# the line/symbol didn't cooperate). These are returned to the model as data. Any
+# OTHER error string is a setup/availability failure (e.g. no JDWP port, bad target)
+# and is raised as an isError so the model can't miss the actionable guidance.
+PROBE_OUTCOME_CODES = {
+    "symbol_not_visible", "timed_out_waiting_for_hit", "missing_debug_info",
+    "thread_not_inspectable", "no_executable_location", "class_not_loaded",
+    "thread_not_found", "request_install_failed", "invalid_request",
+    "vm_died", "vm_disconnected", "event_loop_failure",
+}
+PROBE_OUTCOME_HELP = {
+    "timed_out_waiting_for_hit": "The line never executed within timeout_ms. Raise timeout_ms, "
+        "pick a line that actually runs, or trigger the code path while probing.",
+    "symbol_not_visible": "The line executed but no local/field named that symbol was in scope "
+        "there. Check the symbol name and pick a line where it is live.",
+    "missing_debug_info": "That class was compiled without local-variable debug info.",
+    "no_executable_location": "No executable bytecode maps to that source line — pick a line with "
+        "a real statement (not a blank/brace/decl line).",
+    "class_not_loaded": "The target class is not loaded in the JVM yet (and did not load within "
+        "timeout_ms). Exercise the code path first, or raise timeout_ms.",
+    "thread_not_found": "No thread matched the given 'thread' name.",
+}
+
+def _probe_note_line(where: str, symbol: Any, line: Any, phase: Any,
+                     error: Any, samples: list[dict[str, Any]]) -> str:
+    """One compact line summarizing a probe, for a box's notes debug trail."""
+    when = datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M:%S")
+    head = f"[debug {when}] {symbol} @ {where}:{line}"
+    if not samples:
+        return f"{head} → ERROR {error} (0 samples)" if error else f"{head} → no samples ({phase})"
+    first = samples[0]
+    vtext = str(first.get("valueText", ""))
+    if len(vtext) > 120:
+        vtext = vtext[:119] + "…"
+    vtype = first.get("valueType") or first.get("valueKind") or "?"
+    extra = f" +{len(samples) - 1} more" if len(samples) > 1 else ""
+    return (f"{head} → {vtype} {vtext} ({first.get('resolution')}){extra}; "
+            f"{len(samples)} sample(s), {phase}")
+
 
 _CAMEL_1 = re.compile(r"(.)([A-Z][a-z]+)")
 _CAMEL_2 = re.compile(r"([a-z0-9])([A-Z])")
@@ -504,6 +545,121 @@ class FieldMcpServer:
             {"type": "image", "data": base64.b64encode(data).decode("ascii"), "mimeType": "image/png"},
         ]
 
+    async def tool_debug_probe(self, args: dict[str, Any]) -> dict[str, Any]:
+        symbol = args.get("symbol")
+        line = args.get("line")
+        if not symbol:
+            raise McpToolError("field_debug_probe requires a 'symbol' (variable name to watch).")
+        if line is None:
+            raise McpToolError("field_debug_probe requires a 'line' (1-based source line).")
+
+        token = args.get("box")
+        file_arg = args.get("file")
+        class_arg = args.get("class")
+        if not token and not file_arg and not class_arg:
+            raise McpToolError(
+                "field_debug_probe needs a target: either a 'box' (uid/name — probes that "
+                "box's running snippet) or a 'file'/'class' (probes anywhere in loaded src/)."
+            )
+
+        max_hits = int(args.get("max_hits", 16))
+        timeout_ms = int(args.get("timeout_ms", 5_000))
+        thread = args.get("thread")
+        thread_name = str(thread) if thread else None
+        note_box = args.get("note_box")
+        # wait_for budget must outlast the JVM-side sampling window.
+        wait_timeout = max(self.timeout, timeout_ms / 1000.0 + 5.0)
+
+        client = await self._ensure_attached()
+
+        if token:
+            # Box mode: probe a running box's snippet code.
+            await client.refresh_snapshot(timeout=self.timeout)
+            uid = self._resolve_box(client, str(token))
+            box = client.boxes[uid]
+            property_name = str(args.get("property") or "code")
+            all_code = box.get(property_name)
+            if not all_code:
+                raise McpToolError(
+                    f"Box {uid} has no {property_name!r} source to probe. Probes only work "
+                    "on a running Kotlin box; run the box first, then probe it."
+                )
+            payload = await client.debug_probe(
+                uid=uid,
+                symbol=str(symbol),
+                line=int(line),
+                all_code=str(all_code),
+                property_name=property_name,
+                thread_name=thread_name,
+                max_hits=max_hits,
+                timeout_ms=timeout_ms,
+                timeout=wait_timeout,
+            )
+            target: dict[str, Any] = {"box": uid, "property": property_name}
+        else:
+            # Source mode: probe any loaded class/file by name. The JDI helper matches
+            # on the source basename and/or fully-qualified class name, so a repo path
+            # like "src/jvmMain/kotlin/afield/Server.kt" reduces to "Server.kt".
+            source_name = Path(str(file_arg)).name if file_arg else None
+            class_name = str(class_arg) if class_arg else None
+            payload = await client.debug_source_probe(
+                symbol=str(symbol),
+                line=int(line),
+                class_name=class_name,
+                source_name=source_name,
+                thread_name=thread_name,
+                max_hits=max_hits,
+                timeout_ms=timeout_ms,
+                timeout=wait_timeout,
+            )
+            target = {}
+            if source_name:
+                target["file"] = source_name
+            if class_name:
+                target["class"] = class_name
+
+        samples = payload.get("samples") or []
+        scope = payload.get("scope") or []
+        error = payload.get("error")
+
+        # Setup/availability failure (no JDWP port, bad/empty target, helper couldn't
+        # start): the probe never ran. Raise so the model gets the actionable message
+        # front-and-center instead of an empty samples list it might read as "no hits".
+        if error and not samples and error not in PROBE_OUTCOME_CODES:
+            raise McpToolError(error)
+
+        result: dict[str, Any] = {
+            **target,
+            "symbol": payload.get("symbol", symbol),
+            "line": payload.get("line", line),
+            "phase": payload.get("phase"),
+            "done": payload.get("done", False),
+            "error": error,
+            "sampleCount": len(samples),
+            "samples": samples,
+        }
+        if error in PROBE_OUTCOME_HELP:
+            result["errorHelp"] = PROBE_OUTCOME_HELP[error]
+        if scope:
+            result["scope"] = scope
+
+        # Optionally leave a debug-session trail in a box's notes.
+        if note_box:
+            await client.refresh_snapshot(timeout=self.timeout)
+            note_uid = self._resolve_box(client, str(note_box))
+            where = target.get("file") or target.get("class") or target.get("box") or "?"
+            note_line = _probe_note_line(
+                where, result["symbol"], result["line"], result["phase"], error, samples
+            )
+            existing = client.boxes[note_uid].get("notes") or ""
+            new_notes = f"{existing}\n{note_line}" if existing else note_line
+            await client.set_property(
+                uid=note_uid, property_name="notes", value=new_notes, timeout=self.timeout
+            )
+            result["notedBox"] = note_uid
+
+        return result
+
     # ---- MCP protocol -----------------------------------------------------
 
     TOOLS: list[dict[str, Any]] = [
@@ -666,6 +822,72 @@ class FieldMcpServer:
                 "required": ["box"],
             },
         },
+        {
+            "name": "field_debug_probe",
+            "description": (
+                "Ask the running JVM what a variable's value is at runtime, and get the answer. "
+                "Installs a non-suspending JDWP probe (via the JDI debug helper) that watches one "
+                "symbol at one source line and samples its value each time that line executes — it "
+                "never pauses the render/compute loop. Returns the observed 'samples' (value text, "
+                "type, thread, resolution) plus any in-scope 'scope' symbols.\n\n"
+                "Two targeting modes (give exactly one):\n"
+                "  • Source mode — probe ANYWHERE in loaded src/ code: pass 'file' (e.g. "
+                "'Server.kt' or 'src/jvmMain/kotlin/afield/Server.kt') and/or 'class' (fully "
+                "qualified, e.g. 'afield.Server'), with 'line' the real file line.\n"
+                "  • Box mode — probe a running box's snippet: pass 'box' (uid/name), 'line' within "
+                "the box 'property' (default 'code'); run the box first.\n\n"
+                "Preconditions: Field launches with remote debugging on by default (JDWP); the "
+                "target class must be loaded (or load within timeout_ms), and the running JVM must "
+                "be built from the source whose line numbers you pass. Good for 'what is X here?', "
+                "'is this loop producing the values I expect?', and inspecting live state.\n\n"
+                "Pass 'note_box' (a box uid/name) to append a one-line summary of this probe to that "
+                "box's 'notes' — a running debug-session trail kept in the document itself."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "symbol": {"type": "string", "description": "Variable name to watch."},
+                    "line": {
+                        "type": "integer",
+                        "description": "1-based source line where the symbol is in scope.",
+                    },
+                    "file": {
+                        "type": "string",
+                        "description": "Source mode: file path or basename, e.g. 'Server.kt'.",
+                    },
+                    "class": {
+                        "type": "string",
+                        "description": "Source mode: fully-qualified class, e.g. 'afield.Server'.",
+                    },
+                    "box": {
+                        "type": "string",
+                        "description": "Box mode: box uid or unique name.",
+                    },
+                    "property": {
+                        "type": "string",
+                        "description": "Box mode: source property to probe (default 'code').",
+                    },
+                    "max_hits": {
+                        "type": "integer",
+                        "description": "Max value samples to collect before completing (default 16).",
+                    },
+                    "timeout_ms": {
+                        "type": "integer",
+                        "description": "How long to wait for the line to execute, in ms (default 5000).",
+                    },
+                    "thread": {
+                        "type": "string",
+                        "description": "Optional: only sample hits on this thread name.",
+                    },
+                    "note_box": {
+                        "type": "string",
+                        "description": "Optional: box uid/name to append this probe's summary to its "
+                                       "'notes' (a debug-session trail kept in the document).",
+                    },
+                },
+                "required": ["symbol", "line"],
+            },
+        },
     ]
 
     def _dispatch_table(self):
@@ -686,6 +908,7 @@ class FieldMcpServer:
             "field_read_macro": self.tool_read_macro,
             "field_transcript_page": self.tool_transcript_page,
             "field_screenshot_box": self.tool_screenshot_box,
+            "field_debug_probe": self.tool_debug_probe,
         }
 
     def _all_tools(self) -> list[dict[str, Any]]:

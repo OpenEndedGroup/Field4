@@ -75,6 +75,10 @@ REPO_ROOT = TOOLS_ROOT.parent
 LOG_ROOT = REPO_ROOT / ".field-backdoor" / "logs"
 DEFAULT_PORT = 9092
 DEFAULT_TIMEOUT = 20.0
+# JDWP is opt-in / off by default (see build.gradle.kts). The backdoor turns it on
+# for the Field instances IT launches, so `field_debug_probe` works out of the box
+# against backdoor-managed servers. Manual `./gradlew runJvm` stays closed.
+DEFAULT_JDWP_PORT = "5005"
 # Generous budget for the FIRST Playwright attach on a machine, where the browser
 # binaries may still need to download. After that, attaches are fast, so ordinary
 # ops honor the caller's --timeout and a hung attach fails fast instead of blocking
@@ -607,7 +611,14 @@ class FieldBackdoor:
             "stderr": subprocess.STDOUT,
             "stdin": subprocess.DEVNULL,
             "text": True,
-            "env": {**os.environ, "PORT": str(self.port)},
+            "env": {
+                **os.environ,
+                "PORT": str(self.port),
+                # Enable remote debugging for backdoor-launched Field so agent probes
+                # work. Honors an explicit AFIELD_JDWP_PORT already in the env (incl.
+                # "off"), so the caller can still opt out.
+                "AFIELD_JDWP_PORT": os.environ.get("AFIELD_JDWP_PORT", DEFAULT_JDWP_PORT),
+            },
         }
         if os.name == "nt":
             popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]
@@ -1801,6 +1812,128 @@ class FieldBackdoor:
         if not isinstance(payload, dict):
             raise BackdoorError("macro-transcript-command returned an invalid payload")
         return payload
+
+    async def _run_probe(
+        self,
+        *,
+        message_name: str,
+        payload: dict[str, Any],
+        reply_context: dict[str, Any] | None,
+        timeout: float,
+        log_fields: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Send a probe message and collect its streamed events until terminal.
+
+        Both probe handlers (``debug-probe`` / ``debug-source-probe``) stream
+        ``debug-probe-event`` messages (ack, sample*, then a terminal complete or
+        error). The server renames each reply onto our reply channel (``toName``),
+        so we match on ``messageName == reply_name`` and return the payload of the
+        one flagged ``done`` — which carries the structured ``samples`` / ``scope``
+        / ``error`` mirror of the editor's HTML card.
+        """
+        reply_name = f"reply_{uuid.uuid4().hex}"
+        start_seq = self.event_seq
+        self.logger.log("debug_probe_start", replyName=reply_name, timeout=timeout, **log_fields)
+        await self.send_message(
+            message_name, payload, reply_to=reply_name, reply_context=reply_context
+        )
+
+        def predicate():
+            terminal = None
+            for event in self.events_since(start_seq):
+                if event["messageName"] != reply_name:
+                    continue
+                event_payload = event.get("payload")
+                if isinstance(event_payload, dict) and event_payload.get("done"):
+                    terminal = event
+            return terminal
+
+        try:
+            event = await self.wait_for(predicate, timeout, f"{message_name}:{reply_name}")
+        finally:
+            self.reply_contexts.pop(reply_name, None)
+            self.logger.log("debug_probe_end", replyName=reply_name)
+
+        result = event.get("payload")
+        if not isinstance(result, dict):
+            raise BackdoorError(f"{message_name} returned an invalid payload")
+        return result
+
+    async def debug_probe(
+        self,
+        *,
+        uid: str,
+        symbol: str,
+        line: int,
+        all_code: str,
+        property_name: str = "code",
+        position: int = 0,
+        thread_name: str | None = None,
+        max_hits: int = 16,
+        timeout_ms: int = 5_000,
+        timeout: float,
+    ) -> dict[str, Any]:
+        """Non-suspending JDWP variable probe on a running Kotlin box.
+
+        Watches ``symbol`` at ``line`` (1-based, within ``property_name``) and
+        samples its value each time that source line executes, up to ``max_hits``
+        or until ``timeout_ms`` elapses. Never suspends the VM (SUSPEND_EVENT_THREAD,
+        resume immediately).
+        """
+        return await self._run_probe(
+            message_name="debug-probe",
+            payload={
+                "requestId": f"probe_{uuid.uuid4().hex}",
+                "uid": uid,
+                "line": line,
+                "position": position,
+                "symbol": symbol,
+                "allCode": all_code,
+                "property": property_name,
+                "threadName": thread_name,
+                "maxHits": max_hits,
+                "timeoutMs": timeout_ms,
+            },
+            reply_context={"uid": uid},
+            timeout=timeout,
+            log_fields={"uid": uid, "symbol": symbol, "line": line},
+        )
+
+    async def debug_source_probe(
+        self,
+        *,
+        symbol: str,
+        line: int,
+        class_name: str | None = None,
+        source_name: str | None = None,
+        thread_name: str | None = None,
+        max_hits: int = 16,
+        timeout_ms: int = 5_000,
+        timeout: float,
+    ) -> dict[str, Any]:
+        """Non-suspending JDWP variable probe at a source location anywhere in src/.
+
+        Unlike :meth:`debug_probe` this is not tied to a box or REPL snippet: the JDI
+        helper resolves candidate classes by ``class_name`` (fully qualified) and/or
+        ``source_name`` (file basename, e.g. ``Server.kt``) and sets the breakpoint at
+        the real 1-based ``line``. At least one of class_name / source_name is required.
+        """
+        return await self._run_probe(
+            message_name="debug-source-probe",
+            payload={
+                "requestId": f"probe_{uuid.uuid4().hex}",
+                "symbol": symbol,
+                "line": line,
+                "className": class_name,
+                "sourceName": source_name,
+                "threadName": thread_name,
+                "maxHits": max_hits,
+                "timeoutMs": timeout_ms,
+            },
+            reply_context=None,
+            timeout=timeout,
+            log_fields={"className": class_name, "sourceName": source_name, "symbol": symbol, "line": line},
+        )
 
     async def set_property(
         self, *, uid: str, property_name: str, value: str, timeout: float

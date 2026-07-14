@@ -387,18 +387,34 @@ fun MutableList<String>.addOrReplaceSystemProperties(args: List<String>) {
     }
 }
 
-fun configuredJdwpArg(): String? {
-    val rawPort = System.getProperty("afield.jdwp.port")
+// Remote debugging (JDWP) is OPT-IN, OFF by default. A plain `./gradlew runJvm`
+// does NOT open a debug port. It turns on only when AFIELD_JDWP_PORT (or
+// -Dafield.jdwp.port) is set to a port — which the backdoor python launcher does
+// automatically (tools/field_backdoor.py sets AFIELD_JDWP_PORT), so agent probes
+// work against backdoor-launched Field without exposing a debug port on manual runs.
+// off/none/false/0 (or unset) keep it disabled.
+fun jdwpPortSetting(): String? {
+    val raw = (System.getProperty("afield.jdwp.port")
         ?: System.getenv("AFIELD_JDWP_PORT")
-        ?: return null
-    val port = rawPort.trim().takeIf { it.isNotEmpty() } ?: return null
-    val host = (System.getProperty("afield.jdwp.host")
+        ?: return null).trim()
+    if (raw.isEmpty() || raw.lowercase() in setOf("off", "none", "false", "no", "disabled", "0")) {
+        return null
+    }
+    return raw
+}
+
+fun jdwpHostSetting(): String =
+    (System.getProperty("afield.jdwp.host")
         ?: System.getenv("AFIELD_JDWP_HOST")
         ?: "127.0.0.1").trim()
+
+fun configuredJdwpArg(): String? {
+    val port = jdwpPortSetting() ?: return null
     val suspendFlag = (System.getProperty("afield.jdwp.suspend")
         ?: System.getenv("AFIELD_JDWP_SUSPEND")
         ?: "false").trim().lowercase() in setOf("1", "true", "yes", "on")
-    return "-agentlib:jdwp=transport=dt_socket,server=y,suspend=${if (suspendFlag) "y" else "n"},address=$host:$port"
+    // suspend=n is deliberate: never freeze Field's render/compute loop for a probe.
+    return "-agentlib:jdwp=transport=dt_socket,server=y,suspend=${if (suspendFlag) "y" else "n"},address=${jdwpHostSetting()}:$port"
 }
 
 plugins {
@@ -954,6 +970,15 @@ tasks.named<JavaExec>("runJvm").configure {
             if (merged.none { it.startsWith("-agentlib:jdwp=") }) {
                 merged += jdwpArg
             }
+            // Tell the in-JVM RuntimeDebugProbeService which port/host to attach the
+            // JDI helper to. Needed because the port may come from the default rather
+            // than an env var the app JVM would otherwise inherit.
+            merged.addOrReplaceSystemProperties(
+                listOf(
+                    "-Dafield.jdwp.port=${jdwpPortSetting()}",
+                    "-Dafield.jdwp.host=${jdwpHostSetting()}",
+                )
+            )
         }
         merged.addOrReplaceSystemProperties(configuredAi4TraceJvmArgs())
         val aotLaunch = fieldAotRuntimeLaunch(classpath, javaLauncher.get(), logger)

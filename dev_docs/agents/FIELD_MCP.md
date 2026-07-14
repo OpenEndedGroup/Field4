@@ -79,6 +79,8 @@ Native bridge tools (always present):
   `field_write_macro` / `field_run_macro` / `field_list_macros` / `field_read_macro`,
   `field_transcript_page` — build/edit/run.
 - `field_screenshot_box` — render a box's output as an image.
+- `field_debug_probe` — inspect a live variable's value at runtime (see
+  [Runtime debug probe](#runtime-debug-probe) below).
 
 ai4 registry tools (discovered dynamically once attached; the same registry the in-app
 OpenAI harness uses — see [`SEMANTIC_RETRIEVAL.md`](./SEMANTIC_RETRIEVAL.md)). Flattened
@@ -90,6 +92,51 @@ into the `field_*` namespace, currently **Tier-1** only:
 Tier-2 ai4 tools (CompileKotlin, EvaluateKotlin, ReloadShaders, CodeUse\*, …) are gated
 off until `installAi4()` is refactored to expose a shared context factory; the registry
 gates hide any tool whose provider is not wired, so they simply do not appear yet.
+
+## Runtime debug probe
+
+`field_debug_probe` lets an agent **ask the running JVM what a variable's value is at
+runtime, and get the answer as data.** It installs a *non-suspending* JDWP probe (via
+the JDI debug helper) that watches one symbol at one source line and samples its value
+each time that line executes. It never pauses Field's render/compute loop
+(`SUSPEND_EVENT_THREAD`, resume immediately), so it is safe against a live session. The
+result carries the observed `samples` (value text, type, thread, resolution) plus any
+in-scope `scope` symbols — the same data the editor's debug-probe card shows, minus the
+HTML.
+
+Two targeting modes (give exactly one):
+
+- **Source mode — anywhere in loaded `src/`.** Pass `file` (path or basename, e.g.
+  `Server.kt` or `src/jvmMain/kotlin/afield/Server.kt`) and/or `class` (fully qualified,
+  e.g. `afield.Server`), with `line` the real file line and `symbol` the variable. This
+  is the "what is X here?" tool for framework code:
+  `{"file": "Server.kt", "line": 1758, "symbol": "now"}`.
+- **Box mode — a running box's snippet.** Pass `box` (uid/name), `line` within the box
+  `property` (default `code`), and `symbol`. Run the box first so its snippet is
+  compiled and loaded.
+
+Optional args: `max_hits` (default 16), `timeout_ms` (default 5000, how long to wait for
+the line to execute), `thread` (only sample hits on one thread name), `note_box` (a box
+uid/name — appends a one-line summary of the probe to that box's `notes`, so a debug
+session leaves a readable trail in the document itself).
+
+### Prerequisite: remote debugging (JDWP), which is opt-in
+
+The probe attaches over JDWP, which is **off by default** — a plain `./gradlew runJvm`
+opens no debug port. It turns on when `AFIELD_JDWP_PORT` is set, and **the backdoor
+launcher sets it automatically**: any Field started by `tools/field_backdoor.py` (the
+recommended way for agents to start Field — see [`FIELD_BACKDOOR.md`](./FIELD_BACKDOOR.md))
+gets JDWP on port 5005. So if you launched Field through the backdoor, probes just work.
+
+If you attach to a Field launched some other way, the probe returns a clear, actionable
+`isError` ("This Field process was launched without remote debugging…") telling you to
+relaunch through the backdoor or set `AFIELD_JDWP_PORT=5005` before `./gradlew runJvm`.
+Relaunching is cheap — reopen the document and probe again.
+
+Preconditions: the target class must be loaded (or load within `timeout_ms`), and the
+running JVM must be built from the source whose line numbers you pass. Failure modes that
+are genuine *probe outcomes* rather than setup errors (`timed_out_waiting_for_hit`,
+`symbol_not_visible`, …) come back as data with an `errorHelp` hint, not an `isError`.
 
 ## Quick check
 

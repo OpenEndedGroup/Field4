@@ -95,6 +95,22 @@ then `wait-native-renderer agent_graphics_context --frames 3`, then create+conne
 example box beneath `agent_graphics_context` and launch it. Capture context before any
 async boundary: `val renderer: Renderer = fromContext()` at top level, before `start(...)`.
 
+## Inspect a live value at runtime (debug probe)
+
+Ask the running JVM "what is this variable right now?" via the MCP tool
+`field_debug_probe` — a non-suspending JDWP probe. Source mode targets any loaded
+`src/` code; box mode targets a running box. Backdoor-launched Field enables the
+required JDWP port (5005) automatically.
+
+```jsonc
+// source mode — a symbol at a src/ file + real line:
+{"file": "Server.kt", "line": 1758, "symbol": "now"}
+// box mode — a symbol in a running box's code:
+{"box": "MyBox", "line": 12, "symbol": "count"}
+```
+
+Full contract + the "no JDWP" error in [`FIELD_MCP.md`](./FIELD_MCP.md#runtime-debug-probe).
+
 ## Sharp edges
 
 - `--document <name>` is resolved **relative to the workspace root** — an absolute path loads an empty doc. Save into a workspace dir and open by relative name.

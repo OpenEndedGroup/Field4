@@ -7,9 +7,30 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
+// A resolved place to install the breakpoint, decoupled from where it came from.
+// The box path fills this from a compiled-snippet snapshot; the source path fills
+// it straight from a className / file name + line. `sourceNamePrefix` is only set
+// for REPL snippets (digit-suffixed generated source names); real src/ files match
+// exactly on `sourceName` and/or `className`.
 internal data class RuntimeProbeTarget(
-    val snapshot: KotlinDebugScriptSnapshot,
+    val className: String?,
+    val sourceName: String,
+    val sourceNamePrefix: String?,
     val localLine: Int
+) {
+    // What to show in the card header: the file if we have one, else the class.
+    val displayName: String
+        get() = sourceName.takeIf { it.isNotBlank() } ?: className.orEmpty()
+}
+
+// The bits of a probe request the session/rendering layer needs, shared by both the
+// box path (DebugProbeRequest) and the source path (DebugSourceProbeRequest).
+internal data class ProbeContext(
+    val requestId: String,
+    val uid: String,
+    val symbol: String,
+    val line: Int,
+    val maxHits: Int
 )
 
 internal data class RuntimeProbeSample(
@@ -35,7 +56,7 @@ internal data class RuntimeProbeView(
 )
 
 private class RuntimeProbeSession(
-    private val request: DebugProbeRequest,
+    private val ctx: ProbeContext,
     private val target: RuntimeProbeTarget
 ) {
     @Volatile private var status: String = "waiting"
@@ -73,7 +94,37 @@ private class RuntimeProbeSession(
         scope = null
     }
 
-    fun renderHtml(): String = RuntimeDebugProbeService.renderProbeHtml(request, target, snapshot())
+    fun renderHtml(): String = RuntimeDebugProbeService.renderProbeHtml(ctx, target, snapshot())
+
+    fun structuredSamples(): List<DebugProbeSampleData> = synchronized(samples) {
+        samples.map { sample ->
+            DebugProbeSampleData(
+                hitIndex = sample.hitIndex,
+                threadName = sample.threadName,
+                declaringType = sample.declaringType,
+                method = sample.method,
+                line = sample.line,
+                resolution = sample.resolution,
+                valueKind = sample.valueKind,
+                valueType = sample.valueType,
+                valueText = sample.valueText
+            )
+        }
+    }
+
+    fun structuredScope(): List<DebugProbeScopeData> =
+        scope?.symbols?.map { symbol ->
+            DebugProbeScopeData(
+                name = symbol.name,
+                resolution = symbol.resolution,
+                type = symbol.type,
+                preview = symbol.preview,
+                method = symbol.method,
+                line = symbol.line
+            )
+        } ?: emptyList()
+
+    fun currentError(): String? = error
 
     private fun snapshot(): RuntimeProbeView = RuntimeProbeView(
         status = status,
@@ -92,52 +143,110 @@ object RuntimeDebugProbeService {
     @Volatile private var client: LiveProbeClient? = null
 
     fun availabilityError(): String? {
-        val port = jdwpPort() ?: return "Runtime debug probe is disabled. Start Field with `AFIELD_JDWP_PORT=<port>` to enable JDWP."
-        if (port <= 0) return "Runtime debug probe JDWP port must be a positive integer."
+        val port = jdwpPort()
+            ?: return "This Field process was launched without remote debugging, so the debug " +
+                "probe has no JDWP port to attach to. Remote debugging is off by default. To fix: " +
+                "relaunch Field through the backdoor (tools/field_backdoor.py, which enables it " +
+                "automatically), or set AFIELD_JDWP_PORT=5005 before `./gradlew runJvm`. You don't " +
+                "have to lose your work — just relaunch Field, reopen the document, and probe again."
+        if (port <= 0) return "Runtime debug probe JDWP port must be a positive integer (got $port)."
         return null
     }
 
+    // Editor path: probe a symbol in a running Kotlin box's snippet code.
     fun startProbe(
         box: Box,
         request: DebugProbeRequest,
         execution: KotlinExecution,
         reply: (Message) -> Unit
     ) {
-        val availability = availabilityError()
-        if (availability != null) {
-            reply(errorEvent(request, availability))
-            return
-        }
+        val ctx = ProbeContext(
+            requestId = request.requestId,
+            uid = request.uid,
+            symbol = request.symbol,
+            line = request.line,
+            maxHits = request.maxHits
+        )
+        availabilityError()?.let { reply(errorEvent(ctx, it)); return }
 
         val target = resolveTarget(box, request, execution)
         if (target == null) {
-            reply(errorEvent(request, "No running compiled snippet matches the current editor text. Relaunch that box, then retry the probe."))
+            reply(errorEvent(ctx, "No running compiled snippet matches the current editor text. Relaunch that box, then retry the probe."))
             return
         }
 
-        val session = RuntimeProbeSession(request, target)
+        runProbe(ctx, target, request.threadName, request.timeoutMs, reply)
+    }
+
+    // MCP / agent path: probe a symbol at a source location anywhere in the loaded
+    // JVM — a src/ file and/or a fully-qualified class name plus a line. No box, no
+    // snippet: the JDI helper resolves candidate classes by className / sourceName
+    // and sets the breakpoint at the real source line.
+    fun startSourceProbe(request: DebugSourceProbeRequest, reply: (Message) -> Unit) {
+        val ctx = ProbeContext(
+            requestId = request.requestId,
+            uid = "",
+            symbol = request.symbol,
+            line = request.line,
+            maxHits = request.maxHits
+        )
+        availabilityError()?.let { reply(errorEvent(ctx, it)); return }
+
+        if (request.className.isNullOrBlank() && request.sourceName.isNullOrBlank()) {
+            reply(errorEvent(ctx, "A source probe needs a 'class' (fully-qualified) or 'file' (source name) to locate the code."))
+            return
+        }
+        if (request.line <= 0) {
+            reply(errorEvent(ctx, "A source probe needs a positive 1-based source line."))
+            return
+        }
+
+        val target = RuntimeProbeTarget(
+            className = request.className?.takeIf { it.isNotBlank() },
+            sourceName = request.sourceName?.takeIf { it.isNotBlank() }.orEmpty(),
+            sourceNamePrefix = null,
+            localLine = request.line
+        )
+        runProbe(ctx, target, request.threadName, request.timeoutMs, reply)
+    }
+
+    // Shared machinery: install the probe via the JDI helper and stream events back.
+    private fun runProbe(
+        ctx: ProbeContext,
+        target: RuntimeProbeTarget,
+        threadName: String?,
+        timeoutMs: Long,
+        reply: (Message) -> Unit
+    ) {
+        val session = RuntimeProbeSession(ctx, target)
         session.recordAck()
-        reply(renderEvent(request, "ack", session.renderHtml(), done = false, sequence = 0))
+        reply(renderEvent(ctx, "ack", session.renderHtml(), done = false, sequence = 0))
 
         val liveClient = try {
             client()
         } catch (t: Throwable) {
             lprintln("error,debug-probe", "failed to start helper: ${t.message}")
             session.recordError(t.message ?: "Failed to start debug helper")
-            reply(renderEvent(request, "error", session.renderHtml(), done = true, sequence = 1))
+            reply(
+                renderEvent(
+                    ctx, "error", session.renderHtml(), done = true, sequence = 1,
+                    error = session.currentError(),
+                    samples = session.structuredSamples()
+                )
+            )
             return
         }
 
         val probeRequest = ProbeVariableRequest(
-            requestId = request.requestId,
-            className = target.snapshot.className,
-            sourceName = target.snapshot.sourceName,
-            sourceNamePrefix = target.snapshot.sourceName.dropLastWhile { it.isDigit() },
+            requestId = ctx.requestId,
+            className = target.className,
+            sourceName = target.sourceName.takeIf { it.isNotBlank() },
+            sourceNamePrefix = target.sourceNamePrefix,
             line = target.localLine,
-            variableName = request.symbol,
-            threadName = request.threadName,
-            maxHits = request.maxHits,
-            timeoutMs = request.timeoutMs
+            variableName = ctx.symbol,
+            threadName = threadName,
+            maxHits = ctx.maxHits,
+            timeoutMs = timeoutMs
         )
 
         liveClient.probe(probeRequest) { response ->
@@ -160,11 +269,13 @@ object RuntimeDebugProbeService {
                     session.recordSample(sample)
                     reply(
                         renderEvent(
-                            request = request,
+                            ctx = ctx,
                             phase = "sample",
                             html = session.renderHtml(),
                             done = false,
-                            sequence = response.hitIndex
+                            sequence = response.hitIndex,
+                            samples = session.structuredSamples(),
+                            scope = session.structuredScope()
                         )
                     )
                 }
@@ -173,11 +284,14 @@ object RuntimeDebugProbeService {
                     session.recordComplete(response)
                     reply(
                         renderEvent(
-                            request = request,
+                            ctx = ctx,
                             phase = "complete",
                             html = session.renderHtml(),
                             done = true,
-                            sequence = response.hits + 1
+                            sequence = response.hits + 1,
+                            error = session.currentError(),
+                            samples = session.structuredSamples(),
+                            scope = session.structuredScope()
                         )
                     )
                 }
@@ -186,11 +300,14 @@ object RuntimeDebugProbeService {
                     session.recordError(response.detail ?: response.error)
                     reply(
                         renderEvent(
-                            request = request,
+                            ctx = ctx,
                             phase = "error",
                             html = session.renderHtml(),
                             done = true,
-                            sequence = 1
+                            sequence = 1,
+                            error = session.currentError(),
+                            samples = session.structuredSamples(),
+                            scope = session.structuredScope()
                         )
                     )
                 }
@@ -205,7 +322,13 @@ object RuntimeDebugProbeService {
     ): RuntimeProbeTarget? {
         val segment = execution.resolveDebugProbeSegment(box, request.allCode, request.line) ?: return null
         val snapshot = box.ki.context.debugScripts.latestMatchingSource(segment.expandedText) ?: return null
-        return RuntimeProbeTarget(snapshot = snapshot, localLine = segment.localLine)
+        return RuntimeProbeTarget(
+            className = snapshot.className,
+            sourceName = snapshot.sourceName,
+            // REPL snippet source names carry a digit suffix; match the family.
+            sourceNamePrefix = snapshot.sourceName.dropLastWhile { it.isDigit() },
+            localLine = segment.localLine
+        )
     }
 
     private fun client(): LiveProbeClient {
@@ -242,41 +365,48 @@ object RuntimeDebugProbeService {
         return raw.toIntOrNull()
     }
 
-    private fun errorEvent(request: DebugProbeRequest, message: String): Message =
+    private fun errorEvent(ctx: ProbeContext, message: String): Message =
         renderEvent(
-            request = request,
+            ctx = ctx,
             phase = "error",
-            html = renderImmediateErrorHtml(request, message),
+            html = renderImmediateErrorHtml(ctx, message),
             done = true,
-            sequence = 1
+            sequence = 1,
+            error = message
         )
 
     private fun renderEvent(
-        request: DebugProbeRequest,
+        ctx: ProbeContext,
         phase: String,
         html: String,
         done: Boolean,
-        sequence: Int
+        sequence: Int,
+        error: String? = null,
+        samples: List<DebugProbeSampleData> = emptyList(),
+        scope: List<DebugProbeScopeData> = emptyList()
     ): Message = Message("debug-probe-event").payload(
         DebugProbeEvent(
-            requestId = request.requestId,
-            uid = request.uid,
+            requestId = ctx.requestId,
+            uid = ctx.uid,
             phase = phase,
-            symbol = request.symbol,
-            line = request.line,
+            symbol = ctx.symbol,
+            line = ctx.line,
             html = html,
             channel = probeChannel,
-            annotation = probeAnnotation(request.symbol),
+            annotation = probeAnnotation(ctx.symbol),
             done = done,
-            sequence = sequence
+            sequence = sequence,
+            error = error,
+            samples = samples,
+            scope = scope
         )
     )
 
-    private fun renderImmediateErrorHtml(request: DebugProbeRequest, message: String): String = buildString {
+    private fun renderImmediateErrorHtml(ctx: ProbeContext, message: String): String = buildString {
         append("<div style='min-width:320px; max-width:900px; color:#ddd; font:12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;'>")
         append("<div style='display:flex; align-items:center; gap:8px; flex-wrap:wrap;'>")
         append("<div style='font-size:13px; color:#ff9b9b;'><strong>debug probe</strong> <code>")
-        append(escapeHtml(request.symbol))
+        append(escapeHtml(ctx.symbol))
         append("</code></div>")
         append(statusBadge("error", true))
         append("</div>")
@@ -286,7 +416,7 @@ object RuntimeDebugProbeService {
         append("</div>")
     }
 
-    internal fun renderProbeHtml(request: DebugProbeRequest, target: RuntimeProbeTarget, view: RuntimeProbeView): String = buildString {
+    internal fun renderProbeHtml(ctx: ProbeContext, target: RuntimeProbeTarget, view: RuntimeProbeView): String = buildString {
         val samples = view.samples
         val latest = samples.lastOrNull()
         val errorMessage = view.error?.let { humanizeProbeError(it, samples.size) }
@@ -303,19 +433,21 @@ object RuntimeDebugProbeService {
         append("<div style='font-size:13px; color:")
         append(statusColor)
         append(";'><strong>debug probe</strong> <code>")
-        append(escapeHtml(request.symbol))
+        append(escapeHtml(ctx.symbol))
         append("</code></div>")
         append(statusBadge(statusText, view.status == "error"))
-        append(metaChip("${samples.size}/${request.maxHits} samples"))
+        append(metaChip("${samples.size}/${ctx.maxHits} samples"))
         latest?.let { append(metaChip(it.resolution)) }
         latest?.valueType?.takeIf { it.isNotBlank() }?.let { append(metaChip(it)) }
         append("</div>")
 
         append("<div style='margin-top:6px; color:#888;'>")
-        append(escapeHtml(target.snapshot.sourceName))
+        append(escapeHtml(target.displayName))
         append(":")
         append(target.localLine)
-        target.snapshot.className?.takeIf { it.isNotBlank() }?.let {
+        // For the source path the file name is the display name, so only append the
+        // class as a suffix when it adds something the display name didn't already show.
+        target.className?.takeIf { it.isNotBlank() && it != target.displayName }?.let {
             append(" • ")
             append(escapeHtml(it))
         }
@@ -346,7 +478,7 @@ object RuntimeDebugProbeService {
             append(renderRecentSamples(samples))
         }
 
-        if (shouldRenderVisualizer(samples.size, request.maxHits, view.status != "waiting")) {
+        if (shouldRenderVisualizer(samples.size, ctx.maxHits, view.status != "waiting")) {
             append("<div style='margin-top:12px;'>")
             append(samples.map { it.visualValue }.h2)
             append("</div>")

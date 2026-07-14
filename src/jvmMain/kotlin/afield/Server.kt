@@ -2213,6 +2213,16 @@ class Server {
                 Handled.yes
             })
 
+            // Source-location probe: no box, any loaded class/file. Used by the MCP
+            // bridge so agents can inspect runtime values anywhere in src/.
+            handlers["debug-source-probe"] = mutableSetOf({ message, reply ->
+                val request = Json.decodeFromJsonElement<DebugSourceProbeRequest>(message.payload!!)
+                GlobalScope.launch(Dispatchers.Default) {
+                    RuntimeDebugProbeService.startSourceProbe(request, reply)
+                }
+                Handled.yes
+            })
+
             handlers["complete-kotlin-ai"] = mutableSetOf({ message, reply ->
                 val exec = Json.decodeFromJsonElement<CompletionRequest>(message.payload!!)
                 val box = box(exec.uid)

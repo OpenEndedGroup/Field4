@@ -30,6 +30,12 @@ From the repository root, `tools/field_backdoor.py` will:
 If it starts Field itself, it also writes a matching managed-server log in the same directory.
 The session logs store truncated previews of large websocket payloads rather than full multi-megabyte HTML/SVG blobs, so they stay usable during visual-test runs.
 
+A Field that the backdoor launches also gets **remote debugging (JDWP) enabled on port
+5005** — it sets `AFIELD_JDWP_PORT=5005` in the child env (honoring an explicit override,
+including `off`). This is what makes the runtime debug probe (`field_debug_probe`, see
+[`FIELD_MCP.md`](./FIELD_MCP.md#runtime-debug-probe)) work out of the box against
+backdoor-launched Field. JDWP is off by default for a plain `./gradlew runJvm`.
+
 ## Minimum Hello World
 
 Run this from the repo root:
