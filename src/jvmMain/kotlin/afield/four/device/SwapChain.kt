@@ -12,7 +12,10 @@ import afield.logTime
 import afield.logger.lprintln
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
+import org.lwjgl.system.MemoryUtil.memPutAddress
+import org.lwjgl.system.MemoryUtil.memPutInt
 import org.lwjgl.vulkan.*
+import org.lwjgl.vulkan.VK10.VK_INCOMPLETE
 import org.lwjgl.vulkan.VK10.VK_TIMEOUT
 import java.util.*
 import java.util.function.Consumer
@@ -30,6 +33,13 @@ class SwapChain(
     val syncSemaphoresList: Array<SyncSemaphores>
     val supportsTransferSrc: Boolean
     var vkSwapChain: Long = 0
+
+    /** True when VK_EXT_present_timing is active on this swapchain (never on macOS/MoltenVK). */
+    val presentTimingEnabled: Boolean
+
+    /** Nominal display refresh duration reported by vkGetSwapchainTimingPropertiesEXT (nanoseconds, 0 = unknown). */
+    var refreshDurationNs: Long = 0L
+        private set
 
     var currentFrame: Int = 0
         private set
@@ -55,8 +65,15 @@ class SwapChain(
 
             swapChainExtent = calcSwapChainExtent(window, surfCapabilities)
 
+            // VK_EXT_present_timing: set the create flag so the swapchain records per-frame
+            // scanout timestamps.  Guard is in Device.usesPresentTiming so macOS/MoltenVK is
+            // never touched here.
+            val ptFlags = if (device.usesPresentTiming)
+                EXTPresentTiming.VK_SWAPCHAIN_CREATE_PRESENT_TIMING_BIT_EXT else 0
+
             val vkSwapchainCreateInfo = VkSwapchainCreateInfoKHR.calloc(stack)
                 .sType(KHRSwapchain.VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR)
+                .flags(ptFlags)
                 .surface(surface.vkSurface)
                 .minImageCount(numImages)
                 .imageFormat(surfaceFormat.imageFormat)
@@ -104,6 +121,9 @@ class SwapChain(
             currentFrame = 0
         }
 
+        // VK_EXT_present_timing post-create setup.
+        presentTimingEnabled = device.usesPresentTiming && initPresentTiming()
+
         // On macOS, tell the CAMetalLayer backing the window to enable Extended Dynamic Range so
         // the OS compositor delivers HDR headroom when an HDR Vulkan surface format is selected.
         if (Options.enableHDR && Options.isMac) {
@@ -115,11 +135,107 @@ class SwapChain(
 
     data class PresentResult(val resize: Boolean, val presentId: Long?, val result: Int)
 
+    // ---------------------------------------------------------------------------
+    // VK_EXT_present_timing helpers
+    // ---------------------------------------------------------------------------
+
+    /**
+     * Post-create setup: reserve the timing queue and query the nominal refresh duration.
+     * Called only when [device.usesPresentTiming] is true.
+     * Returns true on success, false if any setup call fails (disables present timing for this swapchain).
+     */
+    private fun initPresentTiming(): Boolean {
+        val queueSize = Options.presentTimingQueueSize
+        val setRes = EXTPresentTiming.vkSetSwapchainPresentTimingQueueSizeEXT(
+            device.vkDevice, vkSwapChain, queueSize
+        )
+        if (setRes != VK10.VK_SUCCESS) {
+            lprintln("warning,perf", "[present_timing] vkSetSwapchainPresentTimingQueueSizeEXT failed: $setRes; disabling")
+            return false
+        }
+
+        // Query nominal refresh duration.  Best-effort: failure just leaves refreshDurationNs=0.
+        MemoryStack.stackPush().use { stack ->
+            val timingProps = VkSwapchainTimingPropertiesEXT.calloc(stack)
+                .sType(EXTPresentTiming.VK_STRUCTURE_TYPE_SWAPCHAIN_TIMING_PROPERTIES_EXT)
+            val res = EXTPresentTiming.vkGetSwapchainTimingPropertiesEXT(
+                device.vkDevice, vkSwapChain, timingProps, null
+            )
+            if (res == VK10.VK_SUCCESS) {
+                refreshDurationNs = timingProps.refreshDuration()
+                lprintln(
+                    "info,perf",
+                    "[present_timing] enabled; queue=$queueSize refreshDuration=${refreshDurationNs}ns"
+                )
+            } else {
+                lprintln("warning,perf", "[present_timing] vkGetSwapchainTimingPropertiesEXT failed: $res")
+            }
+        }
+        return true
+    }
+
+    /**
+     * Harvest any completed past-presentation-timing entries from the driver's ring buffer and
+     * forward them to [FramePresentationLog].
+     *
+     * Call this once per acquire-image cycle (after the fence wait so the GPU work for the
+     * previous frame is done and timings are likely committed).  Does nothing when
+     * [presentTimingEnabled] is false or logging is not enabled.
+     */
+    fun drainPastTimings() {
+        if (!presentTimingEnabled || !FramePresentationLog.enabled) return
+        MemoryStack.stackPush().use { stack ->
+            val MAX_TIMINGS = Options.presentTimingQueueSize
+            val MAX_STAGES = 2 // IMAGE_FIRST_PIXEL_OUT + IMAGE_FIRST_PIXEL_VISIBLE
+
+            val info = VkPastPresentationTimingInfoEXT.calloc(stack)
+                .sType(EXTPresentTiming.VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_INFO_EXT)
+                .flags(EXTPresentTiming.VK_PAST_PRESENTATION_TIMING_ALLOW_PARTIAL_RESULTS_BIT_EXT)
+                .swapchain(vkSwapChain)
+
+            // Pre-allocate stage arrays for each timing slot.
+            val stageBufs = Array(MAX_TIMINGS) { VkPresentStageTimeEXT.calloc(MAX_STAGES, stack) }
+            val timings = VkPastPresentationTimingEXT.calloc(MAX_TIMINGS, stack)
+            for (i in 0 until MAX_TIMINGS) {
+                timings[i].sType(EXTPresentTiming.VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_EXT)
+                // presentStageCount and pPresentStages are set via unsafe writes because LWJGL
+                // does not generate typed setters for these output-layout fields.
+                memPutInt(timings[i].address() + VkPastPresentationTimingEXT.PRESENTSTAGECOUNT, MAX_STAGES)
+                memPutAddress(timings[i].address() + VkPastPresentationTimingEXT.PPRESENTSTAGES, stageBufs[i].address())
+            }
+
+            val props = VkPastPresentationTimingPropertiesEXT.calloc(stack)
+                .sType(EXTPresentTiming.VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_PROPERTIES_EXT)
+            memPutInt(props.address() + VkPastPresentationTimingPropertiesEXT.PRESENTATIONTIMINGCOUNT, MAX_TIMINGS)
+            memPutAddress(props.address() + VkPastPresentationTimingPropertiesEXT.PPRESENTATIONTIMINGS, timings.address())
+
+            val res = EXTPresentTiming.vkGetPastPresentationTimingEXT(device.vkDevice, info, props)
+            if (res != VK10.VK_SUCCESS && res != VK_INCOMPLETE) return
+            // VK_INCOMPLETE = more entries exist than we requested; entries we got are valid.
+
+            val count = props.presentationTimingCount()
+            for (i in 0 until count) {
+                val t = timings[i]
+                val presentId = t.presentId()
+                val reportComplete = t.reportComplete()
+                val stageCount = t.presentStageCount()
+                for (s in 0 until stageCount) {
+                    val stage = stageBufs[i][s]
+                    FramePresentationLog.scanoutObserved(
+                        vkSwapChain, presentId, stage.stage(), stage.time(),
+                        refreshDurationNs, reportComplete
+                    )
+                }
+            }
+        }
+    }
+
 
     fun acquireNextImage() = logTime("ani") {
         var imageIndex: Int
         MemoryStack.stackPush().use { stack ->
-
+            // Drain any completed scanout-timing entries before we block on the next acquire.
+            drainPastTimings()
 
             if (device.usePresentIndexing && !FramePresentationLog.waitAfterPresent) {
                 val idToWait = nextPresentId - 1
@@ -354,7 +470,6 @@ class SwapChain(
         var result = VK10.VK_SUCCESS
         MemoryStack.stackPush().use { stack ->
 
-
             val present = VkPresentInfoKHR.calloc(stack)
                 .sType(KHRSwapchain.VK_STRUCTURE_TYPE_PRESENT_INFO_KHR)
                 .pWaitSemaphores(
@@ -377,6 +492,43 @@ class SwapChain(
 
                 present.pNext(presentId.address())
                 nextPresentId++
+            }
+
+            // VK_EXT_present_timing: tag this present with a timing request so the driver
+            // records scanout-stage timestamps we can harvest in drainPastTimings().
+            // Only chained when present-timing logging is active to avoid any overhead when
+            // profiling is off.
+            if (presentTimingEnabled && FramePresentationLog.enabled) {
+                // pTimingInfos requires a VkPresentTimingInfoEXT.Buffer (one element per swapchain).
+                val timingInfoBuf = VkPresentTimingInfoEXT.calloc(1, stack)
+                timingInfoBuf[0]
+                    .sType$Default()
+                    // flags=0: no scheduling constraint, just measurement.
+                    // targetTime=0, timeDomainId=0: ASAP, driver-chosen domain.
+                    .presentStageQueries(
+                        EXTPresentTiming.VK_PRESENT_STAGE_IMAGE_FIRST_PIXEL_OUT_BIT_EXT or
+                            EXTPresentTiming.VK_PRESENT_STAGE_IMAGE_FIRST_PIXEL_VISIBLE_BIT_EXT
+                    )
+
+                // swapchainCount is set automatically by pTimingInfos() from the buffer size.
+                val timingsInfo = VkPresentTimingsInfoEXT.calloc(stack)
+                    .sType$Default()
+                    .pTimingInfos(timingInfoBuf)
+
+                // Walk to the tail of the current pNext chain and append.
+                var chainAddr = present.address()
+                while (true) {
+                    val next = org.lwjgl.system.MemoryUtil.memGetAddress(
+                        chainAddr + VkBaseOutStructure.PNEXT
+                    )
+                    if (next == 0L) {
+                        org.lwjgl.system.MemoryUtil.memPutAddress(
+                            chainAddr + VkBaseOutStructure.PNEXT, timingsInfo.address()
+                        )
+                        break
+                    }
+                    chainAddr = next
+                }
             }
 
             val callNs = System.nanoTime()

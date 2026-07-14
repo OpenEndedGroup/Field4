@@ -44,6 +44,8 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
     var usePresentIndexing = !Options.isMac
     var enableMeshShading = !Options.isMac
     var enableRayTracing = !Options.isMac
+    /** True when VK_EXT_present_timing was successfully enabled on the device. Never true on macOS/MoltenVK. */
+    var usesPresentTiming = false
 
     // Cache the device's supported extensions once.
     private val supportedExtensions: Set<String> by lazy { enumerateDeviceExtensions() }
@@ -70,6 +72,21 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 hasExt(KHRPresentWait.VK_KHR_PRESENT_WAIT_EXTENSION_NAME)
             enableMeshShading =
                 OS == OSType.WINDOWS && hasExt(EXTMeshShader.VK_EXT_MESH_SHADER_EXTENSION_NAME)
+
+            // VK_EXT_present_timing: gated hard off on macOS/MoltenVK.  Probe the feature
+            // struct to confirm the driver actually supports basic presentTiming.
+            val hasPresentTimingExt = OS != OSType.MACOS &&
+                hasExt(EXTPresentTiming.VK_EXT_PRESENT_TIMING_EXTENSION_NAME)
+            usesPresentTiming = if (hasPresentTimingExt) {
+                val ptFeatures = VkPhysicalDevicePresentTimingFeaturesEXT.calloc(stack)
+                    .sType$Default()
+                val probe = VkPhysicalDeviceFeatures2.calloc(stack).apply {
+                    sType(VK12.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2)
+                    pNext(ptFeatures.address())
+                }
+                VK11.vkGetPhysicalDeviceFeatures2(physicalDevice.vkPhysicalDevice, probe)
+                ptFeatures.presentTiming()
+            } else false
 
             val profilingEnabled = Options.profiling
             val hasPerfQuery = hasExt(KHRPerformanceQuery.VK_KHR_PERFORMANCE_QUERY_EXTENSION_NAME)
@@ -186,6 +203,12 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                     // is the base capability VK_KHR_external_memory_fd builds on.
                     addIfSupported(KHRExternalMemory.VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME)
                     addIfSupported(org.lwjgl.vulkan.KHRExternalMemoryFd.VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME)
+                }
+
+                // VK_EXT_present_timing: scanout-jitter logging via actual display timestamps.
+                // Explicitly excluded from macOS/MoltenVK where the extension is absent/broken.
+                if (usesPresentTiming) {
+                    add(EXTPresentTiming.VK_EXT_PRESENT_TIMING_EXTENSION_NAME)
                 }
 
                 if (Options.profiling) {
@@ -344,6 +367,14 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 memPutAddress(tail + VkBaseOutStructure.PNEXT, presentWait.address()); tail = presentWait.address()
             }
 
+            // VK_EXT_present_timing feature enable — never on macOS/MoltenVK.
+            if (usesPresentTiming) {
+                val presentTiming = VkPhysicalDevicePresentTimingFeaturesEXT.calloc(stack)
+                    .sType$Default()
+                    .presentTiming(true)
+                memPutAddress(tail + VkBaseOutStructure.PNEXT, presentTiming.address()); tail = presentTiming.address()
+            }
+
             if (enableRayTracing) {
                 val accelerationStructure = VkPhysicalDeviceAccelerationStructureFeaturesKHR.calloc(stack)
                     .sType(KHRAccelerationStructure.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR)
@@ -447,6 +478,10 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
             lprintln(
                 "info,device",
                 "Device maintenance: m7=$supportsMaintenance7, m11=$supportsMaintenance11, dynamicRenderingUnusedAttachments=$supportsDynamicRenderingUnusedAttachments"
+            )
+            lprintln(
+                "info,device",
+                "Device present timing: usesPresentTiming=$usesPresentTiming"
             )
         }
     }
