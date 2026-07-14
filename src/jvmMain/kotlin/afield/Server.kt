@@ -4152,6 +4152,7 @@ class Server {
                             } finally {
                                 detachDocumentSession(ts)
                                 leaveSelectionContexts(ts)
+                                afield.graphics.detachThreeGlobalListener(ts)
                                 // Clean up back pressure state for this session.
                                 sessionOutputPressure.remove(ts)
                             }

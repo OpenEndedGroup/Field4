@@ -10,6 +10,7 @@ struct ContentView: View {
     @State private var immersiveOpen = false
     @Environment(\.openWindow) private var openWindow
     @Environment(RTTStream.self) private var rtt
+    @Environment(FLineViewerClient.self) private var flineClient
     @Environment(\.openImmersiveSpace) private var openImmersiveSpace
     @Environment(\.dismissImmersiveSpace) private var dismissImmersiveSpace
 
@@ -70,11 +71,28 @@ struct ContentView: View {
                         } label: {
                             Label("Floating Editor", systemImage: "chevron.left.forwardslash.chevron.right")
                         }
+                        // The first native viewer: opens the RealityKit FLine viewer window and starts
+                        // its discovery subscription (idempotent). Shows any live threeLines() view.
+                        Button {
+                            shellLog.notice("tap: fline-3d")
+                            flineClient.start()
+                            openWindow(id: Field4VisionApp.flineWindowID)
+                        } label: {
+                            Label("FLine 3D", systemImage: "scribble.variable")
+                        }
                         Button {
                             shellLog.notice("tap: undock (selected=\(manager.selectedDock?.title ?? "nil", privacy: .public))")
                             if let dock = manager.selectedDock { openWindow(value: dock.url) }
                         } label: {
                             Label("Undock", systemImage: "rectangle.badge.plus")
+                        }
+                        // The GPU half, windowed: a movable/resizable volumetric window hosting the
+                        // stream screen. Opening it acquires the receiver (shared with the theatre).
+                        Button {
+                            shellLog.notice("tap: stream-window")
+                            openWindow(id: Field4VisionApp.rttWindowID)
+                        } label: {
+                            Label("Stream Window", systemImage: "play.rectangle")
                         }
                         // The GPU/immersive half: start the RTT receiver and open the dimmed
                         // theatre (or tear both down). The stream keeps running independent of the
@@ -107,31 +125,36 @@ struct ContentView: View {
             if ProcessInfo.processInfo.environment["FIELD4_RTT_AUTOSTART"] == "1", !immersiveOpen {
                 await toggleImmersive()
             }
+            // Headless testing: `FIELD4_FLINE_AUTOSTART=1` starts the FLine discovery client and opens
+            // the native viewer window on launch (simctl can't tap the "FLine 3D" ornament button).
+            // Pass via `SIMCTL_CHILD_FIELD4_FLINE_AUTOSTART=1`.
+            if ProcessInfo.processInfo.environment["FIELD4_FLINE_AUTOSTART"] == "1" {
+                flineClient.start()
+                openWindow(id: Field4VisionApp.flineWindowID)
+            }
         }
     }
 
     /// Receiver port — overridable via `FIELD4_RTT_PORT` (e.g. when Field itself holds the default
     /// 9000 on the shared host stack during same-Mac simulator testing).
-    private var rttPort: UInt16 {
-        if let s = ProcessInfo.processInfo.environment["FIELD4_RTT_PORT"], let p = UInt16(s) { return p }
-        return RTTStream.defaultPort
-    }
+    private var rttPort: UInt16 { RTTStream.resolvedPort }
 
-    /// Open/close the RTT theatre. The receiver starts before the space so packets are already
-    /// being reassembled when the screen appears; closing stops it to free the socket.
+    /// Open/close the RTT theatre. Acquiring the stream starts the receiver (if not already running
+    /// for the windowed viewer) before the space so packets are already being reassembled when the
+    /// screen appears; releasing stops it only when no other presentation is open.
     private func toggleImmersive() async {
         if immersiveOpen {
             await dismissImmersiveSpace()
-            rtt.stop()
+            rtt.release()
             immersiveOpen = false
             return
         }
-        rtt.start(port: rttPort)
+        rtt.acquire(port: rttPort)
         switch await openImmersiveSpace(id: Field4VisionApp.rttSpaceID) {
         case .opened:
             immersiveOpen = true
         default:
-            rtt.stop()
+            rtt.release()
             immersiveOpen = false
         }
     }
@@ -166,4 +189,5 @@ struct ContentView: View {
 #Preview(windowStyle: .automatic) {
     ContentView()
         .environment(RTTStream())
+        .environment(FLineViewerClient())
 }

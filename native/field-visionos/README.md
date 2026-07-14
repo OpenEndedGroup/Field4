@@ -102,6 +102,38 @@ This shell is the **receiver** end of that pipeline (see `RTT/` below).
   - **Present smoothness is device work** — the visionOS *simulator* paints the immersive scene at
     ~1fps and is non-interactive, so the decode fps (status label) far exceeds what you see there.
 
+## QoL additions (visionos-head-qol branch)
+
+Three improvements on top of the PoC:
+
+- **Windowed RTT stream.** The stream screen was factored out of `ImmersiveStreamView` into a shared
+  `RTT/RTTScreenContent.swift`, now hosted in BOTH the dimmed immersive theatre AND a new
+  movable/resizable **volumetric window** (`RTT/RTTStreamWindow.swift`, scene `rttWindowID` in
+  `Field4VisionApp`). The receiver is ref-counted (`RTTStream.acquire()/release()`): it starts on the
+  first presentation opened and stops only when the last closes, so the window and theatre are
+  independent. Ornament button: "Stream Window".
+- **Editor placement.** The floating editor's `WindowGroup(for: URL.self)` placement moved from
+  `.utilityPanel` (tilted) to `.automatic` (upright, forward, in front of the active window). Relative
+  `.leading/.trailing(mainWindow)` is still avoided — it resolves off-display and fails to open.
+- **First native viewer — `FLine/`.** A fully-3D RealityKit FLine viewer, the native equivalent of the
+  three.js iframe. It speaks the SAME `__threejs__` protocol over `/ws` (`FLineViewerClient` sends one
+  `subscribe-all` and receives every live view's `three/geometry` payload, keyed by uid). Strokes →
+  swept **tubes** (real thickness, unlike three.js's flat lines), fills → triangles, points → spheres;
+  per-FLine tinted `UnlitMaterial`. Orbit/scale/reset, tap → `fline-click`, and (editable views)
+  node-drag → `fline-edit-translate` + Clear. Presented in a resizable volumetric window (scene
+  `flineWindowID`); ornament button "FLine 3D". Files: `FLineWire` (Codable payload/edit mirrors),
+  `FLineViewerClient` (WS + self-signed trust via the shared `isTrustedFieldDevHost`), `FLineMeshBuilder`
+  (procedural geometry — no `.rkassets`, so no pbxproj edits), `FLineViewerView` (RealityView + gestures).
+  - **Server side (field4 repo):** `ThreeJsViewer.kt` gained a `threeGlobalListeners` broadcast + a
+    `subscribe-all` message; `Server.kt`'s `/ws` finally calls `detachThreeGlobalListener`. No protocol
+    change — existing web viewers are untouched. Editing/thickness need a view created
+    `threeLines(..., editable = true)` (only that path emits the `scene` block), same as the web viewer.
+  - **Parity gaps (documented):** marquee / point-edge-face selection masks (need screen-space
+    projection a volume doesn't expose) → replaced by tap-select; freehand begin/append/end-line has
+    wire + client support but no gesture UI yet; cubic C1/C2 control handles are a stretch; fills in edit
+    mode use fan triangulation (convex-correct); whole-FLine tap targets use an AABB (coarse). All
+    RealityKit interaction is **device-verify** (the sim is non-interactive for spatial input).
+
 ## field4-repo dependencies (server must serve these)
 
 These live in the **field4** working tree and are **currently UNCOMMITTED** there — they were

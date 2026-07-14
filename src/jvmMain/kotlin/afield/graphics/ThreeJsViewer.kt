@@ -213,12 +213,20 @@ class ThreeGeometryViewState(val uid: String) {
         val encoded = threeJson.encodeToString(payload)
         lastPayload = encoded
         sessions.forEach { sendTo(it, encoded) }
+        // Global listeners (native "subscribe-all" viewers) see every view's updates, including
+        // newly-created views: threeLines() calls update() right after creating the view.
+        threeGlobalListeners.forEach { sendTo(it, encoded) }
     }
 
     private fun sendTo(session: WebSocketSession, payload: String) {
         inMain {
             runCatching { session.send(payload) }
         }
+    }
+
+    /** Broadcast the last payload to a newly-attached global listener (replay on subscribe-all). */
+    fun replayTo(session: WebSocketSession) {
+        lastPayload?.let { sendTo(session, it) }
     }
 
     override fun toString(): String = prettySummary(
@@ -230,6 +238,19 @@ class ThreeGeometryViewState(val uid: String) {
 }
 
 private val knownThreeViews = ConcurrentHashMap<String, ThreeGeometryViewState>()
+
+/**
+ * Sessions that asked to see *every* live Three.js view, not just one keyed by uid (the web viewer
+ * always knows its uid from the iframe URL; a native/headless client that wants to discover live
+ * views does not). [ThreeGeometryViewState.update] broadcasts to these in addition to a view's own
+ * attached sessions, so a global listener receives new views the moment they publish.
+ */
+private val threeGlobalListeners = CopyOnWriteArraySet<WebSocketSession>()
+
+/** Remove a session from the global-listener set — called from the `/ws` finally block. */
+fun detachThreeGlobalListener(session: WebSocketSession) {
+    threeGlobalListeners.remove(session)
+}
 
 @RunsAt(installHandlers)
 @OptIn(DelicateCoroutinesApi::class)
@@ -308,6 +329,13 @@ fun installThreeJsHandler() {
                 GlobalScope.launch {
                     runCatching { editSession.clear() }
                 }
+            }
+            "subscribe-all" -> {
+                // A discovery client (e.g. the native visionOS viewer) that wants every live view,
+                // not one uid. Register it as a global listener and replay all known views' last
+                // payloads immediately; future updates arrive via update()'s global broadcast.
+                threeGlobalListeners.add(session)
+                knownThreeViews.values.forEach { it.replayTo(session) }
             }
             else -> {
                 // Default: treat as a hello/attach message

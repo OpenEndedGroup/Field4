@@ -128,8 +128,7 @@ struct WebDock: UIViewRepresentable {
         }
 
         private static func isTrustedDevHost(_ host: String) -> Bool {
-            host == "localhost" || host == "127.0.0.1" || host == "::1"
-                || host == "mi2" || host.hasSuffix(".ts.net")
+            isTrustedFieldDevHost(host)   // shared with FLineViewerClient — see ServerConfig.swift
         }
     }
 }

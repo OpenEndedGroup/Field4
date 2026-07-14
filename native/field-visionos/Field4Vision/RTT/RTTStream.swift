@@ -17,6 +17,19 @@ final class RTTStream {
     /// Default media port. The sender's examples use `…:9000` (`--dest host:9000`).
     nonisolated static let defaultPort: UInt16 = 9000
 
+    /// The port to bind, honouring `FIELD4_RTT_PORT` (e.g. when Field holds the default 9000 on the
+    /// shared host stack during same-Mac simulator testing). Shared by every presentation so the
+    /// window and the theatre agree on which socket to open.
+    nonisolated static var resolvedPort: UInt16 {
+        if let s = ProcessInfo.processInfo.environment["FIELD4_RTT_PORT"], let p = UInt16(s) { return p }
+        return defaultPort
+    }
+
+    /// How many presentations (the windowed viewer + the immersive theatre) currently want the
+    /// stream. The receiver starts when the first opens and stops only when the last closes, so
+    /// opening one presentation never tears down the other. Use `acquire`/`release`, not `start`/`stop`.
+    private var presentationCount = 0
+
     var isRunning = false
     var status = "Idle"
     /// The current stream is side-by-side stereo (decoded frame is left|right) — present per-eye.
@@ -89,6 +102,19 @@ final class RTTStream {
         pipeline = nil
         isRunning = false
         status = "Stopped"
+    }
+
+    /// A presentation opened and wants the stream running. Starts the receiver on the first acquire;
+    /// subsequent acquires just bump the count (the running receiver is shared).
+    func acquire(port: UInt16 = RTTStream.resolvedPort) {
+        presentationCount += 1
+        if presentationCount == 1 { start(port: port) }
+    }
+
+    /// A presentation closed. Stops the receiver only when the last presentation releases it.
+    func release() {
+        presentationCount = max(0, presentationCount - 1)
+        if presentationCount == 0 { stop() }
     }
 
     /// Main-actor: upload the decoded frame to the display texture and update stats.

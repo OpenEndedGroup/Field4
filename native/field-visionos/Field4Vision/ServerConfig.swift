@@ -35,4 +35,22 @@ struct ServerConfig {
         comps.queryItems = items.isEmpty ? nil : items
         return comps.url ?? base
     }
+
+    /// The Field WebSocket bus (`/ws`) as a `wss://` URL derived from `baseURL`. Used by the native
+    /// FLine viewer client (the WebViews reach `/ws` themselves via their loaded pages).
+    var webSocketURL: URL {
+        var comps = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)
+        comps?.scheme = (baseURL.scheme == "http") ? "ws" : "wss"
+        comps?.path = "/ws"
+        return comps?.url ?? baseURL
+    }
+}
+
+/// Hosts whose self-signed dev certificate we trust (the Field server's): loopback + the Tailscale
+/// machine (`mi2` / any `*.ts.net`). Overriding trust here also covers the cert's hostname mismatch
+/// (issued for `localhost`, reached as `mi2`). Shared by the WebView docks (`WebDock`) and the FLine
+/// WebSocket client (`FLineViewerClient`). Anything off the tailnet falls back to normal validation.
+func isTrustedFieldDevHost(_ host: String) -> Bool {
+    host == "localhost" || host == "127.0.0.1" || host == "::1"
+        || host == "mi2" || host.hasSuffix(".ts.net")
 }
