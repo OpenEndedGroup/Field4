@@ -8,10 +8,12 @@
 #     --command 'macro run chebyshev-waveshaper'
 #
 # or, with Field running and a document attached, hand the YAML below to the
-# `field_run_transcript` MCP tool. It creates one box that plots a unit sine and the
-# same sine pushed through chebyshev(2..5): the canonical harmonic-generating shaper,
-# where Tₙ(cos θ) = cos(nθ), so order n produces the pure n-th harmonic. The last
-# plot sweeps the order itself with an animated ramp — a harmonic sweep.
+# `field_run_transcript` MCP tool. It creates two boxes. The first plots a unit sine
+# and the same sine pushed through chebyshev(2..5): the canonical harmonic-generating
+# shaper, where Tₙ(cos θ) = cos(nθ), so order n produces the pure n-th harmonic; its
+# last plot sweeps the order itself with an animated ramp — a harmonic sweep. The
+# second box feeds a Perlin-noise source through the same op, showing that chebyshev
+# waveshapes any bounded signal, not just a clean oscillator.
 operations:
   - create:
       box: chebyshev-waveshaper
@@ -43,4 +45,30 @@ operations:
           }
   - launch:
       box: chebyshev-waveshaper
+      property: code
+  - create:
+      box: chebyshev-perlin
+      name: chebyshev-perlin
+      frame: { x: 700.0, y: 40.0, w: 620.0, h: 680.0 }
+      properties:
+        code: |
+          // Chebyshev waveshaping of a Perlin-noise source.
+          // The same first-class chebyshev(order) op, but the input is band-limited
+          // Perlin noise instead of a clean sine. A waveshaper reshapes a signal's
+          // amplitude, so Tₙ pushes a noise source's energy toward the rails and
+          // multiplies its zero-crossings — a cheap way to "colour" noise. The input
+          // is amplified toward [-1, 1] first so the shaper has full range to work in
+          // (chebyshev clamps to [-1, 1] internally, as every waveshaper does).
+          import afield.stdlib.Functions
+
+          with(Functions) {
+              val noise = perlinNoise(seed = 7L, frequency = 6.0, amplitude = 1.6) over (0.0..1.0)
+
+              noise.withName("perlin noise").plot(channel = "n", title = "input: perlin noise (freq 6)", heightPx = 150)
+              (noise / chebyshev(2)).plot(channel = "n2", title = "perlin / chebyshev(2)", heightPx = 150)
+              (noise / chebyshev(3)).plot(channel = "n3", title = "perlin / chebyshev(3)", heightPx = 150)
+              (noise / chebyshev(5)).plot(channel = "n5", title = "perlin / chebyshev(5)", heightPx = 150)
+          }
+  - launch:
+      box: chebyshev-perlin
       property: code
