@@ -4791,6 +4791,8 @@ canvas {
 
     fun chebyshev(order: Int = 2): FnTransform = chebyshev(param(order))
 
+    fun chebyshev(order: Number): FnTransform = chebyshev(param(order.toDouble()))
+
     fun chebyshev(order: Fn): FnTransform = FnTransform("chebyshev") { source ->
         source.chebyshev(order).withName("chebyshev")
     }
@@ -5639,31 +5641,23 @@ canvas {
         ) { x ->
             // Canonical harmonic-generating waveshaper: pushing a unit-amplitude cosine
             // through the order-n Chebyshev polynomial Tₙ yields the n-th harmonic, since
-            // Tₙ(cos θ) = cos(nθ). Clamp the drive to [-1, 1] first — the standard shaper
-            // guard, matching how `fold`/`softClip` bound their input — because Tₙ diverges
-            // rapidly outside the unit interval. Order is rounded to the nearest non-negative
-            // integer, so a swept/animated `order` param becomes a harmonic sweep.
-            val n = order.eval(x).roundToInt().coerceAtLeast(0)
+            // Tₙ(cos θ) = cos(nθ). We evaluate it in exactly that trig form —
+            // Tₙ(v) = cos(n·arccos v) — after clamping the drive to [-1, 1] (the standard
+            // shaper guard, as with `fold`/`softClip`; arccos is only defined there and Tₙ
+            // diverges outside the unit interval anyway). The trig form is exact for
+            // integer n AND continuous in n, so `order` is CONTINUOUS control: a
+            // swept/animated order glides smoothly between harmonics instead of stepping
+            // through integer bands. Order is clamped to ≥ 0 (Tₙ is even in n, so a
+            // negative order would only mirror the positive one).
+            val n = order.eval(x).coerceAtLeast(0.0)
             val v = eval(x).coerceIn(-1.0, 1.0)
-            when (n) {
-                0 -> 1.0
-                1 -> v
-                else -> {
-                    // Iterative Tₙ recurrence: Tₖ = 2v·Tₖ₋₁ − Tₖ₋₂.
-                    var tPrev = 1.0
-                    var tCur = v
-                    for (k in 2..n) {
-                        val tNext = 2.0 * v * tCur - tPrev
-                        tPrev = tCur
-                        tCur = tNext
-                    }
-                    tCur
-                }
-            }
+            kotlin.math.cos(n * kotlin.math.acos(v))
         }
     }
 
     fun Fn.chebyshev(order: Int): Fn = chebyshev(param(order))
+
+    fun Fn.chebyshev(order: Number): Fn = chebyshev(param(order.toDouble()))
 
     fun Fn.wrapY(min: Fn = param(-1.0), max: Fn = param(1.0)): Fn {
         val d = intersectDomains(domain, min, max)

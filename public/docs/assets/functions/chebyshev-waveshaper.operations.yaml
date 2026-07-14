@@ -12,7 +12,7 @@
 # and the same sine pushed through chebyshev(2..5): the canonical harmonic-generating
 # shaper, where Tₙ(cos θ) = cos(nθ), so order n produces the pure n-th harmonic; its
 # last plot sweeps the order across the window (order = ramp 1..6) — a harmonic
-# sweep that steps through six rising harmonic bands. The
+# sweep that glides continuously from the 1st up to the 6th harmonic. The
 # second box feeds a Perlin-noise source through the same op, showing that chebyshev
 # waveshapes any bounded signal, not just a clean oscillator.
 operations:
@@ -41,9 +41,10 @@ operations:
 
               // Because `order` is a param CHILD (an Fn), it can vary over x, sweeping
               // the harmonic content across the window. `ramp(1.0, 6.0)` is a value
-              // line — 1 at x=0, 6 at x=1 — and `order` rounds to the nearest int, so
-              // this reads as six rising harmonic bands. (For normalizing an x-window
-              // down to 0..1 instead, that's `remap`.)
+              // line — 1 at x=0, 6 at x=1 — and the order is CONTINUOUS (Tₙ = cos(n·acos
+              // v) for real n), so the harmonic glides smoothly from the 1st to the 6th
+              // rather than stepping. (For normalizing an x-window down to 0..1 instead,
+              // that's `remap`.)
               val order = ramp(1.0, 6.0) over (0.0..1.0)
               val sweep = (sin(1.0) over (0.0..1.0)).chebyshev(order)
               sweep.withName("chebyshev(order 1..6)").plot(channel = "sweep", title = "chebyshev(order = ramp 1..6) — harmonic sweep", heightPx = 160)

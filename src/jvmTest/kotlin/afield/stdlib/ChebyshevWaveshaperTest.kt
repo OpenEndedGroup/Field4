@@ -67,6 +67,39 @@ class ChebyshevWaveshaperTest {
     }
 
     @Test
+    fun orderIsContinuousControl() = with(Functions) {
+        // A fractional order evaluates the real-n Chebyshev, Tₙ(v) = cos(n·arccos v).
+        val drive = sin(1.0) over (0.0..1.0)
+        for (i in 0..20) {
+            val x = i / 20.0
+            val v = drive.eval(x).coerceIn(-1.0, 1.0)
+            assertEquals(
+                kotlin.math.cos(2.5 * kotlin.math.acos(v)),
+                drive.chebyshev(2.5).eval(x),
+                1e-9,
+                "chebyshev(2.5) at x=$x"
+            )
+        }
+
+        // The whole point of the change: a swept order glides between harmonics rather
+        // than stepping through integer bands. On a fine grid the sweep must have NO
+        // jump discontinuities — adjacent samples stay close (the old roundToInt version
+        // jumped by ~1–2 at each integer boundary x≈0.1,0.3,0.5,0.7,0.9).
+        val sweep = drive.chebyshev(ramp(1.0, 6.0) over (0.0..1.0))
+        val n = 2000
+        var maxJump = 0.0
+        var prev = sweep.eval(0.0)
+        for (i in 1..n) {
+            val cur = sweep.eval(i.toDouble() / n)
+            maxJump = maxOf(maxJump, kotlin.math.abs(cur - prev))
+            prev = cur
+        }
+        // The ~6-cycle chirp alone moves <~0.03 per step at this resolution; a retained
+        // integer step would show up as a ~1+ jump. 0.1 cleanly separates the two.
+        assertTrue(maxJump < 0.1, "continuous sweep should not jump; max adjacent Δ was $maxJump")
+    }
+
+    @Test
     fun rendersVisualProofSvg() = with(Functions) {
         // Sine drive → chebyshev(2..5). Each shaped curve should be a clean n-th
         // harmonic of the drive (n zero crossings-ish per period), NOT flat/garbled.
