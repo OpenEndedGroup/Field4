@@ -52,6 +52,11 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
     val supportsMetalObjects: Boolean
         get() = supportedExtensions.contains(org.lwjgl.vulkan.EXTMetalObjects.VK_EXT_METAL_OBJECTS_EXTENSION_NAME)
 
+    /** VK_KHR_external_memory_fd (Linux) — required to export an RTT color image's backing memory
+     *  as an opaque fd for CUDA/NVENC import (see VulkanExternalMemory.kt / field-encode-linux). */
+    val supportsExternalMemoryFd: Boolean
+        get() = supportedExtensions.contains(org.lwjgl.vulkan.KHRExternalMemoryFd.VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME)
+
     init {
         MemoryStack.stackPush().use { stack ->
             val hasExt = { name: String -> supportedExtensions.contains(name) }
@@ -173,6 +178,14 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                     addIfSupported(KHRPortabilitySubset.VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME)
                     // Lets an RTT color image export its backing IOSurface for GPU video streaming.
                     addIfSupported(org.lwjgl.vulkan.EXTMetalObjects.VK_EXT_METAL_OBJECTS_EXTENSION_NAME)
+                }
+
+                if (OS == OSType.LINUX) {
+                    // Lets an RTT color image export its backing memory as an opaque fd, for
+                    // zero-copy CUDA/NVENC video streaming (field-encode-linux). VK_KHR_external_memory
+                    // is the base capability VK_KHR_external_memory_fd builds on.
+                    addIfSupported(KHRExternalMemory.VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME)
+                    addIfSupported(org.lwjgl.vulkan.KHRExternalMemoryFd.VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME)
                 }
 
                 if (Options.profiling) {
