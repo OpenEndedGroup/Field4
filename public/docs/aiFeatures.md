@@ -42,7 +42,19 @@ Green lines are additions and red deletions. This may include changes to other p
 
 `ctrl-space` opens Field's custom completion panel. Field typically does a type-based analysis of what can complete here (Kotlin's internal compiler for Kotlin, the Jedi package for Python etc.); in the background it also fires off a request for up to 3 AI completions and updates the same FieldSuggest list when they arrive:
 
-![](assets/screenshot_50.png)
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-suggest" screenshot="assets/ai-autocomplete.png" padding="2" wait="0" timeout="90" embed=true hidden=true name="ai-autocomplete"}
+ui.openEditor(id)
+ui.pause(700)
+ui.clickSelector(".monaco-editor")
+ui.pause(300)
+ui.press("Control+A")
+ui.type("val speed = 0.5\nval wobble = si")
+ui.pause(300)
+ui.press("Control+Space")
+ui.waitForSelector(".afield-suggest-row", 15000.0)
+ui.waitForSelector("text=AI 1", 12000.0)
+ui.pause(400)
+```
 
 In our testing these things seem to be particularly good at GLSL code, often one-shotting large chunks of the standard issue "Book of Shaders"-level shader repertoire. 
 
