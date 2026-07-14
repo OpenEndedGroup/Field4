@@ -54,6 +54,12 @@ object Options {
         "afield.four.framePresentationLogPresentWaitTimeoutNs",
         System.getenv("AFIELD_FOUR_FRAME_PRESENTATION_LOG_PRESENT_WAIT_TIMEOUT_NS") ?: "50000000"
     ).toLongOrNull()?.coerceAtLeast(1L) ?: 50_000_000L
+    // Number of past-presentation-timing slots pre-reserved on the swapchain for
+    // VK_EXT_present_timing.  Increase if high-frequency drain calls miss entries.
+    var presentTimingQueueSize = System.getProperty(
+        "afield.four.presentTimingQueueSize",
+        System.getenv("AFIELD_FOUR_PRESENT_TIMING_QUEUE_SIZE") ?: "8"
+    ).toIntOrNull()?.coerceAtLeast(1) ?: 8
     var logShadercSource = System.getProperty(
         "afield.four.logShadercSource",
         System.getenv("AFIELD_FOUR_LOG_SHADERC_SOURCE") ?: "true"

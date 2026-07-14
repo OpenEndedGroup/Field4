@@ -36,6 +36,7 @@ object FramePresentationLog {
     private val pendingPresents = mutableMapOf<PresentKey, PresentRecord>()
     private val lastPresentReturnNsByWindow = mutableMapOf<Int, Long>()
     private val lastObservedPresentNsByWindow = mutableMapOf<Int, Long>()
+    private val lastScanoutNsByWindow = mutableMapOf<Int, Long>()
 
     fun start(
         outputPath: String? = null,
@@ -51,6 +52,7 @@ object FramePresentationLog {
             pendingPresents.clear()
             lastPresentReturnNsByWindow.clear()
             lastObservedPresentNsByWindow.clear()
+            lastScanoutNsByWindow.clear()
             writer = openWriter(path!!, append)
             writeHeaderLocked()
             enabled = true
@@ -144,6 +146,64 @@ object FramePresentationLog {
             )
             flushIfNeededLocked()
         }
+    }
+
+    /**
+     * Called by [SwapChain.drainPastTimings] for each VK_EXT_present_timing stage timestamp
+     * returned by `vkGetPastPresentationTimingEXT`.
+     *
+     * Writes a `scanout_timing` row to the CSV.  The `dt_ms` column holds the time from the
+     * original vkQueuePresentKHR call to this scanout stage.  The `interval_ms` column holds the
+     * scanout-to-scanout interval (the key jitter signal).  The `detail` column carries the
+     * stage flag, nominal refresh duration, actual interval deviation from the refresh period,
+     * and whether the timing report was complete.
+     */
+    internal fun scanoutObserved(
+        swapchain: Long,
+        presentId: Long,
+        stageFlag: Int,
+        stageNs: Long,
+        refreshDurationNs: Long,
+        reportComplete: Boolean
+    ) {
+        synchronized(lock) {
+            if (!enabled) return
+            ensureWriterLocked()
+            val record = pendingPresents[PresentKey(swapchain, presentId)]
+            val windowIndex = record?.windowIndex ?: -1
+
+            val intervalNs = lastScanoutNsByWindow.put(windowIndex, stageNs)?.let { stageNs - it }
+            val intervalMs = intervalNs?.let { nsToMs(it) }
+            val sincePresentCallMs = record?.let { nsToMs(stageNs - it.callNs) }
+
+            val stageLabel = stageLabel(stageFlag)
+            val jitterDetail = if (intervalNs != null && refreshDurationNs > 0L) {
+                val jitterNs = intervalNs - refreshDurationNs
+                " jitter_ns=$jitterNs"
+            } else ""
+            val refreshDetail = if (refreshDurationNs > 0L) " refresh_ns=$refreshDurationNs" else ""
+
+            writeLineLocked(
+                stageNs,
+                "scanout_timing",
+                record?.frameId ?: -1L,
+                windowIndex,
+                record?.imageIndex ?: -1,
+                presentId,
+                sincePresentCallMs,
+                intervalMs,
+                "stage=$stageLabel$refreshDetail$jitterDetail report_complete=$reportComplete"
+            )
+            flushIfNeededLocked()
+        }
+    }
+
+    private fun stageLabel(stageFlag: Int): String = when (stageFlag) {
+        0x1 -> "QUEUE_OPERATIONS_END"
+        0x2 -> "REQUEST_DEQUEUED"
+        0x4 -> "IMAGE_FIRST_PIXEL_OUT"
+        0x8 -> "IMAGE_FIRST_PIXEL_VISIBLE"
+        else -> "stage_0x${stageFlag.toString(16)}"
     }
 
     private fun ensureWriterLocked() {
