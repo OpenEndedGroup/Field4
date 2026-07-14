@@ -167,6 +167,8 @@ class RunnerOptions:
     video: str | None  # path to .mp4 output; when set, records video instead of screenshot
     duration: float  # video duration in seconds (default 5.0)
     fps: int  # video frame rate (default 30)
+    region: str  # for capture="ui": what the drive recording/still is clipped to
+    clip_selector: str | None  # for capture="ui": clip to a CSS selector (overlays not backed by a box)
     hidden: bool
     language_key: str
 
@@ -908,6 +910,105 @@ class RunnerState:
         self.videos_run += 1
         self.save()
 
+    def ensure_ui_drive(self, *, code: str, options: RunnerOptions, page_path: Path, block_index: int) -> None:
+        """capture="ui": drive the live editor with the fence's Kotlin script and
+        capture a video and/or a still in one run. The `drive` transcript op does the
+        recording + screenshotting itself, so both outputs come from a single Field run.
+        """
+        outputs: list[Path] = []
+        if options.video:
+            outputs.append(resolve_output_path(page_path, options.video))
+        if options.screenshot:
+            outputs.append(resolve_output_path(page_path, options.screenshot))
+        if not outputs:
+            raise RuntimeError(f"{page_path.name} capture=ui requires screenshot= and/or video=")
+        for out in outputs:
+            out.parent.mkdir(parents=True, exist_ok=True)
+        primary = outputs[0]
+
+        cache_allowed = self.runner_mode != "always"
+        cache_metadata = compute_cache_metadata(
+            code=code, options=options, page_path=page_path, block_index=block_index,
+            runner_source_digest=self.runner_source_digest,
+        )
+        digest = compute_digest(
+            code=code, options=options, page_path=page_path, block_index=block_index,
+            runner_mode=self.runner_mode, runner_source_digest=self.runner_source_digest,
+        )
+        cache_key = str(primary)
+        cached_digest = self.cache.get(cache_key)
+        if (cache_allowed and not options.force and cached_digest == digest
+                and all(out.exists() for out in outputs)):
+            LOG.info("Field docs runner cache hit (ui drive): %s", primary)
+            self.cache_hits += 1
+            return
+        LOG.info(
+            "Field docs runner cache %s (ui drive): %s",
+            cache_status_label(cache_allowed=cache_allowed, force=options.force),
+            primary,
+        )
+        command = build_backdoor_command(
+            repo_root=self.repo_root,
+            page_path=page_path,
+            block_index=block_index,
+            screenshot_path=primary,
+            options=options,
+            code=code,
+        ).process_command
+        LOG.info("Field docs runner driving UI %s for %s", page_path.name, primary)
+        completed: subprocess.CompletedProcess[str] | None = None
+        for attempt in range(1, RUNNER_RETRIES + 1):
+            try:
+                with self._progress_heartbeat(f"ui drive {primary.name}"):
+                    completed = subprocess.run(
+                        command, cwd=self.repo_root, text=True, encoding="utf-8",
+                        errors="replace", capture_output=True, check=False,
+                        timeout=runner_subprocess_timeout(options=options, is_video=True),
+                    )
+            except subprocess.TimeoutExpired as exc:
+                if attempt < RUNNER_RETRIES:
+                    LOG.warning("Field docs runner ui drive attempt %s/%s timed out for %s; retrying",
+                                attempt, RUNNER_RETRIES, primary)
+                    self._restart_shared_field_server(reason=f"timeout ui drive {primary}")
+                    continue
+                self._restart_shared_field_server(reason=f"final timeout ui drive {primary}")
+                raise RuntimeError(
+                    f"Field docs runner ui drive timed out for {page_path.name} -> {primary}.\n"
+                    f"Command: {shlex.join(command)}\nTimed out after {exc.timeout:.1f}s"
+                ) from exc
+            if completed.returncode == 0:
+                break
+            if attempt < RUNNER_RETRIES:
+                LOG.warning("Field docs runner ui drive attempt %s/%s failed for %s; retrying\n%s",
+                            attempt, RUNNER_RETRIES, primary,
+                            format_completed_failure_details(completed, command=command, field_log_path=self.shared_log_path))
+                self._restart_shared_field_server(reason=f"failed ui drive attempt {attempt} for {primary}")
+            else:
+                self._restart_shared_field_server(reason=f"final failed ui drive attempt for {primary}")
+        assert completed is not None
+        if completed.returncode != 0:
+            raise RuntimeError(
+                f"Field docs runner ui drive failed for {page_path.name} -> {primary}.\n"
+                f"{format_completed_failure_details(completed, command=command, field_log_path=self.shared_log_path)}"
+            )
+        execution_error = extract_backdoor_execution_error(completed.stdout)
+        if execution_error is not None:
+            raise RuntimeError(
+                f"Field docs runner ui drive execution error for {page_path.name} -> {primary}.\n"
+                f"Command: {shlex.join(command)}\n{execution_error}"
+            )
+        missing = [str(out) for out in outputs if not out.exists()]
+        if missing:
+            raise RuntimeError(
+                f"Field docs runner ui drive produced no output for {page_path.name}: missing {', '.join(missing)}.\n"
+                f"Command: {shlex.join(command)}"
+            )
+        self.cache[cache_key] = digest
+        self.cache_metadata[cache_key] = cache_metadata
+        self.dirty = True
+        self.videos_run += 1
+        self.save()
+
     @contextmanager
     def _progress_heartbeat(self, label: str, *, interval: float = 8.0):
         """Emit a periodic 'still working' line while a blocking capture runs.
@@ -1273,7 +1374,35 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
             )
             screenshot_succeeded = False
             video_succeeded = False
-            if options.screenshot:
+            if options.capture == "ui":
+                # One drive run produces the video and/or the still together.
+                ui_screenshot_path = resolve_output_path(page_path, options.screenshot) if options.screenshot else None
+                ui_video_path = resolve_output_path(page_path, options.video) if options.video else None
+                if state.runner_mode == "never":
+                    screenshot_succeeded = bool(ui_screenshot_path and ui_screenshot_path.exists())
+                    video_succeeded = bool(ui_video_path and ui_video_path.exists())
+                    for ok, path in ((screenshot_succeeded, ui_screenshot_path), (video_succeeded, ui_video_path)):
+                        if path is None:
+                            continue
+                        state.assets_reused += 1 if ok else 0
+                        state.missing_assets += 0 if ok else 1
+                else:
+                    primary_ui_path = ui_video_path or ui_screenshot_path
+                    try:
+                        state.ensure_ui_drive(code=runner_code, options=options, page_path=page_path, block_index=block_index)
+                        screenshot_succeeded = bool(options.screenshot)
+                        video_succeeded = bool(options.video)
+                    except RuntimeError as exc:
+                        if not state.continue_on_error:
+                            raise
+                        state.handle_capture_error(page_path=page_path, output_path=primary_ui_path, error=exc)
+                site_dir = Path(state.config["site_dir"]).resolve()
+                use_dir_urls = bool(state.config["use_directory_urls"])
+                if screenshot_succeeded and ui_screenshot_path:
+                    register_generated_file(files=files, docs_dir=state.docs_dir, site_dir=site_dir, use_directory_urls=use_dir_urls, output_path=ui_screenshot_path)
+                if video_succeeded and ui_video_path:
+                    register_generated_file(files=files, docs_dir=state.docs_dir, site_dir=site_dir, use_directory_urls=use_dir_urls, output_path=ui_video_path)
+            elif options.screenshot:
                 screenshot_path = resolve_output_path(page_path, options.screenshot)
                 if state.runner_mode == "never":
                     screenshot_succeeded = screenshot_path.exists()
@@ -1296,7 +1425,7 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                         state.handle_capture_error(page_path=page_path, output_path=screenshot_path, error=exc)
                 if screenshot_succeeded:
                     register_generated_file(files=files, docs_dir=state.docs_dir, site_dir=Path(state.config["site_dir"]).resolve(), use_directory_urls=bool(state.config["use_directory_urls"]), output_path=screenshot_path)
-            if options.video:
+            if options.video and options.capture != "ui":
                 video_path = resolve_output_path(page_path, options.video)
                 if state.runner_mode == "never":
                     video_succeeded = video_path.exists()
@@ -1364,8 +1493,15 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
         raise RuntimeError(f"{page_path}:{line_number} {runner_name} requires screenshot=\"...\" and/or video=\"...\"")
 
     capture = (first_attr(attrs, "capture", "mode") or "box").strip().lower()
-    if capture not in {"box", "window", "window-editor", "editor", "native-window"}:
+    if capture not in {"box", "window", "window-editor", "editor", "native-window", "ui"}:
         raise RuntimeError(f"{page_path}:{line_number} unsupported capture={capture!r}")
+
+    # capture="ui" runs the fence body as a `drive` transcript that scripts the live
+    # editor (keypresses/clicks) via Playwright and captures a video and/or still. The
+    # region= attribute selects what the recording/still is clipped to.
+    region = (first_attr(attrs, "region") or "window-editor").strip().lower()
+    if region not in {"box", "window", "window-editor", "editor"}:
+        raise RuntimeError(f"{page_path}:{line_number} unsupported region={region!r}")
 
     execution = (first_attr(attrs, "execution", "execute", "run-mode") or "run").strip().lower()
     if execution not in {"run", "launch"}:
@@ -1448,6 +1584,8 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
         video=video,
         duration=parse_float(first_attr(attrs, "duration"), default=5.0),
         fps=int(parse_float(first_attr(attrs, "fps"), default=30.0)),
+        region=region,
+        clip_selector=first_attr(attrs, "clip-selector", "clip_selector", "clipSelector"),
         hidden=parse_bool(first_attr(attrs, "hidden", "hide-source", "hide_source"), default=False),
         language_key=fence_language_key(open_line=open_line, fence_name=runner_name),
     )
@@ -2535,6 +2673,7 @@ def build_backdoor_command(
     is_video: bool = False,
     source_image_path: Path | None = None,
     source_image_min_mtime: float | None = None,
+    code: str | None = None,
 ) -> BackdoorInvocation:
     port = int(os.environ.get(RUNNER_PORT_ENV, "9092"))
     capture_mode = effective_capture_mode(options)
@@ -2551,6 +2690,50 @@ def build_backdoor_command(
     if options.document:
         command.extend(["--document", options.document])
     backdoor_commands: list[str] = []
+
+    if options.capture == "ui":
+        # Run the fence body as a single `drive` transcript op: it scripts the live
+        # editor via Playwright (the `ui` driver is in scope) and produces the video
+        # and/or still itself, so no separate screenshot-/record- command is appended.
+        drive_op: dict[str, Any] = {
+            "script": code or "",
+            "capture": options.region,
+            "fps": options.fps,
+            "padding": options.padding,
+        }
+        if options.video:
+            drive_op["video"] = str(resolve_output_path(page_path, options.video))
+        if options.screenshot:
+            drive_op["screenshot"] = str(resolve_output_path(page_path, options.screenshot))
+        capture_uid = options.capture_box or options.run_box
+        if capture_uid:
+            drive_op["captureUid"] = capture_uid
+        if options.clip_selector:
+            drive_op["clipSelector"] = options.clip_selector
+        transcript_name = f"{safe_transcript_id(options.box_name)}_ui_drive"
+        transcript = {
+            "name": transcript_name,
+            "description": "Generated by public/docs_hooks.py capture=ui drive.",
+            "operations": [{"drive": drive_op}],
+        }
+        backdoor_commands.append(shlex.join([
+            "macro", "write", transcript_name,
+            "--content", json.dumps(transcript, separators=(",", ":")),
+            "--timeout", str(options.timeout),
+        ]))
+        backdoor_commands.append(shlex.join([
+            "macro", "run", transcript_name,
+            "--timeout", str(options.timeout),
+        ]))
+        for command_line in backdoor_commands:
+            command.extend(["--command", command_line])
+        return BackdoorInvocation(
+            process_command=command,
+            backdoor_commands=backdoor_commands,
+            session_eligible=False,
+            port=port,
+            document=options.document or None,
+        )
     generated_target_uid = docs_runner_target_uid(page_path=page_path, block_index=block_index, options=options)
     default_target_uid = options.capture_box or options.run_box or (generated_target_uid if options.graphics_context else "@last")
     language = options.language_key.strip().lower()

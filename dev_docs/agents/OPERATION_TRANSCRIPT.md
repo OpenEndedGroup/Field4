@@ -83,10 +83,51 @@ any of `box` / `uid` / `id` / `target`.
 | `await` (`sync`, `settle`, `wait-pending`) | **Barrier**: drain all pending fragments/launches | `wait: pending` |
 | `save` (`save-document`, `save-as`) | Persist the live boxes to a `metadata.edn` document | `path` (or `to`/`fn`/`document`) |
 | `delete` (`tombstone`) | Tombstone a box (undo revives) | `box` |
+| `drive` (`drive-ui`, `playwright`) | Run a Kotlin script that drives the live UI via Playwright (keypresses/clicks), optionally recording an `.mp4` and/or a still | `script`, `video`, `screenshot`, `capture`, `captureUid`, `clipSelector`, `fps`, `padding` |
 
 Undo (`macro undo <name>`) reverses supported ops: `create`↔tombstone, `edit` swaps
 `from`/`to`, `connect`↔`disconnect`, `launch`→`stop`, etc. `execute`, `wait`, `await`,
-and `save` are not reversible and are skipped on undo.
+`save`, and `drive` are not reversible and are skipped on undo.
+
+### drive
+
+Runs an arbitrary Kotlin fragment with a `ui: DocsUiDriver` in scope (injected via
+`fromContext()`), so a doc page can reproduce a live UI state and capture it. Used to
+regenerate screenshots/videos of UI that pure-code captures can't produce — autocomplete,
+the command palette, AI panels. When `video` is set the interaction is recorded to an
+`.mp4` (the recorder grabs frames on the Playwright thread *while* the script drives, so
+keypresses show up in the clip); `screenshot` captures a final still.
+
+Capture the command palette (an overlay — clip to the panel selector, not a box):
+
+```yaml
+- drive:
+    capture: window
+    clipSelector: ".afield-palette-shell"   # the visible palette panel
+    screenshot: assets/command-palette.png
+    padding: 6
+    script: |
+      ui.openEditor(id)          # `id` is the hidden host box's own id
+      ui.pause(700)
+      ui.clickSelector(".monaco-editor")
+      ui.pause(300)
+      ui.press("F1")             # open the palette
+      ui.pause(1600)
+```
+
+`DocsUiDriver` methods: `type(text)`, `press/key/down/up(key)`, `click(uid)`,
+`clickSelector(css)`, `hover(uid)`/`hoverSelector(css)`, `drag(uid, dx, dy, steps, hold)`,
+`mouseUp()`, `eval(js)`, `openEditor(uid)`, `shot(path)`, `shotClip(path, css, padding)`,
+`pause(ms)`. `pause` sleeps the calling thread (so the recorder keeps capturing frames); it is
+deliberately not named `wait`. The resolved output paths are bound in scope as `out` and `vid`.
+
+When `clipSelector` is set the op auto-captures the clip *inside* the script (overlays close on
+blur before the op's own capture would run). `.afield-palette` is the full-screen backdrop;
+`.afield-palette-shell` is the panel you want.
+
+> Autocomplete (`Control+Space`) opens the FieldSuggest popup but its async suggestions do not
+> resolve in the headless capture session (perpetual spinner) — needs investigation before
+> autocomplete demos ship.
 
 ### create
 

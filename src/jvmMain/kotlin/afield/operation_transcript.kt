@@ -946,6 +946,10 @@ object OperationTranscript {
                 }
             }
             "marker" -> "marker ${(payload["kind"] ?: "").orEmptyString()} ${(payload["label"] ?: "").orEmptyString()}".trim()
+            "drive", "drive-ui", "playwright" -> {
+                val out = (payload["video"] ?: payload["screenshot"] ?: "").orEmptyString()
+                if (out.isBlank()) "drive UI" else "drive UI -> $out"
+            }
             else -> verb.ifBlank { "entry" }
         }
         return TranscriptEntry(
@@ -1293,6 +1297,103 @@ object OperationTranscript {
                 // Await completion (like the launch path) so the fragment's output is
                 // captured into the run result — fire-and-forget stalls headlessly.
                 runBlocking { target.ke.executeFragmentAndWait(target, exec) { send(it); collect(it) } }
+                true
+            }
+            // Drive the attached Playwright page with an arbitrary Kotlin script (the
+            // script gets a `ui: DocsUiDriver` in scope via fromContext), optionally
+            // recording an .mp4 of the interaction and/or a final still. This is how docs
+            // pages regenerate live UI captures (autocomplete, palettes, ...).
+            "drive", "drive-ui", "playwright" -> {
+                if (direction == "undo") return false
+                val script = (payload["script"] ?: payload["code"])?.toString()
+                    ?.takeIf { it.isNotBlank() } ?: return false
+                val info = thisSessionInfo.get()
+
+                // Attach the headless capture page (no-op if already healthy).
+                runBlocking(playwrightDispatcher) { ensurePlaywrightForSessionIfNeeded(info) }
+                val page = globalPlaywriteContext
+                    ?: throw IllegalStateException("drive: Playwright is not active")
+
+                // Host the script in a stable hidden box (reused across drives), unless
+                // the op explicitly targets one. Publish the driver so `fromContext` finds it.
+                val target = mappedBox()
+                    ?: box("__docs_drive__", createIfMissing = true, initIfCreated = true, root = info)
+                val driver = DocsUiDriver { globalPlaywriteContext ?: error("Playwright page unavailable") }
+                target.properties["__docsUiDriver"] = driver
+
+                val videoPath = payload["video"]?.toString()?.takeIf { it.isNotBlank() }
+                val screenshotPath = payload["screenshot"]?.toString()?.takeIf { it.isNotBlank() }
+                val fps = payload["fps"].asIntOrDefault(30)
+                val capture = (payload["capture"] ?: "window-editor").toString().ifBlank { "window-editor" }
+                val padding = payload["padding"]?.asDoubleOrNull() ?: 16.0
+                val captureUid = (payload["captureUid"] ?: payload["captureBox"])?.toString()?.takeIf { it.isNotBlank() }
+                    ?: if (capture == "box" || capture == "editor" || capture == "window-editor") target.id else null
+                // Clip to an arbitrary overlay (command palette, popup, AI panel) that is not a box.
+                val clipSelector = payload["clipSelector"]?.toString()?.takeIf { it.isNotBlank() }
+
+                // Prepend the driver binding + resolved output paths (fully-qualified, so no
+                // import is required in the doc fence body). Scripts capture transient overlays
+                // with `ui.shotClip(out, ".selector")`. The extra prelude lines shift error
+                // line numbers, but keep them off the author's first line.
+                fun kstr(s: String?) = "\"" + (s ?: "").replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+                val prelude = "val ui: afield.DocsUiDriver = afield.four.modules.fromContext(); " +
+                    "val out: String = ${kstr(screenshotPath)}; val vid: String = ${kstr(videoPath)}\n"
+                // For an overlay still (clipSelector) capture inside the fragment, while the
+                // overlay is still open — it closes on blur before the op's finally runs.
+                val trailer = if (clipSelector != null && screenshotPath != null)
+                    "\nui.shotClip(out, ${kstr(clipSelector)}, $padding)" else ""
+                val exec = Execute(
+                    uid = target.id,
+                    type = "fragment",
+                    line = 0,
+                    code = prelude + script + trailer,
+                    singleLine = false,
+                    property = "code",
+                    strand = "default"
+                )
+
+                val recorder = if (videoPath != null) {
+                    val clip = runCatching {
+                        runBlocking(playwrightDispatcher) {
+                            if (clipSelector != null) computeSelectorClip(page, clipSelector, padding)
+                                ?: computeDriveClip(page, capture, captureUid, padding)
+                            else computeDriveClip(page, capture, captureUid, padding)
+                        }
+                    }.getOrNull()
+                    DocsUiRecorder(page, clip, fps).also { it.start() }
+                } else null
+
+                try {
+                    runBlocking { target.ke.executeFragmentAndWait(target, exec) { send(it); collect(it) } }
+                } finally {
+                    if (recorder != null && videoPath != null) {
+                        val frames = runBlocking { recorder.stopAndEncode(java.nio.file.Path.of(videoPath)) }
+                        lprintln("info,docs", "drive recorded $frames frames -> $videoPath")
+                    }
+                    // A clipSelector still is captured by the script itself (ui.shotClip(out, sel))
+                    // while the overlay is open — overlays close on blur before this finally runs.
+                    if (screenshotPath != null && clipSelector == null) {
+                        runBlocking(playwrightDispatcher) {
+                            when {
+                                capture == "box" -> captureBoxScreenshot(
+                                    info,
+                                    AgentBoxScreenshot(uid = captureUid ?: target.id, path = screenshotPath, padding = padding)
+                                )
+                                else -> captureWindowScreenshot(
+                                    info,
+                                    AgentWindowScreenshot(
+                                        path = screenshotPath,
+                                        uid = captureUid,
+                                        showEditor = capture == "editor" || capture == "window-editor",
+                                        editorOnly = capture == "editor",
+                                        padding = padding
+                                    )
+                                )
+                            }
+                        }
+                    }
+                    target.properties.remove("__docsUiDriver")
+                }
                 true
             }
             "launch", "launch-all", "launch-fragment" -> {

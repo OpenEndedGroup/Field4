@@ -47,7 +47,14 @@ Documents are created on demand and saved in `~/Documents/AFieldWorkspace/`
 
 For anything advanced pressing `f1` reveals a searchable command palette. This works both inside the editor and outside the editor — although you'll get a different set of commands in different situations. All kinds of things hide there — changing editor tabs, applying AI to code and error messages...
 
-![](assets/screenshot_5.png)
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-palette-shell" screenshot="assets/command-palette.png" padding="6" wait="0" timeout="90" embed=true hidden=true name="command-palette"}
+ui.openEditor(id)
+ui.pause(700)
+ui.clickSelector(".monaco-editor")
+ui.pause(300)
+ui.press("F1")
+ui.pause(1600)
+```
 
 For it's main code-writing experience _Field·4_ wraps the [Monaco text editor](https://microsoft.github.io/monaco-editor/) — just like everyone else is doing these days — so there's a pretty rich set of ways of interacting with code built-in. But there some advanced features to discover — inline printing, AI-chat (if you have an OpenAI Platform Key), number increment and decrement shortcuts, configurable code blocks.
 

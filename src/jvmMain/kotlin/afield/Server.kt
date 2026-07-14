@@ -1227,7 +1227,12 @@ private val playwrightExecutor = Executors.newSingleThreadExecutor { runnable ->
         isDaemon = true
     }
 }
-internal val playwrightScope = CoroutineScope(SupervisorJob() + playwrightExecutor.asCoroutineDispatcher())
+// Single dispatcher over the dedicated "afield-playwright" thread. Everything that
+// touches the Playwright Page must run here; DocsUiDriver / DocsUiRecorder marshal
+// onto this dispatcher so a script running on the main runloop thread can drive the
+// page safely (Playwright's Page is bound to its owning thread).
+internal val playwrightDispatcher = playwrightExecutor.asCoroutineDispatcher()
+internal val playwrightScope = CoroutineScope(SupervisorJob() + playwrightDispatcher)
 private val workspaceSearchDispatcher = Executors.newFixedThreadPool(
     (System.getenv("AFIELD_WORKSPACE_SEARCH_THREADS")?.trim()?.toIntOrNull() ?: 2).coerceIn(1, 4)
 ) { runnable ->

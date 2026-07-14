@@ -199,9 +199,11 @@ Each `--command` runs in order. `@last` means “the most recently created box i
 
 > **The canonical automation format is documented in full in
 > [`OPERATION_TRANSCRIPT.md`](./OPERATION_TRANSCRIPT.md)** — the complete op vocabulary
-> (`create edit move connect execute launch stop wait await save delete`), the
+> (`create edit move connect execute launch stop wait await save delete drive`), the
 > loud-`launch` contract, output/error observability, and the build → run → capture →
 > save → reopen lifecycle. This section is just the backdoor command surface for it.
+> The `drive` op scripts the live UI through Playwright (keypresses/clicks) and records an
+> `.mp4`/still — the basis for the docs `capture="ui"` fence (see `DOCS_RUNNER_GPU_CAPTURES.md`).
 
 Use `macro` or `transcript` commands when you want durable semantic automation:
 

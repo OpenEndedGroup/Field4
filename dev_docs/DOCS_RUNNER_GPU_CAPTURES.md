@@ -29,6 +29,50 @@ FIELD_DOCS_RUNNER_MODE=strict FIELD_DOCS_RUNNER_PORT=9488 \
 | An **editor/output video** (a live `display(...)` card) | `capture="box"` + `video=` (auto-rewritten to editor recording), `execution="launch"`, a `frames { while(true){…; frame() } }` loop | ✅ works |
 | A **compute + draw** particle system **in one box** | — | ❌ see "Known limitation" |
 | A **video of the GPU window** | — | ❌ not supported; native surface is stills-only |
+| A **live-UI** capture (autocomplete, command palette, AI panels, typing) | `capture="ui"` + `video=`/`screenshot=`; the fence body is a Kotlin `drive` script using the `ui` driver | ✅ works |
+
+## Live-UI captures (`capture="ui"`)
+
+For editor/chrome UI that no pure-code capture can produce — the command palette, popups, AI
+panels, keypress sequences — use `capture="ui"`. The fence body is a Kotlin script that drives
+the real editor through Playwright via a `ui` object (`DocsUiDriver`, in scope automatically).
+It runs the `drive` transcript op (see `agents/OPERATION_TRANSCRIPT.md`), producing `video=`
+and/or `screenshot=`. The script runs in a hidden host box whose own id is `id`; type into its
+editor with `ui.openEditor(id)` — no separate `create` is needed.
+
+**Working example — the command palette** (verified; ships in `survivalGuide.md`):
+
+````markdown
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-palette-shell" screenshot="assets/command-palette.png" padding="6" embed=true hidden=true name="command-palette"}
+ui.openEditor(id)
+ui.pause(700)
+ui.clickSelector(".monaco-editor")
+ui.pause(300)
+ui.press("F1")
+ui.pause(1600)
+```
+````
+
+Attributes:
+
+- `region=` (`window` | `editor` | `window-editor` | `box`, default `window-editor`) clips the
+  recording/still. For `editor`/`box`, `capture-box`/`uid` sets the box (defaults to the host box).
+- `clip-selector=` clips the still to a CSS selector's bounding box — **use this for overlays
+  that are not a box** (command palette, popups). The palette's visible panel is
+  `.afield-palette-shell` (NOT `.afield-palette`, which is the full-screen backdrop). The op
+  auto-captures the clip *inside* the script (overlays close on blur before the op finishes).
+- `video=` records an `.mp4`; frames are grabbed while the script runs, so keypresses appear.
+- `padding=`, `fps=`, `wait=`, `timeout=`, `embed`, `hidden` as for other runner fences.
+
+`ui` methods: `type(text)`, `press`/`key`/`down`/`up(key)`, `click(uid)`, `clickSelector(css)`,
+`hover`/`hoverSelector`, `drag`, `eval(js)`, `openEditor(uid)`, `shot(path)`,
+`shotClip(path, css, padding)`, `pause(ms)`. Use `pause` (not `wait`). The resolved output paths
+are bound in scope as `out` (screenshot) and `vid` (video) if you need to self-capture.
+
+> **Caveat — autocomplete.** `ui.press("Control+Space")` opens the FieldSuggest popup, but in the
+> headless `?user=playwright` capture session the async suggestion fetch does not resolve — the
+> popup stays on its loading spinner. Autocomplete demos need that stall investigated (why the
+> completion request doesn't return for the playwright capture user) before they are shippable.
 
 **The "splendid" CPU probe card** in `field_probes.md` is rendered the robust
 way: construct a `FieldProbeSnapshot(...)` from a moving stand-in distribution and
