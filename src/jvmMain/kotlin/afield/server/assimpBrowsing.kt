@@ -1,5 +1,7 @@
 package afield.server
 
+import org.joml.getScale
+import org.joml.getTranslation
 import afield.four.modules.GltfSupport.GltfModel
 import afield.four.modules.GltfSupport.MaterialTextured
 import afield.four.modules.GltfSupport.MeshBuffers
@@ -7,7 +9,7 @@ import afield.four.modules.GltfSupport.MeshInstance
 import afield.four.modules.GltfSupport.TRS
 import afield.four.modules.GltfSupport.TextureSlot
 import org.joml.Matrix4f
-import org.joml.Vector3f
+import afield.stdlib.linalg.Vector3f
 import org.lwjgl.assimp.AIAnimation
 import org.lwjgl.assimp.AIColor4D
 import org.lwjgl.assimp.AIMaterial

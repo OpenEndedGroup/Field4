@@ -312,6 +312,9 @@ fun requiredRunJvmArgs(): List<String> {
         add("-Xmx8g")
         add("--add-opens=java.base/java.net=ALL-UNNAMED")
         add("-Dorg.lwjgl.system.stackSize=256")
+        // JOML's experimental Unsafe FloatBuffer path can segfault on JDK 25.
+        // Keep the remaining matrix/quaternion bridge on its supported NIO path.
+        add("-Djoml.nounsafe=true")
         add("-Xlog:gc*,safepoint:file=build/gc-safepoint.log:time,uptime,level,tags")
         add("--enable-native-access=ALL-UNNAMED")
         add("-Dableton.link.library=${abletonLinkNative.asFile.absolutePath}")
@@ -568,6 +571,7 @@ kotlin {
                 )
 
                 args += "-Dorg.lwjgl.system.stackSize=257"
+                args += "-Djoml.nounsafe=true"
                 args += "-Xlog:gc*,safepoint:file=build/gc-safepoint.log:time,uptime,level,tags"
                 args += "--enable-native-access=ALL-UNNAMED"
                 args += "-Dableton.link.library=${abletonLinkNative.asFile.absolutePath}"
@@ -633,6 +637,8 @@ kotlin {
         }
 
         val jvmMain by getting {
+
+            kotlin.srcDir("src/generatedLinalg/kotlin")
 
             val personalSrc = file("src/personal")
             if (personalSrc.exists()) {
@@ -867,6 +873,18 @@ kotlin {
 
 }
 
+val generateLinalg = tasks.register("generateLinalg") {
+    group = "code generation"
+    description = "Generates Field's linear-algebra heap and arena sources."
+    dependsOn(":tools:linalg-generator:run")
+}
+
+val checkGeneratedLinalg = tasks.register("checkGeneratedLinalg") {
+    group = "verification"
+    description = "Checks that generated linear-algebra sources are current."
+    dependsOn(":tools:linalg-generator:checkGeneratedLinalg")
+}
+
 
 
 //// include JS artifacts in any JAR we generate
@@ -904,7 +922,7 @@ tasks {
 }
 
 tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
-    jvmArgs("--add-modules", "jdk.incubator.vector")
+    jvmArgs("--add-modules", "jdk.incubator.vector", "-Djoml.nounsafe=true")
 }
 
 tasks.register<JavaExec>("runTrackingResonatorResynthesisExample") {

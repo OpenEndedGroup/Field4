@@ -113,7 +113,7 @@ fun gatherPreambleUpwards(startingAt: Box): String {
     }
 
 
-    total = total.replace("var Mesh.dim by Mesh.BoundFromStructure<org.joml.Vector2f>()", "\n")
+    total = total.replace("var Mesh.dim by Mesh.BoundFromStructure<afield.stdlib.linalg.Vector2f>()", "\n")
 
     return total
 }

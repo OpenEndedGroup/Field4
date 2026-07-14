@@ -1,5 +1,6 @@
 package afield.four.texture
 
+import org.joml.transform
 import afield.four.CPUSpan
 import afield.four.Renderer
 import afield.four.buffers.BufferParameters
@@ -16,7 +17,7 @@ import afield.four.modules.pointer
 import afield.four.util.vkCheck
 import afield.logger.lprintln
 import org.joml.Matrix4f
-import org.joml.Vector4f
+import afield.stdlib.linalg.Vector4f
 import org.lwjgl.stb.STBImage.stbi_image_free
 import org.lwjgl.stb.STBImage.stbi_load
 import org.lwjgl.stb.STBImageResize.stbir_resize_uint8_linear

@@ -1,5 +1,7 @@
 package afield.graphics
 
+import org.joml.rotateTo
+import org.joml.transform
 import afield.stdlib.*
 import org.joml.Quaternionf
 import kotlin.math.abs

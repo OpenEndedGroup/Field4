@@ -1,5 +1,8 @@
 package afield.four.fabricated
 
+import org.joml.scale
+import org.joml.translate
+import org.joml.transformPosition
 import afield.Box
 import afield.documents
 import afield.four.TexturePreviewCache
@@ -14,8 +17,8 @@ import afield.thisSessionInfo
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.yield
 import org.joml.Matrix4f
-import org.joml.Vector3f
-import org.joml.Vector4f
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector4f
 import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 import java.awt.image.BufferedImage
 import java.io.File

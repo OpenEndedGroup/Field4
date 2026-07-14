@@ -1013,6 +1013,12 @@ import afield.stdlib.Vec2
 import afield.stdlib.Vec3
 import afield.stdlib.Vec4
 import afield.stdlib.Quat
+import afield.stdlib.linalg.Vector2f
+import afield.stdlib.linalg.Vector2fc
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector3fc
+import afield.stdlib.linalg.Vector4f
+import afield.stdlib.linalg.Vector4fc
 import afield.Box
 import afield.four.util.*
 import afield.graphics.*

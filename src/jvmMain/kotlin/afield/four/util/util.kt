@@ -1,5 +1,8 @@
 package afield.four.util
 
+import afield.stdlib.linalg.Vector2f
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector4f
 import afield.Runloop
 import org.lwjgl.vulkan.VK10
 import afield.four.device.PhysicalDevice

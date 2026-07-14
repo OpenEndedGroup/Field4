@@ -5,7 +5,7 @@ package afield.stdlib
 import kotlin.collections.first
 import kotlin.collections.last
 import kotlin.math.*
-import org.joml.Vector3f as Vec3
+import afield.stdlib.linalg.Vector3f as Vec3
 
 /**
  * Practical 3D Voronoi and approximate 3D multiplicatively weighted Voronoi

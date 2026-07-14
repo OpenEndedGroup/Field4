@@ -15,9 +15,9 @@ import afield.four.modules.ModulePointer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.joml.Quaternionf
-import org.joml.Vector2f
-import org.joml.Vector3f
-import org.joml.Vector4f
+import afield.stdlib.linalg.Vector2f
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector4f
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
@@ -433,9 +433,9 @@ class KeyframeScope(val schemaVersion: Int = 0) {
                     }
                 }
 
-                va is org.joml.Vector2f && vb is org.joml.Vector2f -> org.joml.Vector2f(va).lerp(vb, tf)
-                va is org.joml.Vector3f && vb is org.joml.Vector3f -> org.joml.Vector3f(va).lerp(vb, tf)
-                va is org.joml.Vector4f && vb is org.joml.Vector4f -> org.joml.Vector4f(va).lerp(vb, tf)
+                va is Vector2f && vb is Vector2f -> Vector2f(va).lerp(vb, tf)
+                va is Vector3f && vb is Vector3f -> Vector3f(va).lerp(vb, tf)
+                va is Vector4f && vb is Vector4f -> Vector4f(va).lerp(vb, tf)
                 va is org.joml.Quaternionf && vb is org.joml.Quaternionf -> org.joml.Quaternionf(va).slerp(vb, tf)
                 va is org.joml.DualQuaternionf && vb is org.joml.DualQuaternionf -> org.joml.DualQuaternionf(va).sclerp(vb, tf)
                 va is CameraPose && vb is CameraPose -> va.sclerp(vb, tf)

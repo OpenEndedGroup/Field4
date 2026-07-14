@@ -1,7 +1,7 @@
 package afield.four.fabricated
 
 import org.joml.Matrix4f
-import org.joml.Vector3f
+import afield.stdlib.linalg.Vector3f
 
 data class FabricateRenderItem(
     val node: FabricateNode,

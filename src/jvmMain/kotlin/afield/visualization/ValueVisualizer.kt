@@ -1,5 +1,11 @@
 package afield
 
+import afield.stdlib.linalg.Vector2f
+import afield.stdlib.linalg.Vector2fc
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector3fc
+import afield.stdlib.linalg.Vector4f
+import afield.stdlib.linalg.Vector4fc
 import afield.graphics.FLine
 import org.joml.*
 import space.kscience.plotly.Plot

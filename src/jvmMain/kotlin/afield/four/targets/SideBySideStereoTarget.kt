@@ -16,6 +16,9 @@ import afield.four.util.MouseEvents
 import afield.four.util.Options
 import afield.stdlib.times
 import afield.stdlib.vec
+import afield.stdlib.linalg.Vector2f
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector4f
 import org.joml.*
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.*

@@ -356,6 +356,7 @@ source = { virtual = "." }
 
 [package.dev-dependencies]
 backdoor = [
+    { name = "pillow" },
     { name = "pyyaml" },
     { name = "websockets" },
 ]
@@ -374,6 +375,7 @@ docs = [
 
 [package.metadata.requires-dev]
 backdoor = [
+    { name = "pillow", specifier = ">=10.0.0" },
     { name = "pyyaml", specifier = ">=6.0.0" },
     { name = "websockets", specifier = ">=15.0.0" },
 ]

@@ -1,5 +1,8 @@
 package afield.graphics
 
+import org.joml.scale
+import org.joml.transform
+import org.joml.rotationToField
 import afield.stdlib.*
 import field.graphics.FLinesAndJavaShapes
 import field.graphics.FLinesAndJavaShapes.CubicSegment3
@@ -960,7 +963,7 @@ fun FLine.byCreatingOsculatingCircles(samples: Int = 20, circleSegments: Int = 3
 
         val radiusVec = cursor.radiusOfCurvature()
 
-        if (radiusVec != null && radiusVec.isFinite) {
+        if (radiusVec != null && radiusVec.isFinite()) {
             val pos = cursor.position()
             val radius = radiusVec.length()
             val center = Vec3(pos).add(radiusVec)
@@ -4004,7 +4007,7 @@ private fun eulerSpiralCore3D(
         val pts = ArrayList<Vec3>(sampleCount)
         val ds = L / (sampleCount - 1).toFloat()
         val curvatureRate = 2f * totalTurn / (L * L).coerceAtLeast(1e-6f)
-        var orientation = Quaternionf().rotationTo(frame.u, startForward)
+        var orientation = Quaternionf().rotationToField(frame.u, startForward)
         var posPlane = vec(0f, 0f, 0f)
         pts.add(Vec3(start))
         var sAcc = 0f
@@ -4476,7 +4479,7 @@ private fun shortestRotationAxisAngle(from: Vec3, to: Vec3): Pair<Vec3, Float> {
 
 private fun orientationFromForward(forward: Vec3): Quaternionf {
     val target = if (forward.lengthSquared() <= 1e-8f) Vec3(driverForwardAxis) else Vec3(forward).normalize()
-    return Quaternionf().rotationTo(driverForwardAxis, target)
+    return Quaternionf().rotationToField(driverForwardAxis, target)
 }
 
 private fun nearestWindowedDriverAnchor(

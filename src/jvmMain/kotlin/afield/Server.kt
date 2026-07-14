@@ -2,6 +2,7 @@
 
 package afield
 
+import org.joml.translate
 import afield.ai.Ai4CompletionDoc
 import afield.ai.core.AI4_AUTO_NAME_PROPERTY
 import afield.ai.core.AI4_AUTO_NAME_SIGNATURE_PROPERTY
@@ -60,9 +61,9 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
-import org.joml.Vector2f
-import org.joml.Vector3f
-import org.joml.Vector4f
+import afield.stdlib.linalg.Vector2f
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector4f
 import java.awt.Desktop
 import java.io.File
 import java.lang.management.ManagementFactory

@@ -1,5 +1,6 @@
 package afield.graphics
 
+import org.joml.transform
 import afield.HasProperties
 import afield.Rect
 import afield.stdlib.*
@@ -7,7 +8,7 @@ import field.graphics.FLinesAndJavaShapes
 import field.graphics.FLinesAndJavaShapes.Cursor
 import kotlinx.serialization.Serializable
 import org.joml.Vector3d
-import org.joml.Vector3f
+import afield.stdlib.linalg.Vector3f
 import org.joml.minus
 import org.joml.plus
 import org.joml.times

@@ -2,8 +2,8 @@
 
 package afield.stdlib.ceres
 
-import org.joml.Vector3f
-import org.joml.Vector3fc
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector3fc
 import java.util.*
 import kotlin.math.abs
 import kotlin.math.cos

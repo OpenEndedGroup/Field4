@@ -16,9 +16,9 @@ import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.contextual
 import org.joml.DualQuaternionf
 import org.joml.Quaternionf
-import org.joml.Vector2f
-import org.joml.Vector3f
-import org.joml.Vector4f
+import afield.stdlib.linalg.Vector2f
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector4f
 
 object Vector2fSerializer : KSerializer<Vector2f> {
     override val descriptor: SerialDescriptor = FloatArraySerializer().descriptor

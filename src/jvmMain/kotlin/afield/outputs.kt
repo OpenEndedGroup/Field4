@@ -1,5 +1,6 @@
 package afield
 
+import org.joml.scale
 import afield.logger.lprintln
 import afield.macros.Insert
 import afield.server.Inspector
@@ -7,8 +8,8 @@ import afield.server.LogStream
 import afield.stdlib.FLineIntersection
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import org.joml.Vector2f
-import org.joml.Vector4f
+import afield.stdlib.linalg.Vector2f
+import afield.stdlib.linalg.Vector4f
 import java.io.File
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets

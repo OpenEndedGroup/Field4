@@ -3,6 +3,12 @@
 package afield.stdlib
 
 import com.github.quickhull3d.QuickHull3D
+import afield.stdlib.linalg.Vector2f
+import afield.stdlib.linalg.Vector2fc
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector3fc
+import afield.stdlib.linalg.Vector4f
+import afield.stdlib.linalg.Vector4fc
 import org.joml.*
 import kotlin.math.max
 import kotlin.math.min
@@ -581,8 +587,12 @@ fun Vector2dc.isNaN() = this.x().isNaN() || this.y().isNaN()
 fun Vector3fc.isNaN() = this.x().isNaN() || this.y().isNaN() || this.z().isNaN()
 fun Vector2fc.isNaN() = this.x().isNaN() || this.y().isNaN()
 
-operator fun Vector3fc.times(v: Quaternionfc): Vector3f = v.transform(this, Vector3f())
-operator fun Vector2fc.times(v: Quaternionfc): Vector2fc = v.transform(Vector3f(this.x(), this.y(), 0f), Vector3f()).xy
+private fun Vector3fc.toJoml() = org.joml.Vector3f(x(), y(), z())
+private fun org.joml.Vector3fc.toField() = Vector3f(x(), y(), z())
+
+operator fun Vector3fc.times(v: Quaternionfc): Vector3f = v.transform(toJoml(), org.joml.Vector3f()).toField()
+operator fun Vector2fc.times(v: Quaternionfc): Vector2fc =
+    v.transform(org.joml.Vector3f(x(), y(), 0f), org.joml.Vector3f()).toField().xy
 operator fun Vector2dc.times(v: Quaterniondc): Vector2dc = v.transform(Vector3d(this.x(), this.y(), 0.0), Vector3d()).v2
 operator fun Vector3fc.times(v: DualQuaternionf): Vector3f = v.transform(this, Vector3f())
 
