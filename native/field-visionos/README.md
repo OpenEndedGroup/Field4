@@ -67,9 +67,13 @@ This shell is the **receiver** end of that pipeline (see `RTT/` below).
   - **RTTStream.swift** — `@Observable @MainActor` orchestrator: owns receiver + decode pipeline +
     converter, publishes `displayTexture` + status/fps. Receive+decode stay on the recv queue (in
     order); only the texture upload and stats hop to the main actor.
-  - **ImmersiveStreamView.swift** — the present layer: a world-locked quad in a dimmed
-    (`preferredSurroundingsEffect(.systemDark)`) `ImmersiveSpace`, sampling `displayTexture`. Mono/flat
-    today; stereo (SBS) via a Camera Index Switch `ShaderGraphMaterial` is the marked next step.
+  - **RTTScreenContent.swift / ImmersiveStreamView.swift / RTTStreamWindow.swift** — the present
+    layer: a shared textured quad (`RTTScreenContent`) sampling `displayTexture`, hosted in both a
+    dimmed world-locked `ImmersiveSpace` (`ImmersiveStreamView`) and a movable/resizable volumetric
+    window (`RTTStreamWindow`); receiver lifecycle is ref-counted (`RTTStream.acquire/release`).
+    Stereo (SBS) uses the hand-authored Camera Index Switch material `RTT/SBSMaterial.usda` (present +
+    verified loading), with a mono `UnlitMaterial` fallback; per-eye separation is device-only to
+    confirm (the sim renders one eye).
 
 ## What works (as of this handoff)
 
@@ -203,10 +207,12 @@ All are additive and orthogonal (e.g. `?noeditor&transparent&shaderSelectionCont
   **diagnostic gating** (`FIELD_ENCODE_VERBOSE`), and the **`Image.kt` import/memory** question
   (answered: `memReqs.size` is non-zero, so MoltenVK wants the bound memory — keep the
   allocate+bind). Remaining:
-  - **Stereo dock** — swap the mono `UnlitMaterial` in `ImmersiveStreamView` for a
-    `ShaderGraphMaterial` with a **Camera Index Switch** node sampling the SBS left/right halves per
-    eye (authored in Reality Composer Pro; the converter already produces the full SBS frame, so only
-    the material changes). Refs: `~/temp/openimmersive`, Apple's SBS→MV-HEVC sample.
+  - ~~**Stereo dock**~~ — **material authored + loads**: `RTT/SBSMaterial.usda` is a hand-written
+    Camera Index Switch `ShaderGraphMaterial` (samples the SBS left/right halves per eye, mono→left),
+    bundled via the synchronized group (no pbxproj edits). Verified loading in the sim
+    (`sbsMaterial present`); `RTTScreenContent` binds `sbsTexture` and selects it when
+    `stream.isStereo`. Remaining: confirm true per-eye separation on device (the sim renders one eye).
+    Refs: `~/temp/openimmersive`, Apple's SBS→MV-HEVC sample.
   - **Device verification of present** — the sim paints the immersive scene at ~1fps and is
     non-interactive; confirm real smoothness + interaction on hardware. (App compiles for device;
     needs your signing team + a connected Vision Pro. Sender `dest` = the headset's IP:9001.)
