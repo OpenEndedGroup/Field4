@@ -2444,7 +2444,41 @@ The committed montage below is rendered by the CPU-only `WaveshapeWorkedExample`
 
 ![Transfer curves of the waveshaping transforms: fold triangle, full/half rectifier, quantize staircase, and a folded sine](assets/functions/waveshape-transforms.svg)
 
-**Replay it live.** A loadable operation transcript, [`assets/functions/waveshape-transforms.operations.yaml`](assets/functions/waveshape-transforms.operations.yaml), builds and plots the whole family in a fresh Field document. Replay it with `field_backdoor.py --scratch` (`macro write … && macro run …`) or hand the YAML to the `field_run_transcript` MCP tool. See [Automating Field](automating_field.md) for the transcript path. A companion transcript, [`assets/functions/chebyshev-waveshaper.operations.yaml`](assets/functions/chebyshev-waveshaper.operations.yaml), plots a sine pushed through `chebyshev(2..5)` and an animated harmonic sweep.
+**Replay it live.** A loadable operation transcript, [`assets/functions/waveshape-transforms.operations.yaml`](assets/functions/waveshape-transforms.operations.yaml), builds and plots the whole family in a fresh Field document. Replay it with `field_backdoor.py --scratch` (`macro write … && macro run …`) or hand the YAML to the `field_run_transcript` MCP tool. See [Automating Field](automating_field.md) for the transcript path. A companion transcript, [`assets/functions/chebyshev-waveshaper.operations.yaml`](assets/functions/chebyshev-waveshaper.operations.yaml), builds the two boxes captured below.
+
+**The harmonic ladder.** A single-cycle sine, then the same sine pushed through `chebyshev(2..5)` — each output is the pure *n*-th harmonic, since Tₙ(cos θ) = cos(nθ) — and finally an `order = ramp(1.0, 6.0)` sweep that steps through six rising harmonic bands across the window.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/chebyshev-harmonic-ladder.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-chebyshev-harmonic-ladder"}
+:::static
+import afield.stdlib.Functions
+
+with(Functions) {
+    val fundamental = sin(1.0) over (0.0..1.0)
+    fundamental.withName("fundamental (harmonic 1)").plot(channel = "fund", title = "input: sine, 1 cycle", heightPx = 150)
+    (fundamental / chebyshev(2)).plot(channel = "h2", title = "chebyshev(2) — 2nd harmonic", heightPx = 150)
+    (fundamental / chebyshev(3)).plot(channel = "h3", title = "chebyshev(3) — 3rd harmonic", heightPx = 150)
+    (fundamental / chebyshev(4)).plot(channel = "h4", title = "chebyshev(4) — 4th harmonic", heightPx = 150)
+    (fundamental / chebyshev(5)).plot(channel = "h5", title = "chebyshev(5) — 5th harmonic", heightPx = 150)
+    // order is an Fn, so a value ramp 1..6 sweeps the harmonic across the window.
+    fundamental.chebyshev(ramp(1.0, 6.0) over (0.0..1.0)).plot(channel = "sweep", title = "chebyshev(order = ramp 1..6) — harmonic sweep", heightPx = 160)
+}
+```
+
+Because a waveshaper reshapes *amplitude*, `chebyshev` colours any bounded signal, not just a clean oscillator. The transcript's second box feeds band-limited Perlin noise through `chebyshev(2/3/5)`: T₂ folds the noise toward the rails, and higher orders multiply its zero-crossings.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/chebyshev-perlin-waveshaping.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-chebyshev-perlin-waveshaping"}
+:::static
+import afield.stdlib.Functions
+
+with(Functions) {
+    // Amplified toward [-1, 1] so the shaper has full range (chebyshev clamps internally).
+    val noise = perlinNoise(seed = 7L, frequency = 6.0, amplitude = 1.6) over (0.0..1.0)
+    noise.withName("perlin noise").plot(channel = "n", title = "input: perlin noise (freq 6)", heightPx = 150)
+    (noise / chebyshev(2)).plot(channel = "n2", title = "perlin / chebyshev(2)", heightPx = 150)
+    (noise / chebyshev(3)).plot(channel = "n3", title = "perlin / chebyshev(3)", heightPx = 150)
+    (noise / chebyshev(5)).plot(channel = "n5", title = "perlin / chebyshev(5)", heightPx = 150)
+}
+```
 
 #### copyPaste / randomRepeat / randomCopyPaste
 
