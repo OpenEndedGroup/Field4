@@ -1068,45 +1068,51 @@ fun makeKI(box: Box, reason: String = "makeKI call"): KotlinScriptEngine {
         )
         val ki = createKotlinScriptEngine(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
         ki.associatedBox = box  // Set the box reference for @exported support
+        // Close the engine's readiness gate now (synchronously, before returning `ki`) so any
+        // exec/evaluate that follows waits for the async intro below, which opens it again.
+        ki.armBootstrapGate()
         val si = thisSessionInfo.get()
         inMain {
-//        if (box.properties["_tombstone"].isTrue()) return@inMain
-            if (box.properties["_tombstone"].isTrue()) return@inMain
-
-            launch(Runloop.miscPool.asCoroutineDispatcher() + Box.boxContextElement(box)) {
-
-                lblock(
-                    "info,ki,startup",
-                    "executing stdlib import #$startupId async reason=$reason box=${box.kotlinStartupLabel()} engine=${ki.kotlinStartupEngineLabel()}"
-                ) {
-//                    if (box.properties["_tombstone"].isTrue()) return@launch
-                    if (box.properties["_tombstone"].isTrue()) {
-                        lprintln("info,ki,startup", "skip #$startupId tombstone box=${box.kotlinStartupLabel()}")
-                        return@launch
-                    }
-                    lprintln(
-                        "info,ki,startup",
-                        "begin imports #$startupId box=${box.kotlinStartupLabel()} introLength=${intro.length}"
-                    )
-                    ki.exec(
-                        intro, implicits = listOf(box)
-                    )
-                    lprintln("info,ki,startup", "reset preamble cache #$startupId box=${box.kotlinStartupLabel()}")
-                    box.properties.remove("_preamble")
-//                    try {
-//                        box.preamble.let { ki.exec(it, implicits = listOf(box)) }
-//                    } catch (t: Throwable) {
-//                        lprintln("error,ki", "preamble threw an exception, clearing it")
-//                        t.printStackTrace()
-//                        box.preamble = ""
-//                    }
-                    lprintln(
-                        "info,ki,startup",
-                        "complete #$startupId box=${box.kotlinStartupLabel()} box is no longer offline"
-                    )
-                    box.offline = false
-                    si?.topologyGeneration++
+            try {
+                if (box.properties["_tombstone"].isTrue()) {
+                    lprintln("info,ki,startup", "skip #$startupId tombstone box=${box.kotlinStartupLabel()}")
+                    return@inMain
                 }
+
+                // Evaluate the stdlib intro on the main RunLoop — the single eval thread — so
+                // it never races (or corrupts the K2 evaluator's snippet-classloader chain
+                // against) another eval on this engine. The heavy compile still offloads to
+                // Dispatchers.Default inside bootstrap, so this does not block the frame loop
+                // for the compile, only for the (cheap) import eval. `ki.bootstrap` runs the
+                // intro past the engine's readiness gate and opens that gate afterwards, so
+                // every later exec/evaluate on this engine waits until the intro has run.
+                Box.withBoxContext(box) {
+                    lblock(
+                        "info,ki,startup",
+                        "executing stdlib import #$startupId async-on-main reason=$reason box=${box.kotlinStartupLabel()} engine=${ki.kotlinStartupEngineLabel()}"
+                    ) {
+                        lprintln(
+                            "info,ki,startup",
+                            "begin imports #$startupId box=${box.kotlinStartupLabel()} introLength=${intro.length}"
+                        )
+                        ki.bootstrap(
+                            intro, implicits = listOf(box)
+                        )
+                        lprintln("info,ki,startup", "reset preamble cache #$startupId box=${box.kotlinStartupLabel()}")
+                        box.properties.remove("_preamble")
+                        lprintln(
+                            "info,ki,startup",
+                            "complete #$startupId box=${box.kotlinStartupLabel()} box is no longer offline"
+                        )
+                        box.offline = false
+                        si?.topologyGeneration++
+                    }
+                }
+            } finally {
+                // Whatever happened above (tombstone skip, or the intro threw before
+                // ki.bootstrap could open the gate), make sure the engine's readiness gate
+                // opens so a later exec/evaluate can never hang forever. Idempotent.
+                ki.releaseBootstrapGate()
             }
         }
         return ki
@@ -1137,7 +1143,7 @@ suspend fun makeKIHere(box: Box, reason: String = "makeKIHere call"): KotlinScri
                 "info,ki,startup",
                 "begin imports #$startupId box=${box.kotlinStartupLabel()} introLength=${intro.length}"
             )
-            ki.exec(
+            ki.bootstrap(
                 intro, implicits = listOf(box)
             )
             val preamble = box.preamble

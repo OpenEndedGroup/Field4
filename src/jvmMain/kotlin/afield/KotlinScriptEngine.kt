@@ -57,6 +57,38 @@ interface KotlinScriptEngine {
         implicits: List<Any> = emptyList()
     ): ResultValue?
 
+    /**
+     * Run the stdlib bootstrap ([s], the intro imports) as this engine's first evaluation.
+     *
+     * An engine that gates ordinary [exec]/[evaluate] on bootstrap completion (so no snippet
+     * evaluates before the intro that defines the K2 REPL `ReplState`) MUST run the bootstrap
+     * itself *without* that gate and release the gate afterwards — otherwise the bootstrap
+     * would wait on itself. Engines with no such gate can just [exec] it (the default).
+     */
+    suspend fun bootstrap(
+        s: String,
+        implicits: List<Any> = emptyList(),
+        onCompileError: (List<ScriptDiagnostic>) -> Unit = {},
+        onEvalError: (List<ScriptDiagnostic>) -> Unit = {},
+        onEvalException: (Throwable) -> Unit = { throw it },
+    ): ResultValue? = exec(s, onCompileError, onEvalError, onEvalException, implicits)
+
+    /**
+     * Arm the engine's bootstrap-readiness gate (make it pending) so ordinary [exec]/[evaluate]
+     * block until [bootstrap] (or [releaseBootstrapGate]) opens it. Call this right after
+     * building an engine that will be bootstrapped asynchronously. Engines left un-armed (the
+     * default) never block — used directly in tests and ad-hoc snippet execution. No-op for
+     * engines without such a gate.
+     */
+    fun armBootstrapGate() {}
+
+    /**
+     * Open the engine's bootstrap-readiness gate unconditionally, in case [bootstrap] never
+     * ran (e.g. the box was tombstoned before it could) — otherwise a later [exec]/[evaluate]
+     * would wait forever. Idempotent; a no-op for engines without such a gate.
+     */
+    fun releaseBootstrapGate() {}
+
     suspend fun complete(s: String, cursor: Int): CompletionResult
 
     fun completeAndWait(s: String, cursor: Int = s.length): CompletionResult
