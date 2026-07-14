@@ -8,6 +8,7 @@ import afield.macros.MacroRegistry
 import afield.macros.gatherPreambleUpwards
 import afield.stdlib.applyInsertToPreamble
 import afield.stdlib.normalizePreambleText
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.runBlocking
@@ -119,6 +120,24 @@ class KotlinInterface2(
     // K2 can compile different REPL states concurrently, but a single
     // K2ReplCompilationState is not safe to enter from overlapping snippets.
     private val compileMutex = Mutex()
+
+    // Readiness gate: open once the stdlib intro has evaluated. Every ordinary
+    // [exec]/[evaluate] awaits this first, so no snippet evaluates before the intro that
+    // defines the K2 REPL `ReplState` — the launch setup's inherited preamble, box code,
+    // the execute path, connect-triggered re-execs, etc. all funnel through here regardless
+    // of which thread or caller drives them.
+    //
+    // It starts *open*: an engine created and driven directly (tests, ad-hoc snippets) has no
+    // async bootstrap and must not block. [makeKI] calls [armBootstrapGate] to make it pending
+    // before scheduling the async intro; [bootstrap] and [releaseBootstrapGate] open it again.
+    //
+    // Awaiting is deadlock-free: the bootstrap itself uses the *Internal variants to bypass
+    // the gate, and eval-time re-entry into the engine (sourceBlock / function-rewrite / ai
+    // macro compile, or a re-entrant exec) happens after the gate is open, so await returns
+    // immediately.
+    @Volatile
+    private var bootstrapReady: CompletableDeferred<Unit> = CompletableDeferred<Unit>().apply { complete(Unit) }
+
     private val codeUseSnippetIds = Collections.synchronizedMap(WeakHashMap<Any, String>())
 
     private val resolver = CompoundDependenciesResolver(FileSystemDependenciesResolver(), MavenDependenciesResolver())
@@ -413,6 +432,16 @@ class KotlinInterface2(
 
     suspend fun evaluate(
         e: LinkedSnippet<out CompiledScript>, updateContext: Boolean = true, implicits: List<Any>
+    ): ResultWithDiagnostics<LinkedSnippet<KJvmEvaluatedSnippet>> {
+        // Never evaluate before the stdlib intro has (see [bootstrapReady]).
+        bootstrapReady.await()
+        return evaluateInternal(e, updateContext, implicits)
+    }
+
+    // Caller is responsible for the bootstrap gate. Used directly by [bootstrap] (to run the
+    // intro without waiting on itself) and by [execInternal] (which has already gated in [exec]).
+    private suspend fun evaluateInternal(
+        e: LinkedSnippet<out CompiledScript>, updateContext: Boolean, implicits: List<Any>
     ): ResultWithDiagnostics<LinkedSnippet<KJvmEvaluatedSnippet>> {
         return Box.withBoxContext(resolveBoxContext(implicits)) {
             var r: ResultWithDiagnostics<LinkedSnippet<KJvmEvaluatedSnippet>>
@@ -2510,10 +2539,49 @@ class KotlinInterface2(
         onEvalException: (Throwable) -> Unit,
         implicits: List<Any>,
     ): ResultValue? {
+        // Never evaluate before the stdlib intro has (see [bootstrapReady]). The bootstrap
+        // itself uses [execInternal] to avoid waiting on itself.
+        bootstrapReady.await()
+        return execInternal(s, onCompileError, onEvalError, onEvalException, implicits)
+    }
+
+    /**
+     * Run the stdlib bootstrap (intro) without the [bootstrapReady] gate — it is what opens
+     * the gate — and release the gate afterwards, whatever happened, so nothing waits forever.
+     */
+    override suspend fun bootstrap(
+        s: String,
+        implicits: List<Any>,
+        onCompileError: (List<ScriptDiagnostic>) -> Unit,
+        onEvalError: (List<ScriptDiagnostic>) -> Unit,
+        onEvalException: (Throwable) -> Unit,
+    ): ResultValue? {
+        try {
+            return execInternal(s, onCompileError, onEvalError, onEvalException, implicits)
+        } finally {
+            bootstrapReady.complete(Unit)
+        }
+    }
+
+    override fun armBootstrapGate() {
+        bootstrapReady = CompletableDeferred()
+    }
+
+    override fun releaseBootstrapGate() {
+        bootstrapReady.complete(Unit)
+    }
+
+    private suspend fun execInternal(
+        s: String,
+        onCompileError: (List<ScriptDiagnostic>) -> Unit,
+        onEvalError: (List<ScriptDiagnostic>) -> Unit,
+        onEvalException: (Throwable) -> Unit,
+        implicits: List<Any>,
+    ): ResultValue? {
 
         return when (val r = compile(s)) {
             is ResultWithDiagnostics.Success -> {
-                when (val r2 = evaluate(r.value, implicits = implicits)) {
+                when (val r2 = evaluateInternal(r.value, updateContext = true, implicits = implicits)) {
                     is ResultWithDiagnostics.Success -> {
                         when (val e = r2.value.get().result) {
                             is ResultValue.Error -> {
