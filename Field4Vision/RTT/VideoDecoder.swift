@@ -26,6 +26,7 @@ final class VideoDecoder {
     /// NAL-structure diagnostic, opt-in via FIELD4_RTT_NAL_DEBUG=1 (see `decode`).
     private static let nalDebug = ProcessInfo.processInfo.environment["FIELD4_RTT_NAL_DEBUG"] == "1"
     private var nalDebugCount = 0
+    private var nalKfDebugCount = 0
 
     init(codec: RTTWire.Codec) {
         self.codec = codec
@@ -52,7 +53,12 @@ final class VideoDecoder {
         // first frames so a foreign sender's P-frame encoding can be inspected. A well-formed
         // reference P-frame is HEVC NAL type 1 (TRAIL_R); type 0 (TRAIL_N) is a non-reference frame
         // and won't be kept in the DPB → downstream P-frames concealing to grey.
-        if Self.nalDebug, nalDebugCount < 8 {
+        // Always dump the first couple of keyframes (SPS/tier) even deep into a long GOP.
+        if Self.nalDebug, frame.isKeyframe, nalKfDebugCount < 2 {
+            nalKfDebugCount += 1
+            nalDebugCount = min(nalDebugCount, 22)   // let the frames right after it log too
+        }
+        if Self.nalDebug, nalDebugCount < 24 {
             nalDebugCount += 1
             let desc = nals.map { "\(Self.hevcNalType($0))(\($0.count)B)" }.joined(separator: " ")
             shellLog.notice("RTT NALs seq=\(frame.frameSeq) pts=\(frame.ptsMicros) kf=\(frame.isKeyframe) → \(desc, privacy: .public)")
