@@ -220,6 +220,17 @@ def main() -> int:
     preprocess_docs(public_dir=public_dir, generated_docs=generated_docs, page_filters=tuple(args.page))
     generated_config = build_generated_config(public_dir=public_dir, generated_root=generated_root)
 
+    # A referenced-but-untracked asset renders fine in this warm tree and 404s on a clean
+    # checkout. Warn on every build; under --strict (CI / pre-merge) it gates.
+    asset_check = subprocess.run(
+        [sys.executable, str(Path(__file__).resolve().parent / "check_doc_assets.py")],
+        cwd=repo_root,
+        check=False,
+    ).returncode
+    if asset_check != 0 and args.strict:
+        print("Doc asset check failed (see above). Failing because --strict.", file=sys.stderr)
+        return asset_check
+
     if args.skip_build:
         print(f"Generated {generated_config}")
         return 0

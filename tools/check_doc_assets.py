@@ -1,0 +1,166 @@
+#!/usr/bin/env python3
+"""Lint: every asset a *published* docs page references must be committed to git.
+
+A docs page can point at an image/video that exists in a warm working tree but was
+never ``git add``-ed — a ``diffstatic_runner`` capture that the docs build regenerated,
+or a hand-placed hero/still. It renders fine locally and 404s on a clean checkout or in
+CI. This script catches that class before it merges.
+
+Scope
+-----
+By default only pages listed in ``public/mkdocs.yml`` ``nav:`` are checked — that is
+what actually ships. Unpublished POC pages (e.g. ``diff-player.md``) and ``dev_docs``
+are skipped. Pass ``--all`` to scan every markdown file under the docs root.
+
+Resolution
+----------
+References are resolved the way mkdocs serves the site, checked against the *source*
+tree:
+
+* markdown-processed refs (``screenshot=``, ``poster=``, ``![](...)``, ``<img src>``)
+  are relative to the source page's directory;
+* raw-HTML refs in a pretty-URL site can carry a leading ``../`` to climb out of the
+  page's own URL directory (page served at ``/foo/`` → ``../assets`` = ``/assets``).
+
+So an asset is satisfied if it is git-tracked at *either* resolution. Only assets that
+are untracked at both are reported (whether they are absent or merely unstaged — both
+break a clean checkout).
+
+Exit status is non-zero when any published page references an untracked asset, so this
+can gate a merge or run at the end of a docs build.
+"""
+from __future__ import annotations
+
+import argparse
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+ASSET_EXTS = (".png", ".svg", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".mp4", ".webm")
+
+# Attribute-style refs (runner-fence headers + raw HTML). Covers both runner capture
+# outputs (`screenshot=` PNGs, `video=` MP4s) and HTML `src=`/`poster=`. Note this does
+# NOT match `source-image=` (a local /tmp input to the runner, not a shipped asset):
+# none of these tokens appears as `…=` inside "source-image".
+ATTR_REF = re.compile(r'(?:screenshot|video|poster|src)\s*=\s*"([^"]+)"')
+MD_IMG = re.compile(r'!\[[^\]]*\]\(\s*([^)\s]+)')
+EXTERNAL = ("http://", "https://", "data:", "mailto:", "#")
+
+
+def git(repo: Path, *args: str) -> str:
+    return subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True).stdout
+
+
+def repo_root() -> Path:
+    top = git(Path.cwd(), "rev-parse", "--show-toplevel").strip()
+    return Path(top) if top else Path.cwd()
+
+
+def nav_pages(mkdocs_yml: Path) -> set[str]:
+    """Collect every `*.md` path listed under the mkdocs `nav:` block (relative to docs_dir)."""
+    pages: set[str] = set()
+    if not mkdocs_yml.exists():
+        return pages
+    in_nav = False
+    for line in mkdocs_yml.read_text(encoding="utf-8").splitlines():
+        if re.match(r"^nav:\s*$", line):
+            in_nav = True
+            continue
+        if in_nav:
+            # A new top-level key (non-indented, non-comment) ends the nav block.
+            if line and not line[0].isspace() and not line.startswith("#"):
+                break
+            pages.update(re.findall(r"([\w./-]+\.md)", line))
+    return pages
+
+
+def extract_refs(text: str) -> list[str]:
+    return ATTR_REF.findall(text) + MD_IMG.findall(text)
+
+
+def resolve_candidates(page: Path, ref: str) -> list[Path]:
+    """Filesystem candidates for `ref` on `page`, covering both resolution conventions."""
+    clean = ref.split("#")[0].split("?")[0].strip()
+    if clean.startswith("/"):
+        # site-absolute — resolved against the docs root by the caller via `../` walk-up;
+        # treated here as relative to the page dir after stripping the leading slash.
+        clean = clean.lstrip("/")
+    # A: markdown semantics — relative to the source page's directory.
+    # B: pretty-URL semantics — page served one level deep (/<stem>/), so a leading
+    #    `../` climbs back to the page dir; model that by nesting under the stem.
+    return [
+        (page.parent / clean).resolve(),
+        (page.parent / page.stem / clean).resolve(),
+    ]
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--docs-root", default="public/docs", help="Docs directory (default: public/docs).")
+    parser.add_argument("--mkdocs", default="public/mkdocs.yml", help="mkdocs config for the nav (default: public/mkdocs.yml).")
+    parser.add_argument("--all", action="store_true", help="Scan every *.md under the docs root, not just nav pages.")
+    parser.add_argument("--ignore", action="append", default=[], metavar="PAGE",
+                        help="Docs-root-relative page path to skip (repeatable).")
+    args = parser.parse_args()
+
+    root = repo_root()
+    docs_root = (root / args.docs_root).resolve()
+    if not docs_root.is_dir():
+        print(f"error: docs root {docs_root} not found", file=sys.stderr)
+        return 2
+
+    tracked = {line for line in git(root, "ls-files").splitlines()}
+    ignore = set(args.ignore)
+
+    if args.all:
+        pages = sorted(docs_root.rglob("*.md"))
+    else:
+        nav = nav_pages(root / args.mkdocs)
+        pages = sorted(docs_root / p for p in nav if (docs_root / p).exists())
+
+    def rel(p: Path) -> str | None:
+        try:
+            return p.relative_to(root).as_posix()
+        except ValueError:
+            return None
+
+    problems: list[tuple[str, str, str]] = []
+    checked_pages = 0
+    checked_refs = 0
+    for page in pages:
+        page_rel = rel(page)
+        if page_rel is None or page.relative_to(docs_root).as_posix() in ignore:
+            continue
+        checked_pages += 1
+        for ref in extract_refs(page.read_text(encoding="utf-8", errors="ignore")):
+            r = ref.strip()
+            if not r or r.startswith(EXTERNAL) or not r.lower().endswith(ASSET_EXTS):
+                continue
+            checked_refs += 1
+            candidates = resolve_candidates(page, r)
+            cand_rels = [c for c in (rel(c) for c in candidates) if c is not None]
+            if any(cr in tracked for cr in cand_rels):
+                continue
+            on_disk = any(c.exists() for c in candidates)
+            state = "unstaged (present, not git-added)" if on_disk else "absent (never generated)"
+            problems.append((page_rel, r, state))
+
+    print(f"checked {checked_pages} page(s), {checked_refs} asset ref(s) "
+          f"[{'all md' if args.all else 'nav-published only'}]")
+    if not problems:
+        print("OK — every referenced asset is committed.")
+        return 0
+
+    print(f"\nFAIL — {len(problems)} referenced asset(s) not tracked in git:\n")
+    for page_rel, ref, state in problems:
+        print(f"  {ref}")
+        print(f"      in:    {page_rel}")
+        print(f"      state: {state}")
+    print("\nFix: `git add` the asset (if present) or regenerate it, then commit.")
+    return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
