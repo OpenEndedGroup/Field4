@@ -4535,3 +4535,10 @@ body.mode-transparent .box::before {
     margin-left: var(--shell-corner-inset, 0px);
     margin-bottom: var(--shell-corner-inset, 0px);
 }
+
+/* Editor-only floating window (visionOS): the canvas/doc lifecycle toasts ("saved", "loading",
+   "Connected…") belong to the canvas dock — stacked in the editor's bottom-left corner they're just
+   noise. Suppress them here; the paired canvas window still shows them. */
+body.mode-editor-only .field-toast {
+    display: none !important;
+}
