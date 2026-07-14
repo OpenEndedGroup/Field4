@@ -114,7 +114,7 @@ final class RTTReceiver {
                 }
                 continue
             }
-            if let frame = reassembler.ingest(pkt) {
+            for frame in reassembler.ingest(pkt) {
                 onFrame?(frame)
             }
 
