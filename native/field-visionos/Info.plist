@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Kept OUTSIDE Field4Vision/ so the Xcode-16 synchronized file group doesn't also copy it as
+	     a bundle resource (that causes "Multiple commands produce Info.plist"). Enables openWindow
+	     to open additional windows (floating editor, undocked docks, window.open). Xcode merges the
+	     generated keys on top of this base. -->
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<true/>
+	</dict>
+</dict>
+</plist>
