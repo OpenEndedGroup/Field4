@@ -5,6 +5,10 @@ import afield.four.Target
 import afield.four.device.CommandBuffer
 import afield.four.targets.RenderToTexture
 import afield.four.texture.MetalIOSurface
+import afield.four.texture.UnixFdPass
+import afield.four.texture.VulkanExternalMemory
+import afield.four.util.OS
+import afield.four.util.OSType
 import afield.logger.lprintln
 import org.json.JSONObject
 import org.lwjgl.vulkan.VK10.VK_FORMAT_B8G8R8A8_UNORM
@@ -44,7 +48,13 @@ import java.util.concurrent.atomic.AtomicReference
  * (`Field4Vision/RTT/`: UDP reassembly → VideoToolbox decode → RealityKit). The wire contract is
  * `native/field-encode/WIRE_FORMAT.md`.
  *
- * macOS / MoltenVK only.
+ * macOS (MoltenVK/VideoToolbox) and Linux (NVIDIA/NVENC) — same API either side; [start] branches
+ * internally on [OS]. The ownership of surface allocation is reversed between the two (see
+ * WIRE_FORMAT.md's Linux addendum): Mac's helper allocates+returns IOSurface ring IDs for this
+ * JVM to import (`alloc`, [MetalIOSurface]); Linux has no such round-trip because a helper
+ * process can't allocate a Vulkan image — this JVM allocates the ring directly
+ * (`exportOpaqueFd = true`) and hands the helper {pid,fd,size,rowPitch} handles instead
+ * ([VulkanExternalMemory]).
  */
 class FieldRTTStreamer(
     private val renderer: Renderer,
@@ -96,21 +106,35 @@ class FieldRTTStreamer(
             lprintln("error,field-stream", "field-encode failed to launch"); return emptyList()
         }
 
+        val opened = if (OS == OSType.LINUX) startLinux() else startMac()
+        if (!opened) return emptyList()
+
+        renderer.renderList += name to this
+        seq = 0
+        startNanos = System.nanoTime()
+        streaming = true
+        lprintln("info,field-stream",
+            "streaming ${width}x${height} @${fps}fps ($codec) -> $dest, ${surfaces.size} surface(s)")
+        return surfaces
+    }
+
+    /** macOS/MoltenVK: helper allocates the IOSurface ring; this JVM imports each by looked-up id. */
+    private fun startMac(): Boolean {
         // 1. helper allocates a ring of properly-formatted IOSurfaces and returns their global ids.
         encoder.alloc(width = width, height = height, count = maxOf(1, ringSize))
         if (!allocLatch.await(5, TimeUnit.SECONDS)) {
-            lprintln("error,field-stream", "timed out waiting for surface allocation"); return emptyList()
+            lprintln("error,field-stream", "timed out waiting for surface allocation"); return false
         }
         val ids = allocatedIds.get()
         if (ids.size != maxOf(1, ringSize)) {
-            lprintln("error,field-stream", "expected ${maxOf(1, ringSize)} surfaces, got ${ids.size}"); return emptyList()
+            lprintln("error,field-stream", "expected ${maxOf(1, ringSize)} surfaces, got ${ids.size}"); return false
         }
 
         // 2. import each surface (looked up by id) as the backing of its own RTT.
         for (id in ids) {
             val ref = MetalIOSurface.lookup(id)
             if (ref == 0L) {
-                lprintln("error,field-stream", "IOSurfaceLookup failed for id $id"); return emptyList()
+                lprintln("error,field-stream", "IOSurfaceLookup failed for id $id"); return false
             }
             val rtt = RenderToTexture(renderer) {
                 importMetalIOSurface = ref
@@ -123,17 +147,57 @@ class FieldRTTStreamer(
             surfaces += rtt
         }
 
-        // 3. open the stream (surfaces already live in the helper from alloc) and start ticking.
+        // 3. open the stream (surfaces already live in the helper from alloc).
         encoder.open(width = width, height = height, fps = fps, bitrateKbps = bitrateKbps,
                      dest = dest, codec = codec, idrIntervalMs = idrIntervalMs, stereo = stereo)
-        renderer.renderList += name to this
+        return true
+    }
 
-        seq = 0
-        startNanos = System.nanoTime()
-        streaming = true
-        lprintln("info,field-stream",
-            "streaming ${width}x${height} @${fps}fps ($codec) -> $dest, ${surfaces.size} surface(s): $ids")
-        return surfaces
+    /**
+     * Linux/NVIDIA: no helper-side `alloc` — this JVM allocates the ring itself
+     * (`exportOpaqueFd = true`) and hands the helper {pid,fd,size,rowPitch} handles so it can
+     * duplicate each fd out of this process's /proc/<pid>/fd (WIRE_FORMAT.md's Linux addendum).
+     */
+    private fun startLinux(): Boolean {
+        for (i in 0 until maxOf(1, ringSize)) {
+            val rtt = RenderToTexture(renderer) {
+                exportOpaqueFd = true
+                this.width = this@FieldRTTStreamer.width
+                this.height = this@FieldRTTStreamer.height
+                format = colorFormat
+                useDepth = false
+                colorSampled = true
+            }
+            surfaces += rtt
+        }
+        val handles = surfaces.map { rtt ->
+            val image = rtt.colorImageRefs.getOrNull(0)
+                ?: run { lprintln("error,field-stream", "ring surface has no color image to export"); return false }
+            VulkanExternalMemory.handle(image)
+        }
+
+        // A raw fd number means nothing to another process by value alone (unlike a Mac
+        // IOSurfaceID) — hand the real kernel objects to the helper via SCM_RIGHTS on a fresh
+        // Unix socket, right after telling it (over the JSON channel) to expect them there.
+        val fdSocket = java.nio.file.Files.createTempFile("field-encode-", ".sock").toString()
+        java.io.File(fdSocket).delete() // bind() requires the path not exist yet
+        encoder.open(width = width, height = height, fps = fps, bitrateKbps = bitrateKbps,
+                     dest = dest, codec = codec, idrIntervalMs = idrIntervalMs,
+                     fdSurfaces = handles, fdSocket = fdSocket, stereo = stereo)
+
+        // The helper only starts listening once it processes the `open` line above; retry the
+        // connect+send briefly to absorb that race rather than assume perfect ordering.
+        val fds = handles.map { it.fd }.toIntArray()
+        var sent = false
+        val deadline = System.nanoTime() + 2_000_000_000L
+        while (!sent && System.nanoTime() < deadline) {
+            sent = UnixFdPass.sendFds(fdSocket, fds)
+            if (!sent) Thread.sleep(20)
+        }
+        if (!sent) {
+            lprintln("error,field-stream", "failed to hand fds to field-encode-linux over $fdSocket"); return false
+        }
+        return true
     }
 
     /** Stop ticking, unregister from the render list, and tear down the helper. */

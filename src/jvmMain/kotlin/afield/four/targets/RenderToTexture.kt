@@ -76,7 +76,12 @@ data class RTTParameters(
     // instead of exporting one. Preferred for streaming: an IOSurfaceCreate-born surface carries a
     // real pixelFormat that CoreVideo/VideoToolbox can wrap (MoltenVK's export leaves it 0).
     // macOS/MoltenVK only; the surface's format/size must match this RTT's.
-    var importMetalIOSurface: Long = 0
+    var importMetalIOSurface: Long = 0,
+
+    // Create color attachments with opaque-fd-exportable backing (VK_KHR_external_memory_fd) so
+    // the RTT can be handed zero-copy to NVENC via CUDA external memory import (field-encode-linux).
+    // Opt-in; Linux/NVIDIA only. See VulkanExternalMemory.kt.
+    var exportOpaqueFd: Boolean = false
 )
 
 /**
@@ -624,6 +629,7 @@ open class RenderToTexture(
                     .debugName(imageDebugName("color", idx))
                     .aliasSingleLayerDescriptors(forceColorArrayView)
                 data.exportMetalIOSurface = this.parameters.exportMetalIOSurface
+                data.exportOpaqueFd = this.parameters.exportOpaqueFd
                 // Import applies to color attachment 0 only (a streamed RTT is single-attachment;
                 // a ring is N separate RTTs, each importing its own surface).
                 if (idx == 0) data.importMetalIOSurface = this.parameters.importMetalIOSurface

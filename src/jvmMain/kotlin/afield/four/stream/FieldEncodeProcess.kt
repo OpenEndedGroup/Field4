@@ -106,17 +106,35 @@ class FieldEncodeProcess(
     )
 
     /**
-     * Set up the encoder + UDP stream to `dest` ("host:port"). Pass `surfaces` (global IOSurfaceIDs)
-     * to look them up here (legacy); omit to use the ring created by a prior [alloc].
+     * Set up the encoder + UDP stream to `dest` ("host:port"). On macOS, pass `surfaces` (global
+     * IOSurfaceIDs) to look them up in the helper (legacy); omit to use the ring created by a
+     * prior [alloc]. On Linux, pass `fdSurfaces` + [fdSocket] — the helper has no `alloc` (it
+     * can't allocate a Vulkan image itself), and a raw fd number can't travel over JSON (it's
+     * per-process, not a system-wide handle like an IOSurfaceID): the real fds cross over an
+     * SCM_RIGHTS handoff on [fdSocket] instead (see [afield.four.texture.UnixFdPass] — caller
+     * sends them right after this command), and only `size`/`rowPitch` travel on the wire, in the
+     * same order as the fds sent over the socket.
      */
     fun open(
         width: Int, height: Int, fps: Int, bitrateKbps: Int,
         dest: String, codec: String = "hevc", idrIntervalMs: Int = 1000,
-        surfaces: List<Long> = emptyList(), stereo: Boolean = false,
+        surfaces: List<Long> = emptyList(),
+        fdSurfaces: List<afield.four.texture.VulkanExternalMemory.FdHandle> = emptyList(),
+        fdSocket: String? = null,
+        stereo: Boolean = false,
     ) = send(
         JSONObject()
             .put("cmd", "open")
-            .apply { if (surfaces.isNotEmpty()) put("surfaces", JSONArray(surfaces)) }
+            .apply {
+                if (fdSurfaces.isNotEmpty()) {
+                    put("surfaces", JSONArray(fdSurfaces.map {
+                        JSONObject().put("size", it.size).put("rowPitch", it.rowPitch)
+                    }))
+                    fdSocket?.let { put("fdSocket", it) }
+                } else if (surfaces.isNotEmpty()) {
+                    put("surfaces", JSONArray(surfaces))
+                }
+            }
             .put("width", width).put("height", height).put("fps", fps)
             .put("bitrateKbps", bitrateKbps).put("dest", dest)
             .put("codec", codec).put("idrIntervalMs", idrIntervalMs)
@@ -175,8 +193,16 @@ class FieldEncodeProcess(
     }
 
     companion object {
-        /** Prefer the release build, fall back to debug; relative to the field4 repo root (cwd). */
+        /**
+         * Picks the per-OS sender binary (same control+wire protocol either way — see
+         * WIRE_FORMAT.md). Linux builds one CMake target (`native/field-encode-linux/build/`);
+         * macOS prefers the SwiftPM release build, falling back to debug. Paths are relative to
+         * the field4 repo root (cwd).
+         */
         fun defaultBinaryPath(): String {
+            if (afield.four.util.OS == afield.four.util.OSType.LINUX) {
+                return File("native/field-encode-linux/build/field-encode-linux").path
+            }
             val base = "native/field-encode/.build"
             val release = File("$base/release/field-encode")
             val debug = File("$base/debug/field-encode")

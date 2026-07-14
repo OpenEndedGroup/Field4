@@ -396,3 +396,58 @@ Field's *real* RTT IOSurface (vs. the self-test surface), and UDP reassembly/dec
 device. Seam: **producer hands over a filled IOSurface(-ID) + a per-frame ready tick; the
 helper owns encode + wire.** IOSurface-backing the RTT (MoltenVK + `VK_EXT_metal_objects`)
 is the producer's side, as is stereo rendering (Field already does SBS for OpenXR).
+
+**The Linux/NVENC backend now exists too, and is verified end-to-end against the real visionOS
+receiver**: `native/field-encode-linux/` (CMake/C++, dlopen'd against
+`libcuda.so.1`/`libnvidia-encode.so.1` via vendored `ffnvcodec` headers — no CUDA toolkit or Video
+Codec SDK install needed). Same control protocol and UDP wire format as Mac (see
+`native/field-encode/WIRE_FORMAT.md`'s "Linux sender addendum"), with one structural difference
+forced by the platform: surface ownership is reversed. A helper process can't allocate a *Vulkan*
+image, so there's no Linux `alloc` — the JVM allocates the RTT ring itself
+(`VK_KHR_external_memory_fd`, opaque-fd handle type, `VK_IMAGE_TILING_LINEAR`, and a *dedicated*
+allocation via `VkMemoryDedicatedAllocateInfo` — required, not optional, see below) and hands the
+real fds to the helper via **SCM_RIGHTS over a Unix domain socket** (a small JNI shim,
+`native/field-fdpass/`), then imports them into CUDA (`cuImportExternalMemory` →
+`cuExternalMemoryGetMappedBuffer` → registered with NVENC as
+`NV_ENC_INPUT_RESOURCE_TYPE_CUDADEVICEPTR`). JVM side: `afield.four.texture.VulkanExternalMemory`
++ `Image.exportOpaqueFd()` (export) and `FieldRTTStreamer.startLinux()` (ring allocation +
+handoff) — `FieldRTTStreamer`'s public API (`start()`/`surfaces`/`stop()`) is unchanged and now
+branches on OS internally, so the same box code that drives the Mac backend runs unmodified on
+Linux.
+
+Two real bugs surfaced and got fixed getting the fd handoff working, both worth knowing about if
+touching this code: (1) a first design duplicated the fd out of the producer's
+`/proc/<pid>/fd/<fd>` (no native glue needed, works for anonymous-inode files like pipes) — but
+NVIDIA's opaque-fd export turned out to be backed by `/dev/nvidiactl` (a real device file), and
+reopening that path performs a *fresh* driver `open()`, numerically valid but semantically
+unrelated to the original memory, so `cuImportExternalMemory` failed with `CUDA_ERROR_UNKNOWN`
+(999) — replaced with real SCM_RIGHTS fd passing. (2) The Vulkan memory allocation must be
+declared *dedicated* to match a flag CUDA's import requires, or the same error occurs.
+
+*Verified end-to-end against the real device*: a real Vulkan-rendered RTT → export → SCM_RIGHTS →
+CUDA import → NVENC encode → UDP → the actual Field4Vision app, sustained over the real network,
+receiver-reported "0 dropped, 0 malformed" across 3300+ datagrams. Also verified in isolation:
+builds against an RTX 4090 (driver 610.43.02); the full encode→packetize→UDP path via `--selftest`
+for both HEVC and H.264 (zero dropped/out-of-order fragments, correct IDR cadence, on-target
+bitrate, clean `ffprobe`/`ffmpeg -f null` decode).
+
+**The "grey/white flicker" seen through most of live testing was a duplicate-`frameSeq` bug in ad
+hoc test scaffolding, not the encoder, wire format, or receiver** — found via a byte-level
+bitstream diff against the known-good Mac encoder (done receiver-side). `FieldRTTStreamer`'s
+automatic per-frame trigger (`Renderer.afterCurrentGraphicsFrameComplete`) works correctly on its
+own (confirmed by inspecting `Renderer`'s completion-callback queue directly — small and steadily
+draining, never backlogged). An early test wrongly concluded it "never fires" and added a manual
+polling thread as a workaround; that thread then ran *concurrently* with the real mechanism for
+the rest of the session, both independently triggering `encoder.frame()` for overlapping frame
+numbers against different ring-buffer content each time — producing two different encoded frames
+sharing one `frameSeq` on the wire. The receiver correctly drops the second as a stale duplicate
+per WIRE_FORMAT.md's rules, which breaks the P-frame reference chain (only self-contained IDRs
+survive) — exactly the observed "occasional correct color, grey otherwise." **Never add a
+manual/parallel frame-trigger loop alongside `FieldRTTStreamer.start()`** — its own registration
+in `renderer.renderList` is sufficient. Real (and worth keeping) NVENC config fixes landed
+alongside this misdiagnosis — see `native/field-encode-linux/README.md`'s Status section for the
+profile/tier/level/reference-count details — but they were not the actual cause of the symptom.
+
+*Open item, likely receiver-side, not yet re-checked against the fixed sender*: a ~70 second delay
+was observed once between first packet arrival and first successful decode despite zero packet
+loss reported the whole time — may or may not be related to the duplicate-`frameSeq` bug above.

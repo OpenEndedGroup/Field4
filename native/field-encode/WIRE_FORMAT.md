@@ -89,6 +89,76 @@ This document is the authoritative contract; the receiver in the visionOS app
 Local references on this machine for the present step: `~/temp/openimmersive` (stereo/immersive
 video player) and Apple's `ConvertingSideBySide3DVideoToMultiviewHEVC…` sample.
 
+## Linux sender addendum: fd handoff instead of `alloc`
+
+The Linux sender is **`native/field-encode-linux/`** (CMake/C++, NVIDIA driver's `libcuda.so.1` +
+`libnvidia-encode.so.1` via dlopen — see its README). Everything above is unchanged (same control
+commands, same 20-byte media header, same fragmentation/reassembly rules); only how `open.surfaces`
+is populated differs, because surface *ownership* is reversed from Mac:
+
+- **Mac**: the helper allocates the IOSurface ring (`alloc`) because a surface born via
+  `IOSurfaceCreate` carries a real pixelFormat that CoreVideo can wrap, unlike MoltenVK's export.
+  The JVM looks the ring up by global `IOSurfaceID` and imports it as the RTT backing.
+- **Linux**: there is no `alloc` command — a helper process can't allocate a *Vulkan* image, so the
+  JVM (which owns the Vulkan render) allocates the RTT ring directly, with each color image's
+  backing memory made exportable (`VK_KHR_external_memory_fd`, `VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT`
+  — the NVIDIA-Vulkan-to-NVIDIA-CUDA same-GPU handle type, not the generic cross-vendor
+  `VK_EXT_external_memory_dma_buf`, which would need a DRM format modifier this same-vendor path
+  doesn't). See `afield.four.texture.VulkanExternalMemory` / `Image.exportOpaqueFd()`.
+
+So on Linux, `open` carries an `fdSocket` path and `surfaces` is an array of `{size,rowPitch}`
+objects (no fd/pid in the JSON at all — see below for why):
+
+```json
+{"cmd":"open","fdSocket":"/tmp/field-encode-abc123.sock",
+ "surfaces":[{"size":3686400,"rowPitch":5120}, ...],
+ "width":1280,"height":720,"fps":60,"bitrateKbps":20000,"dest":"host:port"}
+```
+
+| field      | meaning |
+|------------|---------|
+| `fdSocket` | path to an AF_UNIX SOCK_STREAM socket the helper binds+listens on, for the fd handoff below |
+| `size`     | the exact Vulkan allocation size (`VkMemoryRequirements.size`) — CUDA's `cuImportExternalMemory` requires an exact match |
+| `rowPitch` | the image's actual linear row pitch (`vkGetImageSubresourceLayout`, not `width * bytesPerPixel` — VK_IMAGE_TILING_LINEAR may pad rows for alignment) |
+
+**A raw fd number can't travel over JSON** — it's a per-process file descriptor, not a system-wide
+handle like an IOSurfaceID, so the actual fds cross via **SCM_RIGHTS over the `fdSocket` Unix
+domain socket**: the helper binds+listens on it as part of handling `open`, then the producer
+connects once and sends every ring surface's fd in a single `sendmsg()` call (one SCM_RIGHTS
+control message carrying all of them, in the same order as the `surfaces` array) plus a 1-byte
+dummy payload. The helper `accept()`s one connection and `recvmsg()`s them out in that same order.
+
+*Why not simpler options first considered:* duplicating the fd out of the producer's
+`/proc/<pid>/fd/<fd>` (no native glue needed) works for anonymous-inode files (pipes, eventfds,
+real dma-bufs) but **not** for NVIDIA's `VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT` export,
+which turned out to be backed by `/dev/nvidiactl` (a real device-special file): reopening that
+path performs a *fresh* `open()` against the driver, yielding an fd that's numerically valid but
+semantically unrelated to the original memory object — `cuImportExternalMemory` then fails with
+`CUDA_ERROR_UNKNOWN` (999). SCM_RIGHTS duplicates the actual kernel `struct file*` regardless of
+what's behind it, which is why it's the mechanism actually used, at the cost of needing a small
+JNI shim on the JVM side (`native/field-fdpass/`) since Java has no standard-library
+`sendmsg`/ancillary-data support. That JNI class is deliberately kept off Field4's main jvmMain
+classpath — see `afield.four.texture.UnixFdPass`'s doc comment — because a class declaring a
+native method breaks Field4's live box/REPL execution if it's ever loaded from that classpath.
+
+The Vulkan-side memory allocation must also be *dedicated*
+(`VkMemoryDedicatedAllocateInfo`/`CUDA_EXTERNAL_MEMORY_DEDICATED`) or the same
+`cuImportExternalMemory` error occurs — NVIDIA's driver tags opaque-fd memory exported from an
+image as dedicated internally, and the CUDA import must declare the same.
+
+The producer must keep its own fd open for the whole streaming session — the helper only ever
+holds a duplicate (obtained via the kernel, not a copy of the number), and closes it on `close`.
+
+No `NV_ENC_INPUT_RESOURCE_TYPE_CUDAARRAY`/optimal-tiling path: the imported memory is registered
+with NVENC as `NV_ENC_INPUT_RESOURCE_TYPE_CUDADEVICEPTR` (a flat pointer + pitch), which is why the
+Vulkan image is `VK_IMAGE_TILING_LINEAR` rather than `VK_IMAGE_TILING_OPTIMAL` on this path — simpler
+to get right than a CUDA mipmapped-array registration, at a render-throughput cost that's irrelevant
+at the resolutions/framerates this streams.
+
+There is no `alloc`-equivalent event on Linux; `open` still replies `{"ev":"opened"}` or
+`{"ev":"error",...}` same as Mac. `frame`/`bitrate`/`close`/`selftest` are byte-for-byte identical
+on both senders — `selftest` allocates its own CUDA device buffers and needs no fd handoff at all.
+
 ## Versioning
 
 Bump `version` on any header change. Senders and receivers reject mismatched versions

@@ -17,6 +17,17 @@ class Image(private val device: Device, val imageData: ImageData) {
     var mipLevels: Int = 0
     var vkImage: Long = 0
     var vkMemory: Long = 0
+
+    // Set only when [ImageData.exportOpaqueFd] is true (Linux/NVENC path — see
+    // VulkanExternalMemory.kt). [memorySize] is the exact allocation size CUDA's
+    // cuImportExternalMemory requires; [linearRowPitch] is the row pitch NVENC's
+    // NV_ENC_REGISTER_RESOURCE.pitch needs, queried from the image's actual (possibly
+    // alignment-padded) linear layout rather than assumed as width*bytesPerPixel.
+    var memorySize: Long = 0
+        private set
+    var linearRowPitch: Long = 0
+        private set
+
     private val autoDisposeToken = AutoDisposer.register(this, "Image(format=${imageData.format}, ${imageData.width}x${imageData.height})") { /* set after init */ }
 
     init {
@@ -47,7 +58,13 @@ class Image(private val device: Device, val imageData: ImageData) {
                 .samples(imageData.sampleCount)
                 .initialLayout(VK10.VK_IMAGE_LAYOUT_UNDEFINED)
                 .sharingMode(VK10.VK_SHARING_MODE_EXCLUSIVE)
-                .tiling(VK10.VK_IMAGE_TILING_OPTIMAL)
+                // NV_ENC_INPUT_RESOURCE_TYPE_CUDADEVICEPTR (the Linux capture path — see
+                // VulkanExternalMemory.kt / native/field-encode-linux) needs a flat linear buffer +
+                // row pitch, not NVIDIA's private optimal-tiling layout, so exported images use
+                // LINEAR tiling. Costs a little render throughput vs OPTIMAL; irrelevant at the
+                // resolutions/framerates this streams (see dev_docs/vision_frontend.md's "ship the
+                // fence first" posture).
+                .tiling(if (imageData.exportOpaqueFd) VK10.VK_IMAGE_TILING_LINEAR else VK10.VK_IMAGE_TILING_OPTIMAL)
                 .usage(imageData.usage)
 
             // Back the image with an externally-created IOSurface (MoltenVK), or make its backing
@@ -64,6 +81,15 @@ class Image(private val device: Device, val imageData: ImageData) {
                     .sType(EXTMetalObjects.VK_STRUCTURE_TYPE_EXPORT_METAL_OBJECT_CREATE_INFO_EXT)
                     .exportObjectType(EXTMetalObjects.VK_EXPORT_METAL_OBJECT_TYPE_METAL_IOSURFACE_BIT_EXT)
                 imageCreateInfo.pNext(exportInfo.address())
+            } else if (imageData.exportOpaqueFd) {
+                // Linux/NVENC path: VK_KHR_external_memory_fd, same-vendor "opaque fd" handle type
+                // (not VK_EXT_external_memory_dma_buf's generic cross-vendor DMA_BUF_BIT — that one
+                // needs a DRM format modifier to describe tiling to a non-NVIDIA importer; opaque_fd
+                // is the NVIDIA-Vulkan-to-NVIDIA-CUDA same-GPU handshake and needs none of that).
+                val extImageInfo = VkExternalMemoryImageCreateInfo.calloc(stack)
+                    .sType(VK11.VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO)
+                    .handleTypes(VK11.VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT)
+                imageCreateInfo.pNext(extImageInfo.address())
             }
 
             val lp = stack.mallocLong(1)
@@ -76,6 +102,7 @@ class Image(private val device: Device, val imageData: ImageData) {
             // Get memory requirements for this object
             val memReqs = VkMemoryRequirements.calloc(stack)
             VK10.vkGetImageMemoryRequirements(device.vkDevice, vkImage, memReqs)
+            memorySize = memReqs.size()
 
             // For an imported IOSurface, MoltenVK backs the MTLTexture's pixels with the surface, so
             // this allocate+bind may be redundant. Log the reported size once so we can decide
@@ -97,6 +124,24 @@ class Image(private val device: Device, val imageData: ImageData) {
                     )
                 )
 
+            // The image-create-info chain above only declares the image *shareable*; the backing
+            // memory's own allocation must separately opt in to export, or vkGetMemoryFdKHR fails.
+            if (imageData.exportOpaqueFd) {
+                // Dedicated allocation is required here, not optional: NVIDIA's Vulkan driver
+                // internally tags opaque-fd memory born from an image export as dedicated, and
+                // cuImportExternalMemory (CU_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD) rejects the
+                // import with CUDA_ERROR_UNKNOWN (999) if the Vulkan side didn't also declare it
+                // dedicated via this struct — verified by hitting exactly that error without it.
+                val dedicatedAllocInfo = VkMemoryDedicatedAllocateInfo.calloc(stack)
+                    .sType(VK11.VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO)
+                    .image(vkImage)
+                val exportAllocInfo = VkExportMemoryAllocateInfo.calloc(stack)
+                    .sType(VK11.VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO)
+                    .handleTypes(VK11.VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT)
+                    .pNext(dedicatedAllocInfo.address())
+                memAlloc.pNext(exportAllocInfo.address())
+            }
+
             // Allocate memory
             vkCheck(VK10.vkAllocateMemory(device.vkDevice, memAlloc, null, lp), "Failed to allocate memory")
             vkMemory = lp[0]
@@ -106,6 +151,16 @@ class Image(private val device: Device, val imageData: ImageData) {
                 VK10.vkBindImageMemory(device.vkDevice, vkImage, vkMemory, 0),
                 "Failed to bind image memory"
             )
+
+            if (imageData.exportOpaqueFd) {
+                val subresource = VkImageSubresource.calloc(stack)
+                    .aspectMask(VK10.VK_IMAGE_ASPECT_COLOR_BIT)
+                    .mipLevel(0)
+                    .arrayLayer(0)
+                val layout = VkSubresourceLayout.calloc(stack)
+                VK10.vkGetImageSubresourceLayout(device.vkDevice, vkImage, subresource, layout)
+                linearRowPitch = layout.rowPitch()
+            }
         }
         imageData.debugName.takeIf { it.isNotBlank() }?.let {
             device.nameObject(vkImage, VK10.VK_OBJECT_TYPE_IMAGE, it)
@@ -115,6 +170,11 @@ class Image(private val device: Device, val imageData: ImageData) {
 
     fun cleanup() {
         autoDisposeToken.disable()
+        // cachedOpaqueFd (if any) is intentionally not close()'d here: plain JVM code has no public
+        // way to close a raw fd number (FileDescriptor has no public int constructor pre-reflection
+        // hacks). Ring sizes are 2-3 per streamer, so this leaks a handful of fds for the process's
+        // lifetime rather than per-stream-restart — acceptable; revisit only if that stops being true.
+        cachedOpaqueFd = null
         VK10.vkDestroyImage(device.vkDevice, vkImage, null)
         VK10.vkFreeMemory(device.vkDevice, vkMemory, null)
     }
@@ -158,6 +218,31 @@ class Image(private val device: Device, val imageData: ImageData) {
         }
     }
 
+    private var cachedOpaqueFd: Int? = null
+
+    /**
+     * Export this image's backing memory as an opaque POSIX fd (Linux, VK_KHR_external_memory_fd —
+     * see VulkanExternalMemory.kt). Requires [ImageData.exportOpaqueFd] = true at creation. Per the
+     * spec each call to vkGetMemoryFdKHR transfers ownership of a *new* fd to the caller, so this
+     * caches and returns the same fd on repeated calls — call [close] to release it, don't just
+     * drop the value. The fd stays valid (and open in this JVM process) for the streamer's whole
+     * session; the helper process only ever gets a *duplicate* via /proc/<pid>/fd/<fd> (see
+     * WIRE_FORMAT.md's Linux addendum), never this one.
+     */
+    fun exportOpaqueFd(): Int {
+        cachedOpaqueFd?.let { return it }
+        MemoryStack.stackPush().use { stack ->
+            val info = VkMemoryGetFdInfoKHR.calloc(stack)
+                .sType(KHRExternalMemoryFd.VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR)
+                .memory(vkMemory)
+                .handleType(VK11.VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT)
+            val fd = IntArray(1)
+            vkCheck(KHRExternalMemoryFd.vkGetMemoryFdKHR(device.vkDevice, info, fd), "vkGetMemoryFdKHR")
+            cachedOpaqueFd = fd[0]
+            return fd[0]
+        }
+    }
+
     class ImageData {
         var arrayLayers: Int = 1
         internal var format: Int
@@ -182,6 +267,14 @@ class Image(private val device: Device, val imageData: ImageData) {
          * [exportMetalIOSurface]. The IOSurface's format/size must match this image's.
          */
         var importMetalIOSurface: Long = 0
+
+        /**
+         * Linux/NVENC only: create this image's backing memory as exportable via
+         * VK_KHR_external_memory_fd (opaque-fd handle type), forces VK_IMAGE_TILING_LINEAR (see
+         * [Image.linearRowPitch]), and enables [Image.exportOpaqueFd]. Analogous to
+         * [exportMetalIOSurface] on the Mac path — see VulkanExternalMemory.kt.
+         */
+        var exportOpaqueFd: Boolean = false
         var width: Int = 0
 
         init {
