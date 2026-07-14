@@ -67,9 +67,16 @@ struct RTTScreenContent: View {
         }
         .task {
             // Load the Camera Index Switch material if the asset shipped with the app; nil otherwise.
-            sbsMaterial = try? await ShaderGraphMaterial(named: "/Root/SBSMaterial",
-                                                         from: "SBSMaterial",
-                                                         in: .main)
+            // NB: loading/parsing works in the simulator; only per-eye *separation* needs a device.
+            do {
+                sbsMaterial = try await ShaderGraphMaterial(named: "/Root/SBSMaterial",
+                                                            from: "SBSMaterial",
+                                                            in: .main)
+                shellLog.notice("RTT stereo material loaded (Camera Index Switch) — sbsMaterial present")
+            } catch {
+                sbsMaterial = nil
+                shellLog.error("RTT stereo material load failed: \(error, privacy: .public) — mono fallback")
+            }
         }
     }
 

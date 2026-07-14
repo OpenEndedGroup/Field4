@@ -77,10 +77,14 @@ window.
 ## RTT + stereo — in progress
 
 Stereoscopic output is the headline we're building toward (Field already renders side-by-side stereo
-for other XR paths). The **capture and encode path already produces side-by-side stereo frames** —
-what remains is presenting them **per-eye** on device via a Camera Index Switch material (left half
-to the left eye, right half to the right). Until that lands, a stereo stream simply shows as mono.
-So: the pipeline is stereo-ready end to end; the final per-eye present is the open piece.
+for other XR paths). The whole path is now wired: the **capture and encode path produces
+side-by-side stereo frames**, and the **per-eye present material is authored** — a Camera Index
+Switch ShaderGraph that samples the left half of the frame for the left eye and the right half for
+the right. That material builds and loads cleanly.
+
+What remains is a **device** check: the simulator renders a single mono view, so true per-eye
+separation — the thing that makes stereo *stereo* — can only be confirmed on a real Vision Pro. So
+stereo is wired end to end; verifying the per-eye result on hardware is the open piece.
 
 ---
 
@@ -93,7 +97,7 @@ So: the pipeline is stereo-ready end to end; the final per-eye present is the op
 | FLine editing — node + Bézier control-point drag | **Working** |
 | Web UI as spatial docks (editor / canvas / welcome) | **Working** |
 | RTT video streaming (mono), world-locked + windowed | **Working, verified end-to-end** |
-| RTT stereo (per-eye present) | **In progress** — pipeline ready, per-eye material pending |
+| RTT stereo (per-eye present) | **Wired** — SBS pipeline + Camera Index Switch material load; per-eye separation pending device check |
 | On-device polish — spatial-input feel, present smoothness | **Device verification ongoing** |
 
 ---

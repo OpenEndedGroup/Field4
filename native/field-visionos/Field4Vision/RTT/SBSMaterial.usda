@@ -1,0 +1,84 @@
+#usda 1.0
+(
+    defaultPrim = "Root"
+)
+
+# Side-by-side stereo present material for the RTT stream (hand-authored ShaderGraph — the visionOS
+# equivalent of what you'd build in Reality Composer Pro). RealityKit has no runtime CustomMaterial,
+# so per-eye sampling must come from a compiled ShaderGraphMaterial with a Camera Index Switch node.
+#
+# Graph: a single promoted texture parameter `sbsTexture` (the decoded double-wide SBS frame) is
+# sampled twice — once over the LEFT half (u*0.5) and once over the RIGHT half (u*0.5 + 0.5). A
+# Camera Index Switch feeds the left sample to eye 0, the right sample to eye 1, and the left sample
+# for the mono/preview camera. The result drives an unlit surface (the frame is already lit video).
+#
+# Loaded by RTTScreenContent via ShaderGraphMaterial(named: "/Root/SBSMaterial", from: "SBSMaterial",
+# in: .main); the texture is bound at runtime with setParameter(name: "sbsTexture", ...).
+def Xform "Root"
+{
+    def Material "SBSMaterial"
+    {
+        asset inputs:sbsTexture = @@ (
+            colorSpace = "srgb_texture"
+        )
+        token outputs:mtlx:surface.connect = </Root/SBSMaterial/UnlitSurface.outputs:out>
+
+        def Shader "UnlitSurface"
+        {
+            uniform token info:id = "ND_realitykit_unlit_surfaceshader"
+            color3f inputs:color.connect = </Root/SBSMaterial/CameraIndexSwitch.outputs:out>
+            bool inputs:applyPostProcessToneMap = 0
+            token outputs:out
+        }
+
+        def Shader "CameraIndexSwitch"
+        {
+            uniform token info:id = "ND_realitykit_geometry_switch_cameraindex_color3"
+            color3f inputs:mono.connect = </Root/SBSMaterial/ImageLeft.outputs:out>
+            color3f inputs:left.connect = </Root/SBSMaterial/ImageLeft.outputs:out>
+            color3f inputs:right.connect = </Root/SBSMaterial/ImageRight.outputs:out>
+            color3f outputs:out
+        }
+
+        def Shader "ImageLeft"
+        {
+            uniform token info:id = "ND_image_color3"
+            asset inputs:file.connect = </Root/SBSMaterial.inputs:sbsTexture>
+            float2 inputs:texcoord.connect = </Root/SBSMaterial/UVLeft.outputs:out>
+            color3f outputs:out
+        }
+
+        def Shader "ImageRight"
+        {
+            uniform token info:id = "ND_image_color3"
+            asset inputs:file.connect = </Root/SBSMaterial.inputs:sbsTexture>
+            float2 inputs:texcoord.connect = </Root/SBSMaterial/UVRight.outputs:out>
+            color3f outputs:out
+        }
+
+        def Shader "TexCoord"
+        {
+            uniform token info:id = "ND_texcoord_vector2"
+            int inputs:index = 0
+            float2 outputs:out
+        }
+
+        # left half:  (u * 0.5, v)
+        def Shader "UVLeft"
+        {
+            uniform token info:id = "ND_multiply_vector2"
+            float2 inputs:in1.connect = </Root/SBSMaterial/TexCoord.outputs:out>
+            float2 inputs:in2 = (0.5, 1.0)
+            float2 outputs:out
+        }
+
+        # right half: left + (0.5, 0)
+        def Shader "UVRight"
+        {
+            uniform token info:id = "ND_add_vector2"
+            float2 inputs:in1.connect = </Root/SBSMaterial/UVLeft.outputs:out>
+            float2 inputs:in2 = (0.5, 0.0)
+            float2 outputs:out
+        }
+    }
+}
