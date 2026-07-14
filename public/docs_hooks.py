@@ -2692,6 +2692,20 @@ def build_backdoor_command(
     backdoor_commands: list[str] = []
 
     if options.capture == "ui":
+        # Optional setup: run a transcript= file of create/launch ops FIRST, in the same
+        # backdoor session, so its boxes exist when the drive runs. Needed for captures
+        # that require scene setup a drive fragment can't do itself (a drive fragment runs
+        # on the main runloop thread where thisSessionInfo is unset, so box(...) throws) —
+        # e.g. code-driven UI like showLayers(), or a separate demo box to type into.
+        if options.macro_file:
+            setup_path = resolve_macro_file_path(repo_root=repo_root, page_path=page_path, macro_file=options.macro_file)
+            setup_name = f"{safe_transcript_id(options.box_name)}_ui_setup"
+            backdoor_commands.append(shlex.join([
+                "macro", "write", setup_name, "--file", str(setup_path), "--timeout", str(options.timeout),
+            ]))
+            backdoor_commands.append(shlex.join([
+                "macro", "run", setup_name, "--timeout", str(options.timeout),
+            ]))
         # Run the fence body as a single `drive` transcript op: it scripts the live
         # editor via Playwright (the `ui` driver is in scope) and produces the video
         # and/or still itself, so no separate screenshot-/record- command is appended.

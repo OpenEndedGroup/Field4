@@ -402,7 +402,11 @@ A few keyboard shortcuts for getting around Field.
 
 Field boxes exist in layers, and boxes visibilities and positions are _per layer_. `showLayers()` in a box gives you some UI:
 
-![](assets/screenshot_57.png)
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".layers-palette" screenshot="assets/layers-panel.png" transcript="assets/transcripts/layers_setup.yaml" padding="18" wait="0" timeout="90" embed=true hidden=true name="layers-panel"}
+ui.openEditor("layerdemo")
+ui.waitForSelector(".layers-palette", 8000.0)
+ui.pause(700)
+```
 
 Inside individual boxes, you can assign layers with `layers`:
 

@@ -1,0 +1,11 @@
+name: layers_setup
+description: >
+  Setup for the funFeatures layers-panel docs capture: a few boxes assigned to
+  different layers, plus a box that runs showLayers() so the layers palette renders.
+  Run before the capture=ui drive op (see public/docs/funFeatures.md).
+operations:
+  - create: { box: sketchbox, name: sketch, frame: { x: 80, y: 80, w: 140, h: 90 }, properties: { layers: sketch } }
+  - create: { box: renderbox, name: render, frame: { x: 240, y: 80, w: 140, h: 90 }, properties: { layers: render } }
+  - create: { box: overlaybox, name: overlay, frame: { x: 400, y: 80, w: 140, h: 90 }, properties: { layers: overlay } }
+  - create: { box: layerdemo, name: layers, frame: { x: 80, y: 220, w: 620, h: 230 }, properties: { code: "showLayers()" } }
+  - launch: { box: layerdemo }
