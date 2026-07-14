@@ -6,22 +6,27 @@ it renders the *existing* Field server endpoints (`/welcome`, `/index.html?file=
 `WKWebView`s that float in space. No Field4 changes are required to *run* it; the display-mode
 features below are additive server-side niceties.
 
-> This project is a **separate Xcode project, deliberately outside the field4 repo** (visionOS
-> can't be built from the Field4 toolchain). Xcode 26.5 / visionOS 26.x SDK.
+> This directory is vendored into the field4 repo (single source of truth, one git history) but
+> still built as its own Xcode project — visionOS can't be built from the Field4/Gradle toolchain,
+> so there's no cross-build integration, just a shared repo. Xcode 26.5 / visionOS 26.x SDK.
 
-## Companion repo (the field4 backend + sender)
+## Companion code (the field4 backend + senders)
 
-The Field backend, its Vulkan renderer, and the **RTT stream sender** live in the field4 repo at
-**`~/field4`** on this machine (note: *not* `~/temp/field4`, which is an older copy without the
-sender). Key cross-references there:
+The Field backend, its Vulkan renderer, and the **RTT stream senders** live in this same repo,
+one level up. Key cross-references:
 
-- `dev_docs/vision_frontend.md` — full architecture + rationale (the "sender seam" section).
-- `native/field-encode/WIRE_FORMAT.md` — the UDP media + control contract this shell's receiver
-  implements against (authoritative).
-- `native/field-encode/` — the macOS VideoToolbox **sender** co-process (`field-encode`).
-- `src/jvmMain/kotlin/afield/four/stream/FieldRTTStreamer.kt` — the **producer**: allocates an
-  IOSurface ring in the helper, imports it as an RTT backing, renders into it, and ticks the
-  encoder. `FieldEncodeProcess.kt` is the JSON stdin/stdout driver.
+- `../../dev_docs/vision_frontend.md` — full architecture + rationale (the "sender seam" section).
+- `../field-encode/WIRE_FORMAT.md` — the UDP media + control contract this shell's receiver
+  implements against (authoritative). Its "Linux sender addendum" documents the SCM_RIGHTS fd
+  handoff `../field-encode-linux`/`../field-fdpass` use — receiver-transparent, same wire format.
+- `../field-encode/` — the macOS VideoToolbox **sender** co-process (`field-encode`).
+- `../field-encode-linux/` + `../field-fdpass/` — the Linux/NVENC **sender**, verified end-to-end
+  against this receiver (real device, sustained streaming, zero dropped/malformed datagrams). Same
+  control + wire protocol as the Mac sender; this receiver needed zero changes for it.
+- `../../src/jvmMain/kotlin/afield/four/stream/FieldRTTStreamer.kt` — the **producer**, OS-branching
+  internally (Mac: IOSurface ring imported from the helper; Linux: Vulkan ring allocated here and
+  handed to the helper). `FieldEncodeProcess.kt` is the JSON stdin/stdout driver, shared by both
+  backends.
 
 This shell is the **receiver** end of that pipeline (see `RTT/` below).
 
@@ -80,12 +85,14 @@ This shell is the **receiver** end of that pipeline (see `RTT/` below).
   going solid only when a box is selected (`:has(.box.selected)`).
 - **Toasts** tuck clear of the window's rounded corner (state-aware `--shell-corner-inset`:
   0 when the rail covers the corner, ~56 when collapsed or in a standalone window).
-- **RTT streaming — full spine, end-to-end.** The "Immersive" ornament button starts the receiver
-  and opens a dimmed theatre showing the decoded stream on a world-locked screen. **Verified with
-  the real Field sender** (`FieldRTTStreamer` in `~/field4`, see Companion repo): Field renders into
-  an imported IOSurface-backed RTT → VideoToolbox HEVC → UDP → this receiver reassembles →
-  VideoToolbox decode → `LowLevelTexture` → material, **with correct colour**. Also verified against
-  `field-encode --selftest` (HEVC + H.264, correct header parse, inline VPS/SPS/PPS, `420v` NV12).
+- **RTT streaming — full spine, end-to-end, on both sender backends.** The "Immersive" ornament
+  button starts the receiver and opens a dimmed theatre showing the decoded stream on a
+  world-locked screen. **Verified with the real Field sender** (`FieldRTTStreamer`, see Companion
+  code): Field renders into an RTT → HEVC → UDP → this receiver reassembles → VideoToolbox decode →
+  `LowLevelTexture` → material, **with correct colour** — on macOS/MoltenVK (IOSurface-backed RTT)
+  and, since the Linux/NVENC sender landed, on Linux/NVIDIA too (Vulkan external-memory-backed RTT,
+  same wire format, zero receiver changes). Also verified against `field-encode --selftest` (HEVC +
+  H.264, correct header parse, inline VPS/SPS/PPS, `420v` NV12).
   - **Sender restarts are handled** — relaunch Field (its `seq` resets to 0) without reinstalling
     this app; the reassembler detects the restart (keyframe near seq 0 after a high-water mark) and
     re-locks on the new IDR. (Before the fix, a restarted stream was dropped as stragglers forever.)
@@ -155,14 +162,15 @@ All are additive and orthogonal (e.g. `?noeditor&transparent&shaderSelectionCont
   **history panel is canvas-scoped** → broadcast a "show-history" **intent** over the shared context
   (generalize `shaderSelectionContext` into a shared-UI-context carrying selection *and* intents).
   Double-tap-⌘ to evict editor focus is native + minor → deferred.
-- **RTT streaming — spine done, verified end-to-end** (receiver in `RTT/` here; sender
-  `FieldRTTStreamer` + `field-encode` in `~/field4`). Field renders into an imported IOSurface RTT →
-  HEVC → UDP → this receiver decodes and presents, correct colour, and survives sender restarts.
-  Hardening sweep **done** (all committed + verified): **ring>1** render-ahead
-  (`FieldRTTStreamer(ringSize=N)`, streamer draws the active slot round-robin — verified streaming at
-  ringSize=3), **backpressure** (dedicated decode queue + drop-to-keyframe), **diagnostic gating**
-  (`FIELD_ENCODE_VERBOSE`), and the **`Image.kt` import/memory** question (answered: `memReqs.size` is
-  non-zero, so MoltenVK wants the bound memory — keep the allocate+bind). Remaining:
+- **RTT streaming — spine done, verified end-to-end, on both sender backends** (receiver in `RTT/`
+  here; senders `FieldRTTStreamer` + `field-encode`/`field-encode-linux` one level up). Field
+  renders into an RTT → HEVC → UDP → this receiver decodes and presents, correct colour, and
+  survives sender restarts. Hardening sweep **done** (all committed + verified): **ring>1**
+  render-ahead (`FieldRTTStreamer(ringSize=N)`, streamer draws the active slot round-robin —
+  verified streaming at ringSize=3), **backpressure** (dedicated decode queue + drop-to-keyframe),
+  **diagnostic gating** (`FIELD_ENCODE_VERBOSE`), and the **`Image.kt` import/memory** question
+  (answered: `memReqs.size` is non-zero, so MoltenVK wants the bound memory — keep the
+  allocate+bind). Remaining:
   - **Stereo dock** — swap the mono `UnlitMaterial` in `ImmersiveStreamView` for a
     `ShaderGraphMaterial` with a **Camera Index Switch** node sampling the SBS left/right halves per
     eye (authored in Reality Composer Pro; the converter already produces the full SBS frame, so only
@@ -171,17 +179,26 @@ All are additive and orthogonal (e.g. `?noeditor&transparent&shaderSelectionCont
     non-interactive; confirm real smoothness + interaction on hardware. (App compiles for device;
     needs your signing team + a connected Vision Pro. Sender `dest` = the headset's IP:9001.)
   - ~~**`/vision/stream` route**~~ — **done**: `POST /vision/stream?action=start|stop&doc=<name>` in
-    `~/field4` `Server.kt` toggles a document's boxes over HTTP (thin lifecycle; content stays in the
-    boxes; `stop` closes the `field-encode` co-process cleanly). Demo doc: `rtt_stream_demo`
+    `Server.kt` (one level up) toggles a document's boxes over HTTP (thin lifecycle; content stays
+    in the boxes; `stop` closes the `field-encode` co-process cleanly). Demo doc: `rtt_stream_demo`
     (window + sender, ringSize=3) in the default workspace. Verified start→decode, stop→halt via curl.
-  - **Linux / NVENC sender** — a second sender binary (in `~/field4`, alongside `native/field-encode`)
-    behind the **same** `WIRE_FORMAT.md` contract, so **this receiver needs zero changes** — it never
-    learns which backend produced the stream. Capture forks on OS: instead of the Mac's IOSurface +
-    `VK_EXT_metal_objects`, export the `VkImage` via `VK_KHR_external_memory_fd` → import as CUDA
-    external memory → register as an NVENC input surface (Sunshine/ALVR's path), and hand a
-    dma-buf/fd instead of an `IOSurfaceID`. Same control + UDP wire format out. Stays on SBS
-    single-stream (no MV-HEVC on Linux). See `~/field4/dev_docs/vision_frontend.md` → "Backends" and
-    "The sender seam".
+  - ~~**Linux / NVENC sender**~~ — **done**: `../field-encode-linux` (+ the SCM_RIGHTS fd-handoff
+    shim `../field-fdpass`) behind the **same** `WIRE_FORMAT.md` contract — this receiver needed
+    **zero changes**; it never learned which backend produced the stream. Verified against a real
+    device: sustained streaming over the real network, "0 dropped, 0 malformed" across 3300+
+    datagrams, correct colour (a known test color round-tripped through YUV encode/decode to the
+    exact right RGB values). Capture forks on OS as anticipated: instead of the Mac's IOSurface +
+    `VK_EXT_metal_objects`, the Vulkan `VkImage`'s memory is exported via `VK_KHR_external_memory_fd`
+    (as a *dedicated* allocation — required, not optional) and handed to the helper via SCM_RIGHTS
+    over a Unix domain socket (a `/proc/<pid>/fd/<fd>` duplication approach was tried first and
+    doesn't work for NVIDIA's opaque-fd export — it's backed by a real device file, not an
+    anonymous inode), which then imports it into CUDA and registers it as an NVENC
+    `CUDADEVICEPTR` input surface. Stays on SBS single-stream (no MV-HEVC on Linux). See
+    `../../dev_docs/vision_frontend.md` → "Backends" and "The sender seam", and
+    `../field-encode-linux/README.md` for the full status including two real NVENC config bugs
+    found via a live byte-level bitstream diff against this receiver (profile/tier/level and
+    reference-count settings) and a duplicate-`frameSeq` bug that was actually in ad hoc sender-side
+    test scaffolding, not the shipped code.
 
 ## Multiple scenes
 
@@ -195,6 +212,7 @@ The project keeps `GENERATE_INFOPLIST_FILE = YES` and Xcode merges the generated
 this base. If `openWindow` ever silently no-ops again, this is the first thing to check.
 
 ---
-*The RTT sender is now committed in `~/field4` (commits: "Add field-encode co-process helper" and
-"Wire Field's RTT into the field-encode streamer (import path)"). The receiver + its restart fix
-and sim-testing affordances are committed here. Present smoothness/interaction remains device work.*
+*Both RTT senders (Mac `field-encode`/VideoToolbox and Linux `field-encode-linux`/NVENC) are
+committed one level up in this same repo, verified end-to-end against this receiver. The receiver
++ its restart fix and sim-testing affordances are committed here. Present smoothness/interaction
+on a real Vision Pro remains the next thing to verify.*
