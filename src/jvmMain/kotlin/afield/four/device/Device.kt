@@ -79,7 +79,7 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 hasExt(EXTPresentTiming.VK_EXT_PRESENT_TIMING_EXTENSION_NAME)
             usesPresentTiming = if (hasPresentTimingExt) {
                 val ptFeatures = VkPhysicalDevicePresentTimingFeaturesEXT.calloc(stack)
-                    .sType$Default()
+                    .`sType$Default`()
                 val probe = VkPhysicalDeviceFeatures2.calloc(stack).apply {
                     sType(VK12.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2)
                     pNext(ptFeatures.address())
@@ -370,7 +370,7 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
             // VK_EXT_present_timing feature enable — never on macOS/MoltenVK.
             if (usesPresentTiming) {
                 val presentTiming = VkPhysicalDevicePresentTimingFeaturesEXT.calloc(stack)
-                    .sType$Default()
+                    .`sType$Default`()
                     .presentTiming(true)
                 memPutAddress(tail + VkBaseOutStructure.PNEXT, presentTiming.address()); tail = presentTiming.address()
             }

@@ -159,7 +159,7 @@ class SwapChain(
             val timingProps = VkSwapchainTimingPropertiesEXT.calloc(stack)
                 .sType(EXTPresentTiming.VK_STRUCTURE_TYPE_SWAPCHAIN_TIMING_PROPERTIES_EXT)
             val res = EXTPresentTiming.vkGetSwapchainTimingPropertiesEXT(
-                device.vkDevice, vkSwapChain, timingProps, null
+                device.vkDevice, vkSwapChain, timingProps, null as java.nio.LongBuffer?
             )
             if (res == VK10.VK_SUCCESS) {
                 refreshDurationNs = timingProps.refreshDuration()
@@ -502,7 +502,7 @@ class SwapChain(
                 // pTimingInfos requires a VkPresentTimingInfoEXT.Buffer (one element per swapchain).
                 val timingInfoBuf = VkPresentTimingInfoEXT.calloc(1, stack)
                 timingInfoBuf[0]
-                    .sType$Default()
+                    .`sType$Default`()
                     // flags=0: no scheduling constraint, just measurement.
                     // targetTime=0, timeDomainId=0: ASAP, driver-chosen domain.
                     .presentStageQueries(
@@ -512,7 +512,7 @@ class SwapChain(
 
                 // swapchainCount is set automatically by pTimingInfos() from the buffer size.
                 val timingsInfo = VkPresentTimingsInfoEXT.calloc(stack)
-                    .sType$Default()
+                    .`sType$Default`()
                     .pTimingInfos(timingInfoBuf)
 
                 // Walk to the tail of the current pNext chain and append.
