@@ -118,16 +118,18 @@ Capture the command palette (an overlay — clip to the panel selector, not a bo
 `DocsUiDriver` methods: `type(text)`, `press/key/down/up(key)`, `click(uid)`,
 `clickSelector(css)`, `hover(uid)`/`hoverSelector(css)`, `drag(uid, dx, dy, steps, hold)`,
 `mouseUp()`, `eval(js)`, `openEditor(uid)`, `shot(path)`, `shotClip(path, css, padding)`,
-`pause(ms)`. `pause` sleeps the calling thread (so the recorder keeps capturing frames); it is
-deliberately not named `wait`. The resolved output paths are bound in scope as `out` and `vid`.
+`waitForSelector(css, timeoutMs)`, `pause(ms)`. `pause` sleeps the calling thread (so the
+recorder keeps capturing frames); it is deliberately not named `wait`. The resolved output paths
+are bound in scope as `out` and `vid`.
 
 When `clipSelector` is set the op auto-captures the clip *inside* the script (overlays close on
 blur before the op's own capture would run). `.afield-palette` is the full-screen backdrop;
 `.afield-palette-shell` is the panel you want.
 
-> Autocomplete (`Control+Space`) opens the FieldSuggest popup but its async suggestions do not
-> resolve in the headless capture session (perpetual spinner) — needs investigation before
-> autocomplete demos ship.
+For autocomplete, `Control+Space` opens the popup; the first completion on a cold box compiles for
+a few seconds, so `ui.waitForSelector(".afield-suggest-row", 15000.0)` before capturing rather than
+guessing a pause. (Base completions render immediately; AI completions merge in later and no longer
+block the popup.)
 
 ### create
 

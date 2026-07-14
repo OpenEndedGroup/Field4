@@ -1132,7 +1132,12 @@ class FieldSuggestController {
     this.root.style.display = "grid";
     if (this.items.length === 0) {
       this.activeIndex = -1;
-      const waiting = !this.baseItemsLoaded || !this.aiItemsLoaded;
+      // Only block the popup on the fast base (type-based) completions. AI
+      // completions are slow (a model round-trip) and stream in later via
+      // mergeLateItems — never make the whole list wait on them, or Kotlin
+      // autocomplete shows a spinner for seconds while every other language
+      // renders immediately.
+      const waiting = !this.baseItemsLoaded;
       this.root.querySelector(".afield-suggest-list").innerHTML = waiting
         ? loadingMarkup()
         : `<div class="afield-suggest-empty">No completions</div>`;

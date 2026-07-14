@@ -66,13 +66,16 @@ Attributes:
 
 `ui` methods: `type(text)`, `press`/`key`/`down`/`up(key)`, `click(uid)`, `clickSelector(css)`,
 `hover`/`hoverSelector`, `drag`, `eval(js)`, `openEditor(uid)`, `shot(path)`,
-`shotClip(path, css, padding)`, `pause(ms)`. Use `pause` (not `wait`). The resolved output paths
-are bound in scope as `out` (screenshot) and `vid` (video) if you need to self-capture.
+`shotClip(path, css, padding)`, `waitForSelector(css, timeoutMs)`, `pause(ms)`. Use `pause` (not
+`wait`). The resolved output paths are bound in scope as `out` (screenshot) and `vid` (video).
 
-> **Caveat — autocomplete.** `ui.press("Control+Space")` opens the FieldSuggest popup, but in the
-> headless `?user=playwright` capture session the async suggestion fetch does not resolve — the
-> popup stays on its loading spinner. Autocomplete demos need that stall investigated (why the
-> completion request doesn't return for the playwright capture user) before they are shippable.
+**Autocomplete** works — `ui.press("Control+Space")` opens the FieldSuggest popup. The first
+completion on a cold box triggers a K1 compile that can take a few seconds, so **poll for the
+result instead of guessing a pause**: `ui.waitForSelector(".afield-suggest-row", 15000.0)` blocks
+until a row renders (or times out). Base (type-based) completions render as soon as they load;
+AI completions stream in a few seconds later and merge (they no longer block the popup — that was
+fixed in `fieldSuggest.js`). For an AI-completion shot, wait a beat longer after the first row so
+the `AI` section is populated.
 
 **The "splendid" CPU probe card** in `field_probes.md` is rendered the robust
 way: construct a `FieldProbeSnapshot(...)` from a moving stand-in distribution and

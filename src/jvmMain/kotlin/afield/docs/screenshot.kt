@@ -1507,6 +1507,24 @@ class DocsUiDriver internal constructor(
         }
     }
 
+    /**
+     * Block until [selector] is visible (or [timeoutMs] elapses), so a capture waits for an
+     * async panel to populate instead of guessing a fixed pause. E.g. wait for
+     * `.afield-suggest-row` after Control+Space so autocomplete results have rendered.
+     * Swallows the timeout — the caller captures whatever state exists.
+     */
+    fun waitForSelector(selector: String, timeoutMs: Double = 15000.0) {
+        runBlocking(playwrightDispatcher) {
+            runCatching {
+                pageProvider().locator(selector).first().waitFor(
+                    com.microsoft.playwright.Locator.WaitForOptions()
+                        .setState(com.microsoft.playwright.options.WaitForSelectorState.VISIBLE)
+                        .setTimeout(timeoutMs)
+                )
+            }
+        }
+    }
+
     // Named `pause` rather than `wait` because `fun wait(Long)` would collide with
     // java.lang.Object.wait(long). Sleeps the *calling* thread, so the recorder loop
     // on the Playwright thread keeps grabbing frames during the pause.
