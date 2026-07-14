@@ -1,0 +1,46 @@
+# Chebyshev waveshaper — a loadable demo of the first-class chebyshev(order) op.
+#
+# Open a FRESH Field4 document and replay this transcript to experience the feature:
+#
+#   uv run --project . --group backdoor python tools/field_backdoor.py --json --scratch \
+#     --graphics-context --with-playwright \
+#     --command 'macro write chebyshev-waveshaper --file public/docs/assets/functions/chebyshev-waveshaper.operations.yaml' \
+#     --command 'macro run chebyshev-waveshaper'
+#
+# or, with Field running and a document attached, hand the YAML below to the
+# `field_run_transcript` MCP tool. It creates one box that plots a unit sine and the
+# same sine pushed through chebyshev(2..5): the canonical harmonic-generating shaper,
+# where Tₙ(cos θ) = cos(nθ), so order n produces the pure n-th harmonic. The last
+# plot sweeps the order itself with an animated ramp — a harmonic sweep.
+operations:
+  - create:
+      box: chebyshev-waveshaper
+      name: chebyshev-waveshaper
+      frame: { x: 40.0, y: 40.0, w: 620.0, h: 1040.0 }
+      properties:
+        code: |
+          // Chebyshev waveshaper — the canonical harmonic generator.
+          // Feeding a unit cosine through the order-n Chebyshev polynomial Tₙ yields
+          // the pure n-th harmonic: Tₙ(cos θ) = cos(nθ). chebyshev is first-class —
+          // a rebuildable graph node, a composable FnTransform, and an OpRegistry
+          // transmutation target reachable by op= and evolution.
+          import afield.stdlib.Functions
+
+          with(Functions) {
+              // A single-cycle sine fundamental across the domain.
+              val fundamental = sin(1.0) over (0.0..1.0)
+
+              fundamental.withName("fundamental (harmonic 1)").plot(channel = "fund", title = "input: sine, 1 cycle", heightPx = 150)
+              (fundamental / chebyshev(2)).plot(channel = "h2", title = "chebyshev(2) — 2nd harmonic", heightPx = 150)
+              (fundamental / chebyshev(3)).plot(channel = "h3", title = "chebyshev(3) — 3rd harmonic", heightPx = 150)
+              (fundamental / chebyshev(4)).plot(channel = "h4", title = "chebyshev(4) — 4th harmonic", heightPx = 150)
+              (fundamental / chebyshev(5)).plot(channel = "h5", title = "chebyshev(5) — 5th harmonic", heightPx = 150)
+
+              // Because `order` is a param CHILD (an Fn), it can vary over x: a ramp
+              // from 1..6 sweeps the harmonic content across the window.
+              val sweep = (sin(1.0) over (0.0..1.0)).chebyshev(ramp(1.0, 6.0) over (0.0..1.0))
+              sweep.withName("chebyshev(ramp 1..6)").plot(channel = "sweep", title = "chebyshev(order = ramp 1..6) — harmonic sweep", heightPx = 160)
+          }
+  - launch:
+      box: chebyshev-waveshaper
+      property: code

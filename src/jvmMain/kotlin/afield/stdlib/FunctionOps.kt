@@ -160,6 +160,7 @@ object OpRegistry {
         OpSpec("clip", "transform", emptySet()) { buildUnary(it) { f -> f.clip(it.childOr(1.0, "threshold")) } },
         OpSpec("softClip", "transform", emptySet()) { buildUnary(it) { f -> f.softClip(it.childOr(1.0, "amount")) } },
         OpSpec("fold", "transform", emptySet()) { buildUnary(it) { f -> f.fold(it.childOr(1.0, "threshold")) } },
+        OpSpec("chebyshev", "transform", setOf("cheby")) { buildUnary(it) { f -> f.chebyshev(it.childOr(2.0, "order")) } },
         OpSpec("wrapY", "transform", emptySet()) { buildUnary(it) { f -> f.wrapY(it.childOr(-1.0, "min"), it.childOr(1.0, "max")) } }
     )
 

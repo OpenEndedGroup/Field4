@@ -2403,13 +2403,14 @@ with(Functions) {
 }
 ```
 
-#### fold / rectify / quantize (waveshaping)
+#### fold / rectify / quantize / chebyshev (waveshaping)
 
 The waveshaping / distortion transforms are the value-domain (west-coast) counterparts to the time-domain `hold` / `crush` pair: they reshape a signal's *amplitude* rather than its clock. They are ordinary `FnTransform` factories, so they compose in `through` / `pipe` / `/` chains and surface in the type-aware infix completion like every other transform.
 
 - `fold(threshold)` — a west-coast **wavefolder**. Within `[-threshold, threshold]` the signal passes through unchanged; each time it would cross the threshold it is reflected back into the band. The result is continuous, odd-symmetric, and always bounded to `[-threshold, threshold]` — unlike `clipAt`, folding turns overshoot into extra harmonics instead of a flat top.
 - `rectify(mode)` — half- or full-wave **rectifier**. `RectifyMode.FULL` (the default) yields `|x|`; `RectifyMode.HALF` clamps the negative excursion to zero.
 - `quantize(levels)` — an amplitude **staircase** that snaps the value to exactly `levels` evenly-spaced steps across `[-1, 1]` (bitcrush of the *value*, distinct from the time-domain `stepHold`).
+- `chebyshev(order)` — the canonical harmonic-generating **waveshaper**. Pushing a unit-amplitude cosine through the order-*n* Chebyshev polynomial Tₙ produces the pure *n*-th harmonic, because Tₙ(cos θ) = cos(nθ). The input is clamped to `[-1, 1]` first (the standard shaper guard, as with `softClip`), and evaluated by the Tₙ recurrence Tₖ = 2x·Tₖ₋₁ − Tₖ₋₂. Unlike the others, `chebyshev` is *fully* first-class: `order` is a param child, so it is a rebuildable graph node, an `OpRegistry` transmutation target (`op=chebyshev`), and — because `order` can be an `Fn` — a sweepable harmonic control (a ramped order is a harmonic sweep).
 
 **Simple**
 
@@ -2434,6 +2435,8 @@ with(Functions) {
     val sweep = ((sin(0.5) * 2.0) over (0.0..2.0))
     (sweep / fold(0.6)).plot("fold(0.6)")
     (sweep / quantize(5)).plot("quantize(5)")
+    // Chebyshev turns a clean sine into its pure n-th harmonic.
+    ((sin(1.0) over (0.0..2.0)) / chebyshev(3)).plot("chebyshev(3) — 3rd harmonic")
 }
 ```
 
@@ -2441,7 +2444,7 @@ The committed montage below is rendered by the CPU-only `WaveshapeWorkedExample`
 
 ![Transfer curves of the waveshaping transforms: fold triangle, full/half rectifier, quantize staircase, and a folded sine](assets/functions/waveshape-transforms.svg)
 
-**Replay it live.** A loadable operation transcript, [`assets/functions/waveshape-transforms.operations.yaml`](assets/functions/waveshape-transforms.operations.yaml), builds and plots the whole family in a fresh Field document. Replay it with `field_backdoor.py --scratch` (`macro write … && macro run …`) or hand the YAML to the `field_run_transcript` MCP tool. See [Automating Field](automating_field.md) for the transcript path.
+**Replay it live.** A loadable operation transcript, [`assets/functions/waveshape-transforms.operations.yaml`](assets/functions/waveshape-transforms.operations.yaml), builds and plots the whole family in a fresh Field document. Replay it with `field_backdoor.py --scratch` (`macro write … && macro run …`) or hand the YAML to the `field_run_transcript` MCP tool. See [Automating Field](automating_field.md) for the transcript path. A companion transcript, [`assets/functions/chebyshev-waveshaper.operations.yaml`](assets/functions/chebyshev-waveshaper.operations.yaml), plots a sine pushed through `chebyshev(2..5)` and an animated harmonic sweep.
 
 #### copyPaste / randomRepeat / randomCopyPaste
 
@@ -3520,7 +3523,7 @@ Numeric actions apply only to nodes with a `numbers["value"]` metadata entry. Th
 
 - **Generators** — oscillators (`sin`, `cos`, `saw`, `triangle`, `square`), `pulseTrain`, noise (`whiteNoise`, `valueNoise`, `perlinNoise`, `fbm`, `fbmPerlin`, `randomWalk`), windows (`hannWindow`, `hammingWindow`, `blackmanWindow`, `gaussianWindow`), `gaussian`, `ramp`, `step`, `smoothstep`, `tween`, `ease`. These rebuild from whatever roles the source carries and fall back to factory defaults for the rest. Role names bridge across families, so `sin => op=saw` carries `frequency` over as `period` (via reciprocal) rather than resetting it.
 - **Algebra** — `add`, `subtract`, `multiply`, `divide`, rebuilt from the `left`/`right` children.
-- **Value transforms** — `shift`, `scaleX`, `scaleY`, `offsetY`, `pow`, `log`, `clamp`, `clip`, `softClip`, `fold`, `wrapY`. These need an existing `source` child, so `clamp => op=softClip` works while `sin => op=clamp` is an honest no-op (nothing to wrap) rather than a silent lie.
+- **Value transforms** — `shift`, `scaleX`, `scaleY`, `offsetY`, `pow`, `log`, `clamp`, `clip`, `softClip`, `fold`, `chebyshev`, `wrapY`. These need an existing `source` child, so `clamp => op=softClip` works while `sin => op=clamp` is an honest no-op (nothing to wrap) rather than a silent lie.
 
 Transmutation is deliberately truthful about impossibility: if a target cannot be built from the matched node it is left unchanged and reported as `matched/no-op` in `previewRewrite(...)`. Data-carrying ops such as `piecewise`, `timeline`, and `rbf` are *known* to selectors and validation but are not transmutation targets, because their identity lives in baked point/item data a foreign node cannot supply.
 
