@@ -74,7 +74,7 @@ L/R halves). The producer owns making the content actually SBS; the flag only ca
 ## Implementing the receiver (visionOS)
 
 This document is the authoritative contract; the receiver in the visionOS app
-(`~/temp/field4_visionos`) implements against it, not against the sender's code. Shape:
+(`../field-visionos`) implements against it, not against the sender's code. Shape:
 
 1. **UDP socket** bound to the `dest` port. One `recvfrom` loop.
 2. **Reassembly** keyed by `frameSeq` (see rules above) → a complete Annex-B access unit.

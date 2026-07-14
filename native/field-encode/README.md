@@ -11,7 +11,7 @@ sender is a separate binary behind the **same** control + UDP contract (`WIRE_FO
 so the visionOS receiver never learns which backend produced the stream.
 
 **The receiver** (the other end of this stream) is the visionOS shell at
-**`~/temp/field4_visionos`** — see its `Field4Vision/RTT/` (UDP reassembly → VideoToolbox decode →
+**`../field-visionos`** — see its `Field4Vision/RTT/` (UDP reassembly → VideoToolbox decode →
 RealityKit) and its `README.md`. **The producer** that drives this helper from Field is
 `afield.four.stream.FieldRTTStreamer` (JVM). Contract shared by all three: `WIRE_FORMAT.md`.
 
