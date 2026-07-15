@@ -1,6 +1,7 @@
 package afield
 
 import afield.graphics.FLine
+import afield.stdlib.Functions
 import org.joml.*
 import space.kscience.plotly.Plot
 import java.util.Collections
@@ -80,6 +81,13 @@ object ValueVisualizer {
     private const val FLINE_LENGTH_MAX_COMPLEXITY = 1200
     private const val FLINE_SIGNATURE_HEAD = 42
     private const val FLINE_SIGNATURE_TAIL = 22
+    private const val FN_PLOT_WIDTH = 248
+    private const val FN_PLOT_HEIGHT = 104
+    private const val FN_PLOT_GUTTER_LEFT = 38
+    private const val FN_PLOT_GUTTER_BOTTOM = 14
+    private const val FN_PLOT_PAD_TOP = 8
+    private const val FN_PLOT_PAD_RIGHT = 8
+    private const val FN_PLOT_SAMPLES = 160
     private const val BOX_SYMBOL = "\u25A1"
     private val UNDERSCORE_UUID_REGEX = Regex(
         "^_?([0-9a-f]{8})_([0-9a-f]{4})_([0-9a-f]{4})_([0-9a-f]{4})_([0-9a-f]{12})$",
@@ -219,6 +227,7 @@ object ValueVisualizer {
         is FloatArray -> formatFloatArray(value)
         is DoubleArray -> formatDoubleArray(value)
         is FLine -> formatFLine(value)
+        is Functions.Fn -> formatFn(value, depth, visited, respectDepthLimit)
         is Box -> formatBox(value)
         is Plot -> value.toHtml()
 
@@ -579,6 +588,144 @@ object ValueVisualizer {
         if (!seen) return null
         return FLineBounds(minX, minY, maxX, maxY)
     }
+
+    /**
+     * Renders an [Functions.Fn] as its usual reflective field tree, with a small,
+     * safe line plot appended below — the same spirit as [formatFLine]'s thumbnail.
+     *
+     * The reflective tree (domain / evalFn / graph) is kept verbatim via
+     * [formatDataClass]; the plot is a bonus that never replaces it. Rendering the
+     * plot is wrapped in [runCatching] so a misbehaving `evalFn` can only cost us
+     * the thumbnail, never the whole value display.
+     */
+    private fun formatFn(
+        fn: Functions.Fn,
+        depth: Int,
+        visited: MutableSet<Any>,
+        respectDepthLimit: Boolean
+    ): String {
+        val tree = formatDataClass(fn, depth, visited, respectDepthLimit)
+        val plot = runCatching { renderFnPlot(fn) }.getOrNull()
+        if (plot == null) return tree
+        return buildString {
+            append("<div>")
+            append(tree)
+            append(
+                "<div style='margin-left: 12px; margin-top: 4px; border: 1px solid #333; " +
+                    "border-radius: 4px; background: #111; width: ${FN_PLOT_WIDTH}px; " +
+                    "height: ${FN_PLOT_HEIGHT}px; overflow: hidden;'>"
+            )
+            append(plot)
+            append("</div>")
+            append("</div>")
+        }
+    }
+
+    /**
+     * Samples [fn] over a finite window of its domain and builds an SVG polyline.
+     *
+     * Mirrors the NaN/∞-safe sampling used by `Fn.plotHtml`: unbounded domains fall
+     * back to a small preview window, non-finite samples become gaps in the path,
+     * and an all-non-finite function yields no plot (returns `null`).
+     */
+    private fun renderFnPlot(fn: Functions.Fn): String? {
+        // Resolve a finite x-window (plotSafe): finite non-empty domain as-is, a
+        // point domain widened to ±0.5, anything unbounded falls back to 0..1.
+        val d = fn.domain
+        val xMin: Double
+        val xMax: Double
+        when {
+            d.isFinite && d.length > 0.0 -> { xMin = d.min; xMax = d.max }
+            d.min.isFinite() && d.length == 0.0 -> { xMin = d.min - 0.5; xMax = d.min + 0.5 }
+            else -> { xMin = 0.0; xMax = 1.0 }
+        }
+        if (!xMin.isFinite() || !xMax.isFinite() || xMax <= xMin) return null
+
+        val count = FN_PLOT_SAMPLES
+        val step = (xMax - xMin) / (count - 1).toDouble()
+        val ys = DoubleArray(count) { i ->
+            val x = xMin + step * i.toDouble()
+            runCatching { fn.evalSafe(x, outside = Double.NaN, edge = Functions.EdgeMode.ZERO) }
+                .getOrElse { Double.NaN }
+                .let { if (it.isFinite()) it else Double.NaN }
+        }
+
+        var lo = Double.POSITIVE_INFINITY
+        var hi = Double.NEGATIVE_INFINITY
+        for (y in ys) {
+            if (!y.isFinite()) continue
+            if (y < lo) lo = y
+            if (y > hi) hi = y
+        }
+        if (!lo.isFinite() || !hi.isFinite()) return null // nothing finite to draw
+
+        var yLo = lo
+        var yHi = hi
+        if (yLo == yHi) {
+            val pad = max(1.0, abs(yLo) * 0.1)
+            yLo -= pad; yHi += pad
+        } else {
+            val pad = (yHi - yLo) * 0.08
+            yLo -= pad; yHi += pad
+        }
+
+        val plotW = (FN_PLOT_WIDTH - FN_PLOT_GUTTER_LEFT - FN_PLOT_PAD_RIGHT).toDouble()
+        val plotH = (FN_PLOT_HEIGHT - FN_PLOT_PAD_TOP - FN_PLOT_GUTTER_BOTTOM).toDouble()
+        val left = FN_PLOT_GUTTER_LEFT.toDouble()
+        val top = FN_PLOT_PAD_TOP.toDouble()
+        val ySpan = yHi - yLo
+
+        fun px(i: Int): Double = left + (i.toDouble() / (count - 1).toDouble()) * plotW
+        fun py(y: Double): Double = top + (1.0 - (y - yLo) / ySpan) * plotH
+
+        // Build the path, lifting the pen across non-finite gaps.
+        val path = StringBuilder(count * 12)
+        var penDown = false
+        for (i in 0 until count) {
+            val y = ys[i]
+            if (!y.isFinite()) { penDown = false; continue }
+            val cx = plotNum(px(i)); val cy = plotNum(py(y))
+            if (!penDown) { path.append('M').append(cx).append(' ').append(cy).append(' '); penDown = true }
+            else path.append('L').append(cx).append(' ').append(cy).append(' ')
+        }
+        if (path.isBlank()) return null
+
+        return buildString {
+            append(
+                "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 $FN_PLOT_WIDTH $FN_PLOT_HEIGHT' " +
+                    "width='$FN_PLOT_WIDTH' height='$FN_PLOT_HEIGHT'>"
+            )
+            // zero baseline, when the range straddles it
+            if (yLo < 0.0 && yHi > 0.0) {
+                val zy = plotNum(py(0.0))
+                append("<line x1='${plotNum(left)}' y1='$zy' x2='${plotNum(left + plotW)}' y2='$zy' stroke='#444' stroke-width='1' stroke-dasharray='2 2'/>")
+            }
+            // the curve
+            append("<path d='")
+            append(path.toString().trim())
+            append("' fill='none' stroke='#6cf' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round' vector-effect='non-scaling-stroke'/>")
+            // faint value-range labels (top-left = max, bottom-left = min)
+            append("<text x='3' y='${FN_PLOT_PAD_TOP + 3}' fill='#666' font-size='8' font-family='monospace'>${escape(plotLabel(yHi))}</text>")
+            append("<text x='3' y='${FN_PLOT_HEIGHT - FN_PLOT_GUTTER_BOTTOM}' fill='#666' font-size='8' font-family='monospace'>${escape(plotLabel(yLo))}</text>")
+            // faint domain labels along the bottom
+            append("<text x='${plotNum(left)}' y='${FN_PLOT_HEIGHT - 3}' fill='#666' font-size='8' font-family='monospace'>${escape(plotLabel(xMin))}</text>")
+            append("<text x='$FN_PLOT_WIDTH' y='${FN_PLOT_HEIGHT - 3}' fill='#666' font-size='8' font-family='monospace' text-anchor='end'>${escape(plotLabel(xMax))}</text>")
+            append("</svg>")
+        }
+    }
+
+    private fun plotNum(n: Double): String = runCatching {
+        if (!n.isFinite()) "0" else "%.2f".format(n).trimEnd('0').trimEnd('.')
+    }.getOrDefault("0")
+
+    private fun plotLabel(n: Double): String = runCatching {
+        when {
+            !n.isFinite() -> if (n > 0) "∞" else "-∞"
+            n == 0.0 -> "0"
+            abs(n) >= 100000.0 || abs(n) < 0.001 -> "%.1e".format(n)
+            else -> "%.3f".format(n).trimEnd('0').trimEnd('.')
+        }
+    }.getOrDefault("?")
 
     private fun formatString(s: String): String {
         return if (s.length > MAX_STRING_LENGTH) {
