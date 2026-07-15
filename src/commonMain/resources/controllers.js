@@ -17,6 +17,14 @@
   const outputsState = document.querySelector("#outputs-state");
   const outputsControls = document.querySelector("#outputs-controls");
   const outputsList = document.querySelector("#outputs-list");
+  const chatState = document.querySelector("#chat-state");
+  const selectState = document.querySelector("#select-state");
+  const editorState = document.querySelector("#editor-state");
+  const chatFrameHost = document.querySelector("#chat-frame-host");
+  const selectFrameHost = document.querySelector("#select-frame-host");
+  const editorFrameHost = document.querySelector("#editor-frame-host");
+
+  const pages = ["pad", "controls", "outputs", "chat", "select", "editor"];
 
   const state = {
     socket: null,
@@ -25,7 +33,7 @@
     activePointerId: null,
     activeControlId: null,
     last: { x: 0.5, y: 0.5 },
-    page: ["pad", "controls", "outputs"].includes(params.get("page")) ? params.get("page") : "pad",
+    page: pages.includes(params.get("page")) ? params.get("page") : "pad",
     axis: ["x", "y", "xy"].includes(params.get("axis")) ? params.get("axis") : "y",
     sendMode: ["absolute", "delta", "both"].includes(params.get("send")) ? params.get("send") : "absolute",
     debounceMs: clampNumber(Number.parseInt(params.get("debounceMs") || "200", 10), 0, 5000),
@@ -34,12 +42,18 @@
     outputsSignature: "",
     controlInfo: null,
     outputsInfo: null,
+    chatFrame: null,
+    workspaceFrame: null,
+    workspaceReady: false,
+    resolvedDocument: params.get("file") || params.get("document") || "",
   };
 
   function targetQuery() {
     const query = new URLSearchParams();
     const file = params.get("file") || params.get("document");
     if (file) query.set("file", file);
+    if (params.get("scratch")) query.set("scratch", params.get("scratch"));
+    if (params.get("sessionKey")) query.set("sessionKey", params.get("sessionKey"));
     return query.toString();
   }
 
@@ -214,7 +228,7 @@
   }
 
   function setPage(page) {
-    state.page = ["controls", "outputs"].includes(page) ? page : "pad";
+    state.page = pages.includes(page) ? page : "pad";
     document.querySelectorAll("[data-controller-page]").forEach((element) => {
       element.classList.toggle("active", element.getAttribute("data-controller-page") === state.page);
     });
@@ -226,9 +240,166 @@
     } else if (state.page === "outputs") {
       fetchOutputs();
       renderGroupReadout();
+    } else if (state.page === "chat") {
+      ensureChatFrame();
+    } else if (state.page === "select") {
+      ensureWorkspaceFrame(selectFrameHost, true);
+    } else if (state.page === "editor") {
+      ensureWorkspaceFrame(editorFrameHost, false);
     } else {
       renderPad({ x: state.last.x, y: state.last.y, dx: 0, dy: 0 });
     }
+  }
+
+  async function resolveDocument() {
+    if (state.resolvedDocument && state.controlInfo) return state.resolvedDocument;
+    try {
+      const response = await fetch(controlsUrl(), { cache: "no-store" });
+      if (response.ok) {
+        const info = await response.json();
+        state.controlInfo = info;
+        if (!state.resolvedDocument) state.resolvedDocument = String(info.document || "").trim();
+      }
+    } catch (_error) {
+    }
+    return state.resolvedDocument;
+  }
+
+  function fieldProjectionUrl(documentName, extra) {
+    const query = new URLSearchParams();
+    query.set("file", documentName);
+    query.set("shaderSelectionContext", `controllers-mobile:${documentName}`);
+    query.set("controllerMobile", "1");
+    if (params.get("scratch")) query.set("scratch", params.get("scratch"));
+    if (params.get("sessionKey")) query.set("sessionKey", params.get("sessionKey"));
+    Object.entries(extra).forEach(([key, value]) => query.set(key, value));
+    return `/index.html?${query.toString()}`;
+  }
+
+  function applyKnownSelection(frame) {
+    const info = state.controlInfo;
+    const win = frame && frame.contentWindow;
+    if (!info || !info.selectedUid || !win || !win.fieldBackdoorUiReady) return;
+    const selected = win.selectedList;
+    const currentUid = selected && selected.length === 1 && selected[0] && selected[0].uid || "";
+    if (currentUid === info.selectedUid && (win.selectedProperty || "code") === (info.selectedProperty || "code")) return;
+    if (typeof win.navigateToBoxProperty === "function") {
+      win.navigateToBoxProperty(info.selectedUid, info.selectedProperty || "code");
+    }
+  }
+
+  async function ensureChatFrame() {
+    const documentName = await resolveDocument();
+    if (state.page !== "chat") return;
+    if (!documentName) {
+      chatState.textContent = "Open a Field document first";
+      return;
+    }
+    chatState.textContent = "AI4 · follows the selected box";
+    if (!state.chatFrame) {
+      const frame = document.createElement("iframe");
+      frame.className = "remote-frame";
+      frame.title = "AI4 chat for the selected Field box";
+      frame.allow = "clipboard-read; clipboard-write";
+      frame.src = fieldProjectionUrl(documentName, { noeditor: "1", controllerChat: "1" });
+      frame.addEventListener("load", () => {
+        const ready = () => {
+          const win = frame.contentWindow;
+          if (!win || !win.fieldBackdoorUiReady) {
+            window.setTimeout(ready, 100);
+            return;
+          }
+          applyKnownSelection(frame);
+        };
+        ready();
+      });
+      state.chatFrame = frame;
+    }
+    if (!chatFrameHost.contains(state.chatFrame)) chatFrameHost.replaceChildren(state.chatFrame);
+  }
+
+  function workspaceWindow() {
+    return state.workspaceFrame && state.workspaceFrame.contentWindow;
+  }
+
+  function selectedWorkspaceBox() {
+    const win = workspaceWindow();
+    const selected = win && win.selectedList;
+    return selected && selected.length === 1 ? selected[0] : null;
+  }
+
+  function updateWorkspaceState() {
+    const box = selectedWorkspaceBox();
+    const win = workspaceWindow();
+    const name = box && (box.name || box.getAttribute?.("data-name") || box.textContent || "");
+    const property = win && win.selectedProperty || "code";
+    const label = box ? `${String(name).trim() || "Selected box"} · ${property}` : "Select a box or property";
+    selectState.textContent = label;
+    editorState.textContent = box ? label : "Select a box to edit";
+  }
+
+  function openWorkspacePalette() {
+    const win = workspaceWindow();
+    if (!win || !state.workspaceReady) return;
+    if (typeof win.openAnywherePalette === "function") {
+      win.openAnywherePalette();
+    } else {
+      window.setTimeout(openWorkspacePalette, 120);
+    }
+  }
+
+  function closeWorkspacePalette() {
+    const win = workspaceWindow();
+    if (!win) return;
+    const palette = win.document && win.document.querySelector(".afield-palette");
+    if (!palette || palette.style.display === "none") return;
+    win.document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  }
+
+  function attachWorkspaceListeners(frame) {
+    const win = frame.contentWindow;
+    if (!win) return;
+    win.addEventListener("field-selection-changed", () => {
+      window.setTimeout(() => {
+        updateWorkspaceState();
+        if (state.page === "select" && selectedWorkspaceBox()) setPage("editor");
+      }, 260);
+    });
+  }
+
+  async function ensureWorkspaceFrame(host, openPalette) {
+    const documentName = await resolveDocument();
+    if ((state.page === "select" && host !== selectFrameHost) || (state.page === "editor" && host !== editorFrameHost)) return;
+    if (!documentName) {
+      (openPalette ? selectState : editorState).textContent = "Open a Field document first";
+      return;
+    }
+    if (!state.workspaceFrame) {
+      const frame = document.createElement("iframe");
+      frame.className = "remote-frame workspace-frame";
+      frame.title = "Field box picker and editor";
+      frame.allow = "clipboard-read; clipboard-write";
+      frame.src = fieldProjectionUrl(documentName, { editorOnly: "1" });
+      frame.addEventListener("load", () => {
+        const ready = () => {
+          const win = frame.contentWindow;
+          if (!win || !win.fieldBackdoorUiReady) {
+            window.setTimeout(ready, 100);
+            return;
+          }
+          state.workspaceReady = true;
+          attachWorkspaceListeners(frame);
+          applyKnownSelection(frame);
+          updateWorkspaceState();
+          if (state.page === "select") openWorkspacePalette();
+        };
+        ready();
+      });
+      state.workspaceFrame = frame;
+    }
+    if (!host.contains(state.workspaceFrame)) host.replaceChildren(state.workspaceFrame);
+    if (openPalette) openWorkspacePalette(); else closeWorkspacePalette();
+    updateWorkspaceState();
   }
 
   function controlsUrl() {
@@ -248,6 +419,7 @@
       if (!response.ok) return;
       const info = await response.json();
       state.controlInfo = info;
+      if (!state.resolvedDocument && info.document) state.resolvedDocument = String(info.document);
       renderControlGroup(info);
     } catch (_error) {
       if (!state.controlInfo) {
@@ -263,6 +435,7 @@
       if (!response.ok) return;
       const info = await response.json();
       state.outputsInfo = info;
+      if (!state.resolvedDocument && info.document) state.resolvedDocument = String(info.document);
       renderOutputs(info);
     } catch (_error) {
       if (!state.outputsInfo) outputsState.textContent = "Outputs unavailable";

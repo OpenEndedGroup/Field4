@@ -564,6 +564,11 @@ var selectedProperty = "code"
 // Also mirrored onto window.fieldDisplayMode for the Monaco selection monitor to read.
 internal var fieldDisplayMode: String = "normal"
 
+// The server-mediated context shared by separate visionOS WKWebView projections. The URL/RPC
+// name is retained for compatibility, but the context now carries ephemeral UI intents as well
+// as selection.
+internal var sharedUiContext: String? = null
+
 // A boolean URL flag that may appear bare (?editorOnly) or valued (?editorOnly=1|true).
 private fun flagParam(params: URLSearchParams, name: String): Boolean {
     val v = params.get(name) ?: return false
@@ -4320,6 +4325,8 @@ suspend fun main() {
     val scratch = searchParams.get("scratch") == "1" || searchParams.get("scratch") == "true"
     // Shared-selection channel + editor/canvas display modes (see dev docs / vision_frontend).
     val shaderSelectionContext = searchParams.get("shaderSelectionContext")?.takeIf { it.isNotBlank() }
+    sharedUiContext = shaderSelectionContext
+    window.asDynamic().fieldSharedUiContext = sharedUiContext
     fieldDisplayMode = when {
         flagParam(searchParams, "editorOnly") -> "editor-only"
         flagParam(searchParams, "noeditor") -> "no-editor"
@@ -5022,6 +5029,21 @@ suspend fun main() {
         val state = runCatching { Json.decodeFromJsonElement<ControllerSelectionState>(payload) }.getOrNull()
             ?: return@put Handled.no
         applyRemoteSelection(state)
+        Handled.yes
+    }
+
+    // Canvas-owned panels can be requested from a paired editor-only WKWebView. Only the canvas
+    // projection consumes these intents; other editor projections deliberately ignore them.
+    handlers.put("shared-ui-intent") { message, _ ->
+        val payload = message.payload ?: return@put Handled.no
+        val intent = runCatching { Json.decodeFromJsonElement<SharedUiIntent>(payload) }.getOrNull()
+            ?: return@put Handled.no
+        if (fieldDisplayMode == "no-editor") {
+            when (intent.action) {
+                "show-document-history" -> showDocumentHistoryLocally(intent.filename)
+                else -> return@put Handled.no
+            }
+        }
         Handled.yes
     }
 

@@ -1816,6 +1816,79 @@ function aiChatUpdate(container, uid, markdown) {
         decorateAfieldLinks(chat.messages);
         applyCodeHighlight(chat.messages);
         chat.messages.scrollTop = chat.messages.scrollHeight;
+        updateControllerChat(uid, markdown);
+}
+
+const controllerChatHistory = new Map();
+
+function controllerChatSelectedUid() {
+        const selectedList = window.selectedList;
+        const selected = selectedList && selectedList.length === 1 ? selectedList : window.currentSelectedCode;
+        if (!selected || selected.length !== 1 || !selected[0]) return "";
+        return selected[0].uid || selected[0].getAttribute?.("uid") || selected[0].getAttribute?.("data-uid") || "";
+}
+
+function updateControllerChat(uid, markdown) {
+        if (uid) controllerChatHistory.set(uid, markdown || "");
+        const root = document.querySelector("#controller-chat-root");
+        if (!root || controllerChatSelectedUid() !== uid) return;
+        const container = root.querySelector(".controller-chat-container");
+        if (!container || container.__controllerChatUpdating) return;
+        container.__controllerChatUpdating = true;
+        try {
+                const chat = ensureAiChat(container, uid, window.selectedProperty || window.currentSelectedProperty || "code");
+                container.__aiChatHistory = markdown || "";
+                chat.messages.innerHTML = aiChatHistoryToHtml(container.__aiChatHistory);
+                decorateAfieldLinks(chat.messages);
+                applyCodeHighlight(chat.messages);
+                chat.messages.scrollTop = chat.messages.scrollHeight;
+        } finally {
+                container.__controllerChatUpdating = false;
+        }
+}
+
+function syncControllerChatSelection() {
+        const root = document.querySelector("#controller-chat-root");
+        if (!root) return;
+        const container = root.querySelector(".controller-chat-container");
+        const heading = root.querySelector(".controller-chat-heading");
+        const uid = controllerChatSelectedUid();
+        if (!uid) {
+                heading.textContent = "Select a box to begin an AI4 conversation";
+                container.innerHTML = '<div class="controller-chat-empty">Use the Select tab to choose a box.</div>';
+                container.__aiChat = null;
+                return;
+        }
+        const box = findBoxByUid(uid);
+        const name = box?.name || box?.getAttribute?.("data-name") || uid;
+        const property = window.selectedProperty || window.currentSelectedProperty || "code";
+        heading.textContent = `AI4 · ${String(name).trim() || uid} · ${property}`;
+        const history = controllerChatHistory.get(uid) || container.__aiChatHistory || "";
+        const chat = ensureAiChat(container, uid, property);
+        container.__aiChatHistory = history;
+        chat.messages.innerHTML = aiChatHistoryToHtml(history);
+        decorateAfieldLinks(chat.messages);
+        applyCodeHighlight(chat.messages);
+        chat.messages.scrollTop = chat.messages.scrollHeight;
+}
+
+function installControllerChatProjection() {
+        const params = new URLSearchParams(window.location.search);
+        if (!params.has("controllerChat")) return;
+        document.body.classList.add("mode-controller-chat", "mode-controller-mobile");
+        const root = document.createElement("main");
+        root.id = "controller-chat-root";
+        root.innerHTML = '<div class="controller-chat-heading">Select a box to begin an AI4 conversation</div><div class="controller-chat-container"><div class="controller-chat-empty">Use the Select tab to choose a box.</div></div>';
+        document.body.appendChild(root);
+        window.addEventListener("field-selection-changed", () => window.setTimeout(syncControllerChatSelection, 0));
+        const ready = () => {
+                if (!window.fieldBackdoorUiReady) {
+                        window.setTimeout(ready, 100);
+                        return;
+                }
+                syncControllerChatSelection();
+        };
+        ready();
 }
 
 function openAiChatForBox(uid, property) {
@@ -1837,3 +1910,4 @@ function openAiChatForBox(uid, property) {
 
 window.aiChatUpdate = aiChatUpdate;
 window.openAiChatForBox = openAiChatForBox;
+installControllerChatProjection();

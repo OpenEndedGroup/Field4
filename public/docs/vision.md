@@ -18,6 +18,11 @@ All three are scoped projections of the *same* server-authoritative document, so
 Field: the visionOS app is a third client alongside the browser, speaking the protocols Field
 already has.
 
+The web docks also behave as one workspace rather than isolated browser windows: selection follows
+between a canvas and its floating editor, and canvas-owned panels are routed to the right surface.
+For example, choosing **Show Document History** from the editor opens the full-width History panel
+over the paired canvas instead of covering Monaco.
+
 ---
 
 ## Native 3D FLine viewer — working
@@ -96,6 +101,7 @@ stereo is wired end to end; verifying the per-eye result on hardware is the open
 | FLine interactivity (tap → server callback) | **Working** |
 | FLine editing — node + Bézier control-point drag | **Working** |
 | Web UI as spatial docks (editor / canvas / welcome) | **Working** |
+| Shared dock selection + editor-to-canvas History panel routing | **Working, browser-regression tested** |
 | RTT video streaming (mono), world-locked + windowed | **Working, verified end-to-end** |
 | RTT stereo (per-eye present) | **Wired** — SBS pipeline + Camera Index Switch material load; per-eye separation pending device check |
 | On-device polish — spatial-input feel, present smoothness | **Device verification ongoing** |

@@ -255,7 +255,7 @@
     flex: 1 1 auto;
     background: rgba(0, 0, 0, 0.35);
     color: var(--fg);
-    border: 1px solid rgba(0,0,0,0.15);
+    border: 1px solid rgba(72, 201, 255, 0.6);
     border-radius: 6px;
     padding: 6px 8px;
     font-size: 10px;
@@ -266,6 +266,12 @@
     margin: 5px;
     margin-right: 7px;
     resize: none;
+    transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.ai-chat-input textarea:focus {
+    border-color: rgb(72, 201, 255);
+    box-shadow: 0 0 0 1px rgba(72, 201, 255, 0.4);
 }
 
 .ai-chat-input {

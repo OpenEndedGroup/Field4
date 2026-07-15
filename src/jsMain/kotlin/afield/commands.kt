@@ -1128,6 +1128,32 @@ private fun macroPanelStopAutoRefresh() {
     macroPanelRefreshTimer = null
 }
 
+internal fun showDocumentHistoryLocally(filename: String = "") {
+    val resolvedFilename = filename.ifBlank {
+        (window.asDynamic().currentDocumentFilename as? String)?.ifBlank { "default" } ?: "default"
+    }
+    val switchToHistory = window.asDynamic().switchToHistoryForFile
+    if (jsTypeOf(switchToHistory) == "function") {
+        switchToHistory(resolvedFilename)
+    }
+}
+
+/**
+ * History is a canvas-owned panel. In the split visionOS shell the command palette normally lives
+ * in the floating editor, so send an ephemeral intent to the paired canvas instead of opening an
+ * invisible/poorly placed iframe in the editor window. Desktop and unpaired clients stay local.
+ */
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun showDocumentHistory() {
+    val filename = (window.asDynamic().currentDocumentFilename as? String)?.ifBlank { "default" } ?: "default"
+    if (fieldDisplayMode == "editor-only" && sharedUiContext != null) {
+        send(Message("shared-ui-intent").payload(SharedUiIntent("show-document-history", filename)))
+    } else {
+        showDocumentHistoryLocally(filename)
+    }
+}
+
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun macroTranscriptPanel() {
@@ -2293,6 +2319,7 @@ fun registerBuiltinCommands() {
     w.macroTranscriptRunOnSelection = ::macroTranscriptRunOnSelection
     w.macroTranscriptUndoOnSelection = ::macroTranscriptUndoOnSelection
     w.macroTranscriptPanel = ::macroTranscriptPanel
+    w.showDocumentHistory = ::showDocumentHistory
     w.macroPaletteList = ::macroPaletteList
     w.macroPaletteRun = ::macroPaletteRun
 
@@ -2496,8 +2523,7 @@ fun registerBuiltinCommands() {
             detail:"Switch to the history view mode",
             canvasKeybinding: (event) => false,
             run: () => {
-                const filename = window.currentDocumentFilename || "default";
-                window.switchToHistoryForFile(filename);
+                showDocumentHistory()
             }
         },{
             id:'switch-to-monaco-editor',

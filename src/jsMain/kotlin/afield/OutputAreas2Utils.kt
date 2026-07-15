@@ -389,9 +389,19 @@ private fun renderProgressTurn(turn: ChatTurn): String {
     val lines = turn.content.lines()
     val title = lines.firstOrNull()?.trim()?.ifBlank { null } ?: "AI activity"
     val body = lines.drop(1).joinToString("\n").trim().ifBlank { turn.content }
-    val open = if (turn.role == "progress-open") " open" else ""
-    return "<details class=\"ai-chat-progress\"$open>" +
-        "<summary>${escapeHtml(title)}</summary>" +
+    val isEdit = title.contains("EditFile", ignoreCase = true) || title.contains("edit file", ignoreCase = true)
+    val file = Regex("""(?:"file"\s*:\s*"([^"]+)"|\bfile=([^\s,}]+))""")
+        .find(turn.content)
+        ?.groupValues
+        ?.drop(1)
+        ?.firstOrNull { it.isNotBlank() }
+        .orEmpty()
+    val open = if (turn.role == "progress-open" || isEdit) " open" else ""
+    val kind = if (isEdit) " data-kind=\"edit\"" else ""
+    val summaryTitle = if (isEdit) "Edit" else title
+    val fileHtml = if (file.isNotBlank()) "<span class=\"ai-chat-progress-file\">${escapeHtml(file)}</span>" else ""
+    return "<details class=\"ai-chat-progress\"$kind$open>" +
+        "<summary><span>${escapeHtml(summaryTitle)}</span>$fileHtml</summary>" +
         aiChatMarkdownToHtml(body) +
         "</details>"
 }

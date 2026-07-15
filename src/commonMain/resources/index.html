@@ -29,6 +29,7 @@
     <link rel="stylesheet" href="/iosevka.css">
     <link rel="stylesheet" href="/field.css">
     <link rel="stylesheet" href="/fieldSuggest.css">
+    <link rel="stylesheet" href="/controllerMobile.css">
     <script src="/interact.min.js"></script>
     <script src="/plotly-2.24.1.min.js"></script>
     <script src="/anime.iife.min.js"></script>
@@ -47,6 +48,8 @@
     const mode = on("editorOnly") ? "editor-only" : on("noeditor") ? "no-editor" : "normal";
     document.body.classList.add("mode-" + mode);
     if (on("transparent")) document.body.classList.add("mode-transparent");
+    if (on("controllerMobile")) document.body.classList.add("mode-controller-mobile");
+    if (on("controllerChat")) document.body.classList.add("mode-controller-chat");
     window.fieldDisplayMode = mode;
   })();
 </script>

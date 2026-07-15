@@ -108,7 +108,7 @@ This shell is the **receiver** end of that pipeline (see `RTT/` below).
 
 ## QoL additions (visionos-head-qol branch)
 
-Three improvements on top of the PoC:
+Four improvements on top of the PoC:
 
 - **Windowed RTT stream.** The stream screen was factored out of `ImmersiveStreamView` into a shared
   `RTT/RTTScreenContent.swift`, now hosted in BOTH the dimmed immersive theatre AND a new
@@ -119,6 +119,13 @@ Three improvements on top of the PoC:
 - **Editor placement.** The floating editor's `WindowGroup(for: URL.self)` placement moved from
   `.utilityPanel` (tilted) to `.automatic` (upright, forward, in front of the active window). Relative
   `.leading/.trailing(mainWindow)` is still avoided — it resolves off-display and fails to open.
+- **Canvas-owned panel routing.** The context formerly used only for shared selection now also
+  carries short-lived `shared-ui-intent` messages. Choosing **Show Document History** in the
+  floating editor's command palette opens the history overlay in its paired canvas WKWebView,
+  where box/history interaction belongs, rather than inside the editor panel. The `noeditor`
+  projection keeps Monaco/docs hidden but now permits the full-width history overlay. The
+  `visionos-shared-history-panel` browser regression drives two independent clients to protect the
+  handoff.
 - **First native viewer — `FLine/`.** A fully-3D RealityKit FLine viewer, the native equivalent of the
   three.js iframe. It speaks the SAME `__threejs__` protocol over `/ws` (`FLineViewerClient` sends one
   `subscribe-all` and receives every live view's `three/geometry` payload, keyed by uid). Strokes →
@@ -138,20 +145,18 @@ Three improvements on top of the PoC:
     mode use fan triangulation (convex-correct); whole-FLine tap targets use an AABB (coarse). All
     RealityKit interaction is **device-verify** (the sim is non-interactive for spatial input).
 
-## field4-repo dependencies (server must serve these)
+## Field host-side dependencies (server must serve these)
 
-These live in the **field4** working tree and are **currently UNCOMMITTED** there — they were
-edited alongside pre-existing WIP in the same files, so they were intentionally *not* committed
-from this shell repo. To run the shell with all features you need a Field server built from a
-tree containing:
+These now live alongside the shell in this Field4 repository. To run the shell with all features,
+the Field server build must include:
 
-- `rpc.kt` — `Hello.shaderSelectionContext`.
-- `Server.kt` — `selectionContextSessions` registry + `controller-selection` rebroadcast to
+- `rpc.kt` — `Hello.shaderSelectionContext` + the ephemeral `SharedUiIntent` payload.
+- `Server.kt` — `selectionContextSessions` registry + `controller-selection`/`shared-ui-intent` rebroadcast to
   context peers; join on `hello`, leave in the `/ws` finally; `injectInitialFramePreview` skips
   `editorOnly`; HTTPS connector binds `0.0.0.0`.
 - `Main.kt` — parse `editorOnly` / `noeditor` / `transparent` / `shaderSelectionContext`;
   `fieldDisplayMode` + body classes; inbound `controller-selection` handler → `applyRemoteSelection`
-  (echo-guarded); `shaderSelectionContext` passed in `Hello`.
+  (echo-guarded); canvas-side `shared-ui-intent` handling; `shaderSelectionContext` passed in `Hello`.
 - `BootstrapMonacoRuntime.kt` — the Monaco selection monitor gated on display mode
   (no-editor never shows / steals focus; editor-only stays visible with no selection).
 - `field.css` — `mode-editor-only` / `mode-no-editor` / `mode-transparent`; black box border +
@@ -160,9 +165,10 @@ tree containing:
 ### URL params understood by the front end
 
 - `?editorOnly` — Monaco fills the window, canvas hidden.
-- `?noeditor` — canvas only, editor/docs/history hidden.
+- `?noeditor` — canvas only; editor/docs hidden, canvas-owned overlays such as History remain available.
 - `?transparent` — glass field backdrop, opaque boxes/outputs (Monaco keeps its solid theme).
-- `?shaderSelectionContext=NAME` — join a shared-selection channel (bidirectional).
+- `?shaderSelectionContext=NAME` — join a shared UI context (selection + ephemeral panel intents,
+  bidirectional; the legacy parameter name is retained for compatibility).
 
 All are additive and orthogonal (e.g. `?noeditor&transparent&shaderSelectionContext=field:default`).
 
@@ -194,10 +200,10 @@ All are additive and orthogonal (e.g. `?noeditor&transparent&shaderSelectionCont
   ~half width, right-inset. `.utilityPanel` is the right primitive; it's draggable by its bar for
   free. Verify on device (sim placement is finicky).
 - **Command palette** — per-window is essentially free: each `WKWebView` has its own JS + keyboard
-  focus, so ⌘P / ⌘⇧P / double-tap-shift render their palette in whichever window has focus. The
-  **history panel is canvas-scoped** → broadcast a "show-history" **intent** over the shared context
-  (generalize `shaderSelectionContext` into a shared-UI-context carrying selection *and* intents).
-  Double-tap-⌘ to evict editor focus is native + minor → deferred.
+  focus, so ⌘P / ⌘⇧P / double-tap-shift render their palette in whichever window has focus.
+  ~~Route the canvas-scoped History panel over the shared context~~ **done** via
+  `shared-ui-intent`, including a two-client browser regression. Double-tap-⌘ to evict editor focus
+  is native + minor → deferred.
 - **RTT streaming — spine done, verified end-to-end, on both sender backends** (receiver in `RTT/`
   here; senders `FieldRTTStreamer` + `field-encode`/`field-encode-linux` one level up). Field
   renders into an RTT → HEVC → UDP → this receiver decodes and presents, correct colour, and

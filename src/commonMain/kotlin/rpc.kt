@@ -387,9 +387,10 @@ data class Hello(
     val username: String,
     val sessionKey: String? = null,
     val scratch: Boolean = false,
-    // Optional shared-selection channel: all sessions that pass the same non-blank context name
-    // receive each other's selection changes (server-mediated). Lets an editor-only dock and a
-    // canvas-only dock share one selection. See ?shaderSelectionContext / ?editorOnly / ?noeditor.
+    // Optional shared-UI channel: all sessions that pass the same non-blank context name receive
+    // each other's selection changes and ephemeral UI intents (server-mediated). Lets an
+    // editor-only dock and a canvas-only dock act as projections of one workspace. The field name
+    // predates UI intents and is retained for compatibility.
     val shaderSelectionContext: String? = null
 )
 
@@ -1136,6 +1137,17 @@ data class FileUploadEntry(val name: String, val size: Long, val type: String, v
 data class ControllerSelectionState(
     val selectedUids: List<String> = emptyList(),
     val property: String = "code"
+)
+
+/**
+ * A short-lived UI request shared between projections of the same document. Unlike document
+ * state, these requests are deliberately not persisted: an editor-only dock can ask its paired
+ * canvas dock to open a canvas-owned panel without either WKWebView knowing about the other.
+ */
+@Serializable
+data class SharedUiIntent(
+    val action: String,
+    val filename: String = ""
 )
 
 @Serializable
