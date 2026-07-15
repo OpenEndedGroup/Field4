@@ -2,7 +2,6 @@
 
 package afield
 
-import org.joml.translate
 import afield.ai.Ai4CompletionDoc
 import afield.ai.core.AI4_AUTO_NAME_PROPERTY
 import afield.ai.core.AI4_AUTO_NAME_SIGNATURE_PROPERTY
@@ -1701,8 +1700,6 @@ class Server {
             Options.doVulkanSDK()
 
             lprintln("info,server", "app directory is $app")
-            System.setProperty("joml.format", "false")
-
             initializeClassCache()
             applyFieldPreferences(currentFieldPreferences())
 

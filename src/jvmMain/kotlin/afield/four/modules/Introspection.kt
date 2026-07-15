@@ -224,14 +224,14 @@ enum class PrimitiveType(
         16,
         4,
         -1,
-        "org.joml.Matrix4f",
+        "afield.stdlib.linalg.Matrix4f",
         "mat(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)",
         "x.get(buffer); buffer.position(buffer.position()+16*4)"
     ),
     mat3(
-        9, 4, -1, "org.joml.Matrix3f", "mat(0,0,0,0,0,0,0,0,0)", "x.get(buffer); buffer.position(buffer.position()+9*4)"
+        9, 4, -1, "afield.stdlib.linalg.Matrix3f", "mat(0,0,0,0,0,0,0,0,0)", "x.get(buffer); buffer.position(buffer.position()+9*4)"
     ),
-    mat2(4, 4, -1, "org.joml.Matrix2f", "mat(0,0,0,0)", "x.get(buffer); buffer.position(buffer.position()+2*4)"),
+    mat2(4, 4, -1, "afield.stdlib.linalg.Matrix2f", "mat(0,0,0,0)", "x.get(buffer); buffer.position(buffer.position()+2*4)"),
 
     float16_t(
         1, 2, VK10.VK_FORMAT_R16_SFLOAT,

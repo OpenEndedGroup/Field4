@@ -63,7 +63,7 @@ Created comprehensive documentation covering:
 5. **Signature Generation**: Creates a typed property declaration using Kotlin reflection
    - Format: `val functionName: (ParamType1, ParamType2) -> ReturnType /**/`
 6. **Type Simplification**: Types are checked against whitelist; non-whitelisted types simplified
-   - Whitelisted: `kotlin.*`, `afield.*`, `org.joml.*`, built-in types
+   - Whitelisted: `kotlin.*`, `afield.*`, `afield.stdlib.linalg.*`, built-in types
    - Others: Simplified to generic supertypes (List<*>, Any?, etc.)
 7. **Preamble Update**: Adds the declaration with inherit marker to Box.preamble
 8. **Duplicate Prevention**: 

@@ -11,11 +11,11 @@ import io.ktor.websocket.Frame
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import org.joml.Vector2dc
+import afield.stdlib.linalg.Vector2dc
 import afield.stdlib.linalg.Vector2fc
-import org.joml.Vector3dc
+import afield.stdlib.linalg.Vector3dc
 import afield.stdlib.linalg.Vector3fc
-import org.joml.Vector4dc
+import afield.stdlib.linalg.Vector4dc
 import afield.stdlib.linalg.Vector4fc
 import java.nio.FloatBuffer
 import java.nio.IntBuffer

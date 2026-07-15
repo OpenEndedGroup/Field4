@@ -1,7 +1,5 @@
 package afield.examples.four
 
-import org.joml.setTranslation
-import org.joml.rotate
 import afield.four.Renderer
 import afield.four.modules.Mesh
 import afield.four.modules.Module
@@ -15,7 +13,7 @@ import afield.four.util.Projection
 import afield.four.util.Window
 import afield.four.util.forever
 import afield.stdlib.fromViews
-import org.joml.Matrix4f
+import afield.stdlib.linalg.Matrix4f
 import afield.stdlib.linalg.Vector3f
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R8G8B8A8_SRGB
 import java.io.File

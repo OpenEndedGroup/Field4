@@ -794,7 +794,6 @@ private fun requiredAgentJvmArgs(): List<String> {
         add("-Xlog:gc*,safepoint:file=build/gc-safepoint.log:time,uptime,level,tags")
         if (!onWindowsOrLinux) {
             add("-XstartOnFirstThread")
-            add("-Djoml.format=false")
             add("-Dorg.lwjgl.util.Debug=true")
             add("-Dorg.lwjgl.util.DebugLoader=true")
         }

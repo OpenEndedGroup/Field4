@@ -1,13 +1,10 @@
 package afield.graphics
 
-import org.joml.scale
-import org.joml.transform
-import org.joml.rotationToField
 import afield.stdlib.*
 import field.graphics.FLinesAndJavaShapes
 import field.graphics.FLinesAndJavaShapes.CubicSegment3
-import org.joml.Quaternionf
-import org.joml.plus
+import afield.stdlib.linalg.Quaternionf
+import afield.stdlib.linalg.plus
 import smile.data.DataFrame
 import smile.data.formula.Formula
 import smile.regression.OLS

@@ -56,7 +56,7 @@ The system automatically simplifies types to ensure they work across boxes:
 **Whitelisted types** (preserved as-is):
 - Kotlin standard types: `kotlin.*` (Int, String, List, etc.)
 - Field4 types: `afield.*` (Box, Vec2, Vec3, Vec4, Quat, etc.)
-- JOML types: `org.joml.*` (Vector3f, Matrix4f, etc.)
+- JOML types: `afield.stdlib.linalg.*` (Vector3f, Matrix4f, etc.)
 - Built-in types: Int, Long, Float, Double, Boolean, String, etc.
 
 **Non-whitelisted types** are simplified to generic supertypes:
@@ -101,7 +101,7 @@ fun findFirst(items: List<Int>, predicate: (Int) -> Boolean): Int? {
 - **Annotation**: Defined in `KotlinInterface.kt` with `@Target(AnnotationTarget.FUNCTION)` and `@Retention(AnnotationRetention.RUNTIME)`
 - **Detection**: Occurs in `ContextUpdater.refreshMethods()` after script evaluation
 - **Signature Format**: Generated as `val functionName: (ParamType1, ParamType2) -> ReturnType /**/`
-- **Type Whitelisting**: Types from `kotlin.*`, `afield.*`, `org.joml.*` and built-in types are preserved; others are simplified
+- **Type Whitelisting**: Types from `kotlin.*`, `afield.*`, `afield.stdlib.linalg.*` and built-in types are preserved; others are simplified
 - **Inherit Marker**: The `/**/` suffix ensures declarations are inherited by child boxes
 - **Storage**: Added to `Box.preamble` using the `HasProperties` interface
 

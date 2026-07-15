@@ -1,7 +1,5 @@
 package field.graphics
 
-import org.joml.rotateTo
-import org.joml.transform
 import afield.Rect
 import afield.graphics.FLine
 import afield.graphics.PathFlattener
@@ -12,10 +10,10 @@ import org.apache.commons.math4.legacy.optim.univariate.BrentOptimizer
 import org.apache.commons.math4.legacy.optim.univariate.SearchInterval
 import org.apache.commons.math4.legacy.optim.univariate.UnivariateObjectiveFunction
 import org.apache.commons.math4.legacy.optim.univariate.UnivariatePointValuePair
-import org.joml.Vector4d
-import org.joml.minus
-import org.joml.plus
-import org.joml.times
+import afield.stdlib.linalg.Vector4d
+import afield.stdlib.linalg.minus
+import afield.stdlib.linalg.plus
+import afield.stdlib.linalg.times
 import java.awt.BasicStroke
 import java.awt.Shape
 import java.awt.geom.*

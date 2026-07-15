@@ -1,6 +1,6 @@
 package afield.four.fabricated
 
-import org.joml.Matrix4f
+import afield.stdlib.linalg.Matrix4f
 import afield.stdlib.linalg.Vector3f
 
 data class FabricateRenderItem(

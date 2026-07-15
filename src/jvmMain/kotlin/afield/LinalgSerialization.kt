@@ -14,8 +14,8 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.contextual
-import org.joml.DualQuaternionf
-import org.joml.Quaternionf
+import afield.stdlib.linalg.DualQuaternionf
+import afield.stdlib.linalg.Quaternionf
 import afield.stdlib.linalg.Vector2f
 import afield.stdlib.linalg.Vector3f
 import afield.stdlib.linalg.Vector4f

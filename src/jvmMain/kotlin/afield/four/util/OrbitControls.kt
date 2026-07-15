@@ -1,11 +1,9 @@
 package afield.four.util
 
-import org.joml.rotateTo
-import org.joml.transform
 import afield.Box
 import afield.four.Renderer
 import afield.four.modules.fromContext
-import org.joml.Quaternionf
+import afield.stdlib.linalg.Quaternionf
 import afield.stdlib.linalg.Vector3f
 import org.lwjgl.glfw.GLFW
 import kotlin.math.*

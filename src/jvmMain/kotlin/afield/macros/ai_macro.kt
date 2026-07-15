@@ -132,7 +132,7 @@ Rules:
 - The function name will be provided (it will start with double underscores, e.g. __foo).
 - Match the exact parameter types and return type specified.
 - The function body should fulfill the natural-language description as faithfully as possible.
-- You may use standard Kotlin stdlib, JOML (org.joml.*), and Field4 types (FLine, Vec3, etc.) that are available in context.
+- You may use standard Kotlin stdlib and Field4 types (`Vector3f`, `Matrix4f`, `FLine`, `Vec3`, etc.) that are available in context.
 - If other functions or declarations are provided as context, you may call them.
 - Keep the implementation concise and correct.
                 """.trimIndent()

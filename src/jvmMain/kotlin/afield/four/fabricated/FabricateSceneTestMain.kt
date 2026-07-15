@@ -1,7 +1,7 @@
 package afield.four.fabricated
 
 import afield.four.modules.GltfSupport
-import org.joml.Quaternionf
+import afield.stdlib.linalg.Quaternionf
 import afield.stdlib.linalg.Vector3f
 import afield.stdlib.linalg.Vector4f
 

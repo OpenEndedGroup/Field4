@@ -7,7 +7,6 @@ import afield.graphics.FLine
 import afield.stdlib.Quat
 import afield.stdlib.Vec3
 import afield.stdlib.vec
-import org.joml.transform
 import com.github.stephengold.joltjni.BodyCreationSettings
 import com.github.stephengold.joltjni.BodyInterface
 import com.github.stephengold.joltjni.BroadPhaseLayerInterfaceTable

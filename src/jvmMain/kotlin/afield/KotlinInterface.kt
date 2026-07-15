@@ -940,7 +940,6 @@ class KotlinInterface(
             val whitelistedPrefixes = setOf(
                 "kotlin.",
                 "afield.",
-                "org.joml.",
                 // Common Kotlin types
                 "Int", "Long", "Short", "Byte",
                 "Float", "Double",

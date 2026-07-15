@@ -5,7 +5,7 @@ import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
-import org.joml.Quaternionf
+import afield.stdlib.linalg.Quaternionf
 import afield.stdlib.linalg.Vector2f
 import afield.stdlib.linalg.Vector3f
 import afield.stdlib.linalg.Vector4f
@@ -13,17 +13,17 @@ import kotlin.math.abs
 
 /*
 FIELD_TEST
-id: examples.joml-serialization.smoke
+id: examples.linalg-serialization.smoke
 runner: jvm-main
-entrypoint: afield.examples.JomlSerializationSmokeTest
-tags: [smoke, examples, serialization, joml, json]
+entrypoint: afield.examples.LinalgSerializationSmokeTest
+tags: [smoke, examples, serialization, linalg, json]
 timeoutSec: 20
 expect:
   exitCode: 0
   stdoutContains:
-    - "JOML serialization smoke tests passed"
+    - "Linalg serialization smoke tests passed"
 */
-object JomlSerializationSmokeTest {
+object LinalgSerializationSmokeTest {
 
     @Serializable
     private data class Pose(
@@ -35,13 +35,13 @@ object JomlSerializationSmokeTest {
 
     @JvmStatic
     fun main(args: Array<String>) {
-        check(runTests()) { "JOML serialization smoke tests failed" }
+        check(runTests()) { "Linalg serialization smoke tests failed" }
     }
 
     fun runTests(): Boolean {
         return try {
             testRoundTrip()
-            println("JOML serialization smoke tests passed")
+            println("Linalg serialization smoke tests passed")
             true
         } catch (t: Throwable) {
             t.printStackTrace()

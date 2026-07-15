@@ -1,8 +1,5 @@
 package afield.four.util
 
-import org.joml.translate
-import org.joml.fromAxisAngleRad
-import org.joml.transform
 import afield.four.Renderer
 import afield.four.buffers.HasUniform
 import afield.four.modules.fromContext
@@ -11,8 +8,8 @@ import afield.stdlib.f
 import afield.stdlib.set
 import afield.stdlib.vec
 import afield.stdlib.x
-import org.joml.Matrix4f
-import org.joml.Quaternionf
+import afield.stdlib.linalg.Matrix4f
+import afield.stdlib.linalg.Quaternionf
 import afield.stdlib.linalg.Vector3f
 import kotlin.math.abs
 

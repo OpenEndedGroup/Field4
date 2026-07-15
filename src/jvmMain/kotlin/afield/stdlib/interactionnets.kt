@@ -8,8 +8,8 @@ import afield.Rect
 import afield.graphics.FLine
 import afield.graphics.drawToSVG
 import afield.graphics.lines
-import org.joml.minus
-import org.joml.plus
+import afield.stdlib.linalg.minus
+import afield.stdlib.linalg.plus
 import java.util.*
 import kotlin.math.PI
 import kotlin.math.atan2

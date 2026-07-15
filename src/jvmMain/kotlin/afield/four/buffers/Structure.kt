@@ -13,7 +13,7 @@ import afield.four.util.Vec8h
 import afield.four.util.packHalf1x16
 import afield.four.util.packHalf2x16
 import afield.stdlib.NeedsStartingValue
-import org.joml.*
+import afield.stdlib.linalg.*
 import java.nio.ByteBuffer
 import java.nio.FloatBuffer
 import java.nio.IntBuffer
