@@ -1,0 +1,54 @@
+# Waveshaper family, now evolvable — a loadable demo of rectify / quantize / crush
+# as FIRST-CLASS graph-rewrite ops.
+#
+# These three were opaque `mapY` lambdas the graph-rewrite/evolve/transmutation
+# system could not reach. They are now rebuildable `node(...)` graph ops with
+# OpRegistry OpSpecs (category `transform`), exactly like clip/fold/chebyshev — so
+# `op=` transmutation and the evolve loop can swap them in as distinct ops.
+#
+# Open a FRESH Field4 document and replay this transcript to experience it:
+#
+#   uv run --project . --group backdoor python tools/field_backdoor.py --json --scratch \
+#     --graphics-context --with-playwright \
+#     --command 'macro write waveshaper-family-evolvable --file public/docs/assets/functions/waveshaper-family-evolvable.operations.yaml' \
+#     --command 'macro run waveshaper-family-evolvable'
+#
+# or, with Field running and a document attached, hand the YAML below to the
+# `field_run_transcript` MCP tool.
+operations:
+  - create:
+      box: waveshaper-family-evolvable
+      name: waveshaper-family-evolvable
+      frame: { x: 40.0, y: 40.0, w: 620.0, h: 1180.0 }
+      properties:
+        code: |
+          // rectify / quantize / crush — the last three waveshapers, now first-class.
+          // Top block: each op shaping a two-cycle sine (the family's transfer effect).
+          // Bottom block: the payoff — one base signal TRANSMUTED into each op purely
+          // by name through the rewrite DSL (`op=`), which is the same vocabulary the
+          // evolve loop mutates over. If these plots differ, the ops are reachable.
+          import afield.stdlib.Functions
+
+          with(Functions) {
+              val drive = sin(2.0) over (0.0..1.0)   // two cycles, values in [-1, 1]
+
+              drive.withName("drive: sin, two cycles").plot(channel = "drive", title = "drive: sin (two cycles)", heightPx = 150)
+              (drive / rectify(Functions.RectifyMode.FULL)).plot(channel = "rectFull", title = "rectify(FULL) — |x|, negatives flip up", heightPx = 150)
+              (drive / rectify(Functions.RectifyMode.HALF)).plot(channel = "rectHalf", title = "rectify(HALF) — negatives clamp to 0", heightPx = 150)
+              (drive / quantize(6)).plot(channel = "quantize", title = "quantize(6) — 6-level staircase", heightPx = 150)
+              (drive / crush(3)).plot(channel = "crush", title = "crush(3) — 3-bit reduction", heightPx = 150)
+
+              // The payoff: start from a plain clipped sine and TRANSMUTE its `clip`
+              // node into each new op by name — proving they are reachable by `op=`
+              // (and therefore by the evolve/graph-rewrite loop that mutates op names).
+              val base = (sin(2.0).clip(0.9)) over (0.0..1.0)
+              base.rewrite("clip => op=rectify").withName("clip => op=rectify")
+                  .plot(channel = "xRect", title = "transmute: clip => op=rectify", heightPx = 150)
+              base.rewrite("clip => op=quantize").withName("clip => op=quantize")
+                  .plot(channel = "xQuant", title = "transmute: clip => op=quantize", heightPx = 150)
+              base.rewrite("clip => op=crush").withName("clip => op=crush")
+                  .plot(channel = "xCrush", title = "transmute: clip => op=crush", heightPx = 150)
+          }
+  - launch:
+      box: waveshaper-family-evolvable
+      property: code
