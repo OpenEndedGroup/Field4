@@ -291,6 +291,35 @@ data class CompletionResolveRequest(
 @Serializable
 data class CompletionResolveResult(val documentation: String)
 
+/**
+ * Request to render a "source card" for a symbol the user clicked inside the
+ * documentation panel (a KDoc `[Symbol]` link or the source-location line).
+ * Either [symbol] or [path]+[line] identify the target; the backend resolves
+ * whichever it can.
+ */
+@Serializable
+data class SourceCardRequest(
+    val symbol: String = "",
+    val path: String = "",
+    val line: Int = -1
+)
+
+/**
+ * A resolved documentation card, shaped like a completion item's documentation
+ * so the same panel renderer can display it. [documentation] is markdown with
+ * `[Symbol]` cross-references already linkified, so navigation is recursive.
+ */
+@Serializable
+data class SourceCardResult(
+    val found: Boolean = false,
+    val title: String = "",
+    val documentation: String = "",
+    val category: String = "",
+    val sourceName: String = "",
+    val sourcePath: String = "",
+    val sourceLine: Int = -1
+)
+
 @Serializable
 data class SymbolContextRequest(
     val uid: String,

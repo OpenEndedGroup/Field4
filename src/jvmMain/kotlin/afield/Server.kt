@@ -2368,9 +2368,25 @@ class Server {
                             documentationSourceLine = exec.documentationSourceLine
                         )
                     }.getOrElse { "" }
-                    reply(Message("resolve-completion").payload(CompletionResolveResult(doc)))
+                    val linked = runCatching { KotlinCompletionSupport.linkifyKDocSymbols(doc) }.getOrDefault(doc)
+                    reply(Message("resolve-completion").payload(CompletionResolveResult(linked)))
                 }
 
+                Handled.yes
+            })
+
+            handlers["resolve-source"] = mutableSetOf({ message, reply ->
+                val req = Json.decodeFromJsonElement<SourceCardRequest>(message.payload!!)
+                GlobalScope.launch(Dispatchers.IO) {
+                    val card = runCatching {
+                        KotlinCompletionSupport.resolveSourceCard(
+                            symbol = req.symbol.ifBlank { null },
+                            path = req.path.ifBlank { null },
+                            line = req.line
+                        )
+                    }.getOrElse { SourceCardResult() }
+                    reply(Message("resolve-source").payload(card))
+                }
                 Handled.yes
             })
 

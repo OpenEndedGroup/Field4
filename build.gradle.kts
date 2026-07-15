@@ -934,6 +934,17 @@ tasks.register<JavaExec>("runTrackingResonatorResynthesisExample") {
     jvmArgs("--add-modules", "jdk.incubator.vector")
 }
 
+tasks.register<JavaExec>("runDocsPanelCodeLinksSmokeTest") {
+    group = "verification"
+    description = "Exercises the documentation-panel code-link backend (KDoc linkification + source-card resolution) against the real Kotlin source index."
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
+    })
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.examples.DocsPanelCodeLinksSmokeTest")
+    jvmArgs("--add-modules", "jdk.incubator.vector")
+}
+
 tasks.register<JavaExec>("runEvolveWorkedExample") {
     group = "application"
     description = "CPU-only worked example of the Functions evolve harness: writes an SVG overlay + trace under public/docs/assets/evolve/."

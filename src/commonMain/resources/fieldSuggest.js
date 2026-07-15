@@ -763,6 +763,30 @@ const renderSyntaxLabel = (label, query) => {
     .join("");
 };
 
+const FIELD_SOURCE_SCHEME = "field-source:";
+
+const sourceCardHref = (name, path, line) => {
+  const params = new URLSearchParams();
+  if (path) params.set("path", path);
+  if (line > 0) params.set("line", String(line));
+  if (name) params.set("name", name);
+  return `${FIELD_SOURCE_SCHEME}?${params.toString()}`;
+};
+
+// Render the "source <name>:<line>" footer. When the target is a project source
+// location (not a classpath jar) it becomes a field-source: link so the reader can
+// open it as a card; otherwise it stays plain text (no dead links).
+const renderSourceRef = (display, lineSuffix, name, path, line) => {
+  const label = `${escapeHtml(display)}${escapeHtml(lineSuffix)}`;
+  if (path && !path.startsWith("jar:") && line > 0) {
+    return (
+      `<a class="afield-suggest-source-link" href="${escapeHtml(sourceCardHref(name, path, line))}">` +
+      `<code>${label}</code></a>`
+    );
+  }
+  return `<code>${label}</code>`;
+};
+
 const renderDocumentation = (item) => {
   const chunks = [];
   const hasRuntimeDocumentation =
@@ -796,7 +820,13 @@ const renderDocumentation = (item) => {
     chunks.push(
       `<div class="afield-suggest-doc-source">` +
         `<span>source</span>` +
-        `<code>${escapeHtml(sourceName || sourcePath)}${escapeHtml(line)}</code>` +
+        renderSourceRef(
+          sourceName || sourcePath,
+          line,
+          sourceName,
+          sourcePath,
+          item.documentationSourceLine,
+        ) +
         `</div>`,
     );
   }
@@ -819,7 +849,13 @@ const renderDocumentation = (item) => {
       receiverChunks.push(
         `<div class="afield-suggest-doc-source">` +
           `<span>type source</span>` +
-          `<code>${escapeHtml(receiverSourceName || receiverSourcePath)}${escapeHtml(line)}</code>` +
+          renderSourceRef(
+            receiverSourceName || receiverSourcePath,
+            line,
+            receiverSourceName,
+            receiverSourcePath,
+            item.receiverDocumentationSourceLine,
+          ) +
           `</div>`,
       );
     }
@@ -835,6 +871,17 @@ const renderDocumentation = (item) => {
   }
   return chunks.join("");
 };
+
+// A navigated card is shaped like a completion item so the same renderer applies.
+// Its category header + `[Symbol]` links are already baked into `documentation` by
+// the backend, so navigation recurses without any extra client logic.
+const renderNavCard = (card) =>
+  renderDocumentation({
+    documentation: card.documentation || "",
+    documentationSourceName: card.sourceName || "",
+    documentationSourcePath: card.sourcePath || "",
+    documentationSourceLine: card.sourceLine || -1,
+  });
 
 const prepareRuntimeDocumentation = (root) => {
   if (!root) return;
@@ -875,6 +922,8 @@ class FieldSuggestController {
     this.refreshTimer = null;
     this.lastQuery = "";
     this.openPosition = null;
+    this.navStack = [];
+    this.navIndex = -1;
     this.suppressOpenUntil = 0;
     this.root = this.createRoot();
     this.install();
@@ -902,9 +951,22 @@ class FieldSuggestController {
     });
     const doc = root.querySelector(".afield-suggest-doc");
     doc.addEventListener("click", (event) => {
+      const navButton = event.target.closest("[data-nav]");
+      if (navButton) {
+        event.preventDefault();
+        const dir = navButton.getAttribute("data-nav");
+        if (dir === "back") this.navBack();
+        else if (dir === "forward") this.navForward();
+        return;
+      }
       const link = event.target.closest("a");
       if (!link) return;
       const href = link.getAttribute("href") || "";
+      if (href.startsWith(FIELD_SOURCE_SCHEME)) {
+        event.preventDefault();
+        this.navigateToSource(href, link.textContent || "");
+        return;
+      }
       if (/^https?:\/\//.test(href)) {
         link.setAttribute("target", "_blank");
         link.setAttribute("rel", "noopener noreferrer");
@@ -1245,16 +1307,99 @@ class FieldSuggestController {
   }
 
   renderDoc() {
-    const item = this.items[this.activeIndex];
     const doc = this.root.querySelector(".afield-suggest-doc");
+    // Navigated into a source card: render it (recursively linkified) plus the
+    // floating back/forward control, and stop — no completion lazy-resolve here.
+    if (this.navIndex >= 0 && this.navStack[this.navIndex]) {
+      doc.innerHTML = renderNavCard(this.navStack[this.navIndex]) + this.renderNavControl();
+      highlightCodeBlocks(doc);
+      doc.scrollTop = 0;
+      return;
+    }
+    const item = this.items[this.activeIndex];
     if (!item) {
       doc.innerHTML = `<div class="afield-suggest-doc-empty">No documentation available</div>`;
       return;
     }
-    doc.innerHTML = renderDocumentation(item);
+    doc.innerHTML = renderDocumentation(item) + this.renderNavControl();
     prepareRuntimeDocumentation(doc);
     highlightCodeBlocks(doc);
     this.resolveDocumentation(item);
+  }
+
+  baseNavTitle() {
+    const item = this.items[this.activeIndex];
+    if (!item) return "";
+    return String(item.text || item.insertText || item.displayText || item.label || "")
+      .split("(")[0]
+      .trim();
+  }
+
+  renderNavControl() {
+    if (this.navStack.length === 0) return "";
+    const canBack = this.navIndex >= 0;
+    const canForward = this.navIndex < this.navStack.length - 1;
+    const trail = [this.baseNavTitle()]
+      .concat(this.navStack.slice(0, this.navIndex + 1).map((card) => card.title))
+      .filter(Boolean)
+      .map((crumb) => escapeHtml(crumb));
+    return (
+      `<div class="afield-suggest-nav" role="navigation">` +
+      `<button type="button" class="afield-suggest-nav-btn" data-nav="back"` +
+      `${canBack ? "" : " disabled"} title="Back" aria-label="Back">‹</button>` +
+      `<button type="button" class="afield-suggest-nav-btn" data-nav="forward"` +
+      `${canForward ? "" : " disabled"} title="Forward" aria-label="Forward">›</button>` +
+      `<span class="afield-suggest-nav-crumbs">${trail.join(" › ")}</span>` +
+      `</div>`
+    );
+  }
+
+  navigateToSource(href, label) {
+    let params;
+    try {
+      params = new URLSearchParams(
+        href.slice(FIELD_SOURCE_SCHEME.length).replace(/^\?/, ""),
+      );
+    } catch (_) {
+      return;
+    }
+    const payload = {
+      symbol: params.get("name") || label || "",
+      path: params.get("path") || "",
+      line: Number(params.get("line") || -1),
+    };
+    requestWithReply("resolve-source", payload, "resolve-source").then((res) => {
+      if (!res || !res.found) return;
+      // Drop any forward history, then push the new card and show it.
+      this.navStack = this.navStack.slice(0, this.navIndex + 1);
+      this.navStack.push({
+        title: res.title || payload.symbol || label,
+        documentation: res.documentation || "",
+        category: res.category || "",
+        sourceName: res.sourceName || "",
+        sourcePath: res.sourcePath || "",
+        sourceLine: res.sourceLine || -1,
+      });
+      this.navIndex = this.navStack.length - 1;
+      this.renderDoc();
+    });
+  }
+
+  navBack() {
+    if (this.navIndex < 0) return;
+    this.navIndex -= 1;
+    this.renderDoc();
+  }
+
+  navForward() {
+    if (this.navIndex >= this.navStack.length - 1) return;
+    this.navIndex += 1;
+    this.renderDoc();
+  }
+
+  resetNav() {
+    this.navStack = [];
+    this.navIndex = -1;
   }
 
   resolveDocumentation(item) {
@@ -1304,7 +1449,10 @@ class FieldSuggestController {
 
   setActive(index) {
     if (this.items.length === 0) return;
-    this.activeIndex = Math.max(0, Math.min(this.items.length - 1, index));
+    const clamped = Math.max(0, Math.min(this.items.length - 1, index));
+    // Switching to a different completion resets any in-progress source browse.
+    if (clamped !== this.activeIndex) this.resetNav();
+    this.activeIndex = clamped;
     this.renderList();
     this.renderDoc();
   }
@@ -1483,6 +1631,7 @@ class FieldSuggestController {
     this.baseItemsLoaded = false;
     this.aiItemsLoaded = false;
     this.activeIndex = -1;
+    this.resetNav();
   }
 }
 

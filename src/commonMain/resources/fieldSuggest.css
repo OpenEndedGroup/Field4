@@ -242,6 +242,61 @@
     color: var(--field-fg-soft);
 }
 
+.afield-suggest-source-link {
+    min-width: 0;
+    text-decoration: none;
+}
+
+.afield-suggest-source-link code {
+    color: var(--field-accent-link);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
+/* Floating back/forward + breadcrumb for source-card navigation. */
+.afield-suggest-nav {
+    position: sticky;
+    bottom: 6px;
+    margin-left: auto;
+    margin-top: 12px;
+    width: fit-content;
+    max-width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 7px;
+    border: 1px solid var(--field-border-soft);
+    border-radius: 4px;
+    background: rgb(var(--field-black-rgb));
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    font-size: 10px;
+    color: var(--field-fg-dim);
+}
+
+.afield-suggest-nav-btn {
+    border: 0;
+    background: transparent;
+    color: var(--field-fg-soft);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 1px 4px;
+}
+
+.afield-suggest-nav-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.afield-suggest-nav-crumbs {
+    min-width: 0;
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .afield-suggest-receiver-doc {
     margin-top: 12px;
     padding-top: 10px;

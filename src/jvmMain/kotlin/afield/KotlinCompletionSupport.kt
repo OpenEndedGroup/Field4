@@ -7,6 +7,7 @@ import org.jetbrains.kotlin.com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.com.intellij.psi.PsiFileFactory
 import org.jetbrains.kotlin.psi.KtCallExpression
 import java.net.URI
+import java.net.URLEncoder
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -276,11 +277,13 @@ internal object KotlinCompletionSupport {
                 requireReceiverOwnerMatch = requireReceiverOwnerMatch
             ) ?: return metadata.withReceiverDocumentation(receiverDocumentation)
             return metadata.copy(
-                documentation = if (target.hasDocumentation) {
-                    metadata.documentation
-                } else {
-                    leadingFallbackSignature(metadata.documentation)
-                },
+                documentation = linkifyKDocSymbols(
+                    if (target.hasDocumentation) {
+                        metadata.documentation
+                    } else {
+                        leadingFallbackSignature(metadata.documentation)
+                    }
+                ),
                 generateDocumentation = !target.hasDocumentation,
                 documentationSourceName = target.sourceName,
                 documentationSourcePath = target.sourceFile,
@@ -297,7 +300,7 @@ internal object KotlinCompletionSupport {
             )
             return metadata.copy(
                 displayText = info.label(),
-                documentation = documentation,
+                documentation = linkifyKDocSymbols(documentation),
                 generateDocumentation = info.classDocumentation.isNullOrBlank() && info.sourceFile != null,
                 documentationSourceName = info.fqName.orEmpty(),
                 documentationSourcePath = info.sourceFile.orEmpty(),
@@ -325,7 +328,7 @@ internal object KotlinCompletionSupport {
         return metadata.copy(
             displayText = callableInfo.label(),
             tail = callableInfo.returnType?.takeIf { it.isNotBlank() }?.let { ": ${shortenType(it)}" } ?: metadata.tail,
-            documentation = callableInfo.documentationMarkdown(),
+            documentation = linkifyKDocSymbols(callableInfo.documentationMarkdown()),
             generateDocumentation = !hasSourceDocumentation && !callableInfo.sourceFile.isNullOrBlank(),
             documentationSourceName = callableInfo.sourceName.orEmpty(),
             documentationSourcePath = callableInfo.sourceFile.orEmpty(),
@@ -1501,6 +1504,187 @@ internal object KotlinCompletionSupport {
             body = body.joinToString("\n").trim().ifBlank { null },
             parameterDocs = parameterDocs.mapValues { it.value.toString().trim() }
         )
+    }
+
+    // ---- Source-card navigation (documentation-panel code links) -----------
+
+    @Volatile
+    private var cardIndexRef: afield.ai.KotlinSourceIndexDb? = null
+
+    @Volatile
+    private var cardSimpleNameLookup: Map<String, List<afield.ai.KotlinDefinitionRecord>> = emptyMap()
+
+    private fun simpleNameLookup(): Map<String, List<afield.ai.KotlinDefinitionRecord>> {
+        val index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex() ?: return emptyMap()
+        if (cardIndexRef !== index) {
+            cardSimpleNameLookup = index.definitions.groupBy { it.name.substringAfterLast('.') }
+            cardIndexRef = index
+        }
+        return cardSimpleNameLookup
+    }
+
+    private fun cardKindRank(kind: String): Int = when (kind) {
+        "typealias" -> 5
+        "class", "object", "interface" -> 4
+        "fun" -> 3
+        "val", "var" -> 2
+        else -> 1
+    }
+
+    private val cardCandidateComparator =
+        compareByDescending<afield.ai.KotlinDefinitionRecord> { cardKindRank(it.kind) }
+            .thenByDescending { it.name.startsWith("afield.stdlib.") }
+            .thenBy { it.filePath }
+            .thenBy { it.line }
+
+    private fun bestDefinitionForSimpleName(simpleName: String): afield.ai.KotlinDefinitionRecord? {
+        if (simpleName.isBlank()) return null
+        return simpleNameLookup()[simpleName]?.minWithOrNull(cardCandidateComparator)
+    }
+
+    /**
+     * Resolve a KDoc `[Symbol]` simple name to a project source location, or null if
+     * it isn't a known project declaration. Increment 1 covers the project index +
+     * typealiases only, so classpath-only types (e.g. `kotlin.Float`) stay plain text
+     * rather than becoming dead links.
+     */
+    private fun resolveSymbolLocation(simpleName: String): IndexedDocumentationTarget? {
+        val d = bestDefinitionForSimpleName(simpleName) ?: return null
+        return IndexedDocumentationTarget(
+            sourceName = d.name,
+            sourceFile = d.filePath,
+            sourceLine = d.line,
+            hasDocumentation = !d.kdoc.isNullOrBlank()
+        )
+    }
+
+    private val kdocLinkRegex = Regex("""\[([A-Za-z_][A-Za-z0-9_.]*)]""")
+
+    private fun sourceCardHref(name: String, path: String, line: Int): String {
+        fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
+        return "field-source:?path=${enc(path)}&line=$line&name=${enc(name)}"
+    }
+
+    /**
+     * Rewrite bare KDoc `[Symbol]` cross-references into markdown links with a
+     * `field-source:` href, but only when the symbol resolves to a known source
+     * location. Existing `[label](url)` links and anything inside fenced code blocks
+     * are left untouched.
+     */
+    internal fun linkifyKDocSymbols(markdown: String): String {
+        if (markdown.isEmpty() || !markdown.contains('[')) return markdown
+        val parts = markdown.split("```")
+        val sb = StringBuilder(markdown.length + 64)
+        parts.forEachIndexed { index, part ->
+            if (index > 0) sb.append("```")
+            // Even segments are outside code fences; odd segments are code.
+            if (index % 2 == 0) sb.append(linkifyKDocSegment(part)) else sb.append(part)
+        }
+        return sb.toString()
+    }
+
+    private fun linkifyKDocSegment(text: String): String {
+        if (!text.contains('[')) return text
+        return kdocLinkRegex.replace(text) { match ->
+            // Skip the label of an existing [label](url) link.
+            if (text.getOrNull(match.range.last + 1) == '(') return@replace match.value
+            val label = match.groupValues[1]
+            val loc = resolveSymbolLocation(label.substringAfterLast('.'))
+            if (loc == null) match.value
+            else "[$label](${sourceCardHref(loc.sourceName, loc.sourceFile, loc.sourceLine)})"
+        }
+    }
+
+    /**
+     * Build a documentation card for the declaration a reader clicked in the panel.
+     * Reuses the same markdown shape as completion documentation so the card renders
+     * identically, and linkifies its own `[Symbol]` references so navigation recurses.
+     */
+    internal fun resolveSourceCard(symbol: String?, path: String?, line: Int): SourceCardResult {
+        val index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex() ?: return SourceCardResult()
+        val root = Paths.get(System.getProperty("user.dir")).normalize()
+
+        val record = when {
+            !path.isNullOrBlank() && line > 0 ->
+                index.definitions.firstOrNull { it.filePath == path && it.line == line }
+                    ?: index.definitions.firstOrNull { it.filePath.endsWith(path) && it.line == line }
+                    ?: symbol?.let { bestDefinitionForSimpleName(it.substringAfterLast('.')) }
+            !symbol.isNullOrBlank() -> bestDefinitionForSimpleName(symbol.substringAfterLast('.'))
+            else -> null
+        } ?: return SourceCardResult()
+
+        val simpleName = record.name.substringAfterLast('.')
+        val bodyMarkdown = when (record.kind) {
+            "fun" -> parseSourceCallableInfo(record, root, simpleName)?.let { sci ->
+                CallableInfo(
+                    name = simpleName,
+                    ownerName = sci.ownerName,
+                    parameters = sci.parameters,
+                    returnType = sci.returnType,
+                    documentation = sci.documentation,
+                    sourceFile = sci.sourceFile,
+                    sourceLine = sci.sourceLine,
+                    sourceName = sci.sourceName
+                ).documentationMarkdown()
+            } ?: genericCardMarkdown(record, root)
+            else -> genericCardMarkdown(record, root)
+        }
+        if (bodyMarkdown.isBlank()) return SourceCardResult()
+
+        val category = record.completionCategory.orEmpty()
+        val documentation = buildString {
+            if (category.isNotBlank()) append("**Category** `").append(category).append("`\n\n")
+            append(bodyMarkdown)
+        }
+
+        return SourceCardResult(
+            found = true,
+            title = simpleName,
+            documentation = linkifyKDocSymbols(documentation),
+            category = category,
+            sourceName = record.name,
+            sourcePath = record.filePath,
+            sourceLine = record.line
+        )
+    }
+
+    private fun genericCardMarkdown(record: afield.ai.KotlinDefinitionRecord, root: Path): String {
+        val text = runCatching { Files.readString(root.resolve(record.filePath).normalize()) }.getOrNull()
+        val signature = text?.let { declarationSignature(it, record.line) }
+            ?: "${record.kind} ${record.name.substringAfterLast('.')}"
+        val sections = mutableListOf("```kotlin\n$signature\n```")
+        parseKDoc(record.kdoc).body?.takeIf { it.isNotBlank() }?.let { sections += it }
+        sections += "**Source** `${record.filePath}`"
+        return sections.joinToString("\n\n")
+    }
+
+    /**
+     * Extract a readable declaration header starting at [line] (1-based): accumulate
+     * source lines until the signature is balanced or a body `{` opens, then trim the
+     * trailing brace. Functions use the richer callable parser; this serves types,
+     * typealiases, objects and properties.
+     */
+    private fun declarationSignature(text: String, line: Int): String? {
+        val lines = text.split("\n")
+        if (line < 1 || line > lines.size) return null
+        val sb = StringBuilder()
+        var i = line - 1
+        val limit = (line - 1 + 8).coerceAtMost(lines.size)
+        while (i < limit) {
+            val raw = lines[i]
+            val braceAt = raw.indexOf('{')
+            if (braceAt >= 0) {
+                sb.append(raw.substring(0, braceAt))
+                break
+            }
+            sb.append(raw)
+            val open = sb.count { it == '(' }
+            val balanced = open > 0 && open == sb.count { it == ')' }
+            if (open == 0 || balanced || sb.trim().endsWith("=")) break
+            sb.append('\n')
+            i++
+        }
+        return sb.toString().trim().trimEnd('{').trim().ifBlank { null }
     }
 
     private fun scoreCallableCandidate(
