@@ -26,6 +26,7 @@ define("bithero/fnrewrite", ["require", "vs/editor/editor.api"], function (requi
                 "add", "subtract", "multiply", "divide",
                 "shift", "scaleX", "scaleY", "offsetY", "pow", "log",
                 "clamp", "clip", "softClip", "fold", "chebyshev", "wrapY",
+                "rectify", "quantize", "crush", "bitCrush",
                 "delay", "mirror", "repeat", "warp", "timeline",
         ])
 

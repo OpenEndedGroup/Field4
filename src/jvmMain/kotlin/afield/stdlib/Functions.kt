@@ -4779,10 +4779,7 @@ canvas {
 
     fun rectify(mode: RectifyMode = RectifyMode.FULL): FnTransform =
         FnTransform("rectify(${mode.name.lowercase()})") { source ->
-            when (mode) {
-                RectifyMode.HALF -> source.rectify()
-                RectifyMode.FULL -> source.abs()
-            }.withName("rectify")
+            source.rectify(mode).withName("rectify")
         }
 
     fun quantize(levels: Int): FnTransform = FnTransform("quantize($levels)") { source ->
@@ -5610,7 +5607,30 @@ canvas {
 
     fun Fn.clip(threshold: Number): Fn = clip(param(threshold))
 
-    fun Fn.rectify(): Fn = mapY(name) { if (it < 0.0) 0.0 else it }
+    fun Fn.rectify(mode: RectifyMode = RectifyMode.HALF): Fn {
+        // First-class waveshaper (like `clip`/`fold`/`chebyshev`) so the graph-rewrite /
+        // evolve / transmutation system can reach it. The mode rides as a string tag on
+        // the node — exactly how `withEdge` carries its `EdgeMode` — and is restored on
+        // rebuild. No-arg stays half-wave to preserve the historical meaning of the
+        // extension; the public `Functions.rectify(mode)` FnTransform routes both modes
+        // through here (FULL = |x|, the old `abs()` behaviour, now a real `rectify` node).
+        return graphFn(
+            domain,
+            name,
+            node(
+                "rectify",
+                children = listOf(fnEdge("source", this)),
+                strings = mapOf("mode" to mode.name),
+                rebuild = { it[0].rectify(mode) }
+            )
+        ) { x ->
+            val v = eval(x)
+            when (mode) {
+                RectifyMode.HALF -> if (v < 0.0) 0.0 else v
+                RectifyMode.FULL -> kotlin.math.abs(v)
+            }
+        }
+    }
 
     fun Fn.softClip(amount: Fn = param(1.0)): Fn {
         val d = intersectDomains(domain, amount)
@@ -5710,22 +5730,48 @@ canvas {
 
     fun Fn.withEdge(edge: EdgeMode, outside: Number): Fn = withEdge(edge, param(outside))
 
-    fun Fn.quantize(levels: Int): Fn = mapY(name) {
-        if (levels <= 1) 0.0 else {
-            val t = ((it + 1.0) * 0.5).coerceIn(0.0, 1.0)
-            val q = floor(t * (levels - 1)).toInt()
-            (q.toDouble() / (levels - 1)) * 2.0 - 1.0
+    fun Fn.quantize(levels: Fn): Fn {
+        // First-class staircase quantiser. `levels` rides as a numeric `param` child so the
+        // node round-trips and is transmutable; behaviour is identical to the old opaque
+        // form (snap the [-1,1] signal to N evenly spaced levels).
+        val d = intersectDomains(domain, levels)
+        return graphFn(
+            d,
+            name,
+            node("quantize", children = listOf(fnEdge("source", this), fnEdge("levels", levels)), rebuild = { it[0].quantize(it[1]) })
+        ) { x ->
+            val n = levels.eval(x).roundToInt()
+            if (n <= 1) 0.0 else {
+                val t = ((eval(x) + 1.0) * 0.5).coerceIn(0.0, 1.0)
+                val q = floor(t * (n - 1)).toInt()
+                (q.toDouble() / (n - 1)) * 2.0 - 1.0
+            }
         }
     }
 
-    fun Fn.bitCrush(bits: Int): Fn = mapY(name) {
-        if (bits <= 0) 0.0 else {
-            val steps = (1 shl bits) - 1
-            val t = ((it + 1.0) * 0.5).coerceIn(0.0, 1.0)
-            val q = floor(t * steps).toInt()
-            (q.toDouble() / steps.toDouble()) * 2.0 - 1.0
+    fun Fn.quantize(levels: Int): Fn = quantize(param(levels))
+
+    fun Fn.bitCrush(bits: Fn): Fn {
+        // First-class bit-crusher (graph op "crush", matching the `crush(bits)` transform).
+        // `bits` rides as a numeric `param` child; behaviour is identical to the old opaque
+        // form (snap to 2^bits - 1 steps across [-1,1]).
+        val d = intersectDomains(domain, bits)
+        return graphFn(
+            d,
+            name,
+            node("crush", children = listOf(fnEdge("source", this), fnEdge("bits", bits)), rebuild = { it[0].bitCrush(it[1]) })
+        ) { x ->
+            val n = bits.eval(x).roundToInt()
+            if (n <= 0) 0.0 else {
+                val steps = (1 shl n) - 1
+                val t = ((eval(x) + 1.0) * 0.5).coerceIn(0.0, 1.0)
+                val q = floor(t * steps).toInt()
+                (q.toDouble() / steps.toDouble()) * 2.0 - 1.0
+            }
         }
     }
+
+    fun Fn.bitCrush(bits: Int): Fn = bitCrush(param(bits))
 
     fun Fn.mix(other: Fn, amount: Fn = param(0.5)): Fn =
         this * (param(1.0) - amount) + other * amount
