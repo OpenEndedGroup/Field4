@@ -6,7 +6,7 @@ import afield.stdlib.linalg.Vector4f
 import afield.Runloop
 import org.lwjgl.vulkan.VK10
 import afield.four.device.PhysicalDevice
-import org.joml.*
+import afield.stdlib.linalg.*
 import java.nio.FloatBuffer
 
 fun forever(function: () -> Boolean) = sequence {

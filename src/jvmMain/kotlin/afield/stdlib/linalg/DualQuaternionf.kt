@@ -1,11 +1,4 @@
-package org.joml
-
-import org.joml.rotate
-import org.joml.translate
-import org.joml.fromAxisAngleRad
-import org.joml.transform
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.linalg.Vector3fc
+package afield.stdlib.linalg
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
@@ -14,8 +7,8 @@ import kotlin.math.sqrt
 /**
  * A mutable single-precision unit dual quaternion for rigid 3D transforms.
  *
- * This class intentionally follows JOML's mutable naming style while filling a
- * small gap in JOML itself. The real part stores rotation. The dual part stores
+ * This class intentionally follows Field's mutable naming style and provides a
+ * single-precision rigid-transform representation. The real part stores rotation. The dual part stores
  * translation as `0.5 * translation * rotation`.
  */
 class DualQuaternionf {
@@ -145,7 +138,7 @@ class DualQuaternionf {
     }
 
     fun nlerp(other: DualQuaternionf, t: Float, dest: DualQuaternionf = DualQuaternionf()): DualQuaternionf {
-        val sign = if (dot(other) < 0f) -1f else 1f
+        val sign = if (dot(other) < -EPSILON) -1f else 1f
         val oneMinusT = 1f - t
         dest.real.set(
             real.x * oneMinusT + other.real.x * sign * t,
@@ -163,7 +156,9 @@ class DualQuaternionf {
     }
 
     fun sclerp(other: DualQuaternionf, t: Float, dest: DualQuaternionf = DualQuaternionf()): DualQuaternionf {
-        val alignedOther = if (dot(other) < 0f) DualQuaternionf(other).negate() else other
+        // At exactly 180 degrees the quaternion sign is numerically ambiguous.
+        // Preserve the caller's axis choice instead of flipping on float roundoff.
+        val alignedOther = if (dot(other) < -EPSILON) DualQuaternionf(other).negate() else other
         val relative = inverted(TEMP_DQ_A.get()).mul(alignedOther, TEMP_DQ_B.get()).normalize()
         val step = relative.pow(t, TEMP_DQ_C.get())
         return mul(step, dest).normalize()
@@ -197,7 +192,7 @@ class DualQuaternionf {
 
     private fun logTwist(omega: Vector3f, velocity: Vector3f) {
         val rotation = Quaternionf(real).normalize()
-        if (rotation.w < 0f) {
+        if (rotation.w < -EPSILON) {
             rotation.negateComponents()
         }
 

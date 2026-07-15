@@ -26,8 +26,6 @@ import javax.imageio.ImageIO
 import javax.net.ssl.*
 
 val lwjglVersion = "3.4.2-SNAPSHOT"
-val jomlVersion = "1.10.7"
-val `joml-primitivesVersion` = "1.10.0"
 
 val osName = System.getProperty("os.name")!!
 val osArch = System.getProperty("os.arch")!!
@@ -312,9 +310,6 @@ fun requiredRunJvmArgs(): List<String> {
         add("-Xmx8g")
         add("--add-opens=java.base/java.net=ALL-UNNAMED")
         add("-Dorg.lwjgl.system.stackSize=256")
-        // JOML's experimental Unsafe FloatBuffer path can segfault on JDK 25.
-        // Keep the remaining matrix/quaternion bridge on its supported NIO path.
-        add("-Djoml.nounsafe=true")
         add("-Xlog:gc*,safepoint:file=build/gc-safepoint.log:time,uptime,level,tags")
         add("--enable-native-access=ALL-UNNAMED")
         add("-Dableton.link.library=${abletonLinkNative.asFile.absolutePath}")
@@ -326,7 +321,6 @@ fun requiredRunJvmArgs(): List<String> {
             if (dockIcon.exists()) {
                 add("-Xdock:icon=${dockIcon.absolutePath}")
             }
-            add("-Djoml.format=false")
             add("-Dorg.lwjgl.util.Debug=true")
             add("-Dorg.lwjgl.util.DebugLoader=true")
         }
@@ -583,11 +577,10 @@ kotlin {
                 ) mutableListOf("--add-opens=java.base/java.net=ALL-UNNAMED") else mutableListOf(
                     "-XstartOnFirstThread",
                     "--add-opens=java.base/java.net=ALL-UNNAMED",
-                    "-Djoml.format=false","-Dorg.lwjgl.util.Debug=true","-Dorg.lwjgl.util.DebugLoader=true"
+                    "-Dorg.lwjgl.util.Debug=true","-Dorg.lwjgl.util.DebugLoader=true"
                 )
 
                 args += "-Dorg.lwjgl.system.stackSize=257"
-                args += "-Djoml.nounsafe=true"
                 args += "-Xlog:gc*,safepoint:file=build/gc-safepoint.log:time,uptime,level,tags"
                 args += "--enable-native-access=ALL-UNNAMED"
                 args += "-Dableton.link.library=${abletonLinkNative.asFile.absolutePath}"
@@ -716,8 +709,6 @@ kotlin {
 
                 addLwjglNativeArtifacts(lwjglNatives)
                 extraLwjglNativeClassifiers.forEach(addLwjglNativeArtifacts)
-                implementation("org.joml:joml:$jomlVersion")
-                implementation("org.joml:joml-primitives:${`joml-primitivesVersion`}")
 
                 implementation("io.github.earcut4j:earcut4j:2.2.2")
 
@@ -810,7 +801,6 @@ kotlin {
                 implementation("org.apache.maven.wagon:wagon-http:3.5.3")
                 implementation("commons-io:commons-io:2.18.0")
 
-                implementation("org.joml:joml-experimental:1.10.7")
 
                 implementation("io.ktor:ktor-server-netty-jvm:$ktorVersion")
 
@@ -938,7 +928,7 @@ tasks {
 }
 
 tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
-    jvmArgs("--add-modules", "jdk.incubator.vector", "-Djoml.nounsafe=true")
+    jvmArgs("--add-modules", "jdk.incubator.vector")
 }
 
 tasks.register<JavaExec>("runTrackingResonatorResynthesisExample") {

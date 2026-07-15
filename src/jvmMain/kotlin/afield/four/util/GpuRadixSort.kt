@@ -14,7 +14,7 @@ import afield.four.modules.computeMemoryBarrier
 import afield.four.modules.fromContext
 import afield.four.modules.pointer
 import afield.four.targets.RenderTarget
-import org.joml.primitives.Rectanglef
+import afield.stdlib.linalg.Rectanglef
 import kotlin.math.ceil
 
 /**

@@ -9,28 +9,35 @@ import afield.stdlib.linalg.Vector3f
 import afield.stdlib.linalg.Vector3fc
 import afield.stdlib.linalg.Vector4f
 import afield.stdlib.linalg.Vector4fc
-import org.joml.*
+import afield.stdlib.linalg.Quaternionf
+import afield.stdlib.linalg.Quaternionfc
+import afield.stdlib.linalg.Matrix3f
+import afield.stdlib.linalg.Matrix3fc
+import afield.stdlib.linalg.Matrix4f
+import afield.stdlib.linalg.Matrix4fc
+import afield.stdlib.linalg.DualQuaternionf
+import afield.stdlib.linalg.*
 import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Field's 4D vector alias, backed by JOML's mutable [Vector4f].
+ * Field's 4D vector alias, backed by Field's generated mutable [Vector4f].
  *
- * Use `vec(x, y, z, w)` to construct one. JOML methods generally mutate the receiver;
+ * Use `vec(x, y, z, w)` to construct one. These methods generally mutate the receiver;
  * copy first with `Vec4(existing)` when you want to preserve the original value.
  */
 typealias Vec4 = Vector4f
 
 /**
- * Field's 3D vector alias, backed by JOML's mutable [Vector3f].
+ * Field's 3D vector alias, backed by Field's generated mutable [Vector3f].
  *
  * Use `vec(x, y, z)` to construct one. The public `x`, `y`, and `z` components are
- * mutable floats, and most JOML operations mutate the receiver unless you pass a destination vector.
+ * mutable floats, and most operations mutate the receiver unless you pass a destination vector.
  */
 typealias Vec3 = Vector3f
 
 /**
- * Field's 2D vector alias, backed by JOML's mutable [Vector2f].
+ * Field's 2D vector alias, backed by Field's generated mutable [Vector2f].
  *
  * Use `vec(x, y)` to construct one. The public `x` and `y` components are mutable floats;
  * copy with `Vec2(existing)` when you want a non-mutating workflow.
@@ -587,13 +594,9 @@ fun Vector2dc.isNaN() = this.x().isNaN() || this.y().isNaN()
 fun Vector3fc.isNaN() = this.x().isNaN() || this.y().isNaN() || this.z().isNaN()
 fun Vector2fc.isNaN() = this.x().isNaN() || this.y().isNaN()
 
-private fun Vector3fc.toJoml() = org.joml.Vector3f(x(), y(), z())
-private fun org.joml.Vector3fc.toField() = Vector3f(x(), y(), z())
-
-operator fun Vector3fc.times(v: Quaternionfc): Vector3f = v.transform(toJoml(), org.joml.Vector3f()).toField()
+operator fun Vector3fc.times(v: Quaternionfc): Vector3f = v.transform(this, Vector3f())
 operator fun Vector2fc.times(v: Quaternionfc): Vector2fc =
-    v.transform(org.joml.Vector3f(x(), y(), 0f), org.joml.Vector3f()).toField().xy
-operator fun Vector2dc.times(v: Quaterniondc): Vector2dc = v.transform(Vector3d(this.x(), this.y(), 0.0), Vector3d()).v2
+    v.transform(Vector3f(x(), y(), 0f), Vector3f()).xy
 operator fun Vector3fc.times(v: DualQuaternionf): Vector3f = v.transform(this, Vector3f())
 
 

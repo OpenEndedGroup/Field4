@@ -9,7 +9,7 @@ import afield.four.modules.ComputeModulePointer
 import afield.four.modules.RayTracingModule
 import afield.four.modules.RayTracingModulePointer
 import afield.four.modules.pointer
-import org.joml.primitives.Rectanglef
+import afield.stdlib.linalg.Rectanglef
 import org.lwjgl.system.MemoryStack
 
 class ComputeTarget(val renderer: Renderer) : Target {

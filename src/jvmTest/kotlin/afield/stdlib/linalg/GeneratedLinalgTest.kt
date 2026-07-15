@@ -1,7 +1,6 @@
 package afield.stdlib.linalg
 
 import afield.stdlib.linalg.arena.FrameArena
-import org.joml.Vector3f as JomlVector3f
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
@@ -17,7 +16,7 @@ import kotlin.test.assertTrue
 
 class GeneratedLinalgTest {
     @Test
-    fun heapVectorMatchesJomlForCoreOperations() {
+    fun heapVectorMatchesIndependentReferenceFormulas() {
         val random = Random(0x4f13d)
         repeat(1_000) {
             val av = FloatArray(3) { random.nextFloat() * 20f - 10f }
@@ -25,22 +24,20 @@ class GeneratedLinalgTest {
             val t = random.nextFloat()
             val a = Vector3f(av[0], av[1], av[2])
             val b = Vector3f(bv[0], bv[1], bv[2])
-            val ja = JomlVector3f(av[0], av[1], av[2])
-            val jb = JomlVector3f(bv[0], bv[1], bv[2])
-
-            assertVectorClose(JomlVector3f(ja).add(jb), Vector3f(a).add(b))
-            assertVectorClose(JomlVector3f(ja).sub(jb), Vector3f(a).sub(b))
-            assertVectorClose(JomlVector3f(ja).mul(jb), Vector3f(a).mul(b))
-            assertVectorClose(JomlVector3f(ja).cross(jb), Vector3f(a).cross(b))
-            assertVectorClose(JomlVector3f(ja).lerp(jb, t), Vector3f(a).lerp(b, t))
-            assertVectorClose(JomlVector3f(ja).normalize(), Vector3f(a).normalize(), 2e-6f)
-            assertEquals(ja.dot(jb), a.dot(b), 2e-5f)
-            assertEquals(ja.distanceSquared(jb), a.distanceSquared(b), 2e-4f)
+            assertVectorClose(av[0]+bv[0],av[1]+bv[1],av[2]+bv[2],Vector3f(a).add(b))
+            assertVectorClose(av[0]-bv[0],av[1]-bv[1],av[2]-bv[2],Vector3f(a).sub(b))
+            assertVectorClose(av[0]*bv[0],av[1]*bv[1],av[2]*bv[2],Vector3f(a).mul(b))
+            assertVectorClose(av[1]*bv[2]-av[2]*bv[1],av[2]*bv[0]-av[0]*bv[2],av[0]*bv[1]-av[1]*bv[0],Vector3f(a).cross(b))
+            assertVectorClose(av[0]+(bv[0]-av[0])*t,av[1]+(bv[1]-av[1])*t,av[2]+(bv[2]-av[2])*t,Vector3f(a).lerp(b,t))
+            val inv=1f/kotlin.math.sqrt(av[0]*av[0]+av[1]*av[1]+av[2]*av[2])
+            assertVectorClose(av[0]*inv,av[1]*inv,av[2]*inv,Vector3f(a).normalize(),2e-6f)
+            assertEquals(av[0]*bv[0]+av[1]*bv[1]+av[2]*bv[2],a.dot(b),2e-5f)
+            assertEquals((av[0]-bv[0])*(av[0]-bv[0])+(av[1]-bv[1])*(av[1]-bv[1])+(av[2]-bv[2])*(av[2]-bv[2]),a.distanceSquared(b),2e-4f)
         }
     }
 
     @Test
-    fun destinationOperationsPreserveJomlAliasingContract() {
+    fun destinationOperationsPreserveAliasingContract() {
         val a = Vector3f(1f, 2f, 3f)
         val b = Vector3f(4f, 5f, 6f)
         assertSame(a, a.cross(b, a))
@@ -53,24 +50,31 @@ class GeneratedLinalgTest {
     }
 
     @Test
-    fun denseBufferWritesMatchJomlAndDoNotMovePosition() {
+    fun denseBufferWritesUseCanonicalLayoutAndDoNotMovePosition() {
         val value = Vector3f(1.25f, -2.5f, 9f)
-        val joml = JomlVector3f(value.x, value.y, value.z)
 
         val ours = FloatBuffer.allocate(8).also { it.position(2) }
-        val theirs = FloatBuffer.allocate(8).also { it.position(2) }
         value.get(ours)
-        joml.get(theirs)
         assertEquals(2, ours.position())
-        assertEquals(theirs.position(), ours.position())
-        assertEquals(theirs.array().toList(), ours.array().toList())
+        assertEquals(listOf(0f,0f,1.25f,-2.5f,9f,0f,0f,0f),ours.array().toList())
 
         val ourBytes = ByteBuffer.allocate(32).order(ByteOrder.nativeOrder()).also { it.position(3) }
-        val theirBytes = ByteBuffer.allocate(32).order(ByteOrder.nativeOrder()).also { it.position(3) }
         value.get(8, ourBytes)
-        joml.get(8, theirBytes)
         assertEquals(3, ourBytes.position())
-        assertEquals(theirBytes.array().toList(), ourBytes.array().toList())
+        assertEquals(1.25f,ourBytes.getFloat(8));assertEquals(-2.5f,ourBytes.getFloat(12));assertEquals(9f,ourBytes.getFloat(16))
+    }
+
+    @Test
+    fun matrixAndQuaternionConventionsAreStable() {
+        val q=Quaternionf().setAngleAxis((Math.PI/2).toFloat(),0f,0f,1f)
+        assertVectorClose(0f,1f,0f,q.transform(Vector3f(1f,0f,0f),Vector3f()),2e-6f)
+        val m=Matrix4f().translate(3f,4f,5f).rotate(q).scale(2f)
+        val p=m.transformPosition(Vector3f(1f,0f,0f),Vector3f())
+        assertVectorClose(3f,6f,5f,p,3e-6f)
+        val restored=Matrix4f(m).invert().transformPosition(p,Vector3f())
+        assertVectorClose(1f,0f,0f,restored,3e-5f)
+        val identity=Matrix4f(m).mul(Matrix4f(m).invert())
+        assertEquals(1f,identity.m00,2e-5f);assertEquals(1f,identity.m11,2e-5f);assertEquals(1f,identity.m22,2e-5f);assertEquals(1f,identity.m33,2e-5f)
     }
 
     @Test
@@ -144,10 +148,10 @@ class GeneratedLinalgTest {
         }
     }
 
-    private fun assertVectorClose(expected: JomlVector3f, actual: Vector3f, tolerance: Float = 1e-5f) {
-        assertTrue(abs(expected.x - actual.x) <= tolerance, "x: expected=${expected.x}, actual=${actual.x}")
-        assertTrue(abs(expected.y - actual.y) <= tolerance, "y: expected=${expected.y}, actual=${actual.y}")
-        assertTrue(abs(expected.z - actual.z) <= tolerance, "z: expected=${expected.z}, actual=${actual.z}")
+    private fun assertVectorClose(x:Float,y:Float,z:Float,actual:Vector3f,tolerance:Float=1e-5f) {
+        assertTrue(abs(x-actual.x)<=tolerance,"x: expected=$x, actual=${actual.x}")
+        assertTrue(abs(y-actual.y)<=tolerance,"y: expected=$y, actual=${actual.y}")
+        assertTrue(abs(z-actual.z)<=tolerance,"z: expected=$z, actual=${actual.z}")
     }
 
     private fun assertVectorEquals(expected: Vector3f, actual: Vector3f) {

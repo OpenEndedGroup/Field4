@@ -9,7 +9,7 @@ import afield.stdlib.linalg.Vector3f as Vec3
 
 /**
  * Practical 3D Voronoi and approximate 3D multiplicatively weighted Voronoi
- * ("CircularDirichlet") for Kotlin + JOML.
+ * ("CircularDirichlet") for Kotlin + Field linalg.
  *
  * - voronoi3d(...) builds convex polyhedral cells by intersecting pairwise
  *   bisector half-spaces, then closing unbounded cells against a large clip box.

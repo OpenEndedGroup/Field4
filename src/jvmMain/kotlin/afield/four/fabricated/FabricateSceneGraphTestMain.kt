@@ -1,7 +1,5 @@
 package afield.four.fabricated
 
-import org.joml.setTranslation
-import org.joml.translate
 import afield.stdlib.linalg.Vector3f
 
 /** Pure JVM smoke test for hierarchical transform composition. */

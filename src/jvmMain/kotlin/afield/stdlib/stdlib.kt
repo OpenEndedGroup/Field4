@@ -6,14 +6,16 @@ package afield.stdlib
 import afield.stdlib.linalg.Vector2f
 import afield.stdlib.linalg.Vector3f
 import afield.stdlib.linalg.Vector4f
+import afield.stdlib.linalg.Matrix4f
+import afield.stdlib.linalg.Matrix3f
+import afield.stdlib.linalg.Quaternionf
 import afield.*
 import afield.Server.Companion.stop
 import afield.four.util.FramePresentationLog
 import afield.four.util.Options
 import afield.four.util.floatToHalfBits
 import kotlinx.coroutines.DelicateCoroutinesApi
-import org.joml.*
-import org.joml.scaleField
+import afield.stdlib.linalg.*
 import java.nio.BufferOverflowException
 import java.nio.ByteBuffer
 import java.nio.FloatBuffer
@@ -326,7 +328,7 @@ fun mat4(base: Matrix4f? = null, t: Vector3f? = null, r: Quaternionf? = null, s:
 
 fun mat3(base: Matrix3f? = null, t: Vector3f? = null, r: Quaternionf? = null, s: Vector3f? = null): Matrix3f {
     var m = base?.duplicate() ?: Matrix3f()
-    if (s != null) m.scaleField(s)
+    if (s != null) m.scale(s)
     if (r != null) m.rotate(r)
     return m
 }

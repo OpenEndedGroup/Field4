@@ -1,8 +1,6 @@
 package afield.examples.four
 
-import org.joml.setTranslation
-import org.joml.rotate
-import org.joml.Matrix4f
+import afield.stdlib.linalg.Matrix4f
 import afield.stdlib.linalg.Vector3f
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R8G8B8A8_SRGB
 import afield.four.*

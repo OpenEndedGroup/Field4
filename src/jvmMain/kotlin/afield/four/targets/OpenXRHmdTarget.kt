@@ -26,9 +26,9 @@ import afield.four.util.Options
 import afield.logger.lprintln
 import afield.stdlib.*
 import afield.stdlib.remAssign
-import org.joml.Matrix4f
-import org.joml.Quaternionf
-import org.joml.primitives.Rectanglef
+import afield.stdlib.linalg.Matrix4f
+import afield.stdlib.linalg.Quaternionf
+import afield.stdlib.linalg.Rectanglef
 import org.lwjgl.openxr.*
 import org.lwjgl.openxr.KHRVulkanEnable
 import org.lwjgl.openxr.KHRVulkanEnable2
@@ -38,7 +38,7 @@ import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.KHRDynamicRendering
 import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VK13.*
-import org.joml.*
+import afield.stdlib.linalg.*
 import org.lwjgl.vulkan.*
 import kotlin.math.tan
 

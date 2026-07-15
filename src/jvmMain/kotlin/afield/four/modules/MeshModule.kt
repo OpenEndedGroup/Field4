@@ -12,7 +12,7 @@ import afield.four.util.FIELD_PROBE_BUFFER_NAME
 import afield.four.util.vkCheck
 import afield.logger.lprintln
 import afield.stdlib.f
-import org.joml.primitives.Rectanglef
+import afield.stdlib.linalg.Rectanglef
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.EXTMeshShader.VK_SHADER_STAGE_MESH_BIT_EXT

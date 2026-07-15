@@ -43,7 +43,7 @@ data class Vec8h(val lo: Vector4f, val hi: Vector4f) {
     }
 }
 
-// Convenient ".half" views on JOML vectors.
+// Convenient ".half" views on Field vectors.
 val Vector2f.half: Vec2h get() = Vec2h(this)
 val Vector3f.half: Vec3h get() = Vec3h(this)
 val Vector4f.half: Vec4h get() = Vec4h(this)

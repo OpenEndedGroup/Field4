@@ -14,14 +14,14 @@ import afield.four.modules.MeshModulePointer
 import afield.four.modules.ModulePointer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import org.joml.Quaternionf
+import afield.stdlib.linalg.Quaternionf
 import afield.stdlib.linalg.Vector2f
 import afield.stdlib.linalg.Vector3f
 import afield.stdlib.linalg.Vector4f
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
-import org.joml.DualQuaternionf
+import afield.stdlib.linalg.DualQuaternionf
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
 import java.nio.file.Files
@@ -436,8 +436,8 @@ class KeyframeScope(val schemaVersion: Int = 0) {
                 va is Vector2f && vb is Vector2f -> Vector2f(va).lerp(vb, tf)
                 va is Vector3f && vb is Vector3f -> Vector3f(va).lerp(vb, tf)
                 va is Vector4f && vb is Vector4f -> Vector4f(va).lerp(vb, tf)
-                va is org.joml.Quaternionf && vb is org.joml.Quaternionf -> org.joml.Quaternionf(va).slerp(vb, tf)
-                va is org.joml.DualQuaternionf && vb is org.joml.DualQuaternionf -> org.joml.DualQuaternionf(va).sclerp(vb, tf)
+                va is afield.stdlib.linalg.Quaternionf && vb is afield.stdlib.linalg.Quaternionf -> afield.stdlib.linalg.Quaternionf(va).slerp(vb, tf)
+                va is afield.stdlib.linalg.DualQuaternionf && vb is afield.stdlib.linalg.DualQuaternionf -> afield.stdlib.linalg.DualQuaternionf(va).sclerp(vb, tf)
                 va is CameraPose && vb is CameraPose -> va.sclerp(vb, tf)
                 va is StackSLString && vb is StackSLString -> if (tEffective >= 1.0) vb else va
                 va is String && vb is String -> if (tEffective >= 1.0) vb else va
@@ -701,8 +701,8 @@ private fun kotlinValueLiteral(value: Any?): String =
         is Vector2f -> "vec(${kotlinNumberLiteral(value.x)}, ${kotlinNumberLiteral(value.y)})"
         is Vector3f -> "vec(${kotlinNumberLiteral(value.x)}, ${kotlinNumberLiteral(value.y)}, ${kotlinNumberLiteral(value.z)})"
         is Vector4f -> "vec(${kotlinNumberLiteral(value.x)}, ${kotlinNumberLiteral(value.y)}, ${kotlinNumberLiteral(value.z)}, ${kotlinNumberLiteral(value.w)})"
-        is Quaternionf -> "org.joml.Quaternionf(${kotlinNumberLiteral(value.x)}, ${kotlinNumberLiteral(value.y)}, ${kotlinNumberLiteral(value.z)}, ${kotlinNumberLiteral(value.w)})"
-        is DualQuaternionf -> "org.joml.DualQuaternionf(org.joml.Quaternionf(${kotlinNumberLiteral(value.real.x)}, ${kotlinNumberLiteral(value.real.y)}, ${kotlinNumberLiteral(value.real.z)}, ${kotlinNumberLiteral(value.real.w)}), org.joml.Quaternionf(${kotlinNumberLiteral(value.dual.x)}, ${kotlinNumberLiteral(value.dual.y)}, ${kotlinNumberLiteral(value.dual.z)}, ${kotlinNumberLiteral(value.dual.w)}))"
+        is Quaternionf -> "afield.stdlib.linalg.Quaternionf(${kotlinNumberLiteral(value.x)}, ${kotlinNumberLiteral(value.y)}, ${kotlinNumberLiteral(value.z)}, ${kotlinNumberLiteral(value.w)})"
+        is DualQuaternionf -> "afield.stdlib.linalg.DualQuaternionf(afield.stdlib.linalg.Quaternionf(${kotlinNumberLiteral(value.real.x)}, ${kotlinNumberLiteral(value.real.y)}, ${kotlinNumberLiteral(value.real.z)}, ${kotlinNumberLiteral(value.real.w)}), afield.stdlib.linalg.Quaternionf(${kotlinNumberLiteral(value.dual.x)}, ${kotlinNumberLiteral(value.dual.y)}, ${kotlinNumberLiteral(value.dual.z)}, ${kotlinNumberLiteral(value.dual.w)}))"
         is CameraPose -> "afield.four.util.CameraPose(${kotlinValueLiteral(value.transform)}, ${kotlinNumberLiteral(value.focusDistance)})"
         else -> "/* unsupported ${value::class.java.name} */ null"
     }

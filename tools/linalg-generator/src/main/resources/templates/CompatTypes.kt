@@ -1,0 +1,67 @@
+package afield.stdlib.linalg
+
+import java.nio.FloatBuffer
+
+operator fun Vector2fc.plus(other:Vector2fc)=add(other,Vector2f())
+operator fun Vector2fc.minus(other:Vector2fc)=sub(other,Vector2f())
+operator fun Vector2fc.times(other:Vector2fc)=mul(other,Vector2f())
+operator fun Vector2fc.times(scalar:Number)=mul(scalar.toFloat(),Vector2f())
+operator fun Vector2fc.div(scalar:Number)=div(scalar.toFloat(),Vector2f())
+operator fun Vector2fc.unaryMinus()=negate(Vector2f())
+
+operator fun Vector3fc.plus(other:Vector3fc)=add(other,Vector3f())
+operator fun Vector3fc.minus(other:Vector3fc)=sub(other,Vector3f())
+operator fun Vector3fc.times(other:Vector3fc)=mul(other,Vector3f())
+operator fun Vector3fc.times(scalar:Number)=mul(scalar.toFloat(),Vector3f())
+operator fun Vector3fc.div(scalar:Number)=div(scalar.toFloat(),Vector3f())
+operator fun Vector3fc.unaryMinus()=negate(Vector3f())
+
+operator fun Vector4fc.plus(other:Vector4fc)=add(other,Vector4f())
+operator fun Vector4fc.minus(other:Vector4fc)=sub(other,Vector4f())
+operator fun Vector4fc.times(other:Vector4fc)=mul(other,Vector4f())
+operator fun Vector4fc.times(scalar:Number)=mul(scalar.toFloat(),Vector4f())
+operator fun Vector4fc.div(scalar:Number)=div(scalar.toFloat(),Vector4f())
+operator fun Vector4fc.unaryMinus()=negate(Vector4f())
+
+interface Vector2dc { fun x():Double; fun y():Double }
+class Vector2d(@JvmField var x:Double=0.0,@JvmField var y:Double=0.0):Vector2dc {
+    constructor(other:Vector2dc):this(other.x(),other.y())
+    override fun x()=x;override fun y()=y
+    fun set(x:Double,y:Double):Vector2d{this.x=x;this.y=y;return this}
+}
+
+interface Vector3dc { fun x():Double;fun y():Double;fun z():Double }
+class Vector3d(@JvmField var x:Double=0.0,@JvmField var y:Double=0.0,@JvmField var z:Double=0.0):Vector3dc {
+    constructor(other:Vector3dc):this(other.x(),other.y(),other.z())
+    override fun x()=x;override fun y()=y;override fun z()=z
+    fun set(x:Double,y:Double,z:Double):Vector3d{this.x=x;this.y=y;this.z=z;return this}
+    fun add(other:Vector3dc)=set(x+other.x(),y+other.y(),z+other.z())
+    fun sub(other:Vector3dc)=set(x-other.x(),y-other.y(),z-other.z())
+    fun mul(s:Double)=set(x*s,y*s,z*s)
+}
+
+interface Vector4dc { fun x():Double;fun y():Double;fun z():Double;fun w():Double }
+class Vector4d(@JvmField var x:Double=0.0,@JvmField var y:Double=0.0,@JvmField var z:Double=0.0,@JvmField var w:Double=0.0):Vector4dc {
+    constructor(other:Vector4dc):this(other.x(),other.y(),other.z(),other.w())
+    override fun x()=x;override fun y()=y;override fun z()=z;override fun w()=w
+    fun set(x:Double,y:Double,z:Double,w:Double):Vector4d{this.x=x;this.y=y;this.z=z;this.w=w;return this}
+}
+
+operator fun Vector3dc.plus(other:Vector3dc)=Vector3d(this).add(other)
+operator fun Vector3dc.minus(other:Vector3dc)=Vector3d(this).sub(other)
+operator fun Vector3dc.times(s:Number)=Vector3d(this).mul(s.toDouble())
+
+interface Matrix2fc { fun m00():Float;fun m01():Float;fun m10():Float;fun m11():Float }
+class Matrix2f(
+    @JvmField var m00:Float=1f,@JvmField var m01:Float=0f,
+    @JvmField var m10:Float=0f,@JvmField var m11:Float=1f
+) : Matrix2fc {
+    override fun m00()=m00;override fun m01()=m01;override fun m10()=m10;override fun m11()=m11
+    fun get(buffer:FloatBuffer):FloatBuffer{val i=buffer.position();buffer.put(i,m00);buffer.put(i+1,m01);buffer.put(i+2,m10);buffer.put(i+3,m11);return buffer}
+    fun get(index:Int,buffer:java.nio.ByteBuffer):java.nio.ByteBuffer{buffer.putFloat(index,m00);buffer.putFloat(index+4,m01);buffer.putFloat(index+8,m10);buffer.putFloat(index+12,m11);return buffer}
+}
+
+data class Rectanglef(
+    @JvmField var minX:Float=0f,@JvmField var minY:Float=0f,
+    @JvmField var maxX:Float=0f,@JvmField var maxY:Float=0f
+)

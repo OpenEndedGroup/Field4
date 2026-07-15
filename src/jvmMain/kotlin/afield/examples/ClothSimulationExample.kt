@@ -4,8 +4,8 @@ import afield.four.physics.SimdVerlet
 import afield.generator2
 import afield.graphics.FLine
 import afield.stdlib.vec
-import org.joml.minus
-import org.joml.plus
+import afield.stdlib.linalg.minus
+import afield.stdlib.linalg.plus
 import kotlin.math.sqrt
 
 /**
