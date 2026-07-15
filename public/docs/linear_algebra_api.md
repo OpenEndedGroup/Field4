@@ -20,6 +20,8 @@ A mutable 2D vector of 32-bit floating-point components.
 
 Components: `x`, `y`.
 
+In a Field code box, ordinary heap values use `vec(x, y)`. In a typed context, `val value: Vec2 = [0, 1]` uses the generated collection-literal constructor.
+
 | Operation | Meaning |
 | --- | --- |
 | `add(other: Vector2fc)` | Adds another vector component by component. |
@@ -47,6 +49,8 @@ Components: `x`, `y`.
 A mutable 3D vector of 32-bit floating-point components.
 
 Components: `x`, `y`, `z`.
+
+In a Field code box, ordinary heap values use `vec(x, y, z)`. In a typed context, `val value: Vec3 = [0, 1, 2]` uses the generated collection-literal constructor.
 
 | Operation | Meaning |
 | --- | --- |
@@ -76,6 +80,8 @@ Components: `x`, `y`, `z`.
 A mutable 4D vector of 32-bit floating-point components.
 
 Components: `x`, `y`, `z`, `w`.
+
+In a Field code box, ordinary heap values use `vec(x, y, z, w)`. In a typed context, `val value: Vec4 = [0, 1, 2, 3]` uses the generated collection-literal constructor.
 
 | Operation | Meaning |
 | --- | --- |

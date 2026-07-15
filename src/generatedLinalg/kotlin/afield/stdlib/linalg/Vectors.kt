@@ -404,6 +404,19 @@ class Vector2f() : Vector2fc, Cloneable {
         return result
     }
     override fun toString(): String = "($x, $y)"
+
+    companion object {
+        /**
+         * Constructs a 2D vector from a typed Kotlin collection literal.
+         *
+         * Example: `val value: Vector2f = [0, 1]`.
+         * Numeric components are converted to Float, matching Field's `vec(...)` helper.
+         */
+        operator fun of(vararg components: Number): Vector2f {
+            require(components.size == 2) { "Vector2f literal requires 2 components, got ${components.size}" }
+            return Vector2f(components[0].toFloat(), components[1].toFloat())
+        }
+    }
 }
 
 /**
@@ -851,6 +864,19 @@ class Vector3f() : Vector3fc, Cloneable {
         return result
     }
     override fun toString(): String = "($x, $y, $z)"
+
+    companion object {
+        /**
+         * Constructs a 3D vector from a typed Kotlin collection literal.
+         *
+         * Example: `val value: Vector3f = [0, 1, 2]`.
+         * Numeric components are converted to Float, matching Field's `vec(...)` helper.
+         */
+        operator fun of(vararg components: Number): Vector3f {
+            require(components.size == 3) { "Vector3f literal requires 3 components, got ${components.size}" }
+            return Vector3f(components[0].toFloat(), components[1].toFloat(), components[2].toFloat())
+        }
+    }
 }
 
 /**
@@ -1296,4 +1322,17 @@ class Vector4f() : Vector4fc, Cloneable {
         return result
     }
     override fun toString(): String = "($x, $y, $z, $w)"
+
+    companion object {
+        /**
+         * Constructs a 4D vector from a typed Kotlin collection literal.
+         *
+         * Example: `val value: Vector4f = [0, 1, 2, 3]`.
+         * Numeric components are converted to Float, matching Field's `vec(...)` helper.
+         */
+        operator fun of(vararg components: Number): Vector4f {
+            require(components.size == 4) { "Vector4f literal requires 4 components, got ${components.size}" }
+            return Vector4f(components[0].toFloat(), components[1].toFloat(), components[2].toFloat(), components[3].toFloat())
+        }
+    }
 }

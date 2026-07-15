@@ -515,8 +515,21 @@ val Vector4fc.zz: Vector2fc
  * Creates a mutable 2D [Vec2] from numeric coordinates, converting each component to [Float].
  */
 fun vec(x: Number, y: Number) = Vector2f(x.toFloat(), y.toFloat())
+
+/** Creates a mutable 3D [Vec3] from numeric coordinates, converting each component to [Float]. */
 fun vec(x: Number, y: Number, z: Number) = Vector3f(x.toFloat(), y.toFloat(), z.toFloat())
+
+/** Creates a mutable 4D [Vec4] from numeric coordinates, converting each component to [Float]. */
 fun vec(x: Number, y: Number, z: Number, w: Number) = Vector4f(x.toFloat(), y.toFloat(), z.toFloat(), w.toFloat())
+
+/** Copies a 2D vector into a new mutable [Vec2]. */
+fun vec(v: Vector2fc) = Vector2f(v)
+
+/** Copies a 3D vector into a new mutable [Vec3]. */
+fun vec(v: Vector3fc) = Vector3f(v)
+
+/** Copies a 4D vector into a new mutable [Vec4]. */
+fun vec(v: Vector4fc) = Vector4f(v)
 
 fun vec(v: Vec2, z: Number) = Vector3f(v.x, v.y, z.toFloat())
 fun vec(x : Number, yz: Vec2) = Vector3f(x.toFloat(), yz.x, yz.y)

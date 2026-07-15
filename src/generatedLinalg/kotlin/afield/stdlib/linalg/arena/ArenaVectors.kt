@@ -34,6 +34,8 @@ class FrameScope internal constructor(private val arena: FrameArena) {
 
     fun vec2(): ArenaVec2f = ArenaVec2f(arena.allocateVector(FrameArena.Kind.VEC2))
     fun vec2(x: Float, y: Float): ArenaVec2f = vec2().also { it.set(x, y) }
+    /** Creates an arena-backed 2D vector from Kotlin numeric values. */
+    fun vec(x: Number, y: Number): ArenaVec2f = vec2(x.toFloat(), y.toFloat())
 
     var ArenaVec2f.x: Float
         get() = arena.read(token, 0, FrameArena.Kind.VEC2)
@@ -269,6 +271,8 @@ class FrameScope internal constructor(private val arena: FrameArena) {
 
     fun vec3(): ArenaVec3f = ArenaVec3f(arena.allocateVector(FrameArena.Kind.VEC3))
     fun vec3(x: Float, y: Float, z: Float): ArenaVec3f = vec3().also { it.set(x, y, z) }
+    /** Creates an arena-backed 3D vector from Kotlin numeric values. */
+    fun vec(x: Number, y: Number, z: Number): ArenaVec3f = vec3(x.toFloat(), y.toFloat(), z.toFloat())
 
     var ArenaVec3f.x: Float
         get() = arena.read(token, 0, FrameArena.Kind.VEC3)
@@ -537,6 +541,8 @@ class FrameScope internal constructor(private val arena: FrameArena) {
 
     fun vec4(): ArenaVec4f = ArenaVec4f(arena.allocateVector(FrameArena.Kind.VEC4))
     fun vec4(x: Float, y: Float, z: Float, w: Float): ArenaVec4f = vec4().also { it.set(x, y, z, w) }
+    /** Creates an arena-backed 4D vector from Kotlin numeric values. */
+    fun vec(x: Number, y: Number, z: Number, w: Number): ArenaVec4f = vec4(x.toFloat(), y.toFloat(), z.toFloat(), w.toFloat())
 
     var ArenaVec4f.x: Float
         get() = arena.read(token, 0, FrameArena.Kind.VEC4)

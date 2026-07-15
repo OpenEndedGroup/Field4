@@ -9,7 +9,7 @@ are under Field's control.
 The immediate result is deliberately ordinary:
 
 ```kotlin
-val p = Vector3f(1f, 2f, 3f)
+val p = vec(1, 2, 3)
 p.x += 1f
 p.normalize()
 ```
@@ -49,9 +49,9 @@ Heap vectors are the normal Field API. They have mutable public component fields
 read-only interfaces and destination overloads:
 
 ```kotlin
-val a = Vector3f(1f, 2f, 3f)
-val b = Vector3f(4f, 5f, 6f)
-val result = Vector3f()
+val a = vec(1, 2, 3)
+val b = vec(4, 5, 6)
+val result = vec(0, 0, 0)
 a.cross(b, result)
 ```
 
@@ -103,8 +103,8 @@ is allocator semantics, not merely diagnostic instrumentation.
 ```kotlin
 FrameArena().use { arena ->
     arena.scoped {
-        val a = vec3(1f, 2f, 3f)
-        val b = vec3(4f, 5f, 6f)
+        val a = vec(1, 2, 3)
+        val b = vec(4, 5, 6)
         val result = vec3()
         a.cross(b, result)
     }
