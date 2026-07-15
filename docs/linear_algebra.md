@@ -77,7 +77,12 @@ The frame arena is thread-confined rather than synchronized. Parallel workers ea
 get their own `FrameArena.current()`. This keeps allocation and vector mutation
 honest: there is no partly-thread-safe shared scratch object.
 
-## Packed and aligned Vec3 buffers
+Development builds include stale-handle, type, lifetime and thread checks. A
+distribution can compile those checks out with `-PlinalgArenaChecks=false`; this is
+a build profile rather than a global runtime switch, so checked builds remain the
+default.
+
+## Packed and aligned vector buffers
 
 For dense or mapped data:
 
@@ -102,6 +107,10 @@ Two layouts are available:
 | --- | ---: | --- |
 | `PACKED_12` | 12 | tightly packed CPU arrays and vertex formats declared as three floats |
 | `ALIGNED_16` | 16 | aligned records and GPU arrays with a 16-byte Vec3 stride |
+
+The same generated API exists as `SegmentVec2Buffer` and `SegmentVec4Buffer`. Vec2
+supports packed-8, aligned-8 and 16-byte-stride records; Vec4 supports packed-16 and
+16-byte-aligned records.
 
 `SegmentVec3Buffer` can also wrap an existing `MemorySegment`. Its handles are
 allocation-free and tied to their buffer view, while the segment or mapped Vulkan
@@ -168,13 +177,13 @@ frameScratch {
 | Persistent box state or a handful of values | `Vector3f`, `Matrix4f`, `Quaternionf` |
 | Temporary math in a stable render/update thread | `frameScratch { ... }` |
 | A subsystem with explicit scratch ownership | `FrameArena` |
-| Packed vertex or point data | `SegmentVec3Buffer` with `PACKED_12` |
-| Aligned mapped records | `SegmentVec3Buffer` with `ALIGNED_16` |
+| Packed vector, vertex or point data | `SegmentVec2/3/4Buffer` with a `PACKED_*` layout |
+| Aligned mapped records | `SegmentVec2/3/4Buffer` with an `ALIGNED_*` layout |
 | Passing a scratch result into persistent state | Explicit `copyTo`/`set` |
 
 ## Why generation matters
 
-Heap, arena and segment Vec3 operations are emitted from one typed operation model.
+Heap, arena and segment Vec2/Vec3/Vec4 operations are emitted from one typed operation model.
 That lets Field add a storage backend without hand-copying every cross product,
 normalization and aliasing rule.
 
@@ -187,7 +196,9 @@ The same mechanism is intended to grow into:
 - SIMD bulk operations;
 - future JVM value-object representations.
 
-Today, frame arenas cover vectors and segment storage starts with Vec3. Arena
-matrices/quaternions, persistent arenas and generated full GPU structures are next
-steps, not hidden features. The ordinary heap API remains the default while those
-specialized representations grow around it.
+Core quaternion and matrix equations now have a typed transform model as well;
+their generated compatibility classes delegate to it. Arena matrices/quaternions,
+persistent arenas and live-generated full GPU structures are next steps, not hidden
+features. Those GPU schemas will be generated when Field assembles a live shader,
+not assumed to exist at Gradle build time. The ordinary heap API remains the default
+while those specialized representations grow around it.

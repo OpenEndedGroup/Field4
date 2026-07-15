@@ -5,8 +5,7 @@ import afield.stdlib.linalg.Vector3f
 import afield.stdlib.linalg.closestPointOnTriangle
 import afield.stdlib.linalg.arena.FrameArena
 import afield.stdlib.linalg.arena.frameScratch
-import afield.stdlib.linalg.storage.SegmentVec3Buffer
-import afield.stdlib.linalg.storage.Vec3StorageLayout
+import afield.stdlib.linalg.storage.*
 import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -55,6 +54,16 @@ object GeneratedLinalgSmokeTest {
             packed[0].set(1f, 2f, 3f)
             packed[1].set(4f, 5f, 6f)
             check(packed[0].dot(packed[1]) == 32f)
+        }
+        val packed2 = SegmentVec2Buffer.of(ByteBuffer.allocateDirect(16), 2, Vec2StorageLayout.PACKED_8)
+        with(packed2) {
+            packed2[0].set(1f, 2f); packed2[1].set(3f, 4f)
+            check(packed2[0].dot(packed2[1]) == 11f)
+        }
+        val aligned4 = SegmentVec4Buffer.of(ByteBuffer.allocateDirect(32), 2, Vec4StorageLayout.ALIGNED_16)
+        with(aligned4) {
+            aligned4[0].set(1f, 2f, 3f, 4f); aligned4[1].set(4f, 3f, 2f, 1f)
+            check(aligned4[0].dot(aligned4[1]) == 20f)
         }
 
         val closest = closestPointOnTriangle(

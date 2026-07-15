@@ -10,21 +10,10 @@ interface Quaternionfc {
     fun z(): Float
     fun w(): Float
 
-    fun transform(value: Vector3fc, dest: Vector3f): Vector3f {
-        val vx = value.x(); val vy = value.y(); val vz = value.z()
-        val qx = x(); val qy = y(); val qz = z(); val qw = w()
-        val tx = 2f * (qy * vz - qz * vy)
-        val ty = 2f * (qz * vx - qx * vz)
-        val tz = 2f * (qx * vy - qy * vx)
-        return dest.set(
-            vx + qw * tx + qy * tz - qz * ty,
-            vy + qw * ty + qz * tx - qx * tz,
-            vz + qw * tz + qx * ty - qy * tx
-        )
-    }
+    fun transform(value: Vector3fc, dest: Vector3f): Vector3f = transformQuaternionVector3(this, value, dest)
 
     fun transform(value: Vector3f): Vector3f = transform(value, value)
-    fun dot(other: Quaternionfc): Float = x() * other.x() + y() * other.y() + z() * other.z() + w() * other.w()
+    fun dot(other: Quaternionfc): Float = dotQuaternion(this, other)
     operator fun times(value: Vector3fc): Vector3f = transform(value, Vector3f())
 }
 
@@ -49,28 +38,13 @@ class Quaternionf() : Quaternionfc, Cloneable {
     }
     fun set(other: Quaternionfc): Quaternionf = set(other.x(), other.y(), other.z(), other.w())
 
-    fun normalize(): Quaternionf {
-        val inv = 1f / sqrt(x * x + y * y + z * z + w * w)
-        return set(x * inv, y * inv, z * inv, w * inv)
-    }
+    fun normalize(): Quaternionf = normalizeQuaternion(this, this)
 
-    fun conjugate(): Quaternionf = set(-x, -y, -z, w)
-    fun invert(): Quaternionf {
-        val inv = 1f / (x * x + y * y + z * z + w * w)
-        return set(-x * inv, -y * inv, -z * inv, w * inv)
-    }
+    fun conjugate(): Quaternionf = conjugateQuaternion(this, this)
+    fun invert(): Quaternionf = invertQuaternion(this, this)
 
     fun mul(right: Quaternionfc): Quaternionf = mul(right, this)
-    fun mul(right: Quaternionfc, dest: Quaternionf): Quaternionf {
-        val lx = x; val ly = y; val lz = z; val lw = w
-        val rx = right.x(); val ry = right.y(); val rz = right.z(); val rw = right.w()
-        return dest.set(
-            lw * rx + lx * rw + ly * rz - lz * ry,
-            lw * ry - lx * rz + ly * rw + lz * rx,
-            lw * rz + lx * ry - ly * rx + lz * rw,
-            lw * rw - lx * rx - ly * ry - lz * rz
-        )
-    }
+    fun mul(right: Quaternionfc, dest: Quaternionf): Quaternionf = multiplyQuaternion(this, right, dest)
 
     fun premul(left: Quaternionfc): Quaternionf = Quaternionf(left).mul(this, this)
 
@@ -191,16 +165,9 @@ interface Matrix3fc {
     fun m10(): Float; fun m11(): Float; fun m12(): Float
     fun m20(): Float; fun m21(): Float; fun m22(): Float
 
-    fun transform(value: Vector3fc, dest: Vector3f): Vector3f {
-        val x = value.x(); val y = value.y(); val z = value.z()
-        return dest.set(
-            m00() * x + m10() * y + m20() * z,
-            m01() * x + m11() * y + m21() * z,
-            m02() * x + m12() * y + m22() * z
-        )
-    }
+    fun transform(value: Vector3fc, dest: Vector3f): Vector3f = transformMatrix3Vector3(this, value, dest)
     fun transform(value: Vector3f): Vector3f = transform(value, value)
-    fun determinant():Float=m00()*(m11()*m22()-m21()*m12())-m10()*(m01()*m22()-m21()*m02())+m20()*(m01()*m12()-m11()*m02())
+    fun determinant(): Float = determinantMatrix3(this)
 }
 
 class Matrix3f() : Matrix3fc {
@@ -232,22 +199,12 @@ class Matrix3f() : Matrix3fc {
         val xx=x*x2;val xy=x*y2;val xz=x*z2;val yy=y*y2;val yz=y*z2;val zz=z*z2;val wx=w*x2;val wy=w*y2;val wz=w*z2
         return set(1f-yy-zz, xy+wz, xz-wy, xy-wz,1f-xx-zz,yz+wx, xz+wy,yz-wx,1f-xx-yy)
     }
-    fun mul(right: Matrix3fc): Matrix3f {
-        val a00=m00*right.m00()+m10*right.m01()+m20*right.m02(); val a01=m01*right.m00()+m11*right.m01()+m21*right.m02(); val a02=m02*right.m00()+m12*right.m01()+m22*right.m02()
-        val a10=m00*right.m10()+m10*right.m11()+m20*right.m12(); val a11=m01*right.m10()+m11*right.m11()+m21*right.m12(); val a12=m02*right.m10()+m12*right.m11()+m22*right.m12()
-        val a20=m00*right.m20()+m10*right.m21()+m20*right.m22(); val a21=m01*right.m20()+m11*right.m21()+m21*right.m22(); val a22=m02*right.m20()+m12*right.m21()+m22*right.m22()
-        return set(a00,a01,a02,a10,a11,a12,a20,a21,a22)
-    }
-    override fun determinant(): Float = m00*(m11*m22-m21*m12)-m10*(m01*m22-m21*m02)+m20*(m01*m12-m11*m02)
-    fun invert(): Matrix3f {
-        val d=determinant(); val a00=(m11*m22-m21*m12)/d; val a01=(m21*m02-m01*m22)/d; val a02=(m01*m12-m11*m02)/d
-        val a10=(m20*m12-m10*m22)/d; val a11=(m00*m22-m20*m02)/d; val a12=(m10*m02-m00*m12)/d
-        val a20=(m10*m21-m20*m11)/d; val a21=(m20*m01-m00*m21)/d; val a22=(m00*m11-m10*m01)/d
-        return set(a00,a01,a02,a10,a11,a12,a20,a21,a22)
-    }
-    fun transpose(): Matrix3f = set(m00,m10,m20,m01,m11,m21,m02,m12,m22)
-    fun get(buffer:FloatBuffer):FloatBuffer{val i=buffer.position();val a=floatArrayOf(m00,m01,m02,m10,m11,m12,m20,m21,m22);a.forEachIndexed{n,v->buffer.put(i+n,v)};return buffer}
-    fun get(index:Int,buffer:ByteBuffer):ByteBuffer{val a=floatArrayOf(m00,m01,m02,m10,m11,m12,m20,m21,m22);a.forEachIndexed{n,v->buffer.putFloat(index+n*4,v)};return buffer}
+    fun mul(right: Matrix3fc): Matrix3f = multiplyMatrix3(this, right, this)
+    override fun determinant(): Float = determinantMatrix3(this)
+    fun invert(): Matrix3f = invertMatrix3(this, this)
+    fun transpose(): Matrix3f = transposeMatrix3(this, this)
+    fun get(buffer:FloatBuffer):FloatBuffer{val i=buffer.position();buffer.put(i,m00);buffer.put(i+1,m01);buffer.put(i+2,m02);buffer.put(i+3,m10);buffer.put(i+4,m11);buffer.put(i+5,m12);buffer.put(i+6,m20);buffer.put(i+7,m21);buffer.put(i+8,m22);return buffer}
+    fun get(index:Int,buffer:ByteBuffer):ByteBuffer{buffer.putFloat(index,m00);buffer.putFloat(index+4,m01);buffer.putFloat(index+8,m02);buffer.putFloat(index+12,m10);buffer.putFloat(index+16,m11);buffer.putFloat(index+20,m12);buffer.putFloat(index+24,m20);buffer.putFloat(index+28,m21);buffer.putFloat(index+32,m22);return buffer}
 }
 
 interface Matrix4fc {
@@ -256,29 +213,18 @@ interface Matrix4fc {
     fun m20():Float;fun m21():Float;fun m22():Float;fun m23():Float
     fun m30():Float;fun m31():Float;fun m32():Float;fun m33():Float
 
-    fun transformPosition(value: Vector3fc, dest: Vector3f): Vector3f {
-        val x=value.x();val y=value.y();val z=value.z()
-        return dest.set(m00()*x+m10()*y+m20()*z+m30(), m01()*x+m11()*y+m21()*z+m31(), m02()*x+m12()*y+m22()*z+m32())
-    }
+    fun transformPosition(value: Vector3fc, dest: Vector3f): Vector3f = transformMatrix4Position(this, value, dest)
     fun transformPosition(value: Vector3f): Vector3f = transformPosition(value,value)
-    fun transformDirection(value: Vector3fc, dest: Vector3f): Vector3f {
-        val x=value.x();val y=value.y();val z=value.z()
-        return dest.set(m00()*x+m10()*y+m20()*z, m01()*x+m11()*y+m21()*z, m02()*x+m12()*y+m22()*z)
-    }
+    fun transformDirection(value: Vector3fc, dest: Vector3f): Vector3f = transformMatrix4Direction(this, value, dest)
     fun transformDirection(value: Vector3f): Vector3f=transformDirection(value,value)
-    fun transform(value: Vector4fc,dest:Vector4f):Vector4f { val x=value.x();val y=value.y();val z=value.z();val w=value.w();return dest.set(m00()*x+m10()*y+m20()*z+m30()*w,m01()*x+m11()*y+m21()*z+m31()*w,m02()*x+m12()*y+m22()*z+m32()*w,m03()*x+m13()*y+m23()*z+m33()*w) }
+    fun transform(value: Vector4fc, dest: Vector4f): Vector4f = transformMatrix4Vector4(this, value, dest)
     fun transform(value:Vector4f):Vector4f=transform(value,value)
     fun getTranslation(dest:Vector3f):Vector3f=dest.set(m30(),m31(),m32())
     fun getScale(dest:Vector3f):Vector3f=dest.set(sqrt(m00()*m00()+m01()*m01()+m02()*m02()),sqrt(m10()*m10()+m11()*m11()+m12()*m12()),sqrt(m20()*m20()+m21()*m21()+m22()*m22()))
     operator fun times(right:Matrix4fc):Matrix4f=Matrix4f(this).mul(right)
     operator fun times(value:Vector4fc):Vector4f=transform(value,Vector4f())
     operator fun times(value:Vector3fc):Vector3f=transformPosition(value,Vector3f())
-    fun determinant():Float {
-        val a=Array(4){r->FloatArray(4){c->when(c){0->listOf(m00(),m01(),m02(),m03())[r];1->listOf(m10(),m11(),m12(),m13())[r];2->listOf(m20(),m21(),m22(),m23())[r];else->listOf(m30(),m31(),m32(),m33())[r]}}}
-        var det=1f
-        for(c in 0..3){var p=c;for(r in c+1..3)if(abs(a[r][c])>abs(a[p][c]))p=r;if(abs(a[p][c])<1e-20f)return 0f;if(p!=c){val t=a[c];a[c]=a[p];a[p]=t;det=-det};val q=a[c][c];det*=q;for(r in c+1..3){val f=a[r][c]/q;for(j in c+1..3)a[r][j]-=f*a[c][j]}}
-        return det
-    }
+    fun determinant(): Float = determinantMatrix4(this)
 }
 
 class Matrix4f() : Matrix4fc {
@@ -299,35 +245,23 @@ class Matrix4f() : Matrix4fc {
     operator fun set(index:Int,value:Float){when(index){0->m00=value;1->m01=value;2->m02=value;3->m03=value;4->m10=value;5->m11=value;6->m12=value;7->m13=value;8->m20=value;9->m21=value;10->m22=value;11->m23=value;12->m30=value;13->m31=value;14->m32=value;15->m33=value;else->throw IndexOutOfBoundsException("matrix component $index")}}
     operator fun get(column:Int,row:Int):Float=get(column*4+row)
     operator fun set(column:Int,row:Int,value:Float){set(column*4+row,value)}
-    fun get(buffer:FloatBuffer):FloatBuffer{val i=buffer.position();val a=floatArrayOf(m00,m01,m02,m03,m10,m11,m12,m13,m20,m21,m22,m23,m30,m31,m32,m33);a.forEachIndexed{n,v->buffer.put(i+n,v)};return buffer}
-    fun get(dest:FloatArray):FloatArray{require(dest.size>=16);val a=floatArrayOf(m00,m01,m02,m03,m10,m11,m12,m13,m20,m21,m22,m23,m30,m31,m32,m33);a.copyInto(dest);return dest}
-    fun get(index:Int,buffer:ByteBuffer):ByteBuffer{val a=floatArrayOf(m00,m01,m02,m03,m10,m11,m12,m13,m20,m21,m22,m23,m30,m31,m32,m33);a.forEachIndexed{n,v->buffer.putFloat(index+n*4,v)};return buffer}
+    fun get(buffer:FloatBuffer):FloatBuffer{val i=buffer.position();for(n in 0 until 16)buffer.put(i+n,this[n]);return buffer}
+    fun get(dest:FloatArray):FloatArray{require(dest.size>=16);for(n in 0 until 16)dest[n]=this[n];return dest}
+    fun get(index:Int,buffer:ByteBuffer):ByteBuffer{for(n in 0 until 16)buffer.putFloat(index+n*4,this[n]);return buffer}
     fun mul(r:Matrix4fc):Matrix4f=mul(r,this)
-    fun mul(r:Matrix4fc,d:Matrix4f):Matrix4f{
-        val a00=m00*r.m00()+m10*r.m01()+m20*r.m02()+m30*r.m03();val a01=m01*r.m00()+m11*r.m01()+m21*r.m02()+m31*r.m03();val a02=m02*r.m00()+m12*r.m01()+m22*r.m02()+m32*r.m03();val a03=m03*r.m00()+m13*r.m01()+m23*r.m02()+m33*r.m03()
-        val a10=m00*r.m10()+m10*r.m11()+m20*r.m12()+m30*r.m13();val a11=m01*r.m10()+m11*r.m11()+m21*r.m12()+m31*r.m13();val a12=m02*r.m10()+m12*r.m11()+m22*r.m12()+m32*r.m13();val a13=m03*r.m10()+m13*r.m11()+m23*r.m12()+m33*r.m13()
-        val a20=m00*r.m20()+m10*r.m21()+m20*r.m22()+m30*r.m23();val a21=m01*r.m20()+m11*r.m21()+m21*r.m22()+m31*r.m23();val a22=m02*r.m20()+m12*r.m21()+m22*r.m22()+m32*r.m23();val a23=m03*r.m20()+m13*r.m21()+m23*r.m22()+m33*r.m23()
-        val a30=m00*r.m30()+m10*r.m31()+m20*r.m32()+m30*r.m33();val a31=m01*r.m30()+m11*r.m31()+m21*r.m32()+m31*r.m33();val a32=m02*r.m30()+m12*r.m31()+m22*r.m32()+m32*r.m33();val a33=m03*r.m30()+m13*r.m31()+m23*r.m32()+m33*r.m33()
-        return d.set(a00,a01,a02,a03,a10,a11,a12,a13,a20,a21,a22,a23,a30,a31,a32,a33)
-    }
-    fun translate(x:Float,y:Float,z:Float):Matrix4f{return set(m00,m01,m02,m03,m10,m11,m12,m13,m20,m21,m22,m23,m00*x+m10*y+m20*z+m30,m01*x+m11*y+m21*z+m31,m02*x+m12*y+m22*z+m32,m03*x+m13*y+m23*z+m33)}
+    fun mul(r: Matrix4fc, d: Matrix4f): Matrix4f = multiplyMatrix4(this, r, d)
+    fun translate(x: Float, y: Float, z: Float): Matrix4f = translateMatrix4(this, x, y, z, this)
     fun translate(v:Vector3fc):Matrix4f=translate(v.x(),v.y(),v.z())
     fun translation(x:Float,y:Float,z:Float):Matrix4f=identity().translate(x,y,z)
     fun translation(v:Vector3fc):Matrix4f=translation(v.x(),v.y(),v.z())
     fun setTranslation(x:Float,y:Float,z:Float):Matrix4f{m30=x;m31=y;m32=z;return this};fun setTranslation(v:Vector3fc)=setTranslation(v.x(),v.y(),v.z())
-    fun scale(x:Float,y:Float,z:Float):Matrix4f{m00*=x;m01*=x;m02*=x;m03*=x;m10*=y;m11*=y;m12*=y;m13*=y;m20*=z;m21*=z;m22*=z;m23*=z;return this};fun scale(s:Float)=scale(s,s,s);fun scale(v:Vector3fc)=scale(v.x(),v.y(),v.z())
+    fun scale(x: Float, y: Float, z: Float): Matrix4f = scaleMatrix4(this, x, y, z, this);fun scale(s:Float)=scale(s,s,s);fun scale(v:Vector3fc)=scale(v.x(),v.y(),v.z())
     fun scaling(x:Float,y:Float,z:Float):Matrix4f=identity().scale(x,y,z)
     fun rotate(q:Quaternionfc):Matrix4f=mul(Matrix4f().rotation(q));fun rotation(q:Quaternionfc):Matrix4f{val r=Matrix3f().rotation(q);return set(r.m00,r.m01,r.m02,0f,r.m10,r.m11,r.m12,0f,r.m20,r.m21,r.m22,0f,0f,0f,0f,1f)}
     fun rotate(angle:Float,x:Float,y:Float,z:Float):Matrix4f=rotate(Quaternionf().setAngleAxis(angle,x,y,z));fun rotate(angle:Float,axis:Vector3fc)=rotate(angle,axis.x(),axis.y(),axis.z())
     fun rotateX(a:Float)=rotate(a,1f,0f,0f);fun rotateY(a:Float)=rotate(a,0f,1f,0f);fun rotateZ(a:Float)=rotate(a,0f,0f,1f)
-    fun transpose():Matrix4f=set(m00,m10,m20,m30,m01,m11,m21,m31,m02,m12,m22,m32,m03,m13,m23,m33)
-    fun invert():Matrix4f{
-        val a=Array(4){r->FloatArray(8){c->if(c<4)getRowCol(r,c) else if(c-4==r)1f else 0f}}
-        for(c in 0..3){var p=c;for(r in c+1..3)if(abs(a[r][c])>abs(a[p][c]))p=r;val t=a[c];a[c]=a[p];a[p]=t;val q=a[c][c];for(j in 0..7)a[c][j]/=q;for(r in 0..3)if(r!=c){val f=a[r][c];for(j in 0..7)a[r][j]-=f*a[c][j]}}
-        return setFromRows(a)
-    }
-    private fun getRowCol(r:Int,c:Int):Float=when(c){0->when(r){0->m00;1->m01;2->m02;else->m03};1->when(r){0->m10;1->m11;2->m12;else->m13};2->when(r){0->m20;1->m21;2->m22;else->m23};else->when(r){0->m30;1->m31;2->m32;else->m33}}
-    private fun setFromRows(a:Array<FloatArray>)=set(a[0][4],a[1][4],a[2][4],a[3][4],a[0][5],a[1][5],a[2][5],a[3][5],a[0][6],a[1][6],a[2][6],a[3][6],a[0][7],a[1][7],a[2][7],a[3][7])
+    fun transpose(): Matrix4f = transposeMatrix4(this, this)
+    fun invert(): Matrix4f = invertMatrix4(this, this)
     fun perspective(fovy:Float,aspect:Float,zNear:Float,zFar:Float):Matrix4f=setPerspective(fovy,aspect,zNear,zFar,false)
     fun setPerspective(fovy:Float,aspect:Float,zNear:Float,zFar:Float,zZeroToOne:Boolean=false):Matrix4f{val h=1f/tan(fovy*.5f);val rm22=if(zZeroToOne)zFar/(zNear-zFar) else (zFar+zNear)/(zNear-zFar);val rm32=if(zZeroToOne)zFar*zNear/(zNear-zFar) else 2f*zFar*zNear/(zNear-zFar);return set(h/aspect,0f,0f,0f,0f,h,0f,0f,0f,0f,rm22,-1f,0f,0f,rm32,0f)}
     fun frustum(left:Float,right:Float,bottom:Float,top:Float,zNear:Float,zFar:Float,zZeroToOne:Boolean=false):Matrix4f{val rm22=if(zZeroToOne)zFar/(zNear-zFar) else (zFar+zNear)/(zNear-zFar);val rm32=if(zZeroToOne)zFar*zNear/(zNear-zFar) else 2f*zFar*zNear/(zNear-zFar);return mul(Matrix4f().set(2f*zNear/(right-left),0f,0f,0f,0f,2f*zNear/(top-bottom),0f,0f,(right+left)/(right-left),(top+bottom)/(top-bottom),rm22,-1f,0f,0f,rm32,0f))}

@@ -15,7 +15,8 @@ fun main(rawArguments: Array<String>) {
     val files = linkedMapOf(
         Path.of("afield/stdlib/linalg/Vectors.kt") to emitter.emitHeapVectors(),
         Path.of("afield/stdlib/linalg/arena/ArenaVectors.kt") to emitter.emitArenaVectors(),
-        Path.of("afield/stdlib/linalg/storage/SegmentVec3Buffer.kt") to emitter.emitSegmentVec3Buffer(),
+        Path.of("afield/stdlib/linalg/storage/SegmentVectors.kt") to emitter.emitSegmentVectors(),
+        Path.of("afield/stdlib/linalg/TransformSemantics.kt") to emitter.emitTransformSemantics(),
         Path.of("afield/stdlib/linalg/Transforms.kt") to generatedTemplate("Transforms.kt"),
         Path.of("afield/stdlib/linalg/CompatTypes.kt") to generatedTemplate("CompatTypes.kt"),
     )

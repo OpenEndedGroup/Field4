@@ -15,7 +15,7 @@ import kotlin.math.max
  */
 class FrameArena(
     initialCapacityBytes: Int = DEFAULT_CAPACITY_BYTES,
-    val debugChecks: Boolean = true,
+    val debugChecks: Boolean = ARENA_CHECKS_COMPILED,
 ) : AutoCloseable {
     internal enum class Kind(val componentCount: Int) {
         VEC2(2),
@@ -30,8 +30,8 @@ class FrameArena(
     private var cursorBytes = 0
     private var resetFloorStamp = 0
     private var closed = false
-    private val ownerThreadId = Thread.currentThread().threadId()
-    private val ownerThreadName = Thread.currentThread().name
+    private val ownerThreadId = if (ARENA_CHECKS_COMPILED) Thread.currentThread().threadId() else -1L
+    private val ownerThreadName = if (ARENA_CHECKS_COMPILED) Thread.currentThread().name else ""
     private val scope = FrameScope(this)
     private var markStack = LongArray(8)
     private var markDepth = 0
@@ -51,8 +51,8 @@ class FrameArena(
         require(initialCapacityBytes > 0) { "initial capacity must be positive" }
         val capacity = align16(initialCapacityBytes)
         storage = storageOwner.allocate(capacity.toLong(), ALIGNMENT_BYTES.toLong())
-        allocationStamps = IntArray(capacity / SLOT_BYTES)
-        allocationKinds = ByteArray(capacity / SLOT_BYTES)
+        allocationStamps = if (ARENA_CHECKS_COMPILED && debugChecks) IntArray(capacity / SLOT_BYTES) else IntArray(0)
+        allocationKinds = if (ARENA_CHECKS_COMPILED && debugChecks) ByteArray(capacity / SLOT_BYTES) else ByteArray(0)
     }
 
     val capacityBytes: Int
@@ -63,6 +63,9 @@ class FrameArena(
 
     val isClosed: Boolean
         get() = closed
+
+    val checksEnabled: Boolean
+        get() = ARENA_CHECKS_COMPILED && debugChecks
 
     /**
      * Runs a non-suspending scratch region and invalidates everything allocated
@@ -84,13 +87,13 @@ class FrameArena(
         checkAccess()
         cursorBytes = 0
         markDepth = 0
-        resetFloorStamp = nextStamp()
+        resetFloorStamp = if (ARENA_CHECKS_COMPILED && debugChecks) nextStamp() else 0
         resetCount++
     }
 
     fun mark(): ArenaMark {
         checkAccess()
-        val stamp = nextStamp()
+        val stamp = if (ARENA_CHECKS_COMPILED && debugChecks) nextStamp() else 0
         val token = pack(stamp, cursorBytes)
         if (markDepth == markStack.size) markStack = markStack.copyOf(markStack.size * 2)
         markStack[markDepth++] = token
@@ -103,7 +106,7 @@ class FrameArena(
             "FrameArena marks must be restored once, in LIFO order"
         }
         val restoredCursor = unpackOffset(mark.token)
-        if (debugChecks) {
+        if (ARENA_CHECKS_COMPILED && debugChecks) {
             val firstDeadSlot = restoredCursor / SLOT_BYTES
             val lastUsedSlot = (cursorBytes + SLOT_BYTES - 1) / SLOT_BYTES
             allocationStamps.fill(0, firstDeadSlot, lastUsedSlot)
@@ -118,13 +121,15 @@ class FrameArena(
         val offset = align16(cursorBytes)
         val required = offset + SLOT_BYTES
         ensureCapacity(required)
-        val stamp = nextStamp()
-        allocationStamps[offset / SLOT_BYTES] = stamp
-        allocationKinds[offset / SLOT_BYTES] = (kind.ordinal + 1).toByte()
+        val stamp = if (ARENA_CHECKS_COMPILED && debugChecks) nextStamp() else 0
+        if (ARENA_CHECKS_COMPILED && debugChecks) {
+            allocationStamps[offset / SLOT_BYTES] = stamp
+            allocationKinds[offset / SLOT_BYTES] = (kind.ordinal + 1).toByte()
+        }
         cursorBytes = required
         highWaterBytes = max(highWaterBytes, cursorBytes)
         allocationCount++
-        if (debugChecks) {
+        if (ARENA_CHECKS_COMPILED && debugChecks) {
             for (component in 0 until 4) {
                 storage.set(ValueLayout.JAVA_FLOAT, offset.toLong() + component * Float.SIZE_BYTES, Float.NaN)
             }
@@ -143,12 +148,12 @@ class FrameArena(
     }
 
     private fun validate(token: Long, component: Int, expectedKind: Kind): Int {
+        val offset = unpackOffset(token)
+        if (!ARENA_CHECKS_COMPILED || !debugChecks) return offset
         checkAccess()
         require(component in 0 until expectedKind.componentCount) {
             "component $component outside ${expectedKind.name}"
         }
-        val offset = unpackOffset(token)
-        if (!debugChecks) return offset
         val stamp = unpackStamp(token)
         check(stamp > resetFloorStamp) {
             "${expectedKind.name} handle was used after FrameArena.reset()"
@@ -179,19 +184,20 @@ class FrameArena(
         val oldOwner = storageOwner
         storageOwner = newOwner
         storage = newStorage
-        allocationStamps = allocationStamps.copyOf(newCapacity / SLOT_BYTES)
-        allocationKinds = allocationKinds.copyOf(newCapacity / SLOT_BYTES)
+        if (ARENA_CHECKS_COMPILED && debugChecks) {
+            allocationStamps = allocationStamps.copyOf(newCapacity / SLOT_BYTES)
+            allocationKinds = allocationKinds.copyOf(newCapacity / SLOT_BYTES)
+        }
         oldOwner.close()
         growthCount++
     }
 
     private fun checkAccess() {
+        if (!ARENA_CHECKS_COMPILED || !debugChecks) return
         check(!closed) { "FrameArena is closed" }
-        if (debugChecks) {
-            val current = Thread.currentThread()
-            check(current.threadId() == ownerThreadId) {
-                "FrameArena owned by '$ownerThreadName' was accessed from '${current.name}'"
-            }
+        val current = Thread.currentThread()
+        check(current.threadId() == ownerThreadId) {
+            "FrameArena owned by '$ownerThreadName' was accessed from '${current.name}'"
         }
     }
 
@@ -204,9 +210,11 @@ class FrameArena(
 
     companion object {
         const val DEFAULT_CAPACITY_BYTES: Int = 64 * 1024
+        val checksCompiledIn: Boolean
+            get() = ARENA_CHECKS_COMPILED
         private const val SLOT_BYTES = 16
         private const val ALIGNMENT_BYTES = 16
-        private val globalStamp = AtomicInteger(0)
+        private val globalStamp: AtomicInteger? = if (ARENA_CHECKS_COMPILED) AtomicInteger(0) else null
         private val currentArena = ThreadLocal<FrameArena?>()
 
         /**
@@ -224,7 +232,7 @@ class FrameArena(
             currentArena.remove()
         }
 
-        private fun nextStamp(): Int = globalStamp.incrementAndGet().also {
+        private fun nextStamp(): Int = checkNotNull(globalStamp).incrementAndGet().also {
             check(it > 0) { "FrameArena allocation stamp space exhausted" }
         }
 
