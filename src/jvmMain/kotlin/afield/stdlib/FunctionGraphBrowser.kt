@@ -246,8 +246,8 @@ fun Functions.Fn.graphBrowseHtml(
 <style>
 html, body { margin:0; padding:0; background:#000; color:#d8d8d8; font-family:"Iosevka Web",Iosevka,monospace; overflow:hidden; }
 * { box-sizing:border-box; }
-.browser { height:${frameHeight}px; display:grid; grid-template-columns:260px minmax(0,1fr); border:1px solid #242424; background:#000; }
-.side { min-width:0; border-right:1px solid #242424; display:flex; flex-direction:column; background:#050505; }
+.browser { height:${frameHeight}px; display:grid; grid-template-columns:260px minmax(0,1fr); grid-template-rows:minmax(0,1fr); overflow:hidden; border:1px solid #242424; background:#000; }
+.side { min-width:0; min-height:0; border-right:1px solid #242424; display:flex; flex-direction:column; background:#050505; }
 .side-head { padding:12px 12px 9px; border-bottom:1px solid #202020; }
 .title { color:#f0f0f0; font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .hint { margin-top:5px; color:#777; font-size:10px; line-height:1.35; }
@@ -261,7 +261,7 @@ html, body { margin:0; padding:0; background:#000; color:#d8d8d8; font-family:"I
 .op { color:#48c9ff; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .dot { flex:0 0 auto; color:#555; }
 .path { margin-left:auto; color:#555; font-size:9px; }
-.main { min-width:0; display:flex; flex-direction:column; padding:10px 12px 12px; }
+.main { min-width:0; min-height:0; display:flex; flex-direction:column; padding:10px 12px 12px; }
 .toolbar { min-height:42px; display:flex; align-items:flex-start; gap:8px; }
 .selection { min-width:0; flex:1; }
 .selection-main { color:#eee; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -273,7 +273,7 @@ html, body { margin:0; padding:0; background:#000; color:#d8d8d8; font-family:"I
 .stepper { display:none; align-items:center; gap:8px; margin:8px 0 0; }
 .stepper input { flex:1; accent-color:#48c9ff; }
 .stepper .step-label { color:#bbb; font-size:10px; white-space:nowrap; min-width:150px; }
-.canvas-wrap { position:relative; flex:1; min-height:230px; border:1px solid #242424; border-radius:7px; overflow:hidden; background:#030303; }
+.canvas-wrap { position:relative; flex:1; min-height:0; border:1px solid #242424; border-radius:7px; overflow:hidden; background:#030303; }
 canvas { display:block; width:100%; height:100%; cursor:crosshair; }
 .legend { position:absolute; left:66px; top:9px; display:flex; gap:14px; color:#888; font-size:10px; pointer-events:none; }
 .key::before { content:""; display:inline-block; width:16px; margin-right:5px; vertical-align:middle; border-top:2px solid #777; }
@@ -285,18 +285,18 @@ canvas { display:block; width:100%; height:100%; cursor:crosshair; }
 <body>
 <div class="browser">
   <div class="side">
-    <div class="side-head"><div class="title">$safeTitle</div><div class="hint">Click an occurrence; shift/⌘-click to overlay several. Every trace shares the final x-axis. Cascade steps a component up to the final shape; sensitivity sweeps a number.</div></div>
+    <div class="side-head"><div class="title">$safeTitle</div><div class="hint">Click an occurrence; shift/⌘-click to overlay several. Hover a mode (top right) to see what it plots. The x-axis is the function's domain; every trace shares it.</div></div>
     <div class="nodes" id="nodes"></div>
   </div>
   <div class="main">
     <div class="toolbar">
       <div class="selection"><div class="selection-main" id="selectionMain"></div><div class="selection-detail" id="selectionDetail"></div></div>
       <div class="modes">
-        <button class="mode" data-mode="local">local</button>
-        <button class="mode active" data-mode="effect">effect</button>
-        <button class="mode" data-mode="muted">muted final</button>
-        <button class="mode" data-mode="cascade">cascade</button>
-        <button class="mode" data-mode="sensitivity">sensitivity</button>
+        <button class="mode" data-mode="local" title="This occurrence on its own: the selected subgraph sampled directly, ignoring everything around it.">local</button>
+        <button class="mode active" data-mode="effect" title="What this occurrence contributes to the final signal, in context — the final minus the final with this node muted. This is the default.">effect</button>
+        <button class="mode" data-mode="muted" title="The whole function with this occurrence replaced by a neutral value (0, or 1 for a divisor) — what you'd get without it.">muted final</button>
+        <button class="mode" data-mode="cascade" title="Walk this component up through each parent to the final shape, one stage at a time (drag the slider).">cascade</button>
+        <button class="mode" data-mode="sensitivity" title="For a numeric node (◈), sweep its value across a range and watch the final signal respond (drag the slider).">sensitivity</button>
       </div>
     </div>
     <div class="stepper" id="stepper"><input type="range" id="stepRange" min="0" max="0" value="0"><span class="step-label" id="stepLabel"></span></div>

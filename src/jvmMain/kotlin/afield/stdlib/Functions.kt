@@ -5440,8 +5440,23 @@ canvas {
     fun Fn.stretchBy(to: ClosedRange<*>, from: Domain = domain, warp: (Double) -> Double): Fn =
         stretchBy(to.toDomain(), from, warp)
 
+    /**
+     * The literal value of a compile-time constant [Fn] (a bare `param`/`const` with no
+     * inputs), or null if it varies with x. Used to translate the domain under a constant
+     * [shift]: `f.delay(2.0)` should move f's support forward by 2, not leave it in place.
+     */
+    private fun Fn.literalValue(): Double? {
+        val g = graphNode()
+        if (g.children.isNotEmpty()) return null
+        if ("number" !in g.tags) return null
+        return g.numbers["value"]?.takeIf { it.isFinite() }
+    }
+
     fun Fn.shift(dx: Fn = param(0.0)): Fn {
-        val d = intersectDomains(domain, dx)
+        // A constant delay slides the whole signal, so its domain slides with it. A signal-valued
+        // dx has no single offset, so we fall back to intersecting the operands' domains.
+        val constant = dx.literalValue()
+        val d = if (constant != null) domain.safeShift(constant) else intersectDomains(domain, dx)
         return graphFn(
             d,
             name,

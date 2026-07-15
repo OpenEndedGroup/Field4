@@ -269,6 +269,30 @@ class FunctionsGraphRewriteTest {
     }
 
     @Test
+    fun constantDelayTranslatesTheDomainSoTheSignalRidesWithIt() = with(Functions) {
+        // A constant delay slides the whole signal forward; its finite domain must slide too,
+        // otherwise a graph browser (or any domain-driven sampler) plots the wrong window.
+        val f = (sin(4.0) over 0..0.5).delay(2.0)
+        assertEquals(2.0, f.domain.min, 1e-9)
+        assertEquals(2.5, f.domain.max, 1e-9)
+
+        // The delayed signal is live across 2.0..2.5 and out-of-domain before it.
+        assertTrue(f.evalSafe(2.25, outside = Double.NaN).isFinite())
+        assertTrue(f.evalSafe(0.25, outside = Double.NaN).isNaN())
+
+        // graphTrace samples the shifted window, so the x-axis matches the domain.
+        val trace = f.graphTrace(samples = 64)
+        assertEquals(2.0, trace.xs.first(), 1e-9)
+        assertEquals(2.5, trace.xs.last(), 1e-9)
+
+        // A signal-valued (non-constant) shift has no single offset, so the domain is intersected,
+        // not translated — the ramp's 0..1 domain survives unchanged.
+        val varying = (sin(4.0) over 0..1.0).shift(ramp(0.0, 0.5))
+        assertEquals(0.0, varying.domain.min, 1e-9)
+        assertEquals(1.0, varying.domain.max, 1e-9)
+    }
+
+    @Test
     fun graphBrowserKeepsLocalAndContextualEffectOnTheRootTimeBase() = with(Functions) {
         val source = sin(1.0).shift(0.125) * 0.5
         val trace = source.graphTrace(sampleDomain = Functions.Domain.DEFAULT, samples = 64)
@@ -287,7 +311,7 @@ class FunctionsGraphRewriteTest {
         assertTrue("data-mode=&quot;effect&quot;" in html)
         assertTrue("data-mode=&quot;cascade&quot;" in html)
         assertTrue("data-mode=&quot;sensitivity&quot;" in html)
-        assertTrue("shares the final x-axis" in html)
+        assertTrue("the function&#39;s domain" in html)
         assertFalse("gradient" in html.lowercase())
     }
 
