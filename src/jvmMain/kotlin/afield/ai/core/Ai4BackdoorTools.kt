@@ -5,6 +5,8 @@ import afield.SessionInformation
 import afield.ai.SemanticRetrievalQueryRequest
 import afield.ai.SemanticRetrievalService
 import afield.OperationTranscript
+import afield.app
+import afield.home
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
@@ -77,6 +79,9 @@ internal object Ai4BackdoorTools {
         }
         register(EvaluateKotlinExpressionRequest::class.java, { it.evaluateKotlinExpression != null }) { ctx, req ->
             ctx.evaluateKotlinExpression!!.invoke(req)
+        }
+        register(WorkspaceRgRequest::class.java, { it.workspaceRg != null }) { ctx, req ->
+            ctx.workspaceRg!!.invoke(req)
         }
     }
 
@@ -226,7 +231,15 @@ internal object Ai4BackdoorTools {
             semanticRetrievalRebuild = semanticRetrievalRebuild,
             agentMemory = agentMemory,
             compileKotlin = codeTools.compileKotlin,
-            evaluateKotlinExpression = codeTools.evaluateKotlinExpression
+            evaluateKotlinExpression = codeTools.evaluateKotlinExpression,
+            workspaceRg = { req ->
+                runWorkspaceRg(
+                    documentPath = docPath,
+                    fieldRoot = File(app),
+                    workspaceRoot = File(home),
+                    request = req
+                )
+            }
         )
     }
 }

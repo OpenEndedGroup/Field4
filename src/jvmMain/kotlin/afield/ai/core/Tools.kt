@@ -22,7 +22,9 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.openai.models.responses.ResponseCreateParams
 import com.openai.models.responses.ResponseFunctionToolCall
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
@@ -630,6 +632,114 @@ data class WorkspaceSymbolMatch(
     val relatedExamples: List<String> = emptyList()
 )
 
+
+/** Workspace ripgrep tool --------------------------------------------------- */
+
+@JsonClassDescription("Search Field text with ripgrep. Targets: current-document, document-history, workspace, or field-kotlin-src. Use this for exact text/regex searches across the live document, its saved history, the workspace, or Field's Kotlin source tree.")
+data class WorkspaceRgRequest(
+    @JsonPropertyDescription("ripgrep regular expression to search for.")
+    val query: String,
+    @JsonPropertyDescription("Search target: current-document, document-history, workspace, or field-kotlin-src.")
+    val target: String = "current-document",
+    @JsonPropertyDescription("Maximum number of matching lines returned across all files.")
+    val maxMatches: Int = 80,
+    @JsonPropertyDescription("Extra ripgrep glob filters, for example ['*.kt'] or ['!build/**'].")
+    val globs: List<String> = emptyList(),
+    @JsonPropertyDescription("Treat query as a literal string instead of a regular expression.")
+    val literal: Boolean = false,
+    @JsonPropertyDescription("Case-insensitive search.")
+    val ignoreCase: Boolean = false,
+    @JsonPropertyDescription("Include context lines before and after each match.")
+    val context: Int = 0
+)
+
+data class WorkspaceRgResult(
+    val success: Boolean,
+    val target: String,
+    val root: String,
+    val command: List<String>,
+    val matchLines: Int,
+    val truncated: Boolean,
+    val output: String,
+    val message: String = ""
+)
+
+fun runWorkspaceRg(
+    documentPath: String,
+    fieldRoot: File,
+    workspaceRoot: File,
+    request: WorkspaceRgRequest
+): WorkspaceRgResult {
+    val query = request.query.trim()
+    if (query.isEmpty()) {
+        return WorkspaceRgResult(false, request.target, "", emptyList(), 0, false, "", "query must not be empty")
+    }
+    val docDir = File(documentPath).canonicalFile
+    val normalizedTarget = request.target.trim().lowercase().replace('_', '-')
+    val canonicalTarget = when (normalizedTarget) {
+        "current-document", "document", "this-document" -> "current-document"
+        "document-history", "history", "this-documents-history", "this-document-history" -> "document-history"
+        "workspace", "this-workspace" -> "workspace"
+        "field-kotlin-src", "kotlin-src", "field-src", "src" -> "field-kotlin-src"
+        else -> return WorkspaceRgResult(false, request.target, "", emptyList(), 0, false, "", "unknown target '${request.target}'; use current-document, document-history, workspace, or field-kotlin-src")
+    }
+    val roots = when (canonicalTarget) {
+        "current-document" -> listOf(docDir)
+        "document-history" -> listOf(File(docDir, "backups"))
+        "workspace" -> listOf(workspaceRoot.canonicalFile)
+        "field-kotlin-src" -> listOf(File(fieldRoot.canonicalFile, "src"))
+        else -> emptyList()
+    }.filter { it.exists() }
+    if (roots.isEmpty()) {
+        return WorkspaceRgResult(false, canonicalTarget, "", emptyList(), 0, false, "", "target path does not exist")
+    }
+
+    val limit = request.maxMatches.coerceIn(1, 500)
+    val command = mutableListOf("rg", "--line-number", "--column", "--color", "never", "--no-heading", "--max-count", limit.toString())
+    if (request.literal) command += "--fixed-strings"
+    if (request.ignoreCase) command += "--ignore-case"
+    val ctx = request.context.coerceIn(0, 10)
+    if (ctx > 0) command += listOf("--context", ctx.toString())
+    command += listOf("--glob", "!build/**", "--glob", "!.gradle/**", "--glob", "!node_modules/**", "--glob", "!.git/**")
+    if (canonicalTarget == "current-document") command += listOf("--glob", "!backups/**", "--glob", "!history_screenshots/**")
+    if (canonicalTarget == "field-kotlin-src") {
+        command += listOf("--glob", "*.kt")
+    }
+    request.globs.filter { it.isNotBlank() }.take(20).forEach { command += listOf("--glob", it) }
+    command += "--"
+    command += query
+    command += roots.map { it.absolutePath }
+
+    return try {
+        val outputFile = File.createTempFile("field-workspace-rg-", ".txt")
+        val proc = ProcessBuilder(command).redirectErrorStream(true).redirectOutput(outputFile).start()
+        val finished = proc.waitFor(10, TimeUnit.SECONDS)
+        if (!finished) {
+            proc.destroyForcibly()
+            outputFile.delete()
+            return WorkspaceRgResult(false, canonicalTarget, roots.joinToString(File.pathSeparator) { it.absolutePath }, command, 0, false, "", "ripgrep timed out after 10s")
+        }
+        val raw = outputFile.readText().trimEnd()
+        outputFile.delete()
+        val lines = if (raw.isBlank()) emptyList() else raw.lines()
+        val truncated = lines.size > limit
+        val shown = if (truncated) lines.take(limit) else lines
+        val ok = proc.exitValue() == 0 || proc.exitValue() == 1
+        WorkspaceRgResult(
+            success = ok,
+            target = canonicalTarget,
+            root = roots.joinToString(File.pathSeparator) { it.absolutePath },
+            command = command,
+            matchLines = lines.size,
+            truncated = truncated,
+            output = shown.joinToString("\n"),
+            message = if (lines.isEmpty()) "No matches." else "Returned ${shown.size} of ${lines.size} matching/context line(s)."
+        )
+    } catch (t: Throwable) {
+        WorkspaceRgResult(false, canonicalTarget, roots.joinToString(File.pathSeparator) { it.absolutePath }, command, 0, false, "", "ripgrep failed: ${t.message}")
+    }
+}
+
 /** CLI example tools -------------------------------------------------------- */
 
 @JsonClassDescription("Return the current UTC time in the requested format.")
@@ -661,6 +771,7 @@ data class ToolExecutionContext(
     val semanticRetrievalSearch: ((SemanticRetrievalSearchRequest) -> SemanticRetrievalToolResult)? = null,
     val semanticRetrievalStatus: (() -> SemanticRetrievalToolResult)? = null,
     val semanticRetrievalRebuild: (() -> SemanticRetrievalToolResult)? = null,
+    val workspaceRg: ((WorkspaceRgRequest) -> WorkspaceRgResult)? = null,
 
     val agentMemory: AgentMemoryState? = null,
 
