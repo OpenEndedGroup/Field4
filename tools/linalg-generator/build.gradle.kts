@@ -16,9 +16,13 @@ application {
 }
 
 val generatedRoot = rootProject.layout.projectDirectory.dir("src/generatedLinalg/kotlin")
+val generatedDocsRoot = rootProject.layout.projectDirectory.dir("public/docs")
 
 tasks.named<JavaExec>("run") {
-    args("--output", generatedRoot.asFile.absolutePath)
+    args(
+        "--output", generatedRoot.asFile.absolutePath,
+        "--docs-output", generatedDocsRoot.asFile.absolutePath,
+    )
 }
 
 tasks.register<JavaExec>("checkGeneratedLinalg") {
@@ -26,5 +30,9 @@ tasks.register<JavaExec>("checkGeneratedLinalg") {
     description = "Checks that committed linear-algebra sources match the semantic model."
     classpath = sourceSets.main.get().runtimeClasspath
     mainClass.set(application.mainClass)
-    args("--output", generatedRoot.asFile.absolutePath, "--check")
+    args(
+        "--output", generatedRoot.asFile.absolutePath,
+        "--docs-output", generatedDocsRoot.asFile.absolutePath,
+        "--check",
+    )
 }

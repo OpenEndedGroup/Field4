@@ -20,12 +20,18 @@ private fun nextSegmentOwnerId(): Int = segmentOwnerIds.incrementAndGet().also {
 private fun packSegmentHandle(ownerId: Int, offset: Long): Long =
     (ownerId.toLong() shl SEGMENT_OWNER_SHIFT) or offset
 
+/**
+ * Storage stride and base-alignment choices for arrays of Vector2f values.
+ */
 enum class Vec2StorageLayout(val strideBytes: Int, val requiredAlignmentBytes: Int) {
     PACKED_8(8, 4),
     ALIGNED_8(8, 8),
     ALIGNED_16(16, 16),
 }
 
+/**
+ * An allocation-free handle to one Vector2f inside its SegmentVec2Buffer view.
+ */
 @JvmInline
 value class SegmentVec2f internal constructor(internal val token: Long)
 
@@ -89,6 +95,12 @@ class SegmentVec2Buffer(
     fun SegmentVec2f.set(other: Vector2fc): SegmentVec2f = set(other.x(), other.y())
     fun SegmentVec2f.copyTo(dest: Vector2f): Vector2f = dest.set(x, y)
 
+    /**
+     * Adds another vector component by component.
+     * @param other the vector to add
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec2f.add(other: SegmentVec2f, dest: SegmentVec2f): SegmentVec2f {
         val r0 = (read(token, 0) + read(other.token, 0))
         val r1 = (read(token, 1) + read(other.token, 1))
@@ -96,6 +108,12 @@ class SegmentVec2Buffer(
     }
     fun SegmentVec2f.add(other: SegmentVec2f): SegmentVec2f = add(other, this)
 
+    /**
+     * Subtracts another vector component by component.
+     * @param other the vector to subtract
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec2f.sub(other: SegmentVec2f, dest: SegmentVec2f): SegmentVec2f {
         val r0 = (read(token, 0) - read(other.token, 0))
         val r1 = (read(token, 1) - read(other.token, 1))
@@ -103,6 +121,12 @@ class SegmentVec2Buffer(
     }
     fun SegmentVec2f.sub(other: SegmentVec2f): SegmentVec2f = sub(other, this)
 
+    /**
+     * Multiplies corresponding components.
+     * @param other the component-wise multiplier
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec2f.mul(other: SegmentVec2f, dest: SegmentVec2f): SegmentVec2f {
         val r0 = (read(token, 0) * read(other.token, 0))
         val r1 = (read(token, 1) * read(other.token, 1))
@@ -110,6 +134,12 @@ class SegmentVec2Buffer(
     }
     fun SegmentVec2f.mul(other: SegmentVec2f): SegmentVec2f = mul(other, this)
 
+    /**
+     * Divides corresponding components.
+     * @param other the component-wise divisor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec2f.div(other: SegmentVec2f, dest: SegmentVec2f): SegmentVec2f {
         val r0 = (read(token, 0) / read(other.token, 0))
         val r1 = (read(token, 1) / read(other.token, 1))
@@ -117,6 +147,14 @@ class SegmentVec2Buffer(
     }
     fun SegmentVec2f.div(other: SegmentVec2f): SegmentVec2f = div(other, this)
 
+    /**
+     * Scales every component by a scalar.
+     *
+     * Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction.
+     * @param scalar the scale factor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec2f.mul(scalar: Float, dest: SegmentVec2f): SegmentVec2f {
         val r0 = (read(token, 0) * scalar)
         val r1 = (read(token, 1) * scalar)
@@ -124,6 +162,12 @@ class SegmentVec2Buffer(
     }
     fun SegmentVec2f.mul(scalar: Float): SegmentVec2f = mul(scalar, this)
 
+    /**
+     * Divides every component by a scalar.
+     * @param scalar the divisor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec2f.div(scalar: Float, dest: SegmentVec2f): SegmentVec2f {
         val r0 = (read(token, 0) / scalar)
         val r1 = (read(token, 1) / scalar)
@@ -131,6 +175,11 @@ class SegmentVec2Buffer(
     }
     fun SegmentVec2f.div(scalar: Float): SegmentVec2f = div(scalar, this)
 
+    /**
+     * Reverses the vector by negating every component.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec2f.negate(dest: SegmentVec2f): SegmentVec2f {
         val r0 = (-1.0f * read(token, 0))
         val r1 = (-1.0f * read(token, 1))
@@ -138,6 +187,11 @@ class SegmentVec2Buffer(
     }
     fun SegmentVec2f.negate(): SegmentVec2f = negate(this)
 
+    /**
+     * Replaces every component with its absolute value.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec2f.absolute(dest: SegmentVec2f): SegmentVec2f {
         val r0 = abs(read(token, 0))
         val r1 = abs(read(token, 1))
@@ -145,6 +199,12 @@ class SegmentVec2Buffer(
     }
     fun SegmentVec2f.absolute(): SegmentVec2f = absolute(this)
 
+    /**
+     * Selects the smaller value independently in each component.
+     * @param other the other component values
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec2f.min(other: SegmentVec2f, dest: SegmentVec2f): SegmentVec2f {
         val r0 = min(read(token, 0), read(other.token, 0))
         val r1 = min(read(token, 1), read(other.token, 1))
@@ -152,6 +212,12 @@ class SegmentVec2Buffer(
     }
     fun SegmentVec2f.min(other: SegmentVec2f): SegmentVec2f = min(other, this)
 
+    /**
+     * Selects the larger value independently in each component.
+     * @param other the other component values
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec2f.max(other: SegmentVec2f, dest: SegmentVec2f): SegmentVec2f {
         val r0 = max(read(token, 0), read(other.token, 0))
         val r1 = max(read(token, 1), read(other.token, 1))
@@ -159,6 +225,15 @@ class SegmentVec2Buffer(
     }
     fun SegmentVec2f.max(other: SegmentVec2f): SegmentVec2f = max(other, this)
 
+    /**
+     * Linearly interpolates from this vector toward another.
+     *
+     * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     * @param other the endpoint
+     * @param t the interpolation amount
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec2f.lerp(other: SegmentVec2f, t: Float, dest: SegmentVec2f): SegmentVec2f {
         val r0 = (read(token, 0) + ((read(other.token, 0) - read(token, 0)) * t))
         val r1 = (read(token, 1) + ((read(other.token, 1) - read(token, 1)) * t))
@@ -166,6 +241,15 @@ class SegmentVec2Buffer(
     }
     fun SegmentVec2f.lerp(other: SegmentVec2f, t: Float): SegmentVec2f = lerp(other, t, this)
 
+    /**
+     * Computes this + other * scalar component by component.
+     *
+     * This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration.
+     * @param other the vector to scale and add
+     * @param scalar the scale factor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec2f.fma(scalar: Float, other: SegmentVec2f, dest: SegmentVec2f): SegmentVec2f {
         val r0 = (read(token, 0) + (read(other.token, 0) * scalar))
         val r1 = (read(token, 1) + (read(other.token, 1) * scalar))
@@ -173,12 +257,39 @@ class SegmentVec2Buffer(
     }
     fun SegmentVec2f.fma(scalar: Float, other: SegmentVec2f): SegmentVec2f = fma(scalar, other, this)
 
+    /**
+     * Measures how strongly two vectors point in the same direction.
+     *
+     * Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them.
+     * @param other the vector to compare
+     * @return the sum of the products of corresponding components
+     */
     fun SegmentVec2f.dot(other: SegmentVec2f): Float = ((read(token, 0) * read(other.token, 0)) + (read(token, 1) * read(other.token, 1)))
 
+    /**
+     * Returns the squared length of this vector.
+     *
+     * Use this for comparisons when you do not need the actual distance; it avoids a square root.
+     * @return the sum of the squared components
+     */
     fun SegmentVec2f.lengthSquared(): Float = ((read(token, 0) * read(token, 0)) + (read(token, 1) * read(token, 1)))
 
+    /**
+     * Returns the squared straight-line distance to another vector.
+     *
+     * Use this for nearest/farthest comparisons when you do not need the actual distance.
+     * @param other the point to measure to
+     * @return the squared Euclidean distance
+     */
     fun SegmentVec2f.distanceSquared(other: SegmentVec2f): Float = (((read(token, 0) - read(other.token, 0)) * (read(token, 0) - read(other.token, 0))) + ((read(token, 1) - read(other.token, 1)) * (read(token, 1) - read(other.token, 1))))
 
+    /**
+     * Keeps the vector's direction while scaling its length to one.
+     *
+     * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec2f.normalize(dest: SegmentVec2f): SegmentVec2f {
         val r0 = (read(token, 0) * (1.0f / sqrt(((read(token, 0) * read(token, 0)) + (read(token, 1) * read(token, 1))))))
         val r1 = (read(token, 1) * (1.0f / sqrt(((read(token, 0) * read(token, 0)) + (read(token, 1) * read(token, 1))))))
@@ -186,8 +297,18 @@ class SegmentVec2Buffer(
     }
     fun SegmentVec2f.normalize(): SegmentVec2f = normalize(this)
 
+    /**
+     * Returns this vector's Euclidean length (magnitude).
+     */
     fun SegmentVec2f.length(): Float = sqrt(lengthSquared())
+    /**
+     * Returns the straight-line distance to another vector.
+     * @param other the point to measure to
+     */
     fun SegmentVec2f.distance(other: SegmentVec2f): Float = sqrt(distanceSquared(other))
+    /**
+     * Reports whether every component is finite.
+     */
     fun SegmentVec2f.isFinite(): Boolean = x.isFinite() && y.isFinite()
 
     private fun read(token: Long, component: Int): Float =
@@ -208,11 +329,17 @@ class SegmentVec2Buffer(
     }
 }
 
+/**
+ * Storage stride and base-alignment choices for arrays of Vector3f values.
+ */
 enum class Vec3StorageLayout(val strideBytes: Int, val requiredAlignmentBytes: Int) {
     PACKED_12(12, 4),
     ALIGNED_16(16, 16),
 }
 
+/**
+ * An allocation-free handle to one Vector3f inside its SegmentVec3Buffer view.
+ */
 @JvmInline
 value class SegmentVec3f internal constructor(internal val token: Long)
 
@@ -280,6 +407,12 @@ class SegmentVec3Buffer(
     fun SegmentVec3f.set(other: Vector3fc): SegmentVec3f = set(other.x(), other.y(), other.z())
     fun SegmentVec3f.copyTo(dest: Vector3f): Vector3f = dest.set(x, y, z)
 
+    /**
+     * Adds another vector component by component.
+     * @param other the vector to add
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec3f.add(other: SegmentVec3f, dest: SegmentVec3f): SegmentVec3f {
         val r0 = (read(token, 0) + read(other.token, 0))
         val r1 = (read(token, 1) + read(other.token, 1))
@@ -288,6 +421,12 @@ class SegmentVec3Buffer(
     }
     fun SegmentVec3f.add(other: SegmentVec3f): SegmentVec3f = add(other, this)
 
+    /**
+     * Subtracts another vector component by component.
+     * @param other the vector to subtract
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec3f.sub(other: SegmentVec3f, dest: SegmentVec3f): SegmentVec3f {
         val r0 = (read(token, 0) - read(other.token, 0))
         val r1 = (read(token, 1) - read(other.token, 1))
@@ -296,6 +435,12 @@ class SegmentVec3Buffer(
     }
     fun SegmentVec3f.sub(other: SegmentVec3f): SegmentVec3f = sub(other, this)
 
+    /**
+     * Multiplies corresponding components.
+     * @param other the component-wise multiplier
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec3f.mul(other: SegmentVec3f, dest: SegmentVec3f): SegmentVec3f {
         val r0 = (read(token, 0) * read(other.token, 0))
         val r1 = (read(token, 1) * read(other.token, 1))
@@ -304,6 +449,12 @@ class SegmentVec3Buffer(
     }
     fun SegmentVec3f.mul(other: SegmentVec3f): SegmentVec3f = mul(other, this)
 
+    /**
+     * Divides corresponding components.
+     * @param other the component-wise divisor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec3f.div(other: SegmentVec3f, dest: SegmentVec3f): SegmentVec3f {
         val r0 = (read(token, 0) / read(other.token, 0))
         val r1 = (read(token, 1) / read(other.token, 1))
@@ -312,6 +463,14 @@ class SegmentVec3Buffer(
     }
     fun SegmentVec3f.div(other: SegmentVec3f): SegmentVec3f = div(other, this)
 
+    /**
+     * Scales every component by a scalar.
+     *
+     * Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction.
+     * @param scalar the scale factor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec3f.mul(scalar: Float, dest: SegmentVec3f): SegmentVec3f {
         val r0 = (read(token, 0) * scalar)
         val r1 = (read(token, 1) * scalar)
@@ -320,6 +479,12 @@ class SegmentVec3Buffer(
     }
     fun SegmentVec3f.mul(scalar: Float): SegmentVec3f = mul(scalar, this)
 
+    /**
+     * Divides every component by a scalar.
+     * @param scalar the divisor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec3f.div(scalar: Float, dest: SegmentVec3f): SegmentVec3f {
         val r0 = (read(token, 0) / scalar)
         val r1 = (read(token, 1) / scalar)
@@ -328,6 +493,11 @@ class SegmentVec3Buffer(
     }
     fun SegmentVec3f.div(scalar: Float): SegmentVec3f = div(scalar, this)
 
+    /**
+     * Reverses the vector by negating every component.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec3f.negate(dest: SegmentVec3f): SegmentVec3f {
         val r0 = (-1.0f * read(token, 0))
         val r1 = (-1.0f * read(token, 1))
@@ -336,6 +506,11 @@ class SegmentVec3Buffer(
     }
     fun SegmentVec3f.negate(): SegmentVec3f = negate(this)
 
+    /**
+     * Replaces every component with its absolute value.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec3f.absolute(dest: SegmentVec3f): SegmentVec3f {
         val r0 = abs(read(token, 0))
         val r1 = abs(read(token, 1))
@@ -344,6 +519,12 @@ class SegmentVec3Buffer(
     }
     fun SegmentVec3f.absolute(): SegmentVec3f = absolute(this)
 
+    /**
+     * Selects the smaller value independently in each component.
+     * @param other the other component values
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec3f.min(other: SegmentVec3f, dest: SegmentVec3f): SegmentVec3f {
         val r0 = min(read(token, 0), read(other.token, 0))
         val r1 = min(read(token, 1), read(other.token, 1))
@@ -352,6 +533,12 @@ class SegmentVec3Buffer(
     }
     fun SegmentVec3f.min(other: SegmentVec3f): SegmentVec3f = min(other, this)
 
+    /**
+     * Selects the larger value independently in each component.
+     * @param other the other component values
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec3f.max(other: SegmentVec3f, dest: SegmentVec3f): SegmentVec3f {
         val r0 = max(read(token, 0), read(other.token, 0))
         val r1 = max(read(token, 1), read(other.token, 1))
@@ -360,6 +547,15 @@ class SegmentVec3Buffer(
     }
     fun SegmentVec3f.max(other: SegmentVec3f): SegmentVec3f = max(other, this)
 
+    /**
+     * Linearly interpolates from this vector toward another.
+     *
+     * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     * @param other the endpoint
+     * @param t the interpolation amount
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec3f.lerp(other: SegmentVec3f, t: Float, dest: SegmentVec3f): SegmentVec3f {
         val r0 = (read(token, 0) + ((read(other.token, 0) - read(token, 0)) * t))
         val r1 = (read(token, 1) + ((read(other.token, 1) - read(token, 1)) * t))
@@ -368,6 +564,15 @@ class SegmentVec3Buffer(
     }
     fun SegmentVec3f.lerp(other: SegmentVec3f, t: Float): SegmentVec3f = lerp(other, t, this)
 
+    /**
+     * Computes this + other * scalar component by component.
+     *
+     * This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration.
+     * @param other the vector to scale and add
+     * @param scalar the scale factor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec3f.fma(scalar: Float, other: SegmentVec3f, dest: SegmentVec3f): SegmentVec3f {
         val r0 = (read(token, 0) + (read(other.token, 0) * scalar))
         val r1 = (read(token, 1) + (read(other.token, 1) * scalar))
@@ -376,12 +581,39 @@ class SegmentVec3Buffer(
     }
     fun SegmentVec3f.fma(scalar: Float, other: SegmentVec3f): SegmentVec3f = fma(scalar, other, this)
 
+    /**
+     * Measures how strongly two vectors point in the same direction.
+     *
+     * Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them.
+     * @param other the vector to compare
+     * @return the sum of the products of corresponding components
+     */
     fun SegmentVec3f.dot(other: SegmentVec3f): Float = (((read(token, 0) * read(other.token, 0)) + (read(token, 1) * read(other.token, 1))) + (read(token, 2) * read(other.token, 2)))
 
+    /**
+     * Returns the squared length of this vector.
+     *
+     * Use this for comparisons when you do not need the actual distance; it avoids a square root.
+     * @return the sum of the squared components
+     */
     fun SegmentVec3f.lengthSquared(): Float = (((read(token, 0) * read(token, 0)) + (read(token, 1) * read(token, 1))) + (read(token, 2) * read(token, 2)))
 
+    /**
+     * Returns the squared straight-line distance to another vector.
+     *
+     * Use this for nearest/farthest comparisons when you do not need the actual distance.
+     * @param other the point to measure to
+     * @return the squared Euclidean distance
+     */
     fun SegmentVec3f.distanceSquared(other: SegmentVec3f): Float = ((((read(token, 0) - read(other.token, 0)) * (read(token, 0) - read(other.token, 0))) + ((read(token, 1) - read(other.token, 1)) * (read(token, 1) - read(other.token, 1)))) + ((read(token, 2) - read(other.token, 2)) * (read(token, 2) - read(other.token, 2))))
 
+    /**
+     * Keeps the vector's direction while scaling its length to one.
+     *
+     * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec3f.normalize(dest: SegmentVec3f): SegmentVec3f {
         val r0 = (read(token, 0) * (1.0f / sqrt((((read(token, 0) * read(token, 0)) + (read(token, 1) * read(token, 1))) + (read(token, 2) * read(token, 2))))))
         val r1 = (read(token, 1) * (1.0f / sqrt((((read(token, 0) * read(token, 0)) + (read(token, 1) * read(token, 1))) + (read(token, 2) * read(token, 2))))))
@@ -390,6 +622,14 @@ class SegmentVec3Buffer(
     }
     fun SegmentVec3f.normalize(): SegmentVec3f = normalize(this)
 
+    /**
+     * Returns a vector perpendicular to this vector and another 3D vector.
+     *
+     * The direction follows the right-hand rule. Its length is the area of the parallelogram spanned by the inputs, so parallel vectors produce zero.
+     * @param other the second 3D direction
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec3f.cross(other: SegmentVec3f, dest: SegmentVec3f): SegmentVec3f {
         val r0 = ((read(token, 1) * read(other.token, 2)) - (read(token, 2) * read(other.token, 1)))
         val r1 = ((read(token, 2) * read(other.token, 0)) - (read(token, 0) * read(other.token, 2)))
@@ -398,8 +638,18 @@ class SegmentVec3Buffer(
     }
     fun SegmentVec3f.cross(other: SegmentVec3f): SegmentVec3f = cross(other, this)
 
+    /**
+     * Returns this vector's Euclidean length (magnitude).
+     */
     fun SegmentVec3f.length(): Float = sqrt(lengthSquared())
+    /**
+     * Returns the straight-line distance to another vector.
+     * @param other the point to measure to
+     */
     fun SegmentVec3f.distance(other: SegmentVec3f): Float = sqrt(distanceSquared(other))
+    /**
+     * Reports whether every component is finite.
+     */
     fun SegmentVec3f.isFinite(): Boolean = x.isFinite() && y.isFinite() && z.isFinite()
 
     private fun read(token: Long, component: Int): Float =
@@ -420,11 +670,17 @@ class SegmentVec3Buffer(
     }
 }
 
+/**
+ * Storage stride and base-alignment choices for arrays of Vector4f values.
+ */
 enum class Vec4StorageLayout(val strideBytes: Int, val requiredAlignmentBytes: Int) {
     PACKED_16(16, 4),
     ALIGNED_16(16, 16),
 }
 
+/**
+ * An allocation-free handle to one Vector4f inside its SegmentVec4Buffer view.
+ */
 @JvmInline
 value class SegmentVec4f internal constructor(internal val token: Long)
 
@@ -496,6 +752,12 @@ class SegmentVec4Buffer(
     fun SegmentVec4f.set(other: Vector4fc): SegmentVec4f = set(other.x(), other.y(), other.z(), other.w())
     fun SegmentVec4f.copyTo(dest: Vector4f): Vector4f = dest.set(x, y, z, w)
 
+    /**
+     * Adds another vector component by component.
+     * @param other the vector to add
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec4f.add(other: SegmentVec4f, dest: SegmentVec4f): SegmentVec4f {
         val r0 = (read(token, 0) + read(other.token, 0))
         val r1 = (read(token, 1) + read(other.token, 1))
@@ -505,6 +767,12 @@ class SegmentVec4Buffer(
     }
     fun SegmentVec4f.add(other: SegmentVec4f): SegmentVec4f = add(other, this)
 
+    /**
+     * Subtracts another vector component by component.
+     * @param other the vector to subtract
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec4f.sub(other: SegmentVec4f, dest: SegmentVec4f): SegmentVec4f {
         val r0 = (read(token, 0) - read(other.token, 0))
         val r1 = (read(token, 1) - read(other.token, 1))
@@ -514,6 +782,12 @@ class SegmentVec4Buffer(
     }
     fun SegmentVec4f.sub(other: SegmentVec4f): SegmentVec4f = sub(other, this)
 
+    /**
+     * Multiplies corresponding components.
+     * @param other the component-wise multiplier
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec4f.mul(other: SegmentVec4f, dest: SegmentVec4f): SegmentVec4f {
         val r0 = (read(token, 0) * read(other.token, 0))
         val r1 = (read(token, 1) * read(other.token, 1))
@@ -523,6 +797,12 @@ class SegmentVec4Buffer(
     }
     fun SegmentVec4f.mul(other: SegmentVec4f): SegmentVec4f = mul(other, this)
 
+    /**
+     * Divides corresponding components.
+     * @param other the component-wise divisor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec4f.div(other: SegmentVec4f, dest: SegmentVec4f): SegmentVec4f {
         val r0 = (read(token, 0) / read(other.token, 0))
         val r1 = (read(token, 1) / read(other.token, 1))
@@ -532,6 +812,14 @@ class SegmentVec4Buffer(
     }
     fun SegmentVec4f.div(other: SegmentVec4f): SegmentVec4f = div(other, this)
 
+    /**
+     * Scales every component by a scalar.
+     *
+     * Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction.
+     * @param scalar the scale factor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec4f.mul(scalar: Float, dest: SegmentVec4f): SegmentVec4f {
         val r0 = (read(token, 0) * scalar)
         val r1 = (read(token, 1) * scalar)
@@ -541,6 +829,12 @@ class SegmentVec4Buffer(
     }
     fun SegmentVec4f.mul(scalar: Float): SegmentVec4f = mul(scalar, this)
 
+    /**
+     * Divides every component by a scalar.
+     * @param scalar the divisor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec4f.div(scalar: Float, dest: SegmentVec4f): SegmentVec4f {
         val r0 = (read(token, 0) / scalar)
         val r1 = (read(token, 1) / scalar)
@@ -550,6 +844,11 @@ class SegmentVec4Buffer(
     }
     fun SegmentVec4f.div(scalar: Float): SegmentVec4f = div(scalar, this)
 
+    /**
+     * Reverses the vector by negating every component.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec4f.negate(dest: SegmentVec4f): SegmentVec4f {
         val r0 = (-1.0f * read(token, 0))
         val r1 = (-1.0f * read(token, 1))
@@ -559,6 +858,11 @@ class SegmentVec4Buffer(
     }
     fun SegmentVec4f.negate(): SegmentVec4f = negate(this)
 
+    /**
+     * Replaces every component with its absolute value.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec4f.absolute(dest: SegmentVec4f): SegmentVec4f {
         val r0 = abs(read(token, 0))
         val r1 = abs(read(token, 1))
@@ -568,6 +872,12 @@ class SegmentVec4Buffer(
     }
     fun SegmentVec4f.absolute(): SegmentVec4f = absolute(this)
 
+    /**
+     * Selects the smaller value independently in each component.
+     * @param other the other component values
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec4f.min(other: SegmentVec4f, dest: SegmentVec4f): SegmentVec4f {
         val r0 = min(read(token, 0), read(other.token, 0))
         val r1 = min(read(token, 1), read(other.token, 1))
@@ -577,6 +887,12 @@ class SegmentVec4Buffer(
     }
     fun SegmentVec4f.min(other: SegmentVec4f): SegmentVec4f = min(other, this)
 
+    /**
+     * Selects the larger value independently in each component.
+     * @param other the other component values
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec4f.max(other: SegmentVec4f, dest: SegmentVec4f): SegmentVec4f {
         val r0 = max(read(token, 0), read(other.token, 0))
         val r1 = max(read(token, 1), read(other.token, 1))
@@ -586,6 +902,15 @@ class SegmentVec4Buffer(
     }
     fun SegmentVec4f.max(other: SegmentVec4f): SegmentVec4f = max(other, this)
 
+    /**
+     * Linearly interpolates from this vector toward another.
+     *
+     * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     * @param other the endpoint
+     * @param t the interpolation amount
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec4f.lerp(other: SegmentVec4f, t: Float, dest: SegmentVec4f): SegmentVec4f {
         val r0 = (read(token, 0) + ((read(other.token, 0) - read(token, 0)) * t))
         val r1 = (read(token, 1) + ((read(other.token, 1) - read(token, 1)) * t))
@@ -595,6 +920,15 @@ class SegmentVec4Buffer(
     }
     fun SegmentVec4f.lerp(other: SegmentVec4f, t: Float): SegmentVec4f = lerp(other, t, this)
 
+    /**
+     * Computes this + other * scalar component by component.
+     *
+     * This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration.
+     * @param other the vector to scale and add
+     * @param scalar the scale factor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec4f.fma(scalar: Float, other: SegmentVec4f, dest: SegmentVec4f): SegmentVec4f {
         val r0 = (read(token, 0) + (read(other.token, 0) * scalar))
         val r1 = (read(token, 1) + (read(other.token, 1) * scalar))
@@ -604,12 +938,39 @@ class SegmentVec4Buffer(
     }
     fun SegmentVec4f.fma(scalar: Float, other: SegmentVec4f): SegmentVec4f = fma(scalar, other, this)
 
+    /**
+     * Measures how strongly two vectors point in the same direction.
+     *
+     * Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them.
+     * @param other the vector to compare
+     * @return the sum of the products of corresponding components
+     */
     fun SegmentVec4f.dot(other: SegmentVec4f): Float = ((((read(token, 0) * read(other.token, 0)) + (read(token, 1) * read(other.token, 1))) + (read(token, 2) * read(other.token, 2))) + (read(token, 3) * read(other.token, 3)))
 
+    /**
+     * Returns the squared length of this vector.
+     *
+     * Use this for comparisons when you do not need the actual distance; it avoids a square root.
+     * @return the sum of the squared components
+     */
     fun SegmentVec4f.lengthSquared(): Float = ((((read(token, 0) * read(token, 0)) + (read(token, 1) * read(token, 1))) + (read(token, 2) * read(token, 2))) + (read(token, 3) * read(token, 3)))
 
+    /**
+     * Returns the squared straight-line distance to another vector.
+     *
+     * Use this for nearest/farthest comparisons when you do not need the actual distance.
+     * @param other the point to measure to
+     * @return the squared Euclidean distance
+     */
     fun SegmentVec4f.distanceSquared(other: SegmentVec4f): Float = (((((read(token, 0) - read(other.token, 0)) * (read(token, 0) - read(other.token, 0))) + ((read(token, 1) - read(other.token, 1)) * (read(token, 1) - read(other.token, 1)))) + ((read(token, 2) - read(other.token, 2)) * (read(token, 2) - read(other.token, 2)))) + ((read(token, 3) - read(other.token, 3)) * (read(token, 3) - read(other.token, 3))))
 
+    /**
+     * Keeps the vector's direction while scaling its length to one.
+     *
+     * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun SegmentVec4f.normalize(dest: SegmentVec4f): SegmentVec4f {
         val r0 = (read(token, 0) * (1.0f / sqrt(((((read(token, 0) * read(token, 0)) + (read(token, 1) * read(token, 1))) + (read(token, 2) * read(token, 2))) + (read(token, 3) * read(token, 3))))))
         val r1 = (read(token, 1) * (1.0f / sqrt(((((read(token, 0) * read(token, 0)) + (read(token, 1) * read(token, 1))) + (read(token, 2) * read(token, 2))) + (read(token, 3) * read(token, 3))))))
@@ -619,8 +980,18 @@ class SegmentVec4Buffer(
     }
     fun SegmentVec4f.normalize(): SegmentVec4f = normalize(this)
 
+    /**
+     * Returns this vector's Euclidean length (magnitude).
+     */
     fun SegmentVec4f.length(): Float = sqrt(lengthSquared())
+    /**
+     * Returns the straight-line distance to another vector.
+     * @param other the point to measure to
+     */
     fun SegmentVec4f.distance(other: SegmentVec4f): Float = sqrt(distanceSquared(other))
+    /**
+     * Reports whether every component is finite.
+     */
     fun SegmentVec4f.isFinite(): Boolean = x.isFinite() && y.isFinite() && z.isFinite() && w.isFinite()
 
     private fun read(token: Long, component: Int): Float =

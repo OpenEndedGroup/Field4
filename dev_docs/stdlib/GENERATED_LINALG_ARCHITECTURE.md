@@ -233,6 +233,43 @@ transform template. Moving those into typed statements, conditionals and explici
 degeneracy policies is the remaining transform-model work; the core equations no
 longer live as opaque template strings.
 
+## Documentation architecture
+
+Generated implementation source must not become a documentation blind spot. The
+linear-algebra documentation has three layers, each with a different job:
+
+| Layer | Source of truth | Consumer |
+| --- | --- | --- |
+| Conceptual guide | `public/docs/linear_algebra.md` | People learning the geometry and choosing a storage form |
+| Operation reference | `ApiDocumentation` in `AlgebraModel.kt` | Generated KDoc and `public/docs/linear_algebra_api.md` |
+| Implementation detail | Generated Kotlin declarations | Completion signatures, source navigation, semantic retrieval and agent source inspection |
+
+The conceptual guide is handwritten because teaching order is not declaration
+order. It should explain vectors as arrows, dot/cross products geometrically,
+zero-vector hazards and small graphics recipes before discussing arenas. The
+generated reference is exhaustive and mechanically current.
+
+`./gradlew generateLinalg` emits both Kotlin source and the Markdown reference;
+`./gradlew checkGeneratedLinalg` checks both byte-for-byte. An operation is not
+complete until its model documentation is good enough to appear directly in a
+code-box completion popup.
+
+Field's completion source index includes `src/generatedLinalg/kotlin`, so member
+KDoc such as `Vector3fc.dot` and `Vector3f.normalize` is available to the Kotlin
+completion/documentation pipeline. The same declarations become `field-internals`
+capsules in `SemanticRetrievalService`. Markdown headings under `public/docs`
+become `documentation` capsules. Agent semantic-search tools are façades over
+that same service, so there is deliberately no separate agent-only copy of the
+linalg manual.
+
+When extending the model:
+
+1. add the typed operation and its `ApiDocumentation` together;
+2. regenerate source and reference Markdown;
+3. add or improve a worked example in the conceptual guide when the concept is
+   likely to be unfamiliar;
+4. verify completion KDoc and semantic retrieval, not only compilation.
+
 ## How live CPU/GLSL/Vulkan schemas can work
 
 The shader header does **not** need to be known at Gradle code-generation time.

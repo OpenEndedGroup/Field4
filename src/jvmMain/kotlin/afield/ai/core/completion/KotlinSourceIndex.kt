@@ -73,7 +73,8 @@ object KotlinSourceIndex {
         val root = Paths.get(System.getProperty("user.dir")).normalize()
         val sourceRoots = listOf(
             root.resolve("./src/jvmMain/kotlin"),
-            root.resolve("./src/personal/kotlin")
+            root.resolve("./src/personal/kotlin"),
+            root.resolve("./src/generatedLinalg/kotlin"),
         ).filter { Files.exists(it) }
 
         if (sourceRoots.isEmpty()) {

@@ -7,7 +7,7 @@ import kotlin.io.path.exists
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
-private data class Arguments(val output: Path, val check: Boolean)
+private data class Arguments(val output: Path, val docsOutput: Path, val check: Boolean)
 
 fun main(rawArguments: Array<String>) {
     val arguments = parseArguments(rawArguments)
@@ -20,16 +20,20 @@ fun main(rawArguments: Array<String>) {
         Path.of("afield/stdlib/linalg/Transforms.kt") to generatedTemplate("Transforms.kt"),
         Path.of("afield/stdlib/linalg/CompatTypes.kt") to generatedTemplate("CompatTypes.kt"),
     )
+    val documentationFiles = linkedMapOf(
+        Path.of("linear_algebra_api.md") to emitter.emitReferenceMarkdown(),
+    )
 
-    val stale = files.mapNotNull { (relative, content) ->
-        val target = arguments.output.resolve(relative)
+    val stale = (files.map { (relative, content) -> arguments.output.resolve(relative) to content } +
+        documentationFiles.map { (relative, content) -> arguments.docsOutput.resolve(relative) to content })
+        .mapNotNull { (target, content) ->
         if (arguments.check) {
-            if (!target.exists() || target.readText() != content) relative.toString() else null
+            if (!target.exists() || target.readText() != content) target.toString() else null
         } else {
             target.parent.createDirectories()
             if (!target.exists() || target.readText() != content) {
                 target.writeText(content)
-                println("generated $relative")
+                println("generated $target")
             }
             null
         }
@@ -58,6 +62,7 @@ private fun generatedTemplate(name: String): String {
 
 private fun parseArguments(arguments: Array<String>): Arguments {
     var output: Path? = null
+    var docsOutput: Path? = null
     var check = false
     var index = 0
     while (index < arguments.size) {
@@ -66,10 +71,18 @@ private fun parseArguments(arguments: Array<String>): Arguments {
                 require(index + 1 < arguments.size) { "--output requires a path" }
                 output = Path.of(arguments[++index]).toAbsolutePath().normalize()
             }
+            "--docs-output" -> {
+                require(index + 1 < arguments.size) { "--docs-output requires a path" }
+                docsOutput = Path.of(arguments[++index]).toAbsolutePath().normalize()
+            }
             "--check" -> check = true
             else -> error("Unknown argument: $argument")
         }
         index++
     }
-    return Arguments(requireNotNull(output) { "--output is required" }, check)
+    return Arguments(
+        requireNotNull(output) { "--output is required" },
+        requireNotNull(docsOutput) { "--docs-output is required" },
+        check,
+    )
 }
