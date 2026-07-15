@@ -619,6 +619,22 @@
     color: var(--field-fg-soft);
 }
 
+.afield-palette-source-link {
+    min-width: 0;
+    text-decoration: none;
+}
+
+.afield-palette-source-link code {
+    color: var(--field-accent-link);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
+.afield-palette-source-code {
+    margin-top: 4px;
+}
+
 .afield-palette-box-list {
     display: grid;
     gap: 3px;

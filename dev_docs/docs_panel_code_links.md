@@ -125,6 +125,20 @@ in the headless test JVM: its workspace is empty and the semantic index rebuild
 hangs on DJL/ONNX init — both environment issues, not the Stage C code. Verify on
 a real workspace / the user's instance.
 
+### Palette parity + a NaN-JSON bug fix (done)
+The double-tap-Shift palette's "Find similar code" (`quickpick.js`,
+`openSimilarCodePalette`, corpus `""` → codebase hits) now renders each codebase
+hit's path as a `/api/source` "view source" link with an inline highlighted
+region — the same treatment as the doc panel and welcome. Verified live: a
+codebase hit's `graph_connectivity.kt:1216` link expands the real source.
+
+While verifying, found and fixed a pre-existing bug that broke *all* in-browser
+semantic search (palette + welcome): `SemanticRetrievalHit` scores could be
+`NaN` (degenerate/zero embedding vector → NaN cosine), which kotlinx serializes
+as the bare token `NaN` — invalid JSON that browsers' `response.json()` rejects
+(Python's json accepts it, which masked it under curl). `hitFromDoc` now coerces
+non-finite scores to 0.
+
 Not yet done: Increment-2 classpath symbols in KDoc `[Symbol]` linkification.
 
 ## Verification (real, not synthetic)

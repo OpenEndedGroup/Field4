@@ -803,7 +803,15 @@ const paletteSemanticPreview = (item) => {
                 `<div class="afield-palette-doc-meta">${paletteEscapeHtml(paletteSemanticDescription(hit))}</div>`,
         ]
         if (hit.path) {
-                bits.push(`<div class="afield-palette-doc-source"><span>path</span><code>${paletteEscapeHtml(hit.path)}</code></div>`)
+                // Codebase hits (project src/ or -sources.jar) can open their real source
+                // region via /api/source; workspace paths stay plain text (no dead link).
+                const line = Math.max(0, Number(hit.line) || 0)
+                const viewable = /^(\.\/)?src\//.test(hit.path) || hit.path.startsWith("jar:")
+                const label = `${paletteEscapeHtml(hit.path)}${line > 0 ? `:${line}` : ""}`
+                const inner = viewable
+                        ? `<a class="afield-palette-source-link" href="#" data-source-view data-path="${paletteEscapeHtml(hit.path)}" data-line="${line}" title="View source"><code>${label}</code></a>`
+                        : `<code>${label}</code>`
+                bits.push(`<div class="afield-palette-doc-source"><span>path</span>${inner}</div>`)
         }
         if (hit.boxId) {
                 bits.push(`<div class="afield-palette-doc-source"><span>box uid</span><code>${paletteEscapeHtml(hit.boxId)}</code></div>`)
@@ -1289,6 +1297,12 @@ class FieldPaletteController {
                         else event.preventDefault()
                 })
                 root.addEventListener("click", (event) => {
+                        const srcLink = event.target.closest("[data-source-view]")
+                        if (srcLink) {
+                                event.preventDefault()
+                                this.viewSource(srcLink)
+                                return
+                        }
                         const row = event.target.closest(".afield-palette-row")
                         if (!row) return
                         this.setActive(Number(row.dataset.index || 0))
@@ -1482,6 +1496,38 @@ class FieldPaletteController {
                                 try { window.hljs.highlightElement(block) } catch (_) {}
                         })
                 }
+        }
+
+        // Toggle the real source region (GET /api/source) inline in the preview pane
+        // for a codebase hit — fuller than the indexed capsule, syntax-highlighted.
+        viewSource(link) {
+                const doc = this.doc()
+                if (!doc) return
+                const existing = doc.querySelector(".afield-palette-source-code")
+                if (existing) { existing.remove(); return }
+                const params = new URLSearchParams({
+                        path: link.getAttribute("data-path") || "",
+                        line: link.getAttribute("data-line") || "-1",
+                        context: "80",
+                })
+                fetch(`/api/source?${params.toString()}`)
+                        .then((r) => (r.ok ? r.json() : null))
+                        .then((res) => {
+                                if (!res || !res.found || !res.code) return
+                                if (doc.querySelector(".afield-palette-source-code")) return
+                                const lang = res.language || "kotlin"
+                                const block = document.createElement("div")
+                                block.className = "afield-palette-source-code"
+                                block.innerHTML =
+                                        `<div class="afield-palette-doc-source"><span>source</span><code>${paletteEscapeHtml(res.path)}:${res.startLine}</code></div>` +
+                                        `<pre class="afield-palette-code"><code class="language-${paletteEscapeHtml(lang)}">${paletteEscapeHtml(res.code)}</code></pre>`
+                                doc.appendChild(block)
+                                if (window.hljs && typeof window.hljs.highlightElement === "function") {
+                                        block.querySelectorAll("pre code").forEach((b) => { try { window.hljs.highlightElement(b) } catch (_) {} })
+                                }
+                                block.scrollIntoView({ block: "nearest" })
+                        })
+                        .catch(() => {})
         }
 
         setActive(index) {
