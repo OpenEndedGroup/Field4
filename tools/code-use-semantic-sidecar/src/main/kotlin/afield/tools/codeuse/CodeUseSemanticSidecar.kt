@@ -509,7 +509,7 @@ private class K2SidecarAnalyzer(private val config: SidecarConfig) {
         "afield.four.modules.*",
         "afield.four.util.*",
         "afield.graphics.*",
-        "org.joml.*",
+        "afield.stdlib.linalg.*",
         "kotlin.math.*"
     )
 }
