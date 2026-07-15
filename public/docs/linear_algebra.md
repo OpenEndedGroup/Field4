@@ -5,7 +5,7 @@ meshes, simulation, and spatial data. Field's everyday vector and matrix API is
 intentionally ordinary:
 
 ```kotlin
-val position = Vector3f(1f, 2f, 3f)
+val position = vec(1, 2, 3)
 position.x += 1f
 position.normalize()
 ```
@@ -22,10 +22,26 @@ For an exhaustive list of generated vector operations, see the
 A `Vector2f` is two numbers, a `Vector3f` is three, and a `Vector4f` is four:
 
 ```kotlin
-val screen = Vector2f(320f, 180f)
-val position = Vector3f(10f, 20f, -5f)
-val color = Vector4f(1f, 0.4f, 0.1f, 1f)
+val screen = vec(320, 180)
+val position = vec(10, 20, -5)
+val color = vec(1, 0.4, 0.1, 1)
 ```
+
+`vec(...)` accepts any Kotlin `Number`, so live code can freely mix integer,
+double, long, and float literals without decorating everything with `f`. The
+number of arguments selects Vec2, Vec3, or Vec4.
+
+When the expected type is already known, Kotlin collection literals are another
+compact option:
+
+```kotlin
+val origin: Vec2 = [0, 0]
+val up: Vec3 = [0, 1, 0]
+val white: Vec4 = [1, 1, 1, 1]
+```
+
+The examples on this page use `vec(...)` because it also establishes the type
+when there is no declaration annotation.
 
 The most useful mental picture is an arrow. Its components say how far the
 arrow travels along each axis. Its `length()` is the arrow's magnitude.
@@ -34,9 +50,9 @@ The same three numbers can represent a point or a displacement. The operation
 usually reveals which meaning you intend:
 
 ```kotlin
-val from = Vector3f(2f, 1f, 0f)
-val to = Vector3f(7f, 4f, 0f)
-val displacement = Vector3f(to).sub(from) // (5, 3, 0)
+val from = vec(2, 1, 0)
+val to = vec(7, 4, 0)
+val displacement = vec(to).sub(from) // (5, 3, 0)
 val distance = displacement.length()
 ```
 
@@ -49,10 +65,10 @@ moves the point.
 the length to one:
 
 ```kotlin
-val velocity = Vector3f(6f, 8f, 0f)
+val velocity = vec(6, 8, 0)
 println(velocity.length()) // 10
 
-val direction = Vector3f(velocity).normalize()
+val direction = vec(velocity).normalize()
 println(direction)         // (0.6, 0.8, 0)
 println(direction.length()) // 1
 ```
@@ -61,7 +77,7 @@ A unit vector is useful whenever direction and magnitude should be independent:
 
 ```kotlin
 val speed = 4f
-val step = Vector3f(direction).mul(speed)
+val step = vec(direction).mul(speed)
 position.add(step)
 ```
 
@@ -98,8 +114,8 @@ vectors:
 - values between those extremes describe partial agreement.
 
 ```kotlin
-val forward = Vector3f(0f, 0f, -1f)
-val towardTarget = Vector3f(target).sub(position).normalize()
+val forward = vec(0, 0, -1)
+val towardTarget = vec(target).sub(position).normalize()
 val agreement = forward.dot(towardTarget)
 
 if (agreement > 0f) println("the target is somewhere in front")
@@ -122,8 +138,8 @@ To measure how much of a vector lies along a unit direction:
 
 ```kotlin
 val amountAlongAxis = velocity.dot(axis) // axis must have length 1
-val alongAxis = Vector3f(axis).mul(amountAlongAxis)
-val sideways = Vector3f(velocity).sub(alongAxis)
+val alongAxis = vec(axis).mul(amountAlongAxis)
+val sideways = vec(velocity).sub(alongAxis)
 ```
 
 This decomposes a velocity into “along the track” and “across the track.”
@@ -133,9 +149,9 @@ This decomposes a velocity into “along the track” and “across the track.�
 The 3D cross product returns an arrow perpendicular to both inputs:
 
 ```kotlin
-val edgeA = Vector3f(b).sub(a)
-val edgeB = Vector3f(c).sub(a)
-val normal = edgeA.cross(edgeB, Vector3f()).normalize()
+val edgeA = vec(b).sub(a)
+val edgeB = vec(c).sub(a)
+val normal = edgeA.cross(edgeB, vec(0, 0, 0)).normalize()
 ```
 
 This is the standard way to find a triangle's surface normal. Order matters:
@@ -151,9 +167,9 @@ by the inputs. Parallel inputs therefore produce the zero vector.
 `lerp` traces a straight line from one vector to another:
 
 ```kotlin
-val start = Vector3f(0f, 0f, 0f)
-val end = Vector3f(100f, 40f, 0f)
-val halfway = start.lerp(end, 0.5f, Vector3f())
+val start = vec(0, 0, 0)
+val end = vec(100, 40, 0)
+val halfway = start.lerp(end, 0.5f, vec(0, 0, 0))
 ```
 
 At `t = 0` the result is `start`; at `t = 1` it is `end`. Values outside that
@@ -178,8 +194,8 @@ val model = Matrix4f()
     .rotate(Quaternionf().rotateY(0.4f))
     .scale(2f)
 
-val worldPosition = model.transformPosition(localPosition, Vector3f())
-val worldDirection = model.transformDirection(localDirection, Vector3f())
+val worldPosition = model.transformPosition(localPosition, vec(0, 0, 0))
+val worldDirection = model.transformDirection(localDirection, vec(0, 0, 0))
 ```
 
 Positions are affected by translation; directions are not. This distinction is
@@ -199,7 +215,7 @@ saved state, ordinary collections, and almost all code where allocation is not a
 bottleneck:
 
 ```kotlin
-val p = Vector3f(1f, 2f, 3f)
+val p = vec(1, 2, 3)
 p.x += 1f
 p.normalize()
 ```
@@ -207,7 +223,7 @@ p.normalize()
 Operations can mutate the receiver or write into an explicit destination:
 
 ```kotlin
-val normal = Vector3f()
+val normal = vec(0, 0, 0)
 edgeA.cross(edgeB, normal) // no result allocation
 normal.normalize()
 ```
@@ -221,8 +237,8 @@ When a loop creates many short-lived values:
 
 ```kotlin
 frameScratch {
-    val a = vec3(1f, 2f, 3f)
-    val b = vec3(4f, 5f, 6f)
+    val a = vec(1, 2, 3)
+    val b = vec(4, 5, 6)
     val normal = vec3()
 
     a.cross(b, normal).normalize()
@@ -237,10 +253,10 @@ Leaving the block restores an arena mark and invalidates its allocations togethe
 Copy deliberately when a result becomes persistent:
 
 ```kotlin
-val persistent = Vector3f()
+val persistent = vec(0, 0, 0)
 
 frameScratch {
-    val temporary = vec3(1f, 2f, 3f)
+    val temporary = vec(1, 2, 3)
     temporary.copyTo(persistent)
 }
 ```
@@ -284,14 +300,14 @@ and queue ownership remain the responsibility of the buffer owner.
 Closest point on a triangle:
 
 ```kotlin
-val closest = Vector3f()
+val closest = vec(0, 0, 0)
 closestPointOnTriangle(point, a, b, c, closest)
 ```
 
 Ray picking:
 
 ```kotlin
-val hit = Vector3f()
+val hit = vec(0, 0, 0)
 if (intersectRayTriangle(rayOrigin, rayDirection, a, b, c, hit)) {
     println("hit at $hit")
 }
@@ -300,7 +316,7 @@ if (intersectRayTriangle(rayOrigin, rayDirection, a, b, c, hit)) {
 Ray versus bounds:
 
 ```kotlin
-val nearFar = Vector2f()
+val nearFar = vec(0, 0)
 if (intersectRayAabb(origin, direction, minimum, maximum, nearFar)) {
     println("enter ${nearFar.x}, leave ${nearFar.y}")
 }

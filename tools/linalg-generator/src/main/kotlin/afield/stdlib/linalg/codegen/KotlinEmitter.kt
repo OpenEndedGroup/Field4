@@ -101,6 +101,8 @@ class KotlinEmitter(
             appendLine()
             appendLine("Components: ${type.components.joinToString { "`${it.sourceName}`" }}.")
             appendLine()
+            appendLine("In a Field code box, ordinary heap values use `vec(${type.components.joinToString { it.sourceName }})`. In a typed context, `val value: Vec${type.dimension} = [${type.components.indices.joinToString()}]` uses the generated collection-literal constructor.")
+            appendLine()
             appendLine("| Operation | Meaning |")
             appendLine("| --- | --- |")
             model.operations(type).forEach { operation ->
@@ -438,6 +440,19 @@ class KotlinEmitter(
         appendLine("        return result")
         appendLine("    }")
         appendLine("    override fun toString(): String = \"(${type.components.joinToString(", ") { "\$${it.sourceName}" }})\"")
+        appendLine()
+        appendLine("    companion object {")
+        appendLine("        /**")
+        appendLine("         * Constructs a ${type.dimension}D vector from a typed Kotlin collection literal.")
+        appendLine("         *")
+        appendLine("         * Example: `val value: ${type.heapName} = [${type.components.indices.joinToString()}]`.")
+        appendLine("         * Numeric components are converted to Float, matching Field's `vec(...)` helper.")
+        appendLine("         */")
+        appendLine("        operator fun of(vararg components: Number): ${type.heapName} {")
+        appendLine("            require(components.size == ${type.dimension}) { \"${type.heapName} literal requires ${type.dimension} components, got \${components.size}\" }")
+        appendLine("            return ${type.heapName}(${type.components.indices.joinToString { "components[$it].toFloat()" }})")
+        appendLine("        }")
+        appendLine("    }")
         appendLine("}")
     }
 
@@ -448,6 +463,11 @@ class KotlinEmitter(
         appendLine(
             "    fun ${type.factoryName}(${type.components.joinToString { "${it.sourceName}: Float" }}): ${type.arenaName} = " +
                 "${type.factoryName}().also { it.set(${type.components.joinToString { it.sourceName }}) }"
+        )
+        appendLine("    /** Creates an arena-backed ${type.dimension}D vector from Kotlin numeric values. */")
+        appendLine(
+            "    fun vec(${type.components.joinToString { "${it.sourceName}: Number" }}): ${type.arenaName} = " +
+                "${type.factoryName}(${type.components.joinToString { "${it.sourceName}.toFloat()" }})"
         )
         appendLine()
         type.components.forEachIndexed { index, component ->

@@ -1,5 +1,9 @@
 package afield.stdlib.linalg
 
+import afield.stdlib.Vec2
+import afield.stdlib.Vec3
+import afield.stdlib.Vec4
+import afield.stdlib.vec
 import afield.stdlib.linalg.arena.FrameArena
 import afield.stdlib.linalg.arena.closestPointOnSegment
 import afield.stdlib.linalg.arena.frameScratch
@@ -23,6 +27,24 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class GeneratedLinalgTest {
+    @Test
+    fun liveCodingConstructorsAcceptKotlinNumbersAndTypedCollectionLiterals() {
+        val v2: Vec2 = [1, 2.5]
+        val v3: Vec3 = [1, 2.5, 3L]
+        val v4: Vec4 = [1, 2.5, 3L, 4f]
+
+        assertVectorEquals(Vector2f(1f, 2.5f), v2)
+        assertVectorEquals(Vector3f(1f, 2.5f, 3f), v3)
+        assertVectorEquals(Vector4f(1f, 2.5f, 3f, 4f), v4)
+
+        assertVectorEquals(v2, vec(1, 2.5))
+        assertVectorEquals(v3, vec(1, 2.5, 3L))
+        assertVectorEquals(v4, vec(1, 2.5, 3L, 4f))
+        assertNotSame(v3, vec(v3))
+        assertVectorEquals(v3, vec(v3))
+        assertFailsWith<IllegalArgumentException> { Vector3f.of(1, 2) }
+    }
+
     @Test
     fun heapVectorMatchesIndependentReferenceFormulas() {
         val random = Random(0x4f13d)
@@ -193,16 +215,16 @@ class GeneratedLinalgTest {
         val mainArena = FrameArena.current()
         try {
             frameScratch {
-                val a = vec3(1f, 2f, 3f)
-                val b = vec3(4f, 5f, 6f)
+                val a = vec(1, 2, 3)
+                val b = vec(4, 5, 6)
                 assertEquals(32f, a.dot(b))
 
                 val closest = vec3()
-                closestPointOnSegment(vec3(2f, 4f, 0f), vec3(0f, 0f, 0f), vec3(2f, 0f, 0f), closest)
+                closestPointOnSegment(vec(2, 4, 0), vec(0, 0, 0), vec(2, 0, 0), closest)
                 assertEquals(2f, closest.x); assertEquals(0f, closest.y)
                 val nearFar = vec2()
                 assertTrue(intersectRayAabb(
-                    vec3(-3f, 0f, 0f), vec3(1f, 0f, 0f), vec3(-1f, -1f, -1f), vec3(1f, 1f, 1f), nearFar,
+                    vec(-3, 0, 0), vec(1, 0, 0), vec(-1, -1, -1), vec(1, 1, 1), nearFar,
                 ))
                 assertEquals(2f, nearFar.x); assertEquals(4f, nearFar.y)
             }
@@ -211,7 +233,7 @@ class GeneratedLinalgTest {
             val otherArena = AtomicReference<FrameArena>()
             thread(start = true) {
                 otherArena.set(FrameArena.current())
-                frameScratch { assertEquals(1f, vec3(1f, 0f, 0f).length()) }
+                frameScratch { assertEquals(1f, vec(1, 0, 0).length()) }
                 FrameArena.closeCurrent()
             }.join()
             assertNotSame(mainArena, otherArena.get())
@@ -338,6 +360,18 @@ class GeneratedLinalgTest {
         assertEquals(expected.x, actual.x)
         assertEquals(expected.y, actual.y)
         assertEquals(expected.z, actual.z)
+    }
+
+    private fun assertVectorEquals(expected: Vector2f, actual: Vector2f) {
+        assertEquals(expected.x, actual.x)
+        assertEquals(expected.y, actual.y)
+    }
+
+    private fun assertVectorEquals(expected: Vector4f, actual: Vector4f) {
+        assertEquals(expected.x, actual.x)
+        assertEquals(expected.y, actual.y)
+        assertEquals(expected.z, actual.z)
+        assertEquals(expected.w, actual.w)
     }
 
     private fun assertMatrix4Identity(actual: Matrix4f, tolerance: Float) {
