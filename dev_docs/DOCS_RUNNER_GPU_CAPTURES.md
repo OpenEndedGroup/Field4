@@ -20,6 +20,25 @@ FIELD_DOCS_RUNNER_MODE=strict FIELD_DOCS_RUNNER_PORT=9488 \
 
 ---
 
+## Principle — a capture exercises the real code, or it does not exist
+
+The docs runner's entire value is that it drives the **real** Field code path and embeds the
+**real** result. Every capture is a test: green means the feature actually works; a capture that
+can't be produced is a real defect to surface, not to hide.
+
+So **never fake, synthesize, hardcode, mock, or stand in for a capture** to make it "look right."
+Do not substitute a CPU render for a GPU one, a hand-written string for a value the code should
+compute, or a scripted placeholder for a live panel. If the real capture won't come out:
+
+1. **fix the code** — the feature, the completion, the render path — so it genuinely produces the
+   result; or
+2. **fix the capture system** — the hook, the `drive` script, the framing/timing/selectors; or
+3. **omit the capture** and say why. An honest gap is fine; a convincing fake is not.
+
+A faked capture is worse than none: it stops testing anything, silently rots as the UI moves on,
+and misrepresents the product to the reader. (If you just want a picture for yourself, take a
+screenshot by hand — that never enters the docs pipeline.)
+
 ## Decision guide (what works today)
 
 | You want… | Do this | Status |
@@ -77,11 +96,12 @@ AI completions stream in a few seconds later and merge (they no longer block the
 fixed in `fieldSuggest.js`). For an AI-completion shot, wait a beat longer after the first row so
 the `AI` section is populated.
 
-**The "splendid" CPU probe card** in `field_probes.md` is rendered the robust
-way: construct a `FieldProbeSnapshot(...)` from a moving stand-in distribution and
-call `.summaryHtml()` — pure CPU, no renderer, no reflection — captured with the
-editor-video pattern. It renders the *same* card component the live probe uses.
-(A genuinely GPU-driven card also runs fine, but see "Framing" below.)
+**Known compromise to fix — the `field_probes.md` CPU probe card.** It currently builds a
+`FieldProbeSnapshot(...)` from a stand-in distribution on the CPU and captures `.summaryHtml()`,
+because the genuinely GPU-driven probe card is mis-framed by the hook (see "Framing" below). It
+renders the *same* card component, but it is **not** exercising the real GPU probe path — so it is
+a stopgap, not a pattern to copy. The right fix is to capture the real GPU-driven card (fix the
+framing); until then this stand-in should be treated as a documented gap, per the Principle above.
 
 ---
 
@@ -137,12 +157,13 @@ important mechanics (all verified by reading the hook + logs):
 `capture="box"` + `video=` records the **editor pane with `--open-outputs`**.
 
 - **Without** `graphics-context`, the recording frames the box's output area — so a
-  `display("probe", html)` card fills the clip. This is how the synthetic
-  `field_probes` card is captured, and it looks great.
+  `display("probe", html)` card fills the clip. This is how the `field_probes` CPU stand-in card
+  is currently captured (a compromise — see above; it does not drive the real GPU probe).
 - **With** `graphics-context`, the recording frames the *code editor* of the
   macro-created child box, so the card ends up off-frame (you get the source + a
-  tiny "ok"). If you need a clean card image from a genuinely GPU-driven probe,
-  either fix the framing in the hook or render the card synthetically on the CPU.
+  tiny "ok"). The fix is to **correct the framing in the hook** so the genuinely GPU-driven probe
+  card is captured. Do **not** work around it by rendering the card synthetically on the CPU — that
+  would be faking the capture (see the Principle at the top).
 
 ---
 
