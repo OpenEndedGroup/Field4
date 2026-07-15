@@ -22,8 +22,8 @@ operation into heap objects, frame-arena handles, or mapped memory views.
 
 | Area | Current implementation |
 | --- | --- |
-| Heap values | Mutable `Vector2f`, `Vector3f`, `Vector4f`, quaternions and matrices |
-| Read interfaces | `Vector2fc` through `Vector4fc`, `Quaternionfc`, matrix interfaces |
+| Heap values | Mutable `Vector2f`, `Vector3f`, `Vector4f`, their `Vector2d`/`Vector3d`/`Vector4d` double siblings, quaternions and matrices |
+| Read interfaces | `Vector2fc` through `Vector4fc`, `Vector2dc` through `Vector4dc`, `Quaternionfc`, matrix interfaces |
 | Scratch storage | `FrameArena`, `ArenaVec2f`, `ArenaVec3f`, `ArenaVec4f` |
 | Thread convenience | `FrameArena.current()` and `frameScratch { ... }` |
 | Foreign/mapped storage | `SegmentVec2Buffer`, `SegmentVec3Buffer`, `SegmentVec4Buffer`, packed and aligned layouts |
@@ -366,6 +366,70 @@ model rather than hidden in emitter strings.
 JOML can remain a useful API inventory and same-license reference, but new code
 should be expressed in Field's conventions, destination policy and degeneracy tests.
 
+## Measured performance
+
+`tools:linalg-bench` is a JMH module (see `tools/linalg-bench/README.md`) that compiles the
+linear-algebra sources standalone, so the arena safety profile can be set independently of the main
+build. All numbers below are JMH (forked JVMs, warmup and measurement iterations), JDK 25, Apple
+Silicon. Treat them as shape, not specification, and re-run before quoting.
+
+### Heap parity with JOML
+
+The generated heap `Vector3f` is statistically indistinguishable from the JOML `Vector3f` it
+replaces, measured on the same kernel in the same JVM:
+
+| kernel: add, scalar-mul, cross, dot, normalize | JOML | generated |
+| --- | ---: | ---: |
+| reused destinations | 5.89 ns | 5.93 ns |
+| allocate per op | 3.18 ns | 3.10 ns |
+
+The `Vector3fc` read interface (a layer JOML does not have) costs nothing; the JIT devirtualizes it.
+`Vector3d` is about 1.03x `Vector3f`. The collection-literal constructor (`val v: Vector3f = [1, 2,
+3]`) is about 1.15x a raw constructor. Escape analysis removes non-escaping per-operation
+allocations, so "reuse a destination" is not automatically faster than "allocate" at this scale.
+
+### Frame arena: allocation behaviour, not per-op latency
+
+The arena exists to make frame loops allocation-free, not to lower per-operation latency. A
+1,000,000-point cubic-Bezier frame repeated many times (`SplineThroughputBenchmark`, JMH `gc`
+profiler):
+
+| per-frame strategy | throughput | allocated / frame | GC |
+| --- | ---: | ---: | --- |
+| fresh heap `Vector3f` into a persistent array | 266 ops/s | ~24 MB | 6.1 GB/s, 36 collections, 193 ms |
+| reused heap pool | 291 ops/s | ~0 | none |
+| arena, reset per frame | 226 ops/s | ~0 | none |
+
+The arena allocates a few bytes per frame and triggers no collections, exactly like a hand-managed
+object pool — but without the manual pool or the permanently live objects. You allocate freely and a
+scope reset rewinds the cursor. It is slightly slower per point than heap because each component
+access is a `MemorySegment` access rather than a field load; the win is eliminated GC and
+predictable frame latency (no multi-hundred-millisecond pauses), not raw throughput.
+
+### Arena debug validation cost
+
+Arena validation is compiled in by default (see the compiled safety profile above) and is the
+dominant cost of a debug build. On the frame-arena scratch kernel, relative to a
+`-PlinalgArenaChecks=false` build (~52 ns):
+
+| build | frameScratch kernel |
+| --- | ---: |
+| checks compiled out | ~52 ns |
+| checks compiled in | ~121 ns (2.3x) |
+
+This is down from an original 7.9x. Two changes did it: per-slot stamp and kind metadata now share a
+single packed `LongArray` (one load per check), and each operation validates every handle once via
+`resolve` then uses unchecked `readAt`/`writeAt` rather than re-validating on every component.
+Thread-confinement and closed-state are delegated to the confined FFM arena, which enforces them on
+the underlying segment access. The compiled-out path is allocation-bound (a bump allocation plus the
+scope), already near the floor for an off-heap arena.
+
+### Segment views are allocation-free
+
+`SegmentVec3f` and its siblings are `@JvmInline value class` wrappers over a single packed `Long`
+(owner id plus byte offset), so a handle is a bare `long` at runtime. `buffer[i]` and the vector
+operations allocate essentially zero bytes per operation with no collections.
+
 ## Valhalla seam
 
 Heap API, operation semantics and storage lowering are separate. When the target JVM
@@ -374,14 +438,30 @@ benchmark it against heap fields, frame handles and bulk memory. Existing box co
 should not need a mathematical API rewrite. Until then, do not contort the public
 API around preview constraints.
 
+The segment backend already realises the single-field version of this idea: a `SegmentVec3f`
+handle is a `@JvmInline value class` over one `Long` (owner id plus offset), which today's JVM
+scalarises to a bare `long` — an immutable offset into the segment, allocation-free. The reason its
+operations take a buffer receiver (`with(buffer) { ... }`) rather than being self-contained is that
+a single inline value can hold only the offset, not the `MemorySegment` as well; and, deliberately,
+the handle must not carry — and so extend the lifetime of — GPU memory (normative rule 6). A
+Valhalla value class with two fields (segment reference plus offset), still scalarised and
+flattenable in arrays, is what would let a handle be self-contained and let `Array<SegmentVec3f>`
+avoid boxing. That is a genuine trade, not a free win: carrying the segment reintroduces exactly the
+lifetime coupling the current design keeps out. Add it as a carrier emitter and measure it; do not
+retrofit it into the offset handle.
+
 ## Build and verification
 
 ```text
 ./gradlew generateLinalg
 ./gradlew checkGeneratedLinalg
 ./gradlew jvmTest
+./gradlew :tools:linalg-bench:jmh            # optional: performance, see tools/linalg-bench/README.md
 FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --clean
 ```
 
 Generated output lives under `src/generatedLinalg`; edit the model or emitter, not
-the generated Kotlin.
+the generated Kotlin. Both float and double heap vectors are emitted from the same operation model;
+`ScalarKind` in `AlgebraModel.kt` is the only per-scalar knob (literals, Kotlin type, buffer
+accessors, hash fold). Arena and segment backends are float-only by design and iterate
+`AlgebraModel.vectors`; the heap backend iterates `AlgebraModel.heapVectors` (float plus double).
