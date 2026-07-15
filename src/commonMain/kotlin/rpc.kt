@@ -320,6 +320,22 @@ data class SourceCardResult(
     val sourceLine: Int = -1
 )
 
+/**
+ * A window of raw source text for the "view source" affordance — served over HTTP
+ * (`GET /api/source`) so both the completion doc panel and the welcome-screen
+ * semantic search can show the actual code behind a symbol or a search hit. Covers
+ * project files under `./src` and classpath `-sources.jar` entries.
+ */
+@Serializable
+data class SourceFileResponse(
+    val found: Boolean = false,
+    val path: String = "",
+    val language: String = "",
+    val startLine: Int = 0,
+    val endLine: Int = 0,
+    val code: String = ""
+)
+
 @Serializable
 data class SymbolContextRequest(
     val uid: String,

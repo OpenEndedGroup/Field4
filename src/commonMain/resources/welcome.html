@@ -1626,10 +1626,26 @@
                 display: none;
             }
         }
+    /* Source previews for semantic search results (Stage C). */
+    .hljs { color: #d7dce2; background: transparent !important; }
+    .hljs-keyword, .hljs-built_in, .hljs-selector-tag, .hljs-type { color: #7aa2f7; }
+    .hljs-title, .hljs-title.class_, .hljs-title.function_ { color: #d2a8ff; }
+    .hljs-string, .hljs-attr, .hljs-regexp { color: #8ccf7e; }
+    .hljs-number, .hljs-literal, .hljs-variable, .hljs-operator { color: #79c0ff; }
+    .hljs-comment, .hljs-code, .hljs-formula { color: #7b8491; font-style: italic; }
+    .welcome-source-link { color: #7aa2f7; text-decoration: underline; cursor: pointer; }
+    .search-match-code, .welcome-source-view pre {
+        margin: 4px 0 0; padding: 8px; overflow: auto; max-height: 320px;
+        background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 4px; font-family: ui-monospace, monospace; font-size: 11px; white-space: pre;
+    }
+    .welcome-source-view { margin-top: 6px; }
+    .welcome-source-view-head { font-size: 10px; opacity: 0.6; margin-bottom: 2px; font-family: ui-monospace, monospace; }
     </style>
 </head>
 <body class="field-webgl-page">
 <script src="/fieldWebglBackground.js"></script>
+<script src="/highlight.min.js"></script>
 <script>
     window.FieldWebGLBackground?.install(document.body, { fixed: true });
 </script>
@@ -3381,6 +3397,72 @@
         return safe.replace(regex, "<mark>$1</mark>");
     }
 
+    // ---- Semantic-search source previews (Stage C) -------------------------
+
+    function welcomeSourceLang(path) {
+        const p = String(path || "");
+        if (/\.(kt|kts)$/i.test(p)) return "kotlin";
+        if (/\.java$/i.test(p)) return "java";
+        if (/\.(glsl|frag|vert)$/i.test(p)) return "glsl";
+        if (/\.(js|mjs)$/i.test(p)) return "javascript";
+        return "";
+    }
+
+    // Semantic hits are code, so render the snippet syntax-highlighted; plain text
+    // matches keep the query-term <mark> highlighting.
+    function renderMatchSnippet(match, query) {
+        const snippet = match.snippet || "";
+        if (match.source === "semantic" && snippet.trim()) {
+            const lang = welcomeSourceLang(match.path) || "kotlin";
+            return `<pre class="code-block search-match-code"><code class="language-${lang}">${escapeHtml(snippet)}</code></pre>`;
+        }
+        return `<div class="search-match-snippet">${highlightQuery(snippet, query)}</div>`;
+    }
+
+    // The hit's source location, as a link that opens the real code region inline.
+    function renderMatchPath(match) {
+        const path = String(match.path || "");
+        if (!path) return "";
+        const line = Number(match.line) || 0;
+        const label = line > 0 ? `${path}:${line}` : path;
+        return ` · <a class="welcome-source-link" href="#" data-path="${escapeHtml(path)}" data-line="${line}" title="View source">${escapeHtml(label)}</a>`;
+    }
+
+    function highlightWelcomeCode(root) {
+        if (!window.hljs || typeof window.hljs.highlightElement !== "function") return;
+        (root || document).querySelectorAll("pre.code-block code:not([data-highlighted])").forEach((block) => {
+            try { window.hljs.highlightElement(block); } catch (_) {}
+        });
+    }
+
+    // Toggle an inline source region (GET /api/source) beneath a search match.
+    function toggleWelcomeSource(link) {
+        const match = link.closest(".search-match");
+        if (!match) return;
+        const existing = match.querySelector(".welcome-source-view");
+        if (existing) { existing.remove(); return; }
+        const query = new URLSearchParams({
+            path: link.getAttribute("data-path") || "",
+            line: link.getAttribute("data-line") || "-1",
+            context: "60",
+        });
+        fetch(`/api/source?${query.toString()}`)
+            .then((r) => (r.ok ? r.json() : null))
+            .then((res) => {
+                if (!res || !res.found || !res.code) return;
+                if (match.querySelector(".welcome-source-view")) return;
+                const lang = res.language || "kotlin";
+                const view = document.createElement("div");
+                view.className = "welcome-source-view";
+                view.innerHTML =
+                    `<div class="welcome-source-view-head">${escapeHtml(res.path)}:${res.startLine}</div>` +
+                    `<pre class="code-block"><code class="language-${lang}">${escapeHtml(res.code)}</code></pre>`;
+                match.appendChild(view);
+                highlightWelcomeCode(match);
+            })
+            .catch(() => {});
+    }
+
     function tagsForDoc(doc) {
         return Array.isArray(doc.tags) ? doc.tags : [];
     }
@@ -4032,15 +4114,15 @@
                 const preview = documents.length ? documents.join(", ") : "empty project";
                 const matches = Array.isArray(doc.matches) ? doc.matches : [];
                 const matchHtml = matches.map((match) => {
-                    const linePart = match.line > 0 ? ` line ${match.line}` : "";
+                    const linePart = (match.line > 0 && !match.path) ? ` line ${match.line}` : "";
                     const source = match.source === "semantic" ? `<span class="search-match-source">semantic</span>` : "";
                     const score = match.source === "semantic" && Number.isFinite(Number(match.score))
                         ? ` · ${Number(match.score).toFixed(3)}`
                         : "";
                     return `
                         <div class="search-match ${match.source === "semantic" ? "semantic" : ""}">
-                            <div class="search-match-meta">${source}${escapeHtml(match.boxName || doc.filename)} · ${escapeHtml(match.property || "project")}${escapeHtml(linePart)}${escapeHtml(score)}</div>
-                            <div class="search-match-snippet">${highlightQuery(match.snippet || "", query)}</div>
+                            <div class="search-match-meta">${source}${escapeHtml(match.boxName || doc.filename)} · ${escapeHtml(match.property || "project")}${escapeHtml(linePart)}${escapeHtml(score)}${renderMatchPath(match)}</div>
+                            ${renderMatchSnippet(match, query)}
                         </div>
                     `;
                 }).join("");
@@ -4067,7 +4149,7 @@
             const matches = Array.isArray(doc.matches) ? doc.matches : [];
             const matchHtml = matches.map((match) => {
                 const property = match.property === "document" ? "document name" : match.property;
-                const linePart = match.line > 0 ? ` line ${match.line}` : "";
+                const linePart = (match.line > 0 && !match.path) ? ` line ${match.line}` : "";
                 const languagePart = match.language ? ` · ${match.language}` : "";
                 const source = match.source === "semantic" ? `<span class="search-match-source">semantic</span>` : "";
                 const score = match.source === "semantic" && Number.isFinite(Number(match.score))
@@ -4075,8 +4157,8 @@
                     : "";
                 return `
                     <div class="search-match ${match.source === "semantic" ? "semantic" : ""}">
-                        <div class="search-match-meta">${source}${escapeHtml(match.boxName || "(unnamed box)")} · ${escapeHtml(property)}${escapeHtml(languagePart)}${escapeHtml(linePart)}${escapeHtml(score)}</div>
-                        <div class="search-match-snippet">${highlightQuery(match.snippet || "", query)}</div>
+                        <div class="search-match-meta">${source}${escapeHtml(match.boxName || "(unnamed box)")} · ${escapeHtml(property)}${escapeHtml(languagePart)}${escapeHtml(linePart)}${escapeHtml(score)}${renderMatchPath(match)}</div>
+                        ${renderMatchSnippet(match, query)}
                     </div>
                 `;
             }).join("");
@@ -5297,6 +5379,19 @@
     }
 
     function installDocumentListHandlers(listNode) {
+        highlightWelcomeCode(listNode);
+        // Intercept source-link clicks in the capture phase so they don't also open
+        // the document (whose click handler runs on the bubble phase). Bound once.
+        if (!listNode.__sourceLinkBound) {
+            listNode.addEventListener("click", (event) => {
+                const link = event.target.closest(".welcome-source-link");
+                if (!link) return;
+                event.preventDefault();
+                event.stopPropagation();
+                toggleWelcomeSource(link);
+            }, true);
+            listNode.__sourceLinkBound = true;
+        }
         listNode.querySelectorAll(".project-entry").forEach((entry) => {
             entry.addEventListener("click", (event) => {
                 closeContextMenu();

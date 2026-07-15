@@ -297,6 +297,26 @@
     white-space: nowrap;
 }
 
+/* Inline "view source" region (Stage B). */
+.afield-suggest-source-code {
+    margin-top: 10px;
+    border: 1px solid var(--field-border-soft);
+}
+
+.afield-suggest-source-code-head {
+    padding: 4px 8px;
+    background: rgb(var(--field-black-rgb));
+    border-bottom: 1px solid var(--field-border-soft);
+    color: var(--field-fg-dim);
+    font-size: 10px;
+}
+
+.afield-suggest-source-code pre {
+    margin: 0;
+    max-height: 260px;
+    border: 0;
+}
+
 .afield-suggest-receiver-doc {
     margin-top: 12px;
     padding-top: 10px;

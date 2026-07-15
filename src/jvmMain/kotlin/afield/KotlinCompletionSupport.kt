@@ -1687,6 +1687,65 @@ internal object KotlinCompletionSupport {
         return sb.toString().trim().trimEnd('{').trim().ifBlank { null }
     }
 
+    // ---- Raw source view (GET /api/source, Stage B) ------------------------
+
+    private fun sourceLanguageFor(name: String): String = when {
+        name.endsWith(".kt", true) || name.endsWith(".kts", true) -> "kotlin"
+        name.endsWith(".java", true) -> "java"
+        name.endsWith(".glsl", true) || name.endsWith(".frag", true) || name.endsWith(".vert", true) -> "glsl"
+        name.endsWith(".js", true) || name.endsWith(".mjs", true) -> "javascript"
+        else -> ""
+    }
+
+    private fun sourceWindow(lines: List<String>, line: Int, span: Int): Triple<Int, Int, String> {
+        if (lines.isEmpty()) return Triple(0, 0, "")
+        val start = if (line > 0) (line - 3).coerceIn(1, lines.size) else 1
+        val end = if (line > 0) (start + span - 1).coerceAtMost(lines.size) else span.coerceAtMost(lines.size)
+        return Triple(start, end, lines.subList(start - 1, end).joinToString("\n"))
+    }
+
+    /**
+     * Read a window of source text for the "view source" affordance. Guarded: project
+     * files must resolve under `./src`; jar entries must live in a `-sources.jar`.
+     * Returns [SourceFileResponse.found] = false for anything else (no dead views).
+     */
+    internal fun readSourceExcerpt(rawPath: String, line: Int, context: Int): SourceFileResponse {
+        val span = context.coerceIn(1, 400)
+        return if (rawPath.startsWith("jar:")) readJarExcerpt(rawPath, line, span)
+        else readProjectExcerpt(rawPath, line, span)
+    }
+
+    private fun readProjectExcerpt(rawPath: String, line: Int, span: Int): SourceFileResponse {
+        val root = Paths.get(System.getProperty("user.dir")).toAbsolutePath().normalize()
+        val srcRoot = root.resolve("src").normalize()
+        val rel = rawPath.removePrefix("./").replace('\\', '/')
+        val path = root.resolve(rel).normalize()
+        if (!path.startsWith(srcRoot) || !Files.isRegularFile(path)) return SourceFileResponse()
+        val lines = runCatching { Files.readAllLines(path) }.getOrNull() ?: return SourceFileResponse()
+        val (start, end, code) = sourceWindow(lines, line, span)
+        val relDisplay = runCatching { root.relativize(path).toString().replace('\\', '/') }.getOrDefault(rel)
+        return SourceFileResponse(true, relDisplay, sourceLanguageFor(relDisplay), start, end, code)
+    }
+
+    private fun readJarExcerpt(rawPath: String, line: Int, span: Int): SourceFileResponse {
+        // rawPath = jar:file:///abs/foo-sources.jar!/pkg/Foo.kt
+        val body = rawPath.removePrefix("jar:")
+        val sep = body.lastIndexOf("!/")
+        if (sep < 0) return SourceFileResponse()
+        val jarFile = runCatching { Paths.get(URI(body.substring(0, sep))).toFile() }.getOrNull()
+            ?: return SourceFileResponse()
+        val entryName = body.substring(sep + 2)
+        if (!jarFile.name.endsWith("-sources.jar") || !jarFile.isFile) return SourceFileResponse()
+        val text = runCatching {
+            ZipFile(jarFile).use { zip ->
+                val entry = zip.getEntry(entryName) ?: return SourceFileResponse()
+                zip.getInputStream(entry).bufferedReader().use { it.readText() }
+            }
+        }.getOrNull() ?: return SourceFileResponse()
+        val (start, end, code) = sourceWindow(text.split("\n"), line, span)
+        return SourceFileResponse(true, entryName, sourceLanguageFor(entryName), start, end, code)
+    }
+
     private fun scoreCallableCandidate(
         definitionName: String,
         info: SourceCallableInfo,

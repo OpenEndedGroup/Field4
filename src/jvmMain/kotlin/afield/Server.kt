@@ -3947,6 +3947,24 @@ class Server {
                             call.respond(response)
                         }
 
+                        // Raw source view (Stage B): serves a window of a project source file
+                        // (under ./src) or a classpath -sources.jar entry, for the doc panel's
+                        // "view source" and semantic-search "open source". Guarding lives in
+                        // KotlinCompletionSupport.readSourceExcerpt.
+                        get("/api/source") {
+                            val path = call.request.queryParameters["path"].orEmpty()
+                            val line = call.request.queryParameters["line"]?.toIntOrNull() ?: -1
+                            val context = call.request.queryParameters["context"]?.toIntOrNull() ?: 60
+                            if (path.isBlank()) {
+                                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "path required"))
+                                return@get
+                            }
+                            val result = runCatching {
+                                KotlinCompletionSupport.readSourceExcerpt(path, line, context)
+                            }.getOrElse { SourceFileResponse() }
+                            call.respond(result)
+                        }
+
                         route("/welcome") {
                             handle {
                                 val originalContent =

@@ -764,6 +764,9 @@ const renderSyntaxLabel = (label, query) => {
 };
 
 const FIELD_SOURCE_SCHEME = "field-source:";
+// `[Symbol]` prose links navigate to a symbol card (field-source:); the source
+// footer opens the raw code region via GET /api/source (field-source-view:).
+const FIELD_SOURCE_VIEW_SCHEME = "field-source-view:";
 
 const sourceCardHref = (name, path, line) => {
   const params = new URLSearchParams();
@@ -773,15 +776,22 @@ const sourceCardHref = (name, path, line) => {
   return `${FIELD_SOURCE_SCHEME}?${params.toString()}`;
 };
 
-// Render the "source <name>:<line>" footer. When the target is a project source
-// location (not a classpath jar) it becomes a field-source: link so the reader can
-// open it as a card; otherwise it stays plain text (no dead links).
+const sourceViewHref = (path, line) => {
+  const params = new URLSearchParams();
+  if (path) params.set("path", path);
+  if (line > 0) params.set("line", String(line));
+  return `${FIELD_SOURCE_VIEW_SCHEME}?${params.toString()}`;
+};
+
+// Render the "source <name>:<line>" footer as a link that opens the actual source
+// region inline. Works for project files and -sources.jar entries; only plain text
+// when there's no path (no dead links).
 const renderSourceRef = (display, lineSuffix, name, path, line) => {
   const label = `${escapeHtml(display)}${escapeHtml(lineSuffix)}`;
-  if (path && !path.startsWith("jar:") && line > 0) {
+  if (path) {
     return (
-      `<a class="afield-suggest-source-link" href="${escapeHtml(sourceCardHref(name, path, line))}">` +
-      `<code>${label}</code></a>`
+      `<a class="afield-suggest-source-link" title="View source" ` +
+      `href="${escapeHtml(sourceViewHref(path, line))}"><code>${label}</code></a>`
     );
   }
   return `<code>${label}</code>`;
@@ -962,6 +972,11 @@ class FieldSuggestController {
       const link = event.target.closest("a");
       if (!link) return;
       const href = link.getAttribute("href") || "";
+      if (href.startsWith(FIELD_SOURCE_VIEW_SCHEME)) {
+        event.preventDefault();
+        this.viewSource(href, link);
+        return;
+      }
       if (href.startsWith(FIELD_SOURCE_SCHEME)) {
         event.preventDefault();
         this.navigateToSource(href, link.textContent || "");
@@ -1383,6 +1398,50 @@ class FieldSuggestController {
       this.navIndex = this.navStack.length - 1;
       this.renderDoc();
     });
+  }
+
+  // Stage B: fetch and toggle the actual source region (GET /api/source) inline
+  // beneath the source footer, syntax-highlighted like the signature block.
+  viewSource(href, anchor) {
+    const doc = this.root.querySelector(".afield-suggest-doc");
+    if (!doc) return;
+    const existing = doc.querySelector(".afield-suggest-source-code");
+    if (existing) {
+      existing.remove();
+      return;
+    }
+    let params;
+    try {
+      params = new URLSearchParams(
+        href.slice(FIELD_SOURCE_VIEW_SCHEME.length).replace(/^\?/, ""),
+      );
+    } catch (_) {
+      return;
+    }
+    const query = new URLSearchParams({
+      path: params.get("path") || "",
+      line: params.get("line") || "-1",
+      context: "60",
+    });
+    fetch(`/api/source?${query.toString()}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((res) => {
+        if (!res || !res.found || !res.code) return;
+        // Guard against a stale response after the panel re-rendered.
+        if (doc.querySelector(".afield-suggest-source-code")) return;
+        const lang = res.language || "kotlin";
+        const block = document.createElement("div");
+        block.className = "afield-suggest-source-code";
+        block.innerHTML =
+          `<div class="afield-suggest-source-code-head"><code>${escapeHtml(res.path)}:${res.startLine}</code></div>` +
+          `<pre><code class="language-${escapeHtml(lang)}">${escapeHtml(res.code)}</code></pre>`;
+        const footer = anchor.closest(".afield-suggest-doc-source");
+        if (footer && footer.parentNode) footer.parentNode.insertBefore(block, footer.nextSibling);
+        else doc.appendChild(block);
+        highlightCodeBlocks(doc);
+        block.scrollIntoView({ block: "nearest" });
+      })
+      .catch(() => {});
   }
 
   navBack() {

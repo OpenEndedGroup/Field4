@@ -101,9 +101,31 @@ typealiases). Verified against the real source index by
 `DocsPanelCodeLinksSmokeTest` (`./gradlew runDocsPanelCodeLinksSmokeTest`, also a
 FIELD_TEST catalog entry). Both Kotlin targets compile.
 
-Not yet done: live in-browser UI capture (needs a Field rebuild+restart),
-Increment-2 classpath symbols, Stage C semantic-search wiring, Stage B raw-source
-endpoint.
+Live in-browser UI captured (doc panel `[Vec2]` link + recursive Vec2 card +
+breadcrumb).
+
+### Stage B — raw source view (done)
+`GET /api/source?path=&line=&context=` (`Server.kt`) returns a window of a
+project source file (guarded to `./src`, canonical-containment) or a classpath
+`-sources.jar` entry (guarded to `*-sources.jar`); logic in
+`KotlinCompletionSupport.readSourceExcerpt`. The doc panel's `source <name>:line`
+footer now opens the actual code region inline (`field-source-view:` scheme →
+`viewSource`), hljs-highlighted. Verified live: endpoint returns the correct
+window for `linalg.kt:504`, both guards (path traversal, outside-`src`) return
+`found=false`, and the inline highlighted source view was captured in the panel.
+
+### Stage C — semantic search (done, UI-drive pending real workspace)
+`welcome.html`: loads highlight.js, renders semantic hits' snippets
+syntax-highlighted, shows `hit.path` as a link, and opens the real source region
+inline via the shared `/api/source` endpoint (capture-phase click interception so
+it doesn't also open the document). Compiles, deploys (served page contains all
+changes), inline JS syntax-checked, and the `/api/source` dependency verified
+live. The full welcome-screen drive (real hits → link → view) was NOT exercised
+in the headless test JVM: its workspace is empty and the semantic index rebuild
+hangs on DJL/ONNX init — both environment issues, not the Stage C code. Verify on
+a real workspace / the user's instance.
+
+Not yet done: Increment-2 classpath symbols in KDoc `[Symbol]` linkification.
 
 ## Verification (real, not synthetic)
 Drive the real UI (type `var v = vec` via the backdoor/transcript path),
