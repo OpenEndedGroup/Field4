@@ -1543,13 +1543,27 @@ internal object KotlinCompletionSupport {
     }
 
     /**
-     * Resolve a KDoc `[Symbol]` simple name to a project source location, or null if
+     * Resolve a KDoc `[Symbol]` reference to a project source location, or null if
      * it isn't a known project declaration. Increment 1 covers the project index +
      * typealiases only, so classpath-only types (e.g. `kotlin.Float`) stay plain text
      * rather than becoming dead links.
+     *
+     * [reference] may be qualified (`Foo.bar`): resolution keys on the last segment,
+     * but a qualifier is *verified* against each candidate's owner so a bare `bar`
+     * declared under an unrelated type never becomes a wrong link for `[Foo.bar]`.
+     * An unverifiable qualifier resolves to null (left literal), never a wrong link.
      */
-    private fun resolveSymbolLocation(simpleName: String): IndexedDocumentationTarget? {
-        val d = bestDefinitionForSimpleName(simpleName) ?: return null
+    private fun resolveSymbolLocation(reference: String): IndexedDocumentationTarget? {
+        if (reference.isBlank()) return null
+        val simpleName = reference.substringAfterLast('.')
+        val d = if (reference.contains('.')) {
+            val owner = reference.substringBeforeLast('.').substringAfterLast('.')
+            simpleNameLookup()[simpleName]
+                ?.filter { it.name.substringBeforeLast('.', "").substringAfterLast('.') == owner }
+                ?.minWithOrNull(cardCandidateComparator)
+        } else {
+            bestDefinitionForSimpleName(simpleName)
+        } ?: return null
         return IndexedDocumentationTarget(
             sourceName = d.name,
             sourceFile = d.filePath,
@@ -1558,7 +1572,10 @@ internal object KotlinCompletionSupport {
         )
     }
 
-    private val kdocLinkRegex = Regex("""\[([A-Za-z_][A-Za-z0-9_.]*)]""")
+    // Matches either a KDoc `[display][Target]` alternate-link (group 1 = display
+    // text, group 2 = target symbol) or a bare `[Ident]` reference (group 3).
+    private val kdocLinkRegex =
+        Regex("""\[([^\[\]]+)]\[([A-Za-z_][A-Za-z0-9_.]*)]|\[([A-Za-z_][A-Za-z0-9_.]*)]""")
 
     private fun sourceCardHref(name: String, path: String, line: Int): String {
         fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
@@ -1568,8 +1585,8 @@ internal object KotlinCompletionSupport {
     /**
      * Rewrite bare KDoc `[Symbol]` cross-references into markdown links with a
      * `field-source:` href, but only when the symbol resolves to a known source
-     * location. Existing `[label](url)` links and anything inside fenced code blocks
-     * are left untouched.
+     * location. Existing `[label](url)` links and anything inside code — both
+     * fenced ``` ``` ``` blocks and inline `` `code` `` spans — are left untouched.
      */
     internal fun linkifyKDocSymbols(markdown: String): String {
         if (markdown.isEmpty() || !markdown.contains('[')) return markdown
@@ -1578,7 +1595,24 @@ internal object KotlinCompletionSupport {
         parts.forEachIndexed { index, part ->
             if (index > 0) sb.append("```")
             // Even segments are outside code fences; odd segments are code.
-            if (index % 2 == 0) sb.append(linkifyKDocSegment(part)) else sb.append(part)
+            if (index % 2 == 0) sb.append(linkifyOutsideFence(part)) else sb.append(part)
+        }
+        return sb.toString()
+    }
+
+    /**
+     * Linkify a non-fenced region, still skipping inline `` `code` `` spans:
+     * split on single backticks and only rewrite the even (non-code) segments,
+     * mirroring the fence handling one level up.
+     */
+    private fun linkifyOutsideFence(text: String): String {
+        if (!text.contains('[')) return text
+        if (!text.contains('`')) return linkifyKDocSegment(text)
+        val spans = text.split('`')
+        val sb = StringBuilder(text.length + 32)
+        spans.forEachIndexed { index, span ->
+            if (index > 0) sb.append('`')
+            if (index % 2 == 0) sb.append(linkifyKDocSegment(span)) else sb.append(span)
         }
         return sb.toString()
     }
@@ -1586,12 +1620,22 @@ internal object KotlinCompletionSupport {
     private fun linkifyKDocSegment(text: String): String {
         if (!text.contains('[')) return text
         return kdocLinkRegex.replace(text) { match ->
-            // Skip the label of an existing [label](url) link.
-            if (text.getOrNull(match.range.last + 1) == '(') return@replace match.value
-            val label = match.groupValues[1]
-            val loc = resolveSymbolLocation(label.substringAfterLast('.'))
-            if (loc == null) match.value
-            else "[$label](${sourceCardHref(loc.sourceName, loc.sourceFile, loc.sourceLine)})"
+            val target = match.groupValues[2]
+            if (target.isNotEmpty()) {
+                // KDoc `[display][Target]`: link the display text to the target
+                // symbol only, never linkifying the display text on its own.
+                val display = match.groupValues[1]
+                val loc = resolveSymbolLocation(target)
+                if (loc == null) match.value
+                else "[$display](${sourceCardHref(loc.sourceName, loc.sourceFile, loc.sourceLine)})"
+            } else {
+                // Bare `[Ident]`. Skip the label of an existing [label](url) link.
+                if (text.getOrNull(match.range.last + 1) == '(') return@replace match.value
+                val label = match.groupValues[3]
+                val loc = resolveSymbolLocation(label)
+                if (loc == null) match.value
+                else "[$label](${sourceCardHref(loc.sourceName, loc.sourceFile, loc.sourceLine)})"
+            }
         }
     }
 

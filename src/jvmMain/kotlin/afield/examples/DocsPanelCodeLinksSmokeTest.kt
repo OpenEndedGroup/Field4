@@ -43,6 +43,37 @@ object DocsPanelCodeLinksSmokeTest {
         val fenced = "```kotlin\nval x: [Vec2] = z\n```"
         check("code fences untouched", KotlinCompletionSupport.linkifyKDocSymbols(fenced) == fenced)
 
+        // 2b. Inline `code` spans are never linkified either, even for a symbol
+        //     that resolves outside code (regression: inline spans were linkified).
+        val inline = "See `[Vec2]` for the type; [Vec2] here is a real link."
+        val inlineLinked = KotlinCompletionSupport.linkifyKDocSymbols(inline)
+        println("inline -> $inlineLinked")
+        check("inline `[Vec2]` stays literal", inlineLinked.contains("`[Vec2]`"))
+        check("bare [Vec2] outside code still links", inlineLinked.contains("[Vec2](field-source:"))
+
+        // 2c. KDoc `[display][Target]` alternate-link: display text is NOT linkified
+        //     on its own; the whole thing links once to the target symbol.
+        val alt = "Prefer the [2D vector][Vec2] helper."
+        val altLinked = KotlinCompletionSupport.linkifyKDocSymbols(alt)
+        println("alt-link -> $altLinked")
+        check("[display][Target] links display text to target", altLinked.contains("[2D vector](field-source:"))
+        check("[display][Target] emits no stray [Vec2] link", !altLinked.contains("[Vec2]("))
+        check("[display][Target] leaves no raw ][ residue", !altLinked.contains("][Vec2]"))
+
+        // 2d. Generic targets like [Foo<Bar>] never match the regex -> stay literal.
+        val generic = "A [List<Vec2>] of points."
+        val genericLinked = KotlinCompletionSupport.linkifyKDocSymbols(generic)
+        check("generic [List<Vec2>] stays literal", genericLinked == generic)
+
+        // 2e. Qualified target [Vec2.x]: the member `x` exists in the index but under
+        //     an unrelated owner (MutablePointCloud), so owner verification must leave
+        //     it literal rather than emit a wrong link (regression: it linked to the
+        //     unrelated member). Never a dead/garbled/wrong link.
+        val qualified = "Access [Vec2.x] for the component."
+        val qualifiedLinked = KotlinCompletionSupport.linkifyKDocSymbols(qualified)
+        println("qualified -> $qualifiedLinked")
+        check("qualified [Vec2.x] with non-matching owner stays literal", qualifiedLinked == qualified)
+
         // 3. Resolve the Vec2 typealias card by symbol name.
         val vec2 = KotlinCompletionSupport.resolveSourceCard("Vec2", null, -1)
         println("Vec2 card -> found=${vec2.found} ${vec2.sourcePath}:${vec2.sourceLine}")
