@@ -207,6 +207,22 @@ class FrameArena(
         private const val SLOT_BYTES = 16
         private const val ALIGNMENT_BYTES = 16
         private val globalStamp = AtomicInteger(0)
+        private val currentArena = ThreadLocal<FrameArena?>()
+
+        /**
+         * Scratch arena owned by the current platform thread. This is intended for
+         * stable render, update, and worker threads; prefer an explicit [FrameArena]
+         * for short-lived virtual threads so each task does not retain native memory.
+         */
+        fun current(): FrameArena = currentArena.get()
+            ?.takeUnless { it.isClosed }
+            ?: FrameArena().also(currentArena::set)
+
+        /** Releases native storage retained by [current] on this thread. */
+        fun closeCurrent() {
+            currentArena.get()?.close()
+            currentArena.remove()
+        }
 
         private fun nextStamp(): Int = globalStamp.incrementAndGet().also {
             check(it > 0) { "FrameArena allocation stamp space exhausted" }
@@ -223,3 +239,9 @@ class FrameArena(
 
 @JvmInline
 value class ArenaMark internal constructor(internal val token: Long)
+
+/**
+ * Runs an allocation-free, non-suspending scratch region on this platform thread.
+ * Nested calls are supported and restore their arena marks in LIFO order.
+ */
+inline fun <R> frameScratch(block: FrameScope.() -> R): R = FrameArena.current().scoped(block)

@@ -1029,6 +1029,8 @@ import afield.four.buffers.*
 import afield.four.texture.*
 import afield.graphics.*
 import afield.stdlib.linalg.*
+import afield.stdlib.linalg.arena.*
+import afield.stdlib.linalg.storage.*
 import kotlin.math.*
 import kotlinx.coroutines.yield
 import kotlinx.coroutines.runBlocking

@@ -1,6 +1,13 @@
 package afield.stdlib.linalg
 
 import afield.stdlib.linalg.arena.FrameArena
+import afield.stdlib.linalg.arena.closestPointOnSegment
+import afield.stdlib.linalg.arena.frameScratch
+import afield.stdlib.linalg.arena.intersectRayAabb
+import afield.stdlib.linalg.storage.SegmentVec3Buffer
+import afield.stdlib.linalg.storage.Vec3StorageLayout
+import java.lang.foreign.Arena
+import java.lang.foreign.ValueLayout
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
@@ -11,6 +18,8 @@ import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertNotSame
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
@@ -146,6 +155,120 @@ class GeneratedLinalgTest {
             assertTrue(failure.get() is IllegalStateException)
             assertTrue(failure.get()!!.message!!.contains("accessed from"))
         }
+    }
+
+    @Test
+    fun threadLocalScratchIsConvenientAndIsolated() {
+        val mainArena = FrameArena.current()
+        try {
+            frameScratch {
+                val a = vec3(1f, 2f, 3f)
+                val b = vec3(4f, 5f, 6f)
+                assertEquals(32f, a.dot(b))
+
+                val closest = vec3()
+                closestPointOnSegment(vec3(2f, 4f, 0f), vec3(0f, 0f, 0f), vec3(2f, 0f, 0f), closest)
+                assertEquals(2f, closest.x); assertEquals(0f, closest.y)
+                val nearFar = vec2()
+                assertTrue(intersectRayAabb(
+                    vec3(-3f, 0f, 0f), vec3(1f, 0f, 0f), vec3(-1f, -1f, -1f), vec3(1f, 1f, 1f), nearFar,
+                ))
+                assertEquals(2f, nearFar.x); assertEquals(4f, nearFar.y)
+            }
+            assertEquals(0, mainArena.usedBytes)
+
+            val otherArena = AtomicReference<FrameArena>()
+            thread(start = true) {
+                otherArena.set(FrameArena.current())
+                frameScratch { assertEquals(1f, vec3(1f, 0f, 0f).length()) }
+                FrameArena.closeCurrent()
+            }.join()
+            assertNotSame(mainArena, otherArena.get())
+        } finally {
+            FrameArena.closeCurrent()
+        }
+    }
+
+    @Test
+    fun segmentVec3ViewsSupportPackedAndAlignedMappedLayouts() {
+        Arena.ofConfined().use { owner ->
+            val packedSegment = owner.allocate(24, 4)
+            val packed = SegmentVec3Buffer(packedSegment, 2, Vec3StorageLayout.PACKED_12)
+            with(packed) {
+                packed[0].set(1f, 2f, 3f)
+                packed[1].set(4f, 5f, 6f)
+                assertEquals(4f, packedSegment.get(ValueLayout.JAVA_FLOAT, 12))
+                assertEquals(32f, packed[0].dot(packed[1]))
+            }
+
+            val alignedSegment = owner.allocate(48, 16)
+            val aligned = SegmentVec3Buffer(alignedSegment, 3, Vec3StorageLayout.ALIGNED_16)
+            with(aligned) {
+                aligned[0].set(1f, 0f, 0f)
+                aligned[1].set(0f, 1f, 0f)
+                aligned[0].cross(aligned[1], aligned[2])
+                assertEquals(0f, alignedSegment.get(ValueLayout.JAVA_FLOAT, 12))
+                assertVectorEquals(Vector3f(0f, 0f, 1f), aligned[2].copyTo(Vector3f()))
+            }
+
+            val another = SegmentVec3Buffer(owner.allocate(16, 16), 1)
+            val foreignHandle = aligned[0]
+            with(another) {
+                assertFailsWith<IllegalStateException> { foreignHandle.x }
+            }
+        }
+
+        val direct = ByteBuffer.allocateDirect(24)
+        val fromBuffer = SegmentVec3Buffer.of(direct, 2, Vec3StorageLayout.PACKED_12)
+        with(fromBuffer) {
+            fromBuffer[1].set(7f, 8f, 9f)
+            assertVectorEquals(Vector3f(7f, 8f, 9f), fromBuffer.get(1, Vector3f()))
+        }
+    }
+
+    @Test
+    fun geometryClosestPointContainmentAndIntersectionsAreStable() {
+        val a = Vector3f(0f, 0f, 0f)
+        val b = Vector3f(2f, 0f, 0f)
+        val c = Vector3f(0f, 2f, 0f)
+        assertVectorEquals(Vector3f(1f, 0f, 0f), closestPointOnSegment(Vector3f(1f, 3f, 0f), a, b, Vector3f()))
+        assertVectorEquals(Vector3f(1f, 1f, 0f), closestPointOnTriangle(Vector3f(2f, 2f, 4f), a, b, c, Vector3f()))
+        assertTrue(containsPointInTriangle(Vector3f(.25f, .25f, 0f), a, b, c))
+        assertFalse(containsPointInTriangle(Vector3f(2f, 2f, 0f), a, b, c))
+        assertFalse(containsPointInTriangle(Vector3f(.25f, .25f, 1f), a, b, c))
+
+        val barycentric = Vector3f()
+        assertTrue(barycentricCoordinates(Vector3f(.5f, .5f, 0f), a, b, c, barycentric))
+        assertVectorClose(.5f, .25f, .25f, barycentric)
+        assertFalse(barycentricCoordinates(a, a, a, a, barycentric))
+
+        val closestA = Vector3f(); val closestB = Vector3f()
+        assertEquals(1f, closestPointsBetweenSegments(
+            Vector3f(0f, 0f, 0f), Vector3f(2f, 0f, 0f),
+            Vector3f(1f, 1f, -1f), Vector3f(1f, 1f, 1f), closestA, closestB,
+        ))
+        assertVectorEquals(Vector3f(1f, 0f, 0f), closestA)
+        assertVectorEquals(Vector3f(1f, 1f, 0f), closestB)
+        val segmentHit = Vector2f()
+        assertTrue(intersectSegments(Vector2f(0f, 0f), Vector2f(2f, 2f), Vector2f(0f, 2f), Vector2f(2f, 0f), segmentHit))
+        assertEquals(1f, segmentHit.x); assertEquals(1f, segmentHit.y)
+
+        val hit = Vector3f()
+        assertTrue(intersectRayTriangle(Vector3f(.25f, .25f, 2f), Vector3f(0f, 0f, -1f), a, b, c, hit))
+        assertVectorEquals(Vector3f(.25f, .25f, 0f), hit)
+        assertFalse(intersectRayTriangle(Vector3f(3f, 3f, 2f), Vector3f(0f, 0f, -1f), a, b, c, hit))
+        assertTrue(intersectRayPlane(Vector3f(0f, 0f, 2f), Vector3f(0f, 0f, -1f), a, Vector3f(0f, 0f, 1f), hit))
+
+        val minimum = Vector3f(-1f)
+        val maximum = Vector3f(1f)
+        val nearFar = Vector2f()
+        assertTrue(intersectRayAabb(Vector3f(-3f, 0f, 0f), Vector3f(1f, 0f, 0f), minimum, maximum, nearFar))
+        assertEquals(2f, nearFar.x)
+        assertEquals(4f, nearFar.y)
+        assertTrue(intersectRaySphere(Vector3f(-3f, 0f, 0f), Vector3f(1f, 0f, 0f), Vector3f(), 1f, nearFar))
+        assertEquals(2f, nearFar.x); assertEquals(4f, nearFar.y)
+        assertTrue(intersectsAabbSphere(minimum, maximum, Vector3f(2f, 0f, 0f), 1f))
+        assertFalse(intersectsAabbSphere(minimum, maximum, Vector3f(3f, 0f, 0f), 1f))
     }
 
     private fun assertVectorClose(x:Float,y:Float,z:Float,actual:Vector3f,tolerance:Float=1e-5f) {
