@@ -1634,6 +1634,7 @@
     .hljs-number, .hljs-literal, .hljs-variable, .hljs-operator { color: #79c0ff; }
     .hljs-comment, .hljs-code, .hljs-formula { color: #7b8491; font-style: italic; }
     .welcome-source-link { color: #7aa2f7; text-decoration: underline; cursor: pointer; }
+    .search-match-path { opacity: 0.6; }
     .search-match-code, .welcome-source-view pre {
         margin: 4px 0 0; padding: 8px; overflow: auto; max-height: 320px;
         background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.08);
@@ -3419,12 +3420,16 @@
         return `<div class="search-match-snippet">${highlightQuery(snippet, query)}</div>`;
     }
 
-    // The hit's source location, as a link that opens the real code region inline.
+    // The hit's source location. Only codebase paths (project src/ files or
+    // -sources.jar entries) are served by /api/source, so only those become a
+    // "view source" link — workspace paths render as plain text (no dead link).
     function renderMatchPath(match) {
         const path = String(match.path || "");
         if (!path) return "";
         const line = Number(match.line) || 0;
         const label = line > 0 ? `${path}:${line}` : path;
+        const viewable = /^(\.\/)?src\//.test(path) || path.startsWith("jar:");
+        if (!viewable) return ` · <span class="search-match-path">${escapeHtml(label)}</span>`;
         return ` · <a class="welcome-source-link" href="#" data-path="${escapeHtml(path)}" data-line="${line}" title="View source">${escapeHtml(label)}</a>`;
     }
 
