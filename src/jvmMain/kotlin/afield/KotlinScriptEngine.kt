@@ -91,6 +91,15 @@ interface KotlinScriptEngine {
 
     suspend fun complete(s: String, cursor: Int): CompletionResult
 
+    /**
+     * Eagerly build whatever machinery [complete] needs (for K2 this is the K1 completion
+     * delegate — a full intro+preamble compile). Doing it up front, on the same main-runloop
+     * dispatcher [complete] uses, gets the one heavy compile out of the way outside any
+     * re-entrant runloop pump, so later completions are light and single-threaded-safe.
+     * Idempotent; a no-op for engines with no lazy completion bootstrap.
+     */
+    suspend fun warmCompletion() {}
+
     fun completeAndWait(s: String, cursor: Int = s.length): CompletionResult
 
     fun applyMacros(box: Box, s: String, skipMacros: Set<String> = emptySet(), previewOnly: Boolean = false): String

@@ -83,7 +83,7 @@ any of `box` / `uid` / `id` / `target`.
 | `await` (`sync`, `settle`, `wait-pending`) | **Barrier**: drain all pending fragments/launches | `wait: pending` |
 | `save` (`save-document`, `save-as`) | Persist the live boxes to a `metadata.edn` document | `path` (or `to`/`fn`/`document`) |
 | `delete` (`tombstone`) | Tombstone a box (undo revives) | `box` |
-| `drive` (`drive-ui`, `playwright`) | Run a Kotlin script that drives the live UI via Playwright (keypresses/clicks), optionally recording an `.mp4` and/or a still | `script`, `video`, `screenshot`, `capture`, `captureUid`, `clipSelector`, `fps`, `padding` |
+| `drive` (`drive-ui`, `playwright`) | Run a Kotlin script that drives the live UI via Playwright (keypresses/clicks), optionally recording an `.mp4` and/or a still | `script`, `video`, `screenshot`, `capture`, `captureUid`, `clipSelector`, `fps`, `padding`, `warmCompletion` |
 
 Undo (`macro undo <name>`) reverses supported ops: `create`↔tombstone, `edit` swaps
 `from`/`to`, `connect`↔`disconnect`, `launch`→`stop`, etc. `execute`, `wait`, `await`,
@@ -118,18 +118,31 @@ Capture the command palette (an overlay — clip to the panel selector, not a bo
 `DocsUiDriver` methods: `type(text)`, `press/key/down/up(key)`, `click(uid)`,
 `clickSelector(css)`, `hover(uid)`/`hoverSelector(css)`, `drag(uid, dx, dy, steps, hold)`,
 `mouseUp()`, `eval(js)`, `openEditor(uid)`, `shot(path)`, `shotClip(path, css, padding)`,
-`waitForSelector(css, timeoutMs)`, `pause(ms)`. `pause` sleeps the calling thread (so the
-recorder keeps capturing frames); it is deliberately not named `wait`. The resolved output paths
-are bound in scope as `out` and `vid`.
+`waitForSelector(css, timeoutMs)`, `pause(ms)`. It is deliberately not named `wait` (collides with
+`Object.wait`). The resolved output paths are bound in scope as `out` and `vid`.
+
+The drive fragment runs *on the main runloop thread*, so `pause`/`waitForSelector` must not simply
+`Thread.sleep` — that would freeze the loop and starve everything queued on it, most importantly
+the `complete` RPC behind a live `Control+Space` (which runs on the main runloop). Both instead
+**pump the runloop** while waiting (draining queued main work), reproducing an idle editor — the
+state a real user leaves after triggering autocomplete, which is when the popup populates. Off the
+main thread (a recording-only drive) they fall back to a plain sleep so the off-thread recorder
+keeps grabbing frames.
 
 When `clipSelector` is set the op auto-captures the clip *inside* the script (overlays close on
 blur before the op's own capture would run). `.afield-palette` is the full-screen backdrop;
 `.afield-palette-shell` is the panel you want.
 
-For autocomplete, `Control+Space` opens the popup; the first completion on a cold box compiles for
-a few seconds, so `ui.waitForSelector(".afield-suggest-row", 15000.0)` before capturing rather than
-guessing a pause. (Base completions render immediately; AI completions merge in later and no longer
-block the popup.)
+**Autocomplete captures.** `Control+Space` opens the popup; the enriched type-based items and their
+KDoc come from the `complete` RPC on the main runloop. Set **`warmCompletion: true`** on the op for
+any capture that triggers a completion: it builds the K1 completion engine up front, on the
+non-reentrant runloop, *before* the fragment starts pumping. This is required for correctness, not
+just speed — the completion engine's first bootstrap is a heavy compile, and if it fired from inside
+a runloop-pumping wait it would re-enter the K1 engine mid-compile and corrupt its analysis state
+(`Rewrite at slice PACKAGE_TO_FILES`), hanging the completion. With it warm, wait for the real
+content — e.g. `ui.waitForSelector("text=Creates a mutable", 15000.0)` for `vec`'s doc, not just a
+`.afield-suggest-row` — so the capture shows the documented result rather than the instant
+quick-stubs. (Base and AI completions both render without the other blocking the popup.)
 
 ### create
 

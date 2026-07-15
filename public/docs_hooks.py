@@ -169,6 +169,7 @@ class RunnerOptions:
     fps: int  # video frame rate (default 30)
     region: str  # for capture="ui": what the drive recording/still is clipped to
     clip_selector: str | None  # for capture="ui": clip to a CSS selector (overlays not backed by a box)
+    warm_completion: bool  # for capture="ui": pre-warm the K1 completion engine (autocomplete captures)
     hidden: bool
     language_key: str
 
@@ -1586,6 +1587,7 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
         fps=int(parse_float(first_attr(attrs, "fps"), default=30.0)),
         region=region,
         clip_selector=first_attr(attrs, "clip-selector", "clip_selector", "clipSelector"),
+        warm_completion=parse_bool(first_attr(attrs, "warm-completion", "warm_completion", "warmCompletion"), default=False),
         hidden=parse_bool(first_attr(attrs, "hidden", "hide-source", "hide_source"), default=False),
         language_key=fence_language_key(open_line=open_line, fence_name=runner_name),
     )
@@ -1959,6 +1961,9 @@ def options_digest_payload(options: RunnerOptions) -> dict[str, Any]:
         "video": options.video,
         "duration": options.duration,
         "fps": options.fps,
+        "region": options.region,
+        "clipSelector": options.clip_selector,
+        "warmCompletion": options.warm_completion,
     }
     if options.wait_output:
         payload.update({
@@ -2724,6 +2729,8 @@ def build_backdoor_command(
             drive_op["captureUid"] = capture_uid
         if options.clip_selector:
             drive_op["clipSelector"] = options.clip_selector
+        if options.warm_completion:
+            drive_op["warmCompletion"] = True
         transcript_name = f"{safe_transcript_id(options.box_name)}_ui_drive"
         transcript = {
             "name": transcript_name,

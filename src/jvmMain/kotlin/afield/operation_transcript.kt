@@ -11,6 +11,7 @@ import org.yaml.snakeyaml.Yaml
 import java.io.File
 import java.time.Instant
 import java.util.UUID
+import kotlin.system.measureTimeMillis
 
 object OperationTranscript {
     private const val COALESCE_FRAMES = 12L
@@ -1320,6 +1321,25 @@ object OperationTranscript {
                     ?: box("__docs_drive__", createIfMissing = true, initIfCreated = true, root = info)
                 val driver = DocsUiDriver { globalPlaywriteContext ?: error("Playwright page unavailable") }
                 target.properties["__docsUiDriver"] = driver
+
+                // Completion/autocomplete captures trigger a real Ctrl+Space against this freshly
+                // created box. The completion runs on the main runloop, but the driver fragment
+                // below also runs there and pumps the runloop while it waits — so the K1 completion
+                // delegate MUST already be built by the time the scripted completion fires. If its
+                // heavy first bootstrap fired from inside the pumped wait it would re-enter the K1
+                // engine mid-compile and corrupt it. Warm it here first, on the non-reentrant
+                // runloop, so the scripted completion is a light, safe, reused compile. Gated: only
+                // completion captures pay the warm-up cost.
+                if (payload["warmCompletion"].asBooleanOrDefault(false)) {
+                    val warmMs = measureTimeMillis {
+                        runCatching {
+                            runBlocking { inMain { target.ki.warmCompletion() }.join() }
+                        }.onFailure {
+                            lprintln("warning,docs", "drive warmCompletion failed: ${it.javaClass.simpleName}: ${it.message}")
+                        }
+                    }
+                    lprintln("info,docs", "drive warmCompletion for box=${target.id} took ${warmMs}ms")
+                }
 
                 val videoPath = payload["video"]?.toString()?.takeIf { it.isNotBlank() }
                 val screenshotPath = payload["screenshot"]?.toString()?.takeIf { it.isNotBlank() }

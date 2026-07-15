@@ -1510,25 +1510,54 @@ class DocsUiDriver internal constructor(
     /**
      * Block until [selector] is visible (or [timeoutMs] elapses), so a capture waits for an
      * async panel to populate instead of guessing a fixed pause. E.g. wait for
-     * `.afield-suggest-row` after Control+Space so autocomplete results have rendered.
+     * `text=Creates a mutable` after Control+Space so the autocomplete docs have rendered.
      * Swallows the timeout — the caller captures whatever state exists.
+     *
+     * Polls (rather than one blocking `waitFor`) and pumps the runloop between polls via [idle],
+     * so content that only appears once a main-runloop RPC resolves — the autocomplete popup and
+     * its docs arrive from the `complete` handler on the main runloop — is not deadlocked by a
+     * blocking wait on that same thread.
      */
     fun waitForSelector(selector: String, timeoutMs: Double = 15000.0) {
-        runBlocking(playwrightDispatcher) {
-            runCatching {
-                pageProvider().locator(selector).first().waitFor(
-                    com.microsoft.playwright.Locator.WaitForOptions()
-                        .setState(com.microsoft.playwright.options.WaitForSelectorState.VISIBLE)
-                        .setTimeout(timeoutMs)
-                )
-            }
+        val deadline = System.currentTimeMillis() + timeoutMs.toLong()
+        while (System.currentTimeMillis() < deadline) {
+            val visible = runCatching {
+                runBlocking(playwrightDispatcher) {
+                    pageProvider().locator(selector).first().isVisible()
+                }
+            }.getOrDefault(false)
+            if (visible) return
+            idle(120L)
         }
     }
 
     // Named `pause` rather than `wait` because `fun wait(Long)` would collide with
-    // java.lang.Object.wait(long). Sleeps the *calling* thread, so the recorder loop
-    // on the Playwright thread keeps grabbing frames during the pause.
-    fun pause(ms: Long) { if (ms > 0) Thread.sleep(ms) }
+    // java.lang.Object.wait(long).
+    fun pause(ms: Long) { idle(ms) }
     fun pause(ms: Int) = pause(ms.toLong())
     fun pause(ms: Double) = pause(ms.toLong())
+
+    /**
+     * Wait [ms] without freezing the main runloop. The drive fragment runs *on* the main runloop
+     * thread (inside `Framer.frame()`), so a bare `Thread.sleep` would stall the loop and starve
+     * everything queued on it — most importantly the `complete`/`resolve-completion` RPCs behind a
+     * live Ctrl+Space. Pumping the runloop instead reproduces an idle loop: the state a real user
+     * leaves the editor in after triggering autocomplete, which is when the popup populates. This
+     * re-enters `frame()`, so any *heavy* main-runloop compile (the K1 completion bootstrap) must
+     * already be done before we get here — the drive op warms it up front for exactly this reason.
+     * Off the main thread (e.g. a recording-only drive) a plain sleep is correct and lets the
+     * off-thread recorder keep grabbing frames.
+     */
+    private fun idle(ms: Long) {
+        if (ms <= 0) return
+        if (Runloop.isMainThread) {
+            val deadline = System.currentTimeMillis() + ms
+            while (System.currentTimeMillis() < deadline) {
+                Runloop.runLoop.main.frame()
+                Thread.sleep(2L)
+            }
+        } else {
+            Thread.sleep(ms)
+        }
+    }
 }

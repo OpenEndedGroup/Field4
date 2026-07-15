@@ -534,6 +534,17 @@ class KotlinInterface2(
         return k1CompletionDelegate().complete(s, cursor)
     }
 
+    /**
+     * Build the K1 completion delegate ahead of the first real completion. The bootstrap is a
+     * full intro+preamble compile (~seconds, longer the colder the JVM's K1 infra). If it instead
+     * fires lazily from inside a runloop-pumping wait it re-enters the K1 engine mid-compile and
+     * corrupts its analysis state (a "Rewrite at slice PACKAGE_TO_FILES" error). Warming here, on
+     * the non-reentrant runloop before any such wait, keeps every later completion light and safe.
+     */
+    override suspend fun warmCompletion() {
+        k1CompletionDelegate()
+    }
+
     private var k1CompletionDelegate: KotlinInterface? = null
     private var k1CompletionDelegateBootstrapped = false
     private var k1CompletionDelegatePreambleFingerprint: Int? = null
