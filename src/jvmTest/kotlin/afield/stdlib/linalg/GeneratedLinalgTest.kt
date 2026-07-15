@@ -4,8 +4,7 @@ import afield.stdlib.linalg.arena.FrameArena
 import afield.stdlib.linalg.arena.closestPointOnSegment
 import afield.stdlib.linalg.arena.frameScratch
 import afield.stdlib.linalg.arena.intersectRayAabb
-import afield.stdlib.linalg.storage.SegmentVec3Buffer
-import afield.stdlib.linalg.storage.Vec3StorageLayout
+import afield.stdlib.linalg.storage.*
 import java.lang.foreign.Arena
 import java.lang.foreign.ValueLayout
 import java.nio.ByteBuffer
@@ -84,6 +83,38 @@ class GeneratedLinalgTest {
         assertVectorClose(1f,0f,0f,restored,3e-5f)
         val identity=Matrix4f(m).mul(Matrix4f(m).invert())
         assertEquals(1f,identity.m00,2e-5f);assertEquals(1f,identity.m11,2e-5f);assertEquals(1f,identity.m22,2e-5f);assertEquals(1f,identity.m33,2e-5f)
+    }
+
+    @Test
+    fun typedTransformSemanticsPreserveCompositionDeterminantAndInverse() {
+        val random = Random(0x71a4)
+        repeat(250) {
+            val q1 = Quaternionf().setAngleAxis(random.nextFloat() * 6f - 3f, 1f, 2f, 3f).normalize()
+            val q2 = Quaternionf().setAngleAxis(random.nextFloat() * 6f - 3f, -2f, 1f, .5f).normalize()
+            val value = Vector3f(random.nextFloat(), random.nextFloat(), random.nextFloat())
+            val composed = Quaternionf(q1).mul(q2).transform(value, Vector3f())
+            val sequential = q1.transform(q2.transform(value, Vector3f()), Vector3f())
+            assertVectorClose(sequential.x, sequential.y, sequential.z, composed, 3e-5f)
+
+            val sx = random.nextFloat() * 2f + .25f
+            val sy = random.nextFloat() * 2f + .25f
+            val sz = random.nextFloat() * 2f + .25f
+            val matrix = Matrix4f()
+                .translate(random.nextFloat(), random.nextFloat(), random.nextFloat())
+                .rotate(q1)
+                .scale(sx, sy, sz)
+            assertEquals(sx * sy * sz, matrix.determinant(), 2e-4f)
+            val matrixIdentity = Matrix4f(matrix).mul(Matrix4f(matrix).invert())
+            assertMatrix4Identity(matrixIdentity, 2e-4f)
+            val transposedTwice = Matrix4f(matrix).transpose().transpose()
+            for (component in 0 until 16) assertEquals(matrix[component], transposedTwice[component], 1e-6f)
+
+            val matrix3 = Matrix3f().rotation(q2).scale(sx, sy, sz)
+            assertEquals(sx * sy * sz, matrix3.determinant(), 2e-4f)
+            val matrix3Identity = Matrix3f(matrix3).mul(Matrix3f(matrix3).invert())
+            assertEquals(1f, matrix3Identity.m00, 2e-4f); assertEquals(1f, matrix3Identity.m11, 2e-4f); assertEquals(1f, matrix3Identity.m22, 2e-4f)
+            assertEquals(0f, matrix3Identity.m01, 2e-4f); assertEquals(0f, matrix3Identity.m10, 2e-4f)
+        }
     }
 
     @Test
@@ -190,8 +221,18 @@ class GeneratedLinalgTest {
     }
 
     @Test
-    fun segmentVec3ViewsSupportPackedAndAlignedMappedLayouts() {
+    fun segmentVectorViewsSupportPackedAndAlignedMappedLayouts() {
         Arena.ofConfined().use { owner ->
+            val vec2Segment = owner.allocate(32, 16)
+            val vec2 = SegmentVec2Buffer(vec2Segment, 2, Vec2StorageLayout.ALIGNED_16)
+            with(vec2) {
+                vec2[0].set(1f, 2f)
+                vec2[1].set(3f, 4f)
+                assertEquals(11f, vec2[0].dot(vec2[1]))
+                assertEquals(0f, vec2Segment.get(ValueLayout.JAVA_FLOAT, 8))
+                assertEquals(0f, vec2Segment.get(ValueLayout.JAVA_FLOAT, 12))
+            }
+
             val packedSegment = owner.allocate(24, 4)
             val packed = SegmentVec3Buffer(packedSegment, 2, Vec3StorageLayout.PACKED_12)
             with(packed) {
@@ -216,6 +257,16 @@ class GeneratedLinalgTest {
             with(another) {
                 assertFailsWith<IllegalStateException> { foreignHandle.x }
             }
+
+            val vec4Segment = owner.allocate(32, 16)
+            val vec4 = SegmentVec4Buffer(vec4Segment, 2, Vec4StorageLayout.ALIGNED_16)
+            with(vec4) {
+                vec4[0].set(1f, 2f, 3f, 4f)
+                vec4[1].set(4f, 3f, 2f, 1f)
+                assertEquals(20f, vec4[0].dot(vec4[1]))
+                vec4[0].add(vec4[1], vec4[1])
+                assertEquals(Vector4f(5f), vec4[1].copyTo(Vector4f()))
+            }
         }
 
         val direct = ByteBuffer.allocateDirect(24)
@@ -224,6 +275,12 @@ class GeneratedLinalgTest {
             fromBuffer[1].set(7f, 8f, 9f)
             assertVectorEquals(Vector3f(7f, 8f, 9f), fromBuffer.get(1, Vector3f()))
         }
+    }
+
+    @Test
+    fun defaultBuildCompilesArenaChecksIn() {
+        assertTrue(FrameArena.checksCompiledIn)
+        FrameArena().use { assertTrue(it.checksEnabled) }
     }
 
     @Test
@@ -281,5 +338,11 @@ class GeneratedLinalgTest {
         assertEquals(expected.x, actual.x)
         assertEquals(expected.y, actual.y)
         assertEquals(expected.z, actual.z)
+    }
+
+    private fun assertMatrix4Identity(actual: Matrix4f, tolerance: Float) {
+        for (column in 0..3) for (row in 0..3) {
+            assertEquals(if (column == row) 1f else 0f, actual[column, row], tolerance, "matrix[$column,$row]")
+        }
     }
 }

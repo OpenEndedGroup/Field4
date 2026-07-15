@@ -26,9 +26,9 @@ operation into heap objects, frame-arena handles, or mapped memory views.
 | Read interfaces | `Vector2fc` through `Vector4fc`, `Quaternionfc`, matrix interfaces |
 | Scratch storage | `FrameArena`, `ArenaVec2f`, `ArenaVec3f`, `ArenaVec4f` |
 | Thread convenience | `FrameArena.current()` and `frameScratch { ... }` |
-| Foreign/mapped storage | `SegmentVec3Buffer`, packed-12 and aligned-16 layouts |
+| Foreign/mapped storage | `SegmentVec2Buffer`, `SegmentVec3Buffer`, `SegmentVec4Buffer`, packed and aligned layouts |
 | Geometry | Closest point, barycentric, containment, ray/plane/triangle/AABB and sphere/AABB tests |
-| Generation | Typed vector-operation AST plus deterministic compatibility templates |
+| Generation | Typed vector-operation AST, typed core transform AST and deterministic compatibility shells |
 
 There is no JOML dependency or JOML compatibility package left in the runtime.
 
@@ -77,6 +77,26 @@ The handle contains an allocation stamp and byte offset. Debug access verifies:
 
 Growth doubles capacity, copies the live prefix and retains the new high-water
 capacity. Reset only rewinds the cursor and advances the invalidation floor.
+
+### Compiled safety profile
+
+Arena validation is compiled in by default. It can be disabled for a measured
+production build:
+
+```text
+./gradlew -PlinalgArenaChecks=false installDist
+```
+
+The `generateLinalgBuildProfile` task emits a build-local `const val`; guarded
+stamp arrays, poisoning, ownership checks, thread checks and handle validation are
+then constant-folded out. `FrameArena.checksCompiledIn` reports the profile and
+`arena.checksEnabled` reports whether a particular instance is checking.
+
+With checks compiled in, `FrameArena(debugChecks = false)` remains useful for an
+A/B benchmark without rebuilding. When checks are compiled out, passing
+`debugChecks = true` cannot restore them—the metadata and validation code are not
+part of that build's behavior. LIFO mark correctness remains enforced because it
+is allocator semantics, not merely diagnostic instrumentation.
 
 ### Explicit lifetime
 
@@ -130,11 +150,12 @@ mutation safe and would give a misleading partial guarantee.
 A future `PersistentArena` may use shared FFM storage, but a shared *frame* arena is
 not currently planned as the default abstraction.
 
-## Segment and mapped-buffer Vec3 backend
+## Segment and mapped-buffer vector backend
 
-`SegmentVec3Buffer` is a non-owning view over a `MemorySegment` or the remaining
-region of a direct `ByteBuffer`. Its inline `SegmentVec3f` handles include a buffer
-identity and offset, so accidentally using a handle with another view fails.
+`SegmentVec2Buffer`, `SegmentVec3Buffer` and `SegmentVec4Buffer` are non-owning views
+over a `MemorySegment` or the remaining region of a direct `ByteBuffer`. Their
+inline handles include a buffer identity and offset, so accidentally using a handle
+with another view fails.
 
 ```kotlin
 val positions = SegmentVec3Buffer.of(mappedBytes, count, Vec3StorageLayout.ALIGNED_16)
@@ -144,7 +165,7 @@ with(positions) {
 }
 ```
 
-The vector operations are emitted from the same typed operation model as heap and
+All vector operations are emitted from the same typed operation model as heap and
 arena vectors.
 
 ### Vec3 layouts
@@ -153,6 +174,10 @@ arena vectors.
 | --- | ---: | ---: | --- |
 | `PACKED_12` | 12 bytes | 4 bytes | Dense CPU arrays, packed vertex streams, formats explicitly declaring 3 floats |
 | `ALIGNED_16` | 16 bytes | 16 bytes | SIMD-friendly records and array layouts equivalent to a 16-byte-stride GPU vec3 |
+
+Vec2 additionally offers packed-8, aligned-8 and 16-byte-stride layouts. Vec4
+offers packed-16 and 16-byte-aligned layouts. The names intentionally distinguish
+value width, array stride and required base alignment.
 
 An aligned write zeros the padding lane. This backend models an *array stride*.
 It does not assert that every GLSL struct member following a `vec3` starts at byte
@@ -193,13 +218,65 @@ every overload blindly.
 
 The vector operation model in `AlgebraModel.kt` is a typed expression tree:
 component reads, scalar parameters, constants, binary expressions and calls. The
-heap, frame-arena and segment Vec3 emitters lower that same model into specialized
+heap, frame-arena and segment vector emitters lower that same model into specialized
 storage access. This is the most important proof that generation is not just a
 way to stamp out similar classes.
 
-Quaternion, matrix and small compatibility types currently come from deterministic
-Kotlin templates. They are generated and freshness-checked, but their mathematics
-has not yet been moved into the typed AST. That is the main generator debt.
+`TransformModel.kt` now gives the core quaternion, Matrix3 and Matrix4 equations a
+second typed and validated model. It covers quaternion transform/dot/normalize/
+conjugate/invert/multiply; Matrix3 transform/determinant/multiply/invert/transpose;
+and Matrix4 transforms/determinant/multiply/translate/scale. The generated public
+compatibility shell delegates to `TransformSemantics.kt`.
+
+Branch-heavy construction and compatibility methods still live in the deterministic
+transform template. Moving those into typed statements, conditionals and explicit
+degeneracy policies is the remaining transform-model work; the core equations no
+longer live as opaque template strings.
+
+## How live CPU/GLSL/Vulkan schemas can work
+
+The shader header does **not** need to be known at Gradle code-generation time.
+There are two different kinds of generation:
+
+1. build-time generation produces the layout engine, typed field vocabulary,
+   generic segment accessors and validators;
+2. live-time generation runs that engine whenever Field assembles a shader.
+
+A future live schema can be an ordinary value in a box:
+
+```kotlin
+val particle = structSchema("Particle", Std430) {
+    field("position", Vec3f)
+    field("mass", F32)
+    field("velocity", Vec3f)
+    field("age", F32)
+}
+```
+
+At shader compilation time the current value can produce:
+
+- the GLSL declaration inserted into the current header;
+- computed offsets, alignment and array stride;
+- a generic `MemorySegment`/mapped-buffer view using those offsets;
+- Vulkan vertex attributes or descriptor metadata where applicable;
+- assertions against SPIR-V reflection after compilation;
+- a schema digest used in the pipeline/cache key.
+
+If the box changes the schema, its digest changes and Field recompiles the affected
+shader/pipeline exactly as it already does for changed live GLSL. Stable schemas may
+also generate specialized Kotlin source at build time, but live schemas use the
+same layout model through generic or hidden-class accessors.
+
+Two workflows are useful:
+
+- **schema-first** for Field-owned buffers: the live schema emits both CPU layout
+  and GLSL, then SPIR-V reflection verifies the compiler agreed;
+- **shader-first** for arbitrary live GLSL: compile first, reflect offsets/types,
+  then construct a read/write view or report why the requested CPU view is unsafe.
+
+This should integrate at Field's existing shader-assembly boundary, not demand a
+static global header. Synchronization and buffer ownership remain outside the
+schema; it describes layout, not when CPU and GPU may touch the memory.
 
 ### Other appropriate generation targets
 
@@ -226,16 +303,16 @@ model rather than hidden in emitter strings.
 
 - `PersistentArena` and region ownership;
 - arena quaternion and matrix handles;
-- generated `FloatArray` and broader segment vector/matrix views;
+- generated `FloatArray` and segment matrix views;
 - struct schemas shared by Kotlin, GLSL and Vulkan reflection;
 - generated bulk AoS/SoA operations;
 - mapped-buffer adapters integrated directly with Four's buffer ownership objects.
 
 ### Numerical and API work
 
-- move quaternion/matrix semantics from templates into the typed AST;
+- model the remaining branch-heavy quaternion/matrix compatibility methods as typed statements;
 - define zero-normalization and singular-inverse policy explicitly;
-- remove temporary arrays from matrix inversion/determinant hot paths;
+- remove remaining compatibility-helper allocations from rotation and camera construction paths;
 - broaden randomized differential and degeneracy testing;
 - add frustum extraction/classification and projection/unprojection utilities;
 - add the remaining high-value geometry operations below.

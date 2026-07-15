@@ -1,6 +1,9 @@
 package afield.stdlib.linalg.codegen
 
-class KotlinEmitter(private val model: AlgebraModel) {
+class KotlinEmitter(
+    private val model: AlgebraModel,
+    private val transformModel: TransformAlgebraModel = FieldTransformAlgebraModel.build(),
+) {
     fun emitHeapVectors(): String = buildString {
         appendHeader("afield.stdlib.linalg")
         appendLine("import java.nio.ByteBuffer")
@@ -32,13 +35,18 @@ class KotlinEmitter(private val model: AlgebraModel) {
         appendLine("}")
     }
 
-    /**
-     * Emits a non-owning Vec3 view over foreign or mapped memory. This is deliberately
-     * generated from the same operation model as heap and frame-arena vectors so a
-     * packed vertex stream and a std430-style aligned stream cannot drift mathematically.
-     */
-    fun emitSegmentVec3Buffer(): String = buildString {
-        val type = model.vectors.single { it.dimension == 3 }
+    /** Emits core quaternion/matrix equations from the typed transform model. */
+    fun emitTransformSemantics(): String = buildString {
+        appendHeader("afield.stdlib.linalg")
+        appendLine("import kotlin.math.*")
+        transformModel.operations.forEach { operation ->
+            appendLine()
+            emitTransformOperation(operation)
+        }
+    }
+
+    /** Emits non-owning vector views over foreign, direct, or mapped memory. */
+    fun emitSegmentVectors(): String = buildString {
         appendHeader("afield.stdlib.linalg.storage")
         appendLine("import afield.stdlib.linalg.*")
         appendLine("import java.lang.foreign.MemorySegment")
@@ -47,26 +55,54 @@ class KotlinEmitter(private val model: AlgebraModel) {
         appendLine("import java.util.concurrent.atomic.AtomicInteger")
         appendLine("import kotlin.math.*")
         appendLine()
-        appendLine("enum class Vec3StorageLayout(val strideBytes: Int, val requiredAlignmentBytes: Int) {")
-        appendLine("    PACKED_12(12, 4),")
-        appendLine("    ALIGNED_16(16, 16),")
+        appendLine("private const val SEGMENT_OWNER_SHIFT = 40")
+        appendLine("private const val SEGMENT_OFFSET_MASK = (1L shl SEGMENT_OWNER_SHIFT) - 1")
+        appendLine("private const val MAX_SEGMENT_OWNER_ID = (1 shl (64 - SEGMENT_OWNER_SHIFT)) - 1")
+        appendLine("private val segmentOwnerIds = AtomicInteger()")
+        appendLine("private fun nextSegmentOwnerId(): Int = segmentOwnerIds.incrementAndGet().also {")
+        appendLine("    check(it in 1..MAX_SEGMENT_OWNER_ID) { \"Segment vector buffer owner id space exhausted\" }")
+        appendLine("}")
+        appendLine("private fun packSegmentHandle(ownerId: Int, offset: Long): Long =")
+        appendLine("    (ownerId.toLong() shl SEGMENT_OWNER_SHIFT) or offset")
+        model.vectors.forEach { type ->
+            appendLine()
+            emitSegmentType(type)
+        }
+    }
+
+    private fun StringBuilder.emitSegmentType(type: VectorType) {
+        val dimension = type.dimension
+        val handleName = "SegmentVec${dimension}f"
+        val bufferName = "SegmentVec${dimension}Buffer"
+        val layoutName = "Vec${dimension}StorageLayout"
+        val valueBytes = dimension * Float.SIZE_BYTES
+        val layoutEntries = when (dimension) {
+            2 -> listOf("PACKED_8(8, 4)", "ALIGNED_8(8, 8)", "ALIGNED_16(16, 16)")
+            3 -> listOf("PACKED_12(12, 4)", "ALIGNED_16(16, 16)")
+            4 -> listOf("PACKED_16(16, 4)", "ALIGNED_16(16, 16)")
+            else -> error("unsupported segment vector dimension $dimension")
+        }
+        val defaultLayout = if (dimension == 2) "ALIGNED_8" else "ALIGNED_16"
+
+        appendLine("enum class $layoutName(val strideBytes: Int, val requiredAlignmentBytes: Int) {")
+        layoutEntries.forEach { appendLine("    $it,") }
         appendLine("}")
         appendLine()
         appendLine("@JvmInline")
-        appendLine("value class SegmentVec3f internal constructor(internal val token: Long)")
+        appendLine("value class $handleName internal constructor(internal val token: Long)")
         appendLine()
         appendLine("/**")
-        appendLine(" * A non-owning vector view over a MemorySegment. The segment controls lifetime and")
-        appendLine(" * thread accessibility; mapped Vulkan memory additionally requires normal Vulkan")
-        appendLine(" * host/device synchronization. Handles are allocation-free and buffer-specific.")
+        appendLine(" * A non-owning Vec$dimension view over a MemorySegment. The segment controls lifetime")
+        appendLine(" * and thread accessibility; mapped Vulkan memory additionally requires normal")
+        appendLine(" * Vulkan host/device synchronization. Handles are allocation-free and view-specific.")
         appendLine(" */")
-        appendLine("class SegmentVec3Buffer(")
+        appendLine("class $bufferName(")
         appendLine("    private val segment: MemorySegment,")
         appendLine("    val count: Int,")
-        appendLine("    val layout: Vec3StorageLayout = Vec3StorageLayout.ALIGNED_16,")
+        appendLine("    val layout: $layoutName = $layoutName.$defaultLayout,")
         appendLine("    val baseOffsetBytes: Long = 0,")
         appendLine(") {")
-        appendLine("    private val ownerId = nextOwnerId()")
+        appendLine("    private val ownerId = nextSegmentOwnerId()")
         appendLine()
         appendLine("    init {")
         appendLine("        require(count >= 0) { \"count must be non-negative\" }")
@@ -79,72 +115,65 @@ class KotlinEmitter(private val model: AlgebraModel) {
         appendLine("        }")
         appendLine("        val required = if (count == 0) baseOffsetBytes else Math.addExact(")
         appendLine("            Math.addExact(baseOffsetBytes, Math.multiplyExact((count - 1).toLong(), layout.strideBytes.toLong())),")
-        appendLine("            12L,")
+        appendLine("            ${valueBytes}L,")
         appendLine("        )")
         appendLine("        require(required <= segment.byteSize()) {")
-        appendLine("            \"Vec3 view needs \$required bytes but segment contains \${segment.byteSize()}\"")
+        appendLine("            \"Vec$dimension view needs \$required bytes but segment contains \${segment.byteSize()}\"")
         appendLine("        }")
-        appendLine("        require(required <= OFFSET_MASK) { \"Segment Vec3 views are limited to \$OFFSET_MASK bytes\" }")
+        appendLine("        require(required <= SEGMENT_OFFSET_MASK) { \"Segment vector views are limited to \$SEGMENT_OFFSET_MASK bytes\" }")
         appendLine("    }")
         appendLine()
-        appendLine("    operator fun get(index: Int): SegmentVec3f {")
+        appendLine("    operator fun get(index: Int): $handleName {")
         appendLine("        require(index in 0 until count) { \"index \$index outside 0..<\$count\" }")
-        appendLine("        return SegmentVec3f(pack(ownerId, baseOffsetBytes + index.toLong() * layout.strideBytes))")
+        appendLine("        return $handleName(packSegmentHandle(ownerId, baseOffsetBytes + index.toLong() * layout.strideBytes))")
         appendLine("    }")
         appendLine()
-        appendLine("    fun get(index: Int, dest: Vector3f): Vector3f = get(index).copyTo(dest)")
-        appendLine("    fun set(index: Int, value: Vector3fc): SegmentVec3Buffer { get(index).set(value); return this }")
+        appendLine("    fun get(index: Int, dest: ${type.heapName}): ${type.heapName} = get(index).copyTo(dest)")
+        appendLine("    fun set(index: Int, value: ${type.readName}): $bufferName { get(index).set(value); return this }")
         appendLine()
-        appendLine("    var SegmentVec3f.x: Float")
-        appendLine("        get() = read(token, 0)")
-        appendLine("        set(value) = write(token, 0, value)")
-        appendLine("    var SegmentVec3f.y: Float")
-        appendLine("        get() = read(token, 1)")
-        appendLine("        set(value) = write(token, 1, value)")
-        appendLine("    var SegmentVec3f.z: Float")
-        appendLine("        get() = read(token, 2)")
-        appendLine("        set(value) = write(token, 2, value)")
+        type.components.forEachIndexed { index, component ->
+            appendLine("    var $handleName.${component.sourceName}: Float")
+            appendLine("        get() = read(token, $index)")
+            appendLine("        set(value) = write(token, $index, value)")
+        }
         appendLine()
-        appendLine("    fun SegmentVec3f.set(x: Float, y: Float, z: Float): SegmentVec3f {")
-        appendLine("        write(token, 0, x); write(token, 1, y); write(token, 2, z)")
-        appendLine("        if (layout == Vec3StorageLayout.ALIGNED_16) segment.set(ValueLayout.JAVA_FLOAT, offset(token) + 12, 0f)")
+        appendLine("    fun $handleName.set(${type.components.joinToString { "${it.sourceName}: Float" }}): $handleName {")
+        type.components.forEachIndexed { index, component ->
+            appendLine("        write(token, $index, ${component.sourceName})")
+        }
+        appendLine("        var paddingOffset = $valueBytes")
+        appendLine("        while (paddingOffset < layout.strideBytes) {")
+        appendLine("            segment.set(ValueLayout.JAVA_FLOAT, offset(token) + paddingOffset, 0f)")
+        appendLine("            paddingOffset += Float.SIZE_BYTES")
+        appendLine("        }")
         appendLine("        return this")
         appendLine("    }")
-        appendLine("    fun SegmentVec3f.set(other: Vector3fc): SegmentVec3f = set(other.x(), other.y(), other.z())")
-        appendLine("    fun SegmentVec3f.copyTo(dest: Vector3f): Vector3f = dest.set(x, y, z)")
+        appendLine("    fun $handleName.set(other: ${type.readName}): $handleName = set(${type.components.joinToString { "other.${it.sourceName}()" }})")
+        appendLine("    fun $handleName.copyTo(dest: ${type.heapName}): ${type.heapName} = dest.set(${type.components.joinToString { it.sourceName }})")
         appendLine()
         model.operations(type).forEach { operation ->
             emitSegmentOperation(type, operation)
             appendLine()
         }
-        appendLine("    fun SegmentVec3f.length(): Float = sqrt(lengthSquared())")
-        appendLine("    fun SegmentVec3f.distance(other: SegmentVec3f): Float = sqrt(distanceSquared(other))")
-        appendLine("    fun SegmentVec3f.isFinite(): Boolean = x.isFinite() && y.isFinite() && z.isFinite()")
+        appendLine("    fun $handleName.length(): Float = sqrt(lengthSquared())")
+        appendLine("    fun $handleName.distance(other: $handleName): Float = sqrt(distanceSquared(other))")
+        appendLine("    fun $handleName.isFinite(): Boolean = ${type.components.joinToString(" && ") { "${it.sourceName}.isFinite()" }}")
         appendLine()
         appendLine("    private fun read(token: Long, component: Int): Float =")
         appendLine("        segment.get(ValueLayout.JAVA_FLOAT, offset(token) + component * Float.SIZE_BYTES)")
         appendLine("    private fun write(token: Long, component: Int, value: Float) =")
         appendLine("        segment.set(ValueLayout.JAVA_FLOAT, offset(token) + component * Float.SIZE_BYTES, value)")
         appendLine("    private fun offset(token: Long): Long {")
-        appendLine("        check((token ushr OWNER_SHIFT).toInt() == ownerId) { \"SegmentVec3f belongs to another buffer view\" }")
-        appendLine("        return token and OFFSET_MASK")
+        appendLine("        check((token ushr SEGMENT_OWNER_SHIFT).toInt() == ownerId) { \"$handleName belongs to another buffer view\" }")
+        appendLine("        return token and SEGMENT_OFFSET_MASK")
         appendLine("    }")
         appendLine()
         appendLine("    companion object {")
-        appendLine("        private const val OWNER_SHIFT = 40")
-        appendLine("        private const val OFFSET_MASK = (1L shl OWNER_SHIFT) - 1")
-        appendLine("        private const val MAX_OWNER_ID = (1 shl (64 - OWNER_SHIFT)) - 1")
-        appendLine("        private val ownerIds = AtomicInteger()")
-        appendLine("        private fun nextOwnerId(): Int = ownerIds.incrementAndGet().also {")
-        appendLine("            check(it in 1..MAX_OWNER_ID) { \"SegmentVec3Buffer owner id space exhausted\" }")
-        appendLine("        }")
-        appendLine("        private fun pack(ownerId: Int, offset: Long): Long = (ownerId.toLong() shl OWNER_SHIFT) or offset")
-        appendLine()
         appendLine("        fun of(")
         appendLine("            buffer: ByteBuffer,")
         appendLine("            count: Int,")
-        appendLine("            layout: Vec3StorageLayout = Vec3StorageLayout.ALIGNED_16,")
-        appendLine("        ): SegmentVec3Buffer = SegmentVec3Buffer(MemorySegment.ofBuffer(buffer.slice()), count, layout)")
+        appendLine("            layout: $layoutName = $layoutName.$defaultLayout,")
+        appendLine("        ): $bufferName = $bufferName(MemorySegment.ofBuffer(buffer.slice()), count, layout)")
         appendLine("    }")
         appendLine("}")
     }
@@ -398,18 +427,19 @@ class KotlinEmitter(private val model: AlgebraModel) {
     }
 
     private fun StringBuilder.emitSegmentOperation(type: VectorType, operation: Operation) {
+        val segmentName = "SegmentVec${type.dimension}f"
         val parameters = buildList {
             orderedParameters(operation).forEach {
                 when (it) {
-                    is VectorParameter -> add("${it.name}: SegmentVec3f")
+                    is VectorParameter -> add("${it.name}: $segmentName")
                     is ScalarParameter -> add("${it.name}: Float")
                 }
             }
-            if (operation.result == OperationResult.Destination) add("dest: SegmentVec3f")
+            if (operation.result == OperationResult.Destination) add("dest: $segmentName")
         }.joinToString(", ")
         when (val result = operation.result) {
             OperationResult.Destination -> {
-                appendLine("    fun SegmentVec3f.${operation.name}($parameters): SegmentVec3f {")
+                appendLine("    fun $segmentName.${operation.name}($parameters): $segmentName {")
                 operation.componentExpressions.forEachIndexed { index, expression ->
                     appendLine("        val r$index = ${renderSegment(expression)}")
                 }
@@ -417,17 +447,60 @@ class KotlinEmitter(private val model: AlgebraModel) {
                 appendLine("    }")
                 val receiverParameters = orderedParameters(operation).joinToString(", ") {
                     when (it) {
-                        is VectorParameter -> "${it.name}: SegmentVec3f"
+                        is VectorParameter -> "${it.name}: $segmentName"
                         is ScalarParameter -> "${it.name}: Float"
                     }
                 }
                 val receiverArguments = orderedParameters(operation).joinToString(", ") { it.name }
                 val comma = if (receiverArguments.isEmpty()) "" else "$receiverArguments, "
-                appendLine("    fun SegmentVec3f.${operation.name}($receiverParameters): SegmentVec3f = ${operation.name}(${comma}this)")
+                appendLine("    fun $segmentName.${operation.name}($receiverParameters): $segmentName = ${operation.name}(${comma}this)")
             }
             is OperationResult.Scalar ->
-                appendLine("    fun SegmentVec3f.${operation.name}($parameters): Float = ${renderSegment(result.expression)}")
+                appendLine("    fun $segmentName.${operation.name}($parameters): Float = ${renderSegment(result.expression)}")
         }
+    }
+
+    private fun StringBuilder.emitTransformOperation(operation: TransformOperation) {
+        val parameters = buildList {
+            add("self: ${operation.receiver.readType}")
+            operation.parameters.forEach { parameter ->
+                add(
+                    when (parameter) {
+                        is ShapeParameter -> "${parameter.name}: ${parameter.shape.readType}"
+                        is TransformScalarParameter -> "${parameter.name}: Float"
+                    }
+                )
+            }
+            if (operation.result is TransformResult.Destination) add("dest: ${operation.result.shape.mutableType}")
+        }.joinToString(", ")
+        val returnType = when (val result = operation.result) {
+            is TransformResult.Destination -> result.shape.mutableType
+            is TransformResult.Scalar -> "Float"
+        }
+        appendLine("internal fun ${operation.functionName}($parameters): $returnType {")
+        operation.locals.forEach { value ->
+            appendLine("    val ${value.name} = ${renderTransform(value.expression)}")
+        }
+        when (val result = operation.result) {
+            is TransformResult.Destination -> {
+                result.components.forEachIndexed { index, expression ->
+                    appendLine("    val r$index = ${renderTransform(expression)}")
+                }
+                appendLine("    return dest.set(${result.components.indices.joinToString { "r$it" }})")
+            }
+            is TransformResult.Scalar -> appendLine("    return ${renderTransform(result.expression)}")
+        }
+        appendLine("}")
+    }
+
+    private fun renderTransform(expression: ScalarExpr): String = when (expression) {
+        is ScalarExpr.Read -> "${expression.source}.${expression.component}()"
+        is ScalarExpr.Parameter -> expression.name
+        is ScalarExpr.Local -> expression.name
+        is ScalarExpr.Constant -> expression.source
+        is ScalarExpr.Unary -> "(${expression.operator}${renderTransform(expression.value)})"
+        is ScalarExpr.Binary -> "(${renderTransform(expression.left)} ${expression.operator} ${renderTransform(expression.right)})"
+        is ScalarExpr.Call -> "${expression.function}(${expression.arguments.joinToString { renderTransform(it) }})"
     }
 
     private fun renderHeap(expression: Expr): String = render(expression) { source, component ->
