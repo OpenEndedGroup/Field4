@@ -141,6 +141,32 @@ non-finite scores to 0.
 
 Not yet done: Increment-2 classpath symbols in KDoc `[Symbol]` linkification.
 
+## Linkifier hardening (2026-07-15)
+
+`linkifyKDocSymbols` / `resolveSymbolLocation` were tightened past Increment-1's
+fence-only handling. What is and isn't linkified now:
+
+- **Bare `[Ident]`** that resolves to a project declaration → `field-source:`
+  link. Unresolved (e.g. classpath-only `[Float]`) → left literal.
+- **Existing `[label](url)` links** → untouched (the label is not re-linkified).
+- **Fenced ``` ``` ``` code blocks** → untouched.
+- **Inline `` `code` `` spans** → untouched. Each outside-fence region is split
+  on single backticks and only the non-code sub-segments are linkified, so
+  `` `[Vec2]` `` in inline code stays literal. (Limitation: double-backtick
+  `` ``code`` `` inline spans are not tracked; rare in KDoc.)
+- **`[display][Target]` alternate-links** → matched as one unit. The display
+  text is never linkified on its own; the whole reference links once to
+  `Target` (`[display](field-source:…Target)`), or stays fully literal if
+  `Target` does not resolve.
+- **Qualified `[Foo.bar]`** → resolves on the last segment (`bar`) but only
+  accepts a candidate whose owner simple-name is `Foo`. If no candidate's owner
+  matches, it is left literal rather than linking to an unrelated `bar` — no
+  wrong links.
+- **Generic `[Foo<Bar>]`** → `<`/`>` are outside the identifier char class, so
+  it never matches and stays literal.
+
+Regression-pinned by `DocsPanelCodeLinksSmokeTest` (cases 2b–2e).
+
 ## Verification (real, not synthetic)
 Drive the real UI (type `var v = vec` via the backdoor/transcript path),
 confirm `[Vec2]` is a live link, click it, assert the `Vec2` card renders with
