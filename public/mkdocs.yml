@@ -19,6 +19,7 @@ nav:
   - Kotlin Overview: kotlin_overview.md
   - Building & Testing: building_and_testing.md
   - Reference:
+    - Linear Algebra: linear_algebra.md
     - FLine Examples: fline_examples.md
     - Visualizers & Controls: visualizers.md
     - Staging area:
