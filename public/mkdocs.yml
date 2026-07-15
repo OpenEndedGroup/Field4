@@ -9,6 +9,7 @@ nav:
   - Survival Guide: survivalGuide.md
   - Feature Overview: funFeatures.md
   - AI Overview: aiFeatures.md
+  - The Documentation Browser: completion_doc_browser.md
   - History & Inspection:
     - Your History with Field: history_overview.md
     - Document History: document_history.md
