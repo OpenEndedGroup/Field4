@@ -22,6 +22,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotSame
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
@@ -64,6 +65,35 @@ class GeneratedLinalgTest {
             assertEquals(av[0]*bv[0]+av[1]*bv[1]+av[2]*bv[2],a.dot(b),2e-5f)
             assertEquals((av[0]-bv[0])*(av[0]-bv[0])+(av[1]-bv[1])*(av[1]-bv[1])+(av[2]-bv[2])*(av[2]-bv[2]),a.distanceSquared(b),2e-4f)
         }
+    }
+
+    @Test
+    fun doubleVectorsMatchIndependentReferenceFormulasAndRetainPrecision() {
+        val random = Random(0x0d0ab1e)
+        repeat(1_000) {
+            val av = DoubleArray(3) { random.nextDouble() * 20.0 - 10.0 }
+            val bv = DoubleArray(3) { random.nextDouble() * 20.0 - 10.0 }
+            val t = random.nextDouble()
+            val a = Vector3d(av[0], av[1], av[2])
+            val b = Vector3d(bv[0], bv[1], bv[2])
+            assertVectorCloseD(av[0]+bv[0],av[1]+bv[1],av[2]+bv[2],Vector3d(a).add(b))
+            assertVectorCloseD(av[0]-bv[0],av[1]-bv[1],av[2]-bv[2],Vector3d(a).sub(b))
+            assertVectorCloseD(av[1]*bv[2]-av[2]*bv[1],av[2]*bv[0]-av[0]*bv[2],av[0]*bv[1]-av[1]*bv[0],Vector3d(a).cross(b))
+            assertVectorCloseD(av[0]+(bv[0]-av[0])*t,av[1]+(bv[1]-av[1])*t,av[2]+(bv[2]-av[2])*t,Vector3d(a).lerp(b,t))
+            val inv=1.0/kotlin.math.sqrt(av[0]*av[0]+av[1]*av[1]+av[2]*av[2])
+            assertVectorCloseD(av[0]*inv,av[1]*inv,av[2]*inv,Vector3d(a).normalize(),2e-12)
+            assertEquals(av[0]*bv[0]+av[1]*bv[1]+av[2]*bv[2],a.dot(b),1e-9)
+            // operators mirror the float surface
+            assertVectorCloseD((a+b).x,(a+b).y,(a+b).z,Vector3d(a).add(b))
+            assertVectorCloseD((a*2.0).x,(a*2.0).y,(a*2.0).z,Vector3d(a).mul(2.0))
+        }
+        // A value float cannot represent but double can: proves these are genuine f64 storage.
+        val precise = 1.0 + 1e-10
+        assertEquals(precise, Vector3d(precise, 0.0, 0.0).x, 0.0)
+        assertNotEquals(precise, Vector3f(precise.toFloat(), 0f, 0f).x().toDouble())
+        // typed collection literal is generated for the double type too
+        val literal: Vector3d = [1, 2.5, 3L]
+        assertVectorCloseD(1.0, 2.5, 3.0, literal)
     }
 
     @Test
@@ -205,8 +235,9 @@ class GeneratedLinalgTest {
                 }
                 other.join()
             }
-            assertTrue(failure.get() is IllegalStateException)
-            assertTrue(failure.get()!!.message!!.contains("accessed from"))
+            // Cross-thread access is enforced by the confined FFM arena on the underlying segment
+            // read, not by a redundant per-access thread check in the hot validation path.
+            assertTrue(failure.get() is java.lang.WrongThreadException, "was ${failure.get()}")
         }
     }
 
@@ -351,6 +382,12 @@ class GeneratedLinalgTest {
     }
 
     private fun assertVectorClose(x:Float,y:Float,z:Float,actual:Vector3f,tolerance:Float=1e-5f) {
+        assertTrue(abs(x-actual.x)<=tolerance,"x: expected=$x, actual=${actual.x}")
+        assertTrue(abs(y-actual.y)<=tolerance,"y: expected=$y, actual=${actual.y}")
+        assertTrue(abs(z-actual.z)<=tolerance,"z: expected=$z, actual=${actual.z}")
+    }
+
+    private fun assertVectorCloseD(x:Double,y:Double,z:Double,actual:Vector3d,tolerance:Double=1e-9) {
         assertTrue(abs(x-actual.x)<=tolerance,"x: expected=$x, actual=${actual.x}")
         assertTrue(abs(y-actual.y)<=tolerance,"y: expected=$y, actual=${actual.y}")
         assertTrue(abs(z-actual.z)<=tolerance,"z: expected=$z, actual=${actual.z}")

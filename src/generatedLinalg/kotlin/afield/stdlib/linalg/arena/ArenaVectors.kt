@@ -60,9 +60,18 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec2f.add(other: ArenaVec2f, dest: ArenaVec2f): ArenaVec2f {
-        val r0 = (arena.read(token, 0, FrameArena.Kind.VEC2) + arena.read(other.token, 0, FrameArena.Kind.VEC2))
-        val r1 = (arena.read(token, 1, FrameArena.Kind.VEC2) + arena.read(other.token, 1, FrameArena.Kind.VEC2))
-        return dest.set(r0, r1)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC2)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC2)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val r0 = (self0 + other0)
+        val r1 = (self1 + other1)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC2)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        return dest
     }
     fun ArenaVec2f.add(other: ArenaVec2f): ArenaVec2f = add(other, this)
 
@@ -73,9 +82,18 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec2f.sub(other: ArenaVec2f, dest: ArenaVec2f): ArenaVec2f {
-        val r0 = (arena.read(token, 0, FrameArena.Kind.VEC2) - arena.read(other.token, 0, FrameArena.Kind.VEC2))
-        val r1 = (arena.read(token, 1, FrameArena.Kind.VEC2) - arena.read(other.token, 1, FrameArena.Kind.VEC2))
-        return dest.set(r0, r1)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC2)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC2)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val r0 = (self0 - other0)
+        val r1 = (self1 - other1)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC2)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        return dest
     }
     fun ArenaVec2f.sub(other: ArenaVec2f): ArenaVec2f = sub(other, this)
 
@@ -86,9 +104,18 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec2f.mul(other: ArenaVec2f, dest: ArenaVec2f): ArenaVec2f {
-        val r0 = (arena.read(token, 0, FrameArena.Kind.VEC2) * arena.read(other.token, 0, FrameArena.Kind.VEC2))
-        val r1 = (arena.read(token, 1, FrameArena.Kind.VEC2) * arena.read(other.token, 1, FrameArena.Kind.VEC2))
-        return dest.set(r0, r1)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC2)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC2)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val r0 = (self0 * other0)
+        val r1 = (self1 * other1)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC2)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        return dest
     }
     fun ArenaVec2f.mul(other: ArenaVec2f): ArenaVec2f = mul(other, this)
 
@@ -99,9 +126,18 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec2f.div(other: ArenaVec2f, dest: ArenaVec2f): ArenaVec2f {
-        val r0 = (arena.read(token, 0, FrameArena.Kind.VEC2) / arena.read(other.token, 0, FrameArena.Kind.VEC2))
-        val r1 = (arena.read(token, 1, FrameArena.Kind.VEC2) / arena.read(other.token, 1, FrameArena.Kind.VEC2))
-        return dest.set(r0, r1)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC2)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC2)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val r0 = (self0 / other0)
+        val r1 = (self1 / other1)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC2)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        return dest
     }
     fun ArenaVec2f.div(other: ArenaVec2f): ArenaVec2f = div(other, this)
 
@@ -114,9 +150,15 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec2f.mul(scalar: Float, dest: ArenaVec2f): ArenaVec2f {
-        val r0 = (arena.read(token, 0, FrameArena.Kind.VEC2) * scalar)
-        val r1 = (arena.read(token, 1, FrameArena.Kind.VEC2) * scalar)
-        return dest.set(r0, r1)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC2)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val r0 = (self0 * scalar)
+        val r1 = (self1 * scalar)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC2)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        return dest
     }
     fun ArenaVec2f.mul(scalar: Float): ArenaVec2f = mul(scalar, this)
 
@@ -127,9 +169,15 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec2f.div(scalar: Float, dest: ArenaVec2f): ArenaVec2f {
-        val r0 = (arena.read(token, 0, FrameArena.Kind.VEC2) / scalar)
-        val r1 = (arena.read(token, 1, FrameArena.Kind.VEC2) / scalar)
-        return dest.set(r0, r1)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC2)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val r0 = (self0 / scalar)
+        val r1 = (self1 / scalar)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC2)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        return dest
     }
     fun ArenaVec2f.div(scalar: Float): ArenaVec2f = div(scalar, this)
 
@@ -139,9 +187,15 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec2f.negate(dest: ArenaVec2f): ArenaVec2f {
-        val r0 = (-1.0f * arena.read(token, 0, FrameArena.Kind.VEC2))
-        val r1 = (-1.0f * arena.read(token, 1, FrameArena.Kind.VEC2))
-        return dest.set(r0, r1)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC2)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val r0 = (-1.0f * self0)
+        val r1 = (-1.0f * self1)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC2)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        return dest
     }
     fun ArenaVec2f.negate(): ArenaVec2f = negate(this)
 
@@ -151,9 +205,15 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec2f.absolute(dest: ArenaVec2f): ArenaVec2f {
-        val r0 = abs(arena.read(token, 0, FrameArena.Kind.VEC2))
-        val r1 = abs(arena.read(token, 1, FrameArena.Kind.VEC2))
-        return dest.set(r0, r1)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC2)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val r0 = abs(self0)
+        val r1 = abs(self1)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC2)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        return dest
     }
     fun ArenaVec2f.absolute(): ArenaVec2f = absolute(this)
 
@@ -164,9 +224,18 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec2f.min(other: ArenaVec2f, dest: ArenaVec2f): ArenaVec2f {
-        val r0 = min(arena.read(token, 0, FrameArena.Kind.VEC2), arena.read(other.token, 0, FrameArena.Kind.VEC2))
-        val r1 = min(arena.read(token, 1, FrameArena.Kind.VEC2), arena.read(other.token, 1, FrameArena.Kind.VEC2))
-        return dest.set(r0, r1)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC2)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC2)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val r0 = min(self0, other0)
+        val r1 = min(self1, other1)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC2)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        return dest
     }
     fun ArenaVec2f.min(other: ArenaVec2f): ArenaVec2f = min(other, this)
 
@@ -177,9 +246,18 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec2f.max(other: ArenaVec2f, dest: ArenaVec2f): ArenaVec2f {
-        val r0 = max(arena.read(token, 0, FrameArena.Kind.VEC2), arena.read(other.token, 0, FrameArena.Kind.VEC2))
-        val r1 = max(arena.read(token, 1, FrameArena.Kind.VEC2), arena.read(other.token, 1, FrameArena.Kind.VEC2))
-        return dest.set(r0, r1)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC2)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC2)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val r0 = max(self0, other0)
+        val r1 = max(self1, other1)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC2)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        return dest
     }
     fun ArenaVec2f.max(other: ArenaVec2f): ArenaVec2f = max(other, this)
 
@@ -193,9 +271,18 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec2f.lerp(other: ArenaVec2f, t: Float, dest: ArenaVec2f): ArenaVec2f {
-        val r0 = (arena.read(token, 0, FrameArena.Kind.VEC2) + ((arena.read(other.token, 0, FrameArena.Kind.VEC2) - arena.read(token, 0, FrameArena.Kind.VEC2)) * t))
-        val r1 = (arena.read(token, 1, FrameArena.Kind.VEC2) + ((arena.read(other.token, 1, FrameArena.Kind.VEC2) - arena.read(token, 1, FrameArena.Kind.VEC2)) * t))
-        return dest.set(r0, r1)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC2)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC2)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val r0 = (self0 + ((other0 - self0) * t))
+        val r1 = (self1 + ((other1 - self1) * t))
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC2)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        return dest
     }
     fun ArenaVec2f.lerp(other: ArenaVec2f, t: Float): ArenaVec2f = lerp(other, t, this)
 
@@ -209,9 +296,18 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec2f.fma(scalar: Float, other: ArenaVec2f, dest: ArenaVec2f): ArenaVec2f {
-        val r0 = (arena.read(token, 0, FrameArena.Kind.VEC2) + (arena.read(other.token, 0, FrameArena.Kind.VEC2) * scalar))
-        val r1 = (arena.read(token, 1, FrameArena.Kind.VEC2) + (arena.read(other.token, 1, FrameArena.Kind.VEC2) * scalar))
-        return dest.set(r0, r1)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC2)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC2)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val r0 = (self0 + (other0 * scalar))
+        val r1 = (self1 + (other1 * scalar))
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC2)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        return dest
     }
     fun ArenaVec2f.fma(scalar: Float, other: ArenaVec2f): ArenaVec2f = fma(scalar, other, this)
 
@@ -222,7 +318,15 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @param other the vector to compare
      * @return the sum of the products of corresponding components
      */
-    fun ArenaVec2f.dot(other: ArenaVec2f): Float = ((arena.read(token, 0, FrameArena.Kind.VEC2) * arena.read(other.token, 0, FrameArena.Kind.VEC2)) + (arena.read(token, 1, FrameArena.Kind.VEC2) * arena.read(other.token, 1, FrameArena.Kind.VEC2)))
+    fun ArenaVec2f.dot(other: ArenaVec2f): Float {
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC2)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC2)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        return ((self0 * other0) + (self1 * other1))
+    }
 
     /**
      * Returns the squared length of this vector.
@@ -230,7 +334,12 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * Use this for comparisons when you do not need the actual distance; it avoids a square root.
      * @return the sum of the squared components
      */
-    fun ArenaVec2f.lengthSquared(): Float = ((arena.read(token, 0, FrameArena.Kind.VEC2) * arena.read(token, 0, FrameArena.Kind.VEC2)) + (arena.read(token, 1, FrameArena.Kind.VEC2) * arena.read(token, 1, FrameArena.Kind.VEC2)))
+    fun ArenaVec2f.lengthSquared(): Float {
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC2)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        return ((self0 * self0) + (self1 * self1))
+    }
 
     /**
      * Returns the squared straight-line distance to another vector.
@@ -239,7 +348,15 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @param other the point to measure to
      * @return the squared Euclidean distance
      */
-    fun ArenaVec2f.distanceSquared(other: ArenaVec2f): Float = (((arena.read(token, 0, FrameArena.Kind.VEC2) - arena.read(other.token, 0, FrameArena.Kind.VEC2)) * (arena.read(token, 0, FrameArena.Kind.VEC2) - arena.read(other.token, 0, FrameArena.Kind.VEC2))) + ((arena.read(token, 1, FrameArena.Kind.VEC2) - arena.read(other.token, 1, FrameArena.Kind.VEC2)) * (arena.read(token, 1, FrameArena.Kind.VEC2) - arena.read(other.token, 1, FrameArena.Kind.VEC2))))
+    fun ArenaVec2f.distanceSquared(other: ArenaVec2f): Float {
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC2)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC2)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        return (((self0 - other0) * (self0 - other0)) + ((self1 - other1) * (self1 - other1)))
+    }
 
     /**
      * Keeps the vector's direction while scaling its length to one.
@@ -249,9 +366,15 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec2f.normalize(dest: ArenaVec2f): ArenaVec2f {
-        val r0 = (arena.read(token, 0, FrameArena.Kind.VEC2) * (1.0f / sqrt(((arena.read(token, 0, FrameArena.Kind.VEC2) * arena.read(token, 0, FrameArena.Kind.VEC2)) + (arena.read(token, 1, FrameArena.Kind.VEC2) * arena.read(token, 1, FrameArena.Kind.VEC2))))))
-        val r1 = (arena.read(token, 1, FrameArena.Kind.VEC2) * (1.0f / sqrt(((arena.read(token, 0, FrameArena.Kind.VEC2) * arena.read(token, 0, FrameArena.Kind.VEC2)) + (arena.read(token, 1, FrameArena.Kind.VEC2) * arena.read(token, 1, FrameArena.Kind.VEC2))))))
-        return dest.set(r0, r1)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC2)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val r0 = (self0 * (1.0f / sqrt(((self0 * self0) + (self1 * self1)))))
+        val r1 = (self1 * (1.0f / sqrt(((self0 * self0) + (self1 * self1)))))
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC2)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        return dest
     }
     fun ArenaVec2f.normalize(): ArenaVec2f = normalize(this)
 
@@ -301,10 +424,22 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec3f.add(other: ArenaVec3f, dest: ArenaVec3f): ArenaVec3f {
-        val r0 = (arena.read(token, 0, FrameArena.Kind.VEC3) + arena.read(other.token, 0, FrameArena.Kind.VEC3))
-        val r1 = (arena.read(token, 1, FrameArena.Kind.VEC3) + arena.read(other.token, 1, FrameArena.Kind.VEC3))
-        val r2 = (arena.read(token, 2, FrameArena.Kind.VEC3) + arena.read(other.token, 2, FrameArena.Kind.VEC3))
-        return dest.set(r0, r1, r2)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC3)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC3)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val other2 = arena.readAt(o_other, 2)
+        val r0 = (self0 + other0)
+        val r1 = (self1 + other1)
+        val r2 = (self2 + other2)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC3)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        return dest
     }
     fun ArenaVec3f.add(other: ArenaVec3f): ArenaVec3f = add(other, this)
 
@@ -315,10 +450,22 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec3f.sub(other: ArenaVec3f, dest: ArenaVec3f): ArenaVec3f {
-        val r0 = (arena.read(token, 0, FrameArena.Kind.VEC3) - arena.read(other.token, 0, FrameArena.Kind.VEC3))
-        val r1 = (arena.read(token, 1, FrameArena.Kind.VEC3) - arena.read(other.token, 1, FrameArena.Kind.VEC3))
-        val r2 = (arena.read(token, 2, FrameArena.Kind.VEC3) - arena.read(other.token, 2, FrameArena.Kind.VEC3))
-        return dest.set(r0, r1, r2)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC3)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC3)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val other2 = arena.readAt(o_other, 2)
+        val r0 = (self0 - other0)
+        val r1 = (self1 - other1)
+        val r2 = (self2 - other2)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC3)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        return dest
     }
     fun ArenaVec3f.sub(other: ArenaVec3f): ArenaVec3f = sub(other, this)
 
@@ -329,10 +476,22 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec3f.mul(other: ArenaVec3f, dest: ArenaVec3f): ArenaVec3f {
-        val r0 = (arena.read(token, 0, FrameArena.Kind.VEC3) * arena.read(other.token, 0, FrameArena.Kind.VEC3))
-        val r1 = (arena.read(token, 1, FrameArena.Kind.VEC3) * arena.read(other.token, 1, FrameArena.Kind.VEC3))
-        val r2 = (arena.read(token, 2, FrameArena.Kind.VEC3) * arena.read(other.token, 2, FrameArena.Kind.VEC3))
-        return dest.set(r0, r1, r2)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC3)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC3)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val other2 = arena.readAt(o_other, 2)
+        val r0 = (self0 * other0)
+        val r1 = (self1 * other1)
+        val r2 = (self2 * other2)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC3)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        return dest
     }
     fun ArenaVec3f.mul(other: ArenaVec3f): ArenaVec3f = mul(other, this)
 
@@ -343,10 +502,22 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec3f.div(other: ArenaVec3f, dest: ArenaVec3f): ArenaVec3f {
-        val r0 = (arena.read(token, 0, FrameArena.Kind.VEC3) / arena.read(other.token, 0, FrameArena.Kind.VEC3))
-        val r1 = (arena.read(token, 1, FrameArena.Kind.VEC3) / arena.read(other.token, 1, FrameArena.Kind.VEC3))
-        val r2 = (arena.read(token, 2, FrameArena.Kind.VEC3) / arena.read(other.token, 2, FrameArena.Kind.VEC3))
-        return dest.set(r0, r1, r2)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC3)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC3)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val other2 = arena.readAt(o_other, 2)
+        val r0 = (self0 / other0)
+        val r1 = (self1 / other1)
+        val r2 = (self2 / other2)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC3)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        return dest
     }
     fun ArenaVec3f.div(other: ArenaVec3f): ArenaVec3f = div(other, this)
 
@@ -359,10 +530,18 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec3f.mul(scalar: Float, dest: ArenaVec3f): ArenaVec3f {
-        val r0 = (arena.read(token, 0, FrameArena.Kind.VEC3) * scalar)
-        val r1 = (arena.read(token, 1, FrameArena.Kind.VEC3) * scalar)
-        val r2 = (arena.read(token, 2, FrameArena.Kind.VEC3) * scalar)
-        return dest.set(r0, r1, r2)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC3)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val r0 = (self0 * scalar)
+        val r1 = (self1 * scalar)
+        val r2 = (self2 * scalar)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC3)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        return dest
     }
     fun ArenaVec3f.mul(scalar: Float): ArenaVec3f = mul(scalar, this)
 
@@ -373,10 +552,18 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec3f.div(scalar: Float, dest: ArenaVec3f): ArenaVec3f {
-        val r0 = (arena.read(token, 0, FrameArena.Kind.VEC3) / scalar)
-        val r1 = (arena.read(token, 1, FrameArena.Kind.VEC3) / scalar)
-        val r2 = (arena.read(token, 2, FrameArena.Kind.VEC3) / scalar)
-        return dest.set(r0, r1, r2)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC3)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val r0 = (self0 / scalar)
+        val r1 = (self1 / scalar)
+        val r2 = (self2 / scalar)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC3)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        return dest
     }
     fun ArenaVec3f.div(scalar: Float): ArenaVec3f = div(scalar, this)
 
@@ -386,10 +573,18 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec3f.negate(dest: ArenaVec3f): ArenaVec3f {
-        val r0 = (-1.0f * arena.read(token, 0, FrameArena.Kind.VEC3))
-        val r1 = (-1.0f * arena.read(token, 1, FrameArena.Kind.VEC3))
-        val r2 = (-1.0f * arena.read(token, 2, FrameArena.Kind.VEC3))
-        return dest.set(r0, r1, r2)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC3)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val r0 = (-1.0f * self0)
+        val r1 = (-1.0f * self1)
+        val r2 = (-1.0f * self2)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC3)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        return dest
     }
     fun ArenaVec3f.negate(): ArenaVec3f = negate(this)
 
@@ -399,10 +594,18 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec3f.absolute(dest: ArenaVec3f): ArenaVec3f {
-        val r0 = abs(arena.read(token, 0, FrameArena.Kind.VEC3))
-        val r1 = abs(arena.read(token, 1, FrameArena.Kind.VEC3))
-        val r2 = abs(arena.read(token, 2, FrameArena.Kind.VEC3))
-        return dest.set(r0, r1, r2)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC3)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val r0 = abs(self0)
+        val r1 = abs(self1)
+        val r2 = abs(self2)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC3)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        return dest
     }
     fun ArenaVec3f.absolute(): ArenaVec3f = absolute(this)
 
@@ -413,10 +616,22 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec3f.min(other: ArenaVec3f, dest: ArenaVec3f): ArenaVec3f {
-        val r0 = min(arena.read(token, 0, FrameArena.Kind.VEC3), arena.read(other.token, 0, FrameArena.Kind.VEC3))
-        val r1 = min(arena.read(token, 1, FrameArena.Kind.VEC3), arena.read(other.token, 1, FrameArena.Kind.VEC3))
-        val r2 = min(arena.read(token, 2, FrameArena.Kind.VEC3), arena.read(other.token, 2, FrameArena.Kind.VEC3))
-        return dest.set(r0, r1, r2)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC3)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC3)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val other2 = arena.readAt(o_other, 2)
+        val r0 = min(self0, other0)
+        val r1 = min(self1, other1)
+        val r2 = min(self2, other2)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC3)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        return dest
     }
     fun ArenaVec3f.min(other: ArenaVec3f): ArenaVec3f = min(other, this)
 
@@ -427,10 +642,22 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec3f.max(other: ArenaVec3f, dest: ArenaVec3f): ArenaVec3f {
-        val r0 = max(arena.read(token, 0, FrameArena.Kind.VEC3), arena.read(other.token, 0, FrameArena.Kind.VEC3))
-        val r1 = max(arena.read(token, 1, FrameArena.Kind.VEC3), arena.read(other.token, 1, FrameArena.Kind.VEC3))
-        val r2 = max(arena.read(token, 2, FrameArena.Kind.VEC3), arena.read(other.token, 2, FrameArena.Kind.VEC3))
-        return dest.set(r0, r1, r2)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC3)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC3)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val other2 = arena.readAt(o_other, 2)
+        val r0 = max(self0, other0)
+        val r1 = max(self1, other1)
+        val r2 = max(self2, other2)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC3)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        return dest
     }
     fun ArenaVec3f.max(other: ArenaVec3f): ArenaVec3f = max(other, this)
 
@@ -444,10 +671,22 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec3f.lerp(other: ArenaVec3f, t: Float, dest: ArenaVec3f): ArenaVec3f {
-        val r0 = (arena.read(token, 0, FrameArena.Kind.VEC3) + ((arena.read(other.token, 0, FrameArena.Kind.VEC3) - arena.read(token, 0, FrameArena.Kind.VEC3)) * t))
-        val r1 = (arena.read(token, 1, FrameArena.Kind.VEC3) + ((arena.read(other.token, 1, FrameArena.Kind.VEC3) - arena.read(token, 1, FrameArena.Kind.VEC3)) * t))
-        val r2 = (arena.read(token, 2, FrameArena.Kind.VEC3) + ((arena.read(other.token, 2, FrameArena.Kind.VEC3) - arena.read(token, 2, FrameArena.Kind.VEC3)) * t))
-        return dest.set(r0, r1, r2)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC3)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC3)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val other2 = arena.readAt(o_other, 2)
+        val r0 = (self0 + ((other0 - self0) * t))
+        val r1 = (self1 + ((other1 - self1) * t))
+        val r2 = (self2 + ((other2 - self2) * t))
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC3)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        return dest
     }
     fun ArenaVec3f.lerp(other: ArenaVec3f, t: Float): ArenaVec3f = lerp(other, t, this)
 
@@ -461,10 +700,22 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec3f.fma(scalar: Float, other: ArenaVec3f, dest: ArenaVec3f): ArenaVec3f {
-        val r0 = (arena.read(token, 0, FrameArena.Kind.VEC3) + (arena.read(other.token, 0, FrameArena.Kind.VEC3) * scalar))
-        val r1 = (arena.read(token, 1, FrameArena.Kind.VEC3) + (arena.read(other.token, 1, FrameArena.Kind.VEC3) * scalar))
-        val r2 = (arena.read(token, 2, FrameArena.Kind.VEC3) + (arena.read(other.token, 2, FrameArena.Kind.VEC3) * scalar))
-        return dest.set(r0, r1, r2)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC3)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC3)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val other2 = arena.readAt(o_other, 2)
+        val r0 = (self0 + (other0 * scalar))
+        val r1 = (self1 + (other1 * scalar))
+        val r2 = (self2 + (other2 * scalar))
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC3)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        return dest
     }
     fun ArenaVec3f.fma(scalar: Float, other: ArenaVec3f): ArenaVec3f = fma(scalar, other, this)
 
@@ -475,7 +726,17 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @param other the vector to compare
      * @return the sum of the products of corresponding components
      */
-    fun ArenaVec3f.dot(other: ArenaVec3f): Float = (((arena.read(token, 0, FrameArena.Kind.VEC3) * arena.read(other.token, 0, FrameArena.Kind.VEC3)) + (arena.read(token, 1, FrameArena.Kind.VEC3) * arena.read(other.token, 1, FrameArena.Kind.VEC3))) + (arena.read(token, 2, FrameArena.Kind.VEC3) * arena.read(other.token, 2, FrameArena.Kind.VEC3)))
+    fun ArenaVec3f.dot(other: ArenaVec3f): Float {
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC3)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC3)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val other2 = arena.readAt(o_other, 2)
+        return (((self0 * other0) + (self1 * other1)) + (self2 * other2))
+    }
 
     /**
      * Returns the squared length of this vector.
@@ -483,7 +744,13 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * Use this for comparisons when you do not need the actual distance; it avoids a square root.
      * @return the sum of the squared components
      */
-    fun ArenaVec3f.lengthSquared(): Float = (((arena.read(token, 0, FrameArena.Kind.VEC3) * arena.read(token, 0, FrameArena.Kind.VEC3)) + (arena.read(token, 1, FrameArena.Kind.VEC3) * arena.read(token, 1, FrameArena.Kind.VEC3))) + (arena.read(token, 2, FrameArena.Kind.VEC3) * arena.read(token, 2, FrameArena.Kind.VEC3)))
+    fun ArenaVec3f.lengthSquared(): Float {
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC3)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val self2 = arena.readAt(o_self, 2)
+        return (((self0 * self0) + (self1 * self1)) + (self2 * self2))
+    }
 
     /**
      * Returns the squared straight-line distance to another vector.
@@ -492,7 +759,17 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @param other the point to measure to
      * @return the squared Euclidean distance
      */
-    fun ArenaVec3f.distanceSquared(other: ArenaVec3f): Float = ((((arena.read(token, 0, FrameArena.Kind.VEC3) - arena.read(other.token, 0, FrameArena.Kind.VEC3)) * (arena.read(token, 0, FrameArena.Kind.VEC3) - arena.read(other.token, 0, FrameArena.Kind.VEC3))) + ((arena.read(token, 1, FrameArena.Kind.VEC3) - arena.read(other.token, 1, FrameArena.Kind.VEC3)) * (arena.read(token, 1, FrameArena.Kind.VEC3) - arena.read(other.token, 1, FrameArena.Kind.VEC3)))) + ((arena.read(token, 2, FrameArena.Kind.VEC3) - arena.read(other.token, 2, FrameArena.Kind.VEC3)) * (arena.read(token, 2, FrameArena.Kind.VEC3) - arena.read(other.token, 2, FrameArena.Kind.VEC3))))
+    fun ArenaVec3f.distanceSquared(other: ArenaVec3f): Float {
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC3)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC3)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val other2 = arena.readAt(o_other, 2)
+        return ((((self0 - other0) * (self0 - other0)) + ((self1 - other1) * (self1 - other1))) + ((self2 - other2) * (self2 - other2)))
+    }
 
     /**
      * Keeps the vector's direction while scaling its length to one.
@@ -502,10 +779,18 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec3f.normalize(dest: ArenaVec3f): ArenaVec3f {
-        val r0 = (arena.read(token, 0, FrameArena.Kind.VEC3) * (1.0f / sqrt((((arena.read(token, 0, FrameArena.Kind.VEC3) * arena.read(token, 0, FrameArena.Kind.VEC3)) + (arena.read(token, 1, FrameArena.Kind.VEC3) * arena.read(token, 1, FrameArena.Kind.VEC3))) + (arena.read(token, 2, FrameArena.Kind.VEC3) * arena.read(token, 2, FrameArena.Kind.VEC3))))))
-        val r1 = (arena.read(token, 1, FrameArena.Kind.VEC3) * (1.0f / sqrt((((arena.read(token, 0, FrameArena.Kind.VEC3) * arena.read(token, 0, FrameArena.Kind.VEC3)) + (arena.read(token, 1, FrameArena.Kind.VEC3) * arena.read(token, 1, FrameArena.Kind.VEC3))) + (arena.read(token, 2, FrameArena.Kind.VEC3) * arena.read(token, 2, FrameArena.Kind.VEC3))))))
-        val r2 = (arena.read(token, 2, FrameArena.Kind.VEC3) * (1.0f / sqrt((((arena.read(token, 0, FrameArena.Kind.VEC3) * arena.read(token, 0, FrameArena.Kind.VEC3)) + (arena.read(token, 1, FrameArena.Kind.VEC3) * arena.read(token, 1, FrameArena.Kind.VEC3))) + (arena.read(token, 2, FrameArena.Kind.VEC3) * arena.read(token, 2, FrameArena.Kind.VEC3))))))
-        return dest.set(r0, r1, r2)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC3)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val r0 = (self0 * (1.0f / sqrt((((self0 * self0) + (self1 * self1)) + (self2 * self2)))))
+        val r1 = (self1 * (1.0f / sqrt((((self0 * self0) + (self1 * self1)) + (self2 * self2)))))
+        val r2 = (self2 * (1.0f / sqrt((((self0 * self0) + (self1 * self1)) + (self2 * self2)))))
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC3)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        return dest
     }
     fun ArenaVec3f.normalize(): ArenaVec3f = normalize(this)
 
@@ -518,10 +803,22 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec3f.cross(other: ArenaVec3f, dest: ArenaVec3f): ArenaVec3f {
-        val r0 = ((arena.read(token, 1, FrameArena.Kind.VEC3) * arena.read(other.token, 2, FrameArena.Kind.VEC3)) - (arena.read(token, 2, FrameArena.Kind.VEC3) * arena.read(other.token, 1, FrameArena.Kind.VEC3)))
-        val r1 = ((arena.read(token, 2, FrameArena.Kind.VEC3) * arena.read(other.token, 0, FrameArena.Kind.VEC3)) - (arena.read(token, 0, FrameArena.Kind.VEC3) * arena.read(other.token, 2, FrameArena.Kind.VEC3)))
-        val r2 = ((arena.read(token, 0, FrameArena.Kind.VEC3) * arena.read(other.token, 1, FrameArena.Kind.VEC3)) - (arena.read(token, 1, FrameArena.Kind.VEC3) * arena.read(other.token, 0, FrameArena.Kind.VEC3)))
-        return dest.set(r0, r1, r2)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC3)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC3)
+        val self1 = arena.readAt(o_self, 1)
+        val other2 = arena.readAt(o_other, 2)
+        val self2 = arena.readAt(o_self, 2)
+        val other1 = arena.readAt(o_other, 1)
+        val other0 = arena.readAt(o_other, 0)
+        val self0 = arena.readAt(o_self, 0)
+        val r0 = ((self1 * other2) - (self2 * other1))
+        val r1 = ((self2 * other0) - (self0 * other2))
+        val r2 = ((self0 * other1) - (self1 * other0))
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC3)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        return dest
     }
     fun ArenaVec3f.cross(other: ArenaVec3f): ArenaVec3f = cross(other, this)
 
@@ -575,11 +872,26 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec4f.add(other: ArenaVec4f, dest: ArenaVec4f): ArenaVec4f {
-        val r0 = (arena.read(token, 0, FrameArena.Kind.VEC4) + arena.read(other.token, 0, FrameArena.Kind.VEC4))
-        val r1 = (arena.read(token, 1, FrameArena.Kind.VEC4) + arena.read(other.token, 1, FrameArena.Kind.VEC4))
-        val r2 = (arena.read(token, 2, FrameArena.Kind.VEC4) + arena.read(other.token, 2, FrameArena.Kind.VEC4))
-        val r3 = (arena.read(token, 3, FrameArena.Kind.VEC4) + arena.read(other.token, 3, FrameArena.Kind.VEC4))
-        return dest.set(r0, r1, r2, r3)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC4)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC4)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val other2 = arena.readAt(o_other, 2)
+        val self3 = arena.readAt(o_self, 3)
+        val other3 = arena.readAt(o_other, 3)
+        val r0 = (self0 + other0)
+        val r1 = (self1 + other1)
+        val r2 = (self2 + other2)
+        val r3 = (self3 + other3)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC4)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        arena.writeAt(o_dest, 3, r3)
+        return dest
     }
     fun ArenaVec4f.add(other: ArenaVec4f): ArenaVec4f = add(other, this)
 
@@ -590,11 +902,26 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec4f.sub(other: ArenaVec4f, dest: ArenaVec4f): ArenaVec4f {
-        val r0 = (arena.read(token, 0, FrameArena.Kind.VEC4) - arena.read(other.token, 0, FrameArena.Kind.VEC4))
-        val r1 = (arena.read(token, 1, FrameArena.Kind.VEC4) - arena.read(other.token, 1, FrameArena.Kind.VEC4))
-        val r2 = (arena.read(token, 2, FrameArena.Kind.VEC4) - arena.read(other.token, 2, FrameArena.Kind.VEC4))
-        val r3 = (arena.read(token, 3, FrameArena.Kind.VEC4) - arena.read(other.token, 3, FrameArena.Kind.VEC4))
-        return dest.set(r0, r1, r2, r3)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC4)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC4)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val other2 = arena.readAt(o_other, 2)
+        val self3 = arena.readAt(o_self, 3)
+        val other3 = arena.readAt(o_other, 3)
+        val r0 = (self0 - other0)
+        val r1 = (self1 - other1)
+        val r2 = (self2 - other2)
+        val r3 = (self3 - other3)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC4)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        arena.writeAt(o_dest, 3, r3)
+        return dest
     }
     fun ArenaVec4f.sub(other: ArenaVec4f): ArenaVec4f = sub(other, this)
 
@@ -605,11 +932,26 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec4f.mul(other: ArenaVec4f, dest: ArenaVec4f): ArenaVec4f {
-        val r0 = (arena.read(token, 0, FrameArena.Kind.VEC4) * arena.read(other.token, 0, FrameArena.Kind.VEC4))
-        val r1 = (arena.read(token, 1, FrameArena.Kind.VEC4) * arena.read(other.token, 1, FrameArena.Kind.VEC4))
-        val r2 = (arena.read(token, 2, FrameArena.Kind.VEC4) * arena.read(other.token, 2, FrameArena.Kind.VEC4))
-        val r3 = (arena.read(token, 3, FrameArena.Kind.VEC4) * arena.read(other.token, 3, FrameArena.Kind.VEC4))
-        return dest.set(r0, r1, r2, r3)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC4)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC4)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val other2 = arena.readAt(o_other, 2)
+        val self3 = arena.readAt(o_self, 3)
+        val other3 = arena.readAt(o_other, 3)
+        val r0 = (self0 * other0)
+        val r1 = (self1 * other1)
+        val r2 = (self2 * other2)
+        val r3 = (self3 * other3)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC4)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        arena.writeAt(o_dest, 3, r3)
+        return dest
     }
     fun ArenaVec4f.mul(other: ArenaVec4f): ArenaVec4f = mul(other, this)
 
@@ -620,11 +962,26 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec4f.div(other: ArenaVec4f, dest: ArenaVec4f): ArenaVec4f {
-        val r0 = (arena.read(token, 0, FrameArena.Kind.VEC4) / arena.read(other.token, 0, FrameArena.Kind.VEC4))
-        val r1 = (arena.read(token, 1, FrameArena.Kind.VEC4) / arena.read(other.token, 1, FrameArena.Kind.VEC4))
-        val r2 = (arena.read(token, 2, FrameArena.Kind.VEC4) / arena.read(other.token, 2, FrameArena.Kind.VEC4))
-        val r3 = (arena.read(token, 3, FrameArena.Kind.VEC4) / arena.read(other.token, 3, FrameArena.Kind.VEC4))
-        return dest.set(r0, r1, r2, r3)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC4)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC4)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val other2 = arena.readAt(o_other, 2)
+        val self3 = arena.readAt(o_self, 3)
+        val other3 = arena.readAt(o_other, 3)
+        val r0 = (self0 / other0)
+        val r1 = (self1 / other1)
+        val r2 = (self2 / other2)
+        val r3 = (self3 / other3)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC4)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        arena.writeAt(o_dest, 3, r3)
+        return dest
     }
     fun ArenaVec4f.div(other: ArenaVec4f): ArenaVec4f = div(other, this)
 
@@ -637,11 +994,21 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec4f.mul(scalar: Float, dest: ArenaVec4f): ArenaVec4f {
-        val r0 = (arena.read(token, 0, FrameArena.Kind.VEC4) * scalar)
-        val r1 = (arena.read(token, 1, FrameArena.Kind.VEC4) * scalar)
-        val r2 = (arena.read(token, 2, FrameArena.Kind.VEC4) * scalar)
-        val r3 = (arena.read(token, 3, FrameArena.Kind.VEC4) * scalar)
-        return dest.set(r0, r1, r2, r3)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC4)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val self3 = arena.readAt(o_self, 3)
+        val r0 = (self0 * scalar)
+        val r1 = (self1 * scalar)
+        val r2 = (self2 * scalar)
+        val r3 = (self3 * scalar)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC4)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        arena.writeAt(o_dest, 3, r3)
+        return dest
     }
     fun ArenaVec4f.mul(scalar: Float): ArenaVec4f = mul(scalar, this)
 
@@ -652,11 +1019,21 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec4f.div(scalar: Float, dest: ArenaVec4f): ArenaVec4f {
-        val r0 = (arena.read(token, 0, FrameArena.Kind.VEC4) / scalar)
-        val r1 = (arena.read(token, 1, FrameArena.Kind.VEC4) / scalar)
-        val r2 = (arena.read(token, 2, FrameArena.Kind.VEC4) / scalar)
-        val r3 = (arena.read(token, 3, FrameArena.Kind.VEC4) / scalar)
-        return dest.set(r0, r1, r2, r3)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC4)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val self3 = arena.readAt(o_self, 3)
+        val r0 = (self0 / scalar)
+        val r1 = (self1 / scalar)
+        val r2 = (self2 / scalar)
+        val r3 = (self3 / scalar)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC4)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        arena.writeAt(o_dest, 3, r3)
+        return dest
     }
     fun ArenaVec4f.div(scalar: Float): ArenaVec4f = div(scalar, this)
 
@@ -666,11 +1043,21 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec4f.negate(dest: ArenaVec4f): ArenaVec4f {
-        val r0 = (-1.0f * arena.read(token, 0, FrameArena.Kind.VEC4))
-        val r1 = (-1.0f * arena.read(token, 1, FrameArena.Kind.VEC4))
-        val r2 = (-1.0f * arena.read(token, 2, FrameArena.Kind.VEC4))
-        val r3 = (-1.0f * arena.read(token, 3, FrameArena.Kind.VEC4))
-        return dest.set(r0, r1, r2, r3)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC4)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val self3 = arena.readAt(o_self, 3)
+        val r0 = (-1.0f * self0)
+        val r1 = (-1.0f * self1)
+        val r2 = (-1.0f * self2)
+        val r3 = (-1.0f * self3)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC4)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        arena.writeAt(o_dest, 3, r3)
+        return dest
     }
     fun ArenaVec4f.negate(): ArenaVec4f = negate(this)
 
@@ -680,11 +1067,21 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec4f.absolute(dest: ArenaVec4f): ArenaVec4f {
-        val r0 = abs(arena.read(token, 0, FrameArena.Kind.VEC4))
-        val r1 = abs(arena.read(token, 1, FrameArena.Kind.VEC4))
-        val r2 = abs(arena.read(token, 2, FrameArena.Kind.VEC4))
-        val r3 = abs(arena.read(token, 3, FrameArena.Kind.VEC4))
-        return dest.set(r0, r1, r2, r3)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC4)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val self3 = arena.readAt(o_self, 3)
+        val r0 = abs(self0)
+        val r1 = abs(self1)
+        val r2 = abs(self2)
+        val r3 = abs(self3)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC4)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        arena.writeAt(o_dest, 3, r3)
+        return dest
     }
     fun ArenaVec4f.absolute(): ArenaVec4f = absolute(this)
 
@@ -695,11 +1092,26 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec4f.min(other: ArenaVec4f, dest: ArenaVec4f): ArenaVec4f {
-        val r0 = min(arena.read(token, 0, FrameArena.Kind.VEC4), arena.read(other.token, 0, FrameArena.Kind.VEC4))
-        val r1 = min(arena.read(token, 1, FrameArena.Kind.VEC4), arena.read(other.token, 1, FrameArena.Kind.VEC4))
-        val r2 = min(arena.read(token, 2, FrameArena.Kind.VEC4), arena.read(other.token, 2, FrameArena.Kind.VEC4))
-        val r3 = min(arena.read(token, 3, FrameArena.Kind.VEC4), arena.read(other.token, 3, FrameArena.Kind.VEC4))
-        return dest.set(r0, r1, r2, r3)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC4)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC4)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val other2 = arena.readAt(o_other, 2)
+        val self3 = arena.readAt(o_self, 3)
+        val other3 = arena.readAt(o_other, 3)
+        val r0 = min(self0, other0)
+        val r1 = min(self1, other1)
+        val r2 = min(self2, other2)
+        val r3 = min(self3, other3)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC4)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        arena.writeAt(o_dest, 3, r3)
+        return dest
     }
     fun ArenaVec4f.min(other: ArenaVec4f): ArenaVec4f = min(other, this)
 
@@ -710,11 +1122,26 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec4f.max(other: ArenaVec4f, dest: ArenaVec4f): ArenaVec4f {
-        val r0 = max(arena.read(token, 0, FrameArena.Kind.VEC4), arena.read(other.token, 0, FrameArena.Kind.VEC4))
-        val r1 = max(arena.read(token, 1, FrameArena.Kind.VEC4), arena.read(other.token, 1, FrameArena.Kind.VEC4))
-        val r2 = max(arena.read(token, 2, FrameArena.Kind.VEC4), arena.read(other.token, 2, FrameArena.Kind.VEC4))
-        val r3 = max(arena.read(token, 3, FrameArena.Kind.VEC4), arena.read(other.token, 3, FrameArena.Kind.VEC4))
-        return dest.set(r0, r1, r2, r3)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC4)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC4)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val other2 = arena.readAt(o_other, 2)
+        val self3 = arena.readAt(o_self, 3)
+        val other3 = arena.readAt(o_other, 3)
+        val r0 = max(self0, other0)
+        val r1 = max(self1, other1)
+        val r2 = max(self2, other2)
+        val r3 = max(self3, other3)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC4)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        arena.writeAt(o_dest, 3, r3)
+        return dest
     }
     fun ArenaVec4f.max(other: ArenaVec4f): ArenaVec4f = max(other, this)
 
@@ -728,11 +1155,26 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec4f.lerp(other: ArenaVec4f, t: Float, dest: ArenaVec4f): ArenaVec4f {
-        val r0 = (arena.read(token, 0, FrameArena.Kind.VEC4) + ((arena.read(other.token, 0, FrameArena.Kind.VEC4) - arena.read(token, 0, FrameArena.Kind.VEC4)) * t))
-        val r1 = (arena.read(token, 1, FrameArena.Kind.VEC4) + ((arena.read(other.token, 1, FrameArena.Kind.VEC4) - arena.read(token, 1, FrameArena.Kind.VEC4)) * t))
-        val r2 = (arena.read(token, 2, FrameArena.Kind.VEC4) + ((arena.read(other.token, 2, FrameArena.Kind.VEC4) - arena.read(token, 2, FrameArena.Kind.VEC4)) * t))
-        val r3 = (arena.read(token, 3, FrameArena.Kind.VEC4) + ((arena.read(other.token, 3, FrameArena.Kind.VEC4) - arena.read(token, 3, FrameArena.Kind.VEC4)) * t))
-        return dest.set(r0, r1, r2, r3)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC4)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC4)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val other2 = arena.readAt(o_other, 2)
+        val self3 = arena.readAt(o_self, 3)
+        val other3 = arena.readAt(o_other, 3)
+        val r0 = (self0 + ((other0 - self0) * t))
+        val r1 = (self1 + ((other1 - self1) * t))
+        val r2 = (self2 + ((other2 - self2) * t))
+        val r3 = (self3 + ((other3 - self3) * t))
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC4)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        arena.writeAt(o_dest, 3, r3)
+        return dest
     }
     fun ArenaVec4f.lerp(other: ArenaVec4f, t: Float): ArenaVec4f = lerp(other, t, this)
 
@@ -746,11 +1188,26 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec4f.fma(scalar: Float, other: ArenaVec4f, dest: ArenaVec4f): ArenaVec4f {
-        val r0 = (arena.read(token, 0, FrameArena.Kind.VEC4) + (arena.read(other.token, 0, FrameArena.Kind.VEC4) * scalar))
-        val r1 = (arena.read(token, 1, FrameArena.Kind.VEC4) + (arena.read(other.token, 1, FrameArena.Kind.VEC4) * scalar))
-        val r2 = (arena.read(token, 2, FrameArena.Kind.VEC4) + (arena.read(other.token, 2, FrameArena.Kind.VEC4) * scalar))
-        val r3 = (arena.read(token, 3, FrameArena.Kind.VEC4) + (arena.read(other.token, 3, FrameArena.Kind.VEC4) * scalar))
-        return dest.set(r0, r1, r2, r3)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC4)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC4)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val other2 = arena.readAt(o_other, 2)
+        val self3 = arena.readAt(o_self, 3)
+        val other3 = arena.readAt(o_other, 3)
+        val r0 = (self0 + (other0 * scalar))
+        val r1 = (self1 + (other1 * scalar))
+        val r2 = (self2 + (other2 * scalar))
+        val r3 = (self3 + (other3 * scalar))
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC4)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        arena.writeAt(o_dest, 3, r3)
+        return dest
     }
     fun ArenaVec4f.fma(scalar: Float, other: ArenaVec4f): ArenaVec4f = fma(scalar, other, this)
 
@@ -761,7 +1218,19 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @param other the vector to compare
      * @return the sum of the products of corresponding components
      */
-    fun ArenaVec4f.dot(other: ArenaVec4f): Float = ((((arena.read(token, 0, FrameArena.Kind.VEC4) * arena.read(other.token, 0, FrameArena.Kind.VEC4)) + (arena.read(token, 1, FrameArena.Kind.VEC4) * arena.read(other.token, 1, FrameArena.Kind.VEC4))) + (arena.read(token, 2, FrameArena.Kind.VEC4) * arena.read(other.token, 2, FrameArena.Kind.VEC4))) + (arena.read(token, 3, FrameArena.Kind.VEC4) * arena.read(other.token, 3, FrameArena.Kind.VEC4)))
+    fun ArenaVec4f.dot(other: ArenaVec4f): Float {
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC4)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC4)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val other2 = arena.readAt(o_other, 2)
+        val self3 = arena.readAt(o_self, 3)
+        val other3 = arena.readAt(o_other, 3)
+        return ((((self0 * other0) + (self1 * other1)) + (self2 * other2)) + (self3 * other3))
+    }
 
     /**
      * Returns the squared length of this vector.
@@ -769,7 +1238,14 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * Use this for comparisons when you do not need the actual distance; it avoids a square root.
      * @return the sum of the squared components
      */
-    fun ArenaVec4f.lengthSquared(): Float = ((((arena.read(token, 0, FrameArena.Kind.VEC4) * arena.read(token, 0, FrameArena.Kind.VEC4)) + (arena.read(token, 1, FrameArena.Kind.VEC4) * arena.read(token, 1, FrameArena.Kind.VEC4))) + (arena.read(token, 2, FrameArena.Kind.VEC4) * arena.read(token, 2, FrameArena.Kind.VEC4))) + (arena.read(token, 3, FrameArena.Kind.VEC4) * arena.read(token, 3, FrameArena.Kind.VEC4)))
+    fun ArenaVec4f.lengthSquared(): Float {
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC4)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val self3 = arena.readAt(o_self, 3)
+        return ((((self0 * self0) + (self1 * self1)) + (self2 * self2)) + (self3 * self3))
+    }
 
     /**
      * Returns the squared straight-line distance to another vector.
@@ -778,7 +1254,19 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @param other the point to measure to
      * @return the squared Euclidean distance
      */
-    fun ArenaVec4f.distanceSquared(other: ArenaVec4f): Float = (((((arena.read(token, 0, FrameArena.Kind.VEC4) - arena.read(other.token, 0, FrameArena.Kind.VEC4)) * (arena.read(token, 0, FrameArena.Kind.VEC4) - arena.read(other.token, 0, FrameArena.Kind.VEC4))) + ((arena.read(token, 1, FrameArena.Kind.VEC4) - arena.read(other.token, 1, FrameArena.Kind.VEC4)) * (arena.read(token, 1, FrameArena.Kind.VEC4) - arena.read(other.token, 1, FrameArena.Kind.VEC4)))) + ((arena.read(token, 2, FrameArena.Kind.VEC4) - arena.read(other.token, 2, FrameArena.Kind.VEC4)) * (arena.read(token, 2, FrameArena.Kind.VEC4) - arena.read(other.token, 2, FrameArena.Kind.VEC4)))) + ((arena.read(token, 3, FrameArena.Kind.VEC4) - arena.read(other.token, 3, FrameArena.Kind.VEC4)) * (arena.read(token, 3, FrameArena.Kind.VEC4) - arena.read(other.token, 3, FrameArena.Kind.VEC4))))
+    fun ArenaVec4f.distanceSquared(other: ArenaVec4f): Float {
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC4)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC4)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val other2 = arena.readAt(o_other, 2)
+        val self3 = arena.readAt(o_self, 3)
+        val other3 = arena.readAt(o_other, 3)
+        return (((((self0 - other0) * (self0 - other0)) + ((self1 - other1) * (self1 - other1))) + ((self2 - other2) * (self2 - other2))) + ((self3 - other3) * (self3 - other3)))
+    }
 
     /**
      * Keeps the vector's direction while scaling its length to one.
@@ -788,11 +1276,21 @@ class FrameScope internal constructor(private val arena: FrameArena) {
      * @return the destination vector
      */
     fun ArenaVec4f.normalize(dest: ArenaVec4f): ArenaVec4f {
-        val r0 = (arena.read(token, 0, FrameArena.Kind.VEC4) * (1.0f / sqrt(((((arena.read(token, 0, FrameArena.Kind.VEC4) * arena.read(token, 0, FrameArena.Kind.VEC4)) + (arena.read(token, 1, FrameArena.Kind.VEC4) * arena.read(token, 1, FrameArena.Kind.VEC4))) + (arena.read(token, 2, FrameArena.Kind.VEC4) * arena.read(token, 2, FrameArena.Kind.VEC4))) + (arena.read(token, 3, FrameArena.Kind.VEC4) * arena.read(token, 3, FrameArena.Kind.VEC4))))))
-        val r1 = (arena.read(token, 1, FrameArena.Kind.VEC4) * (1.0f / sqrt(((((arena.read(token, 0, FrameArena.Kind.VEC4) * arena.read(token, 0, FrameArena.Kind.VEC4)) + (arena.read(token, 1, FrameArena.Kind.VEC4) * arena.read(token, 1, FrameArena.Kind.VEC4))) + (arena.read(token, 2, FrameArena.Kind.VEC4) * arena.read(token, 2, FrameArena.Kind.VEC4))) + (arena.read(token, 3, FrameArena.Kind.VEC4) * arena.read(token, 3, FrameArena.Kind.VEC4))))))
-        val r2 = (arena.read(token, 2, FrameArena.Kind.VEC4) * (1.0f / sqrt(((((arena.read(token, 0, FrameArena.Kind.VEC4) * arena.read(token, 0, FrameArena.Kind.VEC4)) + (arena.read(token, 1, FrameArena.Kind.VEC4) * arena.read(token, 1, FrameArena.Kind.VEC4))) + (arena.read(token, 2, FrameArena.Kind.VEC4) * arena.read(token, 2, FrameArena.Kind.VEC4))) + (arena.read(token, 3, FrameArena.Kind.VEC4) * arena.read(token, 3, FrameArena.Kind.VEC4))))))
-        val r3 = (arena.read(token, 3, FrameArena.Kind.VEC4) * (1.0f / sqrt(((((arena.read(token, 0, FrameArena.Kind.VEC4) * arena.read(token, 0, FrameArena.Kind.VEC4)) + (arena.read(token, 1, FrameArena.Kind.VEC4) * arena.read(token, 1, FrameArena.Kind.VEC4))) + (arena.read(token, 2, FrameArena.Kind.VEC4) * arena.read(token, 2, FrameArena.Kind.VEC4))) + (arena.read(token, 3, FrameArena.Kind.VEC4) * arena.read(token, 3, FrameArena.Kind.VEC4))))))
-        return dest.set(r0, r1, r2, r3)
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC4)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val self3 = arena.readAt(o_self, 3)
+        val r0 = (self0 * (1.0f / sqrt(((((self0 * self0) + (self1 * self1)) + (self2 * self2)) + (self3 * self3)))))
+        val r1 = (self1 * (1.0f / sqrt(((((self0 * self0) + (self1 * self1)) + (self2 * self2)) + (self3 * self3)))))
+        val r2 = (self2 * (1.0f / sqrt(((((self0 * self0) + (self1 * self1)) + (self2 * self2)) + (self3 * self3)))))
+        val r3 = (self3 * (1.0f / sqrt(((((self0 * self0) + (self1 * self1)) + (self2 * self2)) + (self3 * self3)))))
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC4)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        arena.writeAt(o_dest, 3, r3)
+        return dest
     }
     fun ArenaVec4f.normalize(): ArenaVec4f = normalize(this)
 

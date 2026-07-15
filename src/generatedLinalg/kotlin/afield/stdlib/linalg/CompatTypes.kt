@@ -26,33 +26,28 @@ operator fun Vector4fc.times(scalar:Number)=mul(scalar.toFloat(),Vector4f())
 operator fun Vector4fc.div(scalar:Number)=div(scalar.toFloat(),Vector4f())
 operator fun Vector4fc.unaryMinus()=negate(Vector4f())
 
-interface Vector2dc { fun x():Double; fun y():Double }
-class Vector2d(@JvmField var x:Double=0.0,@JvmField var y:Double=0.0):Vector2dc {
-    constructor(other:Vector2dc):this(other.x(),other.y())
-    override fun x()=x;override fun y()=y
-    fun set(x:Double,y:Double):Vector2d{this.x=x;this.y=y;return this}
-}
+// Vector2d, Vector3d, Vector4d and their read interfaces are generated in Vectors.kt from the
+// same operation model as the float vectors; these operators mirror the float operator surface.
+operator fun Vector2dc.plus(other:Vector2dc)=add(other,Vector2d())
+operator fun Vector2dc.minus(other:Vector2dc)=sub(other,Vector2d())
+operator fun Vector2dc.times(other:Vector2dc)=mul(other,Vector2d())
+operator fun Vector2dc.times(scalar:Number)=mul(scalar.toDouble(),Vector2d())
+operator fun Vector2dc.div(scalar:Number)=div(scalar.toDouble(),Vector2d())
+operator fun Vector2dc.unaryMinus()=negate(Vector2d())
 
-interface Vector3dc { fun x():Double;fun y():Double;fun z():Double }
-class Vector3d(@JvmField var x:Double=0.0,@JvmField var y:Double=0.0,@JvmField var z:Double=0.0):Vector3dc {
-    constructor(other:Vector3dc):this(other.x(),other.y(),other.z())
-    override fun x()=x;override fun y()=y;override fun z()=z
-    fun set(x:Double,y:Double,z:Double):Vector3d{this.x=x;this.y=y;this.z=z;return this}
-    fun add(other:Vector3dc)=set(x+other.x(),y+other.y(),z+other.z())
-    fun sub(other:Vector3dc)=set(x-other.x(),y-other.y(),z-other.z())
-    fun mul(s:Double)=set(x*s,y*s,z*s)
-}
+operator fun Vector3dc.plus(other:Vector3dc)=add(other,Vector3d())
+operator fun Vector3dc.minus(other:Vector3dc)=sub(other,Vector3d())
+operator fun Vector3dc.times(other:Vector3dc)=mul(other,Vector3d())
+operator fun Vector3dc.times(scalar:Number)=mul(scalar.toDouble(),Vector3d())
+operator fun Vector3dc.div(scalar:Number)=div(scalar.toDouble(),Vector3d())
+operator fun Vector3dc.unaryMinus()=negate(Vector3d())
 
-interface Vector4dc { fun x():Double;fun y():Double;fun z():Double;fun w():Double }
-class Vector4d(@JvmField var x:Double=0.0,@JvmField var y:Double=0.0,@JvmField var z:Double=0.0,@JvmField var w:Double=0.0):Vector4dc {
-    constructor(other:Vector4dc):this(other.x(),other.y(),other.z(),other.w())
-    override fun x()=x;override fun y()=y;override fun z()=z;override fun w()=w
-    fun set(x:Double,y:Double,z:Double,w:Double):Vector4d{this.x=x;this.y=y;this.z=z;this.w=w;return this}
-}
-
-operator fun Vector3dc.plus(other:Vector3dc)=Vector3d(this).add(other)
-operator fun Vector3dc.minus(other:Vector3dc)=Vector3d(this).sub(other)
-operator fun Vector3dc.times(s:Number)=Vector3d(this).mul(s.toDouble())
+operator fun Vector4dc.plus(other:Vector4dc)=add(other,Vector4d())
+operator fun Vector4dc.minus(other:Vector4dc)=sub(other,Vector4d())
+operator fun Vector4dc.times(other:Vector4dc)=mul(other,Vector4d())
+operator fun Vector4dc.times(scalar:Number)=mul(scalar.toDouble(),Vector4d())
+operator fun Vector4dc.div(scalar:Number)=div(scalar.toDouble(),Vector4d())
+operator fun Vector4dc.unaryMinus()=negate(Vector4d())
 
 interface Matrix2fc { fun m00():Float;fun m01():Float;fun m10():Float;fun m11():Float }
 class Matrix2f(

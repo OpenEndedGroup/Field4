@@ -25,8 +25,9 @@ class FrameArena(
 
     private var storageOwner: Arena = Arena.ofConfined()
     private var storage: MemorySegment
-    private var allocationStamps: IntArray
-    private var allocationKinds: ByteArray
+    // One entry per 16-byte slot: (stamp.toLong() shl 32) or (kind.ordinal + 1). 0 means free.
+    // Packing stamp and kind together keeps the per-access validation to a single array load.
+    private var slotMetadata: LongArray
     private var cursorBytes = 0
     private var resetFloorStamp = 0
     private var closed = false
@@ -51,12 +52,14 @@ class FrameArena(
         require(initialCapacityBytes > 0) { "initial capacity must be positive" }
         val capacity = align16(initialCapacityBytes)
         storage = storageOwner.allocate(capacity.toLong(), ALIGNMENT_BYTES.toLong())
-        allocationStamps = if (ARENA_CHECKS_COMPILED && debugChecks) IntArray(capacity / SLOT_BYTES) else IntArray(0)
-        allocationKinds = if (ARENA_CHECKS_COMPILED && debugChecks) ByteArray(capacity / SLOT_BYTES) else ByteArray(0)
+        slotMetadata = if (ARENA_CHECKS_COMPILED && debugChecks) LongArray(capacity / SLOT_BYTES) else LongArray(0)
     }
 
+    // Cached so the hot allocation path does not call MemorySegment.byteSize() on every allocation.
+    private var capacityBytesCached: Int = storage.byteSize().toInt()
+
     val capacityBytes: Int
-        get() = storage.byteSize().toInt()
+        get() = capacityBytesCached
 
     val usedBytes: Int
         get() = cursorBytes
@@ -109,8 +112,7 @@ class FrameArena(
         if (ARENA_CHECKS_COMPILED && debugChecks) {
             val firstDeadSlot = restoredCursor / SLOT_BYTES
             val lastUsedSlot = (cursorBytes + SLOT_BYTES - 1) / SLOT_BYTES
-            allocationStamps.fill(0, firstDeadSlot, lastUsedSlot)
-            allocationKinds.fill(0, firstDeadSlot, lastUsedSlot)
+            slotMetadata.fill(0L, firstDeadSlot, lastUsedSlot)
         }
         cursorBytes = restoredCursor
         markDepth--
@@ -123,8 +125,7 @@ class FrameArena(
         ensureCapacity(required)
         val stamp = if (ARENA_CHECKS_COMPILED && debugChecks) nextStamp() else 0
         if (ARENA_CHECKS_COMPILED && debugChecks) {
-            allocationStamps[offset / SLOT_BYTES] = stamp
-            allocationKinds[offset / SLOT_BYTES] = (kind.ordinal + 1).toByte()
+            slotMetadata[offset / SLOT_BYTES] = packSlotMetadata(stamp, kind)
         }
         cursorBytes = required
         highWaterBytes = max(highWaterBytes, cursorBytes)
@@ -147,13 +148,18 @@ class FrameArena(
         storage.set(ValueLayout.JAVA_FLOAT, offset.toLong() + component * Float.SIZE_BYTES, value)
     }
 
-    private fun validate(token: Long, component: Int, expectedKind: Kind): Int {
+    /**
+     * Validates a handle once and returns its byte offset. Multi-component operations resolve each
+     * input and the destination a single time, then use [readAt]/[writeAt], instead of re-validating
+     * on every component. The component index is a generated constant in that case, so the
+     * per-component range check is unnecessary.
+     */
+    internal fun resolve(token: Long, expectedKind: Kind): Int {
         val offset = unpackOffset(token)
         if (!ARENA_CHECKS_COMPILED || !debugChecks) return offset
-        checkAccess()
-        require(component in 0 until expectedKind.componentCount) {
-            "component $component outside ${expectedKind.name}"
-        }
+        // Thread-confinement and closed-state are enforced by the confined FFM arena on the get/set
+        // that follows (WrongThreadException / IllegalStateException); this path only checks the
+        // arena-specific logic the segment cannot know: liveness after reset, slot ownership, kind.
         val stamp = unpackStamp(token)
         check(stamp > resetFloorStamp) {
             "${expectedKind.name} handle was used after FrameArena.reset()"
@@ -161,17 +167,33 @@ class FrameArena(
         check(offset >= 0 && offset + SLOT_BYTES <= cursorBytes && offset % SLOT_BYTES == 0) {
             "${expectedKind.name} handle points outside live FrameArena storage: offset=$offset used=$cursorBytes"
         }
-        val currentStamp = allocationStamps[offset / SLOT_BYTES]
+        val metadata = slotMetadata[offset / SLOT_BYTES]
+        val currentStamp = (metadata ushr 32).toInt()
         check(currentStamp == stamp) {
             "${expectedKind.name} handle is stale or belongs to another FrameArena " +
                 "(handleStamp=$stamp, slotStamp=$currentStamp, offset=$offset)"
         }
-        val currentKind = allocationKinds[offset / SLOT_BYTES].toInt() - 1
+        val currentKind = (metadata.toInt() and 0xff) - 1
         check(currentKind == expectedKind.ordinal) {
             "Arena handle type mismatch: expected ${expectedKind.name}, slot contains " +
                 Kind.entries.getOrNull(currentKind)?.name
         }
         return offset
+    }
+
+    internal fun readAt(offset: Int, component: Int): Float =
+        storage.get(ValueLayout.JAVA_FLOAT, offset.toLong() + component * Float.SIZE_BYTES)
+
+    internal fun writeAt(offset: Int, component: Int, value: Float) =
+        storage.set(ValueLayout.JAVA_FLOAT, offset.toLong() + component * Float.SIZE_BYTES, value)
+
+    private fun validate(token: Long, component: Int, expectedKind: Kind): Int {
+        if (ARENA_CHECKS_COMPILED && debugChecks) {
+            require(component in 0 until expectedKind.componentCount) {
+                "component $component outside ${expectedKind.name}"
+            }
+        }
+        return resolve(token, expectedKind)
     }
 
     private fun ensureCapacity(requiredBytes: Int) {
@@ -184,9 +206,9 @@ class FrameArena(
         val oldOwner = storageOwner
         storageOwner = newOwner
         storage = newStorage
+        capacityBytesCached = newCapacity
         if (ARENA_CHECKS_COMPILED && debugChecks) {
-            allocationStamps = allocationStamps.copyOf(newCapacity / SLOT_BYTES)
-            allocationKinds = allocationKinds.copyOf(newCapacity / SLOT_BYTES)
+            slotMetadata = slotMetadata.copyOf(newCapacity / SLOT_BYTES)
         }
         oldOwner.close()
         growthCount++
@@ -241,6 +263,8 @@ class FrameArena(
 
         private fun unpackStamp(token: Long): Int = (token ushr 32).toInt()
         private fun unpackOffset(token: Long): Int = token.toInt()
+        private fun packSlotMetadata(stamp: Int, kind: Kind): Long =
+            (stamp.toLong() shl 32) or (kind.ordinal + 1).toLong()
         private fun align16(value: Int): Int = (value + 15) and -16
     }
 }

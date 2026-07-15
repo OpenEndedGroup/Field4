@@ -7,11 +7,40 @@ enum class Component(val sourceName: String) {
     W("w"),
 }
 
+/**
+ * The scalar element type a vector is built from. The heap vector emitter lowers the same
+ * operation model into 32-bit float and 64-bit double storage; only the literals, the Kotlin
+ * type, the buffer accessors and the bit-fold for hashing differ.
+ */
+enum class ScalarKind(
+    val kotlinType: String,
+    val typeSuffix: String,
+    val zero: String,
+    val one: String,
+    val minusOne: String,
+    val numberConversion: String,
+    val bufferType: String,
+    val bufferPut: String,
+    val byteSize: Int,
+    val bits: Int,
+) {
+    FLOAT("Float", "f", "0.0f", "1.0f", "-1.0f", "toFloat", "FloatBuffer", "putFloat", 4, 32),
+    DOUBLE("Double", "d", "0.0", "1.0", "-1.0", "toDouble", "DoubleBuffer", "putDouble", 8, 64);
+
+    /** Reads a component's raw bits and folds them to an Int for `hashCode`. */
+    fun hashComponent(reference: String): String =
+        if (this == FLOAT) "$reference.toBits()" else "$reference.toBits().hashCode()"
+
+    /** The read-interface name of a sibling vector of the same scalar (for cross-dimension constructors). */
+    fun readName(dimension: Int): String = "Vector$dimension${typeSuffix}c"
+}
+
 data class VectorType(
     val dimension: Int,
     val heapName: String,
     val readName: String,
-    val arenaName: String,
+    val arenaName: String?,
+    val scalar: ScalarKind = ScalarKind.FLOAT,
 ) {
     init {
         require(dimension in 2..4)
@@ -19,7 +48,7 @@ data class VectorType(
 
     val components: List<Component> = Component.entries.take(dimension)
     val factoryName: String = "vec$dimension"
-    val documentation: ApiDocumentation get() = VectorDocumentation.forDimension(dimension)
+    val documentation: ApiDocumentation get() = VectorDocumentation.forDimension(dimension, scalar)
 }
 
 /** Human-facing documentation is model data shared by KDoc and generated reference pages. */
@@ -78,15 +107,18 @@ data class Operation(
 }
 
 data class AlgebraModel(
+    /** Storage-backed vectors (heap, frame arena and segment views). Float only. */
     val vectors: List<VectorType>,
-    val operationsByDimension: Map<Int, List<Operation>>,
+    /** Every vector that gets a heap implementation: the storage-backed set plus double variants. */
+    val heapVectors: List<VectorType>,
+    private val operationsByType: Map<VectorType, List<Operation>>,
 ) {
-    fun operations(type: VectorType): List<Operation> = operationsByDimension.getValue(type.dimension)
+    fun operations(type: VectorType): List<Operation> = operationsByType.getValue(type)
 }
 
 private object VectorDocumentation {
-    fun forDimension(dimension: Int) = ApiDocumentation(
-        summary = "A mutable ${dimension}D vector of 32-bit floating-point components.",
+    fun forDimension(dimension: Int, scalar: ScalarKind) = ApiDocumentation(
+        summary = "A mutable ${dimension}D vector of ${scalar.bits}-bit floating-point components.",
         details = listOf(
             "Treat a vector as an arrow: its components describe a displacement, its length describes magnitude, and normalization keeps direction while making length one.",
             "Use the heap type for ordinary Field code and persistent state. Destination overloads avoid result allocation when a loop needs it.",
@@ -174,11 +206,17 @@ private object OperationDocumentation {
 object FieldAlgebraModel {
     fun build(): AlgebraModel {
         val vectors = listOf(
-            VectorType(2, "Vector2f", "Vector2fc", "ArenaVec2f"),
-            VectorType(3, "Vector3f", "Vector3fc", "ArenaVec3f"),
-            VectorType(4, "Vector4f", "Vector4fc", "ArenaVec4f"),
+            VectorType(2, "Vector2f", "Vector2fc", "ArenaVec2f", ScalarKind.FLOAT),
+            VectorType(3, "Vector3f", "Vector3fc", "ArenaVec3f", ScalarKind.FLOAT),
+            VectorType(4, "Vector4f", "Vector4fc", "ArenaVec4f", ScalarKind.FLOAT),
         )
-        return AlgebraModel(vectors, vectors.associate { it.dimension to operations(it) })
+        val doubleVectors = listOf(
+            VectorType(2, "Vector2d", "Vector2dc", arenaName = null, ScalarKind.DOUBLE),
+            VectorType(3, "Vector3d", "Vector3dc", arenaName = null, ScalarKind.DOUBLE),
+            VectorType(4, "Vector4d", "Vector4dc", arenaName = null, ScalarKind.DOUBLE),
+        )
+        val heapVectors = vectors + doubleVectors
+        return AlgebraModel(vectors, heapVectors, heapVectors.associateWith { operations(it) })
     }
 
     private fun operations(type: VectorType): List<Operation> {
@@ -206,7 +244,7 @@ object FieldAlgebraModel {
         val dot = sum(self.zip(other()).map { (a, b) -> a * b })
         val distanceSquared = sum(self.zip(other()).map { (a, b) -> (a - b) * (a - b) })
         val lengthSquared = sum(self.map { it * it })
-        val inverseLength = Expr.Constant("1.0f") / Expr.Call("sqrt", listOf(lengthSquared))
+        val inverseLength = Expr.Constant(type.scalar.one) / Expr.Call("sqrt", listOf(lengthSquared))
 
         return buildList {
             add(vectorBinary("add", "+"))
@@ -219,7 +257,7 @@ object FieldAlgebraModel {
                 Operation(
                     name = "negate",
                     result = OperationResult.Destination,
-                    componentExpressions = self.map { Expr.Constant("-1.0f") * it },
+                    componentExpressions = self.map { Expr.Constant(type.scalar.minusOne) * it },
                 )
             )
             add(

@@ -7,14 +7,15 @@ class KotlinEmitter(
     fun emitHeapVectors(): String = buildString {
         appendHeader("afield.stdlib.linalg")
         appendLine("import java.nio.ByteBuffer")
+        appendLine("import java.nio.DoubleBuffer")
         appendLine("import java.nio.FloatBuffer")
         appendLine("import kotlin.math.*")
         appendLine()
-        model.vectors.forEachIndexed { index, type ->
+        model.heapVectors.forEachIndexed { index, type ->
             emitReadInterface(type)
             appendLine()
             emitMutableClass(type)
-            if (index != model.vectors.lastIndex) appendLine()
+            if (index != model.heapVectors.lastIndex) appendLine()
         }
     }
 
@@ -272,18 +273,19 @@ class KotlinEmitter(
     }
 
     private fun StringBuilder.emitReadInterface(type: VectorType) {
+        val scalar = type.scalar.kotlinType
         emitKDoc(
             type.documentation.copy(
-                summary = "A read-only view of a ${type.dimension}D vector of 32-bit floating-point components.",
+                summary = "A read-only view of a ${type.dimension}D vector of ${type.scalar.bits}-bit floating-point components.",
                 details = type.documentation.details + "Methods with a dest parameter write into that destination and do not allocate a result.",
             )
         )
         appendLine("interface ${type.readName} {")
         type.components.forEach { component ->
-            appendLine("    fun ${component.sourceName}(): Float")
+            appendLine("    fun ${component.sourceName}(): $scalar")
         }
         appendLine()
-        appendLine("    operator fun get(component: Int): Float = when (component) {")
+        appendLine("    operator fun get(component: Int): $scalar = when (component) {")
         type.components.forEachIndexed { index, component ->
             appendLine("        $index -> ${component.sourceName}()")
         }
@@ -295,15 +297,15 @@ class KotlinEmitter(
             appendLine()
         }
         emitKDoc(ApiDocumentation("Returns this vector's Euclidean length (magnitude)."), "    ")
-        appendLine("    fun length(): Float = sqrt(lengthSquared())")
+        appendLine("    fun length(): $scalar = sqrt(lengthSquared())")
         emitKDoc(ApiDocumentation("Returns the straight-line distance to another vector.", parameters = mapOf("other" to "the point to measure to")), "    ")
-        appendLine("    fun distance(other: ${type.readName}): Float = sqrt(distanceSquared(other))")
+        appendLine("    fun distance(other: ${type.readName}): $scalar = sqrt(distanceSquared(other))")
         emitKDoc(ApiDocumentation("Reports whether every component is finite."), "    ")
         appendLine("    fun isFinite(): Boolean = ${type.components.joinToString(" && ") { "${it.sourceName}().isFinite()" }}")
-        appendLine("    fun equals(other: ${type.readName}, delta: Float): Boolean =")
+        appendLine("    fun equals(other: ${type.readName}, delta: $scalar): Boolean =")
         appendLine("        ${type.components.joinToString(" && ") { "abs(${it.sourceName}() - other.${it.sourceName}()) <= delta" }}")
         appendLine()
-        appendLine("    fun get(buffer: FloatBuffer): FloatBuffer {")
+        appendLine("    fun get(buffer: ${type.scalar.bufferType}): ${type.scalar.bufferType} {")
         appendLine("        val index = buffer.position()")
         type.components.forEachIndexed { index, component ->
             appendLine("        buffer.put(index + $index, ${component.sourceName}())")
@@ -313,7 +315,7 @@ class KotlinEmitter(
         appendLine()
         appendLine("    fun get(index: Int, buffer: ByteBuffer): ByteBuffer {")
         type.components.forEachIndexed { index, component ->
-            appendLine("        buffer.putFloat(index + ${index * 4}, ${component.sourceName}())")
+            appendLine("        buffer.${type.scalar.bufferPut}(index + ${index * type.scalar.byteSize}, ${component.sourceName}())")
         }
         appendLine("        return buffer")
         appendLine("    }")
@@ -325,7 +327,7 @@ class KotlinEmitter(
             orderedParameters(operation).forEach {
                 when (it) {
                     is VectorParameter -> add("${it.name}: ${type.readName}")
-                    is ScalarParameter -> add("${it.name}: Float")
+                    is ScalarParameter -> add("${it.name}: ${type.scalar.kotlinType}")
                 }
             }
             if (operation.result == OperationResult.Destination) add("dest: ${type.heapName}")
@@ -341,44 +343,46 @@ class KotlinEmitter(
                 appendLine("    }")
             }
             is OperationResult.Scalar ->
-                appendLine("    fun ${operation.name}($parameters): Float = ${renderHeap(result.expression)}")
+                appendLine("    fun ${operation.name}($parameters): ${type.scalar.kotlinType} = ${renderHeap(result.expression)}")
         }
     }
 
     private fun StringBuilder.emitMutableClass(type: VectorType) {
-        val zeroes = List(type.dimension) { "0.0f" }
+        val scalar = type.scalar.kotlinType
+        val zero = type.scalar.zero
+        val zeroes = List(type.dimension) { zero }
         emitKDoc(type.documentation)
         appendLine("class ${type.heapName}() : ${type.readName}, Cloneable {")
-        type.components.forEach { component -> appendLine("    @JvmField var ${component.sourceName}: Float = 0.0f") }
+        type.components.forEach { component -> appendLine("    @JvmField var ${component.sourceName}: $scalar = $zero") }
         appendLine()
-        appendLine("    constructor(s: Float) : this() { set(${List(type.dimension) { "s" }.joinToString()}) }")
+        appendLine("    constructor(s: $scalar) : this() { set(${List(type.dimension) { "s" }.joinToString()}) }")
         appendLine(
-            "    constructor(${type.components.joinToString { "${it.sourceName}: Float" }}) : this() { " +
+            "    constructor(${type.components.joinToString { "${it.sourceName}: $scalar" }}) : this() { " +
                 "set(${type.components.joinToString { it.sourceName }}) }"
         )
         appendLine("    constructor(other: ${type.readName}) : this() { set(other) }")
         if (type.dimension == 3) {
-            appendLine("    constructor(xy: Vector2fc, z: Float) : this(xy.x(), xy.y(), z)")
+            appendLine("    constructor(xy: ${type.scalar.readName(2)}, z: $scalar) : this(xy.x(), xy.y(), z)")
         }
         if (type.dimension == 4) {
-            appendLine("    constructor(xyz: Vector3fc, w: Float) : this(xyz.x(), xyz.y(), xyz.z(), w)")
-            appendLine("    constructor(xy: Vector2fc, z: Float, w: Float) : this(xy.x(), xy.y(), z, w)")
+            appendLine("    constructor(xyz: ${type.scalar.readName(3)}, w: $scalar) : this(xyz.x(), xyz.y(), xyz.z(), w)")
+            appendLine("    constructor(xy: ${type.scalar.readName(2)}, z: $scalar, w: $scalar) : this(xy.x(), xy.y(), z, w)")
         }
         appendLine()
         type.components.forEach { component ->
-            appendLine("    override fun ${component.sourceName}(): Float = ${component.sourceName}")
+            appendLine("    override fun ${component.sourceName}(): $scalar = ${component.sourceName}")
         }
         appendLine()
-        appendLine("    operator fun set(component: Int, value: Float) {")
+        appendLine("    operator fun set(component: Int, value: $scalar) {")
         appendLine("        when (component) {")
         type.components.forEachIndexed { index, component -> appendLine("            $index -> ${component.sourceName} = value") }
         appendLine("            else -> throw IndexOutOfBoundsException(\"component \$component outside 0..${type.dimension - 1}\")")
         appendLine("        }")
         appendLine("    }")
         appendLine()
-        appendLine("    fun set(s: Float): ${type.heapName} = set(${List(type.dimension) { "s" }.joinToString()})")
+        appendLine("    fun set(s: $scalar): ${type.heapName} = set(${List(type.dimension) { "s" }.joinToString()})")
         appendLine(
-            "    fun set(${type.components.joinToString { "${it.sourceName}: Float" }}): ${type.heapName} {"
+            "    fun set(${type.components.joinToString { "${it.sourceName}: $scalar" }}): ${type.heapName} {"
         )
         type.components.forEach { appendLine("        this.${it.sourceName} = ${it.sourceName}") }
         appendLine("        return this")
@@ -389,15 +393,15 @@ class KotlinEmitter(
         )
         appendLine("    fun zero(): ${type.heapName} = set(${zeroes.joinToString()})")
         appendLine(
-            "    fun add(${type.components.joinToString { "${it.sourceName}: Float" }}): ${type.heapName} = " +
+            "    fun add(${type.components.joinToString { "${it.sourceName}: $scalar" }}): ${type.heapName} = " +
                 "set(${type.components.joinToString { "this.${it.sourceName} + ${it.sourceName}" }})"
         )
         appendLine(
-            "    fun sub(${type.components.joinToString { "${it.sourceName}: Float" }}): ${type.heapName} = " +
+            "    fun sub(${type.components.joinToString { "${it.sourceName}: $scalar" }}): ${type.heapName} = " +
                 "set(${type.components.joinToString { "this.${it.sourceName} - ${it.sourceName}" }})"
         )
         appendLine(
-            "    fun mul(${type.components.joinToString { "${it.sourceName}: Float" }}): ${type.heapName} = " +
+            "    fun mul(${type.components.joinToString { "${it.sourceName}: $scalar" }}): ${type.heapName} = " +
                 "set(${type.components.joinToString { "this.${it.sourceName} * ${it.sourceName}" }})"
         )
         appendLine()
@@ -406,7 +410,7 @@ class KotlinEmitter(
                 orderedParameters(operation).forEach {
                     when (it) {
                         is VectorParameter -> add("${it.name}: ${type.readName}")
-                        is ScalarParameter -> add("${it.name}: Float")
+                        is ScalarParameter -> add("${it.name}: ${type.scalar.kotlinType}")
                     }
                 }
             }.joinToString(", ")
@@ -436,7 +440,7 @@ class KotlinEmitter(
         appendLine("    override fun equals(other: Any?): Boolean = other is ${type.readName} && ${type.components.joinToString(" && ") { "${it.sourceName}.toBits() == other.${it.sourceName}().toBits()" }}")
         appendLine("    override fun hashCode(): Int {")
         appendLine("        var result = 1")
-        type.components.forEach { appendLine("        result = 31 * result + ${it.sourceName}.toBits()") }
+        type.components.forEach { appendLine("        result = 31 * result + ${type.scalar.hashComponent(it.sourceName)}") }
         appendLine("        return result")
         appendLine("    }")
         appendLine("    override fun toString(): String = \"(${type.components.joinToString(", ") { "\$${it.sourceName}" }})\"")
@@ -446,11 +450,11 @@ class KotlinEmitter(
         appendLine("         * Constructs a ${type.dimension}D vector from a typed Kotlin collection literal.")
         appendLine("         *")
         appendLine("         * Example: `val value: ${type.heapName} = [${type.components.indices.joinToString()}]`.")
-        appendLine("         * Numeric components are converted to Float, matching Field's `vec(...)` helper.")
+        appendLine("         * Numeric components are converted to ${type.scalar.kotlinType}, matching Field's `vec(...)` helper.")
         appendLine("         */")
         appendLine("        operator fun of(vararg components: Number): ${type.heapName} {")
         appendLine("            require(components.size == ${type.dimension}) { \"${type.heapName} literal requires ${type.dimension} components, got \${components.size}\" }")
-        appendLine("            return ${type.heapName}(${type.components.indices.joinToString { "components[$it].toFloat()" }})")
+        appendLine("            return ${type.heapName}(${type.components.indices.joinToString { "components[$it].${type.scalar.numberConversion}()" }})")
         appendLine("        }")
         appendLine("    }")
         appendLine("}")
@@ -516,14 +520,37 @@ class KotlinEmitter(
             }
             if (operation.result == OperationResult.Destination) add("dest: ${type.arenaName}")
         }.joinToString(", ")
+        // Each handle is validated once per operation via arena.resolve(...); component reads and
+        // writes then use the unchecked readAt/writeAt. This keeps the arena's use-after-reset,
+        // ownership and kind guarantees while removing per-component re-validation from the hot path.
+        fun StringBuilder.emitResolves() {
+            appendLine("        val o_self = arena.resolve(token, $kind)")
+            operation.vectorParameters.forEach {
+                appendLine("        val o_${it.name} = arena.resolve(${it.name}.token, $kind)")
+            }
+        }
+        // Read each referenced component exactly once. The same component often appears in several
+        // result lanes (a shared length term, a cross product), so hoisting reads collapses repeated
+        // MemorySegment loads the JIT does not reliably common up on its own.
+        fun StringBuilder.emitReadLocals(expressions: List<Expr>) {
+            collectReads(expressions).forEach { (source, component) ->
+                appendLine("        val ${localReadName(source, component)} = arena.readAt(${offsetVarName(source)}, ${component.ordinal})")
+            }
+        }
         emitKDoc(documentationFor(operation), "    ")
         when (val result = operation.result) {
             OperationResult.Destination -> {
                 appendLine("    fun ${type.arenaName}.${operation.name}($parameters): ${type.arenaName} {")
+                emitResolves()
+                emitReadLocals(operation.componentExpressions)
                 operation.componentExpressions.forEachIndexed { index, expression ->
-                    appendLine("        val r$index = ${renderArena(expression, kind)}")
+                    appendLine("        val r$index = ${renderArenaLocals(expression)}")
                 }
-                appendLine("        return dest.set(${operation.componentExpressions.indices.joinToString { "r$it" }})")
+                appendLine("        val o_dest = arena.resolve(dest.token, $kind)")
+                operation.componentExpressions.indices.forEach { index ->
+                    appendLine("        arena.writeAt(o_dest, $index, r$index)")
+                }
+                appendLine("        return dest")
                 appendLine("    }")
                 val receiverParameters = buildList {
                     orderedParameters(operation).forEach {
@@ -546,8 +573,13 @@ class KotlinEmitter(
                 }.joinToString(", ")
                 appendLine("    fun ${type.arenaName}.${operation.name}($receiverParameters): ${type.arenaName} = ${operation.name}($receiverArguments)")
             }
-            is OperationResult.Scalar ->
-                appendLine("    fun ${type.arenaName}.${operation.name}($parameters): Float = ${renderArena(result.expression, kind)}")
+            is OperationResult.Scalar -> {
+                appendLine("    fun ${type.arenaName}.${operation.name}($parameters): Float {")
+                emitResolves()
+                emitReadLocals(listOf(result.expression))
+                appendLine("        return ${renderArenaLocals(result.expression)}")
+                appendLine("    }")
+            }
         }
     }
 
@@ -636,13 +668,34 @@ class KotlinEmitter(
         }
     }
 
-    private fun renderArena(expression: Expr, kind: String): String = render(expression) { source, component ->
-        val token = when (source) {
-            ValueSource.Self -> "token"
-            is ValueSource.Parameter -> "${source.name}.token"
-        }
-        "arena.read($token, ${component.ordinal}, $kind)"
+    private fun offsetVarName(source: ValueSource): String = when (source) {
+        ValueSource.Self -> "o_self"
+        is ValueSource.Parameter -> "o_${source.name}"
     }
+
+    private fun localReadName(source: ValueSource, component: Component): String = when (source) {
+        ValueSource.Self -> "self${component.ordinal}"
+        is ValueSource.Parameter -> "${source.name}${component.ordinal}"
+    }
+
+    /** Distinct (source, component) reads referenced by the expressions, in first-seen order. */
+    private fun collectReads(expressions: List<Expr>): List<Pair<ValueSource, Component>> {
+        val seen = LinkedHashSet<Pair<ValueSource, Component>>()
+        fun walk(expression: Expr) {
+            when (expression) {
+                is Expr.Read -> seen.add(expression.source to expression.component)
+                is Expr.Binary -> { walk(expression.left); walk(expression.right) }
+                is Expr.Call -> expression.arguments.forEach(::walk)
+                is Expr.ScalarParameter -> {}
+                is Expr.Constant -> {}
+            }
+        }
+        expressions.forEach(::walk)
+        return seen.toList()
+    }
+
+    private fun renderArenaLocals(expression: Expr): String =
+        render(expression) { source, component -> localReadName(source, component) }
 
     private fun renderSegment(expression: Expr): String = render(expression) { source, component ->
         val token = when (source) {

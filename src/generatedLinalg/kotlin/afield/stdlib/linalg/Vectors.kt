@@ -4,6 +4,7 @@
 package afield.stdlib.linalg
 
 import java.nio.ByteBuffer
+import java.nio.DoubleBuffer
 import java.nio.FloatBuffer
 import kotlin.math.*
 
@@ -1333,6 +1334,1336 @@ class Vector4f() : Vector4fc, Cloneable {
         operator fun of(vararg components: Number): Vector4f {
             require(components.size == 4) { "Vector4f literal requires 4 components, got ${components.size}" }
             return Vector4f(components[0].toFloat(), components[1].toFloat(), components[2].toFloat(), components[3].toFloat())
+        }
+    }
+}
+
+/**
+ * A read-only view of a 2D vector of 64-bit floating-point components.
+ *
+ * Treat a vector as an arrow: its components describe a displacement, its length describes magnitude, and normalization keeps direction while making length one.
+ *
+ * Use the heap type for ordinary Field code and persistent state. Destination overloads avoid result allocation when a loop needs it.
+ *
+ * Methods with a dest parameter write into that destination and do not allocate a result.
+ */
+interface Vector2dc {
+    fun x(): Double
+    fun y(): Double
+
+    operator fun get(component: Int): Double = when (component) {
+        0 -> x()
+        1 -> y()
+        else -> throw IndexOutOfBoundsException("component $component outside 0..1")
+    }
+
+    /**
+     * Adds another vector component by component.
+     * @param other the vector to add
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun add(other: Vector2dc, dest: Vector2d): Vector2d {
+        val r0 = (x() + other.x())
+        val r1 = (y() + other.y())
+        return dest.set(r0, r1)
+    }
+
+    /**
+     * Subtracts another vector component by component.
+     * @param other the vector to subtract
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun sub(other: Vector2dc, dest: Vector2d): Vector2d {
+        val r0 = (x() - other.x())
+        val r1 = (y() - other.y())
+        return dest.set(r0, r1)
+    }
+
+    /**
+     * Multiplies corresponding components.
+     * @param other the component-wise multiplier
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun mul(other: Vector2dc, dest: Vector2d): Vector2d {
+        val r0 = (x() * other.x())
+        val r1 = (y() * other.y())
+        return dest.set(r0, r1)
+    }
+
+    /**
+     * Divides corresponding components.
+     * @param other the component-wise divisor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun div(other: Vector2dc, dest: Vector2d): Vector2d {
+        val r0 = (x() / other.x())
+        val r1 = (y() / other.y())
+        return dest.set(r0, r1)
+    }
+
+    /**
+     * Scales every component by a scalar.
+     *
+     * Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction.
+     * @param scalar the scale factor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun mul(scalar: Double, dest: Vector2d): Vector2d {
+        val r0 = (x() * scalar)
+        val r1 = (y() * scalar)
+        return dest.set(r0, r1)
+    }
+
+    /**
+     * Divides every component by a scalar.
+     * @param scalar the divisor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun div(scalar: Double, dest: Vector2d): Vector2d {
+        val r0 = (x() / scalar)
+        val r1 = (y() / scalar)
+        return dest.set(r0, r1)
+    }
+
+    /**
+     * Reverses the vector by negating every component.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun negate(dest: Vector2d): Vector2d {
+        val r0 = (-1.0 * x())
+        val r1 = (-1.0 * y())
+        return dest.set(r0, r1)
+    }
+
+    /**
+     * Replaces every component with its absolute value.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun absolute(dest: Vector2d): Vector2d {
+        val r0 = abs(x())
+        val r1 = abs(y())
+        return dest.set(r0, r1)
+    }
+
+    /**
+     * Selects the smaller value independently in each component.
+     * @param other the other component values
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun min(other: Vector2dc, dest: Vector2d): Vector2d {
+        val r0 = min(x(), other.x())
+        val r1 = min(y(), other.y())
+        return dest.set(r0, r1)
+    }
+
+    /**
+     * Selects the larger value independently in each component.
+     * @param other the other component values
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun max(other: Vector2dc, dest: Vector2d): Vector2d {
+        val r0 = max(x(), other.x())
+        val r1 = max(y(), other.y())
+        return dest.set(r0, r1)
+    }
+
+    /**
+     * Linearly interpolates from this vector toward another.
+     *
+     * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     * @param other the endpoint
+     * @param t the interpolation amount
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun lerp(other: Vector2dc, t: Double, dest: Vector2d): Vector2d {
+        val r0 = (x() + ((other.x() - x()) * t))
+        val r1 = (y() + ((other.y() - y()) * t))
+        return dest.set(r0, r1)
+    }
+
+    /**
+     * Computes this + other * scalar component by component.
+     *
+     * This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration.
+     * @param other the vector to scale and add
+     * @param scalar the scale factor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun fma(scalar: Double, other: Vector2dc, dest: Vector2d): Vector2d {
+        val r0 = (x() + (other.x() * scalar))
+        val r1 = (y() + (other.y() * scalar))
+        return dest.set(r0, r1)
+    }
+
+    /**
+     * Measures how strongly two vectors point in the same direction.
+     *
+     * Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them.
+     * @param other the vector to compare
+     * @return the sum of the products of corresponding components
+     */
+    fun dot(other: Vector2dc): Double = ((x() * other.x()) + (y() * other.y()))
+
+    /**
+     * Returns the squared length of this vector.
+     *
+     * Use this for comparisons when you do not need the actual distance; it avoids a square root.
+     * @return the sum of the squared components
+     */
+    fun lengthSquared(): Double = ((x() * x()) + (y() * y()))
+
+    /**
+     * Returns the squared straight-line distance to another vector.
+     *
+     * Use this for nearest/farthest comparisons when you do not need the actual distance.
+     * @param other the point to measure to
+     * @return the squared Euclidean distance
+     */
+    fun distanceSquared(other: Vector2dc): Double = (((x() - other.x()) * (x() - other.x())) + ((y() - other.y()) * (y() - other.y())))
+
+    /**
+     * Keeps the vector's direction while scaling its length to one.
+     *
+     * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun normalize(dest: Vector2d): Vector2d {
+        val r0 = (x() * (1.0 / sqrt(((x() * x()) + (y() * y())))))
+        val r1 = (y() * (1.0 / sqrt(((x() * x()) + (y() * y())))))
+        return dest.set(r0, r1)
+    }
+
+    /**
+     * Returns this vector's Euclidean length (magnitude).
+     */
+    fun length(): Double = sqrt(lengthSquared())
+    /**
+     * Returns the straight-line distance to another vector.
+     * @param other the point to measure to
+     */
+    fun distance(other: Vector2dc): Double = sqrt(distanceSquared(other))
+    /**
+     * Reports whether every component is finite.
+     */
+    fun isFinite(): Boolean = x().isFinite() && y().isFinite()
+    fun equals(other: Vector2dc, delta: Double): Boolean =
+        abs(x() - other.x()) <= delta && abs(y() - other.y()) <= delta
+
+    fun get(buffer: DoubleBuffer): DoubleBuffer {
+        val index = buffer.position()
+        buffer.put(index + 0, x())
+        buffer.put(index + 1, y())
+        return buffer
+    }
+
+    fun get(index: Int, buffer: ByteBuffer): ByteBuffer {
+        buffer.putDouble(index + 0, x())
+        buffer.putDouble(index + 8, y())
+        return buffer
+    }
+}
+
+/**
+ * A mutable 2D vector of 64-bit floating-point components.
+ *
+ * Treat a vector as an arrow: its components describe a displacement, its length describes magnitude, and normalization keeps direction while making length one.
+ *
+ * Use the heap type for ordinary Field code and persistent state. Destination overloads avoid result allocation when a loop needs it.
+ */
+class Vector2d() : Vector2dc, Cloneable {
+    @JvmField var x: Double = 0.0
+    @JvmField var y: Double = 0.0
+
+    constructor(s: Double) : this() { set(s, s) }
+    constructor(x: Double, y: Double) : this() { set(x, y) }
+    constructor(other: Vector2dc) : this() { set(other) }
+
+    override fun x(): Double = x
+    override fun y(): Double = y
+
+    operator fun set(component: Int, value: Double) {
+        when (component) {
+            0 -> x = value
+            1 -> y = value
+            else -> throw IndexOutOfBoundsException("component $component outside 0..1")
+        }
+    }
+
+    fun set(s: Double): Vector2d = set(s, s)
+    fun set(x: Double, y: Double): Vector2d {
+        this.x = x
+        this.y = y
+        return this
+    }
+    fun set(other: Vector2dc): Vector2d = set(other.x(), other.y())
+    fun zero(): Vector2d = set(0.0, 0.0)
+    fun add(x: Double, y: Double): Vector2d = set(this.x + x, this.y + y)
+    fun sub(x: Double, y: Double): Vector2d = set(this.x - x, this.y - y)
+    fun mul(x: Double, y: Double): Vector2d = set(this.x * x, this.y * y)
+
+    /**
+     * Adds another vector component by component.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the vector to add
+     * @return this vector
+     */
+    fun add(other: Vector2dc): Vector2d = add(other, this)
+    /**
+     * Subtracts another vector component by component.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the vector to subtract
+     * @return this vector
+     */
+    fun sub(other: Vector2dc): Vector2d = sub(other, this)
+    /**
+     * Multiplies corresponding components.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the component-wise multiplier
+     * @return this vector
+     */
+    fun mul(other: Vector2dc): Vector2d = mul(other, this)
+    /**
+     * Divides corresponding components.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the component-wise divisor
+     * @return this vector
+     */
+    operator fun div(other: Vector2dc): Vector2d = div(other, this)
+    /**
+     * Scales every component by a scalar.
+     *
+     * Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the scale factor
+     * @return this vector
+     */
+    fun mul(scalar: Double): Vector2d = mul(scalar, this)
+    /**
+     * Divides every component by a scalar.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the divisor
+     * @return this vector
+     */
+    operator fun div(scalar: Double): Vector2d = div(scalar, this)
+    /**
+     * Reverses the vector by negating every component.
+     *
+     * This overload writes the result back into this vector.
+     * @return this vector
+     */
+    fun negate(): Vector2d = negate(this)
+    /**
+     * Replaces every component with its absolute value.
+     *
+     * This overload writes the result back into this vector.
+     * @return this vector
+     */
+    fun absolute(): Vector2d = absolute(this)
+    /**
+     * Selects the smaller value independently in each component.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the other component values
+     * @return this vector
+     */
+    fun min(other: Vector2dc): Vector2d = min(other, this)
+    /**
+     * Selects the larger value independently in each component.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the other component values
+     * @return this vector
+     */
+    fun max(other: Vector2dc): Vector2d = max(other, this)
+    /**
+     * Linearly interpolates from this vector toward another.
+     *
+     * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the endpoint
+     * @param t the interpolation amount
+     * @return this vector
+     */
+    fun lerp(other: Vector2dc, t: Double): Vector2d = lerp(other, t, this)
+    /**
+     * Computes this + other * scalar component by component.
+     *
+     * This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the vector to scale and add
+     * @param scalar the scale factor
+     * @return this vector
+     */
+    fun fma(scalar: Double, other: Vector2dc): Vector2d = fma(scalar, other, this)
+    /**
+     * Keeps the vector's direction while scaling its length to one.
+     *
+     * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
+     *
+     * This overload writes the result back into this vector.
+     * @return this vector
+     */
+    fun normalize(): Vector2d = normalize(this)
+
+    public override fun clone(): Vector2d = Vector2d(this)
+    override fun equals(other: Any?): Boolean = other is Vector2dc && x.toBits() == other.x().toBits() && y.toBits() == other.y().toBits()
+    override fun hashCode(): Int {
+        var result = 1
+        result = 31 * result + x.toBits().hashCode()
+        result = 31 * result + y.toBits().hashCode()
+        return result
+    }
+    override fun toString(): String = "($x, $y)"
+
+    companion object {
+        /**
+         * Constructs a 2D vector from a typed Kotlin collection literal.
+         *
+         * Example: `val value: Vector2d = [0, 1]`.
+         * Numeric components are converted to Double, matching Field's `vec(...)` helper.
+         */
+        operator fun of(vararg components: Number): Vector2d {
+            require(components.size == 2) { "Vector2d literal requires 2 components, got ${components.size}" }
+            return Vector2d(components[0].toDouble(), components[1].toDouble())
+        }
+    }
+}
+
+/**
+ * A read-only view of a 3D vector of 64-bit floating-point components.
+ *
+ * Treat a vector as an arrow: its components describe a displacement, its length describes magnitude, and normalization keeps direction while making length one.
+ *
+ * Use the heap type for ordinary Field code and persistent state. Destination overloads avoid result allocation when a loop needs it.
+ *
+ * Methods with a dest parameter write into that destination and do not allocate a result.
+ */
+interface Vector3dc {
+    fun x(): Double
+    fun y(): Double
+    fun z(): Double
+
+    operator fun get(component: Int): Double = when (component) {
+        0 -> x()
+        1 -> y()
+        2 -> z()
+        else -> throw IndexOutOfBoundsException("component $component outside 0..2")
+    }
+
+    /**
+     * Adds another vector component by component.
+     * @param other the vector to add
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun add(other: Vector3dc, dest: Vector3d): Vector3d {
+        val r0 = (x() + other.x())
+        val r1 = (y() + other.y())
+        val r2 = (z() + other.z())
+        return dest.set(r0, r1, r2)
+    }
+
+    /**
+     * Subtracts another vector component by component.
+     * @param other the vector to subtract
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun sub(other: Vector3dc, dest: Vector3d): Vector3d {
+        val r0 = (x() - other.x())
+        val r1 = (y() - other.y())
+        val r2 = (z() - other.z())
+        return dest.set(r0, r1, r2)
+    }
+
+    /**
+     * Multiplies corresponding components.
+     * @param other the component-wise multiplier
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun mul(other: Vector3dc, dest: Vector3d): Vector3d {
+        val r0 = (x() * other.x())
+        val r1 = (y() * other.y())
+        val r2 = (z() * other.z())
+        return dest.set(r0, r1, r2)
+    }
+
+    /**
+     * Divides corresponding components.
+     * @param other the component-wise divisor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun div(other: Vector3dc, dest: Vector3d): Vector3d {
+        val r0 = (x() / other.x())
+        val r1 = (y() / other.y())
+        val r2 = (z() / other.z())
+        return dest.set(r0, r1, r2)
+    }
+
+    /**
+     * Scales every component by a scalar.
+     *
+     * Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction.
+     * @param scalar the scale factor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun mul(scalar: Double, dest: Vector3d): Vector3d {
+        val r0 = (x() * scalar)
+        val r1 = (y() * scalar)
+        val r2 = (z() * scalar)
+        return dest.set(r0, r1, r2)
+    }
+
+    /**
+     * Divides every component by a scalar.
+     * @param scalar the divisor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun div(scalar: Double, dest: Vector3d): Vector3d {
+        val r0 = (x() / scalar)
+        val r1 = (y() / scalar)
+        val r2 = (z() / scalar)
+        return dest.set(r0, r1, r2)
+    }
+
+    /**
+     * Reverses the vector by negating every component.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun negate(dest: Vector3d): Vector3d {
+        val r0 = (-1.0 * x())
+        val r1 = (-1.0 * y())
+        val r2 = (-1.0 * z())
+        return dest.set(r0, r1, r2)
+    }
+
+    /**
+     * Replaces every component with its absolute value.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun absolute(dest: Vector3d): Vector3d {
+        val r0 = abs(x())
+        val r1 = abs(y())
+        val r2 = abs(z())
+        return dest.set(r0, r1, r2)
+    }
+
+    /**
+     * Selects the smaller value independently in each component.
+     * @param other the other component values
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun min(other: Vector3dc, dest: Vector3d): Vector3d {
+        val r0 = min(x(), other.x())
+        val r1 = min(y(), other.y())
+        val r2 = min(z(), other.z())
+        return dest.set(r0, r1, r2)
+    }
+
+    /**
+     * Selects the larger value independently in each component.
+     * @param other the other component values
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun max(other: Vector3dc, dest: Vector3d): Vector3d {
+        val r0 = max(x(), other.x())
+        val r1 = max(y(), other.y())
+        val r2 = max(z(), other.z())
+        return dest.set(r0, r1, r2)
+    }
+
+    /**
+     * Linearly interpolates from this vector toward another.
+     *
+     * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     * @param other the endpoint
+     * @param t the interpolation amount
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun lerp(other: Vector3dc, t: Double, dest: Vector3d): Vector3d {
+        val r0 = (x() + ((other.x() - x()) * t))
+        val r1 = (y() + ((other.y() - y()) * t))
+        val r2 = (z() + ((other.z() - z()) * t))
+        return dest.set(r0, r1, r2)
+    }
+
+    /**
+     * Computes this + other * scalar component by component.
+     *
+     * This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration.
+     * @param other the vector to scale and add
+     * @param scalar the scale factor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun fma(scalar: Double, other: Vector3dc, dest: Vector3d): Vector3d {
+        val r0 = (x() + (other.x() * scalar))
+        val r1 = (y() + (other.y() * scalar))
+        val r2 = (z() + (other.z() * scalar))
+        return dest.set(r0, r1, r2)
+    }
+
+    /**
+     * Measures how strongly two vectors point in the same direction.
+     *
+     * Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them.
+     * @param other the vector to compare
+     * @return the sum of the products of corresponding components
+     */
+    fun dot(other: Vector3dc): Double = (((x() * other.x()) + (y() * other.y())) + (z() * other.z()))
+
+    /**
+     * Returns the squared length of this vector.
+     *
+     * Use this for comparisons when you do not need the actual distance; it avoids a square root.
+     * @return the sum of the squared components
+     */
+    fun lengthSquared(): Double = (((x() * x()) + (y() * y())) + (z() * z()))
+
+    /**
+     * Returns the squared straight-line distance to another vector.
+     *
+     * Use this for nearest/farthest comparisons when you do not need the actual distance.
+     * @param other the point to measure to
+     * @return the squared Euclidean distance
+     */
+    fun distanceSquared(other: Vector3dc): Double = ((((x() - other.x()) * (x() - other.x())) + ((y() - other.y()) * (y() - other.y()))) + ((z() - other.z()) * (z() - other.z())))
+
+    /**
+     * Keeps the vector's direction while scaling its length to one.
+     *
+     * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun normalize(dest: Vector3d): Vector3d {
+        val r0 = (x() * (1.0 / sqrt((((x() * x()) + (y() * y())) + (z() * z())))))
+        val r1 = (y() * (1.0 / sqrt((((x() * x()) + (y() * y())) + (z() * z())))))
+        val r2 = (z() * (1.0 / sqrt((((x() * x()) + (y() * y())) + (z() * z())))))
+        return dest.set(r0, r1, r2)
+    }
+
+    /**
+     * Returns a vector perpendicular to this vector and another 3D vector.
+     *
+     * The direction follows the right-hand rule. Its length is the area of the parallelogram spanned by the inputs, so parallel vectors produce zero.
+     * @param other the second 3D direction
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun cross(other: Vector3dc, dest: Vector3d): Vector3d {
+        val r0 = ((y() * other.z()) - (z() * other.y()))
+        val r1 = ((z() * other.x()) - (x() * other.z()))
+        val r2 = ((x() * other.y()) - (y() * other.x()))
+        return dest.set(r0, r1, r2)
+    }
+
+    /**
+     * Returns this vector's Euclidean length (magnitude).
+     */
+    fun length(): Double = sqrt(lengthSquared())
+    /**
+     * Returns the straight-line distance to another vector.
+     * @param other the point to measure to
+     */
+    fun distance(other: Vector3dc): Double = sqrt(distanceSquared(other))
+    /**
+     * Reports whether every component is finite.
+     */
+    fun isFinite(): Boolean = x().isFinite() && y().isFinite() && z().isFinite()
+    fun equals(other: Vector3dc, delta: Double): Boolean =
+        abs(x() - other.x()) <= delta && abs(y() - other.y()) <= delta && abs(z() - other.z()) <= delta
+
+    fun get(buffer: DoubleBuffer): DoubleBuffer {
+        val index = buffer.position()
+        buffer.put(index + 0, x())
+        buffer.put(index + 1, y())
+        buffer.put(index + 2, z())
+        return buffer
+    }
+
+    fun get(index: Int, buffer: ByteBuffer): ByteBuffer {
+        buffer.putDouble(index + 0, x())
+        buffer.putDouble(index + 8, y())
+        buffer.putDouble(index + 16, z())
+        return buffer
+    }
+}
+
+/**
+ * A mutable 3D vector of 64-bit floating-point components.
+ *
+ * Treat a vector as an arrow: its components describe a displacement, its length describes magnitude, and normalization keeps direction while making length one.
+ *
+ * Use the heap type for ordinary Field code and persistent state. Destination overloads avoid result allocation when a loop needs it.
+ */
+class Vector3d() : Vector3dc, Cloneable {
+    @JvmField var x: Double = 0.0
+    @JvmField var y: Double = 0.0
+    @JvmField var z: Double = 0.0
+
+    constructor(s: Double) : this() { set(s, s, s) }
+    constructor(x: Double, y: Double, z: Double) : this() { set(x, y, z) }
+    constructor(other: Vector3dc) : this() { set(other) }
+    constructor(xy: Vector2dc, z: Double) : this(xy.x(), xy.y(), z)
+
+    override fun x(): Double = x
+    override fun y(): Double = y
+    override fun z(): Double = z
+
+    operator fun set(component: Int, value: Double) {
+        when (component) {
+            0 -> x = value
+            1 -> y = value
+            2 -> z = value
+            else -> throw IndexOutOfBoundsException("component $component outside 0..2")
+        }
+    }
+
+    fun set(s: Double): Vector3d = set(s, s, s)
+    fun set(x: Double, y: Double, z: Double): Vector3d {
+        this.x = x
+        this.y = y
+        this.z = z
+        return this
+    }
+    fun set(other: Vector3dc): Vector3d = set(other.x(), other.y(), other.z())
+    fun zero(): Vector3d = set(0.0, 0.0, 0.0)
+    fun add(x: Double, y: Double, z: Double): Vector3d = set(this.x + x, this.y + y, this.z + z)
+    fun sub(x: Double, y: Double, z: Double): Vector3d = set(this.x - x, this.y - y, this.z - z)
+    fun mul(x: Double, y: Double, z: Double): Vector3d = set(this.x * x, this.y * y, this.z * z)
+
+    /**
+     * Adds another vector component by component.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the vector to add
+     * @return this vector
+     */
+    fun add(other: Vector3dc): Vector3d = add(other, this)
+    /**
+     * Subtracts another vector component by component.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the vector to subtract
+     * @return this vector
+     */
+    fun sub(other: Vector3dc): Vector3d = sub(other, this)
+    /**
+     * Multiplies corresponding components.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the component-wise multiplier
+     * @return this vector
+     */
+    fun mul(other: Vector3dc): Vector3d = mul(other, this)
+    /**
+     * Divides corresponding components.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the component-wise divisor
+     * @return this vector
+     */
+    operator fun div(other: Vector3dc): Vector3d = div(other, this)
+    /**
+     * Scales every component by a scalar.
+     *
+     * Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the scale factor
+     * @return this vector
+     */
+    fun mul(scalar: Double): Vector3d = mul(scalar, this)
+    /**
+     * Divides every component by a scalar.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the divisor
+     * @return this vector
+     */
+    operator fun div(scalar: Double): Vector3d = div(scalar, this)
+    /**
+     * Reverses the vector by negating every component.
+     *
+     * This overload writes the result back into this vector.
+     * @return this vector
+     */
+    fun negate(): Vector3d = negate(this)
+    /**
+     * Replaces every component with its absolute value.
+     *
+     * This overload writes the result back into this vector.
+     * @return this vector
+     */
+    fun absolute(): Vector3d = absolute(this)
+    /**
+     * Selects the smaller value independently in each component.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the other component values
+     * @return this vector
+     */
+    fun min(other: Vector3dc): Vector3d = min(other, this)
+    /**
+     * Selects the larger value independently in each component.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the other component values
+     * @return this vector
+     */
+    fun max(other: Vector3dc): Vector3d = max(other, this)
+    /**
+     * Linearly interpolates from this vector toward another.
+     *
+     * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the endpoint
+     * @param t the interpolation amount
+     * @return this vector
+     */
+    fun lerp(other: Vector3dc, t: Double): Vector3d = lerp(other, t, this)
+    /**
+     * Computes this + other * scalar component by component.
+     *
+     * This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the vector to scale and add
+     * @param scalar the scale factor
+     * @return this vector
+     */
+    fun fma(scalar: Double, other: Vector3dc): Vector3d = fma(scalar, other, this)
+    /**
+     * Keeps the vector's direction while scaling its length to one.
+     *
+     * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
+     *
+     * This overload writes the result back into this vector.
+     * @return this vector
+     */
+    fun normalize(): Vector3d = normalize(this)
+    /**
+     * Returns a vector perpendicular to this vector and another 3D vector.
+     *
+     * The direction follows the right-hand rule. Its length is the area of the parallelogram spanned by the inputs, so parallel vectors produce zero.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the second 3D direction
+     * @return this vector
+     */
+    fun cross(other: Vector3dc): Vector3d = cross(other, this)
+
+    public override fun clone(): Vector3d = Vector3d(this)
+    override fun equals(other: Any?): Boolean = other is Vector3dc && x.toBits() == other.x().toBits() && y.toBits() == other.y().toBits() && z.toBits() == other.z().toBits()
+    override fun hashCode(): Int {
+        var result = 1
+        result = 31 * result + x.toBits().hashCode()
+        result = 31 * result + y.toBits().hashCode()
+        result = 31 * result + z.toBits().hashCode()
+        return result
+    }
+    override fun toString(): String = "($x, $y, $z)"
+
+    companion object {
+        /**
+         * Constructs a 3D vector from a typed Kotlin collection literal.
+         *
+         * Example: `val value: Vector3d = [0, 1, 2]`.
+         * Numeric components are converted to Double, matching Field's `vec(...)` helper.
+         */
+        operator fun of(vararg components: Number): Vector3d {
+            require(components.size == 3) { "Vector3d literal requires 3 components, got ${components.size}" }
+            return Vector3d(components[0].toDouble(), components[1].toDouble(), components[2].toDouble())
+        }
+    }
+}
+
+/**
+ * A read-only view of a 4D vector of 64-bit floating-point components.
+ *
+ * Treat a vector as an arrow: its components describe a displacement, its length describes magnitude, and normalization keeps direction while making length one.
+ *
+ * Use the heap type for ordinary Field code and persistent state. Destination overloads avoid result allocation when a loop needs it.
+ *
+ * Methods with a dest parameter write into that destination and do not allocate a result.
+ */
+interface Vector4dc {
+    fun x(): Double
+    fun y(): Double
+    fun z(): Double
+    fun w(): Double
+
+    operator fun get(component: Int): Double = when (component) {
+        0 -> x()
+        1 -> y()
+        2 -> z()
+        3 -> w()
+        else -> throw IndexOutOfBoundsException("component $component outside 0..3")
+    }
+
+    /**
+     * Adds another vector component by component.
+     * @param other the vector to add
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun add(other: Vector4dc, dest: Vector4d): Vector4d {
+        val r0 = (x() + other.x())
+        val r1 = (y() + other.y())
+        val r2 = (z() + other.z())
+        val r3 = (w() + other.w())
+        return dest.set(r0, r1, r2, r3)
+    }
+
+    /**
+     * Subtracts another vector component by component.
+     * @param other the vector to subtract
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun sub(other: Vector4dc, dest: Vector4d): Vector4d {
+        val r0 = (x() - other.x())
+        val r1 = (y() - other.y())
+        val r2 = (z() - other.z())
+        val r3 = (w() - other.w())
+        return dest.set(r0, r1, r2, r3)
+    }
+
+    /**
+     * Multiplies corresponding components.
+     * @param other the component-wise multiplier
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun mul(other: Vector4dc, dest: Vector4d): Vector4d {
+        val r0 = (x() * other.x())
+        val r1 = (y() * other.y())
+        val r2 = (z() * other.z())
+        val r3 = (w() * other.w())
+        return dest.set(r0, r1, r2, r3)
+    }
+
+    /**
+     * Divides corresponding components.
+     * @param other the component-wise divisor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun div(other: Vector4dc, dest: Vector4d): Vector4d {
+        val r0 = (x() / other.x())
+        val r1 = (y() / other.y())
+        val r2 = (z() / other.z())
+        val r3 = (w() / other.w())
+        return dest.set(r0, r1, r2, r3)
+    }
+
+    /**
+     * Scales every component by a scalar.
+     *
+     * Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction.
+     * @param scalar the scale factor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun mul(scalar: Double, dest: Vector4d): Vector4d {
+        val r0 = (x() * scalar)
+        val r1 = (y() * scalar)
+        val r2 = (z() * scalar)
+        val r3 = (w() * scalar)
+        return dest.set(r0, r1, r2, r3)
+    }
+
+    /**
+     * Divides every component by a scalar.
+     * @param scalar the divisor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun div(scalar: Double, dest: Vector4d): Vector4d {
+        val r0 = (x() / scalar)
+        val r1 = (y() / scalar)
+        val r2 = (z() / scalar)
+        val r3 = (w() / scalar)
+        return dest.set(r0, r1, r2, r3)
+    }
+
+    /**
+     * Reverses the vector by negating every component.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun negate(dest: Vector4d): Vector4d {
+        val r0 = (-1.0 * x())
+        val r1 = (-1.0 * y())
+        val r2 = (-1.0 * z())
+        val r3 = (-1.0 * w())
+        return dest.set(r0, r1, r2, r3)
+    }
+
+    /**
+     * Replaces every component with its absolute value.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun absolute(dest: Vector4d): Vector4d {
+        val r0 = abs(x())
+        val r1 = abs(y())
+        val r2 = abs(z())
+        val r3 = abs(w())
+        return dest.set(r0, r1, r2, r3)
+    }
+
+    /**
+     * Selects the smaller value independently in each component.
+     * @param other the other component values
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun min(other: Vector4dc, dest: Vector4d): Vector4d {
+        val r0 = min(x(), other.x())
+        val r1 = min(y(), other.y())
+        val r2 = min(z(), other.z())
+        val r3 = min(w(), other.w())
+        return dest.set(r0, r1, r2, r3)
+    }
+
+    /**
+     * Selects the larger value independently in each component.
+     * @param other the other component values
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun max(other: Vector4dc, dest: Vector4d): Vector4d {
+        val r0 = max(x(), other.x())
+        val r1 = max(y(), other.y())
+        val r2 = max(z(), other.z())
+        val r3 = max(w(), other.w())
+        return dest.set(r0, r1, r2, r3)
+    }
+
+    /**
+     * Linearly interpolates from this vector toward another.
+     *
+     * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     * @param other the endpoint
+     * @param t the interpolation amount
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun lerp(other: Vector4dc, t: Double, dest: Vector4d): Vector4d {
+        val r0 = (x() + ((other.x() - x()) * t))
+        val r1 = (y() + ((other.y() - y()) * t))
+        val r2 = (z() + ((other.z() - z()) * t))
+        val r3 = (w() + ((other.w() - w()) * t))
+        return dest.set(r0, r1, r2, r3)
+    }
+
+    /**
+     * Computes this + other * scalar component by component.
+     *
+     * This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration.
+     * @param other the vector to scale and add
+     * @param scalar the scale factor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun fma(scalar: Double, other: Vector4dc, dest: Vector4d): Vector4d {
+        val r0 = (x() + (other.x() * scalar))
+        val r1 = (y() + (other.y() * scalar))
+        val r2 = (z() + (other.z() * scalar))
+        val r3 = (w() + (other.w() * scalar))
+        return dest.set(r0, r1, r2, r3)
+    }
+
+    /**
+     * Measures how strongly two vectors point in the same direction.
+     *
+     * Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them.
+     * @param other the vector to compare
+     * @return the sum of the products of corresponding components
+     */
+    fun dot(other: Vector4dc): Double = ((((x() * other.x()) + (y() * other.y())) + (z() * other.z())) + (w() * other.w()))
+
+    /**
+     * Returns the squared length of this vector.
+     *
+     * Use this for comparisons when you do not need the actual distance; it avoids a square root.
+     * @return the sum of the squared components
+     */
+    fun lengthSquared(): Double = ((((x() * x()) + (y() * y())) + (z() * z())) + (w() * w()))
+
+    /**
+     * Returns the squared straight-line distance to another vector.
+     *
+     * Use this for nearest/farthest comparisons when you do not need the actual distance.
+     * @param other the point to measure to
+     * @return the squared Euclidean distance
+     */
+    fun distanceSquared(other: Vector4dc): Double = (((((x() - other.x()) * (x() - other.x())) + ((y() - other.y()) * (y() - other.y()))) + ((z() - other.z()) * (z() - other.z()))) + ((w() - other.w()) * (w() - other.w())))
+
+    /**
+     * Keeps the vector's direction while scaling its length to one.
+     *
+     * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun normalize(dest: Vector4d): Vector4d {
+        val r0 = (x() * (1.0 / sqrt(((((x() * x()) + (y() * y())) + (z() * z())) + (w() * w())))))
+        val r1 = (y() * (1.0 / sqrt(((((x() * x()) + (y() * y())) + (z() * z())) + (w() * w())))))
+        val r2 = (z() * (1.0 / sqrt(((((x() * x()) + (y() * y())) + (z() * z())) + (w() * w())))))
+        val r3 = (w() * (1.0 / sqrt(((((x() * x()) + (y() * y())) + (z() * z())) + (w() * w())))))
+        return dest.set(r0, r1, r2, r3)
+    }
+
+    /**
+     * Returns this vector's Euclidean length (magnitude).
+     */
+    fun length(): Double = sqrt(lengthSquared())
+    /**
+     * Returns the straight-line distance to another vector.
+     * @param other the point to measure to
+     */
+    fun distance(other: Vector4dc): Double = sqrt(distanceSquared(other))
+    /**
+     * Reports whether every component is finite.
+     */
+    fun isFinite(): Boolean = x().isFinite() && y().isFinite() && z().isFinite() && w().isFinite()
+    fun equals(other: Vector4dc, delta: Double): Boolean =
+        abs(x() - other.x()) <= delta && abs(y() - other.y()) <= delta && abs(z() - other.z()) <= delta && abs(w() - other.w()) <= delta
+
+    fun get(buffer: DoubleBuffer): DoubleBuffer {
+        val index = buffer.position()
+        buffer.put(index + 0, x())
+        buffer.put(index + 1, y())
+        buffer.put(index + 2, z())
+        buffer.put(index + 3, w())
+        return buffer
+    }
+
+    fun get(index: Int, buffer: ByteBuffer): ByteBuffer {
+        buffer.putDouble(index + 0, x())
+        buffer.putDouble(index + 8, y())
+        buffer.putDouble(index + 16, z())
+        buffer.putDouble(index + 24, w())
+        return buffer
+    }
+}
+
+/**
+ * A mutable 4D vector of 64-bit floating-point components.
+ *
+ * Treat a vector as an arrow: its components describe a displacement, its length describes magnitude, and normalization keeps direction while making length one.
+ *
+ * Use the heap type for ordinary Field code and persistent state. Destination overloads avoid result allocation when a loop needs it.
+ */
+class Vector4d() : Vector4dc, Cloneable {
+    @JvmField var x: Double = 0.0
+    @JvmField var y: Double = 0.0
+    @JvmField var z: Double = 0.0
+    @JvmField var w: Double = 0.0
+
+    constructor(s: Double) : this() { set(s, s, s, s) }
+    constructor(x: Double, y: Double, z: Double, w: Double) : this() { set(x, y, z, w) }
+    constructor(other: Vector4dc) : this() { set(other) }
+    constructor(xyz: Vector3dc, w: Double) : this(xyz.x(), xyz.y(), xyz.z(), w)
+    constructor(xy: Vector2dc, z: Double, w: Double) : this(xy.x(), xy.y(), z, w)
+
+    override fun x(): Double = x
+    override fun y(): Double = y
+    override fun z(): Double = z
+    override fun w(): Double = w
+
+    operator fun set(component: Int, value: Double) {
+        when (component) {
+            0 -> x = value
+            1 -> y = value
+            2 -> z = value
+            3 -> w = value
+            else -> throw IndexOutOfBoundsException("component $component outside 0..3")
+        }
+    }
+
+    fun set(s: Double): Vector4d = set(s, s, s, s)
+    fun set(x: Double, y: Double, z: Double, w: Double): Vector4d {
+        this.x = x
+        this.y = y
+        this.z = z
+        this.w = w
+        return this
+    }
+    fun set(other: Vector4dc): Vector4d = set(other.x(), other.y(), other.z(), other.w())
+    fun zero(): Vector4d = set(0.0, 0.0, 0.0, 0.0)
+    fun add(x: Double, y: Double, z: Double, w: Double): Vector4d = set(this.x + x, this.y + y, this.z + z, this.w + w)
+    fun sub(x: Double, y: Double, z: Double, w: Double): Vector4d = set(this.x - x, this.y - y, this.z - z, this.w - w)
+    fun mul(x: Double, y: Double, z: Double, w: Double): Vector4d = set(this.x * x, this.y * y, this.z * z, this.w * w)
+
+    /**
+     * Adds another vector component by component.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the vector to add
+     * @return this vector
+     */
+    fun add(other: Vector4dc): Vector4d = add(other, this)
+    /**
+     * Subtracts another vector component by component.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the vector to subtract
+     * @return this vector
+     */
+    fun sub(other: Vector4dc): Vector4d = sub(other, this)
+    /**
+     * Multiplies corresponding components.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the component-wise multiplier
+     * @return this vector
+     */
+    fun mul(other: Vector4dc): Vector4d = mul(other, this)
+    /**
+     * Divides corresponding components.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the component-wise divisor
+     * @return this vector
+     */
+    operator fun div(other: Vector4dc): Vector4d = div(other, this)
+    /**
+     * Scales every component by a scalar.
+     *
+     * Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the scale factor
+     * @return this vector
+     */
+    fun mul(scalar: Double): Vector4d = mul(scalar, this)
+    /**
+     * Divides every component by a scalar.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the divisor
+     * @return this vector
+     */
+    operator fun div(scalar: Double): Vector4d = div(scalar, this)
+    /**
+     * Reverses the vector by negating every component.
+     *
+     * This overload writes the result back into this vector.
+     * @return this vector
+     */
+    fun negate(): Vector4d = negate(this)
+    /**
+     * Replaces every component with its absolute value.
+     *
+     * This overload writes the result back into this vector.
+     * @return this vector
+     */
+    fun absolute(): Vector4d = absolute(this)
+    /**
+     * Selects the smaller value independently in each component.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the other component values
+     * @return this vector
+     */
+    fun min(other: Vector4dc): Vector4d = min(other, this)
+    /**
+     * Selects the larger value independently in each component.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the other component values
+     * @return this vector
+     */
+    fun max(other: Vector4dc): Vector4d = max(other, this)
+    /**
+     * Linearly interpolates from this vector toward another.
+     *
+     * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the endpoint
+     * @param t the interpolation amount
+     * @return this vector
+     */
+    fun lerp(other: Vector4dc, t: Double): Vector4d = lerp(other, t, this)
+    /**
+     * Computes this + other * scalar component by component.
+     *
+     * This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the vector to scale and add
+     * @param scalar the scale factor
+     * @return this vector
+     */
+    fun fma(scalar: Double, other: Vector4dc): Vector4d = fma(scalar, other, this)
+    /**
+     * Keeps the vector's direction while scaling its length to one.
+     *
+     * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
+     *
+     * This overload writes the result back into this vector.
+     * @return this vector
+     */
+    fun normalize(): Vector4d = normalize(this)
+
+    public override fun clone(): Vector4d = Vector4d(this)
+    override fun equals(other: Any?): Boolean = other is Vector4dc && x.toBits() == other.x().toBits() && y.toBits() == other.y().toBits() && z.toBits() == other.z().toBits() && w.toBits() == other.w().toBits()
+    override fun hashCode(): Int {
+        var result = 1
+        result = 31 * result + x.toBits().hashCode()
+        result = 31 * result + y.toBits().hashCode()
+        result = 31 * result + z.toBits().hashCode()
+        result = 31 * result + w.toBits().hashCode()
+        return result
+    }
+    override fun toString(): String = "($x, $y, $z, $w)"
+
+    companion object {
+        /**
+         * Constructs a 4D vector from a typed Kotlin collection literal.
+         *
+         * Example: `val value: Vector4d = [0, 1, 2, 3]`.
+         * Numeric components are converted to Double, matching Field's `vec(...)` helper.
+         */
+        operator fun of(vararg components: Number): Vector4d {
+            require(components.size == 4) { "Vector4d literal requires 4 components, got ${components.size}" }
+            return Vector4d(components[0].toDouble(), components[1].toDouble(), components[2].toDouble(), components[3].toDouble())
         }
     }
 }
