@@ -6,12 +6,27 @@ package afield.stdlib.linalg.arena
 import afield.stdlib.linalg.*
 import kotlin.math.*
 
+/**
+ * An allocation-free handle to a 2D vector stored in the enclosing FrameArena.
+ *
+ * The handle is only meaningful inside its FrameScope and becomes stale when that scope is restored or the arena is reset.
+ */
 @JvmInline
 value class ArenaVec2f internal constructor(internal val token: Long)
 
+/**
+ * An allocation-free handle to a 3D vector stored in the enclosing FrameArena.
+ *
+ * The handle is only meaningful inside its FrameScope and becomes stale when that scope is restored or the arena is reset.
+ */
 @JvmInline
 value class ArenaVec3f internal constructor(internal val token: Long)
 
+/**
+ * An allocation-free handle to a 4D vector stored in the enclosing FrameArena.
+ *
+ * The handle is only meaningful inside its FrameScope and becomes stale when that scope is restored or the arena is reset.
+ */
 @JvmInline
 value class ArenaVec4f internal constructor(internal val token: Long)
 
@@ -36,6 +51,12 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     fun Vector2f.set(other: ArenaVec2f): Vector2f = set(other.x, other.y)
     fun ArenaVec2f.copyTo(dest: Vector2f): Vector2f = dest.set(this)
 
+    /**
+     * Adds another vector component by component.
+     * @param other the vector to add
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec2f.add(other: ArenaVec2f, dest: ArenaVec2f): ArenaVec2f {
         val r0 = (arena.read(token, 0, FrameArena.Kind.VEC2) + arena.read(other.token, 0, FrameArena.Kind.VEC2))
         val r1 = (arena.read(token, 1, FrameArena.Kind.VEC2) + arena.read(other.token, 1, FrameArena.Kind.VEC2))
@@ -43,6 +64,12 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec2f.add(other: ArenaVec2f): ArenaVec2f = add(other, this)
 
+    /**
+     * Subtracts another vector component by component.
+     * @param other the vector to subtract
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec2f.sub(other: ArenaVec2f, dest: ArenaVec2f): ArenaVec2f {
         val r0 = (arena.read(token, 0, FrameArena.Kind.VEC2) - arena.read(other.token, 0, FrameArena.Kind.VEC2))
         val r1 = (arena.read(token, 1, FrameArena.Kind.VEC2) - arena.read(other.token, 1, FrameArena.Kind.VEC2))
@@ -50,6 +77,12 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec2f.sub(other: ArenaVec2f): ArenaVec2f = sub(other, this)
 
+    /**
+     * Multiplies corresponding components.
+     * @param other the component-wise multiplier
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec2f.mul(other: ArenaVec2f, dest: ArenaVec2f): ArenaVec2f {
         val r0 = (arena.read(token, 0, FrameArena.Kind.VEC2) * arena.read(other.token, 0, FrameArena.Kind.VEC2))
         val r1 = (arena.read(token, 1, FrameArena.Kind.VEC2) * arena.read(other.token, 1, FrameArena.Kind.VEC2))
@@ -57,6 +90,12 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec2f.mul(other: ArenaVec2f): ArenaVec2f = mul(other, this)
 
+    /**
+     * Divides corresponding components.
+     * @param other the component-wise divisor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec2f.div(other: ArenaVec2f, dest: ArenaVec2f): ArenaVec2f {
         val r0 = (arena.read(token, 0, FrameArena.Kind.VEC2) / arena.read(other.token, 0, FrameArena.Kind.VEC2))
         val r1 = (arena.read(token, 1, FrameArena.Kind.VEC2) / arena.read(other.token, 1, FrameArena.Kind.VEC2))
@@ -64,6 +103,14 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec2f.div(other: ArenaVec2f): ArenaVec2f = div(other, this)
 
+    /**
+     * Scales every component by a scalar.
+     *
+     * Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction.
+     * @param scalar the scale factor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec2f.mul(scalar: Float, dest: ArenaVec2f): ArenaVec2f {
         val r0 = (arena.read(token, 0, FrameArena.Kind.VEC2) * scalar)
         val r1 = (arena.read(token, 1, FrameArena.Kind.VEC2) * scalar)
@@ -71,6 +118,12 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec2f.mul(scalar: Float): ArenaVec2f = mul(scalar, this)
 
+    /**
+     * Divides every component by a scalar.
+     * @param scalar the divisor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec2f.div(scalar: Float, dest: ArenaVec2f): ArenaVec2f {
         val r0 = (arena.read(token, 0, FrameArena.Kind.VEC2) / scalar)
         val r1 = (arena.read(token, 1, FrameArena.Kind.VEC2) / scalar)
@@ -78,6 +131,11 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec2f.div(scalar: Float): ArenaVec2f = div(scalar, this)
 
+    /**
+     * Reverses the vector by negating every component.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec2f.negate(dest: ArenaVec2f): ArenaVec2f {
         val r0 = (-1.0f * arena.read(token, 0, FrameArena.Kind.VEC2))
         val r1 = (-1.0f * arena.read(token, 1, FrameArena.Kind.VEC2))
@@ -85,6 +143,11 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec2f.negate(): ArenaVec2f = negate(this)
 
+    /**
+     * Replaces every component with its absolute value.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec2f.absolute(dest: ArenaVec2f): ArenaVec2f {
         val r0 = abs(arena.read(token, 0, FrameArena.Kind.VEC2))
         val r1 = abs(arena.read(token, 1, FrameArena.Kind.VEC2))
@@ -92,6 +155,12 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec2f.absolute(): ArenaVec2f = absolute(this)
 
+    /**
+     * Selects the smaller value independently in each component.
+     * @param other the other component values
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec2f.min(other: ArenaVec2f, dest: ArenaVec2f): ArenaVec2f {
         val r0 = min(arena.read(token, 0, FrameArena.Kind.VEC2), arena.read(other.token, 0, FrameArena.Kind.VEC2))
         val r1 = min(arena.read(token, 1, FrameArena.Kind.VEC2), arena.read(other.token, 1, FrameArena.Kind.VEC2))
@@ -99,6 +168,12 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec2f.min(other: ArenaVec2f): ArenaVec2f = min(other, this)
 
+    /**
+     * Selects the larger value independently in each component.
+     * @param other the other component values
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec2f.max(other: ArenaVec2f, dest: ArenaVec2f): ArenaVec2f {
         val r0 = max(arena.read(token, 0, FrameArena.Kind.VEC2), arena.read(other.token, 0, FrameArena.Kind.VEC2))
         val r1 = max(arena.read(token, 1, FrameArena.Kind.VEC2), arena.read(other.token, 1, FrameArena.Kind.VEC2))
@@ -106,6 +181,15 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec2f.max(other: ArenaVec2f): ArenaVec2f = max(other, this)
 
+    /**
+     * Linearly interpolates from this vector toward another.
+     *
+     * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     * @param other the endpoint
+     * @param t the interpolation amount
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec2f.lerp(other: ArenaVec2f, t: Float, dest: ArenaVec2f): ArenaVec2f {
         val r0 = (arena.read(token, 0, FrameArena.Kind.VEC2) + ((arena.read(other.token, 0, FrameArena.Kind.VEC2) - arena.read(token, 0, FrameArena.Kind.VEC2)) * t))
         val r1 = (arena.read(token, 1, FrameArena.Kind.VEC2) + ((arena.read(other.token, 1, FrameArena.Kind.VEC2) - arena.read(token, 1, FrameArena.Kind.VEC2)) * t))
@@ -113,6 +197,15 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec2f.lerp(other: ArenaVec2f, t: Float): ArenaVec2f = lerp(other, t, this)
 
+    /**
+     * Computes this + other * scalar component by component.
+     *
+     * This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration.
+     * @param other the vector to scale and add
+     * @param scalar the scale factor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec2f.fma(scalar: Float, other: ArenaVec2f, dest: ArenaVec2f): ArenaVec2f {
         val r0 = (arena.read(token, 0, FrameArena.Kind.VEC2) + (arena.read(other.token, 0, FrameArena.Kind.VEC2) * scalar))
         val r1 = (arena.read(token, 1, FrameArena.Kind.VEC2) + (arena.read(other.token, 1, FrameArena.Kind.VEC2) * scalar))
@@ -120,12 +213,39 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec2f.fma(scalar: Float, other: ArenaVec2f): ArenaVec2f = fma(scalar, other, this)
 
+    /**
+     * Measures how strongly two vectors point in the same direction.
+     *
+     * Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them.
+     * @param other the vector to compare
+     * @return the sum of the products of corresponding components
+     */
     fun ArenaVec2f.dot(other: ArenaVec2f): Float = ((arena.read(token, 0, FrameArena.Kind.VEC2) * arena.read(other.token, 0, FrameArena.Kind.VEC2)) + (arena.read(token, 1, FrameArena.Kind.VEC2) * arena.read(other.token, 1, FrameArena.Kind.VEC2)))
 
+    /**
+     * Returns the squared length of this vector.
+     *
+     * Use this for comparisons when you do not need the actual distance; it avoids a square root.
+     * @return the sum of the squared components
+     */
     fun ArenaVec2f.lengthSquared(): Float = ((arena.read(token, 0, FrameArena.Kind.VEC2) * arena.read(token, 0, FrameArena.Kind.VEC2)) + (arena.read(token, 1, FrameArena.Kind.VEC2) * arena.read(token, 1, FrameArena.Kind.VEC2)))
 
+    /**
+     * Returns the squared straight-line distance to another vector.
+     *
+     * Use this for nearest/farthest comparisons when you do not need the actual distance.
+     * @param other the point to measure to
+     * @return the squared Euclidean distance
+     */
     fun ArenaVec2f.distanceSquared(other: ArenaVec2f): Float = (((arena.read(token, 0, FrameArena.Kind.VEC2) - arena.read(other.token, 0, FrameArena.Kind.VEC2)) * (arena.read(token, 0, FrameArena.Kind.VEC2) - arena.read(other.token, 0, FrameArena.Kind.VEC2))) + ((arena.read(token, 1, FrameArena.Kind.VEC2) - arena.read(other.token, 1, FrameArena.Kind.VEC2)) * (arena.read(token, 1, FrameArena.Kind.VEC2) - arena.read(other.token, 1, FrameArena.Kind.VEC2))))
 
+    /**
+     * Keeps the vector's direction while scaling its length to one.
+     *
+     * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec2f.normalize(dest: ArenaVec2f): ArenaVec2f {
         val r0 = (arena.read(token, 0, FrameArena.Kind.VEC2) * (1.0f / sqrt(((arena.read(token, 0, FrameArena.Kind.VEC2) * arena.read(token, 0, FrameArena.Kind.VEC2)) + (arena.read(token, 1, FrameArena.Kind.VEC2) * arena.read(token, 1, FrameArena.Kind.VEC2))))))
         val r1 = (arena.read(token, 1, FrameArena.Kind.VEC2) * (1.0f / sqrt(((arena.read(token, 0, FrameArena.Kind.VEC2) * arena.read(token, 0, FrameArena.Kind.VEC2)) + (arena.read(token, 1, FrameArena.Kind.VEC2) * arena.read(token, 1, FrameArena.Kind.VEC2))))))
@@ -133,8 +253,18 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec2f.normalize(): ArenaVec2f = normalize(this)
 
+    /**
+     * Returns this vector's Euclidean length (magnitude).
+     */
     fun ArenaVec2f.length(): Float = sqrt(lengthSquared())
+    /**
+     * Returns the straight-line distance to another vector.
+     * @param other the point to measure to
+     */
     fun ArenaVec2f.distance(other: ArenaVec2f): Float = sqrt(distanceSquared(other))
+    /**
+     * Reports whether every component is finite.
+     */
     fun ArenaVec2f.isFinite(): Boolean = x.isFinite() && y.isFinite()
 
     fun vec3(): ArenaVec3f = ArenaVec3f(arena.allocateVector(FrameArena.Kind.VEC3))
@@ -160,6 +290,12 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     fun Vector3f.set(other: ArenaVec3f): Vector3f = set(other.x, other.y, other.z)
     fun ArenaVec3f.copyTo(dest: Vector3f): Vector3f = dest.set(this)
 
+    /**
+     * Adds another vector component by component.
+     * @param other the vector to add
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec3f.add(other: ArenaVec3f, dest: ArenaVec3f): ArenaVec3f {
         val r0 = (arena.read(token, 0, FrameArena.Kind.VEC3) + arena.read(other.token, 0, FrameArena.Kind.VEC3))
         val r1 = (arena.read(token, 1, FrameArena.Kind.VEC3) + arena.read(other.token, 1, FrameArena.Kind.VEC3))
@@ -168,6 +304,12 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec3f.add(other: ArenaVec3f): ArenaVec3f = add(other, this)
 
+    /**
+     * Subtracts another vector component by component.
+     * @param other the vector to subtract
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec3f.sub(other: ArenaVec3f, dest: ArenaVec3f): ArenaVec3f {
         val r0 = (arena.read(token, 0, FrameArena.Kind.VEC3) - arena.read(other.token, 0, FrameArena.Kind.VEC3))
         val r1 = (arena.read(token, 1, FrameArena.Kind.VEC3) - arena.read(other.token, 1, FrameArena.Kind.VEC3))
@@ -176,6 +318,12 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec3f.sub(other: ArenaVec3f): ArenaVec3f = sub(other, this)
 
+    /**
+     * Multiplies corresponding components.
+     * @param other the component-wise multiplier
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec3f.mul(other: ArenaVec3f, dest: ArenaVec3f): ArenaVec3f {
         val r0 = (arena.read(token, 0, FrameArena.Kind.VEC3) * arena.read(other.token, 0, FrameArena.Kind.VEC3))
         val r1 = (arena.read(token, 1, FrameArena.Kind.VEC3) * arena.read(other.token, 1, FrameArena.Kind.VEC3))
@@ -184,6 +332,12 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec3f.mul(other: ArenaVec3f): ArenaVec3f = mul(other, this)
 
+    /**
+     * Divides corresponding components.
+     * @param other the component-wise divisor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec3f.div(other: ArenaVec3f, dest: ArenaVec3f): ArenaVec3f {
         val r0 = (arena.read(token, 0, FrameArena.Kind.VEC3) / arena.read(other.token, 0, FrameArena.Kind.VEC3))
         val r1 = (arena.read(token, 1, FrameArena.Kind.VEC3) / arena.read(other.token, 1, FrameArena.Kind.VEC3))
@@ -192,6 +346,14 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec3f.div(other: ArenaVec3f): ArenaVec3f = div(other, this)
 
+    /**
+     * Scales every component by a scalar.
+     *
+     * Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction.
+     * @param scalar the scale factor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec3f.mul(scalar: Float, dest: ArenaVec3f): ArenaVec3f {
         val r0 = (arena.read(token, 0, FrameArena.Kind.VEC3) * scalar)
         val r1 = (arena.read(token, 1, FrameArena.Kind.VEC3) * scalar)
@@ -200,6 +362,12 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec3f.mul(scalar: Float): ArenaVec3f = mul(scalar, this)
 
+    /**
+     * Divides every component by a scalar.
+     * @param scalar the divisor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec3f.div(scalar: Float, dest: ArenaVec3f): ArenaVec3f {
         val r0 = (arena.read(token, 0, FrameArena.Kind.VEC3) / scalar)
         val r1 = (arena.read(token, 1, FrameArena.Kind.VEC3) / scalar)
@@ -208,6 +376,11 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec3f.div(scalar: Float): ArenaVec3f = div(scalar, this)
 
+    /**
+     * Reverses the vector by negating every component.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec3f.negate(dest: ArenaVec3f): ArenaVec3f {
         val r0 = (-1.0f * arena.read(token, 0, FrameArena.Kind.VEC3))
         val r1 = (-1.0f * arena.read(token, 1, FrameArena.Kind.VEC3))
@@ -216,6 +389,11 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec3f.negate(): ArenaVec3f = negate(this)
 
+    /**
+     * Replaces every component with its absolute value.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec3f.absolute(dest: ArenaVec3f): ArenaVec3f {
         val r0 = abs(arena.read(token, 0, FrameArena.Kind.VEC3))
         val r1 = abs(arena.read(token, 1, FrameArena.Kind.VEC3))
@@ -224,6 +402,12 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec3f.absolute(): ArenaVec3f = absolute(this)
 
+    /**
+     * Selects the smaller value independently in each component.
+     * @param other the other component values
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec3f.min(other: ArenaVec3f, dest: ArenaVec3f): ArenaVec3f {
         val r0 = min(arena.read(token, 0, FrameArena.Kind.VEC3), arena.read(other.token, 0, FrameArena.Kind.VEC3))
         val r1 = min(arena.read(token, 1, FrameArena.Kind.VEC3), arena.read(other.token, 1, FrameArena.Kind.VEC3))
@@ -232,6 +416,12 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec3f.min(other: ArenaVec3f): ArenaVec3f = min(other, this)
 
+    /**
+     * Selects the larger value independently in each component.
+     * @param other the other component values
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec3f.max(other: ArenaVec3f, dest: ArenaVec3f): ArenaVec3f {
         val r0 = max(arena.read(token, 0, FrameArena.Kind.VEC3), arena.read(other.token, 0, FrameArena.Kind.VEC3))
         val r1 = max(arena.read(token, 1, FrameArena.Kind.VEC3), arena.read(other.token, 1, FrameArena.Kind.VEC3))
@@ -240,6 +430,15 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec3f.max(other: ArenaVec3f): ArenaVec3f = max(other, this)
 
+    /**
+     * Linearly interpolates from this vector toward another.
+     *
+     * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     * @param other the endpoint
+     * @param t the interpolation amount
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec3f.lerp(other: ArenaVec3f, t: Float, dest: ArenaVec3f): ArenaVec3f {
         val r0 = (arena.read(token, 0, FrameArena.Kind.VEC3) + ((arena.read(other.token, 0, FrameArena.Kind.VEC3) - arena.read(token, 0, FrameArena.Kind.VEC3)) * t))
         val r1 = (arena.read(token, 1, FrameArena.Kind.VEC3) + ((arena.read(other.token, 1, FrameArena.Kind.VEC3) - arena.read(token, 1, FrameArena.Kind.VEC3)) * t))
@@ -248,6 +447,15 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec3f.lerp(other: ArenaVec3f, t: Float): ArenaVec3f = lerp(other, t, this)
 
+    /**
+     * Computes this + other * scalar component by component.
+     *
+     * This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration.
+     * @param other the vector to scale and add
+     * @param scalar the scale factor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec3f.fma(scalar: Float, other: ArenaVec3f, dest: ArenaVec3f): ArenaVec3f {
         val r0 = (arena.read(token, 0, FrameArena.Kind.VEC3) + (arena.read(other.token, 0, FrameArena.Kind.VEC3) * scalar))
         val r1 = (arena.read(token, 1, FrameArena.Kind.VEC3) + (arena.read(other.token, 1, FrameArena.Kind.VEC3) * scalar))
@@ -256,12 +464,39 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec3f.fma(scalar: Float, other: ArenaVec3f): ArenaVec3f = fma(scalar, other, this)
 
+    /**
+     * Measures how strongly two vectors point in the same direction.
+     *
+     * Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them.
+     * @param other the vector to compare
+     * @return the sum of the products of corresponding components
+     */
     fun ArenaVec3f.dot(other: ArenaVec3f): Float = (((arena.read(token, 0, FrameArena.Kind.VEC3) * arena.read(other.token, 0, FrameArena.Kind.VEC3)) + (arena.read(token, 1, FrameArena.Kind.VEC3) * arena.read(other.token, 1, FrameArena.Kind.VEC3))) + (arena.read(token, 2, FrameArena.Kind.VEC3) * arena.read(other.token, 2, FrameArena.Kind.VEC3)))
 
+    /**
+     * Returns the squared length of this vector.
+     *
+     * Use this for comparisons when you do not need the actual distance; it avoids a square root.
+     * @return the sum of the squared components
+     */
     fun ArenaVec3f.lengthSquared(): Float = (((arena.read(token, 0, FrameArena.Kind.VEC3) * arena.read(token, 0, FrameArena.Kind.VEC3)) + (arena.read(token, 1, FrameArena.Kind.VEC3) * arena.read(token, 1, FrameArena.Kind.VEC3))) + (arena.read(token, 2, FrameArena.Kind.VEC3) * arena.read(token, 2, FrameArena.Kind.VEC3)))
 
+    /**
+     * Returns the squared straight-line distance to another vector.
+     *
+     * Use this for nearest/farthest comparisons when you do not need the actual distance.
+     * @param other the point to measure to
+     * @return the squared Euclidean distance
+     */
     fun ArenaVec3f.distanceSquared(other: ArenaVec3f): Float = ((((arena.read(token, 0, FrameArena.Kind.VEC3) - arena.read(other.token, 0, FrameArena.Kind.VEC3)) * (arena.read(token, 0, FrameArena.Kind.VEC3) - arena.read(other.token, 0, FrameArena.Kind.VEC3))) + ((arena.read(token, 1, FrameArena.Kind.VEC3) - arena.read(other.token, 1, FrameArena.Kind.VEC3)) * (arena.read(token, 1, FrameArena.Kind.VEC3) - arena.read(other.token, 1, FrameArena.Kind.VEC3)))) + ((arena.read(token, 2, FrameArena.Kind.VEC3) - arena.read(other.token, 2, FrameArena.Kind.VEC3)) * (arena.read(token, 2, FrameArena.Kind.VEC3) - arena.read(other.token, 2, FrameArena.Kind.VEC3))))
 
+    /**
+     * Keeps the vector's direction while scaling its length to one.
+     *
+     * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec3f.normalize(dest: ArenaVec3f): ArenaVec3f {
         val r0 = (arena.read(token, 0, FrameArena.Kind.VEC3) * (1.0f / sqrt((((arena.read(token, 0, FrameArena.Kind.VEC3) * arena.read(token, 0, FrameArena.Kind.VEC3)) + (arena.read(token, 1, FrameArena.Kind.VEC3) * arena.read(token, 1, FrameArena.Kind.VEC3))) + (arena.read(token, 2, FrameArena.Kind.VEC3) * arena.read(token, 2, FrameArena.Kind.VEC3))))))
         val r1 = (arena.read(token, 1, FrameArena.Kind.VEC3) * (1.0f / sqrt((((arena.read(token, 0, FrameArena.Kind.VEC3) * arena.read(token, 0, FrameArena.Kind.VEC3)) + (arena.read(token, 1, FrameArena.Kind.VEC3) * arena.read(token, 1, FrameArena.Kind.VEC3))) + (arena.read(token, 2, FrameArena.Kind.VEC3) * arena.read(token, 2, FrameArena.Kind.VEC3))))))
@@ -270,6 +505,14 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec3f.normalize(): ArenaVec3f = normalize(this)
 
+    /**
+     * Returns a vector perpendicular to this vector and another 3D vector.
+     *
+     * The direction follows the right-hand rule. Its length is the area of the parallelogram spanned by the inputs, so parallel vectors produce zero.
+     * @param other the second 3D direction
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec3f.cross(other: ArenaVec3f, dest: ArenaVec3f): ArenaVec3f {
         val r0 = ((arena.read(token, 1, FrameArena.Kind.VEC3) * arena.read(other.token, 2, FrameArena.Kind.VEC3)) - (arena.read(token, 2, FrameArena.Kind.VEC3) * arena.read(other.token, 1, FrameArena.Kind.VEC3)))
         val r1 = ((arena.read(token, 2, FrameArena.Kind.VEC3) * arena.read(other.token, 0, FrameArena.Kind.VEC3)) - (arena.read(token, 0, FrameArena.Kind.VEC3) * arena.read(other.token, 2, FrameArena.Kind.VEC3)))
@@ -278,8 +521,18 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec3f.cross(other: ArenaVec3f): ArenaVec3f = cross(other, this)
 
+    /**
+     * Returns this vector's Euclidean length (magnitude).
+     */
     fun ArenaVec3f.length(): Float = sqrt(lengthSquared())
+    /**
+     * Returns the straight-line distance to another vector.
+     * @param other the point to measure to
+     */
     fun ArenaVec3f.distance(other: ArenaVec3f): Float = sqrt(distanceSquared(other))
+    /**
+     * Reports whether every component is finite.
+     */
     fun ArenaVec3f.isFinite(): Boolean = x.isFinite() && y.isFinite() && z.isFinite()
 
     fun vec4(): ArenaVec4f = ArenaVec4f(arena.allocateVector(FrameArena.Kind.VEC4))
@@ -309,6 +562,12 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     fun Vector4f.set(other: ArenaVec4f): Vector4f = set(other.x, other.y, other.z, other.w)
     fun ArenaVec4f.copyTo(dest: Vector4f): Vector4f = dest.set(this)
 
+    /**
+     * Adds another vector component by component.
+     * @param other the vector to add
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec4f.add(other: ArenaVec4f, dest: ArenaVec4f): ArenaVec4f {
         val r0 = (arena.read(token, 0, FrameArena.Kind.VEC4) + arena.read(other.token, 0, FrameArena.Kind.VEC4))
         val r1 = (arena.read(token, 1, FrameArena.Kind.VEC4) + arena.read(other.token, 1, FrameArena.Kind.VEC4))
@@ -318,6 +577,12 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec4f.add(other: ArenaVec4f): ArenaVec4f = add(other, this)
 
+    /**
+     * Subtracts another vector component by component.
+     * @param other the vector to subtract
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec4f.sub(other: ArenaVec4f, dest: ArenaVec4f): ArenaVec4f {
         val r0 = (arena.read(token, 0, FrameArena.Kind.VEC4) - arena.read(other.token, 0, FrameArena.Kind.VEC4))
         val r1 = (arena.read(token, 1, FrameArena.Kind.VEC4) - arena.read(other.token, 1, FrameArena.Kind.VEC4))
@@ -327,6 +592,12 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec4f.sub(other: ArenaVec4f): ArenaVec4f = sub(other, this)
 
+    /**
+     * Multiplies corresponding components.
+     * @param other the component-wise multiplier
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec4f.mul(other: ArenaVec4f, dest: ArenaVec4f): ArenaVec4f {
         val r0 = (arena.read(token, 0, FrameArena.Kind.VEC4) * arena.read(other.token, 0, FrameArena.Kind.VEC4))
         val r1 = (arena.read(token, 1, FrameArena.Kind.VEC4) * arena.read(other.token, 1, FrameArena.Kind.VEC4))
@@ -336,6 +607,12 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec4f.mul(other: ArenaVec4f): ArenaVec4f = mul(other, this)
 
+    /**
+     * Divides corresponding components.
+     * @param other the component-wise divisor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec4f.div(other: ArenaVec4f, dest: ArenaVec4f): ArenaVec4f {
         val r0 = (arena.read(token, 0, FrameArena.Kind.VEC4) / arena.read(other.token, 0, FrameArena.Kind.VEC4))
         val r1 = (arena.read(token, 1, FrameArena.Kind.VEC4) / arena.read(other.token, 1, FrameArena.Kind.VEC4))
@@ -345,6 +622,14 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec4f.div(other: ArenaVec4f): ArenaVec4f = div(other, this)
 
+    /**
+     * Scales every component by a scalar.
+     *
+     * Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction.
+     * @param scalar the scale factor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec4f.mul(scalar: Float, dest: ArenaVec4f): ArenaVec4f {
         val r0 = (arena.read(token, 0, FrameArena.Kind.VEC4) * scalar)
         val r1 = (arena.read(token, 1, FrameArena.Kind.VEC4) * scalar)
@@ -354,6 +639,12 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec4f.mul(scalar: Float): ArenaVec4f = mul(scalar, this)
 
+    /**
+     * Divides every component by a scalar.
+     * @param scalar the divisor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec4f.div(scalar: Float, dest: ArenaVec4f): ArenaVec4f {
         val r0 = (arena.read(token, 0, FrameArena.Kind.VEC4) / scalar)
         val r1 = (arena.read(token, 1, FrameArena.Kind.VEC4) / scalar)
@@ -363,6 +654,11 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec4f.div(scalar: Float): ArenaVec4f = div(scalar, this)
 
+    /**
+     * Reverses the vector by negating every component.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec4f.negate(dest: ArenaVec4f): ArenaVec4f {
         val r0 = (-1.0f * arena.read(token, 0, FrameArena.Kind.VEC4))
         val r1 = (-1.0f * arena.read(token, 1, FrameArena.Kind.VEC4))
@@ -372,6 +668,11 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec4f.negate(): ArenaVec4f = negate(this)
 
+    /**
+     * Replaces every component with its absolute value.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec4f.absolute(dest: ArenaVec4f): ArenaVec4f {
         val r0 = abs(arena.read(token, 0, FrameArena.Kind.VEC4))
         val r1 = abs(arena.read(token, 1, FrameArena.Kind.VEC4))
@@ -381,6 +682,12 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec4f.absolute(): ArenaVec4f = absolute(this)
 
+    /**
+     * Selects the smaller value independently in each component.
+     * @param other the other component values
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec4f.min(other: ArenaVec4f, dest: ArenaVec4f): ArenaVec4f {
         val r0 = min(arena.read(token, 0, FrameArena.Kind.VEC4), arena.read(other.token, 0, FrameArena.Kind.VEC4))
         val r1 = min(arena.read(token, 1, FrameArena.Kind.VEC4), arena.read(other.token, 1, FrameArena.Kind.VEC4))
@@ -390,6 +697,12 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec4f.min(other: ArenaVec4f): ArenaVec4f = min(other, this)
 
+    /**
+     * Selects the larger value independently in each component.
+     * @param other the other component values
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec4f.max(other: ArenaVec4f, dest: ArenaVec4f): ArenaVec4f {
         val r0 = max(arena.read(token, 0, FrameArena.Kind.VEC4), arena.read(other.token, 0, FrameArena.Kind.VEC4))
         val r1 = max(arena.read(token, 1, FrameArena.Kind.VEC4), arena.read(other.token, 1, FrameArena.Kind.VEC4))
@@ -399,6 +712,15 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec4f.max(other: ArenaVec4f): ArenaVec4f = max(other, this)
 
+    /**
+     * Linearly interpolates from this vector toward another.
+     *
+     * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     * @param other the endpoint
+     * @param t the interpolation amount
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec4f.lerp(other: ArenaVec4f, t: Float, dest: ArenaVec4f): ArenaVec4f {
         val r0 = (arena.read(token, 0, FrameArena.Kind.VEC4) + ((arena.read(other.token, 0, FrameArena.Kind.VEC4) - arena.read(token, 0, FrameArena.Kind.VEC4)) * t))
         val r1 = (arena.read(token, 1, FrameArena.Kind.VEC4) + ((arena.read(other.token, 1, FrameArena.Kind.VEC4) - arena.read(token, 1, FrameArena.Kind.VEC4)) * t))
@@ -408,6 +730,15 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec4f.lerp(other: ArenaVec4f, t: Float): ArenaVec4f = lerp(other, t, this)
 
+    /**
+     * Computes this + other * scalar component by component.
+     *
+     * This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration.
+     * @param other the vector to scale and add
+     * @param scalar the scale factor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec4f.fma(scalar: Float, other: ArenaVec4f, dest: ArenaVec4f): ArenaVec4f {
         val r0 = (arena.read(token, 0, FrameArena.Kind.VEC4) + (arena.read(other.token, 0, FrameArena.Kind.VEC4) * scalar))
         val r1 = (arena.read(token, 1, FrameArena.Kind.VEC4) + (arena.read(other.token, 1, FrameArena.Kind.VEC4) * scalar))
@@ -417,12 +748,39 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec4f.fma(scalar: Float, other: ArenaVec4f): ArenaVec4f = fma(scalar, other, this)
 
+    /**
+     * Measures how strongly two vectors point in the same direction.
+     *
+     * Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them.
+     * @param other the vector to compare
+     * @return the sum of the products of corresponding components
+     */
     fun ArenaVec4f.dot(other: ArenaVec4f): Float = ((((arena.read(token, 0, FrameArena.Kind.VEC4) * arena.read(other.token, 0, FrameArena.Kind.VEC4)) + (arena.read(token, 1, FrameArena.Kind.VEC4) * arena.read(other.token, 1, FrameArena.Kind.VEC4))) + (arena.read(token, 2, FrameArena.Kind.VEC4) * arena.read(other.token, 2, FrameArena.Kind.VEC4))) + (arena.read(token, 3, FrameArena.Kind.VEC4) * arena.read(other.token, 3, FrameArena.Kind.VEC4)))
 
+    /**
+     * Returns the squared length of this vector.
+     *
+     * Use this for comparisons when you do not need the actual distance; it avoids a square root.
+     * @return the sum of the squared components
+     */
     fun ArenaVec4f.lengthSquared(): Float = ((((arena.read(token, 0, FrameArena.Kind.VEC4) * arena.read(token, 0, FrameArena.Kind.VEC4)) + (arena.read(token, 1, FrameArena.Kind.VEC4) * arena.read(token, 1, FrameArena.Kind.VEC4))) + (arena.read(token, 2, FrameArena.Kind.VEC4) * arena.read(token, 2, FrameArena.Kind.VEC4))) + (arena.read(token, 3, FrameArena.Kind.VEC4) * arena.read(token, 3, FrameArena.Kind.VEC4)))
 
+    /**
+     * Returns the squared straight-line distance to another vector.
+     *
+     * Use this for nearest/farthest comparisons when you do not need the actual distance.
+     * @param other the point to measure to
+     * @return the squared Euclidean distance
+     */
     fun ArenaVec4f.distanceSquared(other: ArenaVec4f): Float = (((((arena.read(token, 0, FrameArena.Kind.VEC4) - arena.read(other.token, 0, FrameArena.Kind.VEC4)) * (arena.read(token, 0, FrameArena.Kind.VEC4) - arena.read(other.token, 0, FrameArena.Kind.VEC4))) + ((arena.read(token, 1, FrameArena.Kind.VEC4) - arena.read(other.token, 1, FrameArena.Kind.VEC4)) * (arena.read(token, 1, FrameArena.Kind.VEC4) - arena.read(other.token, 1, FrameArena.Kind.VEC4)))) + ((arena.read(token, 2, FrameArena.Kind.VEC4) - arena.read(other.token, 2, FrameArena.Kind.VEC4)) * (arena.read(token, 2, FrameArena.Kind.VEC4) - arena.read(other.token, 2, FrameArena.Kind.VEC4)))) + ((arena.read(token, 3, FrameArena.Kind.VEC4) - arena.read(other.token, 3, FrameArena.Kind.VEC4)) * (arena.read(token, 3, FrameArena.Kind.VEC4) - arena.read(other.token, 3, FrameArena.Kind.VEC4))))
 
+    /**
+     * Keeps the vector's direction while scaling its length to one.
+     *
+     * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun ArenaVec4f.normalize(dest: ArenaVec4f): ArenaVec4f {
         val r0 = (arena.read(token, 0, FrameArena.Kind.VEC4) * (1.0f / sqrt(((((arena.read(token, 0, FrameArena.Kind.VEC4) * arena.read(token, 0, FrameArena.Kind.VEC4)) + (arena.read(token, 1, FrameArena.Kind.VEC4) * arena.read(token, 1, FrameArena.Kind.VEC4))) + (arena.read(token, 2, FrameArena.Kind.VEC4) * arena.read(token, 2, FrameArena.Kind.VEC4))) + (arena.read(token, 3, FrameArena.Kind.VEC4) * arena.read(token, 3, FrameArena.Kind.VEC4))))))
         val r1 = (arena.read(token, 1, FrameArena.Kind.VEC4) * (1.0f / sqrt(((((arena.read(token, 0, FrameArena.Kind.VEC4) * arena.read(token, 0, FrameArena.Kind.VEC4)) + (arena.read(token, 1, FrameArena.Kind.VEC4) * arena.read(token, 1, FrameArena.Kind.VEC4))) + (arena.read(token, 2, FrameArena.Kind.VEC4) * arena.read(token, 2, FrameArena.Kind.VEC4))) + (arena.read(token, 3, FrameArena.Kind.VEC4) * arena.read(token, 3, FrameArena.Kind.VEC4))))))
@@ -432,7 +790,17 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec4f.normalize(): ArenaVec4f = normalize(this)
 
+    /**
+     * Returns this vector's Euclidean length (magnitude).
+     */
     fun ArenaVec4f.length(): Float = sqrt(lengthSquared())
+    /**
+     * Returns the straight-line distance to another vector.
+     * @param other the point to measure to
+     */
     fun ArenaVec4f.distance(other: ArenaVec4f): Float = sqrt(distanceSquared(other))
+    /**
+     * Reports whether every component is finite.
+     */
     fun ArenaVec4f.isFinite(): Boolean = x.isFinite() && y.isFinite() && z.isFinite() && w.isFinite()
 }

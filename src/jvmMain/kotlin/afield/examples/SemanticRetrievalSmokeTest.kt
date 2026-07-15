@@ -95,6 +95,32 @@ object SemanticRetrievalSmokeTest {
         require(docsResult.success) { docsResult.message }
         require(docsResult.results.isNotEmpty()) { "expected documentation search results" }
 
+        val linalgDocsResult = SemanticRetrievalService.query(
+            SemanticRetrievalQueryRequest(
+                query = "dot product directional agreement perpendicular unit vectors",
+                limit = 10,
+                corpus = "documentation",
+                includeSource = true
+            )
+        )
+        require(linalgDocsResult.success) { linalgDocsResult.message }
+        require(linalgDocsResult.results.any { it.path.endsWith("linear_algebra.md") }) {
+            "expected the beginner linear-algebra guide, got ${linalgDocsResult.results.map { it.path }}"
+        }
+
+        val generatedLinalgResult = SemanticRetrievalService.query(
+            SemanticRetrievalQueryRequest(
+                query = "vector dot measures direction cosine perpendicular",
+                limit = 12,
+                corpus = "field-internals",
+                includeSource = true
+            )
+        )
+        require(generatedLinalgResult.success) { generatedLinalgResult.message }
+        require(generatedLinalgResult.results.any { it.path.startsWith("src/generatedLinalg/kotlin/") }) {
+            "expected generated linalg KDoc in field-internals, got ${generatedLinalgResult.results.map { it.path }}"
+        }
+
         val combinedResult = SemanticRetrievalService.query(
             SemanticRetrievalQueryRequest(
                 query = "random wiggly line browser screenshot smoke",

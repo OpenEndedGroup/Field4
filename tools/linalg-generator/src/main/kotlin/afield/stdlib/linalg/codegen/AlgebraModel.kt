@@ -19,7 +19,16 @@ data class VectorType(
 
     val components: List<Component> = Component.entries.take(dimension)
     val factoryName: String = "vec$dimension"
+    val documentation: ApiDocumentation get() = VectorDocumentation.forDimension(dimension)
 }
+
+/** Human-facing documentation is model data shared by KDoc and generated reference pages. */
+data class ApiDocumentation(
+    val summary: String,
+    val details: List<String> = emptyList(),
+    val parameters: Map<String, String> = emptyMap(),
+    val returns: String? = null,
+)
 
 sealed interface ValueSource {
     data object Self : ValueSource
@@ -58,6 +67,8 @@ data class Operation(
     val result: OperationResult,
     val componentExpressions: List<Expr> = emptyList(),
 ) {
+    val documentation: ApiDocumentation get() = OperationDocumentation.forOperation(this)
+
     init {
         when (result) {
             OperationResult.Destination -> require(componentExpressions.isNotEmpty())
@@ -71,6 +82,93 @@ data class AlgebraModel(
     val operationsByDimension: Map<Int, List<Operation>>,
 ) {
     fun operations(type: VectorType): List<Operation> = operationsByDimension.getValue(type.dimension)
+}
+
+private object VectorDocumentation {
+    fun forDimension(dimension: Int) = ApiDocumentation(
+        summary = "A mutable ${dimension}D vector of 32-bit floating-point components.",
+        details = listOf(
+            "Treat a vector as an arrow: its components describe a displacement, its length describes magnitude, and normalization keeps direction while making length one.",
+            "Use the heap type for ordinary Field code and persistent state. Destination overloads avoid result allocation when a loop needs it.",
+        ),
+    )
+}
+
+private object OperationDocumentation {
+    fun forOperation(operation: Operation): ApiDocumentation {
+        val vectorArgument = operation.vectorParameters.isNotEmpty()
+        return when (operation.name) {
+            "add" -> doc(
+                if (vectorArgument) "Adds another vector component by component." else "Adds a scalar to each component.",
+                params = common("other" to "the vector to add", "scalar" to "the value to add"),
+            )
+            "sub" -> doc(
+                if (vectorArgument) "Subtracts another vector component by component." else "Subtracts a scalar from each component.",
+                params = common("other" to "the vector to subtract", "scalar" to "the value to subtract"),
+            )
+            "mul" -> doc(
+                if (vectorArgument) "Multiplies corresponding components." else "Scales every component by a scalar.",
+                details = if (vectorArgument) emptyList() else listOf("Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction."),
+                params = common("other" to "the component-wise multiplier", "scalar" to "the scale factor"),
+            )
+            "div" -> doc(
+                if (vectorArgument) "Divides corresponding components." else "Divides every component by a scalar.",
+                params = common("other" to "the component-wise divisor", "scalar" to "the divisor"),
+            )
+            "negate" -> doc("Reverses the vector by negating every component.")
+            "absolute" -> doc("Replaces every component with its absolute value.")
+            "min" -> doc("Selects the smaller value independently in each component.", params = common("other" to "the other component values"))
+            "max" -> doc("Selects the larger value independently in each component.", params = common("other" to "the other component values"))
+            "lerp" -> doc(
+                "Linearly interpolates from this vector toward another.",
+                listOf("At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them."),
+                common("other" to "the endpoint", "t" to "the interpolation amount"),
+            )
+            "fma" -> doc(
+                "Computes this + other * scalar component by component.",
+                listOf("This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration."),
+                common("other" to "the vector to scale and add", "scalar" to "the scale factor"),
+            )
+            "dot" -> ApiDocumentation(
+                "Measures how strongly two vectors point in the same direction.",
+                listOf("Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them."),
+                mapOf("other" to "the vector to compare"),
+                "the sum of the products of corresponding components",
+            )
+            "lengthSquared" -> ApiDocumentation(
+                "Returns the squared length of this vector.",
+                listOf("Use this for comparisons when you do not need the actual distance; it avoids a square root."),
+                returns = "the sum of the squared components",
+            )
+            "distanceSquared" -> ApiDocumentation(
+                "Returns the squared straight-line distance to another vector.",
+                listOf("Use this for nearest/farthest comparisons when you do not need the actual distance."),
+                mapOf("other" to "the point to measure to"),
+                "the squared Euclidean distance",
+            )
+            "normalize" -> doc(
+                "Keeps the vector's direction while scaling its length to one.",
+                listOf("A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible."),
+            )
+            "cross" -> doc(
+                "Returns a vector perpendicular to this vector and another 3D vector.",
+                listOf("The direction follows the right-hand rule. Its length is the area of the parallelogram spanned by the inputs, so parallel vectors produce zero."),
+                common("other" to "the second 3D direction"),
+            )
+            else -> error("No documentation for vector operation ${operation.name}")
+        }
+    }
+
+    private fun doc(
+        summary: String,
+        details: List<String> = emptyList(),
+        params: Map<String, String> = common(),
+    ) = ApiDocumentation(summary, details, params, "the destination vector")
+
+    private fun common(vararg entries: Pair<String, String>): Map<String, String> = buildMap {
+        putAll(entries)
+        put("dest", "the vector that receives the result")
+    }
 }
 
 object FieldAlgebraModel {

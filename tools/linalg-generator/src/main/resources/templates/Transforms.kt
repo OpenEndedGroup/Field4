@@ -4,19 +4,28 @@ import java.nio.ByteBuffer
 import java.nio.FloatBuffer
 import kotlin.math.*
 
+/** A read-only quaternion, normally used to represent a 3D rotation. */
 interface Quaternionfc {
     fun x(): Float
     fun y(): Float
     fun z(): Float
     fun w(): Float
 
+    /** Rotates [value] by this quaternion and writes the result into [dest]. */
     fun transform(value: Vector3fc, dest: Vector3f): Vector3f = transformQuaternionVector3(this, value, dest)
 
     fun transform(value: Vector3f): Vector3f = transform(value, value)
+    /** Measures quaternion agreement; unit quaternions q and -q describe the same rotation. */
     fun dot(other: Quaternionfc): Float = dotQuaternion(this, other)
     operator fun times(value: Vector3fc): Vector3f = transform(value, Vector3f())
 }
 
+/**
+ * A mutable quaternion initialized to the identity rotation.
+ *
+ * Angles are in radians. Use this for persistent rotations; vector transformation
+ * destination overloads avoid allocating a result.
+ */
 class Quaternionf() : Quaternionfc, Cloneable {
     @JvmField var x: Float = 0f
     @JvmField var y: Float = 0f
@@ -38,6 +47,7 @@ class Quaternionf() : Quaternionfc, Cloneable {
     }
     fun set(other: Quaternionfc): Quaternionf = set(other.x(), other.y(), other.z(), other.w())
 
+    /** Scales this quaternion to unit length, as required for a pure rotation. */
     fun normalize(): Quaternionf = normalizeQuaternion(this, this)
 
     fun conjugate(): Quaternionf = conjugateQuaternion(this, this)
@@ -160,6 +170,7 @@ class Quaternionf() : Quaternionfc, Cloneable {
     override fun toString(): String = "($x, $y, $z, $w)"
 }
 
+/** A read-only 3x3 column-major matrix, commonly used for linear and normal transforms. */
 interface Matrix3fc {
     fun m00(): Float; fun m01(): Float; fun m02(): Float
     fun m10(): Float; fun m11(): Float; fun m12(): Float
@@ -170,6 +181,7 @@ interface Matrix3fc {
     fun determinant(): Float = determinantMatrix3(this)
 }
 
+/** A mutable 3x3 column-major matrix initialized to identity. */
 class Matrix3f() : Matrix3fc {
     @JvmField var m00 = 1f; @JvmField var m01 = 0f; @JvmField var m02 = 0f
     @JvmField var m10 = 0f; @JvmField var m11 = 1f; @JvmField var m12 = 0f
@@ -207,14 +219,17 @@ class Matrix3f() : Matrix3fc {
     fun get(index:Int,buffer:ByteBuffer):ByteBuffer{buffer.putFloat(index,m00);buffer.putFloat(index+4,m01);buffer.putFloat(index+8,m02);buffer.putFloat(index+12,m10);buffer.putFloat(index+16,m11);buffer.putFloat(index+20,m12);buffer.putFloat(index+24,m20);buffer.putFloat(index+28,m21);buffer.putFloat(index+32,m22);return buffer}
 }
 
+/** A read-only 4x4 column-major matrix for affine, camera, and projection transforms. */
 interface Matrix4fc {
     fun m00():Float;fun m01():Float;fun m02():Float;fun m03():Float
     fun m10():Float;fun m11():Float;fun m12():Float;fun m13():Float
     fun m20():Float;fun m21():Float;fun m22():Float;fun m23():Float
     fun m30():Float;fun m31():Float;fun m32():Float;fun m33():Float
 
+    /** Transforms a position, including this matrix's translation, into [dest]. */
     fun transformPosition(value: Vector3fc, dest: Vector3f): Vector3f = transformMatrix4Position(this, value, dest)
     fun transformPosition(value: Vector3f): Vector3f = transformPosition(value,value)
+    /** Transforms a direction without applying this matrix's translation. */
     fun transformDirection(value: Vector3fc, dest: Vector3f): Vector3f = transformMatrix4Direction(this, value, dest)
     fun transformDirection(value: Vector3f): Vector3f=transformDirection(value,value)
     fun transform(value: Vector4fc, dest: Vector4f): Vector4f = transformMatrix4Vector4(this, value, dest)
@@ -227,6 +242,12 @@ interface Matrix4fc {
     fun determinant(): Float = determinantMatrix4(this)
 }
 
+/**
+ * A mutable 4x4 column-major matrix initialized to identity.
+ *
+ * Transformation calls compose onto the receiver. Use [transformPosition] for
+ * points and [transformDirection] for vectors that must ignore translation.
+ */
 class Matrix4f() : Matrix4fc {
     @JvmField var m00=1f;@JvmField var m01=0f;@JvmField var m02=0f;@JvmField var m03=0f
     @JvmField var m10=0f;@JvmField var m11=1f;@JvmField var m12=0f;@JvmField var m13=0f

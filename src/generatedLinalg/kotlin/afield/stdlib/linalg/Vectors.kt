@@ -7,6 +7,15 @@ import java.nio.ByteBuffer
 import java.nio.FloatBuffer
 import kotlin.math.*
 
+/**
+ * A read-only view of a 2D vector of 32-bit floating-point components.
+ *
+ * Treat a vector as an arrow: its components describe a displacement, its length describes magnitude, and normalization keeps direction while making length one.
+ *
+ * Use the heap type for ordinary Field code and persistent state. Destination overloads avoid result allocation when a loop needs it.
+ *
+ * Methods with a dest parameter write into that destination and do not allocate a result.
+ */
 interface Vector2fc {
     fun x(): Float
     fun y(): Float
@@ -17,92 +26,207 @@ interface Vector2fc {
         else -> throw IndexOutOfBoundsException("component $component outside 0..1")
     }
 
+    /**
+     * Adds another vector component by component.
+     * @param other the vector to add
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun add(other: Vector2fc, dest: Vector2f): Vector2f {
         val r0 = (x() + other.x())
         val r1 = (y() + other.y())
         return dest.set(r0, r1)
     }
 
+    /**
+     * Subtracts another vector component by component.
+     * @param other the vector to subtract
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun sub(other: Vector2fc, dest: Vector2f): Vector2f {
         val r0 = (x() - other.x())
         val r1 = (y() - other.y())
         return dest.set(r0, r1)
     }
 
+    /**
+     * Multiplies corresponding components.
+     * @param other the component-wise multiplier
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun mul(other: Vector2fc, dest: Vector2f): Vector2f {
         val r0 = (x() * other.x())
         val r1 = (y() * other.y())
         return dest.set(r0, r1)
     }
 
+    /**
+     * Divides corresponding components.
+     * @param other the component-wise divisor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun div(other: Vector2fc, dest: Vector2f): Vector2f {
         val r0 = (x() / other.x())
         val r1 = (y() / other.y())
         return dest.set(r0, r1)
     }
 
+    /**
+     * Scales every component by a scalar.
+     *
+     * Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction.
+     * @param scalar the scale factor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun mul(scalar: Float, dest: Vector2f): Vector2f {
         val r0 = (x() * scalar)
         val r1 = (y() * scalar)
         return dest.set(r0, r1)
     }
 
+    /**
+     * Divides every component by a scalar.
+     * @param scalar the divisor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun div(scalar: Float, dest: Vector2f): Vector2f {
         val r0 = (x() / scalar)
         val r1 = (y() / scalar)
         return dest.set(r0, r1)
     }
 
+    /**
+     * Reverses the vector by negating every component.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun negate(dest: Vector2f): Vector2f {
         val r0 = (-1.0f * x())
         val r1 = (-1.0f * y())
         return dest.set(r0, r1)
     }
 
+    /**
+     * Replaces every component with its absolute value.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun absolute(dest: Vector2f): Vector2f {
         val r0 = abs(x())
         val r1 = abs(y())
         return dest.set(r0, r1)
     }
 
+    /**
+     * Selects the smaller value independently in each component.
+     * @param other the other component values
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun min(other: Vector2fc, dest: Vector2f): Vector2f {
         val r0 = min(x(), other.x())
         val r1 = min(y(), other.y())
         return dest.set(r0, r1)
     }
 
+    /**
+     * Selects the larger value independently in each component.
+     * @param other the other component values
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun max(other: Vector2fc, dest: Vector2f): Vector2f {
         val r0 = max(x(), other.x())
         val r1 = max(y(), other.y())
         return dest.set(r0, r1)
     }
 
+    /**
+     * Linearly interpolates from this vector toward another.
+     *
+     * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     * @param other the endpoint
+     * @param t the interpolation amount
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun lerp(other: Vector2fc, t: Float, dest: Vector2f): Vector2f {
         val r0 = (x() + ((other.x() - x()) * t))
         val r1 = (y() + ((other.y() - y()) * t))
         return dest.set(r0, r1)
     }
 
+    /**
+     * Computes this + other * scalar component by component.
+     *
+     * This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration.
+     * @param other the vector to scale and add
+     * @param scalar the scale factor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun fma(scalar: Float, other: Vector2fc, dest: Vector2f): Vector2f {
         val r0 = (x() + (other.x() * scalar))
         val r1 = (y() + (other.y() * scalar))
         return dest.set(r0, r1)
     }
 
+    /**
+     * Measures how strongly two vectors point in the same direction.
+     *
+     * Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them.
+     * @param other the vector to compare
+     * @return the sum of the products of corresponding components
+     */
     fun dot(other: Vector2fc): Float = ((x() * other.x()) + (y() * other.y()))
 
+    /**
+     * Returns the squared length of this vector.
+     *
+     * Use this for comparisons when you do not need the actual distance; it avoids a square root.
+     * @return the sum of the squared components
+     */
     fun lengthSquared(): Float = ((x() * x()) + (y() * y()))
 
+    /**
+     * Returns the squared straight-line distance to another vector.
+     *
+     * Use this for nearest/farthest comparisons when you do not need the actual distance.
+     * @param other the point to measure to
+     * @return the squared Euclidean distance
+     */
     fun distanceSquared(other: Vector2fc): Float = (((x() - other.x()) * (x() - other.x())) + ((y() - other.y()) * (y() - other.y())))
 
+    /**
+     * Keeps the vector's direction while scaling its length to one.
+     *
+     * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun normalize(dest: Vector2f): Vector2f {
         val r0 = (x() * (1.0f / sqrt(((x() * x()) + (y() * y())))))
         val r1 = (y() * (1.0f / sqrt(((x() * x()) + (y() * y())))))
         return dest.set(r0, r1)
     }
 
+    /**
+     * Returns this vector's Euclidean length (magnitude).
+     */
     fun length(): Float = sqrt(lengthSquared())
+    /**
+     * Returns the straight-line distance to another vector.
+     * @param other the point to measure to
+     */
     fun distance(other: Vector2fc): Float = sqrt(distanceSquared(other))
+    /**
+     * Reports whether every component is finite.
+     */
     fun isFinite(): Boolean = x().isFinite() && y().isFinite()
     fun equals(other: Vector2fc, delta: Float): Boolean =
         abs(x() - other.x()) <= delta && abs(y() - other.y()) <= delta
@@ -121,6 +245,13 @@ interface Vector2fc {
     }
 }
 
+/**
+ * A mutable 2D vector of 32-bit floating-point components.
+ *
+ * Treat a vector as an arrow: its components describe a displacement, its length describes magnitude, and normalization keeps direction while making length one.
+ *
+ * Use the heap type for ordinary Field code and persistent state. Destination overloads avoid result allocation when a loop needs it.
+ */
 class Vector2f() : Vector2fc, Cloneable {
     @JvmField var x: Float = 0.0f
     @JvmField var y: Float = 0.0f
@@ -152,18 +283,116 @@ class Vector2f() : Vector2fc, Cloneable {
     fun sub(x: Float, y: Float): Vector2f = set(this.x - x, this.y - y)
     fun mul(x: Float, y: Float): Vector2f = set(this.x * x, this.y * y)
 
+    /**
+     * Adds another vector component by component.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the vector to add
+     * @return this vector
+     */
     fun add(other: Vector2fc): Vector2f = add(other, this)
+    /**
+     * Subtracts another vector component by component.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the vector to subtract
+     * @return this vector
+     */
     fun sub(other: Vector2fc): Vector2f = sub(other, this)
+    /**
+     * Multiplies corresponding components.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the component-wise multiplier
+     * @return this vector
+     */
     fun mul(other: Vector2fc): Vector2f = mul(other, this)
+    /**
+     * Divides corresponding components.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the component-wise divisor
+     * @return this vector
+     */
     operator fun div(other: Vector2fc): Vector2f = div(other, this)
+    /**
+     * Scales every component by a scalar.
+     *
+     * Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the scale factor
+     * @return this vector
+     */
     fun mul(scalar: Float): Vector2f = mul(scalar, this)
+    /**
+     * Divides every component by a scalar.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the divisor
+     * @return this vector
+     */
     operator fun div(scalar: Float): Vector2f = div(scalar, this)
+    /**
+     * Reverses the vector by negating every component.
+     *
+     * This overload writes the result back into this vector.
+     * @return this vector
+     */
     fun negate(): Vector2f = negate(this)
+    /**
+     * Replaces every component with its absolute value.
+     *
+     * This overload writes the result back into this vector.
+     * @return this vector
+     */
     fun absolute(): Vector2f = absolute(this)
+    /**
+     * Selects the smaller value independently in each component.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the other component values
+     * @return this vector
+     */
     fun min(other: Vector2fc): Vector2f = min(other, this)
+    /**
+     * Selects the larger value independently in each component.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the other component values
+     * @return this vector
+     */
     fun max(other: Vector2fc): Vector2f = max(other, this)
+    /**
+     * Linearly interpolates from this vector toward another.
+     *
+     * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the endpoint
+     * @param t the interpolation amount
+     * @return this vector
+     */
     fun lerp(other: Vector2fc, t: Float): Vector2f = lerp(other, t, this)
+    /**
+     * Computes this + other * scalar component by component.
+     *
+     * This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the vector to scale and add
+     * @param scalar the scale factor
+     * @return this vector
+     */
     fun fma(scalar: Float, other: Vector2fc): Vector2f = fma(scalar, other, this)
+    /**
+     * Keeps the vector's direction while scaling its length to one.
+     *
+     * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
+     *
+     * This overload writes the result back into this vector.
+     * @return this vector
+     */
     fun normalize(): Vector2f = normalize(this)
 
     public override fun clone(): Vector2f = Vector2f(this)
@@ -177,6 +406,15 @@ class Vector2f() : Vector2fc, Cloneable {
     override fun toString(): String = "($x, $y)"
 }
 
+/**
+ * A read-only view of a 3D vector of 32-bit floating-point components.
+ *
+ * Treat a vector as an arrow: its components describe a displacement, its length describes magnitude, and normalization keeps direction while making length one.
+ *
+ * Use the heap type for ordinary Field code and persistent state. Destination overloads avoid result allocation when a loop needs it.
+ *
+ * Methods with a dest parameter write into that destination and do not allocate a result.
+ */
 interface Vector3fc {
     fun x(): Float
     fun y(): Float
@@ -189,6 +427,12 @@ interface Vector3fc {
         else -> throw IndexOutOfBoundsException("component $component outside 0..2")
     }
 
+    /**
+     * Adds another vector component by component.
+     * @param other the vector to add
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun add(other: Vector3fc, dest: Vector3f): Vector3f {
         val r0 = (x() + other.x())
         val r1 = (y() + other.y())
@@ -196,6 +440,12 @@ interface Vector3fc {
         return dest.set(r0, r1, r2)
     }
 
+    /**
+     * Subtracts another vector component by component.
+     * @param other the vector to subtract
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun sub(other: Vector3fc, dest: Vector3f): Vector3f {
         val r0 = (x() - other.x())
         val r1 = (y() - other.y())
@@ -203,6 +453,12 @@ interface Vector3fc {
         return dest.set(r0, r1, r2)
     }
 
+    /**
+     * Multiplies corresponding components.
+     * @param other the component-wise multiplier
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun mul(other: Vector3fc, dest: Vector3f): Vector3f {
         val r0 = (x() * other.x())
         val r1 = (y() * other.y())
@@ -210,6 +466,12 @@ interface Vector3fc {
         return dest.set(r0, r1, r2)
     }
 
+    /**
+     * Divides corresponding components.
+     * @param other the component-wise divisor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun div(other: Vector3fc, dest: Vector3f): Vector3f {
         val r0 = (x() / other.x())
         val r1 = (y() / other.y())
@@ -217,6 +479,14 @@ interface Vector3fc {
         return dest.set(r0, r1, r2)
     }
 
+    /**
+     * Scales every component by a scalar.
+     *
+     * Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction.
+     * @param scalar the scale factor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun mul(scalar: Float, dest: Vector3f): Vector3f {
         val r0 = (x() * scalar)
         val r1 = (y() * scalar)
@@ -224,6 +494,12 @@ interface Vector3fc {
         return dest.set(r0, r1, r2)
     }
 
+    /**
+     * Divides every component by a scalar.
+     * @param scalar the divisor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun div(scalar: Float, dest: Vector3f): Vector3f {
         val r0 = (x() / scalar)
         val r1 = (y() / scalar)
@@ -231,6 +507,11 @@ interface Vector3fc {
         return dest.set(r0, r1, r2)
     }
 
+    /**
+     * Reverses the vector by negating every component.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun negate(dest: Vector3f): Vector3f {
         val r0 = (-1.0f * x())
         val r1 = (-1.0f * y())
@@ -238,6 +519,11 @@ interface Vector3fc {
         return dest.set(r0, r1, r2)
     }
 
+    /**
+     * Replaces every component with its absolute value.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun absolute(dest: Vector3f): Vector3f {
         val r0 = abs(x())
         val r1 = abs(y())
@@ -245,6 +531,12 @@ interface Vector3fc {
         return dest.set(r0, r1, r2)
     }
 
+    /**
+     * Selects the smaller value independently in each component.
+     * @param other the other component values
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun min(other: Vector3fc, dest: Vector3f): Vector3f {
         val r0 = min(x(), other.x())
         val r1 = min(y(), other.y())
@@ -252,6 +544,12 @@ interface Vector3fc {
         return dest.set(r0, r1, r2)
     }
 
+    /**
+     * Selects the larger value independently in each component.
+     * @param other the other component values
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun max(other: Vector3fc, dest: Vector3f): Vector3f {
         val r0 = max(x(), other.x())
         val r1 = max(y(), other.y())
@@ -259,6 +557,15 @@ interface Vector3fc {
         return dest.set(r0, r1, r2)
     }
 
+    /**
+     * Linearly interpolates from this vector toward another.
+     *
+     * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     * @param other the endpoint
+     * @param t the interpolation amount
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun lerp(other: Vector3fc, t: Float, dest: Vector3f): Vector3f {
         val r0 = (x() + ((other.x() - x()) * t))
         val r1 = (y() + ((other.y() - y()) * t))
@@ -266,6 +573,15 @@ interface Vector3fc {
         return dest.set(r0, r1, r2)
     }
 
+    /**
+     * Computes this + other * scalar component by component.
+     *
+     * This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration.
+     * @param other the vector to scale and add
+     * @param scalar the scale factor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun fma(scalar: Float, other: Vector3fc, dest: Vector3f): Vector3f {
         val r0 = (x() + (other.x() * scalar))
         val r1 = (y() + (other.y() * scalar))
@@ -273,12 +589,39 @@ interface Vector3fc {
         return dest.set(r0, r1, r2)
     }
 
+    /**
+     * Measures how strongly two vectors point in the same direction.
+     *
+     * Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them.
+     * @param other the vector to compare
+     * @return the sum of the products of corresponding components
+     */
     fun dot(other: Vector3fc): Float = (((x() * other.x()) + (y() * other.y())) + (z() * other.z()))
 
+    /**
+     * Returns the squared length of this vector.
+     *
+     * Use this for comparisons when you do not need the actual distance; it avoids a square root.
+     * @return the sum of the squared components
+     */
     fun lengthSquared(): Float = (((x() * x()) + (y() * y())) + (z() * z()))
 
+    /**
+     * Returns the squared straight-line distance to another vector.
+     *
+     * Use this for nearest/farthest comparisons when you do not need the actual distance.
+     * @param other the point to measure to
+     * @return the squared Euclidean distance
+     */
     fun distanceSquared(other: Vector3fc): Float = ((((x() - other.x()) * (x() - other.x())) + ((y() - other.y()) * (y() - other.y()))) + ((z() - other.z()) * (z() - other.z())))
 
+    /**
+     * Keeps the vector's direction while scaling its length to one.
+     *
+     * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun normalize(dest: Vector3f): Vector3f {
         val r0 = (x() * (1.0f / sqrt((((x() * x()) + (y() * y())) + (z() * z())))))
         val r1 = (y() * (1.0f / sqrt((((x() * x()) + (y() * y())) + (z() * z())))))
@@ -286,6 +629,14 @@ interface Vector3fc {
         return dest.set(r0, r1, r2)
     }
 
+    /**
+     * Returns a vector perpendicular to this vector and another 3D vector.
+     *
+     * The direction follows the right-hand rule. Its length is the area of the parallelogram spanned by the inputs, so parallel vectors produce zero.
+     * @param other the second 3D direction
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun cross(other: Vector3fc, dest: Vector3f): Vector3f {
         val r0 = ((y() * other.z()) - (z() * other.y()))
         val r1 = ((z() * other.x()) - (x() * other.z()))
@@ -293,8 +644,18 @@ interface Vector3fc {
         return dest.set(r0, r1, r2)
     }
 
+    /**
+     * Returns this vector's Euclidean length (magnitude).
+     */
     fun length(): Float = sqrt(lengthSquared())
+    /**
+     * Returns the straight-line distance to another vector.
+     * @param other the point to measure to
+     */
     fun distance(other: Vector3fc): Float = sqrt(distanceSquared(other))
+    /**
+     * Reports whether every component is finite.
+     */
     fun isFinite(): Boolean = x().isFinite() && y().isFinite() && z().isFinite()
     fun equals(other: Vector3fc, delta: Float): Boolean =
         abs(x() - other.x()) <= delta && abs(y() - other.y()) <= delta && abs(z() - other.z()) <= delta
@@ -315,6 +676,13 @@ interface Vector3fc {
     }
 }
 
+/**
+ * A mutable 3D vector of 32-bit floating-point components.
+ *
+ * Treat a vector as an arrow: its components describe a displacement, its length describes magnitude, and normalization keeps direction while making length one.
+ *
+ * Use the heap type for ordinary Field code and persistent state. Destination overloads avoid result allocation when a loop needs it.
+ */
 class Vector3f() : Vector3fc, Cloneable {
     @JvmField var x: Float = 0.0f
     @JvmField var y: Float = 0.0f
@@ -351,19 +719,126 @@ class Vector3f() : Vector3fc, Cloneable {
     fun sub(x: Float, y: Float, z: Float): Vector3f = set(this.x - x, this.y - y, this.z - z)
     fun mul(x: Float, y: Float, z: Float): Vector3f = set(this.x * x, this.y * y, this.z * z)
 
+    /**
+     * Adds another vector component by component.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the vector to add
+     * @return this vector
+     */
     fun add(other: Vector3fc): Vector3f = add(other, this)
+    /**
+     * Subtracts another vector component by component.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the vector to subtract
+     * @return this vector
+     */
     fun sub(other: Vector3fc): Vector3f = sub(other, this)
+    /**
+     * Multiplies corresponding components.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the component-wise multiplier
+     * @return this vector
+     */
     fun mul(other: Vector3fc): Vector3f = mul(other, this)
+    /**
+     * Divides corresponding components.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the component-wise divisor
+     * @return this vector
+     */
     operator fun div(other: Vector3fc): Vector3f = div(other, this)
+    /**
+     * Scales every component by a scalar.
+     *
+     * Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the scale factor
+     * @return this vector
+     */
     fun mul(scalar: Float): Vector3f = mul(scalar, this)
+    /**
+     * Divides every component by a scalar.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the divisor
+     * @return this vector
+     */
     operator fun div(scalar: Float): Vector3f = div(scalar, this)
+    /**
+     * Reverses the vector by negating every component.
+     *
+     * This overload writes the result back into this vector.
+     * @return this vector
+     */
     fun negate(): Vector3f = negate(this)
+    /**
+     * Replaces every component with its absolute value.
+     *
+     * This overload writes the result back into this vector.
+     * @return this vector
+     */
     fun absolute(): Vector3f = absolute(this)
+    /**
+     * Selects the smaller value independently in each component.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the other component values
+     * @return this vector
+     */
     fun min(other: Vector3fc): Vector3f = min(other, this)
+    /**
+     * Selects the larger value independently in each component.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the other component values
+     * @return this vector
+     */
     fun max(other: Vector3fc): Vector3f = max(other, this)
+    /**
+     * Linearly interpolates from this vector toward another.
+     *
+     * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the endpoint
+     * @param t the interpolation amount
+     * @return this vector
+     */
     fun lerp(other: Vector3fc, t: Float): Vector3f = lerp(other, t, this)
+    /**
+     * Computes this + other * scalar component by component.
+     *
+     * This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the vector to scale and add
+     * @param scalar the scale factor
+     * @return this vector
+     */
     fun fma(scalar: Float, other: Vector3fc): Vector3f = fma(scalar, other, this)
+    /**
+     * Keeps the vector's direction while scaling its length to one.
+     *
+     * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
+     *
+     * This overload writes the result back into this vector.
+     * @return this vector
+     */
     fun normalize(): Vector3f = normalize(this)
+    /**
+     * Returns a vector perpendicular to this vector and another 3D vector.
+     *
+     * The direction follows the right-hand rule. Its length is the area of the parallelogram spanned by the inputs, so parallel vectors produce zero.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the second 3D direction
+     * @return this vector
+     */
     fun cross(other: Vector3fc): Vector3f = cross(other, this)
 
     public override fun clone(): Vector3f = Vector3f(this)
@@ -378,6 +853,15 @@ class Vector3f() : Vector3fc, Cloneable {
     override fun toString(): String = "($x, $y, $z)"
 }
 
+/**
+ * A read-only view of a 4D vector of 32-bit floating-point components.
+ *
+ * Treat a vector as an arrow: its components describe a displacement, its length describes magnitude, and normalization keeps direction while making length one.
+ *
+ * Use the heap type for ordinary Field code and persistent state. Destination overloads avoid result allocation when a loop needs it.
+ *
+ * Methods with a dest parameter write into that destination and do not allocate a result.
+ */
 interface Vector4fc {
     fun x(): Float
     fun y(): Float
@@ -392,6 +876,12 @@ interface Vector4fc {
         else -> throw IndexOutOfBoundsException("component $component outside 0..3")
     }
 
+    /**
+     * Adds another vector component by component.
+     * @param other the vector to add
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun add(other: Vector4fc, dest: Vector4f): Vector4f {
         val r0 = (x() + other.x())
         val r1 = (y() + other.y())
@@ -400,6 +890,12 @@ interface Vector4fc {
         return dest.set(r0, r1, r2, r3)
     }
 
+    /**
+     * Subtracts another vector component by component.
+     * @param other the vector to subtract
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun sub(other: Vector4fc, dest: Vector4f): Vector4f {
         val r0 = (x() - other.x())
         val r1 = (y() - other.y())
@@ -408,6 +904,12 @@ interface Vector4fc {
         return dest.set(r0, r1, r2, r3)
     }
 
+    /**
+     * Multiplies corresponding components.
+     * @param other the component-wise multiplier
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun mul(other: Vector4fc, dest: Vector4f): Vector4f {
         val r0 = (x() * other.x())
         val r1 = (y() * other.y())
@@ -416,6 +918,12 @@ interface Vector4fc {
         return dest.set(r0, r1, r2, r3)
     }
 
+    /**
+     * Divides corresponding components.
+     * @param other the component-wise divisor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun div(other: Vector4fc, dest: Vector4f): Vector4f {
         val r0 = (x() / other.x())
         val r1 = (y() / other.y())
@@ -424,6 +932,14 @@ interface Vector4fc {
         return dest.set(r0, r1, r2, r3)
     }
 
+    /**
+     * Scales every component by a scalar.
+     *
+     * Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction.
+     * @param scalar the scale factor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun mul(scalar: Float, dest: Vector4f): Vector4f {
         val r0 = (x() * scalar)
         val r1 = (y() * scalar)
@@ -432,6 +948,12 @@ interface Vector4fc {
         return dest.set(r0, r1, r2, r3)
     }
 
+    /**
+     * Divides every component by a scalar.
+     * @param scalar the divisor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun div(scalar: Float, dest: Vector4f): Vector4f {
         val r0 = (x() / scalar)
         val r1 = (y() / scalar)
@@ -440,6 +962,11 @@ interface Vector4fc {
         return dest.set(r0, r1, r2, r3)
     }
 
+    /**
+     * Reverses the vector by negating every component.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun negate(dest: Vector4f): Vector4f {
         val r0 = (-1.0f * x())
         val r1 = (-1.0f * y())
@@ -448,6 +975,11 @@ interface Vector4fc {
         return dest.set(r0, r1, r2, r3)
     }
 
+    /**
+     * Replaces every component with its absolute value.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun absolute(dest: Vector4f): Vector4f {
         val r0 = abs(x())
         val r1 = abs(y())
@@ -456,6 +988,12 @@ interface Vector4fc {
         return dest.set(r0, r1, r2, r3)
     }
 
+    /**
+     * Selects the smaller value independently in each component.
+     * @param other the other component values
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun min(other: Vector4fc, dest: Vector4f): Vector4f {
         val r0 = min(x(), other.x())
         val r1 = min(y(), other.y())
@@ -464,6 +1002,12 @@ interface Vector4fc {
         return dest.set(r0, r1, r2, r3)
     }
 
+    /**
+     * Selects the larger value independently in each component.
+     * @param other the other component values
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun max(other: Vector4fc, dest: Vector4f): Vector4f {
         val r0 = max(x(), other.x())
         val r1 = max(y(), other.y())
@@ -472,6 +1016,15 @@ interface Vector4fc {
         return dest.set(r0, r1, r2, r3)
     }
 
+    /**
+     * Linearly interpolates from this vector toward another.
+     *
+     * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     * @param other the endpoint
+     * @param t the interpolation amount
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun lerp(other: Vector4fc, t: Float, dest: Vector4f): Vector4f {
         val r0 = (x() + ((other.x() - x()) * t))
         val r1 = (y() + ((other.y() - y()) * t))
@@ -480,6 +1033,15 @@ interface Vector4fc {
         return dest.set(r0, r1, r2, r3)
     }
 
+    /**
+     * Computes this + other * scalar component by component.
+     *
+     * This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration.
+     * @param other the vector to scale and add
+     * @param scalar the scale factor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun fma(scalar: Float, other: Vector4fc, dest: Vector4f): Vector4f {
         val r0 = (x() + (other.x() * scalar))
         val r1 = (y() + (other.y() * scalar))
@@ -488,12 +1050,39 @@ interface Vector4fc {
         return dest.set(r0, r1, r2, r3)
     }
 
+    /**
+     * Measures how strongly two vectors point in the same direction.
+     *
+     * Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them.
+     * @param other the vector to compare
+     * @return the sum of the products of corresponding components
+     */
     fun dot(other: Vector4fc): Float = ((((x() * other.x()) + (y() * other.y())) + (z() * other.z())) + (w() * other.w()))
 
+    /**
+     * Returns the squared length of this vector.
+     *
+     * Use this for comparisons when you do not need the actual distance; it avoids a square root.
+     * @return the sum of the squared components
+     */
     fun lengthSquared(): Float = ((((x() * x()) + (y() * y())) + (z() * z())) + (w() * w()))
 
+    /**
+     * Returns the squared straight-line distance to another vector.
+     *
+     * Use this for nearest/farthest comparisons when you do not need the actual distance.
+     * @param other the point to measure to
+     * @return the squared Euclidean distance
+     */
     fun distanceSquared(other: Vector4fc): Float = (((((x() - other.x()) * (x() - other.x())) + ((y() - other.y()) * (y() - other.y()))) + ((z() - other.z()) * (z() - other.z()))) + ((w() - other.w()) * (w() - other.w())))
 
+    /**
+     * Keeps the vector's direction while scaling its length to one.
+     *
+     * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
     fun normalize(dest: Vector4f): Vector4f {
         val r0 = (x() * (1.0f / sqrt(((((x() * x()) + (y() * y())) + (z() * z())) + (w() * w())))))
         val r1 = (y() * (1.0f / sqrt(((((x() * x()) + (y() * y())) + (z() * z())) + (w() * w())))))
@@ -502,8 +1091,18 @@ interface Vector4fc {
         return dest.set(r0, r1, r2, r3)
     }
 
+    /**
+     * Returns this vector's Euclidean length (magnitude).
+     */
     fun length(): Float = sqrt(lengthSquared())
+    /**
+     * Returns the straight-line distance to another vector.
+     * @param other the point to measure to
+     */
     fun distance(other: Vector4fc): Float = sqrt(distanceSquared(other))
+    /**
+     * Reports whether every component is finite.
+     */
     fun isFinite(): Boolean = x().isFinite() && y().isFinite() && z().isFinite() && w().isFinite()
     fun equals(other: Vector4fc, delta: Float): Boolean =
         abs(x() - other.x()) <= delta && abs(y() - other.y()) <= delta && abs(z() - other.z()) <= delta && abs(w() - other.w()) <= delta
@@ -526,6 +1125,13 @@ interface Vector4fc {
     }
 }
 
+/**
+ * A mutable 4D vector of 32-bit floating-point components.
+ *
+ * Treat a vector as an arrow: its components describe a displacement, its length describes magnitude, and normalization keeps direction while making length one.
+ *
+ * Use the heap type for ordinary Field code and persistent state. Destination overloads avoid result allocation when a loop needs it.
+ */
 class Vector4f() : Vector4fc, Cloneable {
     @JvmField var x: Float = 0.0f
     @JvmField var y: Float = 0.0f
@@ -567,18 +1173,116 @@ class Vector4f() : Vector4fc, Cloneable {
     fun sub(x: Float, y: Float, z: Float, w: Float): Vector4f = set(this.x - x, this.y - y, this.z - z, this.w - w)
     fun mul(x: Float, y: Float, z: Float, w: Float): Vector4f = set(this.x * x, this.y * y, this.z * z, this.w * w)
 
+    /**
+     * Adds another vector component by component.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the vector to add
+     * @return this vector
+     */
     fun add(other: Vector4fc): Vector4f = add(other, this)
+    /**
+     * Subtracts another vector component by component.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the vector to subtract
+     * @return this vector
+     */
     fun sub(other: Vector4fc): Vector4f = sub(other, this)
+    /**
+     * Multiplies corresponding components.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the component-wise multiplier
+     * @return this vector
+     */
     fun mul(other: Vector4fc): Vector4f = mul(other, this)
+    /**
+     * Divides corresponding components.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the component-wise divisor
+     * @return this vector
+     */
     operator fun div(other: Vector4fc): Vector4f = div(other, this)
+    /**
+     * Scales every component by a scalar.
+     *
+     * Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the scale factor
+     * @return this vector
+     */
     fun mul(scalar: Float): Vector4f = mul(scalar, this)
+    /**
+     * Divides every component by a scalar.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the divisor
+     * @return this vector
+     */
     operator fun div(scalar: Float): Vector4f = div(scalar, this)
+    /**
+     * Reverses the vector by negating every component.
+     *
+     * This overload writes the result back into this vector.
+     * @return this vector
+     */
     fun negate(): Vector4f = negate(this)
+    /**
+     * Replaces every component with its absolute value.
+     *
+     * This overload writes the result back into this vector.
+     * @return this vector
+     */
     fun absolute(): Vector4f = absolute(this)
+    /**
+     * Selects the smaller value independently in each component.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the other component values
+     * @return this vector
+     */
     fun min(other: Vector4fc): Vector4f = min(other, this)
+    /**
+     * Selects the larger value independently in each component.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the other component values
+     * @return this vector
+     */
     fun max(other: Vector4fc): Vector4f = max(other, this)
+    /**
+     * Linearly interpolates from this vector toward another.
+     *
+     * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the endpoint
+     * @param t the interpolation amount
+     * @return this vector
+     */
     fun lerp(other: Vector4fc, t: Float): Vector4f = lerp(other, t, this)
+    /**
+     * Computes this + other * scalar component by component.
+     *
+     * This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the vector to scale and add
+     * @param scalar the scale factor
+     * @return this vector
+     */
     fun fma(scalar: Float, other: Vector4fc): Vector4f = fma(scalar, other, this)
+    /**
+     * Keeps the vector's direction while scaling its length to one.
+     *
+     * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
+     *
+     * This overload writes the result back into this vector.
+     * @return this vector
+     */
     fun normalize(): Vector4f = normalize(this)
 
     public override fun clone(): Vector4f = Vector4f(this)
