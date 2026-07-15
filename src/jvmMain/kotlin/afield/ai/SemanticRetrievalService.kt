@@ -1813,13 +1813,18 @@ object SemanticRetrievalService {
             boxId = doc.get("boxId").orEmpty(),
             property = doc.get("property").orEmpty(),
             language = doc.get("language").orEmpty(),
-            score = score,
+            // Coerce non-finite scores to 0: a degenerate/zero embedding vector yields a
+            // NaN cosine score, which kotlinx serializes as the bare token `NaN` — invalid
+            // JSON that browsers' response.json() rejects, silently breaking every
+            // in-browser semantic search (palette, welcome, source-card links). Python's
+            // json accepts NaN, which is why curl masked it.
+            score = if (score.isFinite()) score else 0.0,
             vectorRank = vector?.rank ?: 0,
             bm25Rank = bm25?.rank ?: 0,
             symbolRank = symbol?.rank ?: 0,
-            vectorScore = vector?.score ?: 0f,
-            bm25Score = bm25?.score ?: 0f,
-            symbolScore = symbol?.score ?: 0f,
+            vectorScore = (vector?.score ?: 0f).let { if (it.isFinite()) it else 0f },
+            bm25Score = (bm25?.score ?: 0f).let { if (it.isFinite()) it else 0f },
+            symbolScore = (symbol?.score ?: 0f).let { if (it.isFinite()) it else 0f },
             capsule = if (includeCapsule) doc.get("capsule").orEmpty() else "",
             sourcePreview = if (includeSource) doc.get("source").orEmpty().take(2000) else doc.get("signature").orEmpty()
         )
