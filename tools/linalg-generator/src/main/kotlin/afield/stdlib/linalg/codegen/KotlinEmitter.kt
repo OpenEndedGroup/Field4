@@ -176,6 +176,7 @@ class KotlinEmitter(
         appendLine("| --- | --- | --- |")
         appendLine("| `Quaternionf` | 3D rotation | `setAngleAxis`, `rotateX/Y/Z`, `mul`, `invert`, `conjugate`, `normalize`, `slerp`, `nlerp`, `rotationTo`, `lookAlong`, `transform(Vector3f)` |")
         appendLine("| `Matrix3f` | linear and normal transforms | `rotation`, `scale`, `mul`, `invert`, `transpose`, `determinant`, `transform(Vector3f)` |")
+        appendLine("| `Matrix3d` | double-precision 3x3 for numerically sensitive code | `mul`, `invert`, `transpose`, `determinant` |")
         appendLine("| `Matrix4f` | affine, camera, and projection transforms | `translate`, `scale`, `rotate`, `mul`, `invert`, `transpose`, `perspective`, `ortho`, `frustum`, `lookAt`, `transformPosition`, `transformDirection` |")
         appendLine()
         appendLine("## Storage layouts")
@@ -745,13 +746,16 @@ class KotlinEmitter(
     }
 
     private fun StringBuilder.emitTransformOperation(operation: TransformOperation) {
+        // Every operation is single-precision unless its receiver shape says otherwise; that scalar
+        // kind drives constant literals and the scalar parameter/return types.
+        val scalar = operation.receiver.scalar
         val parameters = buildList {
             add("self: ${operation.receiver.readType}")
             operation.parameters.forEach { parameter ->
                 add(
                     when (parameter) {
                         is ShapeParameter -> "${parameter.name}: ${parameter.shape.readType}"
-                        is TransformScalarParameter -> "${parameter.name}: Float"
+                        is TransformScalarParameter -> "${parameter.name}: ${scalar.kotlinType}"
                     }
                 )
             }
@@ -759,32 +763,42 @@ class KotlinEmitter(
         }.joinToString(", ")
         val returnType = when (val result = operation.result) {
             is TransformResult.Destination -> result.shape.mutableType
-            is TransformResult.Scalar -> "Float"
+            is TransformResult.Scalar -> scalar.kotlinType
         }
         appendLine("internal fun ${operation.functionName}($parameters): $returnType {")
         operation.locals.forEach { value ->
-            appendLine("    val ${value.name} = ${renderTransform(value.expression)}")
+            appendLine("    val ${value.name} = ${renderTransform(value.expression, scalar)}")
         }
         when (val result = operation.result) {
             is TransformResult.Destination -> {
                 result.components.forEachIndexed { index, expression ->
-                    appendLine("    val r$index = ${renderTransform(expression)}")
+                    appendLine("    val r$index = ${renderTransform(expression, scalar)}")
                 }
                 appendLine("    return dest.set(${result.components.indices.joinToString { "r$it" }})")
             }
-            is TransformResult.Scalar -> appendLine("    return ${renderTransform(result.expression)}")
+            is TransformResult.Scalar -> appendLine("    return ${renderTransform(result.expression, scalar)}")
         }
         appendLine("}")
     }
 
-    private fun renderTransform(expression: ScalarExpr): String = when (expression) {
+    private fun renderTransform(expression: ScalarExpr, scalar: ScalarKind): String = when (expression) {
         is ScalarExpr.Read -> "${expression.source}.${expression.component}()"
         is ScalarExpr.Parameter -> expression.name
         is ScalarExpr.Local -> expression.name
-        is ScalarExpr.Constant -> expression.source
-        is ScalarExpr.Unary -> "(${expression.operator}${renderTransform(expression.value)})"
-        is ScalarExpr.Binary -> "(${renderTransform(expression.left)} ${expression.operator} ${renderTransform(expression.right)})"
-        is ScalarExpr.Call -> "${expression.function}(${expression.arguments.joinToString { renderTransform(it) }})"
+        is ScalarExpr.Constant -> transformConstant(expression.value, scalar)
+        is ScalarExpr.Unary -> "(${expression.operator}${renderTransform(expression.value, scalar)})"
+        is ScalarExpr.Binary -> "(${renderTransform(expression.left, scalar)} ${expression.operator} ${renderTransform(expression.right, scalar)})"
+        is ScalarExpr.Call -> "${expression.function}(${expression.arguments.joinToString { renderTransform(it, scalar) }})"
+    }
+
+    /** Formats a transform constant in its operation's precision (float suffix vs. double point). */
+    private fun transformConstant(value: Float, scalar: ScalarKind): String = when (scalar) {
+        ScalarKind.DOUBLE -> when (value) {
+            0f -> "0.0"; 1f -> "1.0"; 2f -> "2.0"; -1f -> "-1.0"; else -> "${value.toDouble()}"
+        }
+        else -> when (value) {
+            0f -> "0f"; 1f -> "1f"; 2f -> "2f"; -1f -> "-1f"; else -> "${value}f"
+        }
     }
 
     private fun renderHeap(expression: Expr): String = render(expression) { source, component ->

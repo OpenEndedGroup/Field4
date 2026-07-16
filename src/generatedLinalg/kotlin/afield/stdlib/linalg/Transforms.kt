@@ -222,6 +222,52 @@ open class Matrix3f() : Matrix3fc {
     fun get(index:Int,buffer:ByteBuffer):ByteBuffer{buffer.putFloat(index,m00);buffer.putFloat(index+4,m01);buffer.putFloat(index+8,m02);buffer.putFloat(index+12,m10);buffer.putFloat(index+16,m11);buffer.putFloat(index+20,m12);buffer.putFloat(index+24,m20);buffer.putFloat(index+28,m21);buffer.putFloat(index+32,m22);return buffer}
 }
 
+/**
+ * A read-only double-precision 3x3 column-major matrix.
+ *
+ * The generated matrix family is single-precision; this double sibling exists for numerically
+ * sensitive code (e.g. Kalman covariance propagation) that must not drop to `float`. Its core
+ * equations are generated from the same transform model as `Matrix3f`, in f64.
+ */
+interface Matrix3dc {
+    fun m00(): Double; fun m01(): Double; fun m02(): Double
+    fun m10(): Double; fun m11(): Double; fun m12(): Double
+    fun m20(): Double; fun m21(): Double; fun m22(): Double
+
+    fun determinant(): Double = determinantMatrix3d(this)
+}
+
+/** A mutable double-precision 3x3 column-major matrix initialized to identity. */
+class Matrix3d() : Matrix3dc {
+    @JvmField var m00 = 1.0; @JvmField var m01 = 0.0; @JvmField var m02 = 0.0
+    @JvmField var m10 = 0.0; @JvmField var m11 = 1.0; @JvmField var m12 = 0.0
+    @JvmField var m20 = 0.0; @JvmField var m21 = 0.0; @JvmField var m22 = 1.0
+
+    constructor(other: Matrix3dc) : this() { set(other) }
+    override fun m00() = m00; override fun m01() = m01; override fun m02() = m02
+    override fun m10() = m10; override fun m11() = m11; override fun m12() = m12
+    override fun m20() = m20; override fun m21() = m21; override fun m22() = m22
+    fun m00(v: Double) = apply { m00 = v }; fun m01(v: Double) = apply { m01 = v }; fun m02(v: Double) = apply { m02 = v }
+    fun m10(v: Double) = apply { m10 = v }; fun m11(v: Double) = apply { m11 = v }; fun m12(v: Double) = apply { m12 = v }
+    fun m20(v: Double) = apply { m20 = v }; fun m21(v: Double) = apply { m21 = v }; fun m22(v: Double) = apply { m22 = v }
+
+    fun identity(): Matrix3d = set(1.0,0.0,0.0, 0.0,1.0,0.0, 0.0,0.0,1.0)
+    fun zero(): Matrix3d = set(0.0,0.0,0.0, 0.0,0.0,0.0, 0.0,0.0,0.0)
+    fun set(other: Matrix3dc): Matrix3d = set(other.m00(),other.m01(),other.m02(), other.m10(),other.m11(),other.m12(), other.m20(),other.m21(),other.m22())
+    fun set(a00:Double,a01:Double,a02:Double,a10:Double,a11:Double,a12:Double,a20:Double,a21:Double,a22:Double): Matrix3d {
+        m00=a00;m01=a01;m02=a02;m10=a10;m11=a11;m12=a12;m20=a20;m21=a21;m22=a22; return this
+    }
+    /** Sets `this = this * right`. */
+    fun mul(right: Matrix3dc): Matrix3d = multiplyMatrix3d(this, right, this)
+    fun mul(right: Matrix3dc, dest: Matrix3d): Matrix3d = multiplyMatrix3d(this, right, dest)
+    override fun determinant(): Double = determinantMatrix3d(this)
+    fun invert(): Matrix3d = invertMatrix3d(this, this)
+    /** Transposes this matrix in place. */
+    fun transpose(): Matrix3d = transposeMatrix3d(this, this)
+    /** Writes the transpose of this matrix into [dest] without modifying this. */
+    fun transpose(dest: Matrix3d): Matrix3d = transposeMatrix3d(this, dest)
+}
+
 /** A read-only 4x4 column-major matrix for affine, camera, and projection transforms. */
 interface Matrix4fc {
     fun m00():Float;fun m01():Float;fun m02():Float;fun m03():Float

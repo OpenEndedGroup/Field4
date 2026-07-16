@@ -5,6 +5,8 @@ data class AlgebraShape(
     val readType: String,
     val mutableType: String,
     val components: List<String>,
+    /** Element precision; controls the constant literals and scalar return/parameter types emitted. */
+    val scalar: ScalarKind = ScalarKind.FLOAT,
 ) {
     init {
         require(components.isNotEmpty())
@@ -20,21 +22,14 @@ sealed interface ScalarExpr {
     data class Read(val source: String, val component: String) : ScalarExpr
     data class Parameter(val name: String) : ScalarExpr
     data class Local(val name: String) : ScalarExpr
-    data class Constant(val source: String) : ScalarExpr
+    /** A numeric literal; the emitter formats it per the operation's scalar precision. */
+    data class Constant(val value: Float) : ScalarExpr
     data class Unary(val operator: String, val value: ScalarExpr) : ScalarExpr
     data class Binary(val left: ScalarExpr, val operator: String, val right: ScalarExpr) : ScalarExpr
     data class Call(val function: String, val arguments: List<ScalarExpr>) : ScalarExpr
 }
 
-private fun number(value: Float): String = when (value) {
-    0f -> "0f"
-    1f -> "1f"
-    2f -> "2f"
-    -1f -> "-1f"
-    else -> "${value}f"
-}
-
-fun scalar(value: Float): ScalarExpr = ScalarExpr.Constant(number(value))
+fun scalar(value: Float): ScalarExpr = ScalarExpr.Constant(value)
 fun read(source: String, component: String): ScalarExpr = ScalarExpr.Read(source, component)
 fun parameter(name: String): ScalarExpr = ScalarExpr.Parameter(name)
 fun local(name: String): ScalarExpr = ScalarExpr.Local(name)
@@ -91,7 +86,7 @@ data class TransformAlgebraModel(val operations: List<TransformOperation>) {
                 is ScalarExpr.Local -> require(expression.name in locals) {
                     "${operation.functionName}: local ${expression.name} used before definition"
                 }
-                is ScalarExpr.Constant -> require(expression.source.isNotBlank())
+                is ScalarExpr.Constant -> require(expression.value.isFinite())
                 is ScalarExpr.Unary -> validateExpression(expression.value)
                 is ScalarExpr.Binary -> { validateExpression(expression.left); validateExpression(expression.right) }
                 is ScalarExpr.Call -> expression.arguments.forEach(::validateExpression)
@@ -120,6 +115,7 @@ object FieldTransformAlgebraModel {
     val quaternion = AlgebraShape("quaternion", "Quaternionfc", "Quaternionf", listOf("x", "y", "z", "w"))
     val matrix3 = AlgebraShape("matrix3", "Matrix3fc", "Matrix3f", matrixComponents(3))
     val matrix4 = AlgebraShape("matrix4", "Matrix4fc", "Matrix4f", matrixComponents(4))
+    val matrix3d = AlgebraShape("matrix3d", "Matrix3dc", "Matrix3d", matrixComponents(3), ScalarKind.DOUBLE)
 
     fun build(): TransformAlgebraModel = TransformAlgebraModel(buildList {
         add(quaternionTransform())
@@ -144,6 +140,13 @@ object FieldTransformAlgebraModel {
         add(multiplyMatrix(4, matrix4))
         add(translateMatrix4())
         add(scaleMatrix4())
+
+        // Double-precision 3x3 matrix: the same equations lowered to f64 for numerically sensitive
+        // code (e.g. Kalman covariance). Retires the hand-written Matrix3d companion.
+        add(multiplyMatrix(3, matrix3d, "multiplyMatrix3d"))
+        add(transposeMatrix(3, matrix3d, "transposeMatrix3d"))
+        add(determinantMatrix3(matrix3d, "determinantMatrix3d"))
+        add(invertMatrix3(matrix3d, "invertMatrix3d"))
     })
 
     private fun matrixComponents(size: Int): List<String> = buildList {
@@ -224,29 +227,29 @@ object FieldTransformAlgebraModel {
         )
     }
 
-    private fun determinantMatrix3(): TransformOperation {
+    private fun determinantMatrix3(shape: AlgebraShape = matrix3, name: String = "determinantMatrix3"): TransformOperation {
         val determinant = m3(0, 0) * (m3(1, 1) * m3(2, 2) - m3(2, 1) * m3(1, 2)) -
             m3(1, 0) * (m3(0, 1) * m3(2, 2) - m3(2, 1) * m3(0, 2)) +
             m3(2, 0) * (m3(0, 1) * m3(1, 2) - m3(1, 1) * m3(0, 2))
-        return TransformOperation("determinantMatrix3", matrix3, result = TransformResult.Scalar(determinant))
+        return TransformOperation(name, shape, result = TransformResult.Scalar(determinant))
     }
 
-    private fun multiplyMatrix(size: Int, shape: AlgebraShape): TransformOperation {
+    private fun multiplyMatrix(size: Int, shape: AlgebraShape, name: String = "multiplyMatrix$size"): TransformOperation {
         val right = ShapeParameter("right", shape)
         val outputs = buildList {
             for (column in 0 until size) for (row in 0 until size) {
                 add(sum((0 until size).map { k -> read("self", "m$k$row") * read("right", "m$column$k") }))
             }
         }
-        return destination("multiplyMatrix$size", shape, listOf(right), outputs = outputs)
+        return destination(name, shape, listOf(right), outputs = outputs)
     }
 
-    private fun invertMatrix3(): TransformOperation {
+    private fun invertMatrix3(shape: AlgebraShape = matrix3, name: String = "invertMatrix3"): TransformOperation {
         val d = TransformLocal("inverseDeterminant", scalar(1f) / local("determinant"))
         val determinant = TransformLocal("determinant", determinantMatrix3().let { (it.result as TransformResult.Scalar).expression })
         val inv = local("inverseDeterminant")
         return destination(
-            "invertMatrix3", matrix3, locals = listOf(determinant, d), outputs = listOf(
+            name, shape, locals = listOf(determinant, d), outputs = listOf(
                 (m3(1,1)*m3(2,2)-m3(2,1)*m3(1,2))*inv,
                 (m3(2,1)*m3(0,2)-m3(0,1)*m3(2,2))*inv,
                 (m3(0,1)*m3(1,2)-m3(1,1)*m3(0,2))*inv,
@@ -260,8 +263,8 @@ object FieldTransformAlgebraModel {
         )
     }
 
-    private fun transposeMatrix(size: Int, shape: AlgebraShape): TransformOperation = destination(
-        "transposeMatrix$size", shape,
+    private fun transposeMatrix(size: Int, shape: AlgebraShape, name: String = "transposeMatrix$size"): TransformOperation = destination(
+        name, shape,
         outputs = buildList { for (column in 0 until size) for (row in 0 until size) add(read("self", "m$row$column")) },
     )
 
