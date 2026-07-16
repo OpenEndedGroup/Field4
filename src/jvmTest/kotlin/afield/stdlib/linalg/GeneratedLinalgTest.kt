@@ -395,6 +395,48 @@ class GeneratedLinalgTest {
         assertTrue(abs(z-actual.z)<=tolerance,"z: expected=$z, actual=${actual.z}")
     }
 
+    @Test
+    fun matrix3dGeneratesDoublePrecisionArithmetic() {
+        // Column-major: set(m00,m01,m02, m10,m11,m12, m20,m21,m22).
+        val a = Matrix3d().set(
+            2.0, 0.0, 1.0,
+            1.0, 3.0, 0.0,
+            0.0, 1.0, 4.0,
+        )
+        assertEquals(2.0, a.m00()); assertEquals(3.0, a.m11()); assertEquals(4.0, a.m22())
+        assertEquals(1.0, a.m02()); assertEquals(1.0, a.m21()); assertEquals(0.0, a.m20())
+
+        // det = 2*(3*4 - 1*0) - 1*(0*4 - 1*1) + 0*(...) = 24 + 1 = 25
+        assertEquals(25.0, a.determinant(), 1e-12)
+
+        // A * A^-1 == identity (mul + invert exercised together).
+        val prod = Matrix3d(a).mul(Matrix3d(a).invert())
+        val id = Matrix3d()
+        for (get in matrix3dAccessors) assertEquals(get(id), get(prod), 1e-9)
+
+        // transpose(dest) reflects across the diagonal and leaves the source untouched.
+        val dest = Matrix3d()
+        assertSame(dest, a.transpose(dest))
+        assertEquals(a.m02(), dest.m20()); assertEquals(a.m21(), dest.m12())
+        assertEquals(1.0, dest.m20()) // distinguishing off-diagonal element (a.m02 == 1.0)
+        assertEquals(1.0, a.m02(), "transpose(dest) must not mutate the source")
+
+        // Copy constructor is independent.
+        val copy = Matrix3d(a); copy.m00(99.0)
+        assertEquals(2.0, a.m00())
+
+        // The whole point of the double type: a value with no exact float form survives intact.
+        val third = 1.0 / 3.0
+        assertEquals(third, Matrix3d().m00(third).m00())
+        assertNotEquals(third, third.toFloat().toDouble())
+    }
+
+    private val matrix3dAccessors: List<(Matrix3d) -> Double> = listOf(
+        { it.m00() }, { it.m01() }, { it.m02() },
+        { it.m10() }, { it.m11() }, { it.m12() },
+        { it.m20() }, { it.m21() }, { it.m22() },
+    )
+
     private fun assertVectorEquals(expected: Vector3f, actual: Vector3f) {
         assertEquals(expected.x, actual.x)
         assertEquals(expected.y, actual.y)

@@ -264,6 +264,7 @@ Alongside the vectors, the library provides rotation and matrix types whose core
 | --- | --- | --- |
 | `Quaternionf` | 3D rotation | `setAngleAxis`, `rotateX/Y/Z`, `mul`, `invert`, `conjugate`, `normalize`, `slerp`, `nlerp`, `rotationTo`, `lookAlong`, `transform(Vector3f)` |
 | `Matrix3f` | linear and normal transforms | `rotation`, `scale`, `mul`, `invert`, `transpose`, `determinant`, `transform(Vector3f)` |
+| `Matrix3d` | double-precision 3x3 for numerically sensitive code | `mul`, `invert`, `transpose`, `determinant` |
 | `Matrix4f` | affine, camera, and projection transforms | `translate`, `scale`, `rotate`, `mul`, `invert`, `transpose`, `perspective`, `ortho`, `frustum`, `lookAt`, `transformPosition`, `transformDirection` |
 
 ## Storage layouts
