@@ -128,6 +128,36 @@ Byte Arrays:       #c8f (purple)
 Structure:         #aaa, #888, #666 (grays)
 ```
 
+## Inline geometric thumbnails (linalg vectors & matrices)
+
+Beneath the terse text for the Field linalg types, `ValueVisualizer` appends a
+small, **guarded** inline SVG thumbnail — the same discipline as the Fn plot
+(`renderFnPlot` / `formatFn`) and the FLine thumbnail (`renderFLineThumbnail`):
+the text head is preserved verbatim and the thumbnail is a bonus wrapped in
+`runCatching`, so a misbehaving value costs only the thumbnail, never the value
+display.
+
+- **`Vector2fc` / `Vector4fc`** → an auto-scaled arrow from a centered origin over
+  faint axes (vec4 draws the (x, y) arrow; z/w stay in the text). `renderVec2Thumbnail`.
+- **`Vector3fc`** → an isometric arrow with a fixed-pixel x/y/z reference frame
+  (the frame is decoupled from the data scale so it can never overflow).
+  `renderVec3Thumbnail`.
+- **`Matrix2/3/4fc`** → a compact colored cell grid, a diverging heatmap around zero
+  (neutral `#222` → `#6cf` for positive, → `#f83` for negative, by |v| / maxAbs),
+  with per-cell value labels for 2×2 and 3×3 (4×4 is colors-only). Matrix storage is
+  column-major (accessor `m<col><row>()`); cells are laid out in row-major math order.
+  `renderMatrixThumbnail`.
+
+Degenerate values are safe: a non-finite (NaN/∞) component skips the thumbnail
+(the plain text is preserved), a zero vector draws axes + an origin dot, and an
+all-zero matrix draws neutral cells. Sizes: `VEC_THUMBNAIL_SIZE` (84px square) and
+`MATRIX_CELL_SIZE` (24px per cell).
+
+Verified by `src/jvmTest/kotlin/afield/LinalgThumbnailVisualizerTest.kt` (drives the
+real `ValueVisualizer.visualize`) and eyeballed as rendered PNGs. A loadable demo is
+`dev_docs/agents/transcripts/linalg_thumbnails_demo.yaml` — replay it into a fresh
+Field4 (agent backdoor / `field_run_transcript`) and look at each box's output.
+
 ## Integration
 
 The system integrates seamlessly with Field4's existing infrastructure:
