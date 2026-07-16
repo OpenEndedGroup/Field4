@@ -65,8 +65,7 @@ Reusable transcript examples live under `dev_docs/agents/transcripts/`. The most
 - [Fabricate Renderer](fabricate_renderer.md) covers the `StandardRenderer` bundle, scene graph, render planning, frame graph, post stack, glTF import, material response, shadows, and ambient occlusion.
 - [afield.four Graphics](afield_four_graphics.md) exercises the lower-level renderer path using the transcript-driven renderer parent described above.
 - [Ray Tracing Examples](ray_tracing_examples.md) uses the same graphics-context capture route for Vulkan ray tracing examples.
-- [Interactive Guides](interactive_guides.md) shows how boxes can teach a document: slide notes, selections, callbacks, templated values, chat, and callout lines.
-- [Guide Chat](guide_chat.md) covers the optional chat service used by slideshow steps.
+- [Interactive Guides](interactive_guides.md) shows how boxes can teach a document: slide notes, selections, callbacks, templated values, the optional chat service, and callout lines.
 
 ## Small languages
 
@@ -77,7 +76,7 @@ Reusable transcript examples live under `dev_docs/agents/transcripts/`. The most
 
 - [Functions Examples](functions_examples.md) turns `Functions` stacks into graphs and parametric FLines.
 - [Interpolants Examples](interpolants_examples.md) draws smoothing behavior.
-- [Timeseries Examples](timeseries_examples.md) keeps raw signals next to filtered and event-detected signals.
+- [Timeseries examples](fline_examples.md#drawing-timeseries-as-layered-curves) keeps raw signals next to filtered and event-detected signals.
 - [Stats Examples](stats_examples.md) keeps summaries attached to distributions and point streams.
 - [Colors Examples](colors_examples.md) compares color helpers on actual geometry.
 - [Correlations Examples](correlations_examples.md) plots dependence measures instead of treating them as numbers in isolation.

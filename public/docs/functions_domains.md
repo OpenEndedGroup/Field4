@@ -37,33 +37,28 @@ val d = hannWindow(1.0..3.0) * 0.6 + 0.2     // still defined on 1..3
 
 Params carrying `ALL` is exactly what makes the next section's fix safe: an *explicit* finite domain, or a genuinely finite-domain operand like a window, still constrains the result — but a bare literal never does.
 
-## Why oscillators are infinite (a lie and a hazard, fixed)
+## Oscillators are defined everywhere
 
-An oscillator is genuinely defined on all of ℝ. `sin()` has a value at `x = -100` and at `x = 1000`; nothing about it is confined to `0.0..1.0`. Yet for a long time the periodic constructors defaulted to `Domain.DEFAULT`, the unit interval — a convenient lie.
+An oscillator is defined on all of ℝ. `sin()` has a value at `x = -100` and at `x = 1000`; nothing about it is confined to any particular window. So the periodic family — `sin`, `cos`, `saw`, `triangle`, `square`, plus `pulseTrain`, `impulseTrain`, and `pulseBurst` — carries `Domain.ALL`.
 
-The lie was also a hazard, precisely because arithmetic intersects domains. A freshly built oscillator carried `0.0..1.0`, so the *moment it entered any expression* it silently clamped the whole expression to `0.0..1.0`:
-
-```diffstatic {data-lang=kotlin}
-// Old behavior — the trap.
-val rising = identity(0.0..3.0) * 0.6         // a slow rise across 0..3
-val tone   = sin(2.0)                          // used to carry domain 0..1
-val stack  = tone + rising                     // 0..1  ∩  0..3  ==  0..1  (!)
-// Plot `stack` over 0..3 and it just stops a third of the way across.
-```
-
-Nobody asked for that. The `rising` term was defined across `0.0..3.0`; the oscillator quietly amputated two-thirds of it.
-
-Today the periodic family — `sin`, `cos`, `saw`, `triangle`, `square`, plus `pulseTrain`, `impulseTrain`, and `pulseBurst` — defaults `domain` to `Domain.ALL`. An unbounded operand contributes nothing to the intersection, so the expression takes its extent from the terms that actually have an opinion:
+This matters because arithmetic intersects domains. An operand whose domain is `Domain.ALL` contributes nothing to the intersection, so a sum or product takes its extent from the terms that *do* have a finite reach:
 
 ```diffstatic {data-lang=kotlin}
-// New behavior — the honest one.
-val rising = identity(0.0..3.0) * 0.6
-val tone   = sin(2.0)                          // Domain.ALL
-val stack  = tone + rising                     // ALL ∩ 0..3  ==  0..3  ✔
+val rising = identity(0.0..3.0) * 0.6   // a slow rise across 0..3
+val tone   = sin(2.0)                    // Domain.ALL — unbounded
+val stack  = tone + rising               // ALL ∩ 0..3  ==  0..3
 // Plot `stack` over 0..3 and the oscillation rides the ramp the whole way.
 ```
 
-The picture below runs both versions on the same box, plotted over the same `0.0..3.0` window. Same expression, one character changed — the oscillator's default domain — and the curve goes from truncated to whole:
+If instead you give the oscillator a finite domain, that window *does* enter the intersection and clamps the whole expression. A `sin` bounded to `0.0..1.0` drags the sum down to `0.0..1.0`, so plotting over `0.0..3.0` stops a third of the way across:
+
+```diffstatic {data-lang=kotlin}
+val rising  = identity(0.0..3.0) * 0.6
+val bounded = sin(frequency = 2.0, domain = 0.0..1.0) + rising  // 0..1 ∩ 0..3  ==  0..1
+// Plot `bounded` over 0..3 and it gives out at x = 1.
+```
+
+The picture below runs both on the same box, plotted over the same `0.0..3.0` window. The only difference is the oscillator's domain:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions/oscillator-domain-clamp-before-after.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" timeout="120" name="functions-oscillator-domain-clamp-before-after"}
 :::static
@@ -73,34 +68,32 @@ with(Functions) {
     // A gentle rise defined across the whole 0..3 window.
     val rising = identity(0.0..3.0) * 0.6
 
-    // BEFORE: an oscillator pinned to the old 0..1 default. The sum's domain
-    // is 0..1 ∩ 0..3 == 0..1, so plotting over 0..3 stops at x = 1.
-    val before = sin(frequency = 2.0, domain = 0.0..1.0) + rising
+    // A bounded oscillator pinned to 0..1. The sum's domain is
+    // 0..1 ∩ 0..3 == 0..1, so plotting over 0..3 stops at x = 1.
+    val bounded = sin(frequency = 2.0, domain = 0.0..1.0) + rising
 
-    // AFTER: today's default — sin() is Domain.ALL. The sum's domain is
-    // ALL ∩ 0..3 == 0..3, so the oscillation rides the ramp the whole way.
-    val after = sin(frequency = 2.0) + rising
+    // An unbounded oscillator (Domain.ALL, the default). The sum's domain
+    // is ALL ∩ 0..3 == 0..3, so the oscillation rides the ramp the whole way.
+    val unbounded = sin(frequency = 2.0) + rising
 
-    before.plot(
-        "before",
+    bounded.plot(
+        "bounded",
         domain(0.0..3.0),
-        title = "BEFORE — sin(domain = 0..1) + rising  → clamped to 0..1",
+        title = "bounded — sin(domain = 0..1) + rising  → clamped to 0..1",
         yDomain = domain((-1.2)..2.6),
         heightPx = 170
     )
-    after.plot(
-        "after",
+    unbounded.plot(
+        "unbounded",
         domain(0.0..3.0),
-        title = "AFTER — sin() is Domain.ALL + rising  → full 0..3",
+        title = "unbounded — sin() is Domain.ALL + rising  → full 0..3",
         yDomain = domain((-1.2)..2.6),
         heightPx = 170
     )
 }
 ```
 
-The top curve gives out at `x = 1`; the bottom one carries across the whole window. Same math, same plot window — the only difference is whether the oscillator told the truth about its reach.
-
-Because it is the *default* that changed, the fix reaches you without any edit to your own code. And if you *want* a bounded oscillator — a burst that lives on a finite interval — say so explicitly with `domain = ...` or `over (...)`, and intersection does the rest.
+The top curve gives out at `x = 1`; the bottom one carries across the whole window. Reach for a bounded oscillator when you want a burst that lives on a finite interval — say so with `domain = ...` or `over (...)`, and intersection does the rest. Otherwise leave the default and the oscillator stays out of the way of the terms that set the extent.
 
 ## Safe to enumerate: `finiteSweep()` and `plotSafe()`
 

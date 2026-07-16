@@ -61,7 +61,7 @@ The stats buffer shows its work here. A noisy scalar signal goes in; a histogram
 
 ![](assets/stats_examples/histogram_fline.png)
 
-First you see the distribution, then you see where the summary lands inside it. A median in the thick of the mass reads differently from a median near a lopsided tail. For statistics that evolve frame by frame, continue with [Timeseries examples](timeseries_examples.md) and [Visualizers](visualizers.md).
+First you see the distribution, then you see where the summary lands inside it. A median in the thick of the mass reads differently from a median near a lopsided tail. For statistics that evolve frame by frame, continue with [Timeseries examples](fline_examples.md#drawing-timeseries-as-layered-curves) and [Visualizers](visualizers.md).
 
 ## Vec2 cloud trajectory + length envelope
 

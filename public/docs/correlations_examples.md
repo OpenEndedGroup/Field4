@@ -54,7 +54,7 @@ The same nonlinear stream goes into `RollingDistanceCorrelation` and `RollingXiC
 
 ![](assets/correlations_examples/rolling_dependence.png)
 
-The agreement and disagreement are visible. The two traces do not coincide; both track the same evolving dependency. Use this kind of sanity check before trusting a rolling metric on sensor streams, musical features, or exploratory data analysis. For similar rolling summaries on raw signals, continue with [Timeseries examples](timeseries_examples.md) and [Stats examples](stats_examples.md).
+The agreement and disagreement are visible. The two traces do not coincide; both track the same evolving dependency. Use this kind of sanity check before trusting a rolling metric on sensor streams, musical features, or exploratory data analysis. For similar rolling summaries on raw signals, continue with [Timeseries examples](fline_examples.md#drawing-timeseries-as-layered-curves) and [Stats examples](stats_examples.md).
 
 ## StatsDependence metric profile on one dataset
 

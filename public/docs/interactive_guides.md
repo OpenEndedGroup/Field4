@@ -223,9 +223,42 @@ runBlocking {
 
 Use per-slide chat when comments should stay attached to a specific step instead of floating beside the whole guide.
 
-If the guide chat server is not running, the slideshow still renders. The discussion pane cannot load or post messages.
+If the guide chat server is not running, the slideshow still renders. The discussion pane cannot load or post messages. Chat is deliberately optional: `withChat()` still produces the UI shell, and the slideshow system never depends on it.
 
-The chat server setup and storage details live in [guide_chat.md](guide_chat.md).
+## Running the guide chat server
+
+Chat is served by a small Flask service that persists each thread as JSON. Install its dependencies and start it alongside Field:
+
+```diffstatic {data-lang=bash}
+cd server
+pip install -r requirements.txt
+python3 guide_chat_server.py
+```
+
+Then run Field normally (`./gradlew runJvm`). Field's JVM server bridges to the chat service over HTTP.
+
+Optional environment variables:
+
+- `CHAT_SERVER_PORT` — port number, default `5002`.
+- `CHAT_SERVER_DEBUG` — debug mode, default `true`.
+- `CHAT_SERVER_URL` — URL Field's JVM server uses to reach the service, default `http://localhost:5002`.
+
+The frontend reads `username` from the URL query string; without it, messages post as `anonymous`:
+
+```diffstatic {data-lang=text}
+https://localhost:9092/?file=myguide&username=student1
+```
+
+Messages are stored under `chat_data/` in per-slideshow JSON files, one file per slide, each holding an array of `{username, message, timestamp}` records:
+
+```diffstatic {data-lang=text}
+chat_data/
+  slideshow_box123_1704182400000/
+    slide_0.json
+    slide_1.json
+```
+
+Use `slideshowId("...")` to give a guide a stable identity so its threads reload for later viewers, and `withChat(id = "templateId")` to share one thread across repeated template instances. For the JVM/JS bridge internals see `dev_docs/GUIDE_CHAT_SYSTEM.md`.
 
 ## Annotations and code callouts
 

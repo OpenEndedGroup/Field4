@@ -38,11 +38,11 @@ The code gives one interpolant a starting value, lets it chase a target, and dra
 
 ![](assets/interpolants_examples/smooth_scalar.png)
 
-The returned shape climbs steadily, arrives, and then clamps at the target. That makes `smoothTo(...)` handy for animation parameters, fades, controller smoothing, and values that should feel less binary. To apply the same idea to live signals rather than a synthetic ramp, continue with [Timeseries examples](timeseries_examples.md) and [Stats examples](stats_examples.md).
+The returned shape climbs steadily, arrives, and then clamps at the target. That makes `smoothTo(...)` handy for animation parameters, fades, controller smoothing, and values that should feel less binary. To apply the same idea to live signals rather than a synthetic ramp, continue with [Timeseries examples](fline_examples.md#drawing-timeseries-as-layered-curves) and [Stats examples](stats_examples.md).
 
-## Diff: retime interpolation by duration
+## Smoothing over steps vs. over time
 
-Smooth can mean "over the next 140 evaluations" or "over 1.2 seconds of real time." Those are different promises. The distinction matters as soon as frame rate, scheduling, or sampling cadence starts to drift.
+Smooth can mean "over the next 140 evaluations" or "over 1.2 seconds of real time." Those are different promises: `smoothTo(steps = 140)` counts evaluations, while `smoothTo(time = 1.2, steps = null)` tracks the wall clock. The distinction matters as soon as frame rate, scheduling, or sampling cadence starts to drift — the two curves below start together and then diverge once the sampling cadence slows.
 
 ```diff_runner {data-lang=kotlin screenshot="assets/interpolants_examples/smooth_duration.png" wait="1.0" capture="box" open-outputs="true"}
 :::before
@@ -122,4 +122,4 @@ The diff isolates that choice. The first version counts calls. The second versio
 
 ![](assets/interpolants_examples/smooth_duration.png)
 
-The time-based version behaves like a duration, not a loop counter. Use the step-based form when the world is discrete and counted; use the time-based form when the world is musical, animated, interactive, or otherwise measured in seconds. For more timing-oriented examples, see [Visualizers](visualizers.md) and [Timeseries examples](timeseries_examples.md).
+The time-based version behaves like a duration, not a loop counter. Use the step-based form when the world is discrete and counted; use the time-based form when the world is musical, animated, interactive, or otherwise measured in seconds. For more timing-oriented examples, see [Visualizers](visualizers.md) and [Timeseries examples](fline_examples.md#drawing-timeseries-as-layered-curves).

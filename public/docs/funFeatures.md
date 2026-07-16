@@ -369,6 +369,31 @@ In some weird inception move, Field has a documentation browser (`Browse Documen
 
 Press that cyan arrow to get back to the text editor.
 
+## The autocomplete panel is a code browser
+
+The completion popup goes further than a blurb. Every `[Symbol]` cross-reference in a KDoc — and the `source …:line` footer at the bottom of a card — is a live link. Click one and the panel re-renders as *that* symbol's own card; a back / forward control with a breadcrumb trail lets you retrace your steps. Links only appear when they resolve, so there is nothing dead to click. In effect the documentation panel becomes a recursive mini-browser over Field's own code, without ever leaving the editor.
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-suggest" warm-completion=true screenshot="assets/docpanel-code-link.png" padding="6" wait="0" timeout="120" embed=true hidden=true name="docpanel-code-link" alt="A completion doc panel with a clickable Vec2 code-link in the KDoc"}
+// Fresh, deterministic capture: forget recency ranking and hide the run-tick overlay.
+ui.eval("window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text.ok{display:none !important}';document.head.appendChild(s);return 'setup';")
+ui.openEditor(id)
+ui.pause(700)
+ui.clickSelector(".monaco-editor")
+ui.pause(300)
+ui.press("Control+A")
+ui.type("val axis = vec")
+ui.pause(300)
+ui.press("Control+Space")
+// warm-completion=true built the K1 completion engine up front, so the enriched
+// RPC — the type-based completion and its KDoc — resolves headlessly. Wait for the
+// linkified [Vec2] token itself, so the still shows a live code-link (not just the
+// item, and not the instant quick-stub).
+ui.waitForSelector("a[href^=\"field-source:\"]", 15000.0)
+ui.pause(800)
+```
+
+Here we typed `val axis = vec` and pressed `ctrl-space`. Because `Vec2` resolves — it is a real type alias in Field's standard library — the `[Vec2]` token in its documentation is rendered as a code-link, while a classpath-only type like `[Float]` that the source index can't resolve is left as plain text. Click `[Vec2]` and the panel hops to the `Vec2` card; the `‹` back button (or the breadcrumb) returns you to where you started. Reading one symbol almost always raises a question about a neighbouring one — here the answer is one click away and one click back, inside the same popup you opened to write the line.
+
 ## Navigating
 
 A few keyboard shortcuts for getting around Field.

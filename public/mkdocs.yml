@@ -9,14 +9,6 @@ nav:
   - Survival Guide: survivalGuide.md
   - Feature Overview: funFeatures.md
   - AI Overview: aiFeatures.md
-  - The Documentation Browser: completion_doc_browser.md
-  - History & Inspection:
-    - Your History with Field: history_overview.md
-    - Document History: document_history.md
-    - Inline History (History Lens): history_lens.md
-    - AI Tool-Use History: ai_tool_use_history.md
-    - AI Documentation Polish: ai_doc_polish.md
-    - The Semantic Index: semantic_index.md
   - Kotlin Overview: kotlin_overview.md
   - Building & Testing: building_and_testing.md
   - Reference:
@@ -25,6 +17,13 @@ nav:
     - Staging area:
       - Staging Overview: staging.md
       - Automating Field: automating_field.md
+      - History & Inspection:
+        - Your History with Field: history_overview.md
+        - Document History: document_history.md
+        - Inline History (History Lens): history_lens.md
+        - AI Tool-Use History: ai_tool_use_history.md
+        - AI Documentation Polish: ai_doc_polish.md
+        - The Semantic Index: semantic_index.md
       - Field Systems:
         - Apple Vision Pro (WiP): vision.md
         - Fabricate Renderer: fabricate_renderer.md
@@ -32,7 +31,6 @@ nav:
         - afield.four Graphics: afield_four_graphics.md
         - Field Probes: field_probes.md
         - Interactive Guides: interactive_guides.md
-        - Guide Chat: guide_chat.md
       - Small Languages:
         - FieldML Examples: fieldml_examples.md
         - Forth Examples: forth_examples.md
@@ -46,7 +44,6 @@ nav:
         - Functions Examples: functions_examples.md
         - Functions Domains: functions_domains.md
         - Interpolants Examples: interpolants_examples.md
-        - Timeseries Examples: timeseries_examples.md
         - Particle Filter Examples: pf_examples.md
         - Stats Examples: stats_examples.md
         - Colors Examples: colors_examples.md

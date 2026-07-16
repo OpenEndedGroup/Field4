@@ -130,7 +130,7 @@ Here the pulse train is the raw material. A slower sine bends it, a blur softens
 
 ![](assets/functions_examples/pulse_stack_window.png)
 
-The three traces separate cleanly: one jagged, one softened, one quantized into holds. That side-by-side picture helps when shaping sequencer data, stepped motion, triggers, or control-rate material. For statistical views of similar time-varying data, see [Timeseries examples](timeseries_examples.md) and [Stats examples](stats_examples.md).
+The three traces separate cleanly: one jagged, one softened, one quantized into holds. That side-by-side picture helps when shaping sequencer data, stepped motion, triggers, or control-rate material. For statistical views of similar time-varying data, see [Timeseries examples](fline_examples.md#drawing-timeseries-as-layered-curves) and [Stats examples](stats_examples.md).
 
 ## 2D stack: separate x(t) and y(t) Functions
 
@@ -3257,15 +3257,21 @@ with(Functions) {
 
 ## Browsing a function through its component graph
 
-The final plot answers “what shape did I make?” `browseGraph()` answers “how did each occurrence become part of that shape?” It keeps the root function’s x-axis fixed while you select nodes in the structural graph:
+The final plot answers “what shape did I make?” `browseGraph()` answers “how did each occurrence become part of that shape?” It opens an interactive browser: the structural graph in a sidebar, the final curve fixed on its x-axis, and a view of whichever node you select.
 
-```diffstatic {data-lang=kotlin}
-val gesture = (
-    sin(2.0).shift(0.12) *
-    tween(0.15, 1.0, 0.0..1.0, Functions.Easing.CUBIC_IN_OUT)
-).softClip(0.8)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/browse-graph-components.png" wait="1.5" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-browse-graph-components"}
+:::static
+import afield.stdlib.Functions
+import afield.stdlib.browseGraph
 
-gesture.browseGraph(channel = "components")
+with(Functions) {
+    val gesture = (
+        sin(2.0).shift(0.12) *
+        tween(0.15, 1.0, 0.0..1.0, Functions.Easing.CUBIC_IN_OUT)
+    ).softClip(0.8)
+
+    gesture.browseGraph(channel = "components")
+}
 ```
 
 The browser always leaves the final curve visible in gray. The selected cyan trace has five views:
@@ -3341,23 +3347,9 @@ sin/*/saw => op=triangle
 sin/**/[tag=number][value>0.2] => = 0.5
 """)
 
-    display(
-        "graph",
-        """
-        <div style="font-family:Iosevka Web, monospace; background:#050505; color:#e8e8e8; border:1px solid #303030; padding:14px; max-width:1120px;">
-          <div style="display:grid; grid-template-columns:1fr; gap:14px; align-items:start;">
-            <div>
-              <div style="font-weight:700; margin:0 0 8px 2px;">before</div>
-              <div style="overflow:hidden; border:1px solid #202020;">${base.graphSvg(width = 1060, nodeWidth = 154.0, nodeHeight = 46.0, xGap = 176.0, yGap = 62.0, maxDepth = 5)}</div>
-            </div>
-            <div>
-              <div style="font-weight:700; margin:0 0 8px 2px;">after</div>
-              <div style="overflow:hidden; border:1px solid #202020;">${changed.graphSvg(width = 1060, nodeWidth = 154.0, nodeHeight = 46.0, xGap = 176.0, yGap = 62.0, maxDepth = 5)}</div>
-            </div>
-          </div>
-        </div>
-        """.trimIndent()
-    )
+    // Two output areas, one per channel — they stack in the box.
+    display("before", base.graphSvg(width = 1060, nodeWidth = 154.0, nodeHeight = 46.0, xGap = 176.0, yGap = 62.0, maxDepth = 5))
+    display("after", changed.graphSvg(width = 1060, nodeWidth = 154.0, nodeHeight = 46.0, xGap = 176.0, yGap = 62.0, maxDepth = 5))
 }
 ```
 
@@ -3753,11 +3745,33 @@ There is a subtlety worth understanding, because it decides whether variety sear
 
 Passing `normalize = true` z-scores each descriptor (subtract the mean, divide by the RMS) before measuring distance, so amplitude and offset fall out and novelty is forced to explore *shape* — sine versus saw versus pulse versus something pruned flat. As a bonus the default mutation palette now behaves: `duplicateSubtree` only rescales a copy, which normalization ignores, so it can no longer run away. This is the counterpart of the structural cost from `graphMetrics` — one asks "how big is the graph", the other "how different is what it does".
 
-Here is an actual `normalize = true` run — the same CPU-only harness as above (`./gradlew runEvolveWorkedExample`), plotting each result's z-scored behaviour so the cells share one scale and read as pure shape:
+Here is an actual `normalize = true` run through Field's own plotting — each result drawn into its own output area so the set reads as pure shape:
 
-![Six behaviourally distinct evolved gestures from one seed, each a normalized waveform](assets/evolve/evolve-variety.svg)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/evolve-variety.png" wait="2.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" timeout="180" name="functions-evolve-variety"}
+:::static
+import afield.stdlib.Functions
+import afield.stdlib.evolveVariety
 
-Six slots grown from a single `sin(2.0) * 0.5` seed, `meanPairwiseDistance = 1.51` across the set — every cell is a genuinely different shape (all six polylines are distinct), not the same wave rescaled. Re-running regenerates a byte-identical montage. Try it without `normalize` and watch the spread balloon into the billions while the montage degenerates to one spike: a compact demonstration of *why the metric matters* in open-ended generation.
+with(Functions) {
+    val variety = evolveVariety(
+        seed = sin(2.0) * 0.5,
+        count = 6,        // how many mutually-distant gestures to return
+        iterations = 48,
+        rngSeed = 7L,     // same seed + inputs -> identical set
+        neighbours = 3,   // k-nearest novelty
+        normalize = true  // measure distance in *shape*, not amplitude
+    )
+    println("spread = ${variety.meanPairwiseDistance}")
+
+    // One output area per result; they stack in the box.
+    variety.results.forEachIndexed { i, fn ->
+        fn.withName("variety-$i")
+            .plot(0.0..1.0, channel = "variety-$i", heightPx = 110, title = "gesture $i")
+    }
+}
+```
+
+Six slots grown from a single `sin(2.0) * 0.5` seed — every trace is a genuinely different shape, not the same wave rescaled, and `meanPairwiseDistance` reports the average behavioural spread across the set. Because the whole run is seeded, re-running reproduces the identical family. Try it without `normalize` and the spread balloons into the billions while the set degenerates toward one spike: a compact demonstration of *why the metric matters* in open-ended generation.
 
 **Replay it live.** A loadable operation transcript, [`assets/evolve/variety-evolution.operations.yaml`](assets/evolve/variety-evolution.operations.yaml), builds and runs this in a fresh Field document — one box that grows the set and plots each gesture. Replay it with `field_backdoor.py --scratch` (`macro write … && macro run …`) or hand the YAML to the `field_run_transcript` MCP tool. See [Automating Field](automating_field.md) for the transcript path.
 

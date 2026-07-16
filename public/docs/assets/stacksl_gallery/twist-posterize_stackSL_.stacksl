@@ -1,0 +1,7 @@
+p 3.0 twist
+5 *
+fbm
+0.15 0.85 ramp
+8 posterize
+palette
+saturate

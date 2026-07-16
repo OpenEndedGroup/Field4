@@ -334,6 +334,32 @@ uv x 18 * sin 0.5 + 0.5 * palette saturate
 uv 5 * fbm palette 1.7 contrast tonemap saturate
 ```
 
+**Kaleidoscope + FM** — fold the domain into a mirror wedge, then read it through the frequency-modulation field.
+
+![StackSL: kaleidoscope and FM](assets/stacksl/stacksl-kaleido-fm.png)
+
+```diffstatic {data-lang=stacksl}
+p 8 kaleido
+9.0 *
+fm
+palette
+saturate
+```
+
+**Twist into posterized bands** — swirl the domain, build an FBM field, then quantize it into hard steps.
+
+![StackSL: twist into posterized bands](assets/stacksl/stacksl-twist-posterize.png)
+
+```diffstatic {data-lang=stacksl}
+p 3.0 twist
+5 *
+fbm
+0.15 0.85 ramp
+8 posterize
+palette
+saturate
+```
+
 ## Animated
 
 Time-driven programs read `input.w`, so the same fullscreen harness animates them

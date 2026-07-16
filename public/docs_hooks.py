@@ -740,9 +740,13 @@ class RunnerState:
     def ensure_video(self, *, code: str, options: RunnerOptions, page_path: Path, block_index: int) -> None:
         """Record a short video clip instead of taking a screenshot."""
         assert options.video is not None
-        # Always record docs videos from the editor pane.
-        # Keep screenshot capture mode independent when a fence emits both.
-        video_options = replace(options, capture="editor")
+        # Record the video from the capture mode the fence asked for. Inline
+        # visualizers live in the editor gutter (capture="editor"); a display()
+        # output such as the field-probe card lives in the box's output area
+        # (capture="box"/"window"), and must be filmed there or the clip is just
+        # the editor with a blinking cursor. record-box/-window open the outputs
+        # exactly like the still path does.
+        video_options = options
         video_path = resolve_output_path(page_path, options.video)
         video_path.parent.mkdir(parents=True, exist_ok=True)
         cache_allowed = self.runner_mode != "always"

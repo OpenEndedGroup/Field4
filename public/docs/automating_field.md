@@ -47,6 +47,40 @@ Because the transcript is just data, a macro is legible: you can open one, see w
 does, change a name or a value, and run your version. Field records what you do as you
 work, so you can turn a sequence you just performed into a macro and replay it elsewhere.
 
+## The macro recorder
+
+The **Macro Recorder** panel is where that recording surfaces. It shows the live
+transcript as you work — each operation rendered as a legible line — with controls to
+name and save the sequence, choose its scope (document, project, or workspace), and run
+or undo saved macros. What you save here is the same OperationTranscript YAML shown
+above.
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" screenshot="assets/automating_field/macro-recorder-panel.png" padding="0" wait="0" timeout="90" embed=true hidden=true name="macro-recorder-panel" alt="The Macro Recorder panel showing a live transcript and macro controls"}
+ui.openEditor(id)
+ui.pause(500)
+ui.clickSelector(".monaco-editor")
+ui.pause(200)
+ui.press("Control+A")
+ui.type("val a = vec(1.0, 2.0)\nval b = a * 2.0\nb.plot(0.0..1.0)")
+ui.pause(400)
+// Open the Macro Recorder panel (same as the "Macro: Recorder Panel" palette command).
+ui.eval("window.macroTranscriptPanel(); return 'open';")
+ui.waitForSelector("#macro-recorder-panel.is-visible", 8000.0)
+ui.pause(400)
+// Name the macro and start recording so the panel shows an active session.
+ui.eval("var p=document.getElementById('macro-recorder-panel'); var n=p.querySelector(\"[data-role='name']\"); if(n){n.value='scale-and-plot';} var s=p.querySelector(\"[data-action='start']\"); if(s){s.click();} return 'started';")
+ui.pause(500)
+// A recordable edit while recording, so the transcript picks up an operation.
+ui.clickSelector(".monaco-editor")
+ui.pause(200)
+ui.type("\nb.plot(0.0..2.0, channel = \"wide\")")
+ui.pause(1200)
+// Expand the fixed panel to fill the viewport so the window still frames the
+// panel tightly (the overlay clip path can't resolve this bottom-docked panel).
+ui.eval("var p=document.getElementById('macro-recorder-panel'); if(p){p.style.top='8px';p.style.left='8px';p.style.right='8px';p.style.bottom='8px';p.style.width='auto';p.style.height='auto';p.style.maxWidth='none';p.style.maxHeight='none';} return 'filled';")
+ui.pause(600)
+```
+
 ## Driving Field from a script or agent
 
 The backdoor (`tools/field_backdoor.py` in the Field repository) attaches to a running
