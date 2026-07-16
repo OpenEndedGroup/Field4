@@ -56,11 +56,11 @@ choose_sidecar_port() {
     START_PORT="$(derive_sidecar_port)"
     OFFSET=0
     while [ "$OFFSET" -lt 25 ]; do
-        PORT="$((START_PORT + OFFSET))"
-        URL="http://127.0.0.1:$PORT"
+        SIDECAR_PORT="$((START_PORT + OFFSET))"
+        URL="http://127.0.0.1:$SIDECAR_PORT"
         STATUS="$(sidecar_status "$URL")"
         if [ "$STATUS" = "ok" ] || [ "$STATUS" = "down" ] || [ "$STATUS" = "unknown" ]; then
-            printf '%s' "$PORT"
+            printf '%s' "$SIDECAR_PORT"
             return
         fi
         OFFSET="$((OFFSET + 1))"
@@ -84,8 +84,8 @@ ensure_semantic_sidecar() {
         echo "Configured code-use semantic sidecar is $STATUS for this checkout; starting a checkout-local sidecar."
     fi
 
-    PORT="$(choose_sidecar_port)"
-    URL="http://127.0.0.1:$PORT"
+    SIDECAR_PORT="$(choose_sidecar_port)"
+    URL="http://127.0.0.1:$SIDECAR_PORT"
     STATUS="$(sidecar_status "$URL")"
     export AFIELD_CODE_USE_SEMANTIC_SIDECAR_URL="$URL"
 
@@ -99,7 +99,7 @@ ensure_semantic_sidecar() {
     mkdir -p "$LOG_DIR"
     echo "Starting code-use semantic sidecar at $URL for $DIR"
     echo "Sidecar log: $LOG_FILE"
-    nohup ./gradlew -p tools/code-use-semantic-sidecar run --args="--port $PORT --workspace $DIR" >> "$LOG_FILE" 2>&1 < /dev/null &
+    nohup ./gradlew -p tools/code-use-semantic-sidecar run --args="--port $SIDECAR_PORT --workspace $DIR" >> "$LOG_FILE" 2>&1 < /dev/null &
 }
 
 build_field() {
