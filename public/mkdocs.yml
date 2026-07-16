@@ -26,6 +26,7 @@ nav:
     - Visualizers & Controls: visualizers.md
     - Staging area:
       - Staging Overview: staging.md
+      - Mobile Controllers: mobile_controllers.md
       - Automating Field: automating_field.md
       - Field Systems:
         - Apple Vision Pro (WiP): vision.md
