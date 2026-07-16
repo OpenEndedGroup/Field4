@@ -1759,7 +1759,7 @@ body {
 }
 
 * {
-    font-feature-settings: "dlig" 1;
+    font-feature-settings: "dlig" 1, "TXTR" 1;
     box-sizing: border-box;
 
     &::-webkit-scrollbar {
