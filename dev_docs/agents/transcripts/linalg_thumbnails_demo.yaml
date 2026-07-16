@@ -1,0 +1,68 @@
+name: linalg_thumbnails_demo
+description: >
+  Self-contained demo of the inline geometric thumbnails ValueVisualizer now draws
+  beneath Field linalg vectors & matrices. Each box evaluates one linalg value; on
+  execute, its output display shows the terse text head PLUS a small SVG thumbnail —
+  an auto-scaled arrow for vectors (isometric for vec3), a diverging heatmap grid for
+  matrices. Open/replay this into a fresh Field4 and look at each box's output.
+operations:
+  - create:
+      box: linalg_vec2
+      name: vec2 arrow
+      frame: { x: 80.0, y: 60.0, w: 220.0, h: 150.0 }
+      properties:
+        code: |
+          vec(1, 2)
+  - execute:
+      box: linalg_vec2
+      property: code
+      type: fragment
+      code: |
+        vec(1, 2)
+
+  - create:
+      box: linalg_vec3
+      name: vec3 isometric arrow
+      frame: { x: 320.0, y: 60.0, w: 220.0, h: 150.0 }
+      properties:
+        code: |
+          vec(1, 2, 3)
+  - execute:
+      box: linalg_vec3
+      property: code
+      type: fragment
+      code: |
+        vec(1, 2, 3)
+
+  - create:
+      box: linalg_mat3
+      name: mat3 heatmap
+      frame: { x: 80.0, y: 240.0, w: 220.0, h: 170.0 }
+      properties:
+        code: |
+          afield.stdlib.linalg.Matrix3f().set(1f, 0.5f, -0.5f, 0.25f, -1f, 0.75f, 0f, 0.1f, 2f)
+  - execute:
+      box: linalg_mat3
+      property: code
+      type: fragment
+      code: |
+        afield.stdlib.linalg.Matrix3f().set(1f, 0.5f, -0.5f, 0.25f, -1f, 0.75f, 0f, 0.1f, 2f)
+
+  - create:
+      box: linalg_mat4
+      name: mat4 translation heatmap
+      frame: { x: 320.0, y: 240.0, w: 220.0, h: 170.0 }
+      properties:
+        code: |
+          afield.stdlib.linalg.Matrix4f().translation(3f, 4f, 5f)
+  - execute:
+      box: linalg_mat4
+      property: code
+      type: fragment
+      code: |
+        afield.stdlib.linalg.Matrix4f().translation(3f, 4f, 5f)
+
+  - await:
+      wait: pending
+  - wait:
+      millis: 300

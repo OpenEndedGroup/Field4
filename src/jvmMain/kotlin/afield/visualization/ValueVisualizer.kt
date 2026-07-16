@@ -13,9 +13,12 @@ import space.kscience.plotly.Plot
 import java.util.Collections
 import java.util.IdentityHashMap
 import kotlin.math.abs
+import kotlin.math.atan2
+import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
+import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.isAccessible
@@ -94,6 +97,8 @@ object ValueVisualizer {
     private const val FN_PLOT_PAD_TOP = 8
     private const val FN_PLOT_PAD_RIGHT = 8
     private const val FN_PLOT_SAMPLES = 160
+    private const val VEC_THUMBNAIL_SIZE = 84
+    private const val MATRIX_CELL_SIZE = 24
     private const val BOX_SYMBOL = "\u25A1"
     private val UNDERSCORE_UUID_REGEX = Regex(
         "^_?([0-9a-f]{8})_([0-9a-f]{4})_([0-9a-f]{4})_([0-9a-f]{4})_([0-9a-f]{12})$",
@@ -852,7 +857,7 @@ object ValueVisualizer {
     }
 
     private fun formatVec2(v: Vector2fc): String {
-        return buildString {
+        val text = buildString {
             append(formatTypeName("vec2", "#fc8"))
             append(formatPunctuation("("))
             append(formatNumericLiteral(v.x()))
@@ -860,10 +865,13 @@ object ValueVisualizer {
             append(formatNumericLiteral(v.y()))
             append(formatPunctuation(")"))
         }
+        return withLinalgThumbnail(text, VEC_THUMBNAIL_SIZE, VEC_THUMBNAIL_SIZE) {
+            renderVec2Thumbnail(v.x(), v.y())
+        }
     }
 
     private fun formatVec3(v: Vector3fc): String {
-        return buildString {
+        val text = buildString {
             append(formatTypeName("vec3", "#fc8"))
             append(formatPunctuation("("))
             append(formatNumericLiteral(v.x()))
@@ -873,10 +881,13 @@ object ValueVisualizer {
             append(formatNumericLiteral(v.z()))
             append(formatPunctuation(")"))
         }
+        return withLinalgThumbnail(text, VEC_THUMBNAIL_SIZE, VEC_THUMBNAIL_SIZE) {
+            renderVec3Thumbnail(v.x(), v.y(), v.z())
+        }
     }
 
     private fun formatVec4(v: Vector4fc): String {
-        return buildString {
+        val text = buildString {
             append(formatTypeName("vec4", "#fc8"))
             append(formatPunctuation("("))
             append(formatNumericLiteral(v.x()))
@@ -887,6 +898,10 @@ object ValueVisualizer {
             append(formatPunctuation(", "))
             append(formatNumericLiteral(v.w()))
             append(formatPunctuation(")"))
+        }
+        // The dominant payload is the text; the panel just draws the (x, y) arrow.
+        return withLinalgThumbnail(text, VEC_THUMBNAIL_SIZE, VEC_THUMBNAIL_SIZE) {
+            renderVec2Thumbnail(v.x(), v.y())
         }
     }
 
@@ -906,7 +921,7 @@ object ValueVisualizer {
     }
 
     private fun formatMatrix(m: Matrix2fc): String {
-        return buildString {
+        val text = buildString {
             append(formatTypeName("mat2", "#cf8"))
             append(" ")
             append(formatPunctuation("["))
@@ -919,11 +934,17 @@ object ValueVisualizer {
             append(formatNumericLiteral(m.m11()))
             append(formatPunctuation("]"))
         }
+        val rows = listOf(
+            listOf(m.m00(), m.m10()),
+            listOf(m.m01(), m.m11())
+        )
+        val side = 2 * MATRIX_CELL_SIZE
+        return withLinalgThumbnail(text, side, side) { renderMatrixThumbnail(rows) }
     }
 
     private fun formatMatrix(m: Matrix3fc): String {
         val det = m.determinant()
-        return buildString {
+        val text = buildString {
             append(formatTypeName("mat3", "#cf8"))
             append(" ")
             append(formatPunctuation("["))
@@ -932,13 +953,20 @@ object ValueVisualizer {
             append(formatNumericLiteral(det))
             append(formatPunctuation("]"))
         }
+        val rows = listOf(
+            listOf(m.m00(), m.m10(), m.m20()),
+            listOf(m.m01(), m.m11(), m.m21()),
+            listOf(m.m02(), m.m12(), m.m22())
+        )
+        val side = 3 * MATRIX_CELL_SIZE
+        return withLinalgThumbnail(text, side, side) { renderMatrixThumbnail(rows) }
     }
 
     private fun formatMatrix(m: Matrix4fc): String {
         val det = m.determinant()
         val translation = Vector3f()
         m.getTranslation(translation)
-        return buildString {
+        val text = buildString {
             append(formatTypeName("mat4", "#cf8"))
             append(" ")
             append(formatPunctuation("["))
@@ -956,7 +984,197 @@ object ValueVisualizer {
             append(formatPunctuation(")"))
             append(formatPunctuation("]"))
         }
+        val rows = listOf(
+            listOf(m.m00(), m.m10(), m.m20(), m.m30()),
+            listOf(m.m01(), m.m11(), m.m21(), m.m31()),
+            listOf(m.m02(), m.m12(), m.m22(), m.m32()),
+            listOf(m.m03(), m.m13(), m.m23(), m.m33())
+        )
+        val side = 4 * MATRIX_CELL_SIZE
+        return withLinalgThumbnail(text, side, side) { renderMatrixThumbnail(rows) }
     }
+
+    // ---- linalg thumbnails --------------------------------------------------
+
+    /**
+     * Appends a small, GUARDED inline SVG thumbnail beneath the terse text [head],
+     * mirroring the discipline of [formatFn]/[renderFLineThumbnail]: the text is kept
+     * verbatim and the thumbnail is a bonus. [render] runs inside [runCatching]; if it
+     * throws or returns `null` (e.g. a non-finite value), the plain inline text is
+     * returned unchanged so a misbehaving value costs only the thumbnail.
+     */
+    private fun withLinalgThumbnail(
+        head: String,
+        width: Int,
+        height: Int,
+        render: () -> String?
+    ): String {
+        val svg = runCatching(render).getOrNull() ?: return head
+        return buildString {
+            append("<div>")
+            append(head)
+            append(
+                "<div style='margin-top: 4px; border: 1px solid #333; border-radius: 4px; " +
+                    "background: #111; width: ${width}px; height: ${height}px; overflow: hidden;'>"
+            )
+            append(svg)
+            append("</div>")
+            append("</div>")
+        }
+    }
+
+    /**
+     * A 2D vector as an auto-scaled arrow from a centered origin, over faint axes.
+     * Non-finite components yield `null` (thumbnail skipped); a zero vector draws just
+     * the axes and an origin dot.
+     */
+    private fun renderVec2Thumbnail(x: Float, y: Float): String? {
+        if (!x.isFinite() || !y.isFinite()) return null
+        val size = VEC_THUMBNAIL_SIZE.toDouble()
+        val cx = size / 2.0
+        val cy = size / 2.0
+        val pad = 12.0
+        val avail = size / 2.0 - pad
+        val maxComp = max(abs(x), abs(y)).toDouble()
+        val scale = if (maxComp > 1e-6) avail / maxComp else 0.0
+        val tipX = cx + x * scale
+        val tipY = cy - y * scale // screen y grows downward; math +y points up
+        return buildString {
+            append(svgOpen(VEC_THUMBNAIL_SIZE, VEC_THUMBNAIL_SIZE))
+            appendAxis(this, 4.0, cy, size - 4.0, cy) // horizontal
+            appendAxis(this, cx, 4.0, cx, size - 4.0) // vertical
+            if (scale <= 0.0) {
+                append("<circle cx='${plotNum(cx)}' cy='${plotNum(cy)}' r='2.5' fill='#6cf'/>")
+            } else {
+                appendArrow(this, cx, cy, tipX, tipY, "#6cf")
+            }
+            append("</svg>")
+        }
+    }
+
+    /**
+     * A 3D vector as an isometric arrow with a fixed-pixel x/y/z reference frame. The
+     * frame is decoupled from the data scale so it can never overflow; the arrow is
+     * auto-scaled to fit. Non-finite components yield `null`.
+     */
+    private fun renderVec3Thumbnail(x: Float, y: Float, z: Float): String? {
+        if (!x.isFinite() || !y.isFinite() || !z.isFinite()) return null
+        val size = VEC_THUMBNAIL_SIZE.toDouble()
+        val cx = size / 2.0
+        val cy = size / 2.0
+        val cos30 = 0.8660254
+        val sin30 = 0.5
+        // Isometric projection into screen-space offsets (before scaling): +x goes
+        // right-down, +z left-down, +y straight up.
+        fun projX(vx: Double, vy: Double, vz: Double) = (vx - vz) * cos30
+        fun projY(vx: Double, vy: Double, vz: Double) = (vx + vz) * sin30 - vy
+        val px = projX(x.toDouble(), y.toDouble(), z.toDouble())
+        val py = projY(x.toDouble(), y.toDouble(), z.toDouble())
+        val pad = 14.0
+        val avail = size / 2.0 - pad
+        val extent = max(abs(px), abs(py))
+        val scale = if (extent > 1e-6) avail / extent else 0.0
+        val frameLen = 16.0
+        return buildString {
+            append(svgOpen(VEC_THUMBNAIL_SIZE, VEC_THUMBNAIL_SIZE))
+            // reference frame (fixed pixel length), faint, with tiny axis labels
+            fun frame(dx: Double, dy: Double, label: String) {
+                val ex = cx + dx * frameLen
+                val ey = cy + dy * frameLen
+                append("<line x1='${plotNum(cx)}' y1='${plotNum(cy)}' x2='${plotNum(ex)}' y2='${plotNum(ey)}' stroke='#3a3a3a' stroke-width='1'/>")
+                append("<text x='${plotNum(cx + dx * (frameLen + 4.0))}' y='${plotNum(cy + dy * (frameLen + 4.0) + 2.5)}' fill='#666' font-size='7' font-family='monospace' text-anchor='middle'>${escape(label)}</text>")
+            }
+            frame(cos30, sin30, "x")
+            frame(-cos30, sin30, "z")
+            frame(0.0, -1.0, "y")
+            if (scale <= 0.0) {
+                append("<circle cx='${plotNum(cx)}' cy='${plotNum(cy)}' r='2.5' fill='#6cf'/>")
+            } else {
+                appendArrow(this, cx, cy, cx + px * scale, cy + py * scale, "#6cf")
+            }
+            append("</svg>")
+        }
+    }
+
+    /**
+     * A matrix as a compact colored cell grid — a diverging heatmap around zero.
+     * Neutral `#222` at zero, blending to `#6cf` for positive and `#f83` for negative
+     * entries by |value| / maxAbs. Non-finite entries get a distinct gray cell. Values
+     * are labelled for 2×2 and 3×3 grids (4×4 is colors-only to avoid clutter).
+     */
+    private fun renderMatrixThumbnail(rows: List<List<Float>>): String? {
+        val n = rows.size
+        if (n == 0) return null
+        val cell = MATRIX_CELL_SIZE
+        val side = n * cell
+        var maxAbs = 0.0
+        rows.forEach { row -> row.forEach { v -> if (v.isFinite()) maxAbs = max(maxAbs, abs(v.toDouble())) } }
+        val showText = n <= 4
+        return buildString {
+            append(svgOpen(side, side))
+            for (r in rows.indices) {
+                val row = rows[r]
+                for (c in row.indices) {
+                    val v = row[c]
+                    val x = c * cell
+                    val y = r * cell
+                    val fill = matrixCellColor(v, maxAbs)
+                    append("<rect x='$x' y='$y' width='$cell' height='$cell' fill='$fill' stroke='#111' stroke-width='1'/>")
+                    if (showText && v.isFinite()) {
+                        append(
+                            "<text x='${x + cell / 2}' y='${y + cell / 2 + 3}' fill='#eee' font-size='7' " +
+                                "font-family='monospace' text-anchor='middle'>${escape(matrixCellLabel(v))}</text>"
+                        )
+                    }
+                }
+            }
+            append("</svg>")
+        }
+    }
+
+    private fun svgOpen(width: Int, height: Int): String =
+        "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 $width $height' width='$width' height='$height'>"
+
+    private fun appendAxis(sb: StringBuilder, x1: Double, y1: Double, x2: Double, y2: Double) {
+        sb.append("<line x1='${plotNum(x1)}' y1='${plotNum(y1)}' x2='${plotNum(x2)}' y2='${plotNum(y2)}' stroke='#2f2f2f' stroke-width='1'/>")
+    }
+
+    /** Draws an arrow shaft plus a filled triangular head from ([x1],[y1]) to ([x2],[y2]). */
+    private fun appendArrow(sb: StringBuilder, x1: Double, y1: Double, x2: Double, y2: Double, color: String) {
+        sb.append("<line x1='${plotNum(x1)}' y1='${plotNum(y1)}' x2='${plotNum(x2)}' y2='${plotNum(y2)}' stroke='$color' stroke-width='1.6' stroke-linecap='round'/>")
+        val ang = atan2(y2 - y1, x2 - x1)
+        val headLen = 6.0
+        val spread = 0.42
+        val hx1 = x2 - headLen * cos(ang - spread)
+        val hy1 = y2 - headLen * sin(ang - spread)
+        val hx2 = x2 - headLen * cos(ang + spread)
+        val hy2 = y2 - headLen * sin(ang + spread)
+        sb.append(
+            "<polygon points='${plotNum(x2)},${plotNum(y2)} ${plotNum(hx1)},${plotNum(hy1)} " +
+                "${plotNum(hx2)},${plotNum(hy2)}' fill='$color'/>"
+        )
+    }
+
+    private fun matrixCellColor(v: Float, maxAbs: Double): String {
+        if (!v.isFinite()) return "#4a3030"
+        if (maxAbs <= 0.0) return "#222222"
+        val t = min(1.0, abs(v.toDouble()) / maxAbs)
+        // neutral (34,34,34) -> #6cf (102,204,255) for +, -> #f83 (248,136,51) for -
+        val target = if (v >= 0f) Triple(102, 204, 255) else Triple(248, 136, 51)
+        val rr = (34 + (target.first - 34) * t).toInt()
+        val gg = (34 + (target.second - 34) * t).toInt()
+        val bb = (34 + (target.third - 34) * t).toInt()
+        return "#%02x%02x%02x".format(rr.coerceIn(0, 255), gg.coerceIn(0, 255), bb.coerceIn(0, 255))
+    }
+
+    private fun matrixCellLabel(v: Float): String = runCatching {
+        val a = abs(v)
+        when {
+            a == 0f -> "0"
+            a >= 1000f || a < 0.01f -> "%.0e".format(v)
+            else -> "%.2f".format(v).trimEnd('0').trimEnd('.')
+        }
+    }.getOrDefault("?")
 
     private fun formatRepeatSuffix(count: Int): String {
         if (count <= 1) return ""
