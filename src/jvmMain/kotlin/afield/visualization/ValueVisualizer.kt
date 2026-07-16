@@ -1109,7 +1109,7 @@ object ValueVisualizer {
         val side = n * cell
         var maxAbs = 0.0
         rows.forEach { row -> row.forEach { v -> if (v.isFinite()) maxAbs = max(maxAbs, abs(v.toDouble())) } }
-        val showText = n <= 3
+        val showText = n <= 4
         return buildString {
             append(svgOpen(side, side))
             for (r in rows.indices) {

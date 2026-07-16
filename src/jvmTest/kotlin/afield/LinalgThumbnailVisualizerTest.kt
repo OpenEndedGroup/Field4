@@ -58,13 +58,16 @@ class LinalgThumbnailVisualizerTest {
     }
 
     @Test
-    fun `mat4 renders a 4x4 grid`() {
+    fun `mat4 renders a 4x4 grid with per-cell numbers`() {
         val m = Matrix4f().translation(3f, 4f, 5f)
         val html = visualize(m)
         assertTrue("mat4" in html, "expected the mat4 text head")
         assertTrue("<svg" in html, "expected an appended heatmap grid")
         // 4x4 = 16 cells
         assertTrue(Regex("<rect").findAll(html).count() >= 16, "expected 16 heatmap cells")
+        // every finite cell is labelled (like mat3), so all 16 cells carry a number
+        assertTrue(Regex("<text").findAll(html).count() >= 16, "expected a number in each of the 16 mat4 cells")
+        assertTrue(">3<" in html && ">4<" in html && ">5<" in html, "expected the translation values 3/4/5 in cells")
     }
 
     @Test
