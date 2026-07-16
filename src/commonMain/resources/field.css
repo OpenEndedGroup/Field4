@@ -2308,7 +2308,7 @@ body {
 
 .macro-recorder-controls {
     display: grid;
-    grid-template-columns: minmax(160px, 1fr) 120px repeat(4, auto);
+    grid-template-columns: minmax(160px, 1fr) 120px repeat(5, auto);
     gap: 6px;
     align-items: center;
 }
@@ -2354,13 +2354,21 @@ body {
     box-shadow: none;
 }
 
-.macro-recorder-controls button:hover,
-.macro-recorder-transcript-actions button:hover,
+.macro-recorder-controls button:hover:not(:disabled),
+.macro-recorder-transcript-actions button:hover:not(:disabled),
 .macro-recorder-list button:hover,
 .macro-recorder-icon:hover {
     border-color: #464646;
     background: #101010;
     color: #f0f0f0;
+}
+
+.macro-recorder-controls button:disabled,
+.macro-recorder-transcript-actions button:disabled {
+    opacity: 0.38;
+    cursor: default;
+    color: #6a6a6a;
+    border-color: #1c1c1c;
 }
 
 .macro-recorder-icon {
@@ -2824,7 +2832,7 @@ body {
         grid-template-columns: minmax(0, 1fr) 108px repeat(4, auto);
     }
 
-    .macro-recorder-controls button:nth-of-type(n + 4) {
+    .macro-recorder-controls button:nth-of-type(n + 5) {
         display: none;
     }
 }

@@ -233,6 +233,80 @@ object OperationTranscript {
         )
     }
 
+    /**
+     * Promote a macro to a broader scope so more documents can share it. The destination is the
+     * project when this document belongs to one, otherwise the workspace. The source is copied
+     * verbatim (a backup of any existing destination copy is kept), leaving the original in place.
+     */
+    fun promoteMacro(
+        documentPath: String,
+        name: String,
+        scope: String = "document",
+        projectName: String = ""
+    ): MacroResult {
+        if (documentPath.isBlank()) return MacroResult(false, "No document path available.")
+        val cleanName = sanitizeMacroName(name)
+        if (cleanName.isBlank()) return MacroResult(false, "Choose a macro to promote.", name = cleanName)
+        val source = macroLocation(documentPath, scope, projectName)
+            ?: return MacroResult(false, "No macro scope is available for this document.", name = cleanName)
+        val sourceFile = macroFile(source, cleanName)
+        if (!sourceFile.exists()) {
+            return MacroResult(
+                false,
+                "No macro named '$cleanName' in the ${source.scope} scope.",
+                name = cleanName,
+                scope = source.scope,
+                projectName = source.projectName
+            )
+        }
+        // Escalate one step up the sharing hierarchy: document -> project (when in one) -> workspace.
+        // Workspace is the broadest scope, so it is the terminus.
+        val project = projectForDocument(documentPath, projectName)
+        val targetScope = when {
+            source.scope.equals("workspace", ignoreCase = true) -> "workspace"
+            source.scope.equals("project", ignoreCase = true) -> "workspace"
+            project != null -> "project"
+            else -> "workspace"
+        }
+        val target = macroLocation(documentPath, targetScope, project?.name.orEmpty())
+            ?: return MacroResult(
+                false,
+                "No $targetScope macro scope is available for this document.",
+                name = cleanName,
+                scope = source.scope,
+                projectName = source.projectName
+            )
+        val destName = if (target.scope == "project") "project '${target.projectName}'" else "workspace"
+        if (target.dir.canonicalFile == source.dir.canonicalFile) {
+            return MacroResult(
+                false,
+                "Macro '$cleanName' is already in the $destName.",
+                name = cleanName,
+                scope = target.scope,
+                projectName = target.projectName
+            )
+        }
+        val targetFile = macroFile(target, cleanName)
+        val contents = sourceFile.readText().trimEnd() + "\n"
+        targetFile.parentFile?.mkdirs()
+        val wrote = targetFile.safeSave(contents, createBackup = true, maxBackups = 10)
+        val count = runCatching { loadMacroOperations(targetFile).size }.getOrDefault(0)
+        return MacroResult(
+            success = wrote || targetFile.exists(),
+            message = if (wrote) {
+                "Promoted macro '$cleanName' to the $destName."
+            } else {
+                "Macro '$cleanName' is already up to date in the $destName."
+            },
+            name = cleanName,
+            path = targetFile.absolutePath,
+            operationCount = count,
+            content = contents,
+            scope = target.scope,
+            projectName = target.projectName
+        )
+    }
+
     fun saveTranscriptSelectionAsMacro(
         documentPath: String,
         name: String,
