@@ -10,6 +10,11 @@ webfontFormats = ["WOFF2"]
 [buildPlans.IosevkaField.ligations]
 inherits = "dlig"
 
+[buildPlans.IosevkaField.variants.design]
+zero = "tall-reverse-slashed"
+tilde = "low"
+brace = "curly-flat-boundary"
+
 [buildPlans.IosevkaField.widths.Normal]
 shape = 500
 menu = 5
@@ -19,6 +24,11 @@ css = "normal"
 shape = 416
 menu = 3
 css = "condensed"
+
+[buildPlans.IosevkaField.widths.SemiCondensed]
+shape = 456
+menu = 4
+css = "semi-condensed"
 
 [buildPlans.IosevkaField.slopes.Upright]
 angle = 0

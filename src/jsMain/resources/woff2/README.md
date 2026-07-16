@@ -1,11 +1,15 @@
 # Iosevka webfonts
 
-These are the normal and 416-unit condensed, unhinted WOFF2 faces for Field's
-custom `Iosevka Field` family, built from Iosevka 34.7.0. Field selects the
-condensed faces by default. The build enables the experimental `TXTR`
-cross-letter texture-adjustment feature and exports glyph names so the same
+These are the normal, 456-unit semi-condensed, and 416-unit condensed,
+unhinted WOFF2 faces for Field's custom `Iosevka Field` family, built from
+Iosevka 34.7.0. Field selects the semi-condensed faces by default. The build
+enables the experimental `TXTR` cross-letter texture-adjustment feature and
+exports glyph names so the same
 family can be processed by the Nerd Fonts patcher. Field intentionally does
 not build, ship, or register Extended faces.
+
+The family also selects a tall reverse-slashed zero, low tilde, and curly
+braces with flat boundaries as its default character variants.
 
 The reproducible custom build plan is
 [`tools/fonts/iosevka-field.toml`](../../../../tools/fonts/iosevka-field.toml).

@@ -24,6 +24,8 @@ CANONICAL_FILES = (
     "src/jsMain/resources/woff2/iosevka-lightitalic.woff2",
     "src/jsMain/resources/woff2/iosevka-condensedlight.woff2",
     "src/jsMain/resources/woff2/iosevka-condensedlightitalic.woff2",
+    "src/jsMain/resources/woff2/iosevka-semicondensedlight.woff2",
+    "src/jsMain/resources/woff2/iosevka-semicondensedlightitalic.woff2",
     "src/jsMain/resources/woff2/iosevka-bold.woff2",
     "src/jsMain/resources/woff2/iosevka-italic.woff2",
     "src/jsMain/resources/monaco/min/vs/loader.js",
@@ -134,7 +136,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     print(
-        "Offline asset check passed: canonical normal/condensed Monaco/fonts/viewer assets are present; "
+        "Offline asset check passed: canonical normal/semi-condensed/condensed Monaco/fonts/viewer assets are present; "
         "generated public/dev_docs duplicates are untracked."
     )
     return 0

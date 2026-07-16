@@ -1,19 +1,19 @@
 @font-face {
   font-family: "Iosevka Field Controller";
-  src: url("/woff2/iosevka-condensedlight.woff2") format("woff2");
+  src: url("/woff2/iosevka-semicondensedlight.woff2") format("woff2");
   font-display: swap;
   font-style: normal;
   font-weight: 300;
-  font-stretch: condensed;
+  font-stretch: semi-condensed;
 }
 
 @font-face {
   font-family: "Iosevka Field Controller";
-  src: url("/woff2/iosevka-condensedmedium.woff2") format("woff2");
+  src: url("/woff2/iosevka-semicondensedmedium.woff2") format("woff2");
   font-display: swap;
   font-style: normal;
   font-weight: 500;
-  font-stretch: condensed;
+  font-stretch: semi-condensed;
 }
 
 :root {
@@ -46,7 +46,7 @@ body {
   color: var(--fg);
   font-family: "Iosevka Field Controller", Iosevka, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-feature-settings: "dlig" 1, "TXTR" 1;
-  font-stretch: condensed;
+  font-stretch: semi-condensed;
   font-weight: 300;
 }
 

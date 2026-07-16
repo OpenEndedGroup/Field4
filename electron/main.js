@@ -199,9 +199,9 @@ function createTabStripMarkup() {
       font-family: "Iosevka Web";
       font-display: block;
       font-style: normal;
-      font-stretch: condensed;
+      font-stretch: semi-condensed;
       font-weight: 300;
-      src: url("woff2/iosevka-condensedlight.woff2") format("woff2");
+      src: url("woff2/iosevka-semicondensedlight.woff2") format("woff2");
     }
 
     :root {
@@ -222,7 +222,7 @@ function createTabStripMarkup() {
       box-sizing: border-box;
       font-family: "Iosevka Web", "Iosevka", "Iosevka Term", "Iosevka Nerd Font", monospace;
       font-feature-settings: "dlig" 1, "TXTR" 1;
-      font-stretch: condensed;
+      font-stretch: semi-condensed;
       font-weight: 300;
       letter-spacing: 0;
     }
