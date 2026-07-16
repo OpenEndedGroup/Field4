@@ -48,10 +48,41 @@ class ValueVisualizerDocCaptureTest {
         chosen
     }
 
+    /** Absolute path to the shipped webfont directory, resolved from the module root. */
+    private val woff2Dir: Path by lazy {
+        Paths.get(System.getProperty("user.dir"), "src", "jsMain", "resources", "woff2").toAbsolutePath()
+    }
+
+    /**
+     * Register the REAL shipped `Iosevka Web` faces so captures use the same font the app does —
+     * including its `->` / `=>` ligatures — instead of a Menlo stand-in. The bytes are inlined as
+     * base64 `data:` URIs: `setContent` runs in an `about:blank` context where `file://` font
+     * URLs are blocked (Chromium silently falls back to system mono), so embedding is what makes
+     * the real font actually load. Faithful captures are the whole point of this harness.
+     */
+    private fun fontFaceCss(): String {
+        val faces = listOf(
+            Triple("iosevka-light.woff2", 300, "normal"),
+            Triple("iosevka-lightitalic.woff2", 300, "italic"),
+            Triple("iosevka-regular.woff2", 400, "normal"),
+            Triple("iosevka-italic.woff2", 400, "italic"),
+            Triple("iosevka-bold.woff2", 700, "normal"),
+            Triple("iosevka-bolditalic.woff2", 700, "italic")
+        )
+        return faces.filter { Files.exists(woff2Dir.resolve(it.first)) }.joinToString("\n") { (file, weight, style) ->
+            val b64 = java.util.Base64.getEncoder().encodeToString(Files.readAllBytes(woff2Dir.resolve(file)))
+            "@font-face{font-family:'Iosevka Web';font-weight:$weight;font-style:$style;" +
+                "src:url('data:font/woff2;base64,$b64') format('woff2');}"
+        }
+    }
+
     private fun document(fragment: String): String = buildString {
         append("<!doctype html><html><head><meta charset='utf-8'>")
         append("<style>")
-        append("@font-face{font-family:'Iosevka Web';src:local('Menlo'),local('monospace');}")
+        append(fontFaceCss())
+        // Mirror the app: the global rule forces discretionary ligatures on; the value-viz root
+        // additionally enables contextual (`calt`) so `->` ligates in the display.
+        append("*{font-feature-settings:\"dlig\" 1;}")
         append("html,body{margin:0;padding:0;background:#1e1e1e;}")
         append("#capture{display:inline-block;padding:16px 18px;background:#1e1e1e;}")
         append("</style></head><body>")
@@ -66,7 +97,10 @@ class ValueVisualizerDocCaptureTest {
         val out = assetDir.resolve("$name.png")
         val page = pageRef ?: error("Playwright page not initialised")
         page.setContent(document(fragment))
-        page.waitForTimeout(120.0)
+        // Wait for the real webfonts to load before shooting; otherwise the ~1.2 MB Iosevka
+        // faces miss the frame and the capture falls back to system mono (no `->` ligature).
+        page.evaluate("document.fonts.ready")
+        page.waitForTimeout(250.0)
         val el = page.querySelector("#capture") ?: error("capture element missing for $name")
         el.screenshot(
             com.microsoft.playwright.ElementHandle.ScreenshotOptions().setPath(out)
