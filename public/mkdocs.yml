@@ -25,6 +25,7 @@ nav:
       - Generated Vector API: linear_algebra_api.md
     - FLine Examples: fline_examples.md
     - Visualizers & Controls: visualizers.md
+    - Reading Your Values: reading_your_values.md
     - Staging area:
       - Staging Overview: staging.md
       - Mobile Controllers: mobile_controllers.md
