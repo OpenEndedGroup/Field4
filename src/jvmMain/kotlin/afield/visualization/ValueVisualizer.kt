@@ -83,6 +83,11 @@ object ValueVisualizer {
     private const val MAP_EXPANSION_CHUNK = 6
     private const val MAX_DEPTH = 3
     private const val MAX_OBJECT_FIELDS = 8
+
+    // Only elide struct fields/entries when it actually saves space: a "… +N more" line costs
+    // one line, so hiding 1–2 items behind it saves nothing (and "+1 more fields" reads badly).
+    // Elide only when the hidden count would be > ELISION_SLACK, i.e. at least 3.
+    private const val ELISION_SLACK = 2
     private const val OBJECT_EXPANSION_CHUNK = 8
     private const val BYTE_EXPANSION_CHUNK = 16
     private const val FLINE_THUMBNAIL_WIDTH = 136
@@ -262,6 +267,7 @@ object ValueVisualizer {
         is FloatArray -> formatFloatArray(value)
         is DoubleArray -> formatDoubleArray(value)
         is FLine -> formatFLine(value)
+        is Functions.Domain -> formatDomain(value)
         is Functions.Fn -> formatFn(value, depth, visited, respectDepthLimit)
         is Box -> formatBox(value)
         is Plot -> value.toHtml()
@@ -685,6 +691,29 @@ object ValueVisualizer {
      * plot is wrapped in [runCatching] so a misbehaving `evalFn` can only cost us
      * the thumbnail, never the whole value display.
      */
+    /**
+     * A [Functions.Domain] is fully described by its bounds, so render it compactly rather than
+     * as an 8-field reflective tree (center/length/isFinite/… are all redundant): an unbounded
+     * domain is just `Domain { ∞ }`, a point is `Domain { x }`, everything else `Domain { a..b }`
+     * (with ±∞ for a half-open end).
+     */
+    private fun formatDomain(d: Functions.Domain): String {
+        val inner = when {
+            d._isEmpty -> "<span style='color: #888;'>∅</span>"
+            !d.min.isFinite() && !d.max.isFinite() -> "<span style='color: #888;'>∞</span>"
+            d.min == d.max -> domainBound(d.min)
+            else -> domainBound(d.min) + "<span style='color: #777;'>..</span>" + domainBound(d.max)
+        }
+        return "<span style='color: #cc8;'>Domain</span> <span style='color: #aaa;'>{</span> " +
+            inner + " <span style='color: #aaa;'>}</span>"
+    }
+
+    private fun domainBound(v: Double): String = when {
+        v == Double.POSITIVE_INFINITY -> "<span style='color: #888;'>∞</span>"
+        v == Double.NEGATIVE_INFINITY -> "<span style='color: #888;'>-∞</span>"
+        else -> formatNumericLiteral(v)
+    }
+
     private fun formatFn(
         fn: Functions.Fn,
         depth: Int,
@@ -873,28 +902,6 @@ object ValueVisualizer {
     private fun shouldShowInlineSeparator(previousHtml: String, currentHtml: String): Boolean =
         !isBlockVisualization(previousHtml) && !isBlockVisualization(currentHtml)
 
-    private fun formatBlockIndent(depth: Int): String =
-        "margin-left: ${depth * 12}px;"
-
-    private fun formatKeyValueRow(
-        keyHtml: String,
-        valueHtml: String,
-        keyColor: String? = null
-    ): String {
-        val keyStyle = if (keyColor != null) {
-            "color: $keyColor; white-space: nowrap;"
-        } else {
-            "white-space: nowrap;"
-        }
-        return """
-            <div style='display: grid; grid-template-columns: max-content 1.4em minmax(0, 1fr); column-gap: 0.45em; align-items: start; margin-left: 12px;'>
-                <div style='$keyStyle'>$keyHtml</div>
-                <div style='color: #777; text-align: center;'>-&gt;</div>
-                <div style='min-width: 0; overflow-wrap: anywhere;'>$valueHtml</div>
-            </div>
-        """.trimIndent()
-    }
-
     private fun visibleTextLength(html: String): Int =
         html.replace(Regex("<[^>]*>"), "").length
 
@@ -924,7 +931,9 @@ object ValueVisualizer {
         if (raw != null && respectDepthLimit && depth > MAX_DEPTH) {
             return FieldValue.Inline(formatDepthLimitedValue(raw))
         }
-        val isStructLike = raw != null && raw !is ToHTML &&
+        // Types with a dedicated compact renderer (e.g. Domain) must fall through to
+        // visualizeValue rather than be expanded as a generic reflective struct here.
+        val isStructLike = raw != null && raw !is ToHTML && raw !is Functions.Domain &&
             ValuePrinterRegistry.getPrinter(raw) == null &&
             ((raw is Map<*, *> && raw.isNotEmpty()) || raw::class.isData)
         if (isStructLike) {
@@ -1003,23 +1012,6 @@ object ValueVisualizer {
     ): List<VizLine> {
         val out = ArrayList<VizLine>()
 
-        fun emitField(keyHtml: String, fv: FieldValue, baseIndent: Int) {
-            when (fv) {
-                is FieldValue.Inline -> out.add(VizLine(baseIndent, keyArrow(keyHtml, keyColor) + fv.html))
-                is FieldValue.Block -> out.add(VizLine(baseIndent, keyArrow(keyHtml, keyColor) + fv.html))
-                is FieldValue.Struct -> {
-                    // fv.lines are relative to the child's own base 0; re-base under this field.
-                    fv.lines.forEachIndexed { i, l ->
-                        if (i == 0) {
-                            out.add(VizLine(baseIndent, keyArrow(keyHtml, keyColor) + l.html))
-                        } else {
-                            out.add(VizLine(l.indent + baseIndent, l.html, l.isClose))
-                        }
-                    }
-                }
-            }
-        }
-
         // Open-cuddle: a struct with exactly one struct-valued field pulls its opening brace
         // up onto the child's opening line (`Outer { k -> Inner {`).
         if (!hasMore && fields.size == 1 && fields[0].second is FieldValue.Struct) {
@@ -1037,11 +1029,43 @@ object ValueVisualizer {
         }
 
         out.add(VizLine(0, "$header$BRACE_OPEN"))
-        fields.forEach { (keyHtml, fv) -> emitField(keyHtml, fv, 1) }
+        fields.forEach { (keyHtml, fv) -> out.addAll(fieldToLines(keyHtml, fv, keyColor, 1)) }
         if (hasMore) out.add(VizLine(1, moreHtml()))
         // Only brace-only closes (no trailing size suffix) cuddle; a `} (n)` stays on its own line.
         out.add(VizLine(0, BRACE_CLOSE + trailing, isClose = trailing.isEmpty()))
         return cuddleCloses(out)
+    }
+
+    /** A single field rendered as lines at [baseIndent]: key on the first line, nested struct re-based under it. */
+    private fun fieldToLines(keyHtml: String, fv: FieldValue, keyColor: String?, baseIndent: Int): List<VizLine> =
+        when (fv) {
+            is FieldValue.Inline -> listOf(VizLine(baseIndent, keyArrow(keyHtml, keyColor) + fv.html))
+            is FieldValue.Block -> listOf(VizLine(baseIndent, keyArrow(keyHtml, keyColor) + fv.html))
+            is FieldValue.Struct -> fv.lines.mapIndexed { i, l ->
+                if (i == 0) VizLine(baseIndent, keyArrow(keyHtml, keyColor) + l.html)
+                else VizLine(l.indent + baseIndent, l.html, l.isClose)
+            }
+        }
+
+    /**
+     * Render a run of already-collected fields for a lazy "… +N more" expansion. The expander it
+     * replaces already sits inside an indented line, so fields render at relative indent 0 (they
+     * inherit that indent) — otherwise the arriving fields get an extra level of indentation.
+     */
+    private fun renderContinuationFields(
+        rawFields: List<RawField>,
+        keyColor: String?,
+        depth: Int,
+        visited: MutableSet<Any>,
+        moreExpander: String?
+    ): String {
+        val out = ArrayList<VizLine>()
+        rawFields.forEach { rf ->
+            val fv = renderFieldValue(rf.rawValue, rf.declaredType, depth + 1, visited, respectDepthLimit = false)
+            out.addAll(fieldToLines(rf.keyHtml, fv, keyColor, 0))
+        }
+        if (moreExpander != null) out.add(VizLine(0, moreExpander))
+        return linesToHtml(out)
     }
 
     /** Collapse runs of adjacent closing-brace lines into one `}}` line at the outermost indent. */
@@ -1581,8 +1605,9 @@ object ValueVisualizer {
         map: Map<*, *>, depth: Int, visited: MutableSet<Any>, respectDepthLimit: Boolean
     ): FieldValue {
         val size = map.size
-        val entries = map.entries.take(MAX_MAP_ENTRIES).toList()
-        val hasMore = size > MAX_MAP_ENTRIES
+        val hasMore = size > MAX_MAP_ENTRIES + ELISION_SLACK
+        val shown = if (hasMore) MAX_MAP_ENTRIES else size
+        val entries = map.entries.take(shown).toList()
         val rawFields = entries.map { (key, value) ->
             RawField(visualizeValue(key, depth + 1, visited, respectDepthLimit), value)
         }
@@ -1870,8 +1895,8 @@ object ValueVisualizer {
         }
 
         val entries = properties.toList()
-        val previewEntries = entries.take(MAX_OBJECT_FIELDS)
-        val hasMore = entries.size > previewEntries.size
+        val hasMore = entries.size > MAX_OBJECT_FIELDS + ELISION_SLACK
+        val previewEntries = if (hasMore) entries.take(MAX_OBJECT_FIELDS) else entries
 
         val rawFields = previewEntries.map { prop ->
             val propValue = try {
@@ -2016,31 +2041,13 @@ object ValueVisualizer {
         val hasMore = nextEnd < entries.size
         val title = valueTitle(value, "Map")
 
-        return buildString {
-            entries.subList(safeStart, nextEnd).forEach { (key, entryValue) ->
-                append(
-                    formatKeyValueRow(
-                        keyHtml = visualizeValue(key, depth + 1, visited, respectDepthLimit = false),
-                        valueHtml = visualizeValue(entryValue, depth + 1, visited, respectDepthLimit = false)
-                    )
-                )
-            }
-            if (hasMore) {
-                append("<div style='margin-left: 12px;'>")
-                append(
-                    formatMoreSuffix(
-                        entries.size - nextEnd,
-                        "entries",
-                        value,
-                        title,
-                        "map",
-                        nextEnd,
-                        depth
-                    )
-                )
-                append("</div>")
-            }
+        val rawFields = entries.subList(safeStart, nextEnd).map { (key, entryValue) ->
+            RawField(visualizeValue(key, depth + 1, visited, respectDepthLimit = false), entryValue)
         }
+        val more = if (hasMore) {
+            formatMoreSuffix(entries.size - nextEnd, "entries", value, title, "map", nextEnd, depth)
+        } else null
+        return renderContinuationFields(rawFields, keyColor = null, depth = depth, visited = visited, moreExpander = more)
     }
 
     private fun renderDataClassContinuation(
@@ -2061,38 +2068,26 @@ object ValueVisualizer {
         val hasMore = nextEnd < entries.size
         val className = valueTitle(obj, "DataClass")
 
-        return buildString {
-            entries.subList(safeStart, nextEnd).forEach { prop ->
-                val propValue = try {
-                    prop.isAccessible = true
-                    prop.getter.call(obj)
-                } catch (e: Exception) {
-                    "[error: ${e.message}]"
-                }
-
-                append(
-                    formatKeyValueRow(
-                        keyHtml = escape(prop.name),
-                        valueHtml = visualizeValue(propValue, depth + 1, visited, respectDepthLimit = false),
-                        keyColor = "#aaf"
-                    )
-                )
+        val rawFields = entries.subList(safeStart, nextEnd).map { prop ->
+            val propValue = try {
+                prop.isAccessible = true
+                prop.getter.call(obj)
+            } catch (e: Exception) {
+                "[error: ${e.message}]"
             }
-            if (hasMore) {
-                append("<div style='margin-left: 12px;'>")
-                append(
-                    lazyInlineExpanderHtml(
-                        value = obj,
-                        label = "… +${entries.size - nextEnd} more fields",
-                        kind = "object",
-                        offset = nextEnd,
-                        depth = depth,
-                        title = className
-                    )
-                )
-                append("</div>")
-            }
+            RawField(escape(prop.name), propValue, prop.returnType)
         }
+        val more = if (hasMore) {
+            lazyInlineExpanderHtml(
+                value = obj,
+                label = "… +${entries.size - nextEnd} more fields",
+                kind = "object",
+                offset = nextEnd,
+                depth = depth,
+                title = className
+            )
+        } else null
+        return renderContinuationFields(rawFields, keyColor = "#aaf", depth = depth, visited = visited, moreExpander = more)
     }
 
     private fun toListLike(value: Any?): List<*>? = when (value) {
