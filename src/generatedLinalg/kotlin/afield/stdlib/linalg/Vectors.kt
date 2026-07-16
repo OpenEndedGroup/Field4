@@ -308,7 +308,7 @@ interface Vector2fc {
  *
  * Use the heap type for ordinary Field code and persistent state. Destination overloads avoid result allocation when a loop needs it.
  */
-class Vector2f() : Vector2fc, Cloneable {
+open class Vector2f() : Vector2fc, Cloneable {
     @JvmField var x: Float = 0.0f
     @JvmField var y: Float = 0.0f
 
@@ -841,7 +841,7 @@ interface Vector3fc {
  *
  * Use the heap type for ordinary Field code and persistent state. Destination overloads avoid result allocation when a loop needs it.
  */
-class Vector3f() : Vector3fc, Cloneable {
+open class Vector3f() : Vector3fc, Cloneable {
     @JvmField var x: Float = 0.0f
     @JvmField var y: Float = 0.0f
     @JvmField var z: Float = 0.0f
@@ -1396,7 +1396,7 @@ interface Vector4fc {
  *
  * Use the heap type for ordinary Field code and persistent state. Destination overloads avoid result allocation when a loop needs it.
  */
-class Vector4f() : Vector4fc, Cloneable {
+open class Vector4f() : Vector4fc, Cloneable {
     @JvmField var x: Float = 0.0f
     @JvmField var y: Float = 0.0f
     @JvmField var z: Float = 0.0f
@@ -1905,7 +1905,7 @@ interface Vector2dc {
  *
  * Use the heap type for ordinary Field code and persistent state. Destination overloads avoid result allocation when a loop needs it.
  */
-class Vector2d() : Vector2dc, Cloneable {
+open class Vector2d() : Vector2dc, Cloneable {
     @JvmField var x: Double = 0.0
     @JvmField var y: Double = 0.0
 
@@ -2438,7 +2438,7 @@ interface Vector3dc {
  *
  * Use the heap type for ordinary Field code and persistent state. Destination overloads avoid result allocation when a loop needs it.
  */
-class Vector3d() : Vector3dc, Cloneable {
+open class Vector3d() : Vector3dc, Cloneable {
     @JvmField var x: Double = 0.0
     @JvmField var y: Double = 0.0
     @JvmField var z: Double = 0.0
@@ -2993,7 +2993,7 @@ interface Vector4dc {
  *
  * Use the heap type for ordinary Field code and persistent state. Destination overloads avoid result allocation when a loop needs it.
  */
-class Vector4d() : Vector4dc, Cloneable {
+open class Vector4d() : Vector4dc, Cloneable {
     @JvmField var x: Double = 0.0
     @JvmField var y: Double = 0.0
     @JvmField var z: Double = 0.0
@@ -3628,7 +3628,7 @@ interface Vector8hc {
  *
  * Use the heap type for ordinary Field code and persistent state. Destination overloads avoid result allocation when a loop needs it.
  */
-class Vector8h() : Vector8hc, Cloneable {
+open class Vector8h() : Vector8hc, Cloneable {
     @JvmField var x: Short = 0
     @JvmField var y: Short = 0
     @JvmField var z: Short = 0

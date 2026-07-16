@@ -394,7 +394,7 @@ class KotlinEmitter(
         val zero = type.scalar.zero
         val zeroes = List(type.dimension) { zero }
         emitKDoc(type.documentation)
-        appendLine("class ${type.heapName}() : ${type.readName}, Cloneable {")
+        appendLine("open class ${type.heapName}() : ${type.readName}, Cloneable {")
         type.components.forEach { component -> appendLine("    @JvmField var ${component.sourceName}: ${type.scalar.storageType} = ${type.scalar.storageZero}") }
         appendLine()
         appendLine("    constructor(s: $scalar) : this() { set(${List(type.dimension) { "s" }.joinToString()}) }")

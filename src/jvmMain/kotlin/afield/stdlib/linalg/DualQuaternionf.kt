@@ -11,7 +11,7 @@ import kotlin.math.sqrt
  * single-precision rigid-transform representation. The real part stores rotation. The dual part stores
  * translation as `0.5 * translation * rotation`.
  */
-class DualQuaternionf {
+open class DualQuaternionf {
     val real: Quaternionf = Quaternionf()
     val dual: Quaternionf = Quaternionf(0f, 0f, 0f, 0f)
 

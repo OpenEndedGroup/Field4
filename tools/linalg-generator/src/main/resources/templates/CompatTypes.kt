@@ -80,7 +80,7 @@ fun vec8h(x:Number,y:Number,z:Number,w:Number,a:Number,b:Number,c:Number,d:Numbe
     Vector8h(x.toFloat(),y.toFloat(),z.toFloat(),w.toFloat(),a.toFloat(),b.toFloat(),c.toFloat(),d.toFloat())
 
 interface Matrix2fc { fun m00():Float;fun m01():Float;fun m10():Float;fun m11():Float }
-class Matrix2f(
+open class Matrix2f(
     @JvmField var m00:Float=1f,@JvmField var m01:Float=0f,
     @JvmField var m10:Float=0f,@JvmField var m11:Float=1f
 ) : Matrix2fc {

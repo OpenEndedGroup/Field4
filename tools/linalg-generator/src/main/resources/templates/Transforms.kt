@@ -26,7 +26,7 @@ interface Quaternionfc {
  * Angles are in radians. Use this for persistent rotations; vector transformation
  * destination overloads avoid allocating a result.
  */
-class Quaternionf() : Quaternionfc, Cloneable {
+open class Quaternionf() : Quaternionfc, Cloneable {
     @JvmField var x: Float = 0f
     @JvmField var y: Float = 0f
     @JvmField var z: Float = 0f
@@ -182,7 +182,7 @@ interface Matrix3fc {
 }
 
 /** A mutable 3x3 column-major matrix initialized to identity. */
-class Matrix3f() : Matrix3fc {
+open class Matrix3f() : Matrix3fc {
     @JvmField var m00 = 1f; @JvmField var m01 = 0f; @JvmField var m02 = 0f
     @JvmField var m10 = 0f; @JvmField var m11 = 1f; @JvmField var m12 = 0f
     @JvmField var m20 = 0f; @JvmField var m21 = 0f; @JvmField var m22 = 1f
@@ -248,7 +248,7 @@ interface Matrix4fc {
  * Transformation calls compose onto the receiver. Use [transformPosition] for
  * points and [transformDirection] for vectors that must ignore translation.
  */
-class Matrix4f() : Matrix4fc {
+open class Matrix4f() : Matrix4fc {
     @JvmField var m00=1f;@JvmField var m01=0f;@JvmField var m02=0f;@JvmField var m03=0f
     @JvmField var m10=0f;@JvmField var m11=1f;@JvmField var m12=0f;@JvmField var m13=0f
     @JvmField var m20=0f;@JvmField var m21=0f;@JvmField var m22=1f;@JvmField var m23=0f
