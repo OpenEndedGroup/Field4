@@ -99,6 +99,10 @@ object ValueVisualizer {
     private const val FN_PLOT_SAMPLES = 160
     private const val VEC_THUMBNAIL_SIZE = 84
     private const val MATRIX_CELL_SIZE = 24
+    private const val SPARKLINE_WIDTH = 120
+    private const val SPARKLINE_HEIGHT = 22
+    private const val SPARKLINE_MAX_SAMPLES = 240
+    private const val SPARKLINE_MIN_POINTS = 3
     private const val BOX_SYMBOL = "\u25A1"
     private val UNDERSCORE_UUID_REGEX = Regex(
         "^_?([0-9a-f]{8})_([0-9a-f]{4})_([0-9a-f]{4})_([0-9a-f]{4})_([0-9a-f]{12})$",
@@ -1273,6 +1277,7 @@ object ValueVisualizer {
 
             append("<span style='color: #aaa;'>]</span>")
             append(formatSizeSuffix(size))
+            append(renderNumericSparkline(numericSeriesForSparkline(list)))
         }
     }
 
@@ -1420,6 +1425,7 @@ object ValueVisualizer {
 
             append("<span style='color: #aaa;'>]</span>")
             append(formatSizeSuffix(arr.size))
+            append(renderNumericSparkline(arr.map { it.toDouble() }))
         }
     }
 
@@ -1452,6 +1458,7 @@ object ValueVisualizer {
 
             append("<span style='color: #aaa;'>]</span>")
             append(formatSizeSuffix(arr.size))
+            append(renderNumericSparkline(arr.map { it.toDouble() }))
         }
     }
 
@@ -1484,6 +1491,114 @@ object ValueVisualizer {
 
             append("<span style='color: #aaa;'>]</span>")
             append(formatSizeSuffix(arr.size))
+            append(renderNumericSparkline(arr.toList()))
+        }
+    }
+
+    /**
+     * Reduces a heterogeneous list to a numeric series suitable for a sparkline,
+     * or an empty list when it is not worth drawing.
+     *
+     * A list qualifies only when it is *predominantly* numeric: at least
+     * [SPARKLINE_MIN_POINTS] elements are [Number] and those make up the majority
+     * (>=60%). Non-numeric elements are kept as [Double.NaN] so they show up as
+     * gaps at their real index rather than silently shifting the curve.
+     */
+    private fun numericSeriesForSparkline(list: List<*>): List<Double> {
+        if (list.size < SPARKLINE_MIN_POINTS) return emptyList()
+        val numericCount = list.count { it is Number }
+        if (numericCount < SPARKLINE_MIN_POINTS) return emptyList()
+        if (numericCount.toDouble() < list.size * 0.6) return emptyList()
+        return list.map { (it as? Number)?.toDouble() ?: Double.NaN }
+    }
+
+    /**
+     * Builds a small inline SVG sparkline for a numeric series, mirroring the
+     * NaN/∞-safe sampling of [renderFnPlot]: non-finite samples become pen-up gaps,
+     * a flat/degenerate range is padded so it still draws, and series longer than
+     * [SPARKLINE_MAX_SAMPLES] are downsampled (with the original count noted in the
+     * tooltip). Returns "" whenever there is nothing worth drawing — fewer than
+     * [SPARKLINE_MIN_POINTS] finite values — so callers can append it
+     * unconditionally. The whole render is wrapped in [runCatching] so a bad
+     * element costs only the sparkline, never the value display.
+     */
+    private fun renderNumericSparkline(values: List<Double>): String =
+        runCatching { buildNumericSparkline(values) }.getOrDefault("")
+
+    private fun buildNumericSparkline(values: List<Double>): String {
+        if (values.size < SPARKLINE_MIN_POINTS) return ""
+
+        val total = values.size
+        val downsampled = total > SPARKLINE_MAX_SAMPLES
+        val samples: List<Double> = if (!downsampled) values else {
+            val step = total.toDouble() / SPARKLINE_MAX_SAMPLES.toDouble()
+            List(SPARKLINE_MAX_SAMPLES) { i -> values[(i * step).toInt().coerceIn(0, total - 1)] }
+        }
+
+        var lo = Double.POSITIVE_INFINITY
+        var hi = Double.NEGATIVE_INFINITY
+        var finite = 0
+        for (v in samples) {
+            if (!v.isFinite()) continue
+            finite++
+            if (v < lo) lo = v
+            if (v > hi) hi = v
+        }
+        if (finite < SPARKLINE_MIN_POINTS) return "" // not enough finite data to be meaningful
+
+        var yLo = lo
+        var yHi = hi
+        if (yLo == yHi) {
+            val pad = max(1.0, abs(yLo) * 0.1)
+            yLo -= pad; yHi += pad
+        } else {
+            val pad = (yHi - yLo) * 0.08
+            yLo -= pad; yHi += pad
+        }
+        val ySpan = yHi - yLo
+        if (!ySpan.isFinite() || ySpan <= 0.0) return ""
+
+        val n = samples.size
+        val w = SPARKLINE_WIDTH.toDouble()
+        val h = SPARKLINE_HEIGHT.toDouble()
+        val padY = 2.0
+        val plotH = h - padY * 2.0
+
+        fun px(i: Int): Double = if (n <= 1) w * 0.5 else (i.toDouble() / (n - 1).toDouble()) * w
+        fun py(y: Double): Double = padY + (1.0 - (y - yLo) / ySpan) * plotH
+
+        // Build the path, lifting the pen across non-finite gaps (as renderFnPlot does).
+        val path = StringBuilder(n * 10)
+        var penDown = false
+        for (i in 0 until n) {
+            val y = samples[i]
+            if (!y.isFinite()) { penDown = false; continue }
+            val cx = plotNum(px(i)); val cy = plotNum(py(y))
+            if (!penDown) { path.append('M').append(cx).append(' ').append(cy).append(' '); penDown = true }
+            else path.append('L').append(cx).append(' ').append(cy).append(' ')
+        }
+        if (path.isBlank()) return ""
+
+        val note = if (downsampled) " (downsampled $total→$n)" else ""
+        return buildString {
+            append("<span style='display: inline-block; vertical-align: middle; margin-left: 6px; ")
+            append("border: 1px solid #333; border-radius: 3px; background: #111; ")
+            append("width: ${SPARKLINE_WIDTH}px; height: ${SPARKLINE_HEIGHT}px; overflow: hidden;' ")
+            append("title='sparkline of $total value${if (total == 1) "" else "s"}$note'>")
+            append("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 $SPARKLINE_WIDTH $SPARKLINE_HEIGHT' ")
+            append("width='$SPARKLINE_WIDTH' height='$SPARKLINE_HEIGHT'>")
+            // faint dashed zero baseline when the *data* straddles zero
+            // (test against lo/hi, not the padded range, so a ramp from 0 up
+            // doesn't spuriously grow a baseline once padding dips below zero)
+            if (lo < 0.0 && hi > 0.0) {
+                val zy = plotNum(py(0.0))
+                append("<line x1='0' y1='$zy' x2='$SPARKLINE_WIDTH' y2='$zy' stroke='#444' stroke-width='1' stroke-dasharray='2 2'/>")
+            }
+            append("<path d='")
+            append(path.toString().trim())
+            append("' fill='none' stroke='#6cf' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round' vector-effect='non-scaling-stroke'/>")
+            append("</svg>")
+            append("</span>")
         }
     }
 

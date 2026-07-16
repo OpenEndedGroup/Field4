@@ -67,6 +67,36 @@ Structural:        #aaa, #888, #666 (grays)
 
 ## Advanced Features
 
+### Inline Sparklines for Numeric Collections
+
+`DoubleArray`, `FloatArray`, `IntArray`, and predominantly-numeric `List<*>`
+values get a small inline SVG sparkline appended after their preview + stats
+(`[μ=…, σ=…, range=…]`), giving the *shape* of the series at a glance:
+
+```kotlin
+viz("ramp", DoubleArray(64) { it.toDouble() })          // rising line
+viz("sine", DoubleArray(128) { sin(it / 20.0) })        // sinusoid + dashed 0 baseline
+viz("mixed", listOf(1, 2.5, 3, 4L, 5.0, 6.25, 7, 8.0))  // list sparkline
+```
+
+The renderer mirrors the safe recipe used for the Fn graph-card plot
+(`renderFnPlot`):
+
+- **NaN / ∞ become gaps** — the pen lifts across non-finite samples rather than
+  drawing a spurious segment to zero.
+- **Flat/degenerate series are padded** so a constant array still draws a line.
+- **A faint dashed zero baseline** is drawn only when the real data straddles
+  zero (positive-only series get no baseline).
+- **Huge series are downsampled** to `SPARKLINE_MAX_SAMPLES` (240) points; the
+  original count is noted in the element's `title` tooltip.
+- **Graceful degradation**: fewer than `SPARKLINE_MIN_POINTS` (3) finite values
+  → no sparkline. So empty, single-element, and all-NaN arrays simply omit it.
+- For `List<*>`, non-numeric elements become NaN gaps at their real index, and a
+  sparkline is drawn only when the numeric elements are the majority (≥60%).
+
+The whole render is wrapped in `runCatching`, so a misbehaving element costs only
+the sparkline, never the value display.
+
 ### Custom Printers
 
 Register custom formatters for your types:
@@ -172,7 +202,7 @@ See `viz_demo.kt` for comprehensive examples of all features.
 Potential future additions:
 
 1. Interactive disclosure of truncated collections
-2. Plotting numeric arrays
+2. ~~Plotting numeric arrays~~ — done: inline sparklines (see Advanced Features)
 3. Syntax highlighting for code strings
 4. Image preview for byte arrays
 5. Thread `_print()` functions through visualizer
