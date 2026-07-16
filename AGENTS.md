@@ -10,6 +10,12 @@ This repository builds **Field·4**, a Kotlin-based live-coding environment for 
 ## Quickstart (Dev)
 
 - Run Field (builds JS + runs JVM server): `./field.sh` (wraps `./gradlew runJvm`)
+  - `field.sh` decides whether to run in the foreground or open a detached GUI terminal (for a
+    Finder/Explorer double-click) by checking `[ -t 0 ]` — no tty on stdin. A coding agent's shell
+    tool also has no tty, so it looks the same; `field.sh` senses common agent env vars
+    (`CLAUDECODE`, `CLAUDE_CODE_ENTRYPOINT`, `CODEX_SANDBOX*`) and runs in the foreground for those.
+    That sensing is best-effort — if it ever misses your agent and pops a terminal window instead,
+    set `AFIELD_FIELD_SH_NO_TERMINAL=1` explicitly.
 - Open in browser: `https://localhost:9092/index.html?file=firstDocument`
 - Change workspace directory (documents root):
   - CLI arg parsed by `option(...)`: `--workspace <path>`

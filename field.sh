@@ -201,9 +201,24 @@ run_in_terminal() {
     fi
 }
 
+# A coding agent's shell tool has no tty on stdin either, so it looks just like a Finder/Explorer
+# double-click to the check below — without this, run_in_terminal pops a detached GUI terminal
+# window that the agent can neither read nor close. Sense known agent CLIs (env vars they set on
+# their own subprocesses) and treat that the same as AFIELD_FIELD_SH_NO_TERMINAL=1. Best-effort:
+# CLAUDECODE/CLAUDE_CODE_ENTRYPOINT are documented Claude Code markers; the CODEX_SANDBOX* vars are
+# undocumented internals Codex sets only when it happens to sandbox the command, so this won't catch
+# every Codex invocation — see AGENTS.md.
+running_under_coding_agent() {
+    [ -n "$CLAUDECODE" ] && return 0
+    [ -n "$CLAUDE_CODE_ENTRYPOINT" ] && return 0
+    [ -n "$CODEX_SANDBOX" ] && return 0
+    [ -n "$CODEX_SANDBOX_NETWORK_DISABLED" ] && return 0
+    return 1
+}
+
 # Check if we're running in a terminal
-if [ -t 0 ] || [ "$AFIELD_FIELD_SH_NO_TERMINAL" = "1" ]; then
-    # Running in a terminal, just execute
+if [ -t 0 ] || [ "$AFIELD_FIELD_SH_NO_TERMINAL" = "1" ] || running_under_coding_agent; then
+    # Running in a terminal (or a coding agent's shell tool), just execute
     run_field "$@"
 else
     # Not in a terminal (likely double-clicked), open one
