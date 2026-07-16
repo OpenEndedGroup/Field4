@@ -1,5 +1,7 @@
 package afield.stdlib.linalg
 
+import afield.four.util.floatToHalfBits
+import afield.four.util.halfBitsToFloat
 import afield.stdlib.Vec2
 import afield.stdlib.Vec3
 import afield.stdlib.Vec4
@@ -415,5 +417,35 @@ class GeneratedLinalgTest {
         for (column in 0..3) for (row in 0..3) {
             assertEquals(if (column == row) 1f else 0f, actual[column, row], tolerance, "matrix[$column,$row]")
         }
+    }
+
+    @Test
+    fun vector8hIsHalfPrecisionAndPacksIntoOneVec4() {
+        // 0.1 and 65504 exercise rounding and the binary16 max; -0.5/-4 exercise the sign path.
+        val inputs = floatArrayOf(1f, 2f, 3.5f, -4f, 0.1f, 1000f, 65504f, -0.5f)
+        val v = Vector8h(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5], inputs[6], inputs[7])
+
+        // Each lane is quantized to IEEE-754 binary16 on write and decoded on read.
+        val quantized = inputs.map { halfBitsToFloat(floatToHalfBits(it)) }
+        val lanes = listOf(v.x(), v.y(), v.z(), v.w(), v.a(), v.b(), v.c(), v.d())
+        lanes.forEachIndexed { i, got -> assertEquals(quantized[i], got, "lane $i") }
+        assertNotEquals(0.1f, v.a()) // 0.1 has no exact binary16 form, so the rounding is observable
+
+        // Arithmetic is evaluated in Float and stored back as half.
+        val doubled = v.add(v, Vector8h())
+        assertEquals(halfBitsToFloat(floatToHalfBits(quantized[0] * 2f)), doubled.x())
+
+        // The eight lanes serialize into exactly 16 bytes — one GLSL vec4, half of the 32 a Vec4 pair needs.
+        val buffer = ByteBuffer.allocate(16).order(ByteOrder.LITTLE_ENDIAN)
+        v.get(0, buffer)
+        for (i in 0 until 8) {
+            assertEquals(quantized[i], halfBitsToFloat(buffer.getShort(i * 2)), "packed lane $i")
+        }
+
+        // lo()/hi() bridge to the Vector4f transit pair; vec8h rejoins them losslessly.
+        assertVectorEquals(Vector4f(quantized[0], quantized[1], quantized[2], quantized[3]), v.lo())
+        assertVectorEquals(Vector4f(quantized[4], quantized[5], quantized[6], quantized[7]), v.hi())
+        assertEquals(v, vec8h(v.lo(), v.hi()))
+        assertEquals(v.hashCode(), vec8h(v.lo(), v.hi()).hashCode())
     }
 }

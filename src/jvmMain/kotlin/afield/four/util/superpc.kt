@@ -36,7 +36,8 @@ package afield.four.util
     Types supported for normal fields:
       - Float
       - afield.stdlib.linalg.Vector2f / Vector3f / Vector4f
-      - Vec2h / Vec3h / Vec4h / Vec8h (fp16 transit only)
+      - Vec2h / Vec3h / Vec4h (fp16 transit only)
+      - afield.stdlib.linalg.Vector8h (generated 8-lane fp16 vector -> uvec4)
 
     Instruction payloads:
       - You said these will always be Vec4h; this file supports that naturally.
@@ -46,7 +47,7 @@ package afield.four.util
       - Vec2h -> uint  (packed half2)
       - Vec3h -> uvec2 (x,y in .x; z in low half of .y)
       - Vec4h -> uvec2 (x,y in .x; z,w in .y)
-      - Vec8h -> uvec4 (two halfs per uint lane)
+      - Vector8h -> uvec4 (two halfs per uint lane)
 
     NOTE:
       - Ensure the ByteBuffer uses LITTLE_ENDIAN:
@@ -76,6 +77,7 @@ import afield.four.buffers.WritesToBuffer
 import afield.stdlib.linalg.Vector2f
 import afield.stdlib.linalg.Vector3f
 import afield.stdlib.linalg.Vector4f
+import afield.stdlib.linalg.Vector8h
 import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.KClass
@@ -105,7 +107,7 @@ internal enum class PcKind(val regFloats: Int) {
     H2(2), // Vec2h -> uint
     H3(3), // Vec3h -> uvec2
     H4(4), // Vec4h -> uvec2
-    H8(8)  // Vec8h -> uvec4
+    H8(8)  // Vector8h -> uvec4
 }
 
 internal data class FieldInfo(
@@ -261,7 +263,7 @@ abstract class PushConstants<T : Any> : WritesToBuffer {
             PcKind.H2 -> value is Vec2h
             PcKind.H3 -> value is Vec3h
             PcKind.H4 -> value is Vec4h
-            PcKind.H8 -> value is Vec8h
+            PcKind.H8 -> value is Vector8h
         }
 
         if (!ok) {
@@ -280,7 +282,7 @@ abstract class PushConstants<T : Any> : WritesToBuffer {
         PcKind.H2 -> "Vec2h"
         PcKind.H3 -> "Vec3h"
         PcKind.H4 -> "Vec4h"
-        PcKind.H8 -> "Vec8h"
+        PcKind.H8 -> "Vector8h"
     }
 
     private fun writeField(bb: ByteBuffer, absOffset: Int, kind: PcKind, v: Any?) {
@@ -321,13 +323,9 @@ abstract class PushConstants<T : Any> : WritesToBuffer {
                 bb.putInt(xy)
                 bb.putInt(zw)
             }
-            PcKind.H8 -> {
-                val t = v as Vec8h
-                bb.putInt(packHalf2x16(t.lo.x, t.lo.y))
-                bb.putInt(packHalf2x16(t.lo.z, t.lo.w))
-                bb.putInt(packHalf2x16(t.hi.x, t.hi.y))
-                bb.putInt(packHalf2x16(t.hi.z, t.hi.w))
-            }
+            // Vector8h stores fp16; its own writer emits the uvec4 bytes (two halfs per uint
+            // lane) with absolute puts, so it is independent of the buffer's position.
+            PcKind.H8 -> (v as Vector8h).get(absOffset, bb)
         }
 
         bb.position(oldPos)
@@ -430,7 +428,7 @@ private fun inferKind(k: KClass<*>?): PcKind = when (k) {
     Vec2h::class -> PcKind.H2
     Vec3h::class -> PcKind.H3
     Vec4h::class -> PcKind.H4
-    Vec8h::class -> PcKind.H8
+    Vector8h::class -> PcKind.H8
 
     else -> error("Unsupported push-constant field type: $k")
 }

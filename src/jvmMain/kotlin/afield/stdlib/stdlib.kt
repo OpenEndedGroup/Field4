@@ -517,7 +517,7 @@ fun ByteBuffer.putf16(value: Float): ByteBuffer {
 typealias Vec2h = afield.four.util.Vec2h
 typealias Vec3h = afield.four.util.Vec3h
 typealias Vec4h = afield.four.util.Vec4h
-typealias Vec8h = afield.four.util.Vec8h
+// Vec8h dropped: the 8-lane fp16 vector is the real generated afield.stdlib.linalg.Vector8h.
 
 
 val <T> List<T>.m: MutableList<T>

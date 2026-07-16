@@ -440,6 +440,7 @@ private fun renderMacroTranscriptPage(response: MacroTranscriptCommandResponse) 
     if (response.entries.isEmpty()) {
         list.innerHTML = "<div class=\"macro-recorder-empty\">No transcript entries yet.</div>"
         macroTranscriptRenderedIndices = emptySet()
+        macroPanelSyncControls()
         return
     }
 
@@ -579,9 +580,10 @@ private fun macroPanelApplyVisibleTranscriptSelection() {
 }
 
 private fun macroPanelUpdateSelectionStatus() {
-    val status = macroPanelQuery("[data-role='transcript-selection']") ?: return
+    val status = macroPanelQuery("[data-role='transcript-selection']")
     val count = macroTranscriptSelected.size
-    status.textContent = if (count == 0) "nothing selected" else "$count selected"
+    status?.textContent = if (count == 0) "nothing selected" else "$count selected"
+    macroPanelSyncControls()
 }
 
 private fun macroPanelLoadTranscript(offset: Int = macroTranscriptOffset, followTail: Boolean = macroTranscriptFollowTail) {
@@ -651,6 +653,86 @@ private fun macroPanelProjectName(): String =
 
 private fun macroPanelName(): String =
     macroPanelValue("[data-role='name']").trim()
+
+private fun macroPanelHasProject(): Boolean =
+    macroPanelLastState?.projectName.orEmpty().isNotBlank()
+
+/** Saved macros available in the scope currently selected in the panel. */
+private fun macroPanelScopeMacros(): List<String> {
+    val state = macroPanelLastState ?: return emptyList()
+    return when (macroPanelScope()) {
+        "workspace" -> state.workspaceMacros
+        "project" -> state.projectMacros
+        else -> state.documentMacros.ifEmpty { state.macros }
+    }
+}
+
+private fun macroPanelSetControlEnabled(action: String, enabled: Boolean, hint: String = "") {
+    val button = macroPanelElement?.querySelector("[data-action='$action']") as? HTMLElement ?: return
+    button.asDynamic().disabled = !enabled
+    button.classList.toggle("is-disabled", !enabled)
+    if (hint.isBlank()) button.removeAttribute("title") else button.setAttribute("title", hint)
+}
+
+/**
+ * Single source of truth for the panel's modal button state. Recompute whenever anything that a
+ * button's precondition depends on changes: recorder state, scope, the name field, editor content,
+ * the loaded macro lists, the transcript page, or the transcript selection.
+ */
+private fun macroPanelSyncControls() {
+    val recording = macroPanelLastState?.recording == true
+    val name = macroPanelName()
+    val scope = macroPanelScope()
+    val nameSaved = name.isNotBlank() && macroPanelScopeMacros().contains(name)
+    val hasContent = macroPanelValue("[data-role='content']").isNotBlank()
+    val hasSelection = macroTranscriptSelected.isNotEmpty()
+
+    macroPanelSetControlEnabled(
+        "start", !recording,
+        if (recording) "Already recording — Save to finish the macro." else ""
+    )
+    macroPanelSetControlEnabled(
+        "save", name.isNotBlank() && (recording || hasContent),
+        when {
+            name.isBlank() -> "Name the macro before saving."
+            !recording && !hasContent -> "Record or edit a macro before saving."
+            else -> ""
+        }
+    )
+    macroPanelSetControlEnabled(
+        "run", nameSaved,
+        if (nameSaved) "" else "Load or save a macro before running it."
+    )
+    macroPanelSetControlEnabled(
+        "promote", nameSaved && scope != "workspace",
+        when {
+            !nameSaved -> "Load or save a macro before promoting it."
+            scope == "workspace" -> "Workspace macros are already at the broadest scope."
+            else -> "Copy this macro to the ${if (macroPanelHasProject()) "project" else "workspace"} so other documents can use it."
+        }
+    )
+
+    macroPanelSetControlEnabled(
+        "save-selected", hasSelection && name.isNotBlank(),
+        when {
+            !hasSelection -> "Select transcript entries to save."
+            name.isBlank() -> "Name the macro before saving."
+            else -> ""
+        }
+    )
+    macroPanelSetControlEnabled(
+        "undo-selected", hasSelection,
+        if (hasSelection) "" else "Select transcript entries to undo."
+    )
+    macroPanelSetControlEnabled(
+        "ai-undo-selected", hasSelection,
+        if (hasSelection) "" else "Select transcript entries for AI4 undo."
+    )
+
+    val shown = macroTranscriptRenderedIndices.size
+    macroPanelSetControlEnabled("transcript-older", macroTranscriptOffset > 0)
+    macroPanelSetControlEnabled("transcript-newer", macroTranscriptOffset + shown < macroTranscriptLastTotal)
+}
 
 private fun macroRevealLabel(): String {
     val platform = (window.asDynamic().navigator.userAgentData?.platform as? String)
@@ -802,6 +884,7 @@ private fun ensureMacroPanel(): HTMLElement {
             <button type="button" data-action="start">Start</button>
             <button type="button" data-action="save">Save</button>
             <button type="button" data-action="run">Run</button>
+            <button type="button" data-action="promote" title="Copy this macro to the project (or workspace) so other documents can use it">Promote</button>
             <button type="button" data-action="reveal"></button>
         </div>
         <div class="macro-recorder-meta" data-role="meta"></div>
@@ -996,6 +1079,20 @@ private fun ensureMacroPanel(): HTMLElement {
             macroPanelRefresh()
         }
     })
+    panel.querySelector("[data-action='promote']")?.addEventListener("click", {
+        val name = macroPanelName()
+        if (name.isBlank()) {
+            notify("Choose a macro to promote", "error")
+            return@addEventListener
+        }
+        macroPanelRequest("promote", name = name, announce = false) { response ->
+            if (response.success) {
+                macroPanelSetValue("[data-role='scope']", response.scope)
+            }
+            macroPanelSetFeedback(response.message, if (response.success) "ok" else "error")
+            macroPanelRefresh()
+        }
+    })
     panel.querySelector("[data-action='reveal']")?.addEventListener("click", {
         macroPanelRequest("reveal", announce = false) { response ->
             macroPanelSetFeedback(response.message, if (response.success) "ok" else "error")
@@ -1004,9 +1101,13 @@ private fun ensureMacroPanel(): HTMLElement {
     panel.querySelector("[data-role='scope']")?.addEventListener("change", {
         macroPanelRefresh()
     })
+    panel.querySelector("[data-role='name']")?.addEventListener("input", {
+        macroPanelSyncControls()
+    })
     panel.querySelector("[data-role='content']")?.addEventListener("input", {
         macroPanelContentDirty = true
         renderMacroPreview(macroPanelValue("[data-role='content']"))
+        macroPanelSyncControls()
     })
     return panel
 }
@@ -1038,6 +1139,7 @@ private fun renderMacroList(selector: String, names: List<String>, scope: String
                         projectName = macroPanelLastState?.projectName.orEmpty()
                     )
                     macroPanelQuery("[data-role='status']")?.textContent = "loaded ${response.name}"
+                    macroPanelSyncControls()
                 } else {
                     notify(response.message, "error")
                 }
@@ -1108,6 +1210,7 @@ private fun updateMacroPanel(response: MacroTranscriptCommandResponse) {
     renderMacroList("[data-role='workspace-list']", response.workspaceMacros, "workspace")
     macroPanelQuery("[data-role='project-title']")?.textContent =
         if (response.projectName.isBlank()) "project" else "project · ${response.projectName}"
+    macroPanelSyncControls()
 }
 
 private fun macroPanelStartAutoRefresh() {

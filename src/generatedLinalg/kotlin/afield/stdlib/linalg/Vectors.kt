@@ -3,9 +3,12 @@
 // model-version: field-f32-v1
 package afield.stdlib.linalg
 
+import afield.four.util.floatToHalfBits
+import afield.four.util.halfBitsToFloat
 import java.nio.ByteBuffer
 import java.nio.DoubleBuffer
 import java.nio.FloatBuffer
+import java.nio.ShortBuffer
 import kotlin.math.*
 
 /**
@@ -3198,6 +3201,659 @@ class Vector4d() : Vector4dc, Cloneable {
         operator fun of(vararg components: Number): Vector4d {
             require(components.size == 4) { "Vector4d literal requires 4 components, got ${components.size}" }
             return Vector4d(components[0].toDouble(), components[1].toDouble(), components[2].toDouble(), components[3].toDouble())
+        }
+    }
+}
+
+/**
+ * A read-only view of a 8D vector of 16-bit floating-point components.
+ *
+ * Treat a vector as an arrow: its components describe a displacement, its length describes magnitude, and normalization keeps direction while making length one.
+ *
+ * Use the heap type for ordinary Field code and persistent state. Destination overloads avoid result allocation when a loop needs it.
+ *
+ * Methods with a dest parameter write into that destination and do not allocate a result.
+ */
+interface Vector8hc {
+    fun x(): Float
+    fun y(): Float
+    fun z(): Float
+    fun w(): Float
+    fun a(): Float
+    fun b(): Float
+    fun c(): Float
+    fun d(): Float
+
+    operator fun get(component: Int): Float = when (component) {
+        0 -> x()
+        1 -> y()
+        2 -> z()
+        3 -> w()
+        4 -> a()
+        5 -> b()
+        6 -> c()
+        7 -> d()
+        else -> throw IndexOutOfBoundsException("component $component outside 0..7")
+    }
+
+    /**
+     * Adds another vector component by component.
+     * @param other the vector to add
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun add(other: Vector8hc, dest: Vector8h): Vector8h {
+        val r0 = (x() + other.x())
+        val r1 = (y() + other.y())
+        val r2 = (z() + other.z())
+        val r3 = (w() + other.w())
+        val r4 = (a() + other.a())
+        val r5 = (b() + other.b())
+        val r6 = (c() + other.c())
+        val r7 = (d() + other.d())
+        return dest.set(r0, r1, r2, r3, r4, r5, r6, r7)
+    }
+
+    /**
+     * Subtracts another vector component by component.
+     * @param other the vector to subtract
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun sub(other: Vector8hc, dest: Vector8h): Vector8h {
+        val r0 = (x() - other.x())
+        val r1 = (y() - other.y())
+        val r2 = (z() - other.z())
+        val r3 = (w() - other.w())
+        val r4 = (a() - other.a())
+        val r5 = (b() - other.b())
+        val r6 = (c() - other.c())
+        val r7 = (d() - other.d())
+        return dest.set(r0, r1, r2, r3, r4, r5, r6, r7)
+    }
+
+    /**
+     * Multiplies corresponding components.
+     * @param other the component-wise multiplier
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun mul(other: Vector8hc, dest: Vector8h): Vector8h {
+        val r0 = (x() * other.x())
+        val r1 = (y() * other.y())
+        val r2 = (z() * other.z())
+        val r3 = (w() * other.w())
+        val r4 = (a() * other.a())
+        val r5 = (b() * other.b())
+        val r6 = (c() * other.c())
+        val r7 = (d() * other.d())
+        return dest.set(r0, r1, r2, r3, r4, r5, r6, r7)
+    }
+
+    /**
+     * Divides corresponding components.
+     * @param other the component-wise divisor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun div(other: Vector8hc, dest: Vector8h): Vector8h {
+        val r0 = (x() / other.x())
+        val r1 = (y() / other.y())
+        val r2 = (z() / other.z())
+        val r3 = (w() / other.w())
+        val r4 = (a() / other.a())
+        val r5 = (b() / other.b())
+        val r6 = (c() / other.c())
+        val r7 = (d() / other.d())
+        return dest.set(r0, r1, r2, r3, r4, r5, r6, r7)
+    }
+
+    /**
+     * Adds a scalar to each component.
+     * @param scalar the value to add
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun add(scalar: Float, dest: Vector8h): Vector8h {
+        val r0 = (x() + scalar)
+        val r1 = (y() + scalar)
+        val r2 = (z() + scalar)
+        val r3 = (w() + scalar)
+        val r4 = (a() + scalar)
+        val r5 = (b() + scalar)
+        val r6 = (c() + scalar)
+        val r7 = (d() + scalar)
+        return dest.set(r0, r1, r2, r3, r4, r5, r6, r7)
+    }
+
+    /**
+     * Subtracts a scalar from each component.
+     * @param scalar the value to subtract
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun sub(scalar: Float, dest: Vector8h): Vector8h {
+        val r0 = (x() - scalar)
+        val r1 = (y() - scalar)
+        val r2 = (z() - scalar)
+        val r3 = (w() - scalar)
+        val r4 = (a() - scalar)
+        val r5 = (b() - scalar)
+        val r6 = (c() - scalar)
+        val r7 = (d() - scalar)
+        return dest.set(r0, r1, r2, r3, r4, r5, r6, r7)
+    }
+
+    /**
+     * Scales every component by a scalar.
+     *
+     * Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction.
+     * @param scalar the scale factor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun mul(scalar: Float, dest: Vector8h): Vector8h {
+        val r0 = (x() * scalar)
+        val r1 = (y() * scalar)
+        val r2 = (z() * scalar)
+        val r3 = (w() * scalar)
+        val r4 = (a() * scalar)
+        val r5 = (b() * scalar)
+        val r6 = (c() * scalar)
+        val r7 = (d() * scalar)
+        return dest.set(r0, r1, r2, r3, r4, r5, r6, r7)
+    }
+
+    /**
+     * Divides every component by a scalar.
+     * @param scalar the divisor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun div(scalar: Float, dest: Vector8h): Vector8h {
+        val r0 = (x() / scalar)
+        val r1 = (y() / scalar)
+        val r2 = (z() / scalar)
+        val r3 = (w() / scalar)
+        val r4 = (a() / scalar)
+        val r5 = (b() / scalar)
+        val r6 = (c() / scalar)
+        val r7 = (d() / scalar)
+        return dest.set(r0, r1, r2, r3, r4, r5, r6, r7)
+    }
+
+    /**
+     * Reverses the vector by negating every component.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun negate(dest: Vector8h): Vector8h {
+        val r0 = (-1.0f * x())
+        val r1 = (-1.0f * y())
+        val r2 = (-1.0f * z())
+        val r3 = (-1.0f * w())
+        val r4 = (-1.0f * a())
+        val r5 = (-1.0f * b())
+        val r6 = (-1.0f * c())
+        val r7 = (-1.0f * d())
+        return dest.set(r0, r1, r2, r3, r4, r5, r6, r7)
+    }
+
+    /**
+     * Replaces every component with its absolute value.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun absolute(dest: Vector8h): Vector8h {
+        val r0 = abs(x())
+        val r1 = abs(y())
+        val r2 = abs(z())
+        val r3 = abs(w())
+        val r4 = abs(a())
+        val r5 = abs(b())
+        val r6 = abs(c())
+        val r7 = abs(d())
+        return dest.set(r0, r1, r2, r3, r4, r5, r6, r7)
+    }
+
+    /**
+     * Selects the smaller value independently in each component.
+     * @param other the other component values
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun min(other: Vector8hc, dest: Vector8h): Vector8h {
+        val r0 = min(x(), other.x())
+        val r1 = min(y(), other.y())
+        val r2 = min(z(), other.z())
+        val r3 = min(w(), other.w())
+        val r4 = min(a(), other.a())
+        val r5 = min(b(), other.b())
+        val r6 = min(c(), other.c())
+        val r7 = min(d(), other.d())
+        return dest.set(r0, r1, r2, r3, r4, r5, r6, r7)
+    }
+
+    /**
+     * Selects the larger value independently in each component.
+     * @param other the other component values
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun max(other: Vector8hc, dest: Vector8h): Vector8h {
+        val r0 = max(x(), other.x())
+        val r1 = max(y(), other.y())
+        val r2 = max(z(), other.z())
+        val r3 = max(w(), other.w())
+        val r4 = max(a(), other.a())
+        val r5 = max(b(), other.b())
+        val r6 = max(c(), other.c())
+        val r7 = max(d(), other.d())
+        return dest.set(r0, r1, r2, r3, r4, r5, r6, r7)
+    }
+
+    /**
+     * Caps every component at a scalar upper bound.
+     * @param scalar the upper bound applied to every component
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun min(scalar: Float, dest: Vector8h): Vector8h {
+        val r0 = min(x(), scalar)
+        val r1 = min(y(), scalar)
+        val r2 = min(z(), scalar)
+        val r3 = min(w(), scalar)
+        val r4 = min(a(), scalar)
+        val r5 = min(b(), scalar)
+        val r6 = min(c(), scalar)
+        val r7 = min(d(), scalar)
+        return dest.set(r0, r1, r2, r3, r4, r5, r6, r7)
+    }
+
+    /**
+     * Raises every component to a scalar lower bound.
+     * @param scalar the lower bound applied to every component
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun max(scalar: Float, dest: Vector8h): Vector8h {
+        val r0 = max(x(), scalar)
+        val r1 = max(y(), scalar)
+        val r2 = max(z(), scalar)
+        val r3 = max(w(), scalar)
+        val r4 = max(a(), scalar)
+        val r5 = max(b(), scalar)
+        val r6 = max(c(), scalar)
+        val r7 = max(d(), scalar)
+        return dest.set(r0, r1, r2, r3, r4, r5, r6, r7)
+    }
+
+    /**
+     * Linearly interpolates from this vector toward another.
+     *
+     * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     * @param other the endpoint
+     * @param t the interpolation amount
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun lerp(other: Vector8hc, t: Float, dest: Vector8h): Vector8h {
+        val r0 = (x() + ((other.x() - x()) * t))
+        val r1 = (y() + ((other.y() - y()) * t))
+        val r2 = (z() + ((other.z() - z()) * t))
+        val r3 = (w() + ((other.w() - w()) * t))
+        val r4 = (a() + ((other.a() - a()) * t))
+        val r5 = (b() + ((other.b() - b()) * t))
+        val r6 = (c() + ((other.c() - c()) * t))
+        val r7 = (d() + ((other.d() - d()) * t))
+        return dest.set(r0, r1, r2, r3, r4, r5, r6, r7)
+    }
+
+    /**
+     * Computes this + other * scalar component by component.
+     *
+     * This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration.
+     * @param other the vector to scale and add
+     * @param scalar the scale factor
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun fma(scalar: Float, other: Vector8hc, dest: Vector8h): Vector8h {
+        val r0 = (x() + (other.x() * scalar))
+        val r1 = (y() + (other.y() * scalar))
+        val r2 = (z() + (other.z() * scalar))
+        val r3 = (w() + (other.w() * scalar))
+        val r4 = (a() + (other.a() * scalar))
+        val r5 = (b() + (other.b() * scalar))
+        val r6 = (c() + (other.c() * scalar))
+        val r7 = (d() + (other.d() * scalar))
+        return dest.set(r0, r1, r2, r3, r4, r5, r6, r7)
+    }
+
+    /**
+     * Measures how strongly two vectors point in the same direction.
+     *
+     * Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them.
+     * @param other the vector to compare
+     * @return the sum of the products of corresponding components
+     */
+    fun dot(other: Vector8hc): Float = ((((((((x() * other.x()) + (y() * other.y())) + (z() * other.z())) + (w() * other.w())) + (a() * other.a())) + (b() * other.b())) + (c() * other.c())) + (d() * other.d()))
+
+    /**
+     * Returns the squared length of this vector.
+     *
+     * Use this for comparisons when you do not need the actual distance; it avoids a square root.
+     * @return the sum of the squared components
+     */
+    fun lengthSquared(): Float = ((((((((x() * x()) + (y() * y())) + (z() * z())) + (w() * w())) + (a() * a())) + (b() * b())) + (c() * c())) + (d() * d()))
+
+    /**
+     * Returns the squared straight-line distance to another vector.
+     *
+     * Use this for nearest/farthest comparisons when you do not need the actual distance.
+     * @param other the point to measure to
+     * @return the squared Euclidean distance
+     */
+    fun distanceSquared(other: Vector8hc): Float = (((((((((x() - other.x()) * (x() - other.x())) + ((y() - other.y()) * (y() - other.y()))) + ((z() - other.z()) * (z() - other.z()))) + ((w() - other.w()) * (w() - other.w()))) + ((a() - other.a()) * (a() - other.a()))) + ((b() - other.b()) * (b() - other.b()))) + ((c() - other.c()) * (c() - other.c()))) + ((d() - other.d()) * (d() - other.d())))
+
+    /**
+     * Returns this vector's Euclidean length (magnitude).
+     * @return the square root of the sum of the squared components
+     */
+    fun length(): Float = sqrt(((((((((x() * x()) + (y() * y())) + (z() * z())) + (w() * w())) + (a() * a())) + (b() * b())) + (c() * c())) + (d() * d())))
+
+    /**
+     * Returns the straight-line distance to another vector.
+     * @param other the point to measure to
+     * @return the Euclidean distance
+     */
+    fun distance(other: Vector8hc): Float = sqrt((((((((((x() - other.x()) * (x() - other.x())) + ((y() - other.y()) * (y() - other.y()))) + ((z() - other.z()) * (z() - other.z()))) + ((w() - other.w()) * (w() - other.w()))) + ((a() - other.a()) * (a() - other.a()))) + ((b() - other.b()) * (b() - other.b()))) + ((c() - other.c()) * (c() - other.c()))) + ((d() - other.d()) * (d() - other.d()))))
+
+    /**
+     * Keeps the vector's direction while scaling its length to one.
+     *
+     * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun normalize(dest: Vector8h): Vector8h {
+        val r0 = (x() * (1.0f / sqrt(((((((((x() * x()) + (y() * y())) + (z() * z())) + (w() * w())) + (a() * a())) + (b() * b())) + (c() * c())) + (d() * d())))))
+        val r1 = (y() * (1.0f / sqrt(((((((((x() * x()) + (y() * y())) + (z() * z())) + (w() * w())) + (a() * a())) + (b() * b())) + (c() * c())) + (d() * d())))))
+        val r2 = (z() * (1.0f / sqrt(((((((((x() * x()) + (y() * y())) + (z() * z())) + (w() * w())) + (a() * a())) + (b() * b())) + (c() * c())) + (d() * d())))))
+        val r3 = (w() * (1.0f / sqrt(((((((((x() * x()) + (y() * y())) + (z() * z())) + (w() * w())) + (a() * a())) + (b() * b())) + (c() * c())) + (d() * d())))))
+        val r4 = (a() * (1.0f / sqrt(((((((((x() * x()) + (y() * y())) + (z() * z())) + (w() * w())) + (a() * a())) + (b() * b())) + (c() * c())) + (d() * d())))))
+        val r5 = (b() * (1.0f / sqrt(((((((((x() * x()) + (y() * y())) + (z() * z())) + (w() * w())) + (a() * a())) + (b() * b())) + (c() * c())) + (d() * d())))))
+        val r6 = (c() * (1.0f / sqrt(((((((((x() * x()) + (y() * y())) + (z() * z())) + (w() * w())) + (a() * a())) + (b() * b())) + (c() * c())) + (d() * d())))))
+        val r7 = (d() * (1.0f / sqrt(((((((((x() * x()) + (y() * y())) + (z() * z())) + (w() * w())) + (a() * a())) + (b() * b())) + (c() * c())) + (d() * d())))))
+        return dest.set(r0, r1, r2, r3, r4, r5, r6, r7)
+    }
+
+    /**
+     * Reports whether every component is finite.
+     */
+    fun isFinite(): Boolean = x().isFinite() && y().isFinite() && z().isFinite() && w().isFinite() && a().isFinite() && b().isFinite() && c().isFinite() && d().isFinite()
+    fun equals(other: Vector8hc, delta: Float): Boolean =
+        abs(x() - other.x()) <= delta && abs(y() - other.y()) <= delta && abs(z() - other.z()) <= delta && abs(w() - other.w()) <= delta && abs(a() - other.a()) <= delta && abs(b() - other.b()) <= delta && abs(c() - other.c()) <= delta && abs(d() - other.d()) <= delta
+
+    fun get(buffer: ShortBuffer): ShortBuffer {
+        val index = buffer.position()
+        buffer.put(index + 0, floatToHalfBits(x()))
+        buffer.put(index + 1, floatToHalfBits(y()))
+        buffer.put(index + 2, floatToHalfBits(z()))
+        buffer.put(index + 3, floatToHalfBits(w()))
+        buffer.put(index + 4, floatToHalfBits(a()))
+        buffer.put(index + 5, floatToHalfBits(b()))
+        buffer.put(index + 6, floatToHalfBits(c()))
+        buffer.put(index + 7, floatToHalfBits(d()))
+        return buffer
+    }
+
+    fun get(index: Int, buffer: ByteBuffer): ByteBuffer {
+        buffer.putShort(index + 0, floatToHalfBits(x()))
+        buffer.putShort(index + 2, floatToHalfBits(y()))
+        buffer.putShort(index + 4, floatToHalfBits(z()))
+        buffer.putShort(index + 6, floatToHalfBits(w()))
+        buffer.putShort(index + 8, floatToHalfBits(a()))
+        buffer.putShort(index + 10, floatToHalfBits(b()))
+        buffer.putShort(index + 12, floatToHalfBits(c()))
+        buffer.putShort(index + 14, floatToHalfBits(d()))
+        return buffer
+    }
+}
+
+/**
+ * A mutable 8D vector of 16-bit floating-point components.
+ *
+ * Treat a vector as an arrow: its components describe a displacement, its length describes magnitude, and normalization keeps direction while making length one.
+ *
+ * Use the heap type for ordinary Field code and persistent state. Destination overloads avoid result allocation when a loop needs it.
+ */
+class Vector8h() : Vector8hc, Cloneable {
+    @JvmField var x: Short = 0
+    @JvmField var y: Short = 0
+    @JvmField var z: Short = 0
+    @JvmField var w: Short = 0
+    @JvmField var a: Short = 0
+    @JvmField var b: Short = 0
+    @JvmField var c: Short = 0
+    @JvmField var d: Short = 0
+
+    constructor(s: Float) : this() { set(s, s, s, s, s, s, s, s) }
+    constructor(x: Float, y: Float, z: Float, w: Float, a: Float, b: Float, c: Float, d: Float) : this() { set(x, y, z, w, a, b, c, d) }
+    constructor(other: Vector8hc) : this() { set(other) }
+
+    override fun x(): Float = halfBitsToFloat(x)
+    override fun y(): Float = halfBitsToFloat(y)
+    override fun z(): Float = halfBitsToFloat(z)
+    override fun w(): Float = halfBitsToFloat(w)
+    override fun a(): Float = halfBitsToFloat(a)
+    override fun b(): Float = halfBitsToFloat(b)
+    override fun c(): Float = halfBitsToFloat(c)
+    override fun d(): Float = halfBitsToFloat(d)
+
+    operator fun set(component: Int, value: Float) {
+        when (component) {
+            0 -> x = floatToHalfBits(value)
+            1 -> y = floatToHalfBits(value)
+            2 -> z = floatToHalfBits(value)
+            3 -> w = floatToHalfBits(value)
+            4 -> a = floatToHalfBits(value)
+            5 -> b = floatToHalfBits(value)
+            6 -> c = floatToHalfBits(value)
+            7 -> d = floatToHalfBits(value)
+            else -> throw IndexOutOfBoundsException("component $component outside 0..7")
+        }
+    }
+
+    fun set(s: Float): Vector8h = set(s, s, s, s, s, s, s, s)
+    fun set(x: Float, y: Float, z: Float, w: Float, a: Float, b: Float, c: Float, d: Float): Vector8h {
+        this.x = floatToHalfBits(x)
+        this.y = floatToHalfBits(y)
+        this.z = floatToHalfBits(z)
+        this.w = floatToHalfBits(w)
+        this.a = floatToHalfBits(a)
+        this.b = floatToHalfBits(b)
+        this.c = floatToHalfBits(c)
+        this.d = floatToHalfBits(d)
+        return this
+    }
+    fun set(other: Vector8hc): Vector8h = set(other.x(), other.y(), other.z(), other.w(), other.a(), other.b(), other.c(), other.d())
+    fun zero(): Vector8h = set(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f)
+    fun add(x: Float, y: Float, z: Float, w: Float, a: Float, b: Float, c: Float, d: Float): Vector8h = set(halfBitsToFloat(this.x) + x, halfBitsToFloat(this.y) + y, halfBitsToFloat(this.z) + z, halfBitsToFloat(this.w) + w, halfBitsToFloat(this.a) + a, halfBitsToFloat(this.b) + b, halfBitsToFloat(this.c) + c, halfBitsToFloat(this.d) + d)
+    fun sub(x: Float, y: Float, z: Float, w: Float, a: Float, b: Float, c: Float, d: Float): Vector8h = set(halfBitsToFloat(this.x) - x, halfBitsToFloat(this.y) - y, halfBitsToFloat(this.z) - z, halfBitsToFloat(this.w) - w, halfBitsToFloat(this.a) - a, halfBitsToFloat(this.b) - b, halfBitsToFloat(this.c) - c, halfBitsToFloat(this.d) - d)
+    fun mul(x: Float, y: Float, z: Float, w: Float, a: Float, b: Float, c: Float, d: Float): Vector8h = set(halfBitsToFloat(this.x) * x, halfBitsToFloat(this.y) * y, halfBitsToFloat(this.z) * z, halfBitsToFloat(this.w) * w, halfBitsToFloat(this.a) * a, halfBitsToFloat(this.b) * b, halfBitsToFloat(this.c) * c, halfBitsToFloat(this.d) * d)
+    fun div(x: Float, y: Float, z: Float, w: Float, a: Float, b: Float, c: Float, d: Float): Vector8h = set(halfBitsToFloat(this.x) / x, halfBitsToFloat(this.y) / y, halfBitsToFloat(this.z) / z, halfBitsToFloat(this.w) / w, halfBitsToFloat(this.a) / a, halfBitsToFloat(this.b) / b, halfBitsToFloat(this.c) / c, halfBitsToFloat(this.d) / d)
+
+    /**
+     * Adds another vector component by component.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the vector to add
+     * @return this vector
+     */
+    fun add(other: Vector8hc): Vector8h = add(other, this)
+    /**
+     * Subtracts another vector component by component.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the vector to subtract
+     * @return this vector
+     */
+    fun sub(other: Vector8hc): Vector8h = sub(other, this)
+    /**
+     * Multiplies corresponding components.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the component-wise multiplier
+     * @return this vector
+     */
+    fun mul(other: Vector8hc): Vector8h = mul(other, this)
+    /**
+     * Divides corresponding components.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the component-wise divisor
+     * @return this vector
+     */
+    operator fun div(other: Vector8hc): Vector8h = div(other, this)
+    /**
+     * Adds a scalar to each component.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the value to add
+     * @return this vector
+     */
+    fun add(scalar: Float): Vector8h = add(scalar, this)
+    /**
+     * Subtracts a scalar from each component.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the value to subtract
+     * @return this vector
+     */
+    fun sub(scalar: Float): Vector8h = sub(scalar, this)
+    /**
+     * Scales every component by a scalar.
+     *
+     * Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the scale factor
+     * @return this vector
+     */
+    fun mul(scalar: Float): Vector8h = mul(scalar, this)
+    /**
+     * Divides every component by a scalar.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the divisor
+     * @return this vector
+     */
+    operator fun div(scalar: Float): Vector8h = div(scalar, this)
+    /**
+     * Reverses the vector by negating every component.
+     *
+     * This overload writes the result back into this vector.
+     * @return this vector
+     */
+    fun negate(): Vector8h = negate(this)
+    /**
+     * Replaces every component with its absolute value.
+     *
+     * This overload writes the result back into this vector.
+     * @return this vector
+     */
+    fun absolute(): Vector8h = absolute(this)
+    /**
+     * Selects the smaller value independently in each component.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the other component values
+     * @return this vector
+     */
+    fun min(other: Vector8hc): Vector8h = min(other, this)
+    /**
+     * Selects the larger value independently in each component.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the other component values
+     * @return this vector
+     */
+    fun max(other: Vector8hc): Vector8h = max(other, this)
+    /**
+     * Caps every component at a scalar upper bound.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the upper bound applied to every component
+     * @return this vector
+     */
+    fun min(scalar: Float): Vector8h = min(scalar, this)
+    /**
+     * Raises every component to a scalar lower bound.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the lower bound applied to every component
+     * @return this vector
+     */
+    fun max(scalar: Float): Vector8h = max(scalar, this)
+    /**
+     * Linearly interpolates from this vector toward another.
+     *
+     * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the endpoint
+     * @param t the interpolation amount
+     * @return this vector
+     */
+    fun lerp(other: Vector8hc, t: Float): Vector8h = lerp(other, t, this)
+    /**
+     * Computes this + other * scalar component by component.
+     *
+     * This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration.
+     *
+     * This overload writes the result back into this vector.
+     * @param other the vector to scale and add
+     * @param scalar the scale factor
+     * @return this vector
+     */
+    fun fma(scalar: Float, other: Vector8hc): Vector8h = fma(scalar, other, this)
+    /**
+     * Keeps the vector's direction while scaling its length to one.
+     *
+     * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
+     *
+     * This overload writes the result back into this vector.
+     * @return this vector
+     */
+    fun normalize(): Vector8h = normalize(this)
+
+    public override fun clone(): Vector8h = Vector8h(this)
+    override fun equals(other: Any?): Boolean = other is Vector8hc && x == floatToHalfBits(other.x()) && y == floatToHalfBits(other.y()) && z == floatToHalfBits(other.z()) && w == floatToHalfBits(other.w()) && a == floatToHalfBits(other.a()) && b == floatToHalfBits(other.b()) && c == floatToHalfBits(other.c()) && d == floatToHalfBits(other.d())
+    override fun hashCode(): Int {
+        var result = 1
+        result = 31 * result + x.toInt()
+        result = 31 * result + y.toInt()
+        result = 31 * result + z.toInt()
+        result = 31 * result + w.toInt()
+        result = 31 * result + a.toInt()
+        result = 31 * result + b.toInt()
+        result = 31 * result + c.toInt()
+        result = 31 * result + d.toInt()
+        return result
+    }
+    override fun toString(): String = "(${x()}, ${y()}, ${z()}, ${w()}, ${a()}, ${b()}, ${c()}, ${d()})"
+
+    companion object {
+        /**
+         * Constructs a 8D vector from a typed Kotlin collection literal.
+         *
+         * Example: `val value: Vector8h = [0, 1, 2, 3, 4, 5, 6, 7]`.
+         * Numeric components are converted to Float, matching Field's `vec(...)` helper.
+         */
+        operator fun of(vararg components: Number): Vector8h {
+            require(components.size == 8) { "Vector8h literal requires 8 components, got ${components.size}" }
+            return Vector8h(components[0].toFloat(), components[1].toFloat(), components[2].toFloat(), components[3].toFloat(), components[4].toFloat(), components[5].toFloat(), components[6].toFloat(), components[7].toFloat())
         }
     }
 }

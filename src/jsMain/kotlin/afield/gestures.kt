@@ -2119,7 +2119,7 @@ class CanvasGestures(
         if (labels.isEmpty()) return
 
         overlayContext.save()
-        overlayContext.font = "300 12px \"Iosevka Web\", \"Iosevka\", monospace"
+        overlayContext.font = "300 condensed 12px \"Iosevka Web\", \"Iosevka\", monospace"
         overlayContext.asDynamic().textAlign = "center"
         overlayContext.asDynamic().textBaseline = "middle"
 

@@ -1828,6 +1828,12 @@ class Server {
                         request.scope,
                         request.projectName
                     )
+                    "promote" -> OperationTranscript.promoteMacro(
+                        documentPath,
+                        request.name,
+                        request.scope,
+                        request.projectName
+                    )
                     "save-transcript-selection", "save-selection", "save-selected" ->
                         OperationTranscript.saveTranscriptSelectionAsMacro(
                             documentPath = documentPath,

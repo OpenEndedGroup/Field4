@@ -6,9 +6,17 @@ class KotlinEmitter(
 ) {
     fun emitHeapVectors(): String = buildString {
         appendHeader("afield.stdlib.linalg")
+        // Half vectors store raw binary16 bits and convert on every read/write; reuse Field's
+        // existing, tested IEEE-754 binary16 codec rather than re-deriving it here.
+        val usesHalf = model.heapVectors.any { it.scalar == ScalarKind.HALF }
+        if (usesHalf) {
+            appendLine("import afield.four.util.floatToHalfBits")
+            appendLine("import afield.four.util.halfBitsToFloat")
+        }
         appendLine("import java.nio.ByteBuffer")
         appendLine("import java.nio.DoubleBuffer")
         appendLine("import java.nio.FloatBuffer")
+        if (usesHalf) appendLine("import java.nio.ShortBuffer")
         appendLine("import kotlin.math.*")
         appendLine()
         model.heapVectors.forEachIndexed { index, type ->
@@ -120,7 +128,7 @@ class KotlinEmitter(
         appendLine()
         appendLine("All destination overloads write into `dest`, return it, permit input/destination aliasing, and allocate no result.")
         appendLine()
-        appendLine("Two further forms share the same model: the heap types also come in double precision (`Vector2d`, `Vector3d`, `Vector4d`, heap-only), and the `afield.stdlib.linalg.bulk` package provides flat-`FloatArray` SIMD kernels (`addRange`, `normalizeRange`, …) with scalar- and broadcast-vector overloads for whole-array field operations.")
+        appendLine("Further forms share the same model: the heap types also come in double precision (`Vector2d`, `Vector3d`, `Vector4d`, heap-only) and half precision (`Vector8h`, heap-only — eight IEEE-754 binary16 lanes that pack into a single `vec4` of GPU memory), and the `afield.stdlib.linalg.bulk` package provides flat-`FloatArray` SIMD kernels (`addRange`, `normalizeRange`, …) with scalar- and broadcast-vector overloads for whole-array field operations.")
         model.heapVectors.forEach { type ->
             appendLine()
             appendLine("## ${type.heapName}")
@@ -129,10 +137,13 @@ class KotlinEmitter(
             appendLine()
             appendLine("Components: ${type.components.joinToString { "`${it.sourceName}`" }}.")
             appendLine()
-            if (type.scalar == ScalarKind.FLOAT) {
-                appendLine("In a Field code box, ordinary heap values use `vec(${type.components.joinToString { it.sourceName }})`. In a typed context, `val value: Vec${type.dimension} = [${type.components.indices.joinToString()}]` uses the generated collection-literal constructor. The frame-arena (`${type.arenaName}`) and segment (`SegmentVec${type.dimension}f`) forms carry the same operation surface.")
-            } else {
-                appendLine("The double-precision, heap-only sibling of `Vector${type.dimension}f`; the arena, segment, and bulk forms are single-precision only.")
+            when (type.scalar) {
+                ScalarKind.FLOAT ->
+                    appendLine("In a Field code box, ordinary heap values use `vec(${type.components.joinToString { it.sourceName }})`. In a typed context, `val value: Vec${type.dimension} = [${type.components.indices.joinToString()}]` uses the generated collection-literal constructor. The frame-arena (`${type.arenaName}`) and segment (`SegmentVec${type.dimension}f`) forms carry the same operation surface.")
+                ScalarKind.DOUBLE ->
+                    appendLine("The double-precision, heap-only sibling of `Vector${type.dimension}f`; the arena, segment, and bulk forms are single-precision only.")
+                ScalarKind.HALF ->
+                    appendLine("The half-precision (IEEE-754 binary16), heap-only vector. Its eight lanes pack into 16 bytes — one GLSL `vec4` — through `get(index, buffer)`, so a push-constant block holds twice as many as the equivalent `Vector4f` pair would. Arithmetic is evaluated in `Float`; every result is stored back as binary16, so component reads return the rounded value.")
             }
             appendLine()
             appendLine("| Operation | Meaning |")
@@ -339,14 +350,14 @@ class KotlinEmitter(
         appendLine("    fun get(buffer: ${type.scalar.bufferType}): ${type.scalar.bufferType} {")
         appendLine("        val index = buffer.position()")
         type.components.forEachIndexed { index, component ->
-            appendLine("        buffer.put(index + $index, ${component.sourceName}())")
+            appendLine("        buffer.put(index + $index, ${type.scalar.toStorage("${component.sourceName}()")})")
         }
         appendLine("        return buffer")
         appendLine("    }")
         appendLine()
         appendLine("    fun get(index: Int, buffer: ByteBuffer): ByteBuffer {")
         type.components.forEachIndexed { index, component ->
-            appendLine("        buffer.${type.scalar.bufferPut}(index + ${index * type.scalar.byteSize}, ${component.sourceName}())")
+            appendLine("        buffer.${type.scalar.bufferPut}(index + ${index * type.scalar.byteSize}, ${type.scalar.toStorage("${component.sourceName}()")})")
         }
         appendLine("        return buffer")
         appendLine("    }")
@@ -384,7 +395,7 @@ class KotlinEmitter(
         val zeroes = List(type.dimension) { zero }
         emitKDoc(type.documentation)
         appendLine("class ${type.heapName}() : ${type.readName}, Cloneable {")
-        type.components.forEach { component -> appendLine("    @JvmField var ${component.sourceName}: $scalar = $zero") }
+        type.components.forEach { component -> appendLine("    @JvmField var ${component.sourceName}: ${type.scalar.storageType} = ${type.scalar.storageZero}") }
         appendLine()
         appendLine("    constructor(s: $scalar) : this() { set(${List(type.dimension) { "s" }.joinToString()}) }")
         appendLine(
@@ -401,12 +412,12 @@ class KotlinEmitter(
         }
         appendLine()
         type.components.forEach { component ->
-            appendLine("    override fun ${component.sourceName}(): $scalar = ${component.sourceName}")
+            appendLine("    override fun ${component.sourceName}(): $scalar = ${type.scalar.fromStorage(component.sourceName)}")
         }
         appendLine()
         appendLine("    operator fun set(component: Int, value: $scalar) {")
         appendLine("        when (component) {")
-        type.components.forEachIndexed { index, component -> appendLine("            $index -> ${component.sourceName} = value") }
+        type.components.forEachIndexed { index, component -> appendLine("            $index -> ${component.sourceName} = ${type.scalar.toStorage("value")}") }
         appendLine("            else -> throw IndexOutOfBoundsException(\"component \$component outside 0..${type.dimension - 1}\")")
         appendLine("        }")
         appendLine("    }")
@@ -415,7 +426,7 @@ class KotlinEmitter(
         appendLine(
             "    fun set(${type.components.joinToString { "${it.sourceName}: $scalar" }}): ${type.heapName} {"
         )
-        type.components.forEach { appendLine("        this.${it.sourceName} = ${it.sourceName}") }
+        type.components.forEach { appendLine("        this.${it.sourceName} = ${type.scalar.toStorage(it.sourceName)}") }
         appendLine("        return this")
         appendLine("    }")
         appendLine(
@@ -425,19 +436,19 @@ class KotlinEmitter(
         appendLine("    fun zero(): ${type.heapName} = set(${zeroes.joinToString()})")
         appendLine(
             "    fun add(${type.components.joinToString { "${it.sourceName}: $scalar" }}): ${type.heapName} = " +
-                "set(${type.components.joinToString { "this.${it.sourceName} + ${it.sourceName}" }})"
+                "set(${type.components.joinToString { "${type.scalar.fromStorage("this.${it.sourceName}")} + ${it.sourceName}" }})"
         )
         appendLine(
             "    fun sub(${type.components.joinToString { "${it.sourceName}: $scalar" }}): ${type.heapName} = " +
-                "set(${type.components.joinToString { "this.${it.sourceName} - ${it.sourceName}" }})"
+                "set(${type.components.joinToString { "${type.scalar.fromStorage("this.${it.sourceName}")} - ${it.sourceName}" }})"
         )
         appendLine(
             "    fun mul(${type.components.joinToString { "${it.sourceName}: $scalar" }}): ${type.heapName} = " +
-                "set(${type.components.joinToString { "this.${it.sourceName} * ${it.sourceName}" }})"
+                "set(${type.components.joinToString { "${type.scalar.fromStorage("this.${it.sourceName}")} * ${it.sourceName}" }})"
         )
         appendLine(
             "    fun div(${type.components.joinToString { "${it.sourceName}: $scalar" }}): ${type.heapName} = " +
-                "set(${type.components.joinToString { "this.${it.sourceName} / ${it.sourceName}" }})"
+                "set(${type.components.joinToString { "${type.scalar.fromStorage("this.${it.sourceName}")} / ${it.sourceName}" }})"
         )
         appendLine()
         model.operations(type).filter { it.result == OperationResult.Destination && !it.bulkOnly }.forEach { operation ->
@@ -472,13 +483,17 @@ class KotlinEmitter(
         }
         appendLine()
         appendLine("    public override fun clone(): ${type.heapName} = ${type.heapName}(this)")
-        appendLine("    override fun equals(other: Any?): Boolean = other is ${type.readName} && ${type.components.joinToString(" && ") { "${it.sourceName}.toBits() == other.${it.sourceName}().toBits()" }}")
+        appendLine("    override fun equals(other: Any?): Boolean = other is ${type.readName} && ${type.components.joinToString(" && ") { type.scalar.equalsComponent(it.sourceName, "other.${it.sourceName}()") }}")
         appendLine("    override fun hashCode(): Int {")
         appendLine("        var result = 1")
         type.components.forEach { appendLine("        result = 31 * result + ${type.scalar.hashComponent(it.sourceName)}") }
         appendLine("        return result")
         appendLine("    }")
-        appendLine("    override fun toString(): String = \"(${type.components.joinToString(", ") { "\$${it.sourceName}" }})\"")
+        // Fields hold the compute value except for packed kinds, where toString must go through the
+        // accessor so it prints the decoded value rather than the raw stored bits.
+        val stringComponent: (Component) -> String =
+            if (type.scalar.storageType == scalar) { c -> "\$${c.sourceName}" } else { c -> "\${${c.sourceName}()}" }
+        appendLine("    override fun toString(): String = \"(${type.components.joinToString(", ") { stringComponent(it) }})\"")
         appendLine()
         appendLine("    companion object {")
         appendLine("        /**")
