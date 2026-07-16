@@ -861,6 +861,32 @@ const highlightCodeBlocks = (root) => {
   });
 };
 
+const copyTextToClipboard = async (text) => {
+  if (
+    navigator.clipboard &&
+    typeof navigator.clipboard.writeText === "function"
+  ) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (_) {}
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+  let copied = false;
+  try {
+    copied = document.execCommand("copy");
+  } catch (_) {}
+  textarea.remove();
+  return copied;
+};
+
 class FieldSuggestController {
   constructor(editor, monaco, options = {}) {
     this.editor = editor;
@@ -891,6 +917,7 @@ class FieldSuggestController {
         `;
     document.body.appendChild(root);
     root.addEventListener("mousedown", (event) => {
+      if (event.target.closest(".afield-suggest-doc")) return;
       event.preventDefault();
     });
     root.addEventListener("click", (event) => {
@@ -901,7 +928,21 @@ class FieldSuggestController {
       }
     });
     const doc = root.querySelector(".afield-suggest-doc");
-    doc.addEventListener("click", (event) => {
+    doc.addEventListener("click", async (event) => {
+      const copyButton = event.target.closest(".ai-chat-copy");
+      if (copyButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        const code = copyButton
+          .closest(".ai-chat-code-block")
+          ?.querySelector("code");
+        if (!code) return;
+        const copied = await copyTextToClipboard(code.textContent || "");
+        if (copied && typeof window.notify === "function") {
+          window.notify("Copied to clipboard", "clipboard");
+        }
+        return;
+      }
       const link = event.target.closest("a");
       if (!link) return;
       const href = link.getAttribute("href") || "";
