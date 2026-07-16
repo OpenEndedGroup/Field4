@@ -78,6 +78,9 @@ jmh {
     benchmarkMode.set(listOf("avgt"))
     timeUnit.set("ns")
     resultFormat.set("TEXT")
+    // The bulk/SIMD kernels under afield.stdlib.linalg.bulk use jdk.incubator.vector, same as the
+    // main build's runJvm/Test tasks; the forked JMH JVMs need the same opt-in.
+    jvmArgsAppend.set(listOf("--add-modules", "jdk.incubator.vector"))
     // To reproduce the allocation story, temporarily add e.g.
     //   includes.set(listOf("Spline")); profilers.set(listOf("gc"))
     // gc.alloc.rate.norm then reports bytes/op — ~0 for arena and segment backends.

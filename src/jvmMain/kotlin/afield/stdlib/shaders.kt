@@ -1876,16 +1876,6 @@ private data class GeneratedShaderStructure(
     val bufferReference: Boolean
 )
 
-private fun shaderMemberLayoutSize(member: Introspected.Member): Int =
-    if (member.physicalPointer) PrimitiveType.deviceptr.sizeInBytes.toInt()
-    else member.type.fold(
-        { it.sizeInBytes.toInt() },
-        { nested -> shaderMembersLayoutSize(nested) }
-    )
-
-private fun shaderMembersLayoutSize(members: List<Introspected.Member>): Int =
-    if (members.isEmpty()) 0 else members.maxOf { it.offset + shaderMemberLayoutSize(it) }
-
 private fun shaderMemberSignature(member: Introspected.Member): String =
     buildString {
         append(member.name)
@@ -1954,7 +1944,7 @@ private fun collectGeneratedShaderStructures(introspections: List<Introspection>
             glslName = candidate.name,
             className = className,
             members = candidate.members,
-            byteSize = maxOf(candidate.size, shaderMembersLayoutSize(candidate.members)),
+            byteSize = maxOf(candidate.size, candidate.members.membersLayoutSizeInBytes()),
             signature = signature,
             bufferReference = candidate.bufferReference
         )

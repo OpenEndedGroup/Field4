@@ -557,29 +557,32 @@ private fun slangPushConstantMembersFromFields(blockName: String, fields: org.js
     return slangMembersFromFields(fields)
 }
 
-private fun slangTypeSizeInBytes(type: Either<PrimitiveType, List<Introspected.Member>>): Int =
-    type.fold({ it.sizeInBytes.toInt() }, { members ->
+/**
+ * Byte size of a member's type: a primitive's size, or the maximum offset+size across nested
+ * members. Shared with `Structure.kt` and `shaders.kt`, which previously each hand-rolled this walk.
+ */
+fun Either<PrimitiveType, List<Introspected.Member>>.layoutSizeInBytes(): Int =
+    fold({ it.sizeInBytes.toInt() }, { members ->
         if (members.isEmpty()) 0 else members.maxOf { member ->
-            member.offset + slangTypeSizeInBytes(member.type)
+            member.offset + member.type.layoutSizeInBytes()
         }
     })
 
-private fun introspectedMemberLayoutSize(member: Introspected.Member): Int =
-    if (member.physicalPointer) PrimitiveType.deviceptr.sizeInBytes.toInt()
-    else slangTypeSizeInBytes(member.type)
+/** Byte size of a member: a device pointer's size if physical-pointer, else its type's layout size. */
+fun Introspected.Member.layoutSizeInBytes(): Int =
+    if (physicalPointer) PrimitiveType.deviceptr.sizeInBytes.toInt() else type.layoutSizeInBytes()
 
-private fun introspectedMembersLayoutSize(members: List<Introspected.Member>): Int {
-    if (members.isEmpty()) return 0
-    return members.maxOf { it.offset + introspectedMemberLayoutSize(it) }
-}
+fun List<Introspected.Member>.membersLayoutSizeInBytes(): Int =
+    if (isEmpty()) 0 else maxOf { it.offset + it.layoutSizeInBytes() }
+
+private fun Int.nearest16() = (this + 15) and -16
 
 private fun slangPushConstantSize(parameter: JSONObject, members: List<Introspected.Member>): Int {
     val binding = parameter.optJSONObject("binding")
     val rawSize = binding?.optInt("size", 0) ?: 0
     val computedSize = if (members.isEmpty()) 0 else {
-        members.maxOf { member -> member.offset + slangTypeSizeInBytes(member.type) }
+        members.maxOf { member -> member.offset + member.type.layoutSizeInBytes() }
     }
-    fun Int.nearest16() = (this + 15) and -16
     return maxOf(rawSize, computedSize).nearest16()
 }
 
@@ -633,7 +636,7 @@ private fun slangStructuredBufferMembers(parameter: JSONObject): List<Introspect
             name = "_data",
             offset = 0,
             type = memberType,
-            arrayStride = slangTypeSizeInBytes(memberType)
+            arrayStride = memberType.layoutSizeInBytes()
         )
     )
 }
@@ -731,7 +734,7 @@ class Introspection private constructor(
                 structureTypes += StructureType(
                     name = declaration.name,
                     members = reflectedMembers,
-                    size = introspectedMembersLayoutSize(reflectedMembers),
+                    size = reflectedMembers.membersLayoutSizeInBytes(),
                     bufferReference = declaration.kind == GlslDeclaredStructureKind.BUFFER_REFERENCE
                 )
             }
@@ -786,7 +789,6 @@ class Introspection private constructor(
                     }
                 }
 
-                fun Int.nearest16() = (this + 15) and -16
                 pushConstants.add(PushConstant(name, size.nearest16(), ty))
             }
         }

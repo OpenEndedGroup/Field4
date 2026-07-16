@@ -317,8 +317,14 @@ class VulkanBuffer(
     }
 
     override fun clean(hostReading: Boolean, cmd: CommandBuffer?): VulkanBuffer {
-        if (cmd == null) return this
-        if (true) return this
+        if (hostReading) {
+            // mapAndRead* already does this inline before reading, but clean() must keep
+            // this promise when called on its own, ahead of some other read of the mapped memory.
+            invalidate()
+        }
+        // hostReading == false: no-op. Unlike Structure/VertexBuffer/FrameBufferGroup, this class
+        // has no deferred-write tracking -- mapAndWrite/write/append already flush eagerly on every
+        // call, so there is nothing pending here to commit.
         return this
     }
 
