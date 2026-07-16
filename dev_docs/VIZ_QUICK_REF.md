@@ -90,6 +90,8 @@ viz("obj", MyData(listOf(1, 2, 3)))
 - Strings truncate at 100 characters
 - Recursion limited to depth 3
 - Statistics computed only for numeric collections
+- Numeric arrays/lists also get an inline SVG sparkline (NaN-safe, downsampled
+  above 240 points; skipped for <3 finite values)
 - All HTML is escaped for safety
 
 ## See Also
