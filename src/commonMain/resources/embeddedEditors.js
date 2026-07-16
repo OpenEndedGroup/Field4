@@ -118,6 +118,7 @@ const EMBEDDED_EDITOR_OPTIONS = {
 	bracketPairColorization: { enabled: true },
 	scrollbar: { verticalScrollbarSize: 4 },
 	fontFamily: "Iosevka Web",
+	fontWeight: "300",
 	fontSize: 13,
 	fontLigatures: true,
 	quickSuggestions: false,

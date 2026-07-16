@@ -119,7 +119,9 @@ class KotlinEmitter(
         appendLine("| Segment view | `SegmentVec2f`, `SegmentVec3f`, `SegmentVec4f` | Non-owning views into packed, aligned, direct, foreign, or mapped memory |")
         appendLine()
         appendLine("All destination overloads write into `dest`, return it, permit input/destination aliasing, and allocate no result.")
-        model.vectors.forEach { type ->
+        appendLine()
+        appendLine("Two further forms share the same model: the heap types also come in double precision (`Vector2d`, `Vector3d`, `Vector4d`, heap-only), and the `afield.stdlib.linalg.bulk` package provides flat-`FloatArray` SIMD kernels (`addRange`, `normalizeRange`, …) with scalar- and broadcast-vector overloads for whole-array field operations.")
+        model.heapVectors.forEach { type ->
             appendLine()
             appendLine("## ${type.heapName}")
             appendLine()
@@ -127,18 +129,22 @@ class KotlinEmitter(
             appendLine()
             appendLine("Components: ${type.components.joinToString { "`${it.sourceName}`" }}.")
             appendLine()
-            appendLine("In a Field code box, ordinary heap values use `vec(${type.components.joinToString { it.sourceName }})`. In a typed context, `val value: Vec${type.dimension} = [${type.components.indices.joinToString()}]` uses the generated collection-literal constructor.")
+            if (type.scalar == ScalarKind.FLOAT) {
+                appendLine("In a Field code box, ordinary heap values use `vec(${type.components.joinToString { it.sourceName }})`. In a typed context, `val value: Vec${type.dimension} = [${type.components.indices.joinToString()}]` uses the generated collection-literal constructor. The frame-arena (`${type.arenaName}`) and segment (`SegmentVec${type.dimension}f`) forms carry the same operation surface.")
+            } else {
+                appendLine("The double-precision, heap-only sibling of `Vector${type.dimension}f`; the arena, segment, and bulk forms are single-precision only.")
+            }
             appendLine()
             appendLine("| Operation | Meaning |")
             appendLine("| --- | --- |")
-            model.operations(type).forEach { operation ->
+            model.operations(type).filter { !it.bulkOnly }.forEach { operation ->
                 val signature = buildString {
                     append(operation.name)
                     append('(')
                     append(orderedParameters(operation).joinToString { parameter ->
                         when (parameter) {
                             is VectorParameter -> "${parameter.name}: ${type.readName}"
-                            is ScalarParameter -> "${parameter.name}: Float"
+                            is ScalarParameter -> "${parameter.name}: ${type.scalar.kotlinType}"
                         }
                     })
                     append(')')
@@ -148,10 +154,18 @@ class KotlinEmitter(
                     .replace("|", "\\|")
                 appendLine("| `$signature` | $explanation |")
             }
-            appendLine("| `length()` | Returns the Euclidean length (magnitude). |")
-            appendLine("| `distance(other)` | Returns the straight-line distance between two points. |")
             appendLine("| `isFinite()` | Reports whether every component is finite. |")
         }
+        appendLine()
+        appendLine("## Rotations and matrices")
+        appendLine()
+        appendLine("Alongside the vectors, the library provides rotation and matrix types whose core equations are generated from the same transform model and which interoperate with the heap vectors.")
+        appendLine()
+        appendLine("| Type | Purpose | Key operations |")
+        appendLine("| --- | --- | --- |")
+        appendLine("| `Quaternionf` | 3D rotation | `setAngleAxis`, `rotateX/Y/Z`, `mul`, `invert`, `conjugate`, `normalize`, `slerp`, `nlerp`, `rotationTo`, `lookAlong`, `transform(Vector3f)` |")
+        appendLine("| `Matrix3f` | linear and normal transforms | `rotation`, `scale`, `mul`, `invert`, `transpose`, `determinant`, `transform(Vector3f)` |")
+        appendLine("| `Matrix4f` | affine, camera, and projection transforms | `translate`, `scale`, `rotate`, `mul`, `invert`, `transpose`, `perspective`, `ortho`, `frustum`, `lookAt`, `transformPosition`, `transformDirection` |")
         appendLine()
         appendLine("## Storage layouts")
         appendLine()
@@ -247,14 +261,10 @@ class KotlinEmitter(
         appendLine("    fun $handleName.set(other: ${type.readName}): $handleName = set(${type.components.joinToString { "other.${it.sourceName}()" }})")
         appendLine("    fun $handleName.copyTo(dest: ${type.heapName}): ${type.heapName} = dest.set(${type.components.joinToString { it.sourceName }})")
         appendLine()
-        model.operations(type).forEach { operation ->
+        model.operations(type).filter { !it.bulkOnly }.forEach { operation ->
             emitSegmentOperation(type, operation)
             appendLine()
         }
-        emitKDoc(ApiDocumentation("Returns this vector's Euclidean length (magnitude)."), "    ")
-        appendLine("    fun $handleName.length(): Float = sqrt(lengthSquared())")
-        emitKDoc(ApiDocumentation("Returns the straight-line distance to another vector.", parameters = mapOf("other" to "the point to measure to")), "    ")
-        appendLine("    fun $handleName.distance(other: $handleName): Float = sqrt(distanceSquared(other))")
         emitKDoc(ApiDocumentation("Reports whether every component is finite."), "    ")
         appendLine("    fun $handleName.isFinite(): Boolean = ${type.components.joinToString(" && ") { "${it.sourceName}.isFinite()" }}")
         appendLine()
@@ -317,14 +327,10 @@ class KotlinEmitter(
         appendLine("        else -> throw IndexOutOfBoundsException(\"component \$component outside 0..${type.dimension - 1}\")")
         appendLine("    }")
         appendLine()
-        model.operations(type).forEach { operation ->
+        model.operations(type).filter { !it.bulkOnly }.forEach { operation ->
             emitHeapInterfaceOperation(type, operation)
             appendLine()
         }
-        emitKDoc(ApiDocumentation("Returns this vector's Euclidean length (magnitude)."), "    ")
-        appendLine("    fun length(): $scalar = sqrt(lengthSquared())")
-        emitKDoc(ApiDocumentation("Returns the straight-line distance to another vector.", parameters = mapOf("other" to "the point to measure to")), "    ")
-        appendLine("    fun distance(other: ${type.readName}): $scalar = sqrt(distanceSquared(other))")
         emitKDoc(ApiDocumentation("Reports whether every component is finite."), "    ")
         appendLine("    fun isFinite(): Boolean = ${type.components.joinToString(" && ") { "${it.sourceName}().isFinite()" }}")
         appendLine("    fun equals(other: ${type.readName}, delta: $scalar): Boolean =")
@@ -429,8 +435,12 @@ class KotlinEmitter(
             "    fun mul(${type.components.joinToString { "${it.sourceName}: $scalar" }}): ${type.heapName} = " +
                 "set(${type.components.joinToString { "this.${it.sourceName} * ${it.sourceName}" }})"
         )
+        appendLine(
+            "    fun div(${type.components.joinToString { "${it.sourceName}: $scalar" }}): ${type.heapName} = " +
+                "set(${type.components.joinToString { "this.${it.sourceName} / ${it.sourceName}" }})"
+        )
         appendLine()
-        model.operations(type).filter { it.result == OperationResult.Destination }.forEach { operation ->
+        model.operations(type).filter { it.result == OperationResult.Destination && !it.bulkOnly }.forEach { operation ->
             val parameters = buildList {
                 orderedParameters(operation).forEach {
                     when (it) {
@@ -523,14 +533,10 @@ class KotlinEmitter(
         )
         appendLine("    fun ${type.arenaName}.copyTo(dest: ${type.heapName}): ${type.heapName} = dest.set(this)")
         appendLine()
-        model.operations(type).forEach { operation ->
+        model.operations(type).filter { !it.bulkOnly }.forEach { operation ->
             emitArenaOperation(type, operation, kind)
             appendLine()
         }
-        emitKDoc(ApiDocumentation("Returns this vector's Euclidean length (magnitude)."), "    ")
-        appendLine("    fun ${type.arenaName}.length(): Float = sqrt(lengthSquared())")
-        emitKDoc(ApiDocumentation("Returns the straight-line distance to another vector.", parameters = mapOf("other" to "the point to measure to")), "    ")
-        appendLine("    fun ${type.arenaName}.distance(other: ${type.arenaName}): Float = sqrt(distanceSquared(other))")
         emitKDoc(ApiDocumentation("Reports whether every component is finite."), "    ")
         appendLine("    fun ${type.arenaName}.isFinite(): Boolean = ${type.components.joinToString(" && ") { "${it.sourceName}.isFinite()" }}")
     }

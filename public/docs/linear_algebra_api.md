@@ -14,13 +14,15 @@ This page is generated from the typed algebra model that emits Field's heap, fra
 
 All destination overloads write into `dest`, return it, permit input/destination aliasing, and allocate no result.
 
+Two further forms share the same model: the heap types also come in double precision (`Vector2d`, `Vector3d`, `Vector4d`, heap-only), and the `afield.stdlib.linalg.bulk` package provides flat-`FloatArray` SIMD kernels (`addRange`, `normalizeRange`, …) with scalar- and broadcast-vector overloads for whole-array field operations.
+
 ## Vector2f
 
 A mutable 2D vector of 32-bit floating-point components.
 
 Components: `x`, `y`.
 
-In a Field code box, ordinary heap values use `vec(x, y)`. In a typed context, `val value: Vec2 = [0, 1]` uses the generated collection-literal constructor.
+In a Field code box, ordinary heap values use `vec(x, y)`. In a typed context, `val value: Vec2 = [0, 1]` uses the generated collection-literal constructor. The frame-arena (`ArenaVec2f`) and segment (`SegmentVec2f`) forms carry the same operation surface.
 
 | Operation | Meaning |
 | --- | --- |
@@ -36,14 +38,16 @@ In a Field code box, ordinary heap values use `vec(x, y)`. In a typed context, `
 | `absolute()` | Replaces every component with its absolute value. |
 | `min(other: Vector2fc)` | Selects the smaller value independently in each component. |
 | `max(other: Vector2fc)` | Selects the larger value independently in each component. |
+| `min(scalar: Float)` | Caps every component at a scalar upper bound. |
+| `max(scalar: Float)` | Raises every component to a scalar lower bound. |
 | `lerp(other: Vector2fc, t: Float)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. |
 | `fma(scalar: Float, other: Vector2fc)` | Computes this + other * scalar component by component. This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration. |
 | `dot(other: Vector2fc)` | Measures how strongly two vectors point in the same direction. Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them. |
 | `lengthSquared()` | Returns the squared length of this vector. Use this for comparisons when you do not need the actual distance; it avoids a square root. |
 | `distanceSquared(other: Vector2fc)` | Returns the squared straight-line distance to another vector. Use this for nearest/farthest comparisons when you do not need the actual distance. |
+| `length()` | Returns this vector's Euclidean length (magnitude). |
+| `distance(other: Vector2fc)` | Returns the straight-line distance to another vector. |
 | `normalize()` | Keeps the vector's direction while scaling its length to one. A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible. |
-| `length()` | Returns the Euclidean length (magnitude). |
-| `distance(other)` | Returns the straight-line distance between two points. |
 | `isFinite()` | Reports whether every component is finite. |
 
 ## Vector3f
@@ -52,7 +56,7 @@ A mutable 3D vector of 32-bit floating-point components.
 
 Components: `x`, `y`, `z`.
 
-In a Field code box, ordinary heap values use `vec(x, y, z)`. In a typed context, `val value: Vec3 = [0, 1, 2]` uses the generated collection-literal constructor.
+In a Field code box, ordinary heap values use `vec(x, y, z)`. In a typed context, `val value: Vec3 = [0, 1, 2]` uses the generated collection-literal constructor. The frame-arena (`ArenaVec3f`) and segment (`SegmentVec3f`) forms carry the same operation surface.
 
 | Operation | Meaning |
 | --- | --- |
@@ -68,15 +72,17 @@ In a Field code box, ordinary heap values use `vec(x, y, z)`. In a typed context
 | `absolute()` | Replaces every component with its absolute value. |
 | `min(other: Vector3fc)` | Selects the smaller value independently in each component. |
 | `max(other: Vector3fc)` | Selects the larger value independently in each component. |
+| `min(scalar: Float)` | Caps every component at a scalar upper bound. |
+| `max(scalar: Float)` | Raises every component to a scalar lower bound. |
 | `lerp(other: Vector3fc, t: Float)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. |
 | `fma(scalar: Float, other: Vector3fc)` | Computes this + other * scalar component by component. This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration. |
 | `dot(other: Vector3fc)` | Measures how strongly two vectors point in the same direction. Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them. |
 | `lengthSquared()` | Returns the squared length of this vector. Use this for comparisons when you do not need the actual distance; it avoids a square root. |
 | `distanceSquared(other: Vector3fc)` | Returns the squared straight-line distance to another vector. Use this for nearest/farthest comparisons when you do not need the actual distance. |
+| `length()` | Returns this vector's Euclidean length (magnitude). |
+| `distance(other: Vector3fc)` | Returns the straight-line distance to another vector. |
 | `normalize()` | Keeps the vector's direction while scaling its length to one. A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible. |
 | `cross(other: Vector3fc)` | Returns a vector perpendicular to this vector and another 3D vector. The direction follows the right-hand rule. Its length is the area of the parallelogram spanned by the inputs, so parallel vectors produce zero. |
-| `length()` | Returns the Euclidean length (magnitude). |
-| `distance(other)` | Returns the straight-line distance between two points. |
 | `isFinite()` | Reports whether every component is finite. |
 
 ## Vector4f
@@ -85,7 +91,7 @@ A mutable 4D vector of 32-bit floating-point components.
 
 Components: `x`, `y`, `z`, `w`.
 
-In a Field code box, ordinary heap values use `vec(x, y, z, w)`. In a typed context, `val value: Vec4 = [0, 1, 2, 3]` uses the generated collection-literal constructor.
+In a Field code box, ordinary heap values use `vec(x, y, z, w)`. In a typed context, `val value: Vec4 = [0, 1, 2, 3]` uses the generated collection-literal constructor. The frame-arena (`ArenaVec4f`) and segment (`SegmentVec4f`) forms carry the same operation surface.
 
 | Operation | Meaning |
 | --- | --- |
@@ -101,15 +107,130 @@ In a Field code box, ordinary heap values use `vec(x, y, z, w)`. In a typed cont
 | `absolute()` | Replaces every component with its absolute value. |
 | `min(other: Vector4fc)` | Selects the smaller value independently in each component. |
 | `max(other: Vector4fc)` | Selects the larger value independently in each component. |
+| `min(scalar: Float)` | Caps every component at a scalar upper bound. |
+| `max(scalar: Float)` | Raises every component to a scalar lower bound. |
 | `lerp(other: Vector4fc, t: Float)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. |
 | `fma(scalar: Float, other: Vector4fc)` | Computes this + other * scalar component by component. This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration. |
 | `dot(other: Vector4fc)` | Measures how strongly two vectors point in the same direction. Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them. |
 | `lengthSquared()` | Returns the squared length of this vector. Use this for comparisons when you do not need the actual distance; it avoids a square root. |
 | `distanceSquared(other: Vector4fc)` | Returns the squared straight-line distance to another vector. Use this for nearest/farthest comparisons when you do not need the actual distance. |
+| `length()` | Returns this vector's Euclidean length (magnitude). |
+| `distance(other: Vector4fc)` | Returns the straight-line distance to another vector. |
 | `normalize()` | Keeps the vector's direction while scaling its length to one. A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible. |
-| `length()` | Returns the Euclidean length (magnitude). |
-| `distance(other)` | Returns the straight-line distance between two points. |
 | `isFinite()` | Reports whether every component is finite. |
+
+## Vector2d
+
+A mutable 2D vector of 64-bit floating-point components.
+
+Components: `x`, `y`.
+
+The double-precision, heap-only sibling of `Vector2f`; the arena, segment, and bulk forms are single-precision only.
+
+| Operation | Meaning |
+| --- | --- |
+| `add(other: Vector2dc)` | Adds another vector component by component. |
+| `sub(other: Vector2dc)` | Subtracts another vector component by component. |
+| `mul(other: Vector2dc)` | Multiplies corresponding components. |
+| `div(other: Vector2dc)` | Divides corresponding components. |
+| `add(scalar: Double)` | Adds a scalar to each component. |
+| `sub(scalar: Double)` | Subtracts a scalar from each component. |
+| `mul(scalar: Double)` | Scales every component by a scalar. Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction. |
+| `div(scalar: Double)` | Divides every component by a scalar. |
+| `negate()` | Reverses the vector by negating every component. |
+| `absolute()` | Replaces every component with its absolute value. |
+| `min(other: Vector2dc)` | Selects the smaller value independently in each component. |
+| `max(other: Vector2dc)` | Selects the larger value independently in each component. |
+| `min(scalar: Double)` | Caps every component at a scalar upper bound. |
+| `max(scalar: Double)` | Raises every component to a scalar lower bound. |
+| `lerp(other: Vector2dc, t: Double)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. |
+| `fma(scalar: Double, other: Vector2dc)` | Computes this + other * scalar component by component. This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration. |
+| `dot(other: Vector2dc)` | Measures how strongly two vectors point in the same direction. Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them. |
+| `lengthSquared()` | Returns the squared length of this vector. Use this for comparisons when you do not need the actual distance; it avoids a square root. |
+| `distanceSquared(other: Vector2dc)` | Returns the squared straight-line distance to another vector. Use this for nearest/farthest comparisons when you do not need the actual distance. |
+| `length()` | Returns this vector's Euclidean length (magnitude). |
+| `distance(other: Vector2dc)` | Returns the straight-line distance to another vector. |
+| `normalize()` | Keeps the vector's direction while scaling its length to one. A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible. |
+| `isFinite()` | Reports whether every component is finite. |
+
+## Vector3d
+
+A mutable 3D vector of 64-bit floating-point components.
+
+Components: `x`, `y`, `z`.
+
+The double-precision, heap-only sibling of `Vector3f`; the arena, segment, and bulk forms are single-precision only.
+
+| Operation | Meaning |
+| --- | --- |
+| `add(other: Vector3dc)` | Adds another vector component by component. |
+| `sub(other: Vector3dc)` | Subtracts another vector component by component. |
+| `mul(other: Vector3dc)` | Multiplies corresponding components. |
+| `div(other: Vector3dc)` | Divides corresponding components. |
+| `add(scalar: Double)` | Adds a scalar to each component. |
+| `sub(scalar: Double)` | Subtracts a scalar from each component. |
+| `mul(scalar: Double)` | Scales every component by a scalar. Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction. |
+| `div(scalar: Double)` | Divides every component by a scalar. |
+| `negate()` | Reverses the vector by negating every component. |
+| `absolute()` | Replaces every component with its absolute value. |
+| `min(other: Vector3dc)` | Selects the smaller value independently in each component. |
+| `max(other: Vector3dc)` | Selects the larger value independently in each component. |
+| `min(scalar: Double)` | Caps every component at a scalar upper bound. |
+| `max(scalar: Double)` | Raises every component to a scalar lower bound. |
+| `lerp(other: Vector3dc, t: Double)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. |
+| `fma(scalar: Double, other: Vector3dc)` | Computes this + other * scalar component by component. This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration. |
+| `dot(other: Vector3dc)` | Measures how strongly two vectors point in the same direction. Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them. |
+| `lengthSquared()` | Returns the squared length of this vector. Use this for comparisons when you do not need the actual distance; it avoids a square root. |
+| `distanceSquared(other: Vector3dc)` | Returns the squared straight-line distance to another vector. Use this for nearest/farthest comparisons when you do not need the actual distance. |
+| `length()` | Returns this vector's Euclidean length (magnitude). |
+| `distance(other: Vector3dc)` | Returns the straight-line distance to another vector. |
+| `normalize()` | Keeps the vector's direction while scaling its length to one. A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible. |
+| `cross(other: Vector3dc)` | Returns a vector perpendicular to this vector and another 3D vector. The direction follows the right-hand rule. Its length is the area of the parallelogram spanned by the inputs, so parallel vectors produce zero. |
+| `isFinite()` | Reports whether every component is finite. |
+
+## Vector4d
+
+A mutable 4D vector of 64-bit floating-point components.
+
+Components: `x`, `y`, `z`, `w`.
+
+The double-precision, heap-only sibling of `Vector4f`; the arena, segment, and bulk forms are single-precision only.
+
+| Operation | Meaning |
+| --- | --- |
+| `add(other: Vector4dc)` | Adds another vector component by component. |
+| `sub(other: Vector4dc)` | Subtracts another vector component by component. |
+| `mul(other: Vector4dc)` | Multiplies corresponding components. |
+| `div(other: Vector4dc)` | Divides corresponding components. |
+| `add(scalar: Double)` | Adds a scalar to each component. |
+| `sub(scalar: Double)` | Subtracts a scalar from each component. |
+| `mul(scalar: Double)` | Scales every component by a scalar. Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction. |
+| `div(scalar: Double)` | Divides every component by a scalar. |
+| `negate()` | Reverses the vector by negating every component. |
+| `absolute()` | Replaces every component with its absolute value. |
+| `min(other: Vector4dc)` | Selects the smaller value independently in each component. |
+| `max(other: Vector4dc)` | Selects the larger value independently in each component. |
+| `min(scalar: Double)` | Caps every component at a scalar upper bound. |
+| `max(scalar: Double)` | Raises every component to a scalar lower bound. |
+| `lerp(other: Vector4dc, t: Double)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. |
+| `fma(scalar: Double, other: Vector4dc)` | Computes this + other * scalar component by component. This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration. |
+| `dot(other: Vector4dc)` | Measures how strongly two vectors point in the same direction. Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them. |
+| `lengthSquared()` | Returns the squared length of this vector. Use this for comparisons when you do not need the actual distance; it avoids a square root. |
+| `distanceSquared(other: Vector4dc)` | Returns the squared straight-line distance to another vector. Use this for nearest/farthest comparisons when you do not need the actual distance. |
+| `length()` | Returns this vector's Euclidean length (magnitude). |
+| `distance(other: Vector4dc)` | Returns the straight-line distance to another vector. |
+| `normalize()` | Keeps the vector's direction while scaling its length to one. A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible. |
+| `isFinite()` | Reports whether every component is finite. |
+
+## Rotations and matrices
+
+Alongside the vectors, the library provides rotation and matrix types whose core equations are generated from the same transform model and which interoperate with the heap vectors.
+
+| Type | Purpose | Key operations |
+| --- | --- | --- |
+| `Quaternionf` | 3D rotation | `setAngleAxis`, `rotateX/Y/Z`, `mul`, `invert`, `conjugate`, `normalize`, `slerp`, `nlerp`, `rotationTo`, `lookAlong`, `transform(Vector3f)` |
+| `Matrix3f` | linear and normal transforms | `rotation`, `scale`, `mul`, `invert`, `transpose`, `determinant`, `transform(Vector3f)` |
+| `Matrix4f` | affine, camera, and projection transforms | `translate`, `scale`, `rotate`, `mul`, `invert`, `transpose`, `perspective`, `ortho`, `frustum`, `lookAt`, `transformPosition`, `transformDirection` |
 
 ## Storage layouts
 

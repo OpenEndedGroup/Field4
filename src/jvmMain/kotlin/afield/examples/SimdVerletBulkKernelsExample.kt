@@ -1,6 +1,7 @@
 package afield.examples
 
 import afield.four.physics.SimdVerlet
+import afield.stdlib.linalg.bulk.addBroadcastRange
 import afield.stdlib.linalg.bulk.addRange
 import afield.stdlib.linalg.bulk.crossRange
 import afield.stdlib.linalg.bulk.dotRange
@@ -136,6 +137,8 @@ object SimdVerletBulkKernelsExample {
             // more bulk kernels in this lambda to combine force fields in one frame.
             sim.step(dt = dt, damping = damping, gravity = 0f, iterations = 0) { s, _ ->
                 SimdVerlet.addSpringForceToTarget3(s, targetX, targetY, targetZ, stiffness, sx, sy, sz)
+                // Uniform wind over the whole array in one broadcast-vector kernel (a += (0,-2,0)).
+                addBroadcastRange(s.ax, s.ay, s.az, 0f, -2f, 0f, s.ax, s.ay, s.az, 0, s.size)
             }
 
             if (step % 40 == 0 || step == 239) {

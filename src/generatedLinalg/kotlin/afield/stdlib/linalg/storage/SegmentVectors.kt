@@ -252,6 +252,32 @@ class SegmentVec2Buffer(
     fun SegmentVec2f.max(other: SegmentVec2f): SegmentVec2f = max(other, this)
 
     /**
+     * Caps every component at a scalar upper bound.
+     * @param scalar the upper bound applied to every component
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun SegmentVec2f.min(scalar: Float, dest: SegmentVec2f): SegmentVec2f {
+        val r0 = min(read(token, 0), scalar)
+        val r1 = min(read(token, 1), scalar)
+        return dest.set(r0, r1)
+    }
+    fun SegmentVec2f.min(scalar: Float): SegmentVec2f = min(scalar, this)
+
+    /**
+     * Raises every component to a scalar lower bound.
+     * @param scalar the lower bound applied to every component
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun SegmentVec2f.max(scalar: Float, dest: SegmentVec2f): SegmentVec2f {
+        val r0 = max(read(token, 0), scalar)
+        val r1 = max(read(token, 1), scalar)
+        return dest.set(r0, r1)
+    }
+    fun SegmentVec2f.max(scalar: Float): SegmentVec2f = max(scalar, this)
+
+    /**
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
@@ -310,6 +336,19 @@ class SegmentVec2Buffer(
     fun SegmentVec2f.distanceSquared(other: SegmentVec2f): Float = (((read(token, 0) - read(other.token, 0)) * (read(token, 0) - read(other.token, 0))) + ((read(token, 1) - read(other.token, 1)) * (read(token, 1) - read(other.token, 1))))
 
     /**
+     * Returns this vector's Euclidean length (magnitude).
+     * @return the square root of the sum of the squared components
+     */
+    fun SegmentVec2f.length(): Float = sqrt(((read(token, 0) * read(token, 0)) + (read(token, 1) * read(token, 1))))
+
+    /**
+     * Returns the straight-line distance to another vector.
+     * @param other the point to measure to
+     * @return the Euclidean distance
+     */
+    fun SegmentVec2f.distance(other: SegmentVec2f): Float = sqrt((((read(token, 0) - read(other.token, 0)) * (read(token, 0) - read(other.token, 0))) + ((read(token, 1) - read(other.token, 1)) * (read(token, 1) - read(other.token, 1)))))
+
+    /**
      * Keeps the vector's direction while scaling its length to one.
      *
      * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
@@ -323,15 +362,6 @@ class SegmentVec2Buffer(
     }
     fun SegmentVec2f.normalize(): SegmentVec2f = normalize(this)
 
-    /**
-     * Returns this vector's Euclidean length (magnitude).
-     */
-    fun SegmentVec2f.length(): Float = sqrt(lengthSquared())
-    /**
-     * Returns the straight-line distance to another vector.
-     * @param other the point to measure to
-     */
-    fun SegmentVec2f.distance(other: SegmentVec2f): Float = sqrt(distanceSquared(other))
     /**
      * Reports whether every component is finite.
      */
@@ -602,6 +632,34 @@ class SegmentVec3Buffer(
     fun SegmentVec3f.max(other: SegmentVec3f): SegmentVec3f = max(other, this)
 
     /**
+     * Caps every component at a scalar upper bound.
+     * @param scalar the upper bound applied to every component
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun SegmentVec3f.min(scalar: Float, dest: SegmentVec3f): SegmentVec3f {
+        val r0 = min(read(token, 0), scalar)
+        val r1 = min(read(token, 1), scalar)
+        val r2 = min(read(token, 2), scalar)
+        return dest.set(r0, r1, r2)
+    }
+    fun SegmentVec3f.min(scalar: Float): SegmentVec3f = min(scalar, this)
+
+    /**
+     * Raises every component to a scalar lower bound.
+     * @param scalar the lower bound applied to every component
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun SegmentVec3f.max(scalar: Float, dest: SegmentVec3f): SegmentVec3f {
+        val r0 = max(read(token, 0), scalar)
+        val r1 = max(read(token, 1), scalar)
+        val r2 = max(read(token, 2), scalar)
+        return dest.set(r0, r1, r2)
+    }
+    fun SegmentVec3f.max(scalar: Float): SegmentVec3f = max(scalar, this)
+
+    /**
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
@@ -662,6 +720,19 @@ class SegmentVec3Buffer(
     fun SegmentVec3f.distanceSquared(other: SegmentVec3f): Float = ((((read(token, 0) - read(other.token, 0)) * (read(token, 0) - read(other.token, 0))) + ((read(token, 1) - read(other.token, 1)) * (read(token, 1) - read(other.token, 1)))) + ((read(token, 2) - read(other.token, 2)) * (read(token, 2) - read(other.token, 2))))
 
     /**
+     * Returns this vector's Euclidean length (magnitude).
+     * @return the square root of the sum of the squared components
+     */
+    fun SegmentVec3f.length(): Float = sqrt((((read(token, 0) * read(token, 0)) + (read(token, 1) * read(token, 1))) + (read(token, 2) * read(token, 2))))
+
+    /**
+     * Returns the straight-line distance to another vector.
+     * @param other the point to measure to
+     * @return the Euclidean distance
+     */
+    fun SegmentVec3f.distance(other: SegmentVec3f): Float = sqrt(((((read(token, 0) - read(other.token, 0)) * (read(token, 0) - read(other.token, 0))) + ((read(token, 1) - read(other.token, 1)) * (read(token, 1) - read(other.token, 1)))) + ((read(token, 2) - read(other.token, 2)) * (read(token, 2) - read(other.token, 2)))))
+
+    /**
      * Keeps the vector's direction while scaling its length to one.
      *
      * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
@@ -692,15 +763,6 @@ class SegmentVec3Buffer(
     }
     fun SegmentVec3f.cross(other: SegmentVec3f): SegmentVec3f = cross(other, this)
 
-    /**
-     * Returns this vector's Euclidean length (magnitude).
-     */
-    fun SegmentVec3f.length(): Float = sqrt(lengthSquared())
-    /**
-     * Returns the straight-line distance to another vector.
-     * @param other the point to measure to
-     */
-    fun SegmentVec3f.distance(other: SegmentVec3f): Float = sqrt(distanceSquared(other))
     /**
      * Reports whether every component is finite.
      */
@@ -987,6 +1049,36 @@ class SegmentVec4Buffer(
     fun SegmentVec4f.max(other: SegmentVec4f): SegmentVec4f = max(other, this)
 
     /**
+     * Caps every component at a scalar upper bound.
+     * @param scalar the upper bound applied to every component
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun SegmentVec4f.min(scalar: Float, dest: SegmentVec4f): SegmentVec4f {
+        val r0 = min(read(token, 0), scalar)
+        val r1 = min(read(token, 1), scalar)
+        val r2 = min(read(token, 2), scalar)
+        val r3 = min(read(token, 3), scalar)
+        return dest.set(r0, r1, r2, r3)
+    }
+    fun SegmentVec4f.min(scalar: Float): SegmentVec4f = min(scalar, this)
+
+    /**
+     * Raises every component to a scalar lower bound.
+     * @param scalar the lower bound applied to every component
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun SegmentVec4f.max(scalar: Float, dest: SegmentVec4f): SegmentVec4f {
+        val r0 = max(read(token, 0), scalar)
+        val r1 = max(read(token, 1), scalar)
+        val r2 = max(read(token, 2), scalar)
+        val r3 = max(read(token, 3), scalar)
+        return dest.set(r0, r1, r2, r3)
+    }
+    fun SegmentVec4f.max(scalar: Float): SegmentVec4f = max(scalar, this)
+
+    /**
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
@@ -1049,6 +1141,19 @@ class SegmentVec4Buffer(
     fun SegmentVec4f.distanceSquared(other: SegmentVec4f): Float = (((((read(token, 0) - read(other.token, 0)) * (read(token, 0) - read(other.token, 0))) + ((read(token, 1) - read(other.token, 1)) * (read(token, 1) - read(other.token, 1)))) + ((read(token, 2) - read(other.token, 2)) * (read(token, 2) - read(other.token, 2)))) + ((read(token, 3) - read(other.token, 3)) * (read(token, 3) - read(other.token, 3))))
 
     /**
+     * Returns this vector's Euclidean length (magnitude).
+     * @return the square root of the sum of the squared components
+     */
+    fun SegmentVec4f.length(): Float = sqrt(((((read(token, 0) * read(token, 0)) + (read(token, 1) * read(token, 1))) + (read(token, 2) * read(token, 2))) + (read(token, 3) * read(token, 3))))
+
+    /**
+     * Returns the straight-line distance to another vector.
+     * @param other the point to measure to
+     * @return the Euclidean distance
+     */
+    fun SegmentVec4f.distance(other: SegmentVec4f): Float = sqrt((((((read(token, 0) - read(other.token, 0)) * (read(token, 0) - read(other.token, 0))) + ((read(token, 1) - read(other.token, 1)) * (read(token, 1) - read(other.token, 1)))) + ((read(token, 2) - read(other.token, 2)) * (read(token, 2) - read(other.token, 2)))) + ((read(token, 3) - read(other.token, 3)) * (read(token, 3) - read(other.token, 3)))))
+
+    /**
      * Keeps the vector's direction while scaling its length to one.
      *
      * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
@@ -1064,15 +1169,6 @@ class SegmentVec4Buffer(
     }
     fun SegmentVec4f.normalize(): SegmentVec4f = normalize(this)
 
-    /**
-     * Returns this vector's Euclidean length (magnitude).
-     */
-    fun SegmentVec4f.length(): Float = sqrt(lengthSquared())
-    /**
-     * Returns the straight-line distance to another vector.
-     * @param other the point to measure to
-     */
-    fun SegmentVec4f.distance(other: SegmentVec4f): Float = sqrt(distanceSquared(other))
     /**
      * Reports whether every component is finite.
      */

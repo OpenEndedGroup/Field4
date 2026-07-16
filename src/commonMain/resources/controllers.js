@@ -3,7 +3,6 @@
   const area = document.querySelector("#touch-area");
   const thumb = document.querySelector("#thumb");
   const connection = document.querySelector("#connection");
-  const clients = document.querySelector("#clients");
   const readout = document.querySelector("#readout");
   const saveValue = document.querySelector("#save-value");
   const restoreValue = document.querySelector("#restore-value");
@@ -64,19 +63,6 @@
 
     state.socket.addEventListener("open", () => {
       connection.textContent = "online";
-    });
-
-    state.socket.addEventListener("message", (event) => {
-      let message = null;
-      try {
-        message = JSON.parse(event.data);
-      } catch (_error) {
-        return;
-      }
-      if (message && message.type === "status") {
-        const count = Number.parseInt(String(message.clients || "0"), 10) || 0;
-        clients.textContent = `${count} client${count === 1 ? "" : "s"}`;
-      }
     });
 
     state.socket.addEventListener("close", () => {
@@ -229,8 +215,9 @@
 
   function setPage(page) {
     state.page = pages.includes(page) ? page : "pad";
+    const visiblePage = state.page === "editor" ? "select" : state.page;
     document.querySelectorAll("[data-controller-page]").forEach((element) => {
-      element.classList.toggle("active", element.getAttribute("data-controller-page") === state.page);
+      element.classList.toggle("active", element.getAttribute("data-controller-page") === visiblePage);
     });
     padControls.style.display = state.page === "pad" ? "" : "none";
     setActive("[data-page]", "data-page", state.page);
@@ -245,7 +232,7 @@
     } else if (state.page === "select") {
       ensureWorkspaceFrame(selectFrameHost, true);
     } else if (state.page === "editor") {
-      ensureWorkspaceFrame(editorFrameHost, false);
+      ensureWorkspaceFrame(selectFrameHost, false);
     } else {
       renderPad({ x: state.last.x, y: state.last.y, dx: 0, dy: 0 });
     }
@@ -348,6 +335,12 @@
     }
   }
 
+  function workspacePaletteIsOpen() {
+    const win = workspaceWindow();
+    const palette = win && win.document && win.document.querySelector(".afield-palette");
+    return !!palette && win.getComputedStyle(palette).display !== "none";
+  }
+
   function closeWorkspacePalette() {
     const win = workspaceWindow();
     if (!win) return;
@@ -362,14 +355,14 @@
     win.addEventListener("field-selection-changed", () => {
       window.setTimeout(() => {
         updateWorkspaceState();
-        if (state.page === "select" && selectedWorkspaceBox()) setPage("editor");
+        if (state.page === "select" && selectedWorkspaceBox() && !workspacePaletteIsOpen()) setPage("editor");
       }, 260);
     });
   }
 
   async function ensureWorkspaceFrame(host, openPalette) {
     const documentName = await resolveDocument();
-    if ((state.page === "select" && host !== selectFrameHost) || (state.page === "editor" && host !== editorFrameHost)) return;
+    if (!["select", "editor"].includes(state.page) || host !== selectFrameHost) return;
     if (!documentName) {
       (openPalette ? selectState : editorState).textContent = "Open a Field document first";
       return;

@@ -68,6 +68,18 @@ function installChromiumGpuSwitches() {
 
 installChromiumGpuSwitches();
 
+function installLinuxFractionalGlyphPositioning() {
+  if (process.platform !== "linux") return;
+  if (process.env.FIELD_ELECTRON_FRACTIONAL_GLYPHS !== "1") return;
+
+  // Chromium only enables subpixel glyph positioning above a 1x device scale.
+  // Crossing that threshold by 0.1% preserves the visible 1x UI scale while
+  // preventing monospaced advances from snapping to whole CSS pixels.
+  appendChromiumSwitchIfMissing("force-device-scale-factor", "1.001");
+}
+
+installLinuxFractionalGlyphPositioning();
+
 function logChromiumGpuSwitches() {
   const names = [
     "ignore-gpu-blocklist",
@@ -75,6 +87,7 @@ function logChromiumGpuSwitches() {
     "enable-gpu-rasterization",
     "enable-zero-copy",
     "ozone-platform-hint",
+    "force-device-scale-factor",
     "disable-gpu",
     "disable-software-rasterizer",
   ];
@@ -186,8 +199,8 @@ function createTabStripMarkup() {
       font-family: "Iosevka Web";
       font-display: block;
       font-style: normal;
-      font-weight: 400;
-      src: url("iosevka-regular.woff2") format("woff2");
+      font-weight: 300;
+      src: url("woff2/iosevka-light.woff2") format("woff2");
     }
 
     :root {
@@ -207,6 +220,7 @@ function createTabStripMarkup() {
     * {
       box-sizing: border-box;
       font-family: "Iosevka Web", "Iosevka", "Iosevka Term", "Iosevka Nerd Font", monospace;
+      font-weight: 300;
       letter-spacing: 0;
     }
 
@@ -497,15 +511,28 @@ function clampZoomLevel(level) {
   return Math.min(MAX_ZOOM_LEVEL, Math.max(MIN_ZOOM_LEVEL, level));
 }
 
-function installZoomShortcuts(webContents) {
+function installPageShortcuts(webContents) {
   if (process.platform === "darwin") return;
   webContents.on("before-input-event", (event, input) => {
     if (input.type !== "keyDown") return;
     if (!(input.control || input.meta)) return;
-    if (input.alt || input.shift) return;
 
     const key = String(input.key || "");
     const code = String(input.code || "");
+    const isReload = key.toLowerCase() === "r" || code === "KeyR";
+
+    if (!input.alt && isReload) {
+      event.preventDefault();
+      if (input.shift) {
+        webContents.reloadIgnoringCache();
+      } else {
+        webContents.reload();
+      }
+      return;
+    }
+
+    if (input.alt || input.shift) return;
+
     const isZoomIn =
       key === "+" ||
       key === "=" ||
@@ -831,7 +858,7 @@ function createMainWindow() {
     };
     setViewBackground(tab.view, colorForUrl(normalizedUrl));
     installPageBackgroundGuard(tab);
-    installZoomShortcuts(tab.view.webContents);
+    installPageShortcuts(tab.view.webContents);
 
     const updateTitle = (url = tab.view.webContents.getURL() || tab.url) => {
       tab.url = url || tab.url;

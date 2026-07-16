@@ -172,6 +172,30 @@ interface Vector2fc {
     }
 
     /**
+     * Caps every component at a scalar upper bound.
+     * @param scalar the upper bound applied to every component
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun min(scalar: Float, dest: Vector2f): Vector2f {
+        val r0 = min(x(), scalar)
+        val r1 = min(y(), scalar)
+        return dest.set(r0, r1)
+    }
+
+    /**
+     * Raises every component to a scalar lower bound.
+     * @param scalar the lower bound applied to every component
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun max(scalar: Float, dest: Vector2f): Vector2f {
+        val r0 = max(x(), scalar)
+        val r1 = max(y(), scalar)
+        return dest.set(r0, r1)
+    }
+
+    /**
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
@@ -228,6 +252,19 @@ interface Vector2fc {
     fun distanceSquared(other: Vector2fc): Float = (((x() - other.x()) * (x() - other.x())) + ((y() - other.y()) * (y() - other.y())))
 
     /**
+     * Returns this vector's Euclidean length (magnitude).
+     * @return the square root of the sum of the squared components
+     */
+    fun length(): Float = sqrt(((x() * x()) + (y() * y())))
+
+    /**
+     * Returns the straight-line distance to another vector.
+     * @param other the point to measure to
+     * @return the Euclidean distance
+     */
+    fun distance(other: Vector2fc): Float = sqrt((((x() - other.x()) * (x() - other.x())) + ((y() - other.y()) * (y() - other.y()))))
+
+    /**
      * Keeps the vector's direction while scaling its length to one.
      *
      * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
@@ -240,15 +277,6 @@ interface Vector2fc {
         return dest.set(r0, r1)
     }
 
-    /**
-     * Returns this vector's Euclidean length (magnitude).
-     */
-    fun length(): Float = sqrt(lengthSquared())
-    /**
-     * Returns the straight-line distance to another vector.
-     * @param other the point to measure to
-     */
-    fun distance(other: Vector2fc): Float = sqrt(distanceSquared(other))
     /**
      * Reports whether every component is finite.
      */
@@ -307,6 +335,7 @@ class Vector2f() : Vector2fc, Cloneable {
     fun add(x: Float, y: Float): Vector2f = set(this.x + x, this.y + y)
     fun sub(x: Float, y: Float): Vector2f = set(this.x - x, this.y - y)
     fun mul(x: Float, y: Float): Vector2f = set(this.x * x, this.y * y)
+    fun div(x: Float, y: Float): Vector2f = set(this.x / x, this.y / y)
 
     /**
      * Adds another vector component by component.
@@ -404,6 +433,22 @@ class Vector2f() : Vector2fc, Cloneable {
      * @return this vector
      */
     fun max(other: Vector2fc): Vector2f = max(other, this)
+    /**
+     * Caps every component at a scalar upper bound.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the upper bound applied to every component
+     * @return this vector
+     */
+    fun min(scalar: Float): Vector2f = min(scalar, this)
+    /**
+     * Raises every component to a scalar lower bound.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the lower bound applied to every component
+     * @return this vector
+     */
+    fun max(scalar: Float): Vector2f = max(scalar, this)
     /**
      * Linearly interpolates from this vector toward another.
      *
@@ -638,6 +683,32 @@ interface Vector3fc {
     }
 
     /**
+     * Caps every component at a scalar upper bound.
+     * @param scalar the upper bound applied to every component
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun min(scalar: Float, dest: Vector3f): Vector3f {
+        val r0 = min(x(), scalar)
+        val r1 = min(y(), scalar)
+        val r2 = min(z(), scalar)
+        return dest.set(r0, r1, r2)
+    }
+
+    /**
+     * Raises every component to a scalar lower bound.
+     * @param scalar the lower bound applied to every component
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun max(scalar: Float, dest: Vector3f): Vector3f {
+        val r0 = max(x(), scalar)
+        val r1 = max(y(), scalar)
+        val r2 = max(z(), scalar)
+        return dest.set(r0, r1, r2)
+    }
+
+    /**
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
@@ -696,6 +767,19 @@ interface Vector3fc {
     fun distanceSquared(other: Vector3fc): Float = ((((x() - other.x()) * (x() - other.x())) + ((y() - other.y()) * (y() - other.y()))) + ((z() - other.z()) * (z() - other.z())))
 
     /**
+     * Returns this vector's Euclidean length (magnitude).
+     * @return the square root of the sum of the squared components
+     */
+    fun length(): Float = sqrt((((x() * x()) + (y() * y())) + (z() * z())))
+
+    /**
+     * Returns the straight-line distance to another vector.
+     * @param other the point to measure to
+     * @return the Euclidean distance
+     */
+    fun distance(other: Vector3fc): Float = sqrt(((((x() - other.x()) * (x() - other.x())) + ((y() - other.y()) * (y() - other.y()))) + ((z() - other.z()) * (z() - other.z()))))
+
+    /**
      * Keeps the vector's direction while scaling its length to one.
      *
      * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
@@ -724,15 +808,6 @@ interface Vector3fc {
         return dest.set(r0, r1, r2)
     }
 
-    /**
-     * Returns this vector's Euclidean length (magnitude).
-     */
-    fun length(): Float = sqrt(lengthSquared())
-    /**
-     * Returns the straight-line distance to another vector.
-     * @param other the point to measure to
-     */
-    fun distance(other: Vector3fc): Float = sqrt(distanceSquared(other))
     /**
      * Reports whether every component is finite.
      */
@@ -798,6 +873,7 @@ class Vector3f() : Vector3fc, Cloneable {
     fun add(x: Float, y: Float, z: Float): Vector3f = set(this.x + x, this.y + y, this.z + z)
     fun sub(x: Float, y: Float, z: Float): Vector3f = set(this.x - x, this.y - y, this.z - z)
     fun mul(x: Float, y: Float, z: Float): Vector3f = set(this.x * x, this.y * y, this.z * z)
+    fun div(x: Float, y: Float, z: Float): Vector3f = set(this.x / x, this.y / y, this.z / z)
 
     /**
      * Adds another vector component by component.
@@ -895,6 +971,22 @@ class Vector3f() : Vector3fc, Cloneable {
      * @return this vector
      */
     fun max(other: Vector3fc): Vector3f = max(other, this)
+    /**
+     * Caps every component at a scalar upper bound.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the upper bound applied to every component
+     * @return this vector
+     */
+    fun min(scalar: Float): Vector3f = min(scalar, this)
+    /**
+     * Raises every component to a scalar lower bound.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the lower bound applied to every component
+     * @return this vector
+     */
+    fun max(scalar: Float): Vector3f = max(scalar, this)
     /**
      * Linearly interpolates from this vector toward another.
      *
@@ -1154,6 +1246,34 @@ interface Vector4fc {
     }
 
     /**
+     * Caps every component at a scalar upper bound.
+     * @param scalar the upper bound applied to every component
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun min(scalar: Float, dest: Vector4f): Vector4f {
+        val r0 = min(x(), scalar)
+        val r1 = min(y(), scalar)
+        val r2 = min(z(), scalar)
+        val r3 = min(w(), scalar)
+        return dest.set(r0, r1, r2, r3)
+    }
+
+    /**
+     * Raises every component to a scalar lower bound.
+     * @param scalar the lower bound applied to every component
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun max(scalar: Float, dest: Vector4f): Vector4f {
+        val r0 = max(x(), scalar)
+        val r1 = max(y(), scalar)
+        val r2 = max(z(), scalar)
+        val r3 = max(w(), scalar)
+        return dest.set(r0, r1, r2, r3)
+    }
+
+    /**
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
@@ -1214,6 +1334,19 @@ interface Vector4fc {
     fun distanceSquared(other: Vector4fc): Float = (((((x() - other.x()) * (x() - other.x())) + ((y() - other.y()) * (y() - other.y()))) + ((z() - other.z()) * (z() - other.z()))) + ((w() - other.w()) * (w() - other.w())))
 
     /**
+     * Returns this vector's Euclidean length (magnitude).
+     * @return the square root of the sum of the squared components
+     */
+    fun length(): Float = sqrt(((((x() * x()) + (y() * y())) + (z() * z())) + (w() * w())))
+
+    /**
+     * Returns the straight-line distance to another vector.
+     * @param other the point to measure to
+     * @return the Euclidean distance
+     */
+    fun distance(other: Vector4fc): Float = sqrt((((((x() - other.x()) * (x() - other.x())) + ((y() - other.y()) * (y() - other.y()))) + ((z() - other.z()) * (z() - other.z()))) + ((w() - other.w()) * (w() - other.w()))))
+
+    /**
      * Keeps the vector's direction while scaling its length to one.
      *
      * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
@@ -1228,15 +1361,6 @@ interface Vector4fc {
         return dest.set(r0, r1, r2, r3)
     }
 
-    /**
-     * Returns this vector's Euclidean length (magnitude).
-     */
-    fun length(): Float = sqrt(lengthSquared())
-    /**
-     * Returns the straight-line distance to another vector.
-     * @param other the point to measure to
-     */
-    fun distance(other: Vector4fc): Float = sqrt(distanceSquared(other))
     /**
      * Reports whether every component is finite.
      */
@@ -1309,6 +1433,7 @@ class Vector4f() : Vector4fc, Cloneable {
     fun add(x: Float, y: Float, z: Float, w: Float): Vector4f = set(this.x + x, this.y + y, this.z + z, this.w + w)
     fun sub(x: Float, y: Float, z: Float, w: Float): Vector4f = set(this.x - x, this.y - y, this.z - z, this.w - w)
     fun mul(x: Float, y: Float, z: Float, w: Float): Vector4f = set(this.x * x, this.y * y, this.z * z, this.w * w)
+    fun div(x: Float, y: Float, z: Float, w: Float): Vector4f = set(this.x / x, this.y / y, this.z / z, this.w / w)
 
     /**
      * Adds another vector component by component.
@@ -1406,6 +1531,22 @@ class Vector4f() : Vector4fc, Cloneable {
      * @return this vector
      */
     fun max(other: Vector4fc): Vector4f = max(other, this)
+    /**
+     * Caps every component at a scalar upper bound.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the upper bound applied to every component
+     * @return this vector
+     */
+    fun min(scalar: Float): Vector4f = min(scalar, this)
+    /**
+     * Raises every component to a scalar lower bound.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the lower bound applied to every component
+     * @return this vector
+     */
+    fun max(scalar: Float): Vector4f = max(scalar, this)
     /**
      * Linearly interpolates from this vector toward another.
      *
@@ -1628,6 +1769,30 @@ interface Vector2dc {
     }
 
     /**
+     * Caps every component at a scalar upper bound.
+     * @param scalar the upper bound applied to every component
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun min(scalar: Double, dest: Vector2d): Vector2d {
+        val r0 = min(x(), scalar)
+        val r1 = min(y(), scalar)
+        return dest.set(r0, r1)
+    }
+
+    /**
+     * Raises every component to a scalar lower bound.
+     * @param scalar the lower bound applied to every component
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun max(scalar: Double, dest: Vector2d): Vector2d {
+        val r0 = max(x(), scalar)
+        val r1 = max(y(), scalar)
+        return dest.set(r0, r1)
+    }
+
+    /**
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
@@ -1684,6 +1849,19 @@ interface Vector2dc {
     fun distanceSquared(other: Vector2dc): Double = (((x() - other.x()) * (x() - other.x())) + ((y() - other.y()) * (y() - other.y())))
 
     /**
+     * Returns this vector's Euclidean length (magnitude).
+     * @return the square root of the sum of the squared components
+     */
+    fun length(): Double = sqrt(((x() * x()) + (y() * y())))
+
+    /**
+     * Returns the straight-line distance to another vector.
+     * @param other the point to measure to
+     * @return the Euclidean distance
+     */
+    fun distance(other: Vector2dc): Double = sqrt((((x() - other.x()) * (x() - other.x())) + ((y() - other.y()) * (y() - other.y()))))
+
+    /**
      * Keeps the vector's direction while scaling its length to one.
      *
      * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
@@ -1696,15 +1874,6 @@ interface Vector2dc {
         return dest.set(r0, r1)
     }
 
-    /**
-     * Returns this vector's Euclidean length (magnitude).
-     */
-    fun length(): Double = sqrt(lengthSquared())
-    /**
-     * Returns the straight-line distance to another vector.
-     * @param other the point to measure to
-     */
-    fun distance(other: Vector2dc): Double = sqrt(distanceSquared(other))
     /**
      * Reports whether every component is finite.
      */
@@ -1763,6 +1932,7 @@ class Vector2d() : Vector2dc, Cloneable {
     fun add(x: Double, y: Double): Vector2d = set(this.x + x, this.y + y)
     fun sub(x: Double, y: Double): Vector2d = set(this.x - x, this.y - y)
     fun mul(x: Double, y: Double): Vector2d = set(this.x * x, this.y * y)
+    fun div(x: Double, y: Double): Vector2d = set(this.x / x, this.y / y)
 
     /**
      * Adds another vector component by component.
@@ -1860,6 +2030,22 @@ class Vector2d() : Vector2dc, Cloneable {
      * @return this vector
      */
     fun max(other: Vector2dc): Vector2d = max(other, this)
+    /**
+     * Caps every component at a scalar upper bound.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the upper bound applied to every component
+     * @return this vector
+     */
+    fun min(scalar: Double): Vector2d = min(scalar, this)
+    /**
+     * Raises every component to a scalar lower bound.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the lower bound applied to every component
+     * @return this vector
+     */
+    fun max(scalar: Double): Vector2d = max(scalar, this)
     /**
      * Linearly interpolates from this vector toward another.
      *
@@ -2094,6 +2280,32 @@ interface Vector3dc {
     }
 
     /**
+     * Caps every component at a scalar upper bound.
+     * @param scalar the upper bound applied to every component
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun min(scalar: Double, dest: Vector3d): Vector3d {
+        val r0 = min(x(), scalar)
+        val r1 = min(y(), scalar)
+        val r2 = min(z(), scalar)
+        return dest.set(r0, r1, r2)
+    }
+
+    /**
+     * Raises every component to a scalar lower bound.
+     * @param scalar the lower bound applied to every component
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun max(scalar: Double, dest: Vector3d): Vector3d {
+        val r0 = max(x(), scalar)
+        val r1 = max(y(), scalar)
+        val r2 = max(z(), scalar)
+        return dest.set(r0, r1, r2)
+    }
+
+    /**
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
@@ -2152,6 +2364,19 @@ interface Vector3dc {
     fun distanceSquared(other: Vector3dc): Double = ((((x() - other.x()) * (x() - other.x())) + ((y() - other.y()) * (y() - other.y()))) + ((z() - other.z()) * (z() - other.z())))
 
     /**
+     * Returns this vector's Euclidean length (magnitude).
+     * @return the square root of the sum of the squared components
+     */
+    fun length(): Double = sqrt((((x() * x()) + (y() * y())) + (z() * z())))
+
+    /**
+     * Returns the straight-line distance to another vector.
+     * @param other the point to measure to
+     * @return the Euclidean distance
+     */
+    fun distance(other: Vector3dc): Double = sqrt(((((x() - other.x()) * (x() - other.x())) + ((y() - other.y()) * (y() - other.y()))) + ((z() - other.z()) * (z() - other.z()))))
+
+    /**
      * Keeps the vector's direction while scaling its length to one.
      *
      * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
@@ -2180,15 +2405,6 @@ interface Vector3dc {
         return dest.set(r0, r1, r2)
     }
 
-    /**
-     * Returns this vector's Euclidean length (magnitude).
-     */
-    fun length(): Double = sqrt(lengthSquared())
-    /**
-     * Returns the straight-line distance to another vector.
-     * @param other the point to measure to
-     */
-    fun distance(other: Vector3dc): Double = sqrt(distanceSquared(other))
     /**
      * Reports whether every component is finite.
      */
@@ -2254,6 +2470,7 @@ class Vector3d() : Vector3dc, Cloneable {
     fun add(x: Double, y: Double, z: Double): Vector3d = set(this.x + x, this.y + y, this.z + z)
     fun sub(x: Double, y: Double, z: Double): Vector3d = set(this.x - x, this.y - y, this.z - z)
     fun mul(x: Double, y: Double, z: Double): Vector3d = set(this.x * x, this.y * y, this.z * z)
+    fun div(x: Double, y: Double, z: Double): Vector3d = set(this.x / x, this.y / y, this.z / z)
 
     /**
      * Adds another vector component by component.
@@ -2351,6 +2568,22 @@ class Vector3d() : Vector3dc, Cloneable {
      * @return this vector
      */
     fun max(other: Vector3dc): Vector3d = max(other, this)
+    /**
+     * Caps every component at a scalar upper bound.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the upper bound applied to every component
+     * @return this vector
+     */
+    fun min(scalar: Double): Vector3d = min(scalar, this)
+    /**
+     * Raises every component to a scalar lower bound.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the lower bound applied to every component
+     * @return this vector
+     */
+    fun max(scalar: Double): Vector3d = max(scalar, this)
     /**
      * Linearly interpolates from this vector toward another.
      *
@@ -2610,6 +2843,34 @@ interface Vector4dc {
     }
 
     /**
+     * Caps every component at a scalar upper bound.
+     * @param scalar the upper bound applied to every component
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun min(scalar: Double, dest: Vector4d): Vector4d {
+        val r0 = min(x(), scalar)
+        val r1 = min(y(), scalar)
+        val r2 = min(z(), scalar)
+        val r3 = min(w(), scalar)
+        return dest.set(r0, r1, r2, r3)
+    }
+
+    /**
+     * Raises every component to a scalar lower bound.
+     * @param scalar the lower bound applied to every component
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun max(scalar: Double, dest: Vector4d): Vector4d {
+        val r0 = max(x(), scalar)
+        val r1 = max(y(), scalar)
+        val r2 = max(z(), scalar)
+        val r3 = max(w(), scalar)
+        return dest.set(r0, r1, r2, r3)
+    }
+
+    /**
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
@@ -2670,6 +2931,19 @@ interface Vector4dc {
     fun distanceSquared(other: Vector4dc): Double = (((((x() - other.x()) * (x() - other.x())) + ((y() - other.y()) * (y() - other.y()))) + ((z() - other.z()) * (z() - other.z()))) + ((w() - other.w()) * (w() - other.w())))
 
     /**
+     * Returns this vector's Euclidean length (magnitude).
+     * @return the square root of the sum of the squared components
+     */
+    fun length(): Double = sqrt(((((x() * x()) + (y() * y())) + (z() * z())) + (w() * w())))
+
+    /**
+     * Returns the straight-line distance to another vector.
+     * @param other the point to measure to
+     * @return the Euclidean distance
+     */
+    fun distance(other: Vector4dc): Double = sqrt((((((x() - other.x()) * (x() - other.x())) + ((y() - other.y()) * (y() - other.y()))) + ((z() - other.z()) * (z() - other.z()))) + ((w() - other.w()) * (w() - other.w()))))
+
+    /**
      * Keeps the vector's direction while scaling its length to one.
      *
      * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
@@ -2684,15 +2958,6 @@ interface Vector4dc {
         return dest.set(r0, r1, r2, r3)
     }
 
-    /**
-     * Returns this vector's Euclidean length (magnitude).
-     */
-    fun length(): Double = sqrt(lengthSquared())
-    /**
-     * Returns the straight-line distance to another vector.
-     * @param other the point to measure to
-     */
-    fun distance(other: Vector4dc): Double = sqrt(distanceSquared(other))
     /**
      * Reports whether every component is finite.
      */
@@ -2765,6 +3030,7 @@ class Vector4d() : Vector4dc, Cloneable {
     fun add(x: Double, y: Double, z: Double, w: Double): Vector4d = set(this.x + x, this.y + y, this.z + z, this.w + w)
     fun sub(x: Double, y: Double, z: Double, w: Double): Vector4d = set(this.x - x, this.y - y, this.z - z, this.w - w)
     fun mul(x: Double, y: Double, z: Double, w: Double): Vector4d = set(this.x * x, this.y * y, this.z * z, this.w * w)
+    fun div(x: Double, y: Double, z: Double, w: Double): Vector4d = set(this.x / x, this.y / y, this.z / z, this.w / w)
 
     /**
      * Adds another vector component by component.
@@ -2862,6 +3128,22 @@ class Vector4d() : Vector4dc, Cloneable {
      * @return this vector
      */
     fun max(other: Vector4dc): Vector4d = max(other, this)
+    /**
+     * Caps every component at a scalar upper bound.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the upper bound applied to every component
+     * @return this vector
+     */
+    fun min(scalar: Double): Vector4d = min(scalar, this)
+    /**
+     * Raises every component to a scalar lower bound.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the lower bound applied to every component
+     * @return this vector
+     */
+    fun max(scalar: Double): Vector4d = max(scalar, this)
     /**
      * Linearly interpolates from this vector toward another.
      *

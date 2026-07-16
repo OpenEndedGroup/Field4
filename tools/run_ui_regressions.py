@@ -1138,6 +1138,14 @@ const workspaceWin = workspace && workspace.contentWindow;
 const palette = await waitFor(() => workspaceWin?.document?.querySelector(".afield-palette"));
 const paletteInput = palette?.querySelector(".afield-palette-input");
 const selectedUid = workspaceWin?.selectedList?.[0]?.uid || "";
+paletteInput?.focus();
+if (typeof workspaceWin?.selectionContextChanged === "function") workspaceWin.selectionContextChanged();
+await delay(400);
+const selectPageStayedOpen = controllerDoc?.querySelector('[data-controller-page="select"]')?.classList.contains("active") === true;
+const paletteStayedOpen = !!palette && workspaceWin.getComputedStyle(palette).display !== "none";
+paletteInput.value = "MobileControllerRegression";
+paletteInput.dispatchEvent(new Event("input", { bubbles: true }));
+const paletteInputAcceptedText = paletteInput.value === "MobileControllerRegression";
 const phone390 = {
   width: controllerDoc?.documentElement.clientWidth || 0,
   height: controllerDoc?.documentElement.clientHeight || 0,
@@ -1145,10 +1153,20 @@ const phone390 = {
   paletteVisible: !!palette && workspaceWin.getComputedStyle(palette).display !== "none",
   paletteInputFont: paletteInput ? parseFloat(workspaceWin.getComputedStyle(paletteInput).fontSize) : 0,
   selectedUid,
+  selectPageStayedOpen,
+  paletteStayedOpen,
+  paletteInputAcceptedText,
 };
 
-controllerDoc?.querySelector('[data-page="editor"]')?.click();
-await waitFor(() => controllerDoc?.querySelector("#editor-frame-host .workspace-frame"));
+const resultRow = await waitFor(() => [...palette.querySelectorAll(".afield-palette-row")]
+  .find(row => String(row.textContent || "").includes("MobileControllerRegression")));
+resultRow?.click();
+const selectionResultActivatedEditor = await waitFor(() =>
+  controllerDoc?.querySelector('[data-page="editor"]')?.classList.contains("active") === true &&
+  workspaceWin.getComputedStyle(palette).display === "none");
+const workspaceAfterSelection = controllerDoc?.querySelector("#select-frame-host .workspace-frame");
+const workspaceFramePreserved = workspaceAfterSelection === workspace && workspaceAfterSelection?.contentWindow === workspaceWin;
+const selectedResultSettled = await waitFor(() => workspaceWin?.selectedList?.[0]?.uid === uid);
 const editorModel = await waitFor(() => {
   const model = workspaceWin?.globalEditor?.getModel?.();
   return model?.getValue?.().includes("mobile controller editor") ? model : null;
@@ -1208,6 +1226,9 @@ const result = {
   phone390,
   phone430,
   compact,
+  selectionResultActivatedEditor: !!selectionResultActivatedEditor,
+  workspaceFramePreserved,
+  selectedResultSettled: !!selectedResultSettled,
   editorVisible,
   editorHasFixture: editorValue.includes("mobile controller editor"),
   chatHeading: chatRoot?.querySelector(".controller-chat-heading")?.textContent || "",
@@ -1218,6 +1239,8 @@ const result = {
 };
 result.ok = phone390.width === 390 && phone390.height === 844 && phone390.tabs === 6 &&
   phone390.paletteVisible && phone390.paletteInputFont >= 16 && phone390.selectedUid === uid &&
+  phone390.selectPageStayedOpen && phone390.paletteStayedOpen && phone390.paletteInputAcceptedText &&
+  result.selectionResultActivatedEditor && result.workspaceFramePreserved && result.selectedResultSettled &&
   phone430.width === 430 && phone430.height === 932 && phone430.navBottom === 932 &&
   compact.width === 390 && compact.height === 430 && compact.navVisible && compact.inputVisible &&
   result.editorVisible && result.editorHasFixture && result.chatHasInput && result.chatHasSend &&

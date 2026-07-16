@@ -1,7 +1,19 @@
 @font-face {
   font-family: "Iosevka Field Controller";
-  src: local("Iosevka"), local("Iosevka Term"), local("Iosevka Fixed");
+  src: url("/woff2/iosevka-light.woff2") format("woff2");
   font-display: swap;
+  font-style: normal;
+  font-weight: 300;
+  font-stretch: normal;
+}
+
+@font-face {
+  font-family: "Iosevka Field Controller";
+  src: url("/woff2/iosevka-medium.woff2") format("woff2");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 500;
+  font-stretch: normal;
 }
 
 :root {
@@ -33,6 +45,7 @@ body {
   background: var(--bg);
   color: var(--fg);
   font-family: "Iosevka Field Controller", Iosevka, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 300;
 }
 
 body {
@@ -66,7 +79,7 @@ button {
 
 .status-line {
   display: grid;
-  grid-template-columns: auto auto 1fr;
+  grid-template-columns: auto 1fr;
   gap: 1rem;
   align-items: center;
   color: var(--muted);

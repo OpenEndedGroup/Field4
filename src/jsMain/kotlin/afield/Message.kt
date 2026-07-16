@@ -141,7 +141,7 @@ fun hideSplashScreenAfterFontLoad() {
         val timeoutHandle = setTimeout(1500.toDuration(DurationUnit.MILLISECONDS)) {
             startFade()
         }
-        (fontSet.load("400 12px \"Iosevka Web\"") as Promise<*>).then({
+        (fontSet.load("300 12px \"Iosevka Web\"") as Promise<*>).then({
             clearTimeout(timeoutHandle)
             startFade()
         }, {

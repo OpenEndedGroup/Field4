@@ -419,6 +419,70 @@ fun maxRange(selfX: FloatArray, selfY: FloatArray, otherX: FloatArray, otherY: F
 }
 
 /**
+ * Caps every component at a scalar upper bound.
+ * @param scalar the upper bound applied to every component
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun minRange(selfX: FloatArray, selfY: FloatArray, scalar: Float, destX: FloatArray, destY: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val r0 = self0.min(FloatVector.broadcast(SP, scalar))
+        val r1 = self1.min(FloatVector.broadcast(SP, scalar))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = min(selfX[i], scalar)
+        val t1 = min(selfY[i], scalar)
+        destX[i] = t0
+        destY[i] = t1
+        i++
+    }
+}
+
+/**
+ * Raises every component to a scalar lower bound.
+ * @param scalar the lower bound applied to every component
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun maxRange(selfX: FloatArray, selfY: FloatArray, scalar: Float, destX: FloatArray, destY: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val r0 = self0.max(FloatVector.broadcast(SP, scalar))
+        val r1 = self1.max(FloatVector.broadcast(SP, scalar))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = max(selfX[i], scalar)
+        val t1 = max(selfY[i], scalar)
+        destX[i] = t0
+        destY[i] = t1
+        i++
+    }
+}
+
+/**
  * Linearly interpolates from this vector toward another.
  *
  * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
@@ -587,6 +651,61 @@ fun distanceSquaredRange(selfX: FloatArray, selfY: FloatArray, otherX: FloatArra
 }
 
 /**
+ * Returns this vector's Euclidean length (magnitude).
+ * @return the square root of the sum of the squared components
+ */
+fun lengthRange(selfX: FloatArray, selfY: FloatArray, resultOut: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(resultOut.size >= endExclusive) { "resultOut has size ${resultOut.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val r0 = self0.mul(self0).add(self1.mul(self1)).lanewise(VectorOperators.SQRT)
+        r0.intoArray(resultOut, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        resultOut[i] = sqrt(((selfX[i] * selfX[i]) + (selfY[i] * selfY[i])))
+        i++
+    }
+}
+
+/**
+ * Returns the straight-line distance to another vector.
+ * @param other the point to measure to
+ * @return the Euclidean distance
+ */
+fun distanceRange(selfX: FloatArray, selfY: FloatArray, otherX: FloatArray, otherY: FloatArray, resultOut: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(otherX.size >= endExclusive) { "otherX has size ${otherX.size}, must be >= $endExclusive" }
+    require(otherY.size >= endExclusive) { "otherY has size ${otherY.size}, must be >= $endExclusive" }
+    require(resultOut.size >= endExclusive) { "resultOut has size ${resultOut.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val other0 = FloatVector.fromArray(SP, otherX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val other1 = FloatVector.fromArray(SP, otherY, i)
+        val shared0 = self0.sub(other0)
+        val shared1 = self1.sub(other1)
+        val r0 = shared0.mul(shared0).add(shared1.mul(shared1)).lanewise(VectorOperators.SQRT)
+        r0.intoArray(resultOut, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        resultOut[i] = sqrt((((selfX[i] - otherX[i]) * (selfX[i] - otherX[i])) + ((selfY[i] - otherY[i]) * (selfY[i] - otherY[i]))))
+        i++
+    }
+}
+
+/**
  * Keeps the vector's direction while scaling its length to one.
  *
  * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
@@ -618,6 +737,226 @@ fun normalizeRange(selfX: FloatArray, selfY: FloatArray, destX: FloatArray, dest
     while (i < endExclusive) {
         val t0 = (selfX[i] * (1.0f / sqrt(((selfX[i] * selfX[i]) + (selfY[i] * selfY[i])))))
         val t1 = (selfY[i] * (1.0f / sqrt(((selfX[i] * selfX[i]) + (selfY[i] * selfY[i])))))
+        destX[i] = t0
+        destY[i] = t1
+        i++
+    }
+}
+
+/**
+ * Adds one vector to every element, broadcasting it across the whole range.
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun addBroadcastRange(selfX: FloatArray, selfY: FloatArray, otherX: Float, otherY: Float, destX: FloatArray, destY: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val r0 = self0.add(FloatVector.broadcast(SP, otherX))
+        val r1 = self1.add(FloatVector.broadcast(SP, otherY))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = (selfX[i] + otherX)
+        val t1 = (selfY[i] + otherY)
+        destX[i] = t0
+        destY[i] = t1
+        i++
+    }
+}
+
+/**
+ * Subtracts one vector from every element, broadcasting it across the whole range.
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun subBroadcastRange(selfX: FloatArray, selfY: FloatArray, otherX: Float, otherY: Float, destX: FloatArray, destY: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val r0 = self0.sub(FloatVector.broadcast(SP, otherX))
+        val r1 = self1.sub(FloatVector.broadcast(SP, otherY))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = (selfX[i] - otherX)
+        val t1 = (selfY[i] - otherY)
+        destX[i] = t0
+        destY[i] = t1
+        i++
+    }
+}
+
+/**
+ * Scales every element per-axis by one vector, broadcasting it across the whole range.
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun mulBroadcastRange(selfX: FloatArray, selfY: FloatArray, otherX: Float, otherY: Float, destX: FloatArray, destY: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val r0 = self0.mul(FloatVector.broadcast(SP, otherX))
+        val r1 = self1.mul(FloatVector.broadcast(SP, otherY))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = (selfX[i] * otherX)
+        val t1 = (selfY[i] * otherY)
+        destX[i] = t0
+        destY[i] = t1
+        i++
+    }
+}
+
+/**
+ * Divides every element per-axis by one vector, broadcasting it across the whole range.
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun divBroadcastRange(selfX: FloatArray, selfY: FloatArray, otherX: Float, otherY: Float, destX: FloatArray, destY: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val r0 = self0.div(FloatVector.broadcast(SP, otherX))
+        val r1 = self1.div(FloatVector.broadcast(SP, otherY))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = (selfX[i] / otherX)
+        val t1 = (selfY[i] / otherY)
+        destX[i] = t0
+        destY[i] = t1
+        i++
+    }
+}
+
+/**
+ * Caps every element against one vector's components (component-wise clamp-to-box ceiling).
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun minBroadcastRange(selfX: FloatArray, selfY: FloatArray, otherX: Float, otherY: Float, destX: FloatArray, destY: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val r0 = self0.min(FloatVector.broadcast(SP, otherX))
+        val r1 = self1.min(FloatVector.broadcast(SP, otherY))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = min(selfX[i], otherX)
+        val t1 = min(selfY[i], otherY)
+        destX[i] = t0
+        destY[i] = t1
+        i++
+    }
+}
+
+/**
+ * Raises every element against one vector's components (component-wise clamp-to-box floor).
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun maxBroadcastRange(selfX: FloatArray, selfY: FloatArray, otherX: Float, otherY: Float, destX: FloatArray, destY: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val r0 = self0.max(FloatVector.broadcast(SP, otherX))
+        val r1 = self1.max(FloatVector.broadcast(SP, otherY))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = max(selfX[i], otherX)
+        val t1 = max(selfY[i], otherY)
+        destX[i] = t0
+        destY[i] = t1
+        i++
+    }
+}
+
+/**
+ * Interpolates every element toward one target point by t.
+ *
+ * At t = 0 the elements are unchanged; at t = 1 they all reach the single target point.
+ * @param t the interpolation amount
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun lerpBroadcastRange(selfX: FloatArray, selfY: FloatArray, otherX: Float, otherY: Float, t: Float, destX: FloatArray, destY: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val r0 = self0.add(FloatVector.broadcast(SP, otherX).sub(self0).mul(FloatVector.broadcast(SP, t)))
+        val r1 = self1.add(FloatVector.broadcast(SP, otherY).sub(self1).mul(FloatVector.broadcast(SP, t)))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = (selfX[i] + ((otherX - selfX[i]) * t))
+        val t1 = (selfY[i] + ((otherY - selfY[i]) * t))
         destX[i] = t0
         destY[i] = t1
         i++
@@ -1130,6 +1469,84 @@ fun maxRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, otherX: Fl
 }
 
 /**
+ * Caps every component at a scalar upper bound.
+ * @param scalar the upper bound applied to every component
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun minRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, scalar: Float, destX: FloatArray, destY: FloatArray, destZ: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(selfZ.size >= endExclusive) { "selfZ has size ${selfZ.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    require(destZ.size >= endExclusive) { "destZ has size ${destZ.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val self2 = FloatVector.fromArray(SP, selfZ, i)
+        val r0 = self0.min(FloatVector.broadcast(SP, scalar))
+        val r1 = self1.min(FloatVector.broadcast(SP, scalar))
+        val r2 = self2.min(FloatVector.broadcast(SP, scalar))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        r2.intoArray(destZ, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = min(selfX[i], scalar)
+        val t1 = min(selfY[i], scalar)
+        val t2 = min(selfZ[i], scalar)
+        destX[i] = t0
+        destY[i] = t1
+        destZ[i] = t2
+        i++
+    }
+}
+
+/**
+ * Raises every component to a scalar lower bound.
+ * @param scalar the lower bound applied to every component
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun maxRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, scalar: Float, destX: FloatArray, destY: FloatArray, destZ: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(selfZ.size >= endExclusive) { "selfZ has size ${selfZ.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    require(destZ.size >= endExclusive) { "destZ has size ${destZ.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val self2 = FloatVector.fromArray(SP, selfZ, i)
+        val r0 = self0.max(FloatVector.broadcast(SP, scalar))
+        val r1 = self1.max(FloatVector.broadcast(SP, scalar))
+        val r2 = self2.max(FloatVector.broadcast(SP, scalar))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        r2.intoArray(destZ, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = max(selfX[i], scalar)
+        val t1 = max(selfY[i], scalar)
+        val t2 = max(selfZ[i], scalar)
+        destX[i] = t0
+        destY[i] = t1
+        destZ[i] = t2
+        i++
+    }
+}
+
+/**
  * Linearly interpolates from this vector toward another.
  *
  * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
@@ -1327,6 +1744,68 @@ fun distanceSquaredRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray
 }
 
 /**
+ * Returns this vector's Euclidean length (magnitude).
+ * @return the square root of the sum of the squared components
+ */
+fun lengthRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, resultOut: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(selfZ.size >= endExclusive) { "selfZ has size ${selfZ.size}, must be >= $endExclusive" }
+    require(resultOut.size >= endExclusive) { "resultOut has size ${resultOut.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val self2 = FloatVector.fromArray(SP, selfZ, i)
+        val r0 = self0.mul(self0).add(self1.mul(self1)).add(self2.mul(self2)).lanewise(VectorOperators.SQRT)
+        r0.intoArray(resultOut, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        resultOut[i] = sqrt((((selfX[i] * selfX[i]) + (selfY[i] * selfY[i])) + (selfZ[i] * selfZ[i])))
+        i++
+    }
+}
+
+/**
+ * Returns the straight-line distance to another vector.
+ * @param other the point to measure to
+ * @return the Euclidean distance
+ */
+fun distanceRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, otherX: FloatArray, otherY: FloatArray, otherZ: FloatArray, resultOut: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(selfZ.size >= endExclusive) { "selfZ has size ${selfZ.size}, must be >= $endExclusive" }
+    require(otherX.size >= endExclusive) { "otherX has size ${otherX.size}, must be >= $endExclusive" }
+    require(otherY.size >= endExclusive) { "otherY has size ${otherY.size}, must be >= $endExclusive" }
+    require(otherZ.size >= endExclusive) { "otherZ has size ${otherZ.size}, must be >= $endExclusive" }
+    require(resultOut.size >= endExclusive) { "resultOut has size ${resultOut.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val other0 = FloatVector.fromArray(SP, otherX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val other1 = FloatVector.fromArray(SP, otherY, i)
+        val self2 = FloatVector.fromArray(SP, selfZ, i)
+        val other2 = FloatVector.fromArray(SP, otherZ, i)
+        val shared0 = self0.sub(other0)
+        val shared1 = self1.sub(other1)
+        val shared2 = self2.sub(other2)
+        val r0 = shared0.mul(shared0).add(shared1.mul(shared1)).add(shared2.mul(shared2)).lanewise(VectorOperators.SQRT)
+        r0.intoArray(resultOut, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        resultOut[i] = sqrt(((((selfX[i] - otherX[i]) * (selfX[i] - otherX[i])) + ((selfY[i] - otherY[i]) * (selfY[i] - otherY[i]))) + ((selfZ[i] - otherZ[i]) * (selfZ[i] - otherZ[i]))))
+        i++
+    }
+}
+
+/**
  * Keeps the vector's direction while scaling its length to one.
  *
  * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
@@ -1413,6 +1892,275 @@ fun crossRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, otherX: 
         val t0 = ((selfY[i] * otherZ[i]) - (selfZ[i] * otherY[i]))
         val t1 = ((selfZ[i] * otherX[i]) - (selfX[i] * otherZ[i]))
         val t2 = ((selfX[i] * otherY[i]) - (selfY[i] * otherX[i]))
+        destX[i] = t0
+        destY[i] = t1
+        destZ[i] = t2
+        i++
+    }
+}
+
+/**
+ * Adds one vector to every element, broadcasting it across the whole range.
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun addBroadcastRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, otherX: Float, otherY: Float, otherZ: Float, destX: FloatArray, destY: FloatArray, destZ: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(selfZ.size >= endExclusive) { "selfZ has size ${selfZ.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    require(destZ.size >= endExclusive) { "destZ has size ${destZ.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val self2 = FloatVector.fromArray(SP, selfZ, i)
+        val r0 = self0.add(FloatVector.broadcast(SP, otherX))
+        val r1 = self1.add(FloatVector.broadcast(SP, otherY))
+        val r2 = self2.add(FloatVector.broadcast(SP, otherZ))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        r2.intoArray(destZ, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = (selfX[i] + otherX)
+        val t1 = (selfY[i] + otherY)
+        val t2 = (selfZ[i] + otherZ)
+        destX[i] = t0
+        destY[i] = t1
+        destZ[i] = t2
+        i++
+    }
+}
+
+/**
+ * Subtracts one vector from every element, broadcasting it across the whole range.
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun subBroadcastRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, otherX: Float, otherY: Float, otherZ: Float, destX: FloatArray, destY: FloatArray, destZ: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(selfZ.size >= endExclusive) { "selfZ has size ${selfZ.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    require(destZ.size >= endExclusive) { "destZ has size ${destZ.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val self2 = FloatVector.fromArray(SP, selfZ, i)
+        val r0 = self0.sub(FloatVector.broadcast(SP, otherX))
+        val r1 = self1.sub(FloatVector.broadcast(SP, otherY))
+        val r2 = self2.sub(FloatVector.broadcast(SP, otherZ))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        r2.intoArray(destZ, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = (selfX[i] - otherX)
+        val t1 = (selfY[i] - otherY)
+        val t2 = (selfZ[i] - otherZ)
+        destX[i] = t0
+        destY[i] = t1
+        destZ[i] = t2
+        i++
+    }
+}
+
+/**
+ * Scales every element per-axis by one vector, broadcasting it across the whole range.
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun mulBroadcastRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, otherX: Float, otherY: Float, otherZ: Float, destX: FloatArray, destY: FloatArray, destZ: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(selfZ.size >= endExclusive) { "selfZ has size ${selfZ.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    require(destZ.size >= endExclusive) { "destZ has size ${destZ.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val self2 = FloatVector.fromArray(SP, selfZ, i)
+        val r0 = self0.mul(FloatVector.broadcast(SP, otherX))
+        val r1 = self1.mul(FloatVector.broadcast(SP, otherY))
+        val r2 = self2.mul(FloatVector.broadcast(SP, otherZ))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        r2.intoArray(destZ, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = (selfX[i] * otherX)
+        val t1 = (selfY[i] * otherY)
+        val t2 = (selfZ[i] * otherZ)
+        destX[i] = t0
+        destY[i] = t1
+        destZ[i] = t2
+        i++
+    }
+}
+
+/**
+ * Divides every element per-axis by one vector, broadcasting it across the whole range.
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun divBroadcastRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, otherX: Float, otherY: Float, otherZ: Float, destX: FloatArray, destY: FloatArray, destZ: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(selfZ.size >= endExclusive) { "selfZ has size ${selfZ.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    require(destZ.size >= endExclusive) { "destZ has size ${destZ.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val self2 = FloatVector.fromArray(SP, selfZ, i)
+        val r0 = self0.div(FloatVector.broadcast(SP, otherX))
+        val r1 = self1.div(FloatVector.broadcast(SP, otherY))
+        val r2 = self2.div(FloatVector.broadcast(SP, otherZ))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        r2.intoArray(destZ, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = (selfX[i] / otherX)
+        val t1 = (selfY[i] / otherY)
+        val t2 = (selfZ[i] / otherZ)
+        destX[i] = t0
+        destY[i] = t1
+        destZ[i] = t2
+        i++
+    }
+}
+
+/**
+ * Caps every element against one vector's components (component-wise clamp-to-box ceiling).
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun minBroadcastRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, otherX: Float, otherY: Float, otherZ: Float, destX: FloatArray, destY: FloatArray, destZ: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(selfZ.size >= endExclusive) { "selfZ has size ${selfZ.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    require(destZ.size >= endExclusive) { "destZ has size ${destZ.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val self2 = FloatVector.fromArray(SP, selfZ, i)
+        val r0 = self0.min(FloatVector.broadcast(SP, otherX))
+        val r1 = self1.min(FloatVector.broadcast(SP, otherY))
+        val r2 = self2.min(FloatVector.broadcast(SP, otherZ))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        r2.intoArray(destZ, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = min(selfX[i], otherX)
+        val t1 = min(selfY[i], otherY)
+        val t2 = min(selfZ[i], otherZ)
+        destX[i] = t0
+        destY[i] = t1
+        destZ[i] = t2
+        i++
+    }
+}
+
+/**
+ * Raises every element against one vector's components (component-wise clamp-to-box floor).
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun maxBroadcastRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, otherX: Float, otherY: Float, otherZ: Float, destX: FloatArray, destY: FloatArray, destZ: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(selfZ.size >= endExclusive) { "selfZ has size ${selfZ.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    require(destZ.size >= endExclusive) { "destZ has size ${destZ.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val self2 = FloatVector.fromArray(SP, selfZ, i)
+        val r0 = self0.max(FloatVector.broadcast(SP, otherX))
+        val r1 = self1.max(FloatVector.broadcast(SP, otherY))
+        val r2 = self2.max(FloatVector.broadcast(SP, otherZ))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        r2.intoArray(destZ, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = max(selfX[i], otherX)
+        val t1 = max(selfY[i], otherY)
+        val t2 = max(selfZ[i], otherZ)
+        destX[i] = t0
+        destY[i] = t1
+        destZ[i] = t2
+        i++
+    }
+}
+
+/**
+ * Interpolates every element toward one target point by t.
+ *
+ * At t = 0 the elements are unchanged; at t = 1 they all reach the single target point.
+ * @param t the interpolation amount
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun lerpBroadcastRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, otherX: Float, otherY: Float, otherZ: Float, t: Float, destX: FloatArray, destY: FloatArray, destZ: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(selfZ.size >= endExclusive) { "selfZ has size ${selfZ.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    require(destZ.size >= endExclusive) { "destZ has size ${destZ.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val self2 = FloatVector.fromArray(SP, selfZ, i)
+        val r0 = self0.add(FloatVector.broadcast(SP, otherX).sub(self0).mul(FloatVector.broadcast(SP, t)))
+        val r1 = self1.add(FloatVector.broadcast(SP, otherY).sub(self1).mul(FloatVector.broadcast(SP, t)))
+        val r2 = self2.add(FloatVector.broadcast(SP, otherZ).sub(self2).mul(FloatVector.broadcast(SP, t)))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        r2.intoArray(destZ, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = (selfX[i] + ((otherX - selfX[i]) * t))
+        val t1 = (selfY[i] + ((otherY - selfY[i]) * t))
+        val t2 = (selfZ[i] + ((otherZ - selfZ[i]) * t))
         destX[i] = t0
         destY[i] = t1
         destZ[i] = t2
@@ -2022,6 +2770,98 @@ fun maxRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, selfW: Flo
 }
 
 /**
+ * Caps every component at a scalar upper bound.
+ * @param scalar the upper bound applied to every component
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun minRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, selfW: FloatArray, scalar: Float, destX: FloatArray, destY: FloatArray, destZ: FloatArray, destW: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(selfZ.size >= endExclusive) { "selfZ has size ${selfZ.size}, must be >= $endExclusive" }
+    require(selfW.size >= endExclusive) { "selfW has size ${selfW.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    require(destZ.size >= endExclusive) { "destZ has size ${destZ.size}, must be >= $endExclusive" }
+    require(destW.size >= endExclusive) { "destW has size ${destW.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val self2 = FloatVector.fromArray(SP, selfZ, i)
+        val self3 = FloatVector.fromArray(SP, selfW, i)
+        val r0 = self0.min(FloatVector.broadcast(SP, scalar))
+        val r1 = self1.min(FloatVector.broadcast(SP, scalar))
+        val r2 = self2.min(FloatVector.broadcast(SP, scalar))
+        val r3 = self3.min(FloatVector.broadcast(SP, scalar))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        r2.intoArray(destZ, i)
+        r3.intoArray(destW, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = min(selfX[i], scalar)
+        val t1 = min(selfY[i], scalar)
+        val t2 = min(selfZ[i], scalar)
+        val t3 = min(selfW[i], scalar)
+        destX[i] = t0
+        destY[i] = t1
+        destZ[i] = t2
+        destW[i] = t3
+        i++
+    }
+}
+
+/**
+ * Raises every component to a scalar lower bound.
+ * @param scalar the lower bound applied to every component
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun maxRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, selfW: FloatArray, scalar: Float, destX: FloatArray, destY: FloatArray, destZ: FloatArray, destW: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(selfZ.size >= endExclusive) { "selfZ has size ${selfZ.size}, must be >= $endExclusive" }
+    require(selfW.size >= endExclusive) { "selfW has size ${selfW.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    require(destZ.size >= endExclusive) { "destZ has size ${destZ.size}, must be >= $endExclusive" }
+    require(destW.size >= endExclusive) { "destW has size ${destW.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val self2 = FloatVector.fromArray(SP, selfZ, i)
+        val self3 = FloatVector.fromArray(SP, selfW, i)
+        val r0 = self0.max(FloatVector.broadcast(SP, scalar))
+        val r1 = self1.max(FloatVector.broadcast(SP, scalar))
+        val r2 = self2.max(FloatVector.broadcast(SP, scalar))
+        val r3 = self3.max(FloatVector.broadcast(SP, scalar))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        r2.intoArray(destZ, i)
+        r3.intoArray(destW, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = max(selfX[i], scalar)
+        val t1 = max(selfY[i], scalar)
+        val t2 = max(selfZ[i], scalar)
+        val t3 = max(selfW[i], scalar)
+        destX[i] = t0
+        destY[i] = t1
+        destZ[i] = t2
+        destW[i] = t3
+        i++
+    }
+}
+
+/**
  * Linearly interpolates from this vector toward another.
  *
  * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
@@ -2248,6 +3088,75 @@ fun distanceSquaredRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray
 }
 
 /**
+ * Returns this vector's Euclidean length (magnitude).
+ * @return the square root of the sum of the squared components
+ */
+fun lengthRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, selfW: FloatArray, resultOut: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(selfZ.size >= endExclusive) { "selfZ has size ${selfZ.size}, must be >= $endExclusive" }
+    require(selfW.size >= endExclusive) { "selfW has size ${selfW.size}, must be >= $endExclusive" }
+    require(resultOut.size >= endExclusive) { "resultOut has size ${resultOut.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val self2 = FloatVector.fromArray(SP, selfZ, i)
+        val self3 = FloatVector.fromArray(SP, selfW, i)
+        val r0 = self0.mul(self0).add(self1.mul(self1)).add(self2.mul(self2)).add(self3.mul(self3)).lanewise(VectorOperators.SQRT)
+        r0.intoArray(resultOut, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        resultOut[i] = sqrt(((((selfX[i] * selfX[i]) + (selfY[i] * selfY[i])) + (selfZ[i] * selfZ[i])) + (selfW[i] * selfW[i])))
+        i++
+    }
+}
+
+/**
+ * Returns the straight-line distance to another vector.
+ * @param other the point to measure to
+ * @return the Euclidean distance
+ */
+fun distanceRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, selfW: FloatArray, otherX: FloatArray, otherY: FloatArray, otherZ: FloatArray, otherW: FloatArray, resultOut: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(selfZ.size >= endExclusive) { "selfZ has size ${selfZ.size}, must be >= $endExclusive" }
+    require(selfW.size >= endExclusive) { "selfW has size ${selfW.size}, must be >= $endExclusive" }
+    require(otherX.size >= endExclusive) { "otherX has size ${otherX.size}, must be >= $endExclusive" }
+    require(otherY.size >= endExclusive) { "otherY has size ${otherY.size}, must be >= $endExclusive" }
+    require(otherZ.size >= endExclusive) { "otherZ has size ${otherZ.size}, must be >= $endExclusive" }
+    require(otherW.size >= endExclusive) { "otherW has size ${otherW.size}, must be >= $endExclusive" }
+    require(resultOut.size >= endExclusive) { "resultOut has size ${resultOut.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val other0 = FloatVector.fromArray(SP, otherX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val other1 = FloatVector.fromArray(SP, otherY, i)
+        val self2 = FloatVector.fromArray(SP, selfZ, i)
+        val other2 = FloatVector.fromArray(SP, otherZ, i)
+        val self3 = FloatVector.fromArray(SP, selfW, i)
+        val other3 = FloatVector.fromArray(SP, otherW, i)
+        val shared0 = self0.sub(other0)
+        val shared1 = self1.sub(other1)
+        val shared2 = self2.sub(other2)
+        val shared3 = self3.sub(other3)
+        val r0 = shared0.mul(shared0).add(shared1.mul(shared1)).add(shared2.mul(shared2)).add(shared3.mul(shared3)).lanewise(VectorOperators.SQRT)
+        r0.intoArray(resultOut, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        resultOut[i] = sqrt((((((selfX[i] - otherX[i]) * (selfX[i] - otherX[i])) + ((selfY[i] - otherY[i]) * (selfY[i] - otherY[i]))) + ((selfZ[i] - otherZ[i]) * (selfZ[i] - otherZ[i]))) + ((selfW[i] - otherW[i]) * (selfW[i] - otherW[i]))))
+        i++
+    }
+}
+
+/**
  * Keeps the vector's direction while scaling its length to one.
  *
  * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
@@ -2295,6 +3204,324 @@ fun normalizeRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, self
         val t1 = (selfY[i] * (1.0f / sqrt(((((selfX[i] * selfX[i]) + (selfY[i] * selfY[i])) + (selfZ[i] * selfZ[i])) + (selfW[i] * selfW[i])))))
         val t2 = (selfZ[i] * (1.0f / sqrt(((((selfX[i] * selfX[i]) + (selfY[i] * selfY[i])) + (selfZ[i] * selfZ[i])) + (selfW[i] * selfW[i])))))
         val t3 = (selfW[i] * (1.0f / sqrt(((((selfX[i] * selfX[i]) + (selfY[i] * selfY[i])) + (selfZ[i] * selfZ[i])) + (selfW[i] * selfW[i])))))
+        destX[i] = t0
+        destY[i] = t1
+        destZ[i] = t2
+        destW[i] = t3
+        i++
+    }
+}
+
+/**
+ * Adds one vector to every element, broadcasting it across the whole range.
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun addBroadcastRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, selfW: FloatArray, otherX: Float, otherY: Float, otherZ: Float, otherW: Float, destX: FloatArray, destY: FloatArray, destZ: FloatArray, destW: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(selfZ.size >= endExclusive) { "selfZ has size ${selfZ.size}, must be >= $endExclusive" }
+    require(selfW.size >= endExclusive) { "selfW has size ${selfW.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    require(destZ.size >= endExclusive) { "destZ has size ${destZ.size}, must be >= $endExclusive" }
+    require(destW.size >= endExclusive) { "destW has size ${destW.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val self2 = FloatVector.fromArray(SP, selfZ, i)
+        val self3 = FloatVector.fromArray(SP, selfW, i)
+        val r0 = self0.add(FloatVector.broadcast(SP, otherX))
+        val r1 = self1.add(FloatVector.broadcast(SP, otherY))
+        val r2 = self2.add(FloatVector.broadcast(SP, otherZ))
+        val r3 = self3.add(FloatVector.broadcast(SP, otherW))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        r2.intoArray(destZ, i)
+        r3.intoArray(destW, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = (selfX[i] + otherX)
+        val t1 = (selfY[i] + otherY)
+        val t2 = (selfZ[i] + otherZ)
+        val t3 = (selfW[i] + otherW)
+        destX[i] = t0
+        destY[i] = t1
+        destZ[i] = t2
+        destW[i] = t3
+        i++
+    }
+}
+
+/**
+ * Subtracts one vector from every element, broadcasting it across the whole range.
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun subBroadcastRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, selfW: FloatArray, otherX: Float, otherY: Float, otherZ: Float, otherW: Float, destX: FloatArray, destY: FloatArray, destZ: FloatArray, destW: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(selfZ.size >= endExclusive) { "selfZ has size ${selfZ.size}, must be >= $endExclusive" }
+    require(selfW.size >= endExclusive) { "selfW has size ${selfW.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    require(destZ.size >= endExclusive) { "destZ has size ${destZ.size}, must be >= $endExclusive" }
+    require(destW.size >= endExclusive) { "destW has size ${destW.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val self2 = FloatVector.fromArray(SP, selfZ, i)
+        val self3 = FloatVector.fromArray(SP, selfW, i)
+        val r0 = self0.sub(FloatVector.broadcast(SP, otherX))
+        val r1 = self1.sub(FloatVector.broadcast(SP, otherY))
+        val r2 = self2.sub(FloatVector.broadcast(SP, otherZ))
+        val r3 = self3.sub(FloatVector.broadcast(SP, otherW))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        r2.intoArray(destZ, i)
+        r3.intoArray(destW, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = (selfX[i] - otherX)
+        val t1 = (selfY[i] - otherY)
+        val t2 = (selfZ[i] - otherZ)
+        val t3 = (selfW[i] - otherW)
+        destX[i] = t0
+        destY[i] = t1
+        destZ[i] = t2
+        destW[i] = t3
+        i++
+    }
+}
+
+/**
+ * Scales every element per-axis by one vector, broadcasting it across the whole range.
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun mulBroadcastRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, selfW: FloatArray, otherX: Float, otherY: Float, otherZ: Float, otherW: Float, destX: FloatArray, destY: FloatArray, destZ: FloatArray, destW: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(selfZ.size >= endExclusive) { "selfZ has size ${selfZ.size}, must be >= $endExclusive" }
+    require(selfW.size >= endExclusive) { "selfW has size ${selfW.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    require(destZ.size >= endExclusive) { "destZ has size ${destZ.size}, must be >= $endExclusive" }
+    require(destW.size >= endExclusive) { "destW has size ${destW.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val self2 = FloatVector.fromArray(SP, selfZ, i)
+        val self3 = FloatVector.fromArray(SP, selfW, i)
+        val r0 = self0.mul(FloatVector.broadcast(SP, otherX))
+        val r1 = self1.mul(FloatVector.broadcast(SP, otherY))
+        val r2 = self2.mul(FloatVector.broadcast(SP, otherZ))
+        val r3 = self3.mul(FloatVector.broadcast(SP, otherW))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        r2.intoArray(destZ, i)
+        r3.intoArray(destW, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = (selfX[i] * otherX)
+        val t1 = (selfY[i] * otherY)
+        val t2 = (selfZ[i] * otherZ)
+        val t3 = (selfW[i] * otherW)
+        destX[i] = t0
+        destY[i] = t1
+        destZ[i] = t2
+        destW[i] = t3
+        i++
+    }
+}
+
+/**
+ * Divides every element per-axis by one vector, broadcasting it across the whole range.
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun divBroadcastRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, selfW: FloatArray, otherX: Float, otherY: Float, otherZ: Float, otherW: Float, destX: FloatArray, destY: FloatArray, destZ: FloatArray, destW: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(selfZ.size >= endExclusive) { "selfZ has size ${selfZ.size}, must be >= $endExclusive" }
+    require(selfW.size >= endExclusive) { "selfW has size ${selfW.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    require(destZ.size >= endExclusive) { "destZ has size ${destZ.size}, must be >= $endExclusive" }
+    require(destW.size >= endExclusive) { "destW has size ${destW.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val self2 = FloatVector.fromArray(SP, selfZ, i)
+        val self3 = FloatVector.fromArray(SP, selfW, i)
+        val r0 = self0.div(FloatVector.broadcast(SP, otherX))
+        val r1 = self1.div(FloatVector.broadcast(SP, otherY))
+        val r2 = self2.div(FloatVector.broadcast(SP, otherZ))
+        val r3 = self3.div(FloatVector.broadcast(SP, otherW))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        r2.intoArray(destZ, i)
+        r3.intoArray(destW, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = (selfX[i] / otherX)
+        val t1 = (selfY[i] / otherY)
+        val t2 = (selfZ[i] / otherZ)
+        val t3 = (selfW[i] / otherW)
+        destX[i] = t0
+        destY[i] = t1
+        destZ[i] = t2
+        destW[i] = t3
+        i++
+    }
+}
+
+/**
+ * Caps every element against one vector's components (component-wise clamp-to-box ceiling).
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun minBroadcastRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, selfW: FloatArray, otherX: Float, otherY: Float, otherZ: Float, otherW: Float, destX: FloatArray, destY: FloatArray, destZ: FloatArray, destW: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(selfZ.size >= endExclusive) { "selfZ has size ${selfZ.size}, must be >= $endExclusive" }
+    require(selfW.size >= endExclusive) { "selfW has size ${selfW.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    require(destZ.size >= endExclusive) { "destZ has size ${destZ.size}, must be >= $endExclusive" }
+    require(destW.size >= endExclusive) { "destW has size ${destW.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val self2 = FloatVector.fromArray(SP, selfZ, i)
+        val self3 = FloatVector.fromArray(SP, selfW, i)
+        val r0 = self0.min(FloatVector.broadcast(SP, otherX))
+        val r1 = self1.min(FloatVector.broadcast(SP, otherY))
+        val r2 = self2.min(FloatVector.broadcast(SP, otherZ))
+        val r3 = self3.min(FloatVector.broadcast(SP, otherW))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        r2.intoArray(destZ, i)
+        r3.intoArray(destW, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = min(selfX[i], otherX)
+        val t1 = min(selfY[i], otherY)
+        val t2 = min(selfZ[i], otherZ)
+        val t3 = min(selfW[i], otherW)
+        destX[i] = t0
+        destY[i] = t1
+        destZ[i] = t2
+        destW[i] = t3
+        i++
+    }
+}
+
+/**
+ * Raises every element against one vector's components (component-wise clamp-to-box floor).
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun maxBroadcastRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, selfW: FloatArray, otherX: Float, otherY: Float, otherZ: Float, otherW: Float, destX: FloatArray, destY: FloatArray, destZ: FloatArray, destW: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(selfZ.size >= endExclusive) { "selfZ has size ${selfZ.size}, must be >= $endExclusive" }
+    require(selfW.size >= endExclusive) { "selfW has size ${selfW.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    require(destZ.size >= endExclusive) { "destZ has size ${destZ.size}, must be >= $endExclusive" }
+    require(destW.size >= endExclusive) { "destW has size ${destW.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val self2 = FloatVector.fromArray(SP, selfZ, i)
+        val self3 = FloatVector.fromArray(SP, selfW, i)
+        val r0 = self0.max(FloatVector.broadcast(SP, otherX))
+        val r1 = self1.max(FloatVector.broadcast(SP, otherY))
+        val r2 = self2.max(FloatVector.broadcast(SP, otherZ))
+        val r3 = self3.max(FloatVector.broadcast(SP, otherW))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        r2.intoArray(destZ, i)
+        r3.intoArray(destW, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = max(selfX[i], otherX)
+        val t1 = max(selfY[i], otherY)
+        val t2 = max(selfZ[i], otherZ)
+        val t3 = max(selfW[i], otherW)
+        destX[i] = t0
+        destY[i] = t1
+        destZ[i] = t2
+        destW[i] = t3
+        i++
+    }
+}
+
+/**
+ * Interpolates every element toward one target point by t.
+ *
+ * At t = 0 the elements are unchanged; at t = 1 they all reach the single target point.
+ * @param t the interpolation amount
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun lerpBroadcastRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, selfW: FloatArray, otherX: Float, otherY: Float, otherZ: Float, otherW: Float, t: Float, destX: FloatArray, destY: FloatArray, destZ: FloatArray, destW: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(selfZ.size >= endExclusive) { "selfZ has size ${selfZ.size}, must be >= $endExclusive" }
+    require(selfW.size >= endExclusive) { "selfW has size ${selfW.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    require(destZ.size >= endExclusive) { "destZ has size ${destZ.size}, must be >= $endExclusive" }
+    require(destW.size >= endExclusive) { "destW has size ${destW.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val self2 = FloatVector.fromArray(SP, selfZ, i)
+        val self3 = FloatVector.fromArray(SP, selfW, i)
+        val r0 = self0.add(FloatVector.broadcast(SP, otherX).sub(self0).mul(FloatVector.broadcast(SP, t)))
+        val r1 = self1.add(FloatVector.broadcast(SP, otherY).sub(self1).mul(FloatVector.broadcast(SP, t)))
+        val r2 = self2.add(FloatVector.broadcast(SP, otherZ).sub(self2).mul(FloatVector.broadcast(SP, t)))
+        val r3 = self3.add(FloatVector.broadcast(SP, otherW).sub(self3).mul(FloatVector.broadcast(SP, t)))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        r2.intoArray(destZ, i)
+        r3.intoArray(destW, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = (selfX[i] + ((otherX - selfX[i]) * t))
+        val t1 = (selfY[i] + ((otherY - selfY[i]) * t))
+        val t2 = (selfZ[i] + ((otherZ - selfZ[i]) * t))
+        val t3 = (selfW[i] + ((otherW - selfW[i]) * t))
         destX[i] = t0
         destY[i] = t1
         destZ[i] = t2

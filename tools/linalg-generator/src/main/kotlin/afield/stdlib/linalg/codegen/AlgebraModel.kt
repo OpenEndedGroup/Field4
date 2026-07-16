@@ -95,6 +95,13 @@ data class Operation(
     val scalarParameters: List<ScalarParameter> = emptyList(),
     val result: OperationResult,
     val componentExpressions: List<Expr> = emptyList(),
+    /**
+     * When true this operation is emitted only in the bulk backend. Used by the broadcast-vector
+     * ops: applying one vector uniformly across a whole array is only a distinct affordance for the
+     * flat kernels; in the single-element heap/arena/segment backends it would just duplicate the
+     * ordinary per-element vector op it shares a name with.
+     */
+    val bulkOnly: Boolean = false,
 ) {
     val documentation: ApiDocumentation get() = OperationDocumentation.forOperation(this)
 
@@ -149,8 +156,31 @@ private object OperationDocumentation {
             )
             "negate" -> doc("Reverses the vector by negating every component.")
             "absolute" -> doc("Replaces every component with its absolute value.")
-            "min" -> doc("Selects the smaller value independently in each component.", params = common("other" to "the other component values"))
-            "max" -> doc("Selects the larger value independently in each component.", params = common("other" to "the other component values"))
+            "min" -> doc(
+                if (vectorArgument) "Selects the smaller value independently in each component." else "Caps every component at a scalar upper bound.",
+                params = common("other" to "the other component values", "scalar" to "the upper bound applied to every component"),
+            )
+            "max" -> doc(
+                if (vectorArgument) "Selects the larger value independently in each component." else "Raises every component to a scalar lower bound.",
+                params = common("other" to "the other component values", "scalar" to "the lower bound applied to every component"),
+            )
+            "length" -> ApiDocumentation("Returns this vector's Euclidean length (magnitude).", returns = "the square root of the sum of the squared components")
+            "distance" -> ApiDocumentation(
+                summary = "Returns the straight-line distance to another vector.",
+                parameters = mapOf("other" to "the point to measure to"),
+                returns = "the Euclidean distance",
+            )
+            "addBroadcast" -> doc("Adds one vector to every element, broadcasting it across the whole range.")
+            "subBroadcast" -> doc("Subtracts one vector from every element, broadcasting it across the whole range.")
+            "mulBroadcast" -> doc("Scales every element per-axis by one vector, broadcasting it across the whole range.")
+            "divBroadcast" -> doc("Divides every element per-axis by one vector, broadcasting it across the whole range.")
+            "minBroadcast" -> doc("Caps every element against one vector's components (component-wise clamp-to-box ceiling).")
+            "maxBroadcast" -> doc("Raises every element against one vector's components (component-wise clamp-to-box floor).")
+            "lerpBroadcast" -> doc(
+                "Interpolates every element toward one target point by t.",
+                listOf("At t = 0 the elements are unchanged; at t = 1 they all reach the single target point."),
+                common("t" to "the interpolation amount"),
+            )
             "lerp" -> doc(
                 "Linearly interpolates from this vector toward another.",
                 listOf("At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them."),
@@ -239,11 +269,40 @@ object FieldAlgebraModel {
             componentExpressions = self.map { Expr.Binary(it, operator, scalar) },
         )
 
+        fun scalarCall(name: String, function: String) = Operation(
+            name = name,
+            scalarParameters = listOf(ScalarParameter("scalar")),
+            result = OperationResult.Destination,
+            componentExpressions = self.map { Expr.Call(function, listOf(it, scalar)) },
+        )
+
+        // One vector, broadcast uniformly across every element of a bulk array. Bulk-only: the
+        // per-axis operand is passed as `dimension` scalars (rendered as a lane broadcast in the
+        // SIMD body), so these read exactly like the ordinary vector op in every element.
+        val broadcastComponents = type.components.map { Expr.ScalarParameter("other${it.sourceName.uppercase()}") }
+        val broadcastParameters = type.components.map { ScalarParameter("other${it.sourceName.uppercase()}") }
+        fun broadcastBinary(name: String, operator: String) = Operation(
+            name = name,
+            scalarParameters = broadcastParameters,
+            result = OperationResult.Destination,
+            componentExpressions = self.zip(broadcastComponents).map { (a, b) -> Expr.Binary(a, operator, b) },
+            bulkOnly = true,
+        )
+        fun broadcastCall(name: String, function: String) = Operation(
+            name = name,
+            scalarParameters = broadcastParameters,
+            result = OperationResult.Destination,
+            componentExpressions = self.zip(broadcastComponents).map { (a, b) -> Expr.Call(function, listOf(a, b)) },
+            bulkOnly = true,
+        )
+
         fun sum(expressions: List<Expr>): Expr = expressions.reduce { a, b -> a + b }
 
         val dot = sum(self.zip(other()).map { (a, b) -> a * b })
         val distanceSquared = sum(self.zip(other()).map { (a, b) -> (a - b) * (a - b) })
         val lengthSquared = sum(self.map { it * it })
+        val length = Expr.Call("sqrt", listOf(lengthSquared))
+        val distance = Expr.Call("sqrt", listOf(distanceSquared))
         val inverseLength = Expr.Constant(type.scalar.one) / Expr.Call("sqrt", listOf(lengthSquared))
 
         return buildList {
@@ -285,6 +344,8 @@ object FieldAlgebraModel {
                     componentExpressions = self.zip(other()).map { (a, b) -> Expr.Call("max", listOf(a, b)) },
                 )
             )
+            add(scalarCall("min", "min"))
+            add(scalarCall("max", "max"))
             add(
                 Operation(
                     name = "lerp",
@@ -312,6 +373,8 @@ object FieldAlgebraModel {
                     result = OperationResult.Scalar(distanceSquared),
                 )
             )
+            add(Operation("length", result = OperationResult.Scalar(length)))
+            add(Operation("distance", listOf(VectorParameter("other")), result = OperationResult.Scalar(distance)))
             add(
                 Operation(
                     name = "normalize",
@@ -334,6 +397,24 @@ object FieldAlgebraModel {
                     )
                 )
             }
+
+            // Bulk-only broadcast family: one uniform vector applied across a whole array
+            // (uniform force fields / translate, per-axis scale, clamp-to-box, ease-to-point).
+            add(broadcastBinary("addBroadcast", "+"))
+            add(broadcastBinary("subBroadcast", "-"))
+            add(broadcastBinary("mulBroadcast", "*"))
+            add(broadcastBinary("divBroadcast", "/"))
+            add(broadcastCall("minBroadcast", "min"))
+            add(broadcastCall("maxBroadcast", "max"))
+            add(
+                Operation(
+                    name = "lerpBroadcast",
+                    scalarParameters = broadcastParameters + ScalarParameter("t"),
+                    result = OperationResult.Destination,
+                    componentExpressions = self.zip(broadcastComponents).map { (a, b) -> a + (b - a) * t },
+                    bulkOnly = true,
+                )
+            )
         }
     }
 }

@@ -300,6 +300,44 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     fun ArenaVec2f.max(other: ArenaVec2f): ArenaVec2f = max(other, this)
 
     /**
+     * Caps every component at a scalar upper bound.
+     * @param scalar the upper bound applied to every component
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun ArenaVec2f.min(scalar: Float, dest: ArenaVec2f): ArenaVec2f {
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC2)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val r0 = min(self0, scalar)
+        val r1 = min(self1, scalar)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC2)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        return dest
+    }
+    fun ArenaVec2f.min(scalar: Float): ArenaVec2f = min(scalar, this)
+
+    /**
+     * Raises every component to a scalar lower bound.
+     * @param scalar the lower bound applied to every component
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun ArenaVec2f.max(scalar: Float, dest: ArenaVec2f): ArenaVec2f {
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC2)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val r0 = max(self0, scalar)
+        val r1 = max(self1, scalar)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC2)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        return dest
+    }
+    fun ArenaVec2f.max(scalar: Float): ArenaVec2f = max(scalar, this)
+
+    /**
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
@@ -397,6 +435,32 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
 
     /**
+     * Returns this vector's Euclidean length (magnitude).
+     * @return the square root of the sum of the squared components
+     */
+    fun ArenaVec2f.length(): Float {
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC2)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        return sqrt(((self0 * self0) + (self1 * self1)))
+    }
+
+    /**
+     * Returns the straight-line distance to another vector.
+     * @param other the point to measure to
+     * @return the Euclidean distance
+     */
+    fun ArenaVec2f.distance(other: ArenaVec2f): Float {
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC2)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC2)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        return sqrt((((self0 - other0) * (self0 - other0)) + ((self1 - other1) * (self1 - other1))))
+    }
+
+    /**
      * Keeps the vector's direction while scaling its length to one.
      *
      * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
@@ -416,15 +480,6 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec2f.normalize(): ArenaVec2f = normalize(this)
 
-    /**
-     * Returns this vector's Euclidean length (magnitude).
-     */
-    fun ArenaVec2f.length(): Float = sqrt(lengthSquared())
-    /**
-     * Returns the straight-line distance to another vector.
-     * @param other the point to measure to
-     */
-    fun ArenaVec2f.distance(other: ArenaVec2f): Float = sqrt(distanceSquared(other))
     /**
      * Reports whether every component is finite.
      */
@@ -744,6 +799,50 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     fun ArenaVec3f.max(other: ArenaVec3f): ArenaVec3f = max(other, this)
 
     /**
+     * Caps every component at a scalar upper bound.
+     * @param scalar the upper bound applied to every component
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun ArenaVec3f.min(scalar: Float, dest: ArenaVec3f): ArenaVec3f {
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC3)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val r0 = min(self0, scalar)
+        val r1 = min(self1, scalar)
+        val r2 = min(self2, scalar)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC3)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        return dest
+    }
+    fun ArenaVec3f.min(scalar: Float): ArenaVec3f = min(scalar, this)
+
+    /**
+     * Raises every component to a scalar lower bound.
+     * @param scalar the lower bound applied to every component
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun ArenaVec3f.max(scalar: Float, dest: ArenaVec3f): ArenaVec3f {
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC3)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val r0 = max(self0, scalar)
+        val r1 = max(self1, scalar)
+        val r2 = max(self2, scalar)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC3)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        return dest
+    }
+    fun ArenaVec3f.max(scalar: Float): ArenaVec3f = max(scalar, this)
+
+    /**
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
@@ -854,6 +953,35 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
 
     /**
+     * Returns this vector's Euclidean length (magnitude).
+     * @return the square root of the sum of the squared components
+     */
+    fun ArenaVec3f.length(): Float {
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC3)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val self2 = arena.readAt(o_self, 2)
+        return sqrt((((self0 * self0) + (self1 * self1)) + (self2 * self2)))
+    }
+
+    /**
+     * Returns the straight-line distance to another vector.
+     * @param other the point to measure to
+     * @return the Euclidean distance
+     */
+    fun ArenaVec3f.distance(other: ArenaVec3f): Float {
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC3)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC3)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val other2 = arena.readAt(o_other, 2)
+        return sqrt(((((self0 - other0) * (self0 - other0)) + ((self1 - other1) * (self1 - other1))) + ((self2 - other2) * (self2 - other2))))
+    }
+
+    /**
      * Keeps the vector's direction while scaling its length to one.
      *
      * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
@@ -904,15 +1032,6 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec3f.cross(other: ArenaVec3f): ArenaVec3f = cross(other, this)
 
-    /**
-     * Returns this vector's Euclidean length (magnitude).
-     */
-    fun ArenaVec3f.length(): Float = sqrt(lengthSquared())
-    /**
-     * Returns the straight-line distance to another vector.
-     * @param other the point to measure to
-     */
-    fun ArenaVec3f.distance(other: ArenaVec3f): Float = sqrt(distanceSquared(other))
     /**
      * Reports whether every component is finite.
      */
@@ -1278,6 +1397,56 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     fun ArenaVec4f.max(other: ArenaVec4f): ArenaVec4f = max(other, this)
 
     /**
+     * Caps every component at a scalar upper bound.
+     * @param scalar the upper bound applied to every component
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun ArenaVec4f.min(scalar: Float, dest: ArenaVec4f): ArenaVec4f {
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC4)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val self3 = arena.readAt(o_self, 3)
+        val r0 = min(self0, scalar)
+        val r1 = min(self1, scalar)
+        val r2 = min(self2, scalar)
+        val r3 = min(self3, scalar)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC4)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        arena.writeAt(o_dest, 3, r3)
+        return dest
+    }
+    fun ArenaVec4f.min(scalar: Float): ArenaVec4f = min(scalar, this)
+
+    /**
+     * Raises every component to a scalar lower bound.
+     * @param scalar the lower bound applied to every component
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun ArenaVec4f.max(scalar: Float, dest: ArenaVec4f): ArenaVec4f {
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC4)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val self3 = arena.readAt(o_self, 3)
+        val r0 = max(self0, scalar)
+        val r1 = max(self1, scalar)
+        val r2 = max(self2, scalar)
+        val r3 = max(self3, scalar)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC4)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        arena.writeAt(o_dest, 3, r3)
+        return dest
+    }
+    fun ArenaVec4f.max(scalar: Float): ArenaVec4f = max(scalar, this)
+
+    /**
      * Linearly interpolates from this vector toward another.
      *
      * At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them.
@@ -1401,6 +1570,38 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
 
     /**
+     * Returns this vector's Euclidean length (magnitude).
+     * @return the square root of the sum of the squared components
+     */
+    fun ArenaVec4f.length(): Float {
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC4)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val self3 = arena.readAt(o_self, 3)
+        return sqrt(((((self0 * self0) + (self1 * self1)) + (self2 * self2)) + (self3 * self3)))
+    }
+
+    /**
+     * Returns the straight-line distance to another vector.
+     * @param other the point to measure to
+     * @return the Euclidean distance
+     */
+    fun ArenaVec4f.distance(other: ArenaVec4f): Float {
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC4)
+        val o_other = arena.resolve(other.token, FrameArena.Kind.VEC4)
+        val self0 = arena.readAt(o_self, 0)
+        val other0 = arena.readAt(o_other, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val other1 = arena.readAt(o_other, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val other2 = arena.readAt(o_other, 2)
+        val self3 = arena.readAt(o_self, 3)
+        val other3 = arena.readAt(o_other, 3)
+        return sqrt((((((self0 - other0) * (self0 - other0)) + ((self1 - other1) * (self1 - other1))) + ((self2 - other2) * (self2 - other2))) + ((self3 - other3) * (self3 - other3))))
+    }
+
+    /**
      * Keeps the vector's direction while scaling its length to one.
      *
      * A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible.
@@ -1426,15 +1627,6 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     }
     fun ArenaVec4f.normalize(): ArenaVec4f = normalize(this)
 
-    /**
-     * Returns this vector's Euclidean length (magnitude).
-     */
-    fun ArenaVec4f.length(): Float = sqrt(lengthSquared())
-    /**
-     * Returns the straight-line distance to another vector.
-     * @param other the point to measure to
-     */
-    fun ArenaVec4f.distance(other: ArenaVec4f): Float = sqrt(distanceSquared(other))
     /**
      * Reports whether every component is finite.
      */

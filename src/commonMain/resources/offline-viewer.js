@@ -536,6 +536,7 @@ async function initializeMonaco() {
                     scrollBeyondLastLine: false,
                     fontSize: 13,
                     fontFamily: '"Iosevka Web", monospace',
+                    fontWeight: '300',
                     lineNumbers: 'on',
                     glyphMargin: false,
                     folding: true,

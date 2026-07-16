@@ -18,6 +18,7 @@
     --field-font-system: "Iosevka Web", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     --field-font-code: "Iosevka Web", Monaco, Menlo, Consolas, "Courier New", monospace;
     --field-font-code-fallback: "Iosevka", "JetBrains Mono", Menlo, Consolas, monospace;
+    --field-font-weight: 300;
 
     /* Palette: the small set to override for a new theme. */
     --field-black-rgb: 0, 0, 0;
@@ -1140,6 +1141,7 @@
 
 body {
     font-family: var(--field-font);
+    font-weight: var(--field-font-weight);
     margin: 0;
     padding: 0;
 

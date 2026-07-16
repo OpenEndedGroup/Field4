@@ -127,6 +127,56 @@ class BulkVectorsTest {
             val distanceSquaredOut = FloatArray(n)
             distanceSquaredRange(selfX, selfY, selfZ, otherX, otherY, otherZ, distanceSquaredOut, 0, n)
             assertArraysClose(distanceSquaredExpected, distanceSquaredOut, 2e-4f, "distanceSquared")
+
+            val lengthExpected = FloatArray(n) { Vector3f(selfX[it], selfY[it], selfZ[it]).length() }
+            val lengthOut = FloatArray(n)
+            lengthRange(selfX, selfY, selfZ, lengthOut, 0, n)
+            assertArraysClose(lengthExpected, lengthOut, 2e-4f, "length")
+
+            val distanceExpected = FloatArray(n) { Vector3f(selfX[it], selfY[it], selfZ[it]).distance(Vector3f(otherX[it], otherY[it], otherZ[it])) }
+            val distanceOut = FloatArray(n)
+            distanceRange(selfX, selfY, selfZ, otherX, otherY, otherZ, distanceOut, 0, n)
+            assertArraysClose(distanceExpected, distanceOut, 2e-4f, "distance")
+        }
+    }
+
+    @Test
+    fun scalarMinMaxAndBroadcastVectorOpsMatchHeapPerLaneAcrossBoundaryLengths() {
+        val random = Random(0xB40ADCA5)
+        for (n in boundaryLengths) {
+            val sx = randomFloats(random, n); val sy = randomFloats(random, n); val sz = randomFloats(random, n)
+            val scalar = random.nextFloat() * 4f - 2f
+            val t = random.nextFloat()
+            // Broadcast operand kept away from zero so divBroadcast is well-conditioned.
+            val ox = random.nextFloat() + 2f; val oy = random.nextFloat() + 2f; val oz = random.nextFloat() + 2f
+
+            fun checkDest(
+                label: String,
+                heapOp: (Vector3f) -> Vector3f,
+                tolerance: Float = 1e-5f,
+                bulk: (FloatArray, FloatArray, FloatArray) -> Unit,
+            ) {
+                val dx = FloatArray(n); val dy = FloatArray(n); val dz = FloatArray(n)
+                bulk(dx, dy, dz)
+                for (i in 0 until n) {
+                    val e = heapOp(Vector3f(sx[i], sy[i], sz[i]))
+                    assertTrue(abs(e.x - dx[i]) <= tolerance, "$label.x[$i]: expected=${e.x}, actual=${dx[i]}")
+                    assertTrue(abs(e.y - dy[i]) <= tolerance, "$label.y[$i]: expected=${e.y}, actual=${dy[i]}")
+                    assertTrue(abs(e.z - dz[i]) <= tolerance, "$label.z[$i]: expected=${e.z}, actual=${dz[i]}")
+                }
+            }
+
+            checkDest("minScalar", { it.min(scalar) }) { dx, dy, dz -> minRange(sx, sy, sz, scalar, dx, dy, dz, 0, n) }
+            checkDest("maxScalar", { it.max(scalar) }) { dx, dy, dz -> maxRange(sx, sy, sz, scalar, dx, dy, dz, 0, n) }
+
+            val o = Vector3f(ox, oy, oz)
+            checkDest("addBroadcast", { it.add(Vector3f(o)) }) { dx, dy, dz -> addBroadcastRange(sx, sy, sz, ox, oy, oz, dx, dy, dz, 0, n) }
+            checkDest("subBroadcast", { it.sub(Vector3f(o)) }) { dx, dy, dz -> subBroadcastRange(sx, sy, sz, ox, oy, oz, dx, dy, dz, 0, n) }
+            checkDest("mulBroadcast", { it.mul(Vector3f(o)) }) { dx, dy, dz -> mulBroadcastRange(sx, sy, sz, ox, oy, oz, dx, dy, dz, 0, n) }
+            checkDest("divBroadcast", { it.div(Vector3f(o)) }) { dx, dy, dz -> divBroadcastRange(sx, sy, sz, ox, oy, oz, dx, dy, dz, 0, n) }
+            checkDest("minBroadcast", { it.min(Vector3f(o)) }) { dx, dy, dz -> minBroadcastRange(sx, sy, sz, ox, oy, oz, dx, dy, dz, 0, n) }
+            checkDest("maxBroadcast", { it.max(Vector3f(o)) }) { dx, dy, dz -> maxBroadcastRange(sx, sy, sz, ox, oy, oz, dx, dy, dz, 0, n) }
+            checkDest("lerpBroadcast", { it.lerp(Vector3f(o), t) }) { dx, dy, dz -> lerpBroadcastRange(sx, sy, sz, ox, oy, oz, t, dx, dy, dz, 0, n) }
         }
     }
 

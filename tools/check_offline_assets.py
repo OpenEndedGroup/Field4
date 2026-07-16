@@ -10,6 +10,7 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+JS_RESOURCES = REPO_ROOT / "src" / "jsMain" / "resources"
 
 CANONICAL_FILES = (
     "src/commonMain/resources/offline.html",
@@ -19,6 +20,8 @@ CANONICAL_FILES = (
     "src/jsMain/resources/iosevka.css",
     "src/jsMain/resources/outputareas.css",
     "src/jsMain/resources/woff2/iosevka-regular.woff2",
+    "src/jsMain/resources/woff2/iosevka-light.woff2",
+    "src/jsMain/resources/woff2/iosevka-lightitalic.woff2",
     "src/jsMain/resources/woff2/iosevka-bold.woff2",
     "src/jsMain/resources/woff2/iosevka-italic.woff2",
     "src/jsMain/resources/monaco/min/vs/loader.js",
@@ -107,6 +110,14 @@ def main(argv: list[str] | None = None) -> int:
         if not path.exists():
             errors.append(f"canonical asset is missing: {relative}")
 
+    extended_fonts = sorted((JS_RESOURCES / "woff2").glob("*extended*.woff2"))
+    for path in extended_fonts:
+        errors.append(f"extended Iosevka face should not be shipped: {repo_relative(path)}")
+
+    iosevka_css = JS_RESOURCES / "iosevka.css"
+    if iosevka_css.exists() and "extended" in iosevka_css.read_text(encoding="utf-8").lower():
+        errors.append("src/jsMain/resources/iosevka.css should not register Extended faces")
+
     tracked_generated = git_ls_files(GENERATED_TRACKED_PATHS)
     for path in tracked_generated:
         errors.append(f"generated duplicate is tracked and should be produced by sync_offline_assets.py: {path}")
@@ -121,7 +132,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     print(
-        "Offline asset check passed: canonical Monaco/fonts/viewer assets are present; "
+        "Offline asset check passed: canonical normal-width Monaco/fonts/viewer assets are present; "
         "generated public/dev_docs duplicates are untracked."
     )
     return 0
