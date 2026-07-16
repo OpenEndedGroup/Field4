@@ -1,8 +1,8 @@
 // EXTENDED CONTROL TYPES EXAMPLES
 // Copy these into Field4 boxes to test the new control functionality
 
-import org.joml.Vector2f
-import org.joml.Vector4f
+import afield.stdlib.linalg.Vector2f
+import afield.stdlib.linalg.Vector4f
 
 // ============================================
 // Example 1: 2D Vector Control

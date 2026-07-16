@@ -1524,7 +1524,13 @@ object SemanticRetrievalService {
     }
 
     private fun sourceCapsules(root: Path, index: KotlinSourceIndexDb?): List<SemanticCapsule> {
-        val definitions = index?.definitions.orEmpty().ifEmpty { scanDefinitions(root) }
+        val indexedDefinitions = index?.definitions.orEmpty()
+        val definitions = if (indexedDefinitions.isEmpty()) {
+            scanDefinitions(root)
+        } else {
+            (indexedDefinitions + scanDefinitions(root, listOf("src/generatedLinalg/kotlin")))
+                .distinctBy { Triple(it.filePath, it.line, it.name) }
+        }
         val linesCache = HashMap<String, List<String>>()
         fun lines(path: String): List<String> {
             return linesCache.getOrPut(path) {
@@ -1562,7 +1568,7 @@ object SemanticRetrievalService {
                 endLine = start + source.lines().size,
                 parentId = parentId,
                 signature = signature,
-                documentation = def.kdoc.orEmpty(),
+                documentation = def.kdoc.orEmpty().ifBlank { precedingKDoc(fileLines, start) },
                 metadata = metadata,
                 source = source
             )
@@ -1652,9 +1658,39 @@ object SemanticRetrievalService {
         }
     }
 
-    private fun scanDefinitions(root: Path): List<KotlinDefinitionRecord> {
+    private fun precedingKDoc(lines: List<String>, declarationIndex: Int): String {
+        var cursor = declarationIndex - 1
+        while (cursor >= 0 && lines[cursor].isBlank()) cursor--
+        if (cursor < 0 || !lines[cursor].trim().endsWith("*/")) return ""
+        val reversed = mutableListOf<String>()
+        while (cursor >= 0) {
+            val line = lines[cursor]
+            reversed += line
+            if (line.trim().startsWith("/**")) break
+            cursor--
+        }
+        if (reversed.lastOrNull()?.trim()?.startsWith("/**") != true) return ""
+        return reversed.asReversed()
+            .joinToString("\n")
+            .removePrefix("/**")
+            .removeSuffix("*/")
+            .lineSequence()
+            .map { it.trim().removePrefix("*").trim() }
+            .joinToString("\n")
+            .trim()
+    }
+
+    private fun scanDefinitions(
+        root: Path,
+        roots: List<String> = listOf(
+            "src/jvmMain/kotlin",
+            "src/commonMain/kotlin",
+            "src/personal/kotlin",
+            "src/generatedLinalg/kotlin",
+        ),
+    ): List<KotlinDefinitionRecord> {
         val out = mutableListOf<KotlinDefinitionRecord>()
-        val sourceRoots = listOf("src/jvmMain/kotlin", "src/commonMain/kotlin", "src/personal/kotlin")
+        val sourceRoots = roots
             .map { root.resolve(it) }
             .filter { Files.exists(it) }
         sourceRoots.forEach { sourceRoot ->

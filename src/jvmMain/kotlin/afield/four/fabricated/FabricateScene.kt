@@ -4,10 +4,10 @@ import afield.four.modules.GltfSupport
 import afield.four.modules.fromContext
 import afield.four.modules.sample
 import afield.four.texture.LoadedTexture
-import org.joml.Matrix4f
-import org.joml.Quaternionf
-import org.joml.Vector3f
-import org.joml.Vector4f
+import afield.stdlib.linalg.Matrix4f
+import afield.stdlib.linalg.Quaternionf
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector4f
 import org.lwjgl.assimp.Assimp
 import kotlin.math.max
 

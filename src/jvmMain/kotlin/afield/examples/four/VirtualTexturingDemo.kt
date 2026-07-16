@@ -8,8 +8,8 @@ import afield.four.modules.fromContext
 import afield.four.texture.VirtualTextureSystem
 import afield.four.util.Camera
 import afield.four.util.Window
-import org.joml.Matrix4f
-import org.joml.times
+import afield.stdlib.linalg.Matrix4f
+import afield.stdlib.linalg.times
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths

@@ -105,10 +105,15 @@ uv run --project . --group backdoor python tools/run_ui_regressions.py \
   - Covers static `lines(...)` rendering in `/controllers?page=outputs`.
 - `controllers-control-group`
   - Covers native `controlGroup` widgets in `/controllers?page=controls` and `/controllers?page=outputs`.
+- `controllers-mobile-workspace`
+  - Covers the six-tab phone shell at 390×844 and 430×932, the compact 390×430 keyboard-height layout, shared Open Anything selection, embedded Monaco, AI4 chat input, and visible file-edit tool summaries.
 - `selection-screenshot-backdoor`
   - Verifies selected box/editor/window screenshot agreement and retained supplemental captures.
 - `history-panel`
   - Opens the document history iframe, waits for version data, interacts with controls, and closes it.
+- `visionos-shared-history-panel`
+  - Starts paired editor-only and no-editor clients with one shared UI context, requests History
+    from the editor, and verifies that only the canvas renders the full-width panel.
 - `macro-transcript-panel`
   - Seeds transcript operations and a document macro, then verifies rows, selection, save-selected, browser lists, preview, close/reopen, and screenshot capture.
 - `inline-visualizers-editor`

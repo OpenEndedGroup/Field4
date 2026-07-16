@@ -1,8 +1,11 @@
 package afield.four.buffers
 
+import afield.stdlib.linalg.Vector2f
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector4f
 import afield.four.device.CommandBuffer
 import afield.four.modules.Introspected
-import afield.four.modules.PrimitiveType
+import afield.four.modules.layoutSizeInBytes
 import afield.four.util.Vec2h
 import afield.four.util.Vec3h
 import afield.four.util.Vec4h
@@ -10,7 +13,7 @@ import afield.four.util.Vec8h
 import afield.four.util.packHalf1x16
 import afield.four.util.packHalf2x16
 import afield.stdlib.NeedsStartingValue
-import org.joml.*
+import afield.stdlib.linalg.*
 import java.nio.ByteBuffer
 import java.nio.FloatBuffer
 import java.nio.IntBuffer
@@ -44,6 +47,67 @@ fun <T : Structure> HasBuffer.asStructure(structure: T, members: List<Introspect
 
 fun <T : Structure> BufferParameters.asStructure(structure: T, members: List<Introspected.Member>): T =
     buffer.asStructure(structure, members)
+
+/**
+ * Sets a push-constant value by name, or invokes [notFound] if [name] isn't a known offset.
+ * Shared by the `FromStructure`/`BoundFromStructure` delegates on [Structure]'s various hosts
+ * (`Mesh`, `MeshMesh`, `ComputeMesh`, `RayTracingDispatch`, and their groups), which otherwise
+ * each hand-rolled this same offset-check-then-write shape.
+ */
+fun <T> Structure.setPushConstant(name: String, value: T, notFound: () -> Nothing) {
+    if (offsets.containsKey(name)) set(name, value as Any) else notFound()
+}
+
+/** Reads a push-constant value by name, or invokes [notFound] if [name] isn't a known offset. */
+fun <T> Structure.getPushConstant(name: String, notFound: () -> Nothing): T =
+    if (offsets.containsKey(name)) get(name) else notFound()
+
+/** Binds a live push-constant supplier by name, or invokes [notFound] if [name] isn't a known offset. */
+fun Structure.bindPushConstant(name: String, value: Function0<*>, notFound: () -> Nothing) {
+    if (offsets.containsKey(name)) bind(name, value) else notFound()
+}
+
+/** Reads a bound push-constant supplier by name, or invokes [notFound] if [name] isn't a known offset. */
+@Suppress("UNCHECKED_CAST")
+fun <T> Structure.getBoundPushConstant(name: String, notFound: () -> Nothing): () -> T =
+    if (offsets.containsKey(name)) bindings[name] as () -> T else notFound()
+
+/**
+ * Binds [value] as a push constant on every element of a group, initializing each element's
+ * offsets on first use via [ensureInitialized]. Throws (via [notFound], given the offending
+ * element) if some element in the group doesn't have [name].
+ */
+fun <E> Iterable<E>.bindPushConstantAcrossGroup(
+    name: String,
+    value: Function0<*>,
+    push: (E) -> Structure,
+    ensureInitialized: (E) -> Unit,
+    notFound: (E) -> Nothing,
+) {
+    forEach { element ->
+        ensureInitialized(element)
+        push(element).bindPushConstant(name, value) { notFound(element) }
+    }
+}
+
+/**
+ * Finds the first element of a group that has [name] bound, initializing each element's offsets
+ * on first use via [ensureInitialized]. Throws [notFound] if no element has it.
+ */
+@Suppress("UNCHECKED_CAST")
+fun <E, T> Iterable<E>.firstBoundPushConstant(
+    name: String,
+    push: (E) -> Structure,
+    ensureInitialized: (E) -> Unit,
+    notFound: () -> Nothing,
+): () -> T {
+    forEach { element ->
+        ensureInitialized(element)
+        val s = push(element)
+        if (s.offsets.containsKey(name)) return s.bindings[name] as () -> T
+    }
+    notFound()
+}
 
 @Suppress("UNCHECKED_CAST")
 open class Structure(
@@ -92,7 +156,7 @@ open class Structure(
     fun setMembers(members: List<Introspected.Member>): Structure {
         this.members = members
         offsets = members.associate { it.name to baseOffset + it.offset }.toMutableMap()
-        sizes = members.associate { it.name to it.layoutSize().toInt() }.toMutableMap()
+        sizes = members.associate { it.name to it.layoutSizeInBytes() }.toMutableMap()
         pointers = members.associate {
             it.name to it.physicalPointer
         }.toMutableMap()
@@ -304,6 +368,12 @@ open class Structure(
             is Matrix2f -> v.get(offset, f)
             is Matrix3f -> v.get(offset, f)
             is Matrix4f -> v.get(offset, f)
+            is Quaternionf -> {
+                f.putFloat(offset, v.x)
+                f.putFloat(offset + 4, v.y)
+                f.putFloat(offset + 8, v.z)
+                f.putFloat(offset + 12, v.w)
+            }
             is Vec2h -> {
                 val t = v.v
                 f.putInt(offset, packHalf2x16(t.x, t.y))
@@ -400,14 +470,4 @@ open class Structure(
             }
         }
     }
-
-    private fun Introspected.Member.layoutSize(): Long =
-        if (physicalPointer) PrimitiveType.deviceptr.sizeInBytes
-        else type.fold(
-            { it.sizeInBytes },
-            { nested ->
-                if (nested.isEmpty()) 0
-                else nested.maxOf { it.offset + it.layoutSize().toInt() }.toLong()
-            }
-        )
 }

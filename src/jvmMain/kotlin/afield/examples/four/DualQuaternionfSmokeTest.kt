@@ -4,9 +4,9 @@ import afield.four.util.CameraPose
 import afield.stdlib.KeyframeScope
 import afield.stdlib.remAssign
 import afield.stdlib.times
-import org.joml.DualQuaternionf
-import org.joml.Quaternionf
-import org.joml.Vector3f
+import afield.stdlib.linalg.DualQuaternionf
+import afield.stdlib.linalg.Quaternionf
+import afield.stdlib.linalg.Vector3f
 import java.nio.file.Files
 import kotlin.math.PI
 import kotlin.math.abs

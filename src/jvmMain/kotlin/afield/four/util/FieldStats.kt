@@ -13,7 +13,7 @@ import afield.four.modules.Parameters
 import afield.four.modules.computeMemoryBarrier
 import afield.four.modules.pointer
 import afield.logger.lprintln
-import org.joml.primitives.Rectanglef
+import afield.stdlib.linalg.Rectanglef
 import java.nio.ByteOrder
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicReferenceArray

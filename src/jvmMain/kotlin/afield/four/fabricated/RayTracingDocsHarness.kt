@@ -36,7 +36,7 @@ import afield.four.util.Options
 import afield.logger.lprintln
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.yield
-import org.joml.Vector3f
+import afield.stdlib.linalg.Vector3f
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.KHRAccelerationStructure.VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR
 import org.lwjgl.vulkan.VK10.VK_FILTER_NEAREST

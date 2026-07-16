@@ -40,6 +40,14 @@ import kotlin.system.exitProcess
  * lock and can, very occasionally, interleave with a header repaint. They still scroll below the
  * header; the visual glitch is transient. Routing all app output through the dispatcher avoids it.
  */
+
+/**
+ * A channel to pin, at "channel picking" time (see [PinnedConsole.install]/[PinnedConsole.pin]).
+ * [heatmap] colors the channel's rolling numeric values (`foo=1.2ms`) blue-through-red by whether
+ * they fell or rose since the channel's last line; it's on by default and opt-out per channel.
+ */
+data class PinnedChannel(val tag: String, val heatmap: Boolean = true)
+
 object PinnedConsole {
 
     @Volatile
@@ -73,7 +81,10 @@ object PinnedConsole {
         val env = System.getenv("AFIELD_PIN_CHANNELS")
             ?.split(',', ' ')?.map { it.trim() }?.filter { it.isNotEmpty() } ?: emptyList()
         startedAtNanos = System.nanoTime()
-        install((listOf(STARTUP_CHANNEL) + DEFAULT_PINS + env).distinct())
+        // startup's line is boot-stage prose, not a stats line, so heatmap-coloring it would be noise.
+        val channels = listOf(PinnedChannel(STARTUP_CHANNEL, heatmap = false)) +
+            (DEFAULT_PINS + env).map { PinnedChannel(it) }
+        install(channels.distinctBy { it.tag })
     }
 
     /**
@@ -101,24 +112,36 @@ object PinnedConsole {
         val raw = System.getenv("AFIELD_PIN_CHANNELS") ?: return
         val tags = raw.split(',', ' ').map { it.trim() }.filter { it.isNotEmpty() }
         if (tags.isEmpty()) return
-        install(tags)
+        installTags(tags)
     }
 
     /**
-     * Install the pinned console, pinning [pinnedTags]. Replaces [StdoutLog] in the dispatcher
-     * (preserving any other sinks, e.g. the web LogStream) and registers a shutdown hook that
-     * restores the terminal. Safe to call once; a second call just re-points the runtime API.
+     * Install the pinned console, pinning [tags] with heatmap-coloring on by default (see
+     * [PinnedChannel]). Convenience wrapper around [install] for callers that don't need
+     * per-channel control.
      */
-    fun install(pinnedTags: List<String>) {
-        val sink = PinnedConsoleSink(pinnedTags)
+    fun installTags(tags: List<String>) = install(tags.map { PinnedChannel(it) })
+
+    /**
+     * Install the pinned console, picking channels (and per-channel heatmap on/off) via [channels].
+     * Replaces [StdoutLog] in the dispatcher (preserving any other sinks, e.g. the web LogStream)
+     * and registers a shutdown hook that restores the terminal. Safe to call once; a second call
+     * just re-points the runtime API.
+     */
+    fun install(channels: List<PinnedChannel>) {
+        val sink = PinnedConsoleSink(channels)
         LogDispatcher.addSink(sink)
         LogDispatcher.removeSink(StdoutLog)
         activeSink = sink
         Runtime.getRuntime().addShutdownHook(Thread({ sink.shutdown() }, "pinned-console-shutdown"))
     }
 
-    /** Start pinning [tag] at runtime (adds a row if not already pinned). */
-    fun pin(tag: String) = activeSink?.addPinnedTag(tag) ?: Unit
+    /**
+     * Start pinning [tag] at runtime (adds a row if not already pinned). Rolling-stats values in
+     * the row (`foo=1.2ms`) are heatmap-colored by whether they rose or fell since last time
+     * unless [heatmap] is set to false at this "channel picking" stage.
+     */
+    fun pin(tag: String, heatmap: Boolean = true) = activeSink?.addPinnedTag(tag, heatmap) ?: Unit
 
     /** Stop pinning [tag] at runtime (removes its row). */
     fun unpin(tag: String) = activeSink?.removePinnedTag(tag) ?: Unit
@@ -135,7 +158,7 @@ object PinnedConsole {
     fun beat(channel: String) = activeSink?.beat(channel) ?: Unit
 }
 
-private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
+private class PinnedConsoleSink(initialChannels: List<PinnedChannel>) : LogSink {
 
     /**
      * A displayed pinned channel. Created only when the channel first emits (never speculative), and
@@ -148,6 +171,7 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
         var channel = ""
         var dim = false
         var line: String? = null
+        var heatmap: List<StatsHeatmap.Fragment>? = null // precomputed once per line; null = heatmap off
         var block: BlockState? = null
     }
 
@@ -175,8 +199,13 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
 
     private val lock = ReentrantLock()
 
-    /** The watch list: tags eligible to be pinned. Display order follows this order. Guarded by [lock]. */
-    private val pinnedTags = LinkedHashSet(initialTags)
+    /**
+     * The watch list: tag -> heatmap-enabled, for tags eligible to be pinned. Display order follows
+     * this order (LinkedHashMap preserves insertion order). Guarded by [lock].
+     */
+    private val pinnedTags = LinkedHashMap<String, Boolean>().apply {
+        initialChannels.forEach { put(it.tag, it.heatmap) }
+    }
 
     /** tag -> live entry. Present only for tags that have emitted recently (see [sweepEntries]). */
     private val entries = HashMap<String, PinnedEntry>()
@@ -298,6 +327,7 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
                 val b = e.block
                 val ms = if (b != null) java.time.Duration.between(b.start, event.timestamp).toMillis() else 0
                 e.line = "✓ ${b?.title ?: cleanMessage(event.message)} ($ms ms)"
+                e.heatmap = null
                 e.block = null
                 touch(e, event)
             }
@@ -318,11 +348,16 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
         if (event.boundary == BlockBoundary.BEGIN) {
             e.block = BlockState(event.blockId ?: "", cleanMessage(event.message), event.timestamp)
             e.line = null
+            e.heatmap = null
             event.blockId?.let { openBlocks[it] = e }
         } else if (e.block != null) {
             appendBlockLine(e, cleanMessage(event.message)) // a line on the block's own channel
         } else {
-            e.line = cleanMessage(event.message)
+            val cleaned = cleanMessage(event.message)
+            e.line = cleaned
+            // Computed once per real update (not per repaint) so re-renders don't diff a value
+            // against itself and flatten every color to grey.
+            e.heatmap = if (pinnedTags[tag] == true) StatsHeatmap.fragments(tag, cleaned) else null
         }
         return true
     }
@@ -355,10 +390,11 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
         val it = entries.entries.iterator()
         var changed = false
         while (it.hasNext()) {
-            val e = it.next().value
+            val (tag, e) = it.next()
             val age = now - e.lastNanos
             if (age > EXPIRE_NANOS) {
                 e.block?.id?.let { openBlocks.remove(it) }
+                StatsHeatmap.reset(tag) // don't diff a future reuse of this channel against a stale value
                 it.remove()
                 changed = true
             } else {
@@ -374,11 +410,14 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
 
     // --- runtime API (called via PinnedConsole) ---
 
-    fun addPinnedTag(tag: String) = lock.withLock { pinnedTags.add(tag); Unit } // shows once it emits
+    fun addPinnedTag(tag: String, heatmap: Boolean = true) = lock.withLock {
+        pinnedTags[tag] = heatmap // shows once it emits
+    }
 
     fun removePinnedTag(tag: String) = lock.withLock {
         pinnedTags.remove(tag)
         entries.remove(tag)?.block?.id?.let { openBlocks.remove(it) }
+        StatsHeatmap.reset(tag)
         dirty = true
     }
 
@@ -594,7 +633,7 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
     /** Rows the header wants: each live entry (blocks are multi-line) + heartbeats + rule, if tall enough. */
     private fun headerHeight(): Int {
         var rows = 0
-        for (tag in pinnedTags) rows += entries[tag]?.let { entryHeight(it) } ?: 0
+        for (tag in pinnedTags.keys) rows += entries[tag]?.let { entryHeight(it) } ?: 0
         rows += heartbeatOrder.size
         if (rows == 0) return 0
         val want = rows + 1
@@ -641,7 +680,7 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
     private fun appendHeaderRows(sb: StringBuilder) {
         val w = cachedW
         var row = 1
-        for (tag in pinnedTags) {
+        for (tag in pinnedTags.keys) {
             val e = entries[tag] ?: continue
             row = appendEntry(sb, tag, e, row, w)
         }
@@ -673,7 +712,11 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
                 row++
             }
         } else {
-            sb.append(styledRow(head, "$BULLET $label ${(e.line ?: "").replace('\n', ' ')}", time, w))
+            val prefix = StatsHeatmap.Fragment("$BULLET $label ", null)
+            val lineText = (e.line ?: "").replace('\n', ' ')
+            // Suppress heatmap coloring once dimmed (idle) so the whole row reads uniformly stale.
+            val body = if (!e.dim) e.heatmap else null
+            sb.append(styledFragments(head, listOf(prefix) + (body ?: listOf(StatsHeatmap.Fragment(lineText, null))), time, w))
             row++
         }
         return row
@@ -685,6 +728,42 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
         val left = if (leftPlain.length > budget) leftPlain.take((budget - 1).coerceAtLeast(0)) + "…"
         else leftPlain.padEnd(budget)
         return style(left) + DIM(rightPlain)
+    }
+
+    /**
+     * Like [styledRow], but the left side is a sequence of [fragments] that may each carry their own
+     * style (e.g. a heatmap-colored value) instead of one uniform [style]. Clipping/padding happens on
+     * the plain text *before* any styling is applied, so fragments are always independently, fully
+     * styled (open+reset) and simply concatenated — no reliance on nested-reset behavior in terminals.
+     */
+    private fun styledFragments(
+        style: TextStyle,
+        fragments: List<StatsHeatmap.Fragment>,
+        rightPlain: String,
+        w: Int
+    ): String {
+        val budget = (w - rightPlain.length).coerceAtLeast(1)
+        val totalLen = fragments.sumOf { it.text.length }
+        val clipped = if (totalLen > budget) {
+            var remaining = (budget - 1).coerceAtLeast(0)
+            val truncated = mutableListOf<StatsHeatmap.Fragment>()
+            for (f in fragments) {
+                if (remaining <= 0) break
+                if (f.text.length <= remaining) {
+                    truncated += f
+                    remaining -= f.text.length
+                } else {
+                    truncated += StatsHeatmap.Fragment(f.text.take(remaining), f.style)
+                    remaining = 0
+                }
+            }
+            truncated += StatsHeatmap.Fragment("…", null)
+            truncated
+        } else {
+            fragments + StatsHeatmap.Fragment(" ".repeat(budget - totalLen), null)
+        }
+        val left = clipped.joinToString("") { (it.style ?: style)(it.text) }
+        return left + DIM(rightPlain)
     }
 
     /** Scrollback pager: render the visible window of [history] into the log region (rows below the header). */
@@ -798,7 +877,7 @@ private class PinnedConsoleSink(initialTags: List<String>) : LogSink {
     /** First pinned tag (in display order) that appears as a token in [channel], or null. */
     private fun matchedPin(channel: String): String? {
         val tokens = channel.split(',').mapTo(HashSet(), String::trim)
-        return lock.withLock { pinnedTags.firstOrNull { it in tokens } }
+        return lock.withLock { pinnedTags.keys.firstOrNull { it in tokens } }
     }
 
     private fun levelOf(channel: String): String? {

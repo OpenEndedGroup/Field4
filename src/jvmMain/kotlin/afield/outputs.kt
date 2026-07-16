@@ -7,8 +7,8 @@ import afield.server.LogStream
 import afield.stdlib.FLineIntersection
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import org.joml.Vector2f
-import org.joml.Vector4f
+import afield.stdlib.linalg.Vector2f
+import afield.stdlib.linalg.Vector4f
 import java.io.File
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -920,7 +920,7 @@ private fun calculateDecimalPlaces(step: Double): Int {
 
 // Additional control types + HTML builders
 
-// 2D Vector control (using JOML Vector2f)
+// 2D Vector control (using Field Vector2f)
 private val vec2Callbacks = java.util.concurrent.ConcurrentHashMap<String, (Vector2f) -> Unit>()
 
 internal fun registerVec2Callback(controlId: String, callback: (Vector2f) -> Unit) {
@@ -1140,7 +1140,7 @@ fun Box.fileUpload(
     display(channel, html)
 }
 
-// Color picker control (vec4, normalized - using JOML Vector4f)
+// Color picker control (vec4, normalized - using Field Vector4f)
 private val colorCallbacks = java.util.concurrent.ConcurrentHashMap<String, (Vector4f) -> Unit>()
 
 internal fun registerColorCallback(controlId: String, callback: (Vector4f) -> Unit) {

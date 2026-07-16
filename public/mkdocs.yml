@@ -20,10 +20,14 @@ nav:
   - Kotlin Overview: kotlin_overview.md
   - Building & Testing: building_and_testing.md
   - Reference:
+    - Linear Algebra:
+      - Guide: linear_algebra.md
+      - Generated Vector API: linear_algebra_api.md
     - FLine Examples: fline_examples.md
     - Visualizers & Controls: visualizers.md
     - Staging area:
       - Staging Overview: staging.md
+      - Mobile Controllers: mobile_controllers.md
       - Automating Field: automating_field.md
       - Field Systems:
         - Apple Vision Pro (WiP): vision.md

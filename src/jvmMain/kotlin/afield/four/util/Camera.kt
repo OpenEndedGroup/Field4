@@ -8,9 +8,9 @@ import afield.stdlib.f
 import afield.stdlib.set
 import afield.stdlib.vec
 import afield.stdlib.x
-import org.joml.Matrix4f
-import org.joml.Quaternionf
-import org.joml.Vector3f
+import afield.stdlib.linalg.Matrix4f
+import afield.stdlib.linalg.Quaternionf
+import afield.stdlib.linalg.Vector3f
 import kotlin.math.abs
 
 class Camera(val renderer: Renderer = fromContext()) {

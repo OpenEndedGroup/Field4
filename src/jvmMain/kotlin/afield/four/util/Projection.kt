@@ -5,7 +5,7 @@ import afield.four.buffers.HasUniform
 import afield.four.modules.fromContext
 import org.ejml.data.Complex_F64
 import org.ejml.simple.SimpleMatrix
-import org.joml.Matrix4f
+import afield.stdlib.linalg.Matrix4f
 import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.ln
@@ -212,10 +212,10 @@ class SuperProjection : HasUniform<Matrix4f> {
 }
 
 // ============================================================================
-// JOML <-> EJML conversion
+// Field linalg <-> EJML conversion
 // ============================================================================
 
-// JOML Matrix4f -> EJML SimpleMatrix (4x4, row-major)
+// Field Matrix4f -> EJML SimpleMatrix (4x4, row-major)
 fun matrix4fToSimple(m: Matrix4f): SimpleMatrix {
     return SimpleMatrix(
         4, 4, true,
@@ -230,7 +230,7 @@ fun matrix4fToSimple(m: Matrix4f): SimpleMatrix {
     )
 }
 
-// EJML SimpleMatrix (4x4) -> JOML Matrix4f
+// EJML SimpleMatrix (4x4) -> Field Matrix4f
 fun simpleToMatrix4f(s: SimpleMatrix): Matrix4f {
     require(s.numRows == 4 && s.numCols == 4) { "Expected 4x4 matrix" }
 
@@ -390,7 +390,7 @@ fun lieInterpolateProjectionEJML(
 // Renormalization helpers (depth + FOV) on Matrix4f
 // ============================================================================
 
-// JOML transform (column-major):
+// Field transform (column-major):
 // x' = m00*x + m10*y + m20*z + m30*w
 // y' = m01*x + m11*y + m21*z + m31*w
 // z' = m02*x + m12*y + m22*z + m32*w

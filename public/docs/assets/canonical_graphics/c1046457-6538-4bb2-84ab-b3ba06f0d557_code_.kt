@@ -1,4 +1,4 @@
-import org.joml.primitives.Rectanglef
+import afield.stdlib.linalg.Rectanglef
 val maxElementCount = splatNum*2
 
 val RADIX = 256

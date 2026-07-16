@@ -1,8 +1,14 @@
 package afield
 
+import afield.stdlib.linalg.Vector2f
+import afield.stdlib.linalg.Vector2fc
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector3fc
+import afield.stdlib.linalg.Vector4f
+import afield.stdlib.linalg.Vector4fc
 import afield.graphics.FLine
 import afield.stdlib.Functions
-import org.joml.*
+import afield.stdlib.linalg.*
 import space.kscience.plotly.Plot
 import java.util.Collections
 import java.util.IdentityHashMap
@@ -59,7 +65,7 @@ object ValuePrinterRegistry {
 }
 
 /**
- * Compact, monochrome visualizer for common Kotlin and JOML types
+ * Compact, monochrome visualizer for common Kotlin and Field linalg types
  */
 object ValueVisualizer {
     private const val MAX_LIST_PREVIEW = 20
@@ -174,12 +180,11 @@ object ValueVisualizer {
         return when (value) {
             // Skip primitives and value types
             is Number, is Boolean, is Char, is String -> false
-            // Skip JOML types (they are value types)
+            // Skip linalg value types (they are value types)
             is Vector2fc, is Vector3fc, is Vector4fc,
             is Vector2dc, is Vector3dc, is Vector4dc,
-            is Quaternionfc, is Quaterniondc,
-            is Matrix2fc, is Matrix3fc, is Matrix4fc,
-            is Matrix2dc, is Matrix3dc, is Matrix4dc -> false
+            is Quaternionfc,
+            is Matrix2fc, is Matrix3fc, is Matrix4fc -> false
             // Check data classes, collections and other objects
             else -> true
         }
@@ -197,7 +202,7 @@ object ValueVisualizer {
         is Char -> "<span style='color: #8f8;'>'${escape(value.toString())}'</span>"
         is String -> formatString(value)
 
-        // JOML vectors
+        // Field vectors
         is Vector2fc -> formatVec2(value)
         is Vector3fc -> formatVec3(value)
         is Vector4fc -> formatVec4(value)
@@ -205,11 +210,10 @@ object ValueVisualizer {
         is Vector3dc -> formatVec3(Vector3f(value.x().toFloat(), value.y().toFloat(), value.z().toFloat()))
         is Vector4dc -> formatVec4(Vector4f(value.x().toFloat(), value.y().toFloat(), value.z().toFloat(), value.w().toFloat()))
 
-        // JOML quaternions
+        // Field quaternions
         is Quaternionfc -> formatQuat(value)
-        is Quaterniondc -> formatQuat(Quaternionf(value.x().toFloat(), value.y().toFloat(), value.z().toFloat(), value.w().toFloat()))
 
-        // JOML matrices
+        // Field matrices
         is Matrix2fc -> formatMatrix(value)
         is Matrix3fc -> formatMatrix(value)
         is Matrix4fc -> formatMatrix(value)

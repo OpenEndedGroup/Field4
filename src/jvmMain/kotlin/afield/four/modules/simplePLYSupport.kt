@@ -2,6 +2,8 @@
 
 package afield.four.modules
 
+import afield.stdlib.linalg.Vector2f
+
 import afield.Box
 import afield.RunsAt
 import afield.four.Renderer
@@ -19,8 +21,8 @@ import com.github.jelmerk.knn.DistanceFunctions
 import com.github.jelmerk.knn.Item
 import com.github.jelmerk.knn.hnsw.HnswIndex
 import kotlinx.coroutines.DelicateCoroutinesApi
-import org.joml.Vector3f
-import org.joml.Vector4f
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector4f
 import org.lwjgl.system.MemoryUtil.memAlloc
 import org.lwjgl.system.MemoryUtil.memAllocInt
 import java.io.BufferedReader
@@ -193,7 +195,7 @@ object PlySupport {
                 m.push["pointSize"] = pointSize
             }
             if (m.push.offsets.containsKey("viewportSize")) {
-                m.push["viewportSize"] = org.joml.Vector2f(viewportWidth, viewportHeight)
+                m.push["viewportSize"] = Vector2f(viewportWidth, viewportHeight)
             }
 
             val vertexData = defaultBuffer {

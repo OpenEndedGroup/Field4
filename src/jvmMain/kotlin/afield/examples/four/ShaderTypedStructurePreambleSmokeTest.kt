@@ -100,7 +100,7 @@ class ShaderTypedStructurePreambleSmokeTest {
             require(preamble.contains("class KaliParamsBuffer(")) { preamble }
             require(preamble.contains("val P: Params")) { preamble }
             require(preamble.contains("val V0: SpatialVar")) { preamble }
-            require(preamble.contains("var noise0 by Structure.FromStructure<org.joml.Vector4f>()")) { preamble }
+            require(preamble.contains("var noise0 by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()")) { preamble }
             require(preamble.contains("fun KaliParamsBufferByteSize(): Long = 464L")) { preamble }
             require(!preamble.contains("const val byteSize")) { preamble }
             require(preamble.contains("fun HasBuffer.asKaliParamsBuffer(): KaliParamsBuffer")) { preamble }
@@ -138,8 +138,8 @@ class ShaderTypedStructurePreambleSmokeTest {
                     ${insert.preambleAfterImports}
 
                     val typedBufferLayoutSmoke = KaliParamsBuffer().apply {
-                        P.noise0 = org.joml.Vector4f(1f, 2f, 3f, 4f)
-                        V0.meta0 = org.joml.Vector4f(5f, 6f, 7f, 8f)
+                        P.noise0 = afield.stdlib.linalg.Vector4f(1f, 2f, 3f, 4f)
+                        V0.meta0 = afield.stdlib.linalg.Vector4f(5f, 6f, 7f, 8f)
                     }
                     val typedBufferNoiseSmoke = typedBufferLayoutSmoke.P.noise0
                     val typedBufferAsHasBufferSmoke: HasBuffer = typedBufferLayoutSmoke

@@ -1,10 +1,10 @@
 package afield.four.util
 
-import org.joml.DualQuaternionf
-import org.joml.Matrix3f
-import org.joml.Quaternionf
-import org.joml.Vector3f
-import org.joml.Vector3fc
+import afield.stdlib.linalg.DualQuaternionf
+import afield.stdlib.linalg.Matrix3f
+import afield.stdlib.linalg.Quaternionf
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector3fc
 import kotlin.math.abs
 
 /**

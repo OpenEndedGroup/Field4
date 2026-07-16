@@ -11,8 +11,8 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.yaml.snakeyaml.LoaderOptions
 import org.yaml.snakeyaml.Yaml
-import org.joml.Vector2f
-import org.joml.Vector3f
+import afield.stdlib.linalg.Vector2f
+import afield.stdlib.linalg.Vector3f
 import java.io.BufferedInputStream
 import java.io.DataInputStream
 import java.io.File

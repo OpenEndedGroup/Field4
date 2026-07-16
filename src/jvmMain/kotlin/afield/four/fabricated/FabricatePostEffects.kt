@@ -6,7 +6,7 @@ import afield.four.modules.fromContext
 import afield.four.targets.RenderToTexture
 import afield.four.texture.TextureSampler
 import afield.stdlib.fromViews
-import org.joml.Vector2f
+import afield.stdlib.linalg.Vector2f
 import java.util.WeakHashMap
 
 /**

@@ -6,20 +6,14 @@
     <title>Field Controllers</title>
     <link rel="icon" href="data:,">
     <link rel="stylesheet" href="/controllers.css">
-    <script defer src="/controllers.js"></script>
+    <script defer src="/controllers.js?v=20260716-no-client-count"></script>
   </head>
   <body>
     <main class="controller-shell" aria-label="Field touch controller">
       <header class="controller-top">
         <div class="status-line">
           <span id="connection">offline</span>
-          <span id="clients">0 clients</span>
           <span id="readout">x 0.500 y 0.500</span>
-        </div>
-        <div class="page-tabs segmented" role="group" aria-label="Controller page">
-          <button type="button" class="segment active" data-page="pad">PAD</button>
-          <button type="button" class="segment" data-page="controls">GROUP</button>
-          <button type="button" class="segment" data-page="outputs">OUTPUTS</button>
         </div>
         <div id="pad-controls" class="controls" aria-label="Controller options">
           <div class="segmented" role="group" aria-label="Value axis">
@@ -56,6 +50,26 @@
         <div id="outputs-controls" class="group-controls"></div>
         <div id="outputs-list" class="phone-outputs"></div>
       </section>
+      <section id="chat-page" class="remote-page controller-page" data-controller-page="chat" aria-label="AI4 chat">
+        <div id="chat-state" class="remote-state">Loading AI4 chat…</div>
+        <div id="chat-frame-host" class="remote-frame-host"></div>
+      </section>
+      <section id="select-page" class="remote-page controller-page" data-controller-page="select" aria-label="Open anything">
+        <div id="select-state" class="remote-state">Choose a box or property</div>
+        <div id="select-frame-host" class="remote-frame-host"></div>
+      </section>
+      <section id="editor-page" class="remote-page controller-page" data-controller-page="editor" aria-label="Selected box editor">
+        <div id="editor-state" class="remote-state">Select a box to edit</div>
+        <div id="editor-frame-host" class="remote-frame-host"></div>
+      </section>
+      <nav class="page-tabs" aria-label="Controller page">
+        <button type="button" class="controller-tab active" data-page="pad"><span aria-hidden="true">◎</span><b>Pad</b></button>
+        <button type="button" class="controller-tab" data-page="controls"><span aria-hidden="true">≡</span><b>Group</b></button>
+        <button type="button" class="controller-tab" data-page="outputs"><span aria-hidden="true">▤</span><b>Outputs</b></button>
+        <button type="button" class="controller-tab" data-page="chat"><span aria-hidden="true">◇</span><b>Chat</b></button>
+        <button type="button" class="controller-tab" data-page="select"><span aria-hidden="true">⌕</span><b>Select</b></button>
+        <button type="button" class="controller-tab" data-page="editor"><span aria-hidden="true">⌨</span><b>Edit</b></button>
+      </nav>
     </main>
   </body>
 </html>

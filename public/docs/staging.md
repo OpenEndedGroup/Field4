@@ -62,6 +62,7 @@ Reusable transcript examples live under `dev_docs/agents/transcripts/`. The most
 
 ## Field systems
 
+- [Mobile Controllers](mobile_controllers.md) turns `/controllers` into a phone-sized remote for live controls, outputs, AI4 chat, Open Anything selection, and Monaco editing.
 - [Fabricate Renderer](fabricate_renderer.md) covers the `StandardRenderer` bundle, scene graph, render planning, frame graph, post stack, glTF import, material response, shadows, and ambient occlusion.
 - [afield.four Graphics](afield_four_graphics.md) exercises the lower-level renderer path using the transcript-driven renderer parent described above.
 - [Ray Tracing Examples](ray_tracing_examples.md) uses the same graphics-context capture route for Vulkan ray tracing examples.

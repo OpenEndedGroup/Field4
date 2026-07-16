@@ -1,6 +1,6 @@
 package afield.four.fabricated
 
-import org.joml.Vector3f
+import afield.stdlib.linalg.Vector3f
 
 /** Pure JVM smoke test for hierarchical transform composition. */
 object FabricateSceneGraphTestMain {

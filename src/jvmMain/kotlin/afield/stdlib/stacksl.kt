@@ -22,9 +22,9 @@ import afield.stacksl.StackSLCompileResult
 import afield.stacksl.StackSLCompiler
 import afield.stacksl.StackSLSeverity
 import afield.stacksl.compileStackSLToGlsl
-import org.joml.Vector4f
-import org.joml.Vector4fc
-import org.joml.primitives.Rectanglef
+import afield.stdlib.linalg.Vector4f
+import afield.stdlib.linalg.Vector4fc
+import afield.stdlib.linalg.Rectanglef
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
 import org.lwjgl.vulkan.VK10.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT

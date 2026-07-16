@@ -303,6 +303,7 @@ fun monacoInit(monaco: dynamic): dynamic {
 
     val fontOptions = js("{}")
     fontOptions.fontFamily = "Iosevka Web"
+    fontOptions.fontWeight = "300"
     fontOptions.fontSize = 15
     fontOptions.fontLigatures = true
     fontOptions.margin = "5px"

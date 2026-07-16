@@ -3,28 +3,41 @@
 package afield.stdlib
 
 import com.github.quickhull3d.QuickHull3D
-import org.joml.*
+import afield.stdlib.linalg.Vector2f
+import afield.stdlib.linalg.Vector2fc
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector3fc
+import afield.stdlib.linalg.Vector4f
+import afield.stdlib.linalg.Vector4fc
+import afield.stdlib.linalg.Quaternionf
+import afield.stdlib.linalg.Quaternionfc
+import afield.stdlib.linalg.Matrix3f
+import afield.stdlib.linalg.Matrix3fc
+import afield.stdlib.linalg.Matrix4f
+import afield.stdlib.linalg.Matrix4fc
+import afield.stdlib.linalg.DualQuaternionf
+import afield.stdlib.linalg.*
 import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Field's 4D vector alias, backed by JOML's mutable [Vector4f].
+ * Field's 4D vector alias, backed by Field's generated mutable [Vector4f].
  *
- * Use `vec(x, y, z, w)` to construct one. JOML methods generally mutate the receiver;
+ * Use `vec(x, y, z, w)` to construct one. These methods generally mutate the receiver;
  * copy first with `Vec4(existing)` when you want to preserve the original value.
  */
 typealias Vec4 = Vector4f
 
 /**
- * Field's 3D vector alias, backed by JOML's mutable [Vector3f].
+ * Field's 3D vector alias, backed by Field's generated mutable [Vector3f].
  *
  * Use `vec(x, y, z)` to construct one. The public `x`, `y`, and `z` components are
- * mutable floats, and most JOML operations mutate the receiver unless you pass a destination vector.
+ * mutable floats, and most operations mutate the receiver unless you pass a destination vector.
  */
 typealias Vec3 = Vector3f
 
 /**
- * Field's 2D vector alias, backed by JOML's mutable [Vector2f].
+ * Field's 2D vector alias, backed by Field's generated mutable [Vector2f].
  *
  * Use `vec(x, y)` to construct one. The public `x` and `y` components are mutable floats;
  * copy with `Vec2(existing)` when you want a non-mutating workflow.
@@ -502,8 +515,21 @@ val Vector4fc.zz: Vector2fc
  * Creates a mutable 2D [Vec2] from numeric coordinates, converting each component to [Float].
  */
 fun vec(x: Number, y: Number) = Vector2f(x.toFloat(), y.toFloat())
+
+/** Creates a mutable 3D [Vec3] from numeric coordinates, converting each component to [Float]. */
 fun vec(x: Number, y: Number, z: Number) = Vector3f(x.toFloat(), y.toFloat(), z.toFloat())
+
+/** Creates a mutable 4D [Vec4] from numeric coordinates, converting each component to [Float]. */
 fun vec(x: Number, y: Number, z: Number, w: Number) = Vector4f(x.toFloat(), y.toFloat(), z.toFloat(), w.toFloat())
+
+/** Copies a 2D vector into a new mutable [Vec2]. */
+fun vec(v: Vector2fc) = Vector2f(v)
+
+/** Copies a 3D vector into a new mutable [Vec3]. */
+fun vec(v: Vector3fc) = Vector3f(v)
+
+/** Copies a 4D vector into a new mutable [Vec4]. */
+fun vec(v: Vector4fc) = Vector4f(v)
 
 fun vec(v: Vec2, z: Number) = Vector3f(v.x, v.y, z.toFloat())
 fun vec(x : Number, yz: Vec2) = Vector3f(x.toFloat(), yz.x, yz.y)
@@ -582,8 +608,8 @@ fun Vector3fc.isNaN() = this.x().isNaN() || this.y().isNaN() || this.z().isNaN()
 fun Vector2fc.isNaN() = this.x().isNaN() || this.y().isNaN()
 
 operator fun Vector3fc.times(v: Quaternionfc): Vector3f = v.transform(this, Vector3f())
-operator fun Vector2fc.times(v: Quaternionfc): Vector2fc = v.transform(Vector3f(this.x(), this.y(), 0f), Vector3f()).xy
-operator fun Vector2dc.times(v: Quaterniondc): Vector2dc = v.transform(Vector3d(this.x(), this.y(), 0.0), Vector3d()).v2
+operator fun Vector2fc.times(v: Quaternionfc): Vector2fc =
+    v.transform(Vector3f(x(), y(), 0f), Vector3f()).xy
 operator fun Vector3fc.times(v: DualQuaternionf): Vector3f = v.transform(this, Vector3f())
 
 

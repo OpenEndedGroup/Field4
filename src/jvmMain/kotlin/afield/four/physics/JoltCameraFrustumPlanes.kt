@@ -3,7 +3,7 @@ package afield.four.physics
 import afield.four.util.Camera
 import afield.stdlib.Vec3
 import afield.stdlib.vec
-import org.joml.Vector3f
+import afield.stdlib.linalg.Vector3f
 import kotlin.math.tan
 
 data class JoltFrustumPlane(

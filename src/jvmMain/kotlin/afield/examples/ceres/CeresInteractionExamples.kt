@@ -9,7 +9,7 @@ import afield.stdlib.ceres.SolveOptions
 import afield.stdlib.ceres.Vec3
 import afield.stdlib.ceres.geometryModel
 import afield.stdlib.ceres.liveGeometry
-import org.joml.Vector3f
+import afield.stdlib.linalg.Vector3f
 import kotlin.math.abs
 import kotlin.math.sqrt
 

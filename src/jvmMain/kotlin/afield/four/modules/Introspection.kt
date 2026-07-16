@@ -194,7 +194,7 @@ enum class PrimitiveType(
         2,
         4,
         VK10.VK_FORMAT_R32G32_SFLOAT,
-        "org.joml.Vector2f",
+        "afield.stdlib.linalg.Vector2f",
         "vec(0,0)",
         "x.get(buffer); buffer.position(buffer.position()+8)"
     ),
@@ -202,7 +202,7 @@ enum class PrimitiveType(
         3,
         4,
         VK10.VK_FORMAT_R32G32B32_SFLOAT,
-        "org.joml.Vector3f",
+        "afield.stdlib.linalg.Vector3f",
         "vec(0,0,0)",
         "x.get(buffer); buffer.position(buffer.position()+12)"
     ),
@@ -210,7 +210,7 @@ enum class PrimitiveType(
         4,
         4,
         VK10.VK_FORMAT_R32G32B32A32_SFLOAT,
-        "org.joml.Vector4f",
+        "afield.stdlib.linalg.Vector4f",
         "vec(0,0,0,1)",
         "x.get(buffer); buffer.position(buffer.position()+16)"
     ),
@@ -224,14 +224,14 @@ enum class PrimitiveType(
         16,
         4,
         -1,
-        "org.joml.Matrix4f",
+        "afield.stdlib.linalg.Matrix4f",
         "mat(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)",
         "x.get(buffer); buffer.position(buffer.position()+16*4)"
     ),
     mat3(
-        9, 4, -1, "org.joml.Matrix3f", "mat(0,0,0,0,0,0,0,0,0)", "x.get(buffer); buffer.position(buffer.position()+9*4)"
+        9, 4, -1, "afield.stdlib.linalg.Matrix3f", "mat(0,0,0,0,0,0,0,0,0)", "x.get(buffer); buffer.position(buffer.position()+9*4)"
     ),
-    mat2(4, 4, -1, "org.joml.Matrix2f", "mat(0,0,0,0)", "x.get(buffer); buffer.position(buffer.position()+2*4)"),
+    mat2(4, 4, -1, "afield.stdlib.linalg.Matrix2f", "mat(0,0,0,0)", "x.get(buffer); buffer.position(buffer.position()+2*4)"),
 
     float16_t(
         1, 2, VK10.VK_FORMAT_R16_SFLOAT,
@@ -240,17 +240,17 @@ enum class PrimitiveType(
     ),
     f16vec2(
         2, 2, VK10.VK_FORMAT_R16G16_SFLOAT,
-        "org.joml.Vector2f", "vec(0,0)",
+        "afield.stdlib.linalg.Vector2f", "vec(0,0)",
         "buffer.putf16(x.x); buffer.putf16(x.y)"
     ),
     f16vec3(
         3, 2, VK10.VK_FORMAT_R16G16B16_SFLOAT,
-        "org.joml.Vector3f", "vec(0,0,0)",
+        "afield.stdlib.linalg.Vector3f", "vec(0,0,0)",
         "buffer.putf16(x.x); buffer.putf16(x.y); buffer.putf16(x.z)"
     ),
     f16vec4(
         4, 2, VK10.VK_FORMAT_R16G16B16A16_SFLOAT,
-        "org.joml.Vector4f", "vec(0,0,0,1)",
+        "afield.stdlib.linalg.Vector4f", "vec(0,0,0,1)",
         "buffer.putf16(x.x); buffer.putf16(x.y); buffer.putf16(x.z); buffer.putf16(x.w)"
     ),
     deviceptr(
@@ -557,29 +557,32 @@ private fun slangPushConstantMembersFromFields(blockName: String, fields: org.js
     return slangMembersFromFields(fields)
 }
 
-private fun slangTypeSizeInBytes(type: Either<PrimitiveType, List<Introspected.Member>>): Int =
-    type.fold({ it.sizeInBytes.toInt() }, { members ->
+/**
+ * Byte size of a member's type: a primitive's size, or the maximum offset+size across nested
+ * members. Shared with `Structure.kt` and `shaders.kt`, which previously each hand-rolled this walk.
+ */
+fun Either<PrimitiveType, List<Introspected.Member>>.layoutSizeInBytes(): Int =
+    fold({ it.sizeInBytes.toInt() }, { members ->
         if (members.isEmpty()) 0 else members.maxOf { member ->
-            member.offset + slangTypeSizeInBytes(member.type)
+            member.offset + member.type.layoutSizeInBytes()
         }
     })
 
-private fun introspectedMemberLayoutSize(member: Introspected.Member): Int =
-    if (member.physicalPointer) PrimitiveType.deviceptr.sizeInBytes.toInt()
-    else slangTypeSizeInBytes(member.type)
+/** Byte size of a member: a device pointer's size if physical-pointer, else its type's layout size. */
+fun Introspected.Member.layoutSizeInBytes(): Int =
+    if (physicalPointer) PrimitiveType.deviceptr.sizeInBytes.toInt() else type.layoutSizeInBytes()
 
-private fun introspectedMembersLayoutSize(members: List<Introspected.Member>): Int {
-    if (members.isEmpty()) return 0
-    return members.maxOf { it.offset + introspectedMemberLayoutSize(it) }
-}
+fun List<Introspected.Member>.membersLayoutSizeInBytes(): Int =
+    if (isEmpty()) 0 else maxOf { it.offset + it.layoutSizeInBytes() }
+
+private fun Int.nearest16() = (this + 15) and -16
 
 private fun slangPushConstantSize(parameter: JSONObject, members: List<Introspected.Member>): Int {
     val binding = parameter.optJSONObject("binding")
     val rawSize = binding?.optInt("size", 0) ?: 0
     val computedSize = if (members.isEmpty()) 0 else {
-        members.maxOf { member -> member.offset + slangTypeSizeInBytes(member.type) }
+        members.maxOf { member -> member.offset + member.type.layoutSizeInBytes() }
     }
-    fun Int.nearest16() = (this + 15) and -16
     return maxOf(rawSize, computedSize).nearest16()
 }
 
@@ -633,7 +636,7 @@ private fun slangStructuredBufferMembers(parameter: JSONObject): List<Introspect
             name = "_data",
             offset = 0,
             type = memberType,
-            arrayStride = slangTypeSizeInBytes(memberType)
+            arrayStride = memberType.layoutSizeInBytes()
         )
     )
 }
@@ -731,7 +734,7 @@ class Introspection private constructor(
                 structureTypes += StructureType(
                     name = declaration.name,
                     members = reflectedMembers,
-                    size = introspectedMembersLayoutSize(reflectedMembers),
+                    size = reflectedMembers.membersLayoutSizeInBytes(),
                     bufferReference = declaration.kind == GlslDeclaredStructureKind.BUFFER_REFERENCE
                 )
             }
@@ -786,7 +789,6 @@ class Introspection private constructor(
                     }
                 }
 
-                fun Int.nearest16() = (this + 15) and -16
                 pushConstants.add(PushConstant(name, size.nearest16(), ty))
             }
         }

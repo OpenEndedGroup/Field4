@@ -307,6 +307,12 @@ placeholder pending the deferred fork:
    head-tracked depth.
 4. **Stereo dock (Tier 1).** Day-one banner feature for stereoscopic film work.
 
+Current shell note (2026-07-15): the existing `shaderSelectionContext` seam now acts as the shared
+UI context promised by the projection model. It still synchronizes selection, and also relays
+ephemeral `shared-ui-intent` messages. The first intent routes **Show Document History** from an
+editor-only WKWebView to its paired no-editor canvas, where the full-width history overlay is
+rendered. The wire/query name remains unchanged for compatibility.
+
 ## Non-goals (explicit)
 
 - **No pinned spatial registration** of native content behind transparent WKWebViews.

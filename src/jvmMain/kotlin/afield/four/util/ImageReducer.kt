@@ -624,7 +624,7 @@ class ImageReducer(
 
         // Execute first pass (bind pipeline and dispatch through the module's render)
         firstPass += "reduce" to firstPassMesh
-        firstPass.current.render(commandBuffer, org.joml.primitives.Rectanglef())
+        firstPass.current.render(commandBuffer, afield.stdlib.linalg.Rectanglef())
 
         // Memory barrier between passes
         computeMemoryBarrier(commandBuffer, intermediateBuffer)
@@ -644,7 +644,7 @@ class ImageReducer(
         secondPassMesh.push.set("totalPixels", totalPixels)
 
         secondPass += "reduce" to secondPassMesh
-        secondPass.current.render(commandBuffer, org.joml.primitives.Rectanglef())
+        secondPass.current.render(commandBuffer, afield.stdlib.linalg.Rectanglef())
 
         // Memory barrier for host read
         hostReadBarrier(commandBuffer, resultBuffer)

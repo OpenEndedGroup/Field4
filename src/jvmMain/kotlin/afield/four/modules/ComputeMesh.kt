@@ -5,6 +5,10 @@ import afield.four.Renderer
 import afield.four.buffers.MissingRefException
 import afield.four.buffers.Structure
 import afield.four.buffers.VulkanBuffer
+import afield.four.buffers.bindPushConstant
+import afield.four.buffers.getBoundPushConstant
+import afield.four.buffers.getPushConstant
+import afield.four.buffers.setPushConstant
 import afield.four.device.CommandBuffer
 import afield.logger.lprintln
 import org.lwjgl.system.MemoryStack
@@ -300,17 +304,16 @@ class ComputeMesh(var renderer: Renderer = fromContext()) : ComputeTask {
     class BoundFromStructure<T> {
         operator fun setValue(inside: ComputeMesh, property: KProperty<*>, any: () -> T) {
             if (inside.push.offsets.isEmpty()) inside.initializePushConstantsFromModule(inside.inside)
-            if (inside.push.offsets.containsKey(property.name))
-                inside.push.bind(property.name, any as Function0<*>)
-            else throw IllegalArgumentException(" can't find ${property.name} in mesh ${inside.inside.current.parameters.name} as a push_constant")
+            inside.push.bindPushConstant(property.name, any) {
+                throw IllegalArgumentException(" can't find ${property.name} in mesh ${inside.inside.current.parameters.name} as a push_constant")
+            }
         }
 
-        @Suppress("UNCHECKED_CAST")
         operator fun getValue(inside: ComputeMesh, property: KProperty<*>): () -> T {
             if (inside.push.offsets.isEmpty()) inside.initializePushConstantsFromModule(inside.inside)
-            if (inside.push.offsets.containsKey(property.name))
-                return inside.push.bindings[property.name] as () -> T
-            else throw IllegalArgumentException(" can't find ${property.name} in mesh ${inside.inside.current.parameters.name} as a push_constant or a UBO structure")
+            return inside.push.getBoundPushConstant(property.name) {
+                throw IllegalArgumentException(" can't find ${property.name} in mesh ${inside.inside.current.parameters.name} as a push_constant or a UBO structure")
+            }
         }
     }
 
@@ -336,15 +339,16 @@ class ComputeMesh(var renderer: Renderer = fromContext()) : ComputeTask {
     class FromStructure<T> {
         operator fun setValue(inside: ComputeMesh, property: KProperty<*>, any: T) {
             if (inside.push.offsets.isEmpty()) inside.initializePushConstantsFromModule(inside.inside)
-            if (inside.push.offsets.containsKey(property.name)) inside.push.set(property.name, any as Any)
-            else throw IllegalArgumentException(" can't find ${property.name} in mesh ${inside.inside.current.parameters.name} as a push_constant")
+            inside.push.setPushConstant(property.name, any) {
+                throw IllegalArgumentException(" can't find ${property.name} in mesh ${inside.inside.current.parameters.name} as a push_constant")
+            }
         }
 
-        @Suppress("UNCHECKED_CAST")
         operator fun getValue(inside: ComputeMesh, property: KProperty<*>): T {
             if (inside.push.offsets.isEmpty()) inside.initializePushConstantsFromModule(inside.inside)
-            if (inside.push.offsets.containsKey(property.name)) return inside.push.get(property.name) as T
-            else throw IllegalArgumentException(" can't find ${property.name} in mesh ${inside.inside.current.parameters.name} as a push_constant or a UBO structure")
+            return inside.push.getPushConstant(property.name) {
+                throw IllegalArgumentException(" can't find ${property.name} in mesh ${inside.inside.current.parameters.name} as a push_constant or a UBO structure")
+            }
         }
     }
 

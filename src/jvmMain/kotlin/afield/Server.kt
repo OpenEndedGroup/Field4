@@ -60,9 +60,9 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
-import org.joml.Vector2f
-import org.joml.Vector3f
-import org.joml.Vector4f
+import afield.stdlib.linalg.Vector2f
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector4f
 import java.awt.Desktop
 import java.io.File
 import java.lang.management.ManagementFactory
@@ -458,10 +458,11 @@ var sessions = ConcurrentHashMap<WebSocketSession, SessionInformation>()
 var documents = ConcurrentHashMap<String, SessionInformation>()
 private val welcomeEventSessions = ConcurrentHashMap.newKeySet<WebSocketSession>()
 
-// Sessions grouped by an arbitrary "selection context" name (Hello.shaderSelectionContext).
-// Every socket sharing a context receives each other's selection changes, so e.g. an
-// editor-only dock and a canvas-only dock can share one selection. Server-mediated because
-// separate WKWebView processes (the visionOS docks) can't share BroadcastChannel/localStorage.
+// Sessions grouped by an arbitrary shared-UI context name (Hello.shaderSelectionContext; the
+// query/field name predates UI intents). Every socket sharing a context receives each other's
+// selection changes and short-lived UI intents, so e.g. an editor-only dock and a canvas-only
+// dock behave like two projections of one workspace. Server-mediated because separate WKWebView
+// processes (the visionOS docks) can't share BroadcastChannel/localStorage.
 private val selectionContextSessions = ConcurrentHashMap<String, MutableSet<WebSocketSession>>()
 
 private fun joinSelectionContext(context: String, session: WebSocketSession) {
@@ -1705,8 +1706,6 @@ class Server {
             Options.doVulkanSDK()
 
             lprintln("info,server", "app directory is $app")
-            System.setProperty("joml.format", "false")
-
             initializeClassCache()
             applyFieldPreferences(currentFieldPreferences())
 
@@ -2519,6 +2518,19 @@ class Server {
                 recordControllerSelection(thisSessionInfo.get(), selection)
                 // Fan the selection out to peers sharing this session's selection context
                 // (never back to the originator, or it would echo).
+                val me = thisSession.get()
+                selectionContextOf(me)?.let { context ->
+                    selectionContextSessions[context]?.forEach { peer ->
+                        if (peer != me) _send(peer, message)
+                    }
+                }
+                Handled.yes
+            })
+
+            handlers["shared-ui-intent"] = mutableSetOf({ message, _ ->
+                // Validate before relaying so a malformed payload cannot poison every peer in the
+                // context. Intents are ephemeral and never applied by the server itself.
+                Json.decodeFromJsonElement<SharedUiIntent>(message.payload!!)
                 val me = thisSession.get()
                 selectionContextOf(me)?.let { context ->
                     selectionContextSessions[context]?.forEach { peer ->

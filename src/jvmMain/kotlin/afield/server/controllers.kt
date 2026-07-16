@@ -38,8 +38,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromJsonElement
-import org.joml.Vector2f
-import org.joml.Vector4f
+import afield.stdlib.linalg.Vector2f
+import afield.stdlib.linalg.Vector4f
 import java.io.File
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols

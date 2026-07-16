@@ -5,6 +5,10 @@ import afield.four.Renderer
 import afield.four.buffers.MissingRefException
 import afield.four.buffers.Structure
 import afield.four.buffers.VertexBuffer
+import afield.four.buffers.bindPushConstant
+import afield.four.buffers.getBoundPushConstant
+import afield.four.buffers.getPushConstant
+import afield.four.buffers.setPushConstant
 import afield.four.device.CommandBuffer
 import afield.four.util.MapOfSequences
 import afield.logger.lprintln
@@ -124,49 +128,37 @@ class Mesh(var renderer: Renderer = fromContext()) {
 
     class BoundFromStructure<T> {
         operator fun setValue(inside: Mesh, property: KProperty<*>, any: () -> T) {
-            if (inside.push.offsets.isEmpty()) {
-                inside.initializePushConstantsFromModule(inside.inside)
+            if (inside.push.offsets.isEmpty()) inside.initializePushConstantsFromModule(inside.inside)
+            inside.push.bindPushConstant(property.name, any) {
+                throw IllegalArgumentException(" can't find ${property.name} in a mesh in this module ${inside.inside.current.parameters.name} as a push_constant")
             }
-            if (inside.push.offsets.containsKey(property.name))
-                inside.push.bind(property.name, any as Function0<*>)
-            else throw IllegalArgumentException(" can't find ${property.name} in a mesh in this module ${inside.inside.current.parameters.name} as a push_constant")
         }
 
         operator fun getValue(inside: Mesh, property: KProperty<*>): () -> T {
-            if (inside.push.offsets.isEmpty()) {
-                inside.initializePushConstantsFromModule(inside.inside)
+            if (inside.push.offsets.isEmpty()) inside.initializePushConstantsFromModule(inside.inside)
+            return inside.push.getBoundPushConstant(property.name) {
+                throw IllegalArgumentException(" can't find ${property.name} in a mesh in this module ${inside.inside.current.parameters.name} as a push_constant or a UBO structure")
             }
-            if (inside.push.offsets.containsKey(property.name)) {
-                @Suppress("UNCHECKED_CAST")
-                val binding = inside.push.bindings[property.name] as () -> T
-                return binding
-            } else throw IllegalArgumentException(" can't find ${property.name} in a mesh in this module ${inside.inside.current.parameters.name} as a push_constant or a UBO structure")
         }
     }
 
 
     class FromStructure<T> {
         operator fun setValue(inside: Mesh, property: KProperty<*>, any: T) {
-            if (inside.push.offsets.isEmpty()) {
-                inside.initializePushConstantsFromModule(inside.inside)
+            if (inside.push.offsets.isEmpty()) inside.initializePushConstantsFromModule(inside.inside)
+            inside.push.setPushConstant(property.name, any) {
+                throw IllegalArgumentException(" can't find ${property.name} in a mesh in this module ${inside.inside.current.parameters.name} as a push_constant")
             }
-
-            if (inside.push.offsets.containsKey(property.name))
-                inside.push.set(property.name, any as Any)
-            else throw IllegalArgumentException(" can't find ${property.name} in a mesh in this module ${inside.inside.current.parameters.name} as a push_constant")
-
         }
 
         operator fun getValue(inside: Mesh, property: KProperty<*>): T /* really Union[T, () -> T] */ {
-            if (inside.push.offsets.isEmpty()) {
-                inside.initializePushConstantsFromModule(inside.inside)
-            }
-            if (inside.push.offsets.containsKey(property.name))
-                return inside.push.get(property.name)
+            if (inside.push.offsets.isEmpty()) inside.initializePushConstantsFromModule(inside.inside)
+            return inside.push.getPushConstant(property.name) {
 //            else if (property.name in inside.inside.current.liveUniformStructures) {
 //                return inside.inside.current.liveUniformStructures[property.name] as T
 //            }
-            else throw IllegalArgumentException(" can't find ${property.name} in a mesh in this module ${inside.inside.current.parameters.name} as a push_constant or a UBO structure")
+                throw IllegalArgumentException(" can't find ${property.name} in a mesh in this module ${inside.inside.current.parameters.name} as a push_constant or a UBO structure")
+            }
         }
     }
 

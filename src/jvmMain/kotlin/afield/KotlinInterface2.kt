@@ -3027,7 +3027,6 @@ class KotlinInterface2(
             val whitelistedPrefixes = setOf(
                 "kotlin.",
                 "afield.",
-                "org.joml.",
                 "Int", "Long", "Short", "Byte",
                 "Float", "Double",
                 "Boolean", "Char", "String",

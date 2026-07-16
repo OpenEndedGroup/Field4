@@ -2,7 +2,7 @@ package afield.four.physics
 
 
 import afield.stdlib.Vec3
-import org.joml.Vector3f
+import afield.stdlib.linalg.Vector3f
 import java.io.File
 import java.util.TreeMap
 import kotlin.math.max

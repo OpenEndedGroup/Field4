@@ -1013,6 +1013,12 @@ import afield.stdlib.Vec2
 import afield.stdlib.Vec3
 import afield.stdlib.Vec4
 import afield.stdlib.Quat
+import afield.stdlib.linalg.Vector2f
+import afield.stdlib.linalg.Vector2fc
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector3fc
+import afield.stdlib.linalg.Vector4f
+import afield.stdlib.linalg.Vector4fc
 import afield.Box
 import afield.four.util.*
 import afield.graphics.*
@@ -1022,7 +1028,9 @@ import afield.four.targets.*
 import afield.four.buffers.*
 import afield.four.texture.*
 import afield.graphics.*
-import org.joml.*
+import afield.stdlib.linalg.*
+import afield.stdlib.linalg.arena.*
+import afield.stdlib.linalg.storage.*
 import kotlin.math.*
 import kotlinx.coroutines.yield
 import kotlinx.coroutines.runBlocking

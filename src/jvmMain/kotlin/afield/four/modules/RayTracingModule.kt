@@ -6,7 +6,11 @@ import afield.four.buffers.BufferParameters
 import afield.four.buffers.MissingRefException
 import afield.four.buffers.Structure
 import afield.four.buffers.VulkanBuffer
+import afield.four.buffers.bindPushConstant
 import afield.four.buffers.buffer
+import afield.four.buffers.getBoundPushConstant
+import afield.four.buffers.getPushConstant
+import afield.four.buffers.setPushConstant
 import afield.four.device.CommandBuffer
 import afield.four.device.DescriptorSetLayout
 import afield.four.device.UpdatesDescriptorSet
@@ -20,7 +24,7 @@ import afield.four.util.FIELD_PROBE_BUFFER_NAME
 import afield.four.util.vkCheck
 import afield.logger.lprintln
 import afield.stdlib.f
-import org.joml.primitives.Rectanglef
+import afield.stdlib.linalg.Rectanglef
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 import org.lwjgl.vulkan.KHRAccelerationStructure.*
@@ -777,31 +781,32 @@ class RayTracingDispatch(var width: Int, var height: Int = 1, var depth: Int = 1
     class BoundFromStructure<T> {
         operator fun setValue(inside: RayTracingDispatch, property: KProperty<*>, any: () -> T) {
             if (inside.push.offsets.isEmpty()) inside.initializePushConstantsFromModule(inside.inside)
-            if (inside.push.offsets.containsKey(property.name)) inside.push.bind(property.name, any as Function0<*>)
-            else throw IllegalArgumentException("can't find ${property.name} as a ray tracing push_constant")
+            inside.push.bindPushConstant(property.name, any) {
+                throw IllegalArgumentException("can't find ${property.name} as a ray tracing push_constant")
+            }
         }
 
         operator fun getValue(inside: RayTracingDispatch, property: KProperty<*>): () -> T {
             if (inside.push.offsets.isEmpty()) inside.initializePushConstantsFromModule(inside.inside)
-            if (inside.push.offsets.containsKey(property.name)) {
-                @Suppress("UNCHECKED_CAST")
-                val binding = inside.push.bindings[property.name] as () -> T
-                return binding
-            } else throw IllegalArgumentException("can't find ${property.name} as a ray tracing push_constant")
+            return inside.push.getBoundPushConstant(property.name) {
+                throw IllegalArgumentException("can't find ${property.name} as a ray tracing push_constant")
+            }
         }
     }
 
     class FromStructure<T> {
         operator fun setValue(inside: RayTracingDispatch, property: KProperty<*>, any: T) {
             if (inside.push.offsets.isEmpty()) inside.initializePushConstantsFromModule(inside.inside)
-            if (inside.push.offsets.containsKey(property.name)) inside.push.set(property.name, any as Any)
-            else throw IllegalArgumentException("can't find ${property.name} as a ray tracing push_constant")
+            inside.push.setPushConstant(property.name, any) {
+                throw IllegalArgumentException("can't find ${property.name} as a ray tracing push_constant")
+            }
         }
 
         operator fun getValue(inside: RayTracingDispatch, property: KProperty<*>): T {
             if (inside.push.offsets.isEmpty()) inside.initializePushConstantsFromModule(inside.inside)
-            if (inside.push.offsets.containsKey(property.name)) return inside.push.get(property.name)
-            else throw IllegalArgumentException("can't find ${property.name} as a ray tracing push_constant")
+            return inside.push.getPushConstant(property.name) {
+                throw IllegalArgumentException("can't find ${property.name} as a ray tracing push_constant")
+            }
         }
     }
 

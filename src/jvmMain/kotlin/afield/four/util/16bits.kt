@@ -1,8 +1,8 @@
 package afield.four.util
 
-import org.joml.Vector2f
-import org.joml.Vector3f
-import org.joml.Vector4f
+import afield.stdlib.linalg.Vector2f
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector4f
 import java.nio.ByteBuffer
 
 data class Vec2h(val v: Vector2f)
@@ -43,7 +43,7 @@ data class Vec8h(val lo: Vector4f, val hi: Vector4f) {
     }
 }
 
-// Convenient ".half" views on JOML vectors.
+// Convenient ".half" views on Field vectors.
 val Vector2f.half: Vec2h get() = Vec2h(this)
 val Vector3f.half: Vec3h get() = Vec3h(this)
 val Vector4f.half: Vec4h get() = Vec4h(this)

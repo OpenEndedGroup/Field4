@@ -33,6 +33,8 @@
     background: rgba(var(--field-white-rgb), 0.02);
     scrollbar-width: thin;
     scrollbar-color: var(--field-scrollbar-thumb) transparent;
+    -webkit-user-select: text;
+    user-select: text;
 }
 
 .afield-suggest-section {

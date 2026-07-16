@@ -25,10 +25,10 @@ import afield.stdlib._moduleHere
 import afield.stdlib.fromViews
 import afield.stdlib.macro_moduleHereWithDefaultShaders
 import kotlinx.coroutines.DelicateCoroutinesApi
-import org.joml.Matrix4f
-import org.joml.Quaternionf
-import org.joml.Vector3f
-import org.joml.Vector4f
+import afield.stdlib.linalg.Matrix4f
+import afield.stdlib.linalg.Quaternionf
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector4f
 import org.lwjgl.assimp.*
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil.*

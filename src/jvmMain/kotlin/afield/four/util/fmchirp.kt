@@ -9,7 +9,7 @@ import afield.stdlib.LeastSquaresOptions
 import afield.stdlib.LeastSquaresResult
 import afield.stdlib.leastSquares
 import afield.templatesRegistration
-import org.joml.Vector4f
+import afield.stdlib.linalg.Vector4f
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.exp

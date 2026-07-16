@@ -10,10 +10,10 @@ import org.apache.commons.math4.legacy.optim.univariate.BrentOptimizer
 import org.apache.commons.math4.legacy.optim.univariate.SearchInterval
 import org.apache.commons.math4.legacy.optim.univariate.UnivariateObjectiveFunction
 import org.apache.commons.math4.legacy.optim.univariate.UnivariatePointValuePair
-import org.joml.Vector4d
-import org.joml.minus
-import org.joml.plus
-import org.joml.times
+import afield.stdlib.linalg.Vector4d
+import afield.stdlib.linalg.minus
+import afield.stdlib.linalg.plus
+import afield.stdlib.linalg.times
 import java.awt.BasicStroke
 import java.awt.Shape
 import java.awt.geom.*
@@ -404,7 +404,7 @@ class FLinesAndJavaShapes {
                 val p3: Vec3 = (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).to
 
                 val c = CubicSegment3(p0, p1, p2, p3)
-                return Vec3(normal()).normalize().mul(c.R(alpha))
+                return Vec3(requireNotNull(normal())).normalize().mul(c.R(alpha))
             } else return null
         }
 
@@ -434,7 +434,9 @@ class FLinesAndJavaShapes {
 
             if (t1 == null && t2 == null) return null
 
-            val t: Vec3 = Vec3(if (t1 == null) t2 else t1).add(if (t2 == null) t1 else t2).mul(0.5f)
+            val t: Vec3 = Vec3(requireNotNull(if (t1 == null) t2 else t1))
+                .add(requireNotNull(if (t2 == null) t1 else t2))
+                .mul(0.5f)
             return if (t.isNaN()) null else t
         }
 
@@ -451,7 +453,9 @@ class FLinesAndJavaShapes {
 
             if (t1 == null && t2 == null) return null
 
-            val t: Vec3 = Vec3(if (t1 == null) t2 else t1).add(if (t2 == null) t1 else t2).mul(0.5f)
+            val t: Vec3 = Vec3(requireNotNull(if (t1 == null) t2 else t1))
+                .add(requireNotNull(if (t2 == null) t1 else t2))
+                .mul(0.5f)
             return if (t.isNaN()) null else t
         }
 

@@ -5,7 +5,7 @@ import afield.stdlib.Quat
 import afield.stdlib.Vec3
 import afield.stdlib.color
 import afield.stdlib.vec
-import org.joml.Vector4f
+import afield.stdlib.linalg.Vector4f
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos

@@ -6,8 +6,8 @@ import afield.four.modules.GltfSupport.MeshBuffers
 import afield.four.modules.GltfSupport.MeshInstance
 import afield.four.modules.GltfSupport.TRS
 import afield.four.modules.GltfSupport.TextureSlot
-import org.joml.Matrix4f
-import org.joml.Vector3f
+import afield.stdlib.linalg.Matrix4f
+import afield.stdlib.linalg.Vector3f
 import org.lwjgl.assimp.AIAnimation
 import org.lwjgl.assimp.AIColor4D
 import org.lwjgl.assimp.AIMaterial
@@ -422,7 +422,7 @@ private fun toTrs(m: AIMatrix4x4): TRS {
         m.a4(), m.b4(), m.c4(), m.d4()
     )
     val t = Vector3f()
-    val r = org.joml.Quaternionf()
+    val r = afield.stdlib.linalg.Quaternionf()
     val s = Vector3f()
     mat.getTranslation(t)
     mat.getUnnormalizedRotation(r)
@@ -460,7 +460,7 @@ private fun textureTypeName(type: Int): String = when (type) {
 }
 
 private fun vec3(v: Vector3f): String = "(%.3f, %.3f, %.3f)".format(v.x, v.y, v.z)
-private fun quat(q: org.joml.Quaternionf): String =
+private fun quat(q: afield.stdlib.linalg.Quaternionf): String =
     "(%.3f, %.3f, %.3f, %.3f)".format(q.x, q.y, q.z, q.w)
 
 private fun fmtBytes(n: Long): String {

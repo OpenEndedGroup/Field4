@@ -304,6 +304,25 @@ regenerated preamble both survive.
 - **EDN vs YAML quoting.** `metadata.edn` is EDN (Clojure data); transcripts are YAML.
   The `\"` you sometimes see in logs is normal JSON log escaping, not corruption —
   `--file` round-trips code cleanly.
+- **A freshly `create`d box only has the *document root* as its ancestor — that is not
+  enough for `fromContext()` or a bare `prop<T>` name to resolve.** `create` connects
+  under root (see above), but a renderer's `prop<Window>(window)`/`prop<Renderer>(renderer)`
+  only propagates to boxes connected **beneath the renderer box specifically** (parent,
+  grandparent via a chain, etc. — sibling-under-root does not count). Two ways this
+  bites you, both fixed by adding the `connect` op *before* you `launch`:
+  - A helper that takes its context implicitly (`computeModuleHere {}`, `meshModuleHere {}`,
+    `rayTracingModuleHere {}` — these call `fromContext<Renderer>()` under the hood) fails
+    with `` must pass in a value for context parameter afield.four.Renderer `` if the box
+    isn't connected under a renderer yet.
+  - Code that reads a bare name a parent declared with `prop<T>(name)` (e.g. `renderer`
+    itself, or `outputPositions`) fails with a plain `` Unresolved reference 'renderer' ``
+    (or whatever the name is) for the same reason — the preamble that would inject that
+    accessor is only regenerated/propagated once the connection exists.
+  Fix: `connect: { parent: <renderer-box>, child: <this-box> }` before the `launch`, per
+  [Worked example B](#worked-example-b--afieldfour-vulkan-renderer--compute--draw). Don't
+  assume a `fromContext()`-based helper "does the wiring for you" just because it looks
+  automatic from the call site — it still walks the box graph, so the graph has to be
+  built first.
 
 ---
 
@@ -375,8 +394,8 @@ operations:
   - create: { box: tb_draw,    name: draw,    properties: { code: |
         // reads outputPositions, draws the particles
         println("draw launched") } }
-  - connect: { parent: tb_renderer, child: tb_compute }
-  - connect: { parent: tb_renderer, child: tb_draw }
+  - connect: { parent: tb_renderer, child: tb_compute }  # draw is chained under compute, not
+  - connect: { parent: tb_compute,  child: tb_draw }     # a second direct child of the renderer
   - launch:  { box: tb_renderer }      # renderer first — it owns the loop
   - await:   { wait: pending }
   - launch:  { box: tb_compute }       # publishes outputPositions

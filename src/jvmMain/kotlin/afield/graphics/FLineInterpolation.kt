@@ -1,7 +1,7 @@
 package afield.graphics
 
 import afield.stdlib.*
-import org.joml.Quaternionf
+import afield.stdlib.linalg.Quaternionf
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.floor

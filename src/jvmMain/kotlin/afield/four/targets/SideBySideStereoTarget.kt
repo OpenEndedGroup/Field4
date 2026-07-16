@@ -1,5 +1,8 @@
 package afield.four.targets
 
+import afield.stdlib.linalg.Matrix4f
+import afield.stdlib.linalg.Quaternionf
+
 import afield.Rect
 import afield.four.Renderer
 import afield.four.device.CommandBuffer
@@ -16,7 +19,10 @@ import afield.four.util.MouseEvents
 import afield.four.util.Options
 import afield.stdlib.times
 import afield.stdlib.vec
-import org.joml.*
+import afield.stdlib.linalg.Vector2f
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector4f
+import afield.stdlib.linalg.*
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VK13.*

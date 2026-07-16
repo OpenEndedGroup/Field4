@@ -13,9 +13,9 @@ import afield.stdlib.Vec3
 import afield.thisSessionInfo
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.yield
-import org.joml.Matrix4f
-import org.joml.Vector3f
-import org.joml.Vector4f
+import afield.stdlib.linalg.Matrix4f
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector4f
 import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 import java.awt.image.BufferedImage
 import java.io.File

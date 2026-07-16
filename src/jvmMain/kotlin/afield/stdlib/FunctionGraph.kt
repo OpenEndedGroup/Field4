@@ -4,6 +4,7 @@ import afield.graphics.FLine
 import afield.graphics.FLineMap
 import java.util.IdentityHashMap
 import kotlin.math.max
+import kotlin.math.min
 
 /**
  * Structural metadata for [Functions.Fn].
@@ -270,7 +271,8 @@ fun Functions.Fn.graphSvg(
     nodeHeight: Double = 54.0,
     xGap: Double = 215.0,
     yGap: Double = 84.0,
-    maxDepth: Int = 10
+    maxDepth: Int = 10,
+    sparklines: Boolean = true
 ): String {
     data class Tree(
         val fn: Functions.Fn,
@@ -411,6 +413,72 @@ fun Functions.Fn.graphSvg(
         }
     }
 
+    val fieldSpark = "#5bd6c0"
+
+    // A miniature plot of the sub-expression rooted at this node, drawn as a faint
+    // waveform behind the card's labels. We evaluate the node (operator + all of its
+    // parameters) across its own domain — or the unit interval when the domain is
+    // unbounded — so the card shows the shape produced *at that point* in the graph.
+    // Constants carry no shape worth plotting, so they are skipped.
+    fun sparklineMarkup(tree: Tree): String {
+        if (!sparklines) return ""
+        val node = tree.fn.graphNode()
+        if ("number" in node.tags || node.op == "const") return ""
+
+        val domain = tree.fn.domain
+        val sampleDomain = if (domain.isFinite) domain else Functions.Domain.UNIT
+        if (sampleDomain._isEmpty) return ""
+
+        val sampleCount = 56
+        val values = DoubleArray(sampleCount)
+        var lo = Double.POSITIVE_INFINITY
+        var hi = Double.NEGATIVE_INFINITY
+        var finite = 0
+        for (i in 0 until sampleCount) {
+            val alpha = i.toDouble() / (sampleCount - 1)
+            val x = sampleDomain.min + sampleDomain.length * alpha
+            val v = try { tree.fn.eval(x) } catch (_: Throwable) { Double.NaN }
+            values[i] = v
+            if (v.isFinite()) {
+                lo = min(lo, v)
+                hi = max(hi, v)
+                finite++
+            }
+        }
+        if (finite < 2) return ""
+
+        val padX = 10.0
+        val padY = 7.0
+        val x0 = tree.x + padX
+        val bandW = nodeWidth - padX * 2.0
+        val yTop = tree.y + padY
+        val bandH = nodeHeight - padY * 2.0
+        val range = hi - lo
+
+        fun px(i: Int): Double = x0 + bandW * (i.toDouble() / (sampleCount - 1))
+        fun py(v: Double): Double {
+            val t = if (range <= 1e-12) 0.5 else ((v - lo) / range).coerceIn(0.0, 1.0)
+            return yTop + bandH * (1.0 - t)
+        }
+
+        val path = StringBuilder()
+        var pen = false
+        for (i in 0 until sampleCount) {
+            val v = values[i]
+            if (!v.isFinite()) { pen = false; continue }
+            path.append(if (pen) "L " else "M ").append(px(i)).append(' ').append(py(v)).append(' ')
+            pen = true
+        }
+
+        return buildString {
+            if (lo < 0.0 && hi > 0.0) {
+                val zy = py(0.0)
+                append("""<line x1="$x0" y1="$zy" x2="${x0 + bandW}" y2="$zy" stroke="$fieldSpark" stroke-width="0.6" stroke-opacity="0.16" stroke-dasharray="2 3"/>""")
+            }
+            append("""<path d="${path.toString().trim()}" fill="none" stroke="$fieldSpark" stroke-width="1.2" stroke-opacity="0.4" stroke-linejoin="round" stroke-linecap="round"/>""")
+        }
+    }
+
     val edges = StringBuilder()
     val nodeMarkup = StringBuilder()
     fun emit(tree: Tree) {
@@ -433,6 +501,7 @@ fun Functions.Fn.graphSvg(
         val labelBaseline = tree.y + 19.0
         val detailBaseline = tree.y + nodeHeight - 10.0
         nodeMarkup.append("""<rect x="${tree.x}" y="${tree.y}" width="$nodeWidth" height="$nodeHeight" rx="6" fill="$fill" stroke="$stroke" stroke-width="1.2"/>""")
+        nodeMarkup.append(sparklineMarkup(tree))
         nodeMarkup.append("""<text x="${tree.x + 12.0}" y="$labelBaseline" font-size="13">${mainLabel(tree)}</text>""")
         nodeMarkup.append("""<text x="${tree.x + 12.0}" y="$detailBaseline" font-size="11">${detailMarkup(tree.fn)}</text>""")
     }

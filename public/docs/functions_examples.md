@@ -3348,11 +3348,11 @@ sin/**/[tag=number][value>0.2] => = 0.5
           <div style="display:grid; grid-template-columns:1fr; gap:14px; align-items:start;">
             <div>
               <div style="font-weight:700; margin:0 0 8px 2px;">before</div>
-              <div style="overflow:hidden; border:1px solid #202020;">${base.graphSvg(width = 1060, nodeWidth = 154.0, nodeHeight = 46.0, xGap = 176.0, yGap = 62.0, maxDepth = 5)}</div>
+              <div style="overflow:hidden; border:1px solid #202020;">${base.graphSvg(width = 1060, nodeWidth = 186.0, nodeHeight = 52.0, xGap = 200.0, yGap = 70.0, maxDepth = 5)}</div>
             </div>
             <div>
               <div style="font-weight:700; margin:0 0 8px 2px;">after</div>
-              <div style="overflow:hidden; border:1px solid #202020;">${changed.graphSvg(width = 1060, nodeWidth = 154.0, nodeHeight = 46.0, xGap = 176.0, yGap = 62.0, maxDepth = 5)}</div>
+              <div style="overflow:hidden; border:1px solid #202020;">${changed.graphSvg(width = 1060, nodeWidth = 186.0, nodeHeight = 52.0, xGap = 200.0, yGap = 70.0, maxDepth = 5)}</div>
             </div>
           </div>
         </div>
@@ -3362,6 +3362,8 @@ sin/**/[tag=number][value>0.2] => = 0.5
 ```
 
 The first rule matches a `saw` occurrence whose parent is any node and whose grandparent is `sin`. The second rule finds numeric nodes anywhere under a `sin` and changes values greater than `0.2` to `0.5`. The graph view is a better first read than text here: the operation swap and constant rewrites become visible as topology and labels.
+
+Each non-constant card also carries a **sparkline** — a faint teal waveform drawn behind the labels that samples the sub-expression rooted at that node (the operator together with all of its parameters) across its own domain, falling back to the unit interval when the domain is unbounded. A dashed baseline marks zero whenever the signal crosses it. Constants are left blank because a flat line carries no shape worth plotting. Reading a rewrite becomes doubly concrete: the topology tells you *what* changed, and the sparkline at each node shows *how the shape at that point changed* as a result. Pass `sparklines = false` to `graphSvg(...)` to suppress the waveforms and get bare cards.
 
 ### The interactive loop: compile, preview, commit
 

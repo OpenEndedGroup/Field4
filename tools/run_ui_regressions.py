@@ -82,8 +82,8 @@ lines(staticLine, w = 360.0, h = 220.0, fitToSize = true)
 """
 
 CONTROLLER_CONTROL_GROUP_SNIPPET = """\
-import org.joml.Vector2f
-import org.joml.Vector4f
+import afield.stdlib.linalg.Vector2f
+import afield.stdlib.linalg.Vector4f
 
 var gain = 0.35
 var enabled = true
@@ -1098,6 +1098,156 @@ try {
 }
 """
 
+CONTROLLERS_MOBILE_WORKSPACE_JS = r"""
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const waitFor = async (predicate, timeoutMs = 20000) => {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const value = predicate();
+    if (value) return value;
+    await delay(100);
+  }
+  return predicate();
+};
+const boxes = [...document.querySelectorAll(".box")];
+const box = (window.selectedList && window.selectedList[0]) || boxes.find(node => String(node.textContent || "").includes("MobileControllerRegression")) || boxes.at(-1);
+const uid = box && (box.uid || box.getAttribute("uid") || box.getAttribute("data-uid") || "");
+if (!uid) return { ok: false, reason: "selected mobile controller box missing" };
+
+const url = new URL(window.location.href);
+const documentName = url.searchParams.get("file") || "scratch";
+const controllerQuery = new URLSearchParams({ page: "select", file: documentName });
+if (url.searchParams.get("scratch")) controllerQuery.set("scratch", url.searchParams.get("scratch"));
+if (url.searchParams.get("sessionKey")) controllerQuery.set("sessionKey", url.searchParams.get("sessionKey"));
+document.getElementById("__ui_regression_mobile_controller")?.remove();
+const frame = document.createElement("iframe");
+frame.id = "__ui_regression_mobile_controller";
+frame.src = `/controllers?${controllerQuery.toString()}`;
+frame.style.cssText = [
+  "position:fixed", "left:18px", "top:18px", "width:390px", "height:844px",
+  "z-index:2147483000", "border:0", "outline:1px solid rgba(72,201,255,.8)", "background:#050505",
+  "box-shadow:0 18px 60px rgba(0,0,0,.72)"
+].join(";");
+document.body.appendChild(frame);
+await new Promise(resolve => { frame.addEventListener("load", resolve, { once: true }); setTimeout(resolve, 5000); });
+
+const controllerDoc = frame.contentDocument;
+const controllerWin = frame.contentWindow;
+const workspace = await waitFor(() => controllerDoc?.querySelector(".workspace-frame"));
+const workspaceWin = workspace && workspace.contentWindow;
+const palette = await waitFor(() => workspaceWin?.document?.querySelector(".afield-palette"));
+const paletteInput = palette?.querySelector(".afield-palette-input");
+const selectedUid = workspaceWin?.selectedList?.[0]?.uid || "";
+paletteInput?.focus();
+if (typeof workspaceWin?.selectionContextChanged === "function") workspaceWin.selectionContextChanged();
+await delay(400);
+const selectPageStayedOpen = controllerDoc?.querySelector('[data-controller-page="select"]')?.classList.contains("active") === true;
+const paletteStayedOpen = !!palette && workspaceWin.getComputedStyle(palette).display !== "none";
+paletteInput.value = "MobileControllerRegression";
+paletteInput.dispatchEvent(new Event("input", { bubbles: true }));
+const paletteInputAcceptedText = paletteInput.value === "MobileControllerRegression";
+const phone390 = {
+  width: controllerDoc?.documentElement.clientWidth || 0,
+  height: controllerDoc?.documentElement.clientHeight || 0,
+  tabs: controllerDoc?.querySelectorAll(".controller-tab").length || 0,
+  paletteVisible: !!palette && workspaceWin.getComputedStyle(palette).display !== "none",
+  paletteInputFont: paletteInput ? parseFloat(workspaceWin.getComputedStyle(paletteInput).fontSize) : 0,
+  selectedUid,
+  selectPageStayedOpen,
+  paletteStayedOpen,
+  paletteInputAcceptedText,
+};
+
+const resultRow = await waitFor(() => [...palette.querySelectorAll(".afield-palette-row")]
+  .find(row => String(row.textContent || "").includes("MobileControllerRegression")));
+resultRow?.click();
+const selectionResultActivatedEditor = await waitFor(() =>
+  controllerDoc?.querySelector('[data-page="editor"]')?.classList.contains("active") === true &&
+  workspaceWin.getComputedStyle(palette).display === "none");
+const workspaceAfterSelection = controllerDoc?.querySelector("#select-frame-host .workspace-frame");
+const workspaceFramePreserved = workspaceAfterSelection === workspace && workspaceAfterSelection?.contentWindow === workspaceWin;
+const selectedResultSettled = await waitFor(() => workspaceWin?.selectedList?.[0]?.uid === uid);
+const editorModel = await waitFor(() => {
+  const model = workspaceWin?.globalEditor?.getModel?.();
+  return model?.getValue?.().includes("mobile controller editor") ? model : null;
+});
+const editorValue = editorModel?.getValue?.() || "";
+const editorVisible = !!workspaceWin?.document?.querySelector(".monaco-editor");
+
+controllerDoc?.querySelector('[data-page="chat"]')?.click();
+const chatFrame = await waitFor(() => controllerDoc?.querySelector("#chat-frame-host .remote-frame"));
+const chatWin = chatFrame && chatFrame.contentWindow;
+const chatRoot = await waitFor(() => chatWin?.document?.querySelector("#controller-chat-root"));
+const chatReady = await waitFor(() => {
+  const heading = chatRoot?.querySelector(".controller-chat-heading")?.textContent || "";
+  const container = chatRoot?.querySelector(".controller-chat-container");
+  return heading.includes("MobileControllerRegression") && container && typeof chatWin?.aiChatUpdate === "function" ? container : null;
+});
+const chatContainer = chatReady || chatRoot?.querySelector(".controller-chat-container");
+const fixtureHistory = [
+  "<<you>>", "Please update the shader on this box.",
+  "<<progress>>", "Using EditFileRequest", '{"file":"fragment","newContentChars":312,"newContentPreview":"#version 450"}',
+  "<<progress>>", "CompileKotlin finished", "success=true diagnostics=0",
+  "<<ai>>", "Updated `fragment` and verified the change."
+].join("\n");
+if (chatWin?.aiChatUpdate && chatContainer) chatWin.aiChatUpdate(chatContainer, uid, fixtureHistory);
+const editSummary = await waitFor(() => chatRoot?.querySelector('.ai-chat-progress[data-kind="edit"]'));
+const chatTextarea = await waitFor(() => chatRoot?.querySelector(".ai-chat-input textarea"));
+const sendButton = chatRoot?.querySelector(".ai-chat-input button");
+
+frame.style.width = "430px";
+frame.style.height = "932px";
+await delay(150);
+const phone430 = {
+  width: controllerDoc?.documentElement.clientWidth || 0,
+  height: controllerDoc?.documentElement.clientHeight || 0,
+  navBottom: Math.round(controllerDoc?.querySelector(".page-tabs")?.getBoundingClientRect().bottom || 0),
+};
+
+frame.style.width = "390px";
+frame.style.height = "430px";
+await delay(180);
+chatTextarea?.focus();
+const inputRect = chatTextarea?.getBoundingClientRect();
+const navRect = controllerDoc?.querySelector(".page-tabs")?.getBoundingClientRect();
+const compact = {
+  width: controllerDoc?.documentElement.clientWidth || 0,
+  height: controllerDoc?.documentElement.clientHeight || 0,
+  navVisible: !!navRect && navRect.bottom <= 431 && navRect.top >= 0,
+  inputVisible: !!inputRect && inputRect.bottom <= (chatWin?.innerHeight || 0) + 1 && inputRect.top >= 0,
+};
+
+frame.style.width = "390px";
+frame.style.height = "844px";
+await delay(180);
+
+const result = {
+  uid,
+  phone390,
+  phone430,
+  compact,
+  selectionResultActivatedEditor: !!selectionResultActivatedEditor,
+  workspaceFramePreserved,
+  selectedResultSettled: !!selectedResultSettled,
+  editorVisible,
+  editorHasFixture: editorValue.includes("mobile controller editor"),
+  chatHeading: chatRoot?.querySelector(".controller-chat-heading")?.textContent || "",
+  chatHasInput: !!chatTextarea,
+  chatHasSend: !!sendButton && chatWin.getComputedStyle(sendButton).display !== "none",
+  editSummary: editSummary?.querySelector("summary")?.textContent?.trim() || "",
+  editOpen: !!editSummary?.open,
+};
+result.ok = phone390.width === 390 && phone390.height === 844 && phone390.tabs === 6 &&
+  phone390.paletteVisible && phone390.paletteInputFont >= 16 && phone390.selectedUid === uid &&
+  phone390.selectPageStayedOpen && phone390.paletteStayedOpen && phone390.paletteInputAcceptedText &&
+  result.selectionResultActivatedEditor && result.workspaceFramePreserved && result.selectedResultSettled &&
+  phone430.width === 430 && phone430.height === 932 && phone430.navBottom === 932 &&
+  compact.width === 390 && compact.height === 430 && compact.navVisible && compact.inputVisible &&
+  result.editorVisible && result.editorHasFixture && result.chatHasInput && result.chatHasSend &&
+  result.chatHeading.includes("MobileControllerRegression") && result.editSummary.includes("fragment") && result.editOpen;
+return result.ok ? result : { ok: false, reason: "mobile controller workspace did not satisfy phone layout contract", ...result };
+"""
+
 SELECTION_SCREENSHOT_BACKDOOR_JS = r"""
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const errors = [];
@@ -1464,6 +1614,102 @@ try {
   };
   result.ok = result.hidden &&
     result.iframeSrc === "" &&
+    result.errors.length === 0;
+  return result;
+} finally {
+  window.removeEventListener("error", onError);
+}
+"""
+
+VISIONOS_SHARED_HISTORY_PANEL_JS = r"""
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const errors = [];
+const onError = (event) => errors.push(String(event.error && (event.error.stack || event.error.message) || event.message || event));
+window.addEventListener("error", onError);
+const waitFor = async (predicate, timeoutMs = 15000) => {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const value = predicate();
+    if (value) return value;
+    await delay(100);
+  }
+  return predicate();
+};
+try {
+  const filename = window.currentDocumentFilename || "default";
+  const context = `ui-regression-shared-history-${Date.now()}`;
+  const makeProjection = (mode) => {
+    const frame = document.createElement("iframe");
+    const url = new URL("/index.html", window.location.href);
+    url.searchParams.set("file", filename);
+    url.searchParams.set("shaderSelectionContext", context);
+    url.searchParams.set(mode, "1");
+    if (mode === "noeditor") url.searchParams.set("transparent", "1");
+    frame.src = url.toString();
+    frame.dataset.projection = mode;
+    frame.style.position = "fixed";
+    frame.style.border = "0";
+    frame.style.background = "transparent";
+    document.body.appendChild(frame);
+    return frame;
+  };
+
+  const canvasFrame = makeProjection("noeditor");
+  Object.assign(canvasFrame.style, { inset: "0", width: "100vw", height: "100vh", zIndex: "20000" });
+  const editorFrame = makeProjection("editorOnly");
+  Object.assign(editorFrame.style, { left: "0", top: "0", width: "1px", height: "1px", opacity: "0", zIndex: "19999" });
+
+  const ready = await waitFor(() => {
+    try {
+      return canvasFrame.contentWindow?.fieldBackdoorUiReady === true &&
+        editorFrame.contentWindow?.fieldBackdoorUiReady === true &&
+        typeof editorFrame.contentWindow?.showDocumentHistory === "function";
+    } catch (_) { return false; }
+  }, 20000);
+  if (!ready) {
+    return {
+      ok: false,
+      reason: "paired projections did not become ready",
+      canvasReady: canvasFrame.contentWindow?.fieldBackdoorUiReady,
+      editorReady: editorFrame.contentWindow?.fieldBackdoorUiReady,
+      hasCommand: typeof editorFrame.contentWindow?.showDocumentHistory === "function",
+      errors,
+    };
+  }
+
+  editorFrame.contentWindow.showDocumentHistory();
+  const historyContainer = await waitFor(() => {
+    const node = canvasFrame.contentDocument?.querySelector(".history-iframe-container");
+    if (!node) return null;
+    const style = canvasFrame.contentWindow.getComputedStyle(node);
+    return style.visibility !== "hidden" && Number(style.opacity || "0") > 0 ? node : null;
+  }, 8000);
+  const historyFrame = canvasFrame.contentDocument?.querySelector("#history-iframe");
+  const historyReady = await waitFor(() => {
+    const doc = historyFrame?.contentDocument;
+    return doc?.querySelector("#rail") && doc?.querySelector("#close-btn") ? doc : null;
+  }, 15000);
+  const editorHistory = editorFrame.contentDocument?.querySelector(".history-iframe-container");
+  const editorHistoryStyle = editorHistory ? editorFrame.contentWindow.getComputedStyle(editorHistory) : null;
+  const bounds = historyContainer?.getBoundingClientRect();
+  const result = {
+    filename,
+    canvasMode: canvasFrame.contentWindow?.fieldDisplayMode || "",
+    editorMode: editorFrame.contentWindow?.fieldDisplayMode || "",
+    canvasHistoryVisible: !!historyContainer,
+    canvasHistorySrc: historyFrame?.getAttribute("src") || "",
+    canvasHistoryLoaded: !!historyReady,
+    canvasHistoryWidth: Math.round(bounds?.width || 0),
+    editorHistoryVisible: !!editorHistoryStyle && editorHistoryStyle.visibility !== "hidden" && Number(editorHistoryStyle.opacity || "0") > 0,
+    errors,
+  };
+  result.ok = result.canvasMode === "no-editor" &&
+    result.editorMode === "editor-only" &&
+    result.canvasHistoryVisible &&
+    result.canvasHistorySrc.includes("/history") &&
+    result.canvasHistoryLoaded &&
+    result.canvasHistoryWidth >= Math.round(window.innerWidth * 0.8) &&
+    !result.editorHistoryVisible &&
     result.errors.length === 0;
   return result;
 } finally {
@@ -2159,12 +2405,14 @@ def prepare_generated_files() -> dict[str, Path]:
         "controllers_editable_lines_js": write_generated_file("controllers-editable-lines.js", CONTROLLERS_EDITABLE_LINES_JS),
         "controllers_static_lines_js": write_generated_file("controllers-static-lines.js", CONTROLLERS_STATIC_LINES_JS),
         "controllers_control_group_js": write_generated_file("controllers-control-group.js", CONTROLLERS_CONTROL_GROUP_JS),
+        "controllers_mobile_workspace_js": write_generated_file("controllers-mobile-workspace.js", CONTROLLERS_MOBILE_WORKSPACE_JS),
         "selection_screenshot_backdoor_js": write_generated_file("selection-screenshot-backdoor.js", SELECTION_SCREENSHOT_BACKDOOR_JS),
         "selection_subtitle_box_js": write_generated_file("selection-subtitle-box.js", SELECTION_SUBTITLE_BOX_JS),
         "language_selection_customization_js": write_generated_file("language-selection-customization.js", LANGUAGE_SELECTION_CUSTOMIZATION_JS),
         "language_selection_box_js": write_generated_file("language-selection-box.js", LANGUAGE_SELECTION_BOX_JS),
         "history_panel_open_js": write_generated_file("history-panel-open.js", HISTORY_PANEL_OPEN_JS),
         "history_panel_close_js": write_generated_file("history-panel-close.js", HISTORY_PANEL_CLOSE_JS),
+        "visionos_shared_history_panel_js": write_generated_file("visionos-shared-history-panel.js", VISIONOS_SHARED_HISTORY_PANEL_JS),
         "macro_transcript_panel_js": write_generated_file("macro-transcript-panel.js", MACRO_TRANSCRIPT_PANEL_JS),
         "inline_visualizers_js": write_generated_file("inline-visualizers.js", INLINE_VISUALIZERS_JS),
         "focus_keyboard_contract_js": write_generated_file("focus-keyboard-contract.js", FOCUS_KEYBOARD_CONTRACT_JS),
@@ -2295,6 +2543,18 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="controllers-mobile-workspace",
+            description="/controllers provides phone-sized AI4 chat, Open Anything selection, and Monaco editing with compact keyboard-height layout.",
+            commands=[
+                "new-box --name MobileControllerRegression",
+                shell_join(["set", "@last", "code", "println(\"mobile controller editor\")"]),
+                "editor-open @last --property code",
+                "sleep 0.75",
+                shell_join(["page-eval", "--body", "--file", str(files["controllers_mobile_workspace_js"]), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="selection-screenshot-backdoor",
             description="Selection state and box/editor/window screenshots agree on the active target box.",
             commands=[
@@ -2347,6 +2607,18 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 shell_join(["page-eval", "--body", "--file", str(files["history_panel_close_js"]), "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--uid", "@last", "--with-editor", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="visionos-shared-history-panel",
+            description="An editor-only dock routes the History panel to its paired no-editor canvas dock.",
+            document=f"ui-regression-visionos-history-{int(time.time())}",
+            commands=[
+                "new-box --name VisionOSSharedHistoryRegression",
+                shell_join(["run", "@last", "--file", str(files["history_panel_snippet"]), "--timeout", timeout_text]),
+                "sleep 4.0",
+                shell_join(["page-eval", "--body", "--file", str(files["visionos_shared_history_panel_js"]), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
         ),
         UiRegression(
             id="macro-transcript-panel",

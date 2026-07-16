@@ -4,7 +4,7 @@ package afield.stdlib
 
 import afield.Rect
 import afield.graphics.FLine
-import org.joml.Vector4f
+import afield.stdlib.linalg.Vector4f
 import java.awt.Stroke
 import kotlin.math.max
 import kotlin.math.min

@@ -1,9 +1,9 @@
 package afield.four.fabricated
 
 import afield.four.modules.GltfSupport
-import org.joml.Quaternionf
-import org.joml.Vector3f
-import org.joml.Vector4f
+import afield.stdlib.linalg.Quaternionf
+import afield.stdlib.linalg.Vector3f
+import afield.stdlib.linalg.Vector4f
 
 /**
  * JVM smoke test for Fabricate's pure scene graph: transform hierarchy, animation playback,
