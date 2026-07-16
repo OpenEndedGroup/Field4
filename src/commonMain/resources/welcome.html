@@ -4,16 +4,16 @@
     <meta charset="UTF-8">
     <meta name="color-scheme" content="dark">
     <title>Field·4</title>
-    <link rel="preload" href="/woff2/iosevka-light.woff2" as="font" type="font/woff2" crossorigin fetchpriority="high">
+    <link rel="preload" href="/woff2/iosevka-condensedlight.woff2" as="font" type="font/woff2" crossorigin fetchpriority="high">
     <link rel="preload" href="/iosevka.css" as="style">
     <style>
         @font-face {
             font-family: "Iosevka Web";
             font-display: swap;
             font-weight: 300;
-            font-stretch: normal;
+            font-stretch: condensed;
             font-style: normal;
-            src: url("/woff2/iosevka-light.woff2") format("woff2");
+            src: url("/woff2/iosevka-condensedlight.woff2") format("woff2");
         }
     </style>
     <link rel="stylesheet" href="/iosevka.css">
@@ -6008,7 +6008,7 @@
         };
 
         if (document.fonts && typeof document.fonts.load === "function") {
-            const fontReady = document.fonts.load('400 14px "Iosevka Web"').catch(() => {});
+            const fontReady = document.fonts.load('400 condensed 14px "Iosevka Web"').catch(() => {});
             const fallback = new Promise((resolve) => setTimeout(resolve, 1500));
             Promise.race([fontReady, fallback]).then(build);
         } else {

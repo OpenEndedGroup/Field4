@@ -120,7 +120,7 @@ const EMBEDDED_EDITOR_OPTIONS = {
 	fontFamily: "Iosevka Web",
 	fontWeight: "300",
 	fontSize: 13,
-	fontLigatures: true,
+	fontLigatures: '"liga" on, "calt" on, "dlig" on, "TXTR" on',
 	quickSuggestions: false,
 	wordWrap: "on",
 	minimap: { enabled: false },

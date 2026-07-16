@@ -1,0 +1,33 @@
+[buildPlans.IosevkaField]
+family = "Iosevka Field"
+spacing = "normal"
+serifs = "sans"
+noCvSs = false
+exportGlyphNames = true
+buildTextureFeature = true
+webfontFormats = ["WOFF2"]
+
+[buildPlans.IosevkaField.ligations]
+inherits = "dlig"
+
+[buildPlans.IosevkaField.widths.Normal]
+shape = 500
+menu = 5
+css = "normal"
+
+[buildPlans.IosevkaField.widths.Condensed]
+shape = 416
+menu = 3
+css = "condensed"
+
+[buildPlans.IosevkaField.slopes.Upright]
+angle = 0
+shape = "upright"
+menu = "upright"
+css = "normal"
+
+[buildPlans.IosevkaField.slopes.Italic]
+angle = 9.4
+shape = "italic"
+menu = "italic"
+css = "italic"

@@ -305,7 +305,7 @@ fun monacoInit(monaco: dynamic): dynamic {
     fontOptions.fontFamily = "Iosevka Web"
     fontOptions.fontWeight = "300"
     fontOptions.fontSize = 15
-    fontOptions.fontLigatures = true
+    fontOptions.fontLigatures = "\"liga\" on, \"calt\" on, \"dlig\" on, \"TXTR\" on"
     fontOptions.margin = "5px"
     ed.updateOptions(fontOptions)
     monaco.editor.setModelLanguage(ed.getModel(), "kotlin")
