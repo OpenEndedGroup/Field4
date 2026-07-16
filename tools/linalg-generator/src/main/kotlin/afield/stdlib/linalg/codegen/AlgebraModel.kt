@@ -5,17 +5,32 @@ enum class Component(val sourceName: String) {
     Y("y"),
     Z("z"),
     W("w"),
+    A("a"),
+    B("b"),
+    C("c"),
+    D("d"),
 }
 
 /**
  * The scalar element type a vector is built from. The heap vector emitter lowers the same
- * operation model into 32-bit float and 64-bit double storage; only the literals, the Kotlin
- * type, the buffer accessors and the bit-fold for hashing differ.
+ * operation model into 32-bit float, 64-bit double and 16-bit half storage; only the literals, the
+ * Kotlin type, the buffer accessors and the bit-fold for hashing differ.
+ *
+ * For every kind except [HALF] the *storage* type equals the *compute* type: a component is held,
+ * read, written and computed on in the same Kotlin type. [HALF] is the first kind where they
+ * diverge — components are stored as raw IEEE-754 binary16 bits ([storageType] `Short`) but the
+ * public API and all arithmetic operate in `Float` ([kotlinType]). [fromStorage]/[toStorage] bridge
+ * the two on every read and write; they are the identity for float and double, so those backends
+ * emit byte-for-byte the same source as before.
  */
 enum class ScalarKind(
     val kotlinType: String,
+    /** The Kotlin type a component is physically stored in (equals [kotlinType] unless it is packed). */
+    val storageType: String,
     val typeSuffix: String,
     val zero: String,
+    /** The stored-representation zero used to initialize a component field. */
+    val storageZero: String,
     val one: String,
     val minusOne: String,
     val numberConversion: String,
@@ -24,15 +39,31 @@ enum class ScalarKind(
     val byteSize: Int,
     val bits: Int,
 ) {
-    FLOAT("Float", "f", "0.0f", "1.0f", "-1.0f", "toFloat", "FloatBuffer", "putFloat", 4, 32),
-    DOUBLE("Double", "d", "0.0", "1.0", "-1.0", "toDouble", "DoubleBuffer", "putDouble", 8, 64);
+    FLOAT("Float", "Float", "f", "0.0f", "0.0f", "1.0f", "-1.0f", "toFloat", "FloatBuffer", "putFloat", 4, 32),
+    DOUBLE("Double", "Double", "d", "0.0", "0.0", "1.0", "-1.0", "toDouble", "DoubleBuffer", "putDouble", 8, 64),
+    HALF("Float", "Short", "h", "0.0f", "0", "1.0f", "-1.0f", "toFloat", "ShortBuffer", "putShort", 2, 16);
 
     /** Reads a component's raw bits and folds them to an Int for `hashCode`. */
-    fun hashComponent(reference: String): String =
-        if (this == FLOAT) "$reference.toBits()" else "$reference.toBits().hashCode()"
+    fun hashComponent(reference: String): String = when (this) {
+        FLOAT -> "$reference.toBits()"
+        DOUBLE -> "$reference.toBits().hashCode()"
+        HALF -> "$reference.toInt()"
+    }
 
     /** The read-interface name of a sibling vector of the same scalar (for cross-dimension constructors). */
     fun readName(dimension: Int): String = "Vector$dimension${typeSuffix}c"
+
+    /** Lowers an API/compute-typed value expression to its stored representation (identity unless packed). */
+    fun toStorage(value: String): String = if (this == HALF) "floatToHalfBits($value)" else value
+
+    /** Lifts a stored component field to its API/compute representation (identity unless packed). */
+    fun fromStorage(field: String): String = if (this == HALF) "halfBitsToFloat($field)" else field
+
+    /** Exact component equality, compared on the stored bit pattern so NaN and signed zero behave like `toBits`. */
+    fun equalsComponent(field: String, otherAccessor: String): String = when (this) {
+        FLOAT, DOUBLE -> "$field.toBits() == $otherAccessor.toBits()"
+        HALF -> "$field == floatToHalfBits($otherAccessor)"
+    }
 }
 
 data class VectorType(
@@ -43,7 +74,7 @@ data class VectorType(
     val scalar: ScalarKind = ScalarKind.FLOAT,
 ) {
     init {
-        require(dimension in 2..4)
+        require(dimension in 2..4 || dimension == 8) { "unsupported vector dimension $dimension" }
     }
 
     val components: List<Component> = Component.entries.take(dimension)
@@ -245,7 +276,13 @@ object FieldAlgebraModel {
             VectorType(3, "Vector3d", "Vector3dc", arenaName = null, ScalarKind.DOUBLE),
             VectorType(4, "Vector4d", "Vector4dc", arenaName = null, ScalarKind.DOUBLE),
         )
-        val heapVectors = vectors + doubleVectors
+        // Eight IEEE-754 binary16 lanes packed into 16 bytes — exactly one GLSL vec4 — so twice as
+        // many fit in NVIDIA's constrained push-constant block as a Vector4f would. Heap-only, like
+        // the doubles: arithmetic runs in Float and each result is stored back as binary16.
+        val halfVectors = listOf(
+            VectorType(8, "Vector8h", "Vector8hc", arenaName = null, ScalarKind.HALF),
+        )
+        val heapVectors = vectors + doubleVectors + halfVectors
         return AlgebraModel(vectors, heapVectors, heapVectors.associateWith { operations(it) })
     }
 

@@ -10,6 +10,7 @@ import afield.stdlib.LeastSquaresResult
 import afield.stdlib.leastSquares
 import afield.templatesRegistration
 import afield.stdlib.linalg.Vector4f
+import afield.stdlib.linalg.Vector8h
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.exp
@@ -892,22 +893,8 @@ object FMChirpCurves {
         /** Output shaping exponent. */
         val outputPow: Float = 1f
     ) {
-        fun toVec8h(): Vec8h {
-            return Vec8h(
-                lo = Vector4f(
-                    freq,
-                    mod,
-                    modPhase,
-                    phase
-                ),
-                hi = Vector4f(
-                    chirp,
-                    modChirp,
-                    inputPow,
-                    outputPow
-                )
-            )
-        }
+        fun toVector8h(): Vector8h =
+            Vector8h(freq, mod, modPhase, phase, chirp, modChirp, inputPow, outputPow)
 
         fun toVector(): DoubleArray =
             doubleArrayOf(
@@ -1440,17 +1427,17 @@ object FMChirpCurves {
         }
     }
 
-    fun fromVec8h(v: Vec8h): Params {
+    fun fromVector8h(v: Vector8h): Params {
         return Params(
-            freq = v.lo.x,
-            mod = v.lo.y,
-            modPhase = v.lo.z,
-            phase = v.lo.w,
+            freq = v.x(),
+            mod = v.y(),
+            modPhase = v.z(),
+            phase = v.w(),
 
-            chirp = v.hi.x,
-            modChirp = v.hi.y,
-            inputPow = v.hi.z,
-            outputPow = v.hi.w
+            chirp = v.a(),
+            modChirp = v.b(),
+            inputPow = v.c(),
+            outputPow = v.d()
         )
     }
 
@@ -1476,7 +1463,7 @@ object FMChirpCurves {
         )
     }
 
-    fun vec8h(
+    fun vector8h(
         freq: Float = 0f,
         mod: Float = 0f,
         modPhase: Float = 0f,
@@ -1485,7 +1472,7 @@ object FMChirpCurves {
         modChirp: Float = 0f,
         inputPow: Float = 1f,
         outputPow: Float = 1f
-    ): Vec8h {
+    ): Vector8h {
         return make(
             freq = freq,
             mod = mod,
@@ -1495,7 +1482,7 @@ object FMChirpCurves {
             modChirp = modChirp,
             inputPow = inputPow,
             outputPow = outputPow
-        ).toVec8h()
+        ).toVector8h()
     }
 
     fun fromVector(values: DoubleArray): Params {

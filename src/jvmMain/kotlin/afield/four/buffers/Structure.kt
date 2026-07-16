@@ -9,7 +9,6 @@ import afield.four.modules.layoutSizeInBytes
 import afield.four.util.Vec2h
 import afield.four.util.Vec3h
 import afield.four.util.Vec4h
-import afield.four.util.Vec8h
 import afield.four.util.packHalf1x16
 import afield.four.util.packHalf2x16
 import afield.stdlib.NeedsStartingValue
@@ -388,12 +387,8 @@ open class Structure(
                 f.putInt(offset, packHalf2x16(t.x, t.y))
                 f.putInt(offset + 4, packHalf2x16(t.z, t.w))
             }
-            is Vec8h -> {
-                f.putInt(offset, packHalf2x16(v.lo.x, v.lo.y))
-                f.putInt(offset + 4, packHalf2x16(v.lo.z, v.lo.w))
-                f.putInt(offset + 8, packHalf2x16(v.hi.x, v.hi.y))
-                f.putInt(offset + 12, packHalf2x16(v.hi.z, v.hi.w))
-            }
+            // 8-lane fp16 vector: its own writer emits the 16-byte uvec4 layout (two halfs per lane).
+            is Vector8h -> v.get(offset, f)
             is UInt -> f.putInt(offset, v.toInt())
             is ByteBuffer -> {
                 var was = f.position()

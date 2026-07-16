@@ -14,7 +14,7 @@ This page is generated from the typed algebra model that emits Field's heap, fra
 
 All destination overloads write into `dest`, return it, permit input/destination aliasing, and allocate no result.
 
-Two further forms share the same model: the heap types also come in double precision (`Vector2d`, `Vector3d`, `Vector4d`, heap-only), and the `afield.stdlib.linalg.bulk` package provides flat-`FloatArray` SIMD kernels (`addRange`, `normalizeRange`, …) with scalar- and broadcast-vector overloads for whole-array field operations.
+Further forms share the same model: the heap types also come in double precision (`Vector2d`, `Vector3d`, `Vector4d`, heap-only) and half precision (`Vector8h`, heap-only — eight IEEE-754 binary16 lanes that pack into a single `vec4` of GPU memory), and the `afield.stdlib.linalg.bulk` package provides flat-`FloatArray` SIMD kernels (`addRange`, `normalizeRange`, …) with scalar- and broadcast-vector overloads for whole-array field operations.
 
 ## Vector2f
 
@@ -219,6 +219,40 @@ The double-precision, heap-only sibling of `Vector4f`; the arena, segment, and b
 | `distanceSquared(other: Vector4dc)` | Returns the squared straight-line distance to another vector. Use this for nearest/farthest comparisons when you do not need the actual distance. |
 | `length()` | Returns this vector's Euclidean length (magnitude). |
 | `distance(other: Vector4dc)` | Returns the straight-line distance to another vector. |
+| `normalize()` | Keeps the vector's direction while scaling its length to one. A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible. |
+| `isFinite()` | Reports whether every component is finite. |
+
+## Vector8h
+
+A mutable 8D vector of 16-bit floating-point components.
+
+Components: `x`, `y`, `z`, `w`, `a`, `b`, `c`, `d`.
+
+The half-precision (IEEE-754 binary16), heap-only vector. Its eight lanes pack into 16 bytes — one GLSL `vec4` — through `get(index, buffer)`, so a push-constant block holds twice as many as the equivalent `Vector4f` pair would. Arithmetic is evaluated in `Float`; every result is stored back as binary16, so component reads return the rounded value.
+
+| Operation | Meaning |
+| --- | --- |
+| `add(other: Vector8hc)` | Adds another vector component by component. |
+| `sub(other: Vector8hc)` | Subtracts another vector component by component. |
+| `mul(other: Vector8hc)` | Multiplies corresponding components. |
+| `div(other: Vector8hc)` | Divides corresponding components. |
+| `add(scalar: Float)` | Adds a scalar to each component. |
+| `sub(scalar: Float)` | Subtracts a scalar from each component. |
+| `mul(scalar: Float)` | Scales every component by a scalar. Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction. |
+| `div(scalar: Float)` | Divides every component by a scalar. |
+| `negate()` | Reverses the vector by negating every component. |
+| `absolute()` | Replaces every component with its absolute value. |
+| `min(other: Vector8hc)` | Selects the smaller value independently in each component. |
+| `max(other: Vector8hc)` | Selects the larger value independently in each component. |
+| `min(scalar: Float)` | Caps every component at a scalar upper bound. |
+| `max(scalar: Float)` | Raises every component to a scalar lower bound. |
+| `lerp(other: Vector8hc, t: Float)` | Linearly interpolates from this vector toward another. At t = 0 the result is this vector; at t = 1 it is other. Values between zero and one trace the straight line between them. |
+| `fma(scalar: Float, other: Vector8hc)` | Computes this + other * scalar component by component. This is the common position-plus-scaled-direction pattern used for rays, velocities, and Euler integration. |
+| `dot(other: Vector8hc)` | Measures how strongly two vectors point in the same direction. Positive means broadly aligned, zero means perpendicular, and negative means opposed. For unit vectors the result is the cosine of the angle between them. |
+| `lengthSquared()` | Returns the squared length of this vector. Use this for comparisons when you do not need the actual distance; it avoids a square root. |
+| `distanceSquared(other: Vector8hc)` | Returns the squared straight-line distance to another vector. Use this for nearest/farthest comparisons when you do not need the actual distance. |
+| `length()` | Returns this vector's Euclidean length (magnitude). |
+| `distance(other: Vector8hc)` | Returns the straight-line distance to another vector. |
 | `normalize()` | Keeps the vector's direction while scaling its length to one. A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible. |
 | `isFinite()` | Reports whether every component is finite. |
 

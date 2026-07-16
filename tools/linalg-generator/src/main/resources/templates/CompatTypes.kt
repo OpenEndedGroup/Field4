@@ -58,6 +58,27 @@ operator fun Vector4dc.times(scalar:Number)=mul(scalar.toDouble(),Vector4d())
 operator fun Vector4dc.div(scalar:Number)=div(scalar.toDouble(),Vector4d())
 operator fun Vector4dc.unaryMinus()=negate(Vector4d())
 
+// Vector8h is half precision (its components are Float in the API), so its scalar operators
+// mirror the float surface. Arithmetic runs in Float and results are stored back as binary16.
+operator fun Vector8hc.plus(other:Vector8hc)=add(other,Vector8h())
+operator fun Vector8hc.plus(scalar:Number)=add(scalar.toFloat(),Vector8h())
+operator fun Vector8hc.minus(other:Vector8hc)=sub(other,Vector8h())
+operator fun Vector8hc.minus(scalar:Number)=sub(scalar.toFloat(),Vector8h())
+operator fun Vector8hc.times(other:Vector8hc)=mul(other,Vector8h())
+operator fun Vector8hc.times(scalar:Number)=mul(scalar.toFloat(),Vector8h())
+operator fun Vector8hc.div(scalar:Number)=div(scalar.toFloat(),Vector8h())
+operator fun Vector8hc.unaryMinus()=negate(Vector8h())
+
+// Vector8h packs eight binary16 lanes into 16 bytes (one GLSL vec4). These bridge to the float
+// Vector4f pair used by Field's push-constant transit path: lanes x,y,z,w are the low half and
+// a,b,c,d the high half.
+fun Vector8hc.lo(dest:Vector4f=Vector4f()):Vector4f=dest.set(x(),y(),z(),w())
+fun Vector8hc.hi(dest:Vector4f=Vector4f()):Vector4f=dest.set(a(),b(),c(),d())
+fun Vector8h.set(lo:Vector4fc,hi:Vector4fc):Vector8h=set(lo.x(),lo.y(),lo.z(),lo.w(),hi.x(),hi.y(),hi.z(),hi.w())
+fun vec8h(lo:Vector4fc,hi:Vector4fc)=Vector8h(lo.x(),lo.y(),lo.z(),lo.w(),hi.x(),hi.y(),hi.z(),hi.w())
+fun vec8h(x:Number,y:Number,z:Number,w:Number,a:Number,b:Number,c:Number,d:Number)=
+    Vector8h(x.toFloat(),y.toFloat(),z.toFloat(),w.toFloat(),a.toFloat(),b.toFloat(),c.toFloat(),d.toFloat())
+
 interface Matrix2fc { fun m00():Float;fun m01():Float;fun m10():Float;fun m11():Float }
 class Matrix2f(
     @JvmField var m00:Float=1f,@JvmField var m01:Float=0f,
