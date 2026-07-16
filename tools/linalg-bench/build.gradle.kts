@@ -79,8 +79,11 @@ jmh {
     timeUnit.set("ns")
     resultFormat.set("TEXT")
     // The bulk/SIMD kernels under afield.stdlib.linalg.bulk use jdk.incubator.vector, same as the
-    // main build's runJvm/Test tasks; the forked JMH JVMs need the same opt-in.
-    jvmArgsAppend.set(listOf("--add-modules", "jdk.incubator.vector"))
+    // main build's runJvm/Test tasks; the forked JMH JVMs need the same opt-in. On the GraalVM
+    // toolchain we must also force C2 as the host JIT (-XX:-UseJVMCICompiler, JVMCI still enabled for
+    // Truffle) or the Vector API / scalar loops don't vectorize and the numbers are meaningless — see
+    // the vectorizationJvmArgs note in the root build.gradle.kts.
+    jvmArgsAppend.set(listOf("--add-modules", "jdk.incubator.vector", "-XX:+EnableJVMCI", "-XX:-UseJVMCICompiler"))
     // To reproduce the allocation story, temporarily add e.g.
     //   includes.set(listOf("Spline")); profilers.set(listOf("gc"))
     // gc.alloc.rate.norm then reports bytes/op — ~0 for arena and segment backends.

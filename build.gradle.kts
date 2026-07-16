@@ -68,6 +68,24 @@ val djlTokenizersVersion = "0.36.0"
 val javaToolchainVersion = 25
 val graalvmVersion = "25.0.2"
 
+// JVM args that unlock CPU vectorization on our GraalVM toolchain.
+//
+// GraalVM defaults to the Graal (JVMCI) compiler as the *host* JIT. Under that compiler Lucene refuses
+// its Panama SIMD path (it hard-gates on -XX:+UseJVMCICompiler), and Graal doesn't auto-vectorize plain
+// scalar numeric loops the way C2 does. Forcing C2 as the host JIT — while keeping JVMCI *enabled* —
+// unlocks Lucene's internal SIMD and C2 scalar-loop autovectorization, and silences the recurring
+// "Java runtime is using JVMCI Compiler; Java vector incubator API can't be enabled." warning.
+//
+// Truffle/GraalWasm are unaffected: they keep JIT-compiling guest JS/WASM through JVMCI (verified: guest
+// code still runs on the optimizing "GraalVM CE" Truffle runtime, not the interpreter fallback).
+// (--add-modules jdk.internal.vm.ci is intentionally dropped: JVMCI is built in on GraalVM and unused by
+// our own code; -XX:+EnableJVMCI keeps it available for Truffle.)
+val vectorizationJvmArgs = listOf(
+    "--add-modules", "jdk.incubator.vector",
+    "-XX:+EnableJVMCI",
+    "-XX:-UseJVMCICompiler",
+)
+
 // Bytedeco FFmpeg for video support
 val ffmpegVersion = "6.1.1-1.5.10"
 val opencvVersion = "4.9.0-1.5.10"
@@ -351,8 +369,7 @@ fun requiredRunJvmArgs(): List<String> {
             add("-Dorg.lwjgl.util.Debug=true")
             add("-Dorg.lwjgl.util.DebugLoader=true")
         }
-        add("--add-modules")
-        add("jdk.incubator.vector,jdk.internal.vm.ci")
+        addAll(vectorizationJvmArgs)
     }
 }
 
@@ -956,7 +973,7 @@ tasks {
 }
 
 tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
-    jvmArgs("--add-modules", "jdk.incubator.vector")
+    jvmArgs(vectorizationJvmArgs)
 }
 
 tasks.named("compileKotlinJvm") {
@@ -971,7 +988,7 @@ tasks.register<JavaExec>("runTrackingResonatorResynthesisExample") {
     })
     classpath = sourceSets["jvmMain"].runtimeClasspath
     mainClass.set("afield.examples.audio.TrackingResonatorResynthesisExampleKt")
-    jvmArgs("--add-modules", "jdk.incubator.vector")
+    jvmArgs(vectorizationJvmArgs)
 }
 
 tasks.register<JavaExec>("runDocsPanelCodeLinksSmokeTest") {
@@ -982,7 +999,7 @@ tasks.register<JavaExec>("runDocsPanelCodeLinksSmokeTest") {
     })
     classpath = sourceSets["jvmMain"].runtimeClasspath
     mainClass.set("afield.examples.DocsPanelCodeLinksSmokeTest")
-    jvmArgs("--add-modules", "jdk.incubator.vector")
+    jvmArgs(vectorizationJvmArgs)
 }
 
 tasks.register<JavaExec>("runSimdVerletBulkKernelsExample") {
@@ -993,7 +1010,7 @@ tasks.register<JavaExec>("runSimdVerletBulkKernelsExample") {
     })
     classpath = sourceSets["jvmMain"].runtimeClasspath
     mainClass.set("afield.examples.SimdVerletBulkKernelsExample")
-    jvmArgs("--add-modules", "jdk.incubator.vector")
+    jvmArgs(vectorizationJvmArgs)
 }
 
 tasks.register<JavaExec>("runEvolveWorkedExample") {
@@ -1004,7 +1021,7 @@ tasks.register<JavaExec>("runEvolveWorkedExample") {
     })
     classpath = sourceSets["jvmMain"].runtimeClasspath
     mainClass.set("afield.examples.functions.EvolveWorkedExample")
-    jvmArgs("--add-modules", "jdk.incubator.vector")
+    jvmArgs(vectorizationJvmArgs)
 }
 
 tasks.register<JavaExec>("runWaveshapeWorkedExample") {
@@ -1015,7 +1032,7 @@ tasks.register<JavaExec>("runWaveshapeWorkedExample") {
     })
     classpath = sourceSets["jvmMain"].runtimeClasspath
     mainClass.set("afield.examples.functions.WaveshapeWorkedExample")
-    jvmArgs("--add-modules", "jdk.incubator.vector")
+    jvmArgs(vectorizationJvmArgs)
 }
 
 
