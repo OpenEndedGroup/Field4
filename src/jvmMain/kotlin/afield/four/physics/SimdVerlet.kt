@@ -5,6 +5,9 @@ package afield.four.physics
 import afield.Generator
 import afield.four.util.MapOfGenerators
 import afield.generator2
+import afield.stdlib.linalg.bulk.fmaRange
+import afield.stdlib.linalg.bulk.mulRange
+import afield.stdlib.linalg.bulk.subRange
 import jdk.incubator.vector.FloatVector
 import jdk.incubator.vector.VectorMask
 import jdk.incubator.vector.VectorOperators.SQRT
@@ -144,12 +147,27 @@ class SimdVerlet(
         state.applyQueuedRemovalsSwap(constraints)
     }
 
+    /**
+     * Advances the simulation one frame. The force accumulators (ax/ay/az) are treated as
+     * scratch: they are **zeroed at the start of every step**, then rebuilt from gravity, the
+     * per-particle force generators, [accumulateForces], and the constraint solve, and finally
+     * consumed by integration. So anything written to ax/ay/az *before* calling step() is
+     * discarded — inject per-frame forces through a force generator (per particle) or through
+     * [accumulateForces] (whole-range, e.g. the bulk SIMD kernels), never by pre-accumulating.
+     *
+     * @param accumulateForces optional bulk force pass invoked as `(state, dt)` after gravity and
+     *   the per-particle generators but before the constraint solve, so its contribution feeds the
+     *   solve and integration. This is the hook for the generated bulk kernels, e.g.
+     *   `sim.step(dt, damping, g, iters) { s, _ -> SimdVerlet.addSpringForceToTarget3(s, tx, ty, tz, k, sx, sy, sz) }`.
+     *   Stack several bulk kernels here to combine force fields in one frame.
+     */
     fun step(
         dt: Float,
         damping: Float,
         gravity: Float,
         iterations: Int,
-        constraints: DirectedConstraints3? = this.constraints
+        constraints: DirectedConstraints3? = this.constraints,
+        accumulateForces: ((state: State3, dt: Float) -> Unit)? = null
     ) {
         state.applyQueuedRemovalsSwap(constraints)
         zero3(state)
@@ -170,6 +188,8 @@ class SimdVerlet(
             ctx.dt = dt
             forceGenerators[i].updateNoCollect(ctx)
         }
+
+        accumulateForces?.invoke(state, dt)
 
         if (constraints != null && iterations > 0) {
             solveDirectedDist3InPlace(
@@ -182,12 +202,14 @@ class SimdVerlet(
         integrateVerlet3(state, dt = dt, damping = damping)
     }
 
+    /** 4-slot-constraint variant of [step]; see that overload for the force-accumulation contract. */
     fun step(
         dt: Float,
         damping: Float,
         gravity: Float,
         iterations: Int,
-        constraints: DirectedConstraints4?
+        constraints: DirectedConstraints4?,
+        accumulateForces: ((state: State3, dt: Float) -> Unit)? = null
     ) {
         state.applyQueuedRemovalsSwap(constraints)
         zero3(state)
@@ -208,6 +230,8 @@ class SimdVerlet(
             ctx.dt = dt
             forceGenerators[i].updateNoCollect(ctx)
         }
+
+        accumulateForces?.invoke(state, dt)
 
         if (constraints != null && iterations > 0) {
             solveDirectedDist4InPlace(
@@ -1557,8 +1581,93 @@ class SimdVerlet(
         }
     }
 
+    // -----------------------------------------------------------
+    // 4) Derived kinematics & bulk force helpers
+    //
+    // These delegate to the auto-generated, correctness-tested bulk kernels in
+    // afield.stdlib.linalg.bulk, which operate on exactly the flat SoA FloatArray
+    // layout this class already uses. They add capability the hand-tuned kernels
+    // above deliberately don't cover, without touching them: integrateVerlet3 stays
+    // a single fused pass (a chain of per-op kernel passes would re-stream the same
+    // arrays through memory), and the constraint solve needs the gather+masking the
+    // gather-free elementwise kernels don't model.
+    //
+    // Force-space helpers (e.g. addSpringForceToTarget3) accumulate into ax/ay/az, so
+    // run them through step()'s accumulateForces hook -- step() zeroes the accumulators
+    // at its start, so a force written before step() is discarded. See step()'s KDoc.
+    //
+    // Note on uniform quantities: the kernels only carry scalar overloads for mul/div,
+    // so a broadcast add (uniform gravity, clamp-to-box) isn't expressible here yet
+    // without a filler array. That's a clean future generator extension, not a reason
+    // to hand-roll it -- the existing scalar gravity loop in step() stays as-is.
+    // -----------------------------------------------------------
+
+    /**
+     * Recovers per-particle velocity `v = (x - px) / dt` into [vx]/[vy]/[vz] for the
+     * whole active range, in two vectorized passes (subtract, then scale by `1/dt`).
+     *
+     * Verlet stores the previous position rather than an explicit velocity, so callers
+     * that want momentum/kinetic-energy/speed-gating had to reconstruct it by hand; this
+     * does it over the whole state with the SIMD kernels. The output arrays may alias
+     * `px/py/pz` but must be distinct from `x/y/z`, and sized `>= state.size`.
+     */
+    fun velocity3(state: State3, dt: Float, vx: FloatArray, vy: FloatArray, vz: FloatArray) =
+        velocity3Range(state.x, state.y, state.z, state.px, state.py, state.pz, dt, vx, vy, vz, 0, state.size)
+
+    fun velocity3Range(
+        x: FloatArray, y: FloatArray, z: FloatArray,
+        px: FloatArray, py: FloatArray, pz: FloatArray,
+        dt: Float,
+        vx: FloatArray, vy: FloatArray, vz: FloatArray,
+        start: Int,
+        endExclusive: Int
+    ) {
+        require(dt != 0f) { "dt must be non-zero to recover velocity" }
+        subRange(x, y, z, px, py, pz, vx, vy, vz, start, endExclusive)
+        mulRange(vx, vy, vz, 1f / dt, vx, vy, vz, start, endExclusive)
+    }
+
+    /**
+     * Accumulates a per-particle Hookean pull toward a target pose into the force
+     * accumulators: `a += stiffness * (target - position)` across the active range,
+     * as two vectorized passes (subtract into scratch, then fused-multiply-add).
+     *
+     * It writes ax/ay/az (force space, not position), so it composes correctly with
+     * gravity, force generators, distance constraints and integration inside [step] --
+     * unlike moving positions directly, which would silently inject Verlet velocity.
+     *
+     * [scratchX]/[scratchY]/[scratchZ] are working buffers (sized `>= endExclusive`);
+     * keep one triple per worker and reuse it across frames to stay allocation-free.
+     */
+    fun addSpringForceToTarget3(
+        state: State3,
+        targetX: FloatArray, targetY: FloatArray, targetZ: FloatArray,
+        stiffness: Float,
+        scratchX: FloatArray, scratchY: FloatArray, scratchZ: FloatArray
+    ) = addSpringForceToTarget3Range(
+        state.x, state.y, state.z,
+        state.ax, state.ay, state.az,
+        targetX, targetY, targetZ,
+        stiffness,
+        scratchX, scratchY, scratchZ,
+        0, state.size
+    )
+
+    fun addSpringForceToTarget3Range(
+        x: FloatArray, y: FloatArray, z: FloatArray,
+        ax: FloatArray, ay: FloatArray, az: FloatArray,
+        targetX: FloatArray, targetY: FloatArray, targetZ: FloatArray,
+        stiffness: Float,
+        scratchX: FloatArray, scratchY: FloatArray, scratchZ: FloatArray,
+        start: Int,
+        endExclusive: Int
+    ) {
+        subRange(targetX, targetY, targetZ, x, y, z, scratchX, scratchY, scratchZ, start, endExclusive)
+        fmaRange(ax, ay, az, stiffness, scratchX, scratchY, scratchZ, ax, ay, az, start, endExclusive)
+    }
+
         // ---------------------------------------------------------
-        // 4) Parallel range execution with coarse chunking
+        // 5) Parallel range execution with coarse chunking
         // ---------------------------------------------------------
     }
 

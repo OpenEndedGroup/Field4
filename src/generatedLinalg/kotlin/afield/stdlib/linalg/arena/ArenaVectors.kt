@@ -142,6 +142,44 @@ class FrameScope internal constructor(private val arena: FrameArena) {
     fun ArenaVec2f.div(other: ArenaVec2f): ArenaVec2f = div(other, this)
 
     /**
+     * Adds a scalar to each component.
+     * @param scalar the value to add
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun ArenaVec2f.add(scalar: Float, dest: ArenaVec2f): ArenaVec2f {
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC2)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val r0 = (self0 + scalar)
+        val r1 = (self1 + scalar)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC2)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        return dest
+    }
+    fun ArenaVec2f.add(scalar: Float): ArenaVec2f = add(scalar, this)
+
+    /**
+     * Subtracts a scalar from each component.
+     * @param scalar the value to subtract
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun ArenaVec2f.sub(scalar: Float, dest: ArenaVec2f): ArenaVec2f {
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC2)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val r0 = (self0 - scalar)
+        val r1 = (self1 - scalar)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC2)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        return dest
+    }
+    fun ArenaVec2f.sub(scalar: Float): ArenaVec2f = sub(scalar, this)
+
+    /**
      * Scales every component by a scalar.
      *
      * Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction.
@@ -520,6 +558,50 @@ class FrameScope internal constructor(private val arena: FrameArena) {
         return dest
     }
     fun ArenaVec3f.div(other: ArenaVec3f): ArenaVec3f = div(other, this)
+
+    /**
+     * Adds a scalar to each component.
+     * @param scalar the value to add
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun ArenaVec3f.add(scalar: Float, dest: ArenaVec3f): ArenaVec3f {
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC3)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val r0 = (self0 + scalar)
+        val r1 = (self1 + scalar)
+        val r2 = (self2 + scalar)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC3)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        return dest
+    }
+    fun ArenaVec3f.add(scalar: Float): ArenaVec3f = add(scalar, this)
+
+    /**
+     * Subtracts a scalar from each component.
+     * @param scalar the value to subtract
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun ArenaVec3f.sub(scalar: Float, dest: ArenaVec3f): ArenaVec3f {
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC3)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val r0 = (self0 - scalar)
+        val r1 = (self1 - scalar)
+        val r2 = (self2 - scalar)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC3)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        return dest
+    }
+    fun ArenaVec3f.sub(scalar: Float): ArenaVec3f = sub(scalar, this)
 
     /**
      * Scales every component by a scalar.
@@ -984,6 +1066,56 @@ class FrameScope internal constructor(private val arena: FrameArena) {
         return dest
     }
     fun ArenaVec4f.div(other: ArenaVec4f): ArenaVec4f = div(other, this)
+
+    /**
+     * Adds a scalar to each component.
+     * @param scalar the value to add
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun ArenaVec4f.add(scalar: Float, dest: ArenaVec4f): ArenaVec4f {
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC4)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val self3 = arena.readAt(o_self, 3)
+        val r0 = (self0 + scalar)
+        val r1 = (self1 + scalar)
+        val r2 = (self2 + scalar)
+        val r3 = (self3 + scalar)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC4)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        arena.writeAt(o_dest, 3, r3)
+        return dest
+    }
+    fun ArenaVec4f.add(scalar: Float): ArenaVec4f = add(scalar, this)
+
+    /**
+     * Subtracts a scalar from each component.
+     * @param scalar the value to subtract
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun ArenaVec4f.sub(scalar: Float, dest: ArenaVec4f): ArenaVec4f {
+        val o_self = arena.resolve(token, FrameArena.Kind.VEC4)
+        val self0 = arena.readAt(o_self, 0)
+        val self1 = arena.readAt(o_self, 1)
+        val self2 = arena.readAt(o_self, 2)
+        val self3 = arena.readAt(o_self, 3)
+        val r0 = (self0 - scalar)
+        val r1 = (self1 - scalar)
+        val r2 = (self2 - scalar)
+        val r3 = (self3 - scalar)
+        val o_dest = arena.resolve(dest.token, FrameArena.Kind.VEC4)
+        arena.writeAt(o_dest, 0, r0)
+        arena.writeAt(o_dest, 1, r1)
+        arena.writeAt(o_dest, 2, r2)
+        arena.writeAt(o_dest, 3, r3)
+        return dest
+    }
+    fun ArenaVec4f.sub(scalar: Float): ArenaVec4f = sub(scalar, this)
 
     /**
      * Scales every component by a scalar.

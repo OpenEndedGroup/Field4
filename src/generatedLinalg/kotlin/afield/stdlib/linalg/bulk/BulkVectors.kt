@@ -155,6 +155,70 @@ fun divRange(selfX: FloatArray, selfY: FloatArray, otherX: FloatArray, otherY: F
 }
 
 /**
+ * Adds a scalar to each component.
+ * @param scalar the value to add
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun addRange(selfX: FloatArray, selfY: FloatArray, scalar: Float, destX: FloatArray, destY: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val r0 = self0.add(FloatVector.broadcast(SP, scalar))
+        val r1 = self1.add(FloatVector.broadcast(SP, scalar))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = (selfX[i] + scalar)
+        val t1 = (selfY[i] + scalar)
+        destX[i] = t0
+        destY[i] = t1
+        i++
+    }
+}
+
+/**
+ * Subtracts a scalar from each component.
+ * @param scalar the value to subtract
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun subRange(selfX: FloatArray, selfY: FloatArray, scalar: Float, destX: FloatArray, destY: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val r0 = self0.sub(FloatVector.broadcast(SP, scalar))
+        val r1 = self1.sub(FloatVector.broadcast(SP, scalar))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = (selfX[i] - scalar)
+        val t1 = (selfY[i] - scalar)
+        destX[i] = t0
+        destY[i] = t1
+        i++
+    }
+}
+
+/**
  * Scales every component by a scalar.
  *
  * Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction.
@@ -734,6 +798,84 @@ fun divRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, otherX: Fl
         val t0 = (selfX[i] / otherX[i])
         val t1 = (selfY[i] / otherY[i])
         val t2 = (selfZ[i] / otherZ[i])
+        destX[i] = t0
+        destY[i] = t1
+        destZ[i] = t2
+        i++
+    }
+}
+
+/**
+ * Adds a scalar to each component.
+ * @param scalar the value to add
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun addRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, scalar: Float, destX: FloatArray, destY: FloatArray, destZ: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(selfZ.size >= endExclusive) { "selfZ has size ${selfZ.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    require(destZ.size >= endExclusive) { "destZ has size ${destZ.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val self2 = FloatVector.fromArray(SP, selfZ, i)
+        val r0 = self0.add(FloatVector.broadcast(SP, scalar))
+        val r1 = self1.add(FloatVector.broadcast(SP, scalar))
+        val r2 = self2.add(FloatVector.broadcast(SP, scalar))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        r2.intoArray(destZ, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = (selfX[i] + scalar)
+        val t1 = (selfY[i] + scalar)
+        val t2 = (selfZ[i] + scalar)
+        destX[i] = t0
+        destY[i] = t1
+        destZ[i] = t2
+        i++
+    }
+}
+
+/**
+ * Subtracts a scalar from each component.
+ * @param scalar the value to subtract
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun subRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, scalar: Float, destX: FloatArray, destY: FloatArray, destZ: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(selfZ.size >= endExclusive) { "selfZ has size ${selfZ.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    require(destZ.size >= endExclusive) { "destZ has size ${destZ.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val self2 = FloatVector.fromArray(SP, selfZ, i)
+        val r0 = self0.sub(FloatVector.broadcast(SP, scalar))
+        val r1 = self1.sub(FloatVector.broadcast(SP, scalar))
+        val r2 = self2.sub(FloatVector.broadcast(SP, scalar))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        r2.intoArray(destZ, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = (selfX[i] - scalar)
+        val t1 = (selfY[i] - scalar)
+        val t2 = (selfZ[i] - scalar)
         destX[i] = t0
         destY[i] = t1
         destZ[i] = t2
@@ -1487,6 +1629,98 @@ fun divRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, selfW: Flo
         val t1 = (selfY[i] / otherY[i])
         val t2 = (selfZ[i] / otherZ[i])
         val t3 = (selfW[i] / otherW[i])
+        destX[i] = t0
+        destY[i] = t1
+        destZ[i] = t2
+        destW[i] = t3
+        i++
+    }
+}
+
+/**
+ * Adds a scalar to each component.
+ * @param scalar the value to add
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun addRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, selfW: FloatArray, scalar: Float, destX: FloatArray, destY: FloatArray, destZ: FloatArray, destW: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(selfZ.size >= endExclusive) { "selfZ has size ${selfZ.size}, must be >= $endExclusive" }
+    require(selfW.size >= endExclusive) { "selfW has size ${selfW.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    require(destZ.size >= endExclusive) { "destZ has size ${destZ.size}, must be >= $endExclusive" }
+    require(destW.size >= endExclusive) { "destW has size ${destW.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val self2 = FloatVector.fromArray(SP, selfZ, i)
+        val self3 = FloatVector.fromArray(SP, selfW, i)
+        val r0 = self0.add(FloatVector.broadcast(SP, scalar))
+        val r1 = self1.add(FloatVector.broadcast(SP, scalar))
+        val r2 = self2.add(FloatVector.broadcast(SP, scalar))
+        val r3 = self3.add(FloatVector.broadcast(SP, scalar))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        r2.intoArray(destZ, i)
+        r3.intoArray(destW, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = (selfX[i] + scalar)
+        val t1 = (selfY[i] + scalar)
+        val t2 = (selfZ[i] + scalar)
+        val t3 = (selfW[i] + scalar)
+        destX[i] = t0
+        destY[i] = t1
+        destZ[i] = t2
+        destW[i] = t3
+        i++
+    }
+}
+
+/**
+ * Subtracts a scalar from each component.
+ * @param scalar the value to subtract
+ * @param dest the vector that receives the result
+ * @return the destination vector
+ */
+fun subRange(selfX: FloatArray, selfY: FloatArray, selfZ: FloatArray, selfW: FloatArray, scalar: Float, destX: FloatArray, destY: FloatArray, destZ: FloatArray, destW: FloatArray, start: Int, endExclusive: Int) {
+    require(start in 0..endExclusive) { "start $start must be in 0..$endExclusive" }
+    require(selfX.size >= endExclusive) { "selfX has size ${selfX.size}, must be >= $endExclusive" }
+    require(selfY.size >= endExclusive) { "selfY has size ${selfY.size}, must be >= $endExclusive" }
+    require(selfZ.size >= endExclusive) { "selfZ has size ${selfZ.size}, must be >= $endExclusive" }
+    require(selfW.size >= endExclusive) { "selfW has size ${selfW.size}, must be >= $endExclusive" }
+    require(destX.size >= endExclusive) { "destX has size ${destX.size}, must be >= $endExclusive" }
+    require(destY.size >= endExclusive) { "destY has size ${destY.size}, must be >= $endExclusive" }
+    require(destZ.size >= endExclusive) { "destZ has size ${destZ.size}, must be >= $endExclusive" }
+    require(destW.size >= endExclusive) { "destW has size ${destW.size}, must be >= $endExclusive" }
+    val lanes = SP.length()
+    var i = start
+    while (i + lanes <= endExclusive) {
+        val self0 = FloatVector.fromArray(SP, selfX, i)
+        val self1 = FloatVector.fromArray(SP, selfY, i)
+        val self2 = FloatVector.fromArray(SP, selfZ, i)
+        val self3 = FloatVector.fromArray(SP, selfW, i)
+        val r0 = self0.sub(FloatVector.broadcast(SP, scalar))
+        val r1 = self1.sub(FloatVector.broadcast(SP, scalar))
+        val r2 = self2.sub(FloatVector.broadcast(SP, scalar))
+        val r3 = self3.sub(FloatVector.broadcast(SP, scalar))
+        r0.intoArray(destX, i)
+        r1.intoArray(destY, i)
+        r2.intoArray(destZ, i)
+        r3.intoArray(destW, i)
+        i += lanes
+    }
+    while (i < endExclusive) {
+        val t0 = (selfX[i] - scalar)
+        val t1 = (selfY[i] - scalar)
+        val t2 = (selfZ[i] - scalar)
+        val t3 = (selfW[i] - scalar)
         destX[i] = t0
         destY[i] = t1
         destZ[i] = t2

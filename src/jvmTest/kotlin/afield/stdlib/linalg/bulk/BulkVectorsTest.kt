@@ -80,6 +80,9 @@ class BulkVectorsTest {
                 })
 
             // scalar-parameter overloads
+            check("addScalar", expected { a, _ -> Vector3f(a).add(scalar) }, { dx, dy, dz -> addRange(selfX, selfY, selfZ, scalar, dx, dy, dz, 0, n) })
+            check("subScalar", expected { a, _ -> Vector3f(a).sub(scalar) }, { dx, dy, dz -> subRange(selfX, selfY, selfZ, scalar, dx, dy, dz, 0, n) })
+
             val mulScalarExpected = FloatArray(n) { selfX[it] * scalar } to FloatArray(n) { selfY[it] * scalar } to FloatArray(n) { selfZ[it] * scalar }
             val dsx = FloatArray(n); val dsy = FloatArray(n); val dsz = FloatArray(n)
             mulRange(selfX, selfY, selfZ, scalar, dsx, dsy, dsz, 0, n)

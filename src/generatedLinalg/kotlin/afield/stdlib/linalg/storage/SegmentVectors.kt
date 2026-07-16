@@ -148,6 +148,32 @@ class SegmentVec2Buffer(
     fun SegmentVec2f.div(other: SegmentVec2f): SegmentVec2f = div(other, this)
 
     /**
+     * Adds a scalar to each component.
+     * @param scalar the value to add
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun SegmentVec2f.add(scalar: Float, dest: SegmentVec2f): SegmentVec2f {
+        val r0 = (read(token, 0) + scalar)
+        val r1 = (read(token, 1) + scalar)
+        return dest.set(r0, r1)
+    }
+    fun SegmentVec2f.add(scalar: Float): SegmentVec2f = add(scalar, this)
+
+    /**
+     * Subtracts a scalar from each component.
+     * @param scalar the value to subtract
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun SegmentVec2f.sub(scalar: Float, dest: SegmentVec2f): SegmentVec2f {
+        val r0 = (read(token, 0) - scalar)
+        val r1 = (read(token, 1) - scalar)
+        return dest.set(r0, r1)
+    }
+    fun SegmentVec2f.sub(scalar: Float): SegmentVec2f = sub(scalar, this)
+
+    /**
      * Scales every component by a scalar.
      *
      * Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction.
@@ -462,6 +488,34 @@ class SegmentVec3Buffer(
         return dest.set(r0, r1, r2)
     }
     fun SegmentVec3f.div(other: SegmentVec3f): SegmentVec3f = div(other, this)
+
+    /**
+     * Adds a scalar to each component.
+     * @param scalar the value to add
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun SegmentVec3f.add(scalar: Float, dest: SegmentVec3f): SegmentVec3f {
+        val r0 = (read(token, 0) + scalar)
+        val r1 = (read(token, 1) + scalar)
+        val r2 = (read(token, 2) + scalar)
+        return dest.set(r0, r1, r2)
+    }
+    fun SegmentVec3f.add(scalar: Float): SegmentVec3f = add(scalar, this)
+
+    /**
+     * Subtracts a scalar from each component.
+     * @param scalar the value to subtract
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun SegmentVec3f.sub(scalar: Float, dest: SegmentVec3f): SegmentVec3f {
+        val r0 = (read(token, 0) - scalar)
+        val r1 = (read(token, 1) - scalar)
+        val r2 = (read(token, 2) - scalar)
+        return dest.set(r0, r1, r2)
+    }
+    fun SegmentVec3f.sub(scalar: Float): SegmentVec3f = sub(scalar, this)
 
     /**
      * Scales every component by a scalar.
@@ -811,6 +865,36 @@ class SegmentVec4Buffer(
         return dest.set(r0, r1, r2, r3)
     }
     fun SegmentVec4f.div(other: SegmentVec4f): SegmentVec4f = div(other, this)
+
+    /**
+     * Adds a scalar to each component.
+     * @param scalar the value to add
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun SegmentVec4f.add(scalar: Float, dest: SegmentVec4f): SegmentVec4f {
+        val r0 = (read(token, 0) + scalar)
+        val r1 = (read(token, 1) + scalar)
+        val r2 = (read(token, 2) + scalar)
+        val r3 = (read(token, 3) + scalar)
+        return dest.set(r0, r1, r2, r3)
+    }
+    fun SegmentVec4f.add(scalar: Float): SegmentVec4f = add(scalar, this)
+
+    /**
+     * Subtracts a scalar from each component.
+     * @param scalar the value to subtract
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun SegmentVec4f.sub(scalar: Float, dest: SegmentVec4f): SegmentVec4f {
+        val r0 = (read(token, 0) - scalar)
+        val r1 = (read(token, 1) - scalar)
+        val r2 = (read(token, 2) - scalar)
+        val r3 = (read(token, 3) - scalar)
+        return dest.set(r0, r1, r2, r3)
+    }
+    fun SegmentVec4f.sub(scalar: Float): SegmentVec4f = sub(scalar, this)
 
     /**
      * Scales every component by a scalar.

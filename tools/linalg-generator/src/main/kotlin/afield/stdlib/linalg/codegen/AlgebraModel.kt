@@ -251,6 +251,8 @@ object FieldAlgebraModel {
             add(vectorBinary("sub", "-"))
             add(vectorBinary("mul", "*"))
             add(vectorBinary("div", "/"))
+            add(scalarBinary("add", "+"))
+            add(scalarBinary("sub", "-"))
             add(scalarBinary("mul", "*"))
             add(scalarBinary("div", "/"))
             add(

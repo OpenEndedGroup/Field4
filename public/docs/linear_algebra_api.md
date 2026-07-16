@@ -28,6 +28,8 @@ In a Field code box, ordinary heap values use `vec(x, y)`. In a typed context, `
 | `sub(other: Vector2fc)` | Subtracts another vector component by component. |
 | `mul(other: Vector2fc)` | Multiplies corresponding components. |
 | `div(other: Vector2fc)` | Divides corresponding components. |
+| `add(scalar: Float)` | Adds a scalar to each component. |
+| `sub(scalar: Float)` | Subtracts a scalar from each component. |
 | `mul(scalar: Float)` | Scales every component by a scalar. Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction. |
 | `div(scalar: Float)` | Divides every component by a scalar. |
 | `negate()` | Reverses the vector by negating every component. |
@@ -58,6 +60,8 @@ In a Field code box, ordinary heap values use `vec(x, y, z)`. In a typed context
 | `sub(other: Vector3fc)` | Subtracts another vector component by component. |
 | `mul(other: Vector3fc)` | Multiplies corresponding components. |
 | `div(other: Vector3fc)` | Divides corresponding components. |
+| `add(scalar: Float)` | Adds a scalar to each component. |
+| `sub(scalar: Float)` | Subtracts a scalar from each component. |
 | `mul(scalar: Float)` | Scales every component by a scalar. Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction. |
 | `div(scalar: Float)` | Divides every component by a scalar. |
 | `negate()` | Reverses the vector by negating every component. |
@@ -89,6 +93,8 @@ In a Field code box, ordinary heap values use `vec(x, y, z, w)`. In a typed cont
 | `sub(other: Vector4fc)` | Subtracts another vector component by component. |
 | `mul(other: Vector4fc)` | Multiplies corresponding components. |
 | `div(other: Vector4fc)` | Divides corresponding components. |
+| `add(scalar: Float)` | Adds a scalar to each component. |
+| `sub(scalar: Float)` | Subtracts a scalar from each component. |
 | `mul(scalar: Float)` | Scales every component by a scalar. Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction. |
 | `div(scalar: Float)` | Divides every component by a scalar. |
 | `negate()` | Reverses the vector by negating every component. |

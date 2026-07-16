@@ -974,6 +974,17 @@ tasks.register<JavaExec>("runTrackingResonatorResynthesisExample") {
     jvmArgs("--add-modules", "jdk.incubator.vector")
 }
 
+tasks.register<JavaExec>("runSimdVerletBulkKernelsExample") {
+    group = "application"
+    description = "Worked example of the generated bulk SIMD vector kernels and their SimdVerlet helpers (velocity read-out, spring-to-target force)."
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
+    })
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.examples.SimdVerletBulkKernelsExample")
+    jvmArgs("--add-modules", "jdk.incubator.vector")
+}
+
 tasks.register<JavaExec>("runEvolveWorkedExample") {
     group = "application"
     description = "CPU-only worked example of the Functions evolve harness: writes an SVG overlay + trace under public/docs/assets/evolve/."

@@ -76,6 +76,30 @@ interface Vector2fc {
     }
 
     /**
+     * Adds a scalar to each component.
+     * @param scalar the value to add
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun add(scalar: Float, dest: Vector2f): Vector2f {
+        val r0 = (x() + scalar)
+        val r1 = (y() + scalar)
+        return dest.set(r0, r1)
+    }
+
+    /**
+     * Subtracts a scalar from each component.
+     * @param scalar the value to subtract
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun sub(scalar: Float, dest: Vector2f): Vector2f {
+        val r0 = (x() - scalar)
+        val r1 = (y() - scalar)
+        return dest.set(r0, r1)
+    }
+
+    /**
      * Scales every component by a scalar.
      *
      * Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction.
@@ -317,6 +341,22 @@ class Vector2f() : Vector2fc, Cloneable {
      */
     operator fun div(other: Vector2fc): Vector2f = div(other, this)
     /**
+     * Adds a scalar to each component.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the value to add
+     * @return this vector
+     */
+    fun add(scalar: Float): Vector2f = add(scalar, this)
+    /**
+     * Subtracts a scalar from each component.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the value to subtract
+     * @return this vector
+     */
+    fun sub(scalar: Float): Vector2f = sub(scalar, this)
+    /**
      * Scales every component by a scalar.
      *
      * Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction.
@@ -490,6 +530,32 @@ interface Vector3fc {
         val r0 = (x() / other.x())
         val r1 = (y() / other.y())
         val r2 = (z() / other.z())
+        return dest.set(r0, r1, r2)
+    }
+
+    /**
+     * Adds a scalar to each component.
+     * @param scalar the value to add
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun add(scalar: Float, dest: Vector3f): Vector3f {
+        val r0 = (x() + scalar)
+        val r1 = (y() + scalar)
+        val r2 = (z() + scalar)
+        return dest.set(r0, r1, r2)
+    }
+
+    /**
+     * Subtracts a scalar from each component.
+     * @param scalar the value to subtract
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun sub(scalar: Float, dest: Vector3f): Vector3f {
+        val r0 = (x() - scalar)
+        val r1 = (y() - scalar)
+        val r2 = (z() - scalar)
         return dest.set(r0, r1, r2)
     }
 
@@ -766,6 +832,22 @@ class Vector3f() : Vector3fc, Cloneable {
      */
     operator fun div(other: Vector3fc): Vector3f = div(other, this)
     /**
+     * Adds a scalar to each component.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the value to add
+     * @return this vector
+     */
+    fun add(scalar: Float): Vector3f = add(scalar, this)
+    /**
+     * Subtracts a scalar from each component.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the value to subtract
+     * @return this vector
+     */
+    fun sub(scalar: Float): Vector3f = sub(scalar, this)
+    /**
      * Scales every component by a scalar.
      *
      * Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction.
@@ -956,6 +1038,34 @@ interface Vector4fc {
         val r1 = (y() / other.y())
         val r2 = (z() / other.z())
         val r3 = (w() / other.w())
+        return dest.set(r0, r1, r2, r3)
+    }
+
+    /**
+     * Adds a scalar to each component.
+     * @param scalar the value to add
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun add(scalar: Float, dest: Vector4f): Vector4f {
+        val r0 = (x() + scalar)
+        val r1 = (y() + scalar)
+        val r2 = (z() + scalar)
+        val r3 = (w() + scalar)
+        return dest.set(r0, r1, r2, r3)
+    }
+
+    /**
+     * Subtracts a scalar from each component.
+     * @param scalar the value to subtract
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun sub(scalar: Float, dest: Vector4f): Vector4f {
+        val r0 = (x() - scalar)
+        val r1 = (y() - scalar)
+        val r2 = (z() - scalar)
+        val r3 = (w() - scalar)
         return dest.set(r0, r1, r2, r3)
     }
 
@@ -1233,6 +1343,22 @@ class Vector4f() : Vector4fc, Cloneable {
      */
     operator fun div(other: Vector4fc): Vector4f = div(other, this)
     /**
+     * Adds a scalar to each component.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the value to add
+     * @return this vector
+     */
+    fun add(scalar: Float): Vector4f = add(scalar, this)
+    /**
+     * Subtracts a scalar from each component.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the value to subtract
+     * @return this vector
+     */
+    fun sub(scalar: Float): Vector4f = sub(scalar, this)
+    /**
      * Scales every component by a scalar.
      *
      * Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction.
@@ -1402,6 +1528,30 @@ interface Vector2dc {
     fun div(other: Vector2dc, dest: Vector2d): Vector2d {
         val r0 = (x() / other.x())
         val r1 = (y() / other.y())
+        return dest.set(r0, r1)
+    }
+
+    /**
+     * Adds a scalar to each component.
+     * @param scalar the value to add
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun add(scalar: Double, dest: Vector2d): Vector2d {
+        val r0 = (x() + scalar)
+        val r1 = (y() + scalar)
+        return dest.set(r0, r1)
+    }
+
+    /**
+     * Subtracts a scalar from each component.
+     * @param scalar the value to subtract
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun sub(scalar: Double, dest: Vector2d): Vector2d {
+        val r0 = (x() - scalar)
+        val r1 = (y() - scalar)
         return dest.set(r0, r1)
     }
 
@@ -1647,6 +1797,22 @@ class Vector2d() : Vector2dc, Cloneable {
      */
     operator fun div(other: Vector2dc): Vector2d = div(other, this)
     /**
+     * Adds a scalar to each component.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the value to add
+     * @return this vector
+     */
+    fun add(scalar: Double): Vector2d = add(scalar, this)
+    /**
+     * Subtracts a scalar from each component.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the value to subtract
+     * @return this vector
+     */
+    fun sub(scalar: Double): Vector2d = sub(scalar, this)
+    /**
      * Scales every component by a scalar.
      *
      * Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction.
@@ -1820,6 +1986,32 @@ interface Vector3dc {
         val r0 = (x() / other.x())
         val r1 = (y() / other.y())
         val r2 = (z() / other.z())
+        return dest.set(r0, r1, r2)
+    }
+
+    /**
+     * Adds a scalar to each component.
+     * @param scalar the value to add
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun add(scalar: Double, dest: Vector3d): Vector3d {
+        val r0 = (x() + scalar)
+        val r1 = (y() + scalar)
+        val r2 = (z() + scalar)
+        return dest.set(r0, r1, r2)
+    }
+
+    /**
+     * Subtracts a scalar from each component.
+     * @param scalar the value to subtract
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun sub(scalar: Double, dest: Vector3d): Vector3d {
+        val r0 = (x() - scalar)
+        val r1 = (y() - scalar)
+        val r2 = (z() - scalar)
         return dest.set(r0, r1, r2)
     }
 
@@ -2096,6 +2288,22 @@ class Vector3d() : Vector3dc, Cloneable {
      */
     operator fun div(other: Vector3dc): Vector3d = div(other, this)
     /**
+     * Adds a scalar to each component.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the value to add
+     * @return this vector
+     */
+    fun add(scalar: Double): Vector3d = add(scalar, this)
+    /**
+     * Subtracts a scalar from each component.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the value to subtract
+     * @return this vector
+     */
+    fun sub(scalar: Double): Vector3d = sub(scalar, this)
+    /**
      * Scales every component by a scalar.
      *
      * Scalar multiplication changes the arrow's length; a negative scalar also reverses its direction.
@@ -2286,6 +2494,34 @@ interface Vector4dc {
         val r1 = (y() / other.y())
         val r2 = (z() / other.z())
         val r3 = (w() / other.w())
+        return dest.set(r0, r1, r2, r3)
+    }
+
+    /**
+     * Adds a scalar to each component.
+     * @param scalar the value to add
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun add(scalar: Double, dest: Vector4d): Vector4d {
+        val r0 = (x() + scalar)
+        val r1 = (y() + scalar)
+        val r2 = (z() + scalar)
+        val r3 = (w() + scalar)
+        return dest.set(r0, r1, r2, r3)
+    }
+
+    /**
+     * Subtracts a scalar from each component.
+     * @param scalar the value to subtract
+     * @param dest the vector that receives the result
+     * @return the destination vector
+     */
+    fun sub(scalar: Double, dest: Vector4d): Vector4d {
+        val r0 = (x() - scalar)
+        val r1 = (y() - scalar)
+        val r2 = (z() - scalar)
+        val r3 = (w() - scalar)
         return dest.set(r0, r1, r2, r3)
     }
 
@@ -2562,6 +2798,22 @@ class Vector4d() : Vector4dc, Cloneable {
      * @return this vector
      */
     operator fun div(other: Vector4dc): Vector4d = div(other, this)
+    /**
+     * Adds a scalar to each component.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the value to add
+     * @return this vector
+     */
+    fun add(scalar: Double): Vector4d = add(scalar, this)
+    /**
+     * Subtracts a scalar from each component.
+     *
+     * This overload writes the result back into this vector.
+     * @param scalar the value to subtract
+     * @return this vector
+     */
+    fun sub(scalar: Double): Vector4d = sub(scalar, this)
     /**
      * Scales every component by a scalar.
      *
