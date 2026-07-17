@@ -65,18 +65,15 @@ object LogDispatcher {
     ) = log(LogEvent(channel = channel, message = message, indent = indent, blockId = blockId, boundary = boundary))
 }
 
-object StdoutLog : LogSink {
-    private const val ANSI_RESET = "\u001B[0m"
-    private const val ANSI_DARK_GRAY = "\u001B[90m"
-    private const val ANSI_ITALIC = "\u001B[3m"
-
-    /**
-     * Channels suppressed from stdout. These events still reach every other sink (e.g. the
-     * LogStream widget), so nothing is lost — they're just too chatty for the console. Override
-     * with `-Dafield.log.mute=...` or `AFIELD_LOG_MUTE=...` (semicolon-separated exact channel
-     * strings); set to a blank/empty value to mute nothing.
-     */
-    private val muted: Set<String> = run {
+/**
+ * Channels suppressed from the console — both the plain [StdoutLog] and the interactive
+ * PinnedConsole honor this. Muted events still reach every *other* sink (e.g. the LogStream web
+ * widget), so nothing is lost; they're just too chatty for the terminal. Default mutes the
+ * box-resync spam (`info,boxes`). Override with `-Dafield.log.mute=...` or `AFIELD_LOG_MUTE=...`
+ * (semicolon-separated exact channel strings); set to a blank/empty value to mute nothing.
+ */
+object ConsoleMute {
+    val channels: Set<String> = run {
         val raw = System.getProperty("afield.log.mute") ?: System.getenv("AFIELD_LOG_MUTE")
         if (raw != null) {
             raw.split(';').map { it.trim() }.filter { it.isNotEmpty() }.toSet()
@@ -85,8 +82,16 @@ object StdoutLog : LogSink {
         }
     }
 
+    fun isMuted(channel: String): Boolean = channel in channels
+}
+
+object StdoutLog : LogSink {
+    private const val ANSI_RESET = "\u001B[0m"
+    private const val ANSI_DARK_GRAY = "\u001B[90m"
+    private const val ANSI_ITALIC = "\u001B[3m"
+
     override fun log(event: LogEvent) {
-        if (event.channel in muted) return
+        if (ConsoleMute.isMuted(event.channel)) return
         val prefix = ""
         val channelPart = if (event.channel.isNotBlank()) {
             // Render channel tags as dark gray + italic for easier skimming in stdout

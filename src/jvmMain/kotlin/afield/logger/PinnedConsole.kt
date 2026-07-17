@@ -1,6 +1,7 @@
 package afield.logger
 
 import afield.ai.core.BlockBoundary
+import afield.ai.core.ConsoleMute
 import afield.ai.core.LogDispatcher
 import afield.ai.core.LogEvent
 import afield.ai.core.LogSink
@@ -306,6 +307,7 @@ private class PinnedConsoleSink(initialChannels: List<PinnedChannel>) : LogSink 
     }
 
     override fun log(event: LogEvent) {
+        if (ConsoleMute.isMuted(event.channel)) return // muted channels: keep them off the console (still on LogStream)
         if (!enabled) {
             // Degraded: nothing is pinned; keep the current stdout look, but mark would-be pins.
             val tag = matchedPin(event.channel)
