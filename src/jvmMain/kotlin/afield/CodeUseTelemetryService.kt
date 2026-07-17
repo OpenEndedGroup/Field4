@@ -350,8 +350,8 @@ object CodeUseTelemetryService {
     private val semanticSidecarTimeoutMs: Long = (
         System.getProperty("afield.codeUse.semanticSidecar.timeoutMs")
             ?: System.getenv("AFIELD_CODE_USE_SEMANTIC_SIDECAR_TIMEOUT_MS")
-            ?: "2500"
-        ).toLongOrNull()?.coerceIn(100L, 30_000L) ?: 2500L
+            ?: "8000"
+        ).toLongOrNull()?.coerceIn(100L, 30_000L) ?: 8000L
     private val semanticSidecarHttpClient: HttpClient = HttpClient.newBuilder()
         .connectTimeout(Duration.ofMillis(semanticSidecarTimeoutMs))
         .build()

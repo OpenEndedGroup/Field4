@@ -15,6 +15,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.components.resolveSymbol
+import org.jetbrains.kotlin.analysis.api.standalone.StandaloneAnalysisAPISession
 import org.jetbrains.kotlin.analysis.api.standalone.buildStandaloneAnalysisAPISession
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassLikeSymbol
@@ -34,17 +35,17 @@ import org.jetbrains.kotlin.psi.KtConstructorCalleeExpression
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtImportDirective
 import org.jetbrains.kotlin.psi.KtPackageDirective
+import org.jetbrains.kotlin.psi.KtPsiFactory
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
-import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 import kotlin.io.path.absolutePathString
-import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
-import kotlin.io.path.isDirectory
-import kotlin.io.path.name
 import kotlin.system.exitProcess
 
 @Serializable
@@ -222,6 +223,27 @@ private data class SidecarConfig(
 }
 
 private class K2SidecarAnalyzer(private val config: SidecarConfig) {
+    // A built standalone session indexes the whole workspace source tree (~300k lines) at build time,
+    // which costs a couple of seconds. That work is identical for every request, so we build a session
+    // once per (sourceRoots, classpathRoots) and keep it for the lifetime of the sidecar process. Each
+    // request then analyzes its snippet as an in-memory dangling file against the pre-built module — the
+    // workspace's FIR session is fetched from cache and reused, so per-request cost drops to milliseconds.
+    private data class SessionKey(val sourceRoots: List<String>, val classpathRoots: List<String>)
+
+    private class CachedSession(
+        // Held only to keep the session (and its project/environment) alive for the process lifetime.
+        val session: StandaloneAnalysisAPISession,
+        // Any KtFile from the workspace module; used to contextualize dangling snippet files to it.
+        val contextFile: KtFile,
+    ) {
+        // The low-level FIR caches are not designed for concurrent analysis of the same project, so
+        // analysis over a shared session is serialized. Snippet turnaround is milliseconds, so this
+        // does not meaningfully limit throughput at the sidecar's small thread count.
+        val lock = ReentrantLock()
+    }
+
+    private val sessions = ConcurrentHashMap<SessionKey, CachedSession>()
+
     fun analyze(rawRequest: CodeUseSemanticAnalyzeRequest): CodeUseSemanticAnalyzeResult {
         val request = normalizeRequest(rawRequest)
         if (request.code.isBlank()) {
@@ -235,45 +257,79 @@ private class K2SidecarAnalyzer(private val config: SidecarConfig) {
                 sourceName = request.sourceName
             )
         }
-        val snippetFile = writeSyntheticSnippet(request)
-        val sourceRoots = sourceRoots(request, snippetFile)
+        val sourceRoots = sourceRoots(request)
         val classpathRoots = classpathRoots(request)
-        val disposable = Disposer.newDisposable("code-use-semantic-sidecar-request")
-        return try {
-            val session = buildStandaloneAnalysisAPISession(disposable, unitTestMode = false) {
-                buildKtModuleProvider {
-                    platform = JvmPlatforms.defaultJvmPlatform
-                    val sdk = buildKtSdkModule {
-                        platform = JvmPlatforms.defaultJvmPlatform
-                        libraryName = "jdk"
-                        addBinaryRootsFromJdkHome(Paths.get(System.getProperty("java.home")), isJre = false)
-                    }
-                    val libraries = buildKtLibraryModule {
-                        platform = JvmPlatforms.defaultJvmPlatform
-                        libraryName = "field-classpath"
-                        addRegularDependency(sdk)
-                        addBinaryRoots(classpathRoots)
-                    }
-                    addModule(buildKtSourceModule {
-                        platform = JvmPlatforms.defaultJvmPlatform
-                        moduleName = "field-code-use"
-                        addRegularDependency(sdk)
-                        addRegularDependency(libraries)
-                        addSourceRoots(sourceRoots)
-                    })
-                }
-            }
-            val ktFile = session.modulesWithFiles.values
-                .asSequence()
-                .flatten()
-                .filterIsInstance<KtFile>()
-                .firstOrNull { file -> file.virtualFile?.toPathOrNull() == snippetFile }
-                ?: return CodeUseSemanticAnalyzeResult(false, "k2-standalone", "Could not find synthetic snippet in Analysis API session.", request.sourceName)
-            analyzeKtFile(request, ktFile, config.workspaceRoot)
-        } finally {
-            Disposer.dispose(disposable)
+        val cached = cachedSession(sourceRoots, classpathRoots)
+            ?: return CodeUseSemanticAnalyzeResult(
+                false,
+                "k2-standalone",
+                "No Kotlin source files were found under the configured source roots; cannot build an analysis session.",
+                request.sourceName
+            )
+        return cached.lock.withLock {
+            // Non-physical (eventSystemEnabled = false) dangling file: the platform lazily builds a
+            // KaDanglingFileModule whose contextModule is the cached workspace module, and drops this
+            // throwaway session on the next PSI change, so snippets never pollute the cached module.
+            val snippetFile = KtPsiFactory
+                .contextual(cached.contextFile, markGenerated = false, eventSystemEnabled = false)
+                .createFile(safeSnippetName(request.sourceName), syntheticSource(request))
+            analyzeKtFile(request, snippetFile, config.workspaceRoot)
         }
     }
+
+    private fun cachedSession(sourceRoots: List<Path>, classpathRoots: List<Path>): CachedSession? {
+        val key = SessionKey(
+            sourceRoots = sourceRoots.map { it.toString() }.sorted(),
+            classpathRoots = classpathRoots.map { it.toString() }.sorted()
+        )
+        sessions[key]?.let { return it }
+        // Build under a lock so a burst of first requests doesn't build several redundant sessions.
+        return synchronized(sessions) {
+            sessions[key] ?: buildCachedSession(sourceRoots, classpathRoots)?.also { sessions[key] = it }
+        }
+    }
+
+    private fun buildCachedSession(sourceRoots: List<Path>, classpathRoots: List<Path>): CachedSession? {
+        // Never disposed: the session lives for the sidecar process. Disposer.newDisposable() is not
+        // registered under any parent, so nothing disposes it out from under us.
+        val disposable = Disposer.newDisposable("code-use-semantic-sidecar-session")
+        val session = buildStandaloneAnalysisAPISession(disposable, unitTestMode = false) {
+            buildKtModuleProvider {
+                platform = JvmPlatforms.defaultJvmPlatform
+                val sdk = buildKtSdkModule {
+                    platform = JvmPlatforms.defaultJvmPlatform
+                    libraryName = "jdk"
+                    addBinaryRootsFromJdkHome(Paths.get(System.getProperty("java.home")), isJre = false)
+                }
+                val libraries = buildKtLibraryModule {
+                    platform = JvmPlatforms.defaultJvmPlatform
+                    libraryName = "field-classpath"
+                    addRegularDependency(sdk)
+                    addBinaryRoots(classpathRoots)
+                }
+                addModule(buildKtSourceModule {
+                    platform = JvmPlatforms.defaultJvmPlatform
+                    moduleName = "field-code-use"
+                    addRegularDependency(sdk)
+                    addRegularDependency(libraries)
+                    addSourceRoots(sourceRoots)
+                })
+            }
+        }
+        val contextFile = session.modulesWithFiles.values
+            .asSequence()
+            .flatten()
+            .filterIsInstance<KtFile>()
+            .firstOrNull()
+        if (contextFile == null) {
+            Disposer.dispose(disposable)
+            return null
+        }
+        return CachedSession(session, contextFile)
+    }
+
+    private fun safeSnippetName(sourceName: String): String =
+        sourceName.replace(Regex("""[^A-Za-z0-9_.-]"""), "_").ifBlank { "AgentSnippet.kt" }
 
     private fun normalizeRequest(request: CodeUseSemanticAnalyzeRequest): CodeUseSemanticAnalyzeRequest =
         request.copy(
@@ -283,14 +339,6 @@ private class K2SidecarAnalyzer(private val config: SidecarConfig) {
             callersPerSymbol = request.callersPerSymbol.coerceIn(0, 50),
             sourceRadiusLines = request.sourceRadiusLines.coerceIn(4, 120)
         )
-
-    private fun writeSyntheticSnippet(request: CodeUseSemanticAnalyzeRequest): Path {
-        val root = config.scratchRoot.resolve("snippets").createDirectories()
-        val safeName = request.sourceName.replace(Regex("""[^A-Za-z0-9_.-]"""), "_").ifBlank { "AgentSnippet.kt" }
-        val file = root.resolve("${System.nanoTime()}-$safeName")
-        Files.writeString(file, syntheticSource(request), StandardCharsets.UTF_8)
-        return file
-    }
 
     private fun syntheticSource(request: CodeUseSemanticAnalyzeRequest): String {
         val trimmed = request.code.trimStart()
@@ -317,12 +365,12 @@ private class K2SidecarAnalyzer(private val config: SidecarConfig) {
     private fun syntheticLineOffset(request: CodeUseSemanticAnalyzeRequest): Int =
         if (request.code.trimStart().startsWith("package ")) 0 else syntheticImports(request).size + 2
 
-    private fun sourceRoots(request: CodeUseSemanticAnalyzeRequest, snippetFile: Path): List<Path> {
+    private fun sourceRoots(request: CodeUseSemanticAnalyzeRequest): List<Path> {
         val roots = request.sourceRoots.ifEmpty {
             listOf("src/jvmMain/kotlin", "src/commonMain/kotlin", "src/personal/kotlin")
                 .map { config.workspaceRoot.resolve(it).absolutePathString() }
         }
-        return (roots.mapNotNull(::pathIfExists) + snippetFile).distinct()
+        return roots.mapNotNull(::pathIfExists).distinct()
     }
 
     private fun classpathRoots(request: CodeUseSemanticAnalyzeRequest): List<Path> {
@@ -495,11 +543,21 @@ private class K2SidecarAnalyzer(private val config: SidecarConfig) {
 
     private fun PsiElement.lineAndColumn(lineOffset: Int = 0): Pair<Int, Int> {
         val file = containingFile ?: return 0 to 0
-        val document = PsiDocumentManager.getInstance(project).getDocument(file) ?: return 0 to 0
-        val offset = textOffset.coerceIn(0, document.textLength)
-        val line = document.getLineNumber(offset)
-        val column = offset - document.getLineStartOffset(line)
-        return (line + 1 - lineOffset).coerceAtLeast(1) to column + 1
+        // Snippets are analyzed as non-physical dangling files, which have no PSI document, so fall back
+        // to counting newlines in the raw file text — otherwise every snippet position collapses to 0:0.
+        val document = PsiDocumentManager.getInstance(project).getDocument(file) ?: file.viewProvider.document
+        val (line0, column0) = if (document != null) {
+            val offset = textOffset.coerceIn(0, document.textLength)
+            val line = document.getLineNumber(offset)
+            line to (offset - document.getLineStartOffset(line))
+        } else {
+            val text = file.text
+            val offset = textOffset.coerceIn(0, text.length)
+            val line = text.take(offset).count { it == '\n' }
+            val lineStart = text.lastIndexOf('\n', offset - 1) + 1
+            line to (offset - lineStart)
+        }
+        return (line0 + 1 - lineOffset).coerceAtLeast(1) to column0 + 1
     }
 
     private val defaultImports = listOf(
