@@ -52,6 +52,11 @@ dependencies {
 
 application {
     mainClass.set("afield.tools.codeuse.CodeUseSemanticSidecarKt")
+    // This is a headless HTTP sidecar. The IntelliJ/Kotlin Analysis API it pulls in
+    // initializes AWT, which on macOS otherwise makes the JVM a foreground app (Duke
+    // icon in the Dock / alt-tab switcher). UIElement keeps AWT usable but hides the
+    // process from the Dock and app switcher, keeping it a proper background service.
+    applicationDefaultJvmArgs = listOf("-Dapple.awt.UIElement=true")
 }
 
 kotlin {
