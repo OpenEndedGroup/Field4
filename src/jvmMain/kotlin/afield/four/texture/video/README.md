@@ -221,12 +221,57 @@ videoTexture.update(commandBuffer)
 3. **Automatic**: Video handles frame timing internally
 4. **Flexible**: Support custom clocks for other timing sources
 
+### Buffer Management
+
+`AudioPlayer` streams through a fixed pool of OpenAL buffers (`NUM_BUFFERS = 4`).
+Each queued buffer holds one decoded `AudioFrame`, so buffer duration follows the
+decoder's frame size rather than a fixed value. The typical steady state is a small
+fraction of a second of audio queued ahead, which keeps latency low while avoiding
+underruns. In the render loop, call `processBuffers()` to recycle finished buffers,
+then queue new frames while `getFreeBufferCount()` is greater than zero.
+
+Rough memory footprint for the queued audio:
+`NUM_BUFFERS × frameDuration × sampleRate × channels × 2 bytes` (16-bit PCM).
+For example, 4 buffers of ~0.2 s at 44100 Hz stereo is
+`4 × 0.2 × 44100 × 2 × 2 ≈ 138 KB`.
+
+### Performance Considerations
+
+The following are illustrative ballpark estimates, not measured figures:
+
+- **Audio decoding**: minimal CPU (roughly a percent or two per stream)
+- **Audio playback**: very low CPU (handled by the audio driver)
+- **Memory**: audio buffers on the order of ~138 KB (see above); the decoder adds ~1-2 MB
+- **Latency**: low audio latency (~10-50 ms depending on buffer sizing); video latency
+  matches audio when synchronized
+
+### Troubleshooting
+
+**No audio output**
+- Confirm `audioPlayer.initialize()` returned true (OpenAL device init can fail)
+- Confirm `audioDecoder.open()` returned true (the file may have no audio stream)
+- Verify a system audio device is available
+
+**Audio/video out of sync**
+- Ensure audio buffers are continuously queued (don't let the queue drain)
+- Check for video frame drops caused by CPU overload
+- Verify timestamps are correct
+
+**Audio stuttering**
+- Check for CPU overload and ensure adequate buffer queuing
+- Profile audio callback timing
+
+**Audio distortion**
+- Verify the sample rate and channel count match between decoder and player
+- Confirm the format is 16-bit signed PCM (S16)
+- Check for clipping (volume set too high)
+
 ### See Also
 
-- `AudioVideoExample.kt`: Complete examples with clock integration
-- `PlaybackClock.kt`: Clock interface and implementations  
-- `AUDIO_OPTIONS.md`: Comparison of audio backend options
-- `AUDIO_IMPLEMENTATION.md`: Detailed implementation guide
+- `AudioVideoExample.kt`: Example with clock integration (`basicAudioVideoPlaybackWithClock()`)
+- `PlaybackClock.kt`: Clock interface and implementations (`AudioClock`, `SystemClock`)
+- `PlaybackClock.kt`: A/V-sync design and rationale (PlaybackClock/AudioClock, documented in-source)
+- `dev_docs/AUDIO_OPTIONS.md`: Historical ADR — why OpenAL was chosen over other backends
 
 ### Dependencies
 

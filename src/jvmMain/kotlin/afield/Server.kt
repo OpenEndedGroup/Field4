@@ -2906,6 +2906,15 @@ class Server {
                 Handled.yes
             })
 
+            // Active-layer switch = save-then-apply. Before changing the active
+            // layer we snapshot the current frame of every box that belongs to the
+            // OLD active layer into box.layerFrames[oldActiveLayer], then apply the
+            // saved frames for the NEW active layer. Net effect: moving a box while
+            // a layer is active auto-records its position for that layer, and
+            // switching layers captures/restores positions round-trip. A layer's
+            // first activation just uses whatever positions boxes already have.
+            // Known gap: deactivating (layer = null) leaves boxes at their last
+            // position; original frames are not tracked/restored.
             handlers["set-active-layer"] = mutableSetOf({ message, reply ->
                 val update = Json.decodeFromJsonElement<SetActiveLayer>(message.payload!!)
                 lprintln("debug,layers", "Setting active layer: ${update.layer}, animated: ${update.animated}")

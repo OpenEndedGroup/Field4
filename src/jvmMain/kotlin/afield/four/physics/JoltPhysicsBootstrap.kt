@@ -6,6 +6,11 @@ import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.atomic.AtomicBoolean
 
+/**
+ * One-time native jolt-jni bring-up (library load, cleaner, factory, allocator).
+ * Called lazily from the [JoltPhysicsWorld] constructor via [ensureInitialized];
+ * see JoltPhysicsWorld.kt for the physics API this supports.
+ */
 object JoltPhysicsBootstrap {
     private val initialized = AtomicBoolean(false)
     private val nativeLoaded = AtomicBoolean(false)

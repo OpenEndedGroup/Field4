@@ -2848,6 +2848,18 @@ class KotlinExecution : BoxExecution {
             return
         }
 
+        /**
+         * Builds completion [Metadata] (including documentation) for each candidate in a K2 scripting
+         * completion result.
+         *
+         * KDoc/documentation resolution: the K2 2.4 scripting jars do not expose a `DeclarationDescriptor`
+         * here (the `descriptor` below is permanently null, so the `afield.Doc`-annotation branch it guards
+         * is unreachable). Symbol names are therefore derived by string-parsing the completion item's
+         * `text`/`displayText`. Documentation is then resolved by: (1) `extraInfo["kdoc"]`, embedded during
+         * reflection-based completion in [afield.KotlinInterface2] (including receiver-qualified
+         * `ReceiverType.method` KDoc for dot-completion); then (2) `KotlinSourceIndex.getKDocForSymbol(...)`
+         * by candidate name for plain name-completions, or by `receiverType.candidate` for dot-completion.
+         */
         fun completionFor(c: CompletionResult.Success, infixExpectedTypes: Set<String> = emptySet()): List<Metadata> {
             val activeToken = allCode.substring(c.bounds.start, c.bounds.end).trim()
             val argumentCallable = callableBeforeArgumentCursor(allCode, position)

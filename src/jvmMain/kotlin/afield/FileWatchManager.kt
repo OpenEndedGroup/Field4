@@ -157,7 +157,8 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
             val key = path.register(
                 watchService,
                 StandardWatchEventKinds.ENTRY_MODIFY,
-                StandardWatchEventKinds.ENTRY_CREATE
+                StandardWatchEventKinds.ENTRY_CREATE,
+                StandardWatchEventKinds.ENTRY_DELETE
             )
             watchKeys[key] = path
         } catch (e: Exception) {
@@ -231,11 +232,14 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
                     val child = dir.resolve(filename)
                     val file = child.toFile()
 
-                    // Handle metadata.edn changes
+                    val isDelete = kind == StandardWatchEventKinds.ENTRY_DELETE
+
+                    // Handle metadata.edn changes (its deletion is ignored)
                     if (file.name == SavingContext.METADATA_EDN) {
-                        handleMetadataChange(file)
-                    } else if (file.isFile && isSidecarFile(file)) {
-                        handleFileChange(file)
+                        if (!isDelete) handleMetadataChange(file)
+                    } else if (isSidecarFile(file)) {
+                        if (isDelete) handleSidecarDeletion(file)
+                        else if (file.isFile) handleFileChange(file)
                     }
                 }
 
@@ -253,6 +257,20 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
                 lprintln("error,file-watch", "Error in watch loop: ${e.message}")
                 delay(1000.milliseconds)
             }
+        }
+    }
+
+    /**
+     * External deletion of a sidecar file. We stop tracking it (so a later re-create is treated as a
+     * fresh external change) and leave the box property untouched — deleting the sidecar on disk should
+     * not silently wipe the in-memory/persisted property.
+     */
+    private fun handleSidecarDeletion(file: File) {
+        val absolutePath = file.absolutePath
+        val wasTracked = fileTimestamps.remove(absolutePath) != null
+        startupSidecarFiles.remove(absolutePath)
+        if (wasTracked) {
+            lprintln("file-watch", "External deletion of sidecar ${file.name} observed; stopped tracking it (box property left unchanged).")
         }
     }
 

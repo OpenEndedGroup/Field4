@@ -96,9 +96,9 @@ To run an example, typically you would:
 For more documentation examples that are not part of the compiled codebase, see the `dev_docs/` directory at the repository root. These include:
 - `viz_demo.kt` - Value visualizer demonstrations
 - `SLIDER_EXAMPLES.kt` - Additional slider examples
-- `GUIDE_CHAT_EXAMPLE.kt` - Chat integration examples
-- `SHARED_CHAT_EXAMPLE.kt` - Shared chat examples
-- `EXTENDED_CONTROLS_EXAMPLES.kt` - Extended UI control examples
+- `GUIDE_CHAT_QUICKSTART.md` - Guide-chat integration examples
+
+Shared-chat usage is demonstrated in `slideshow_example.kt` in this package.
 
 ## For AI Agents
 

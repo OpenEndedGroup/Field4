@@ -339,7 +339,7 @@ def validate_annotation(path: Path, line_no: int, annotation: dict[str, Any]) ->
     runner = annotation["runner"]
     if runner == "jvm-main" and "entrypoint" not in annotation:
         raise ParseError(f"{path}:{line_no}: jvm-main tests require 'entrypoint'")
-    if runner not in {"jvm-main", "backdoor-box", "backdoor-document"}:
+    if runner not in {"jvm-main", "backdoor-box"}:
         raise ParseError(f"{path}:{line_no}: unsupported runner '{runner}'")
     return annotation
 

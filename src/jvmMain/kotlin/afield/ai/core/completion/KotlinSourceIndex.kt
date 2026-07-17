@@ -221,7 +221,19 @@ object KotlinSourceIndex {
 
     /**
      * Get KDoc for a symbol from the index.
-     * Searches through indexed definitions for the given symbol name.
+     *
+     * Looks up the KDoc comment (`/** ... */`) that [parseTopLevelDefinitions] extracted and
+     * stored on each [KotlinDefinitionRecord]. The index is built by scanning the source roots
+     * (src/jvmMain/kotlin, src/personal/kotlin, src/generatedLinalg/kotlin) once at server startup
+     * (see [syncKotlinSourceIndex]); it is not live-updated, so a restart is needed to pick up edits.
+     *
+     * Both top-level and nested/member symbols are supported: [parseTopLevelDefinitions] tracks a
+     * class stack and emits qualified names like `Outer.member` for declarations inside a class body,
+     * and extension functions are indexed under `ReceiverType.methodName`. Callers therefore pass a
+     * qualified name (e.g. a receiver-qualified `"Vector3f.add"` for dot-completion) to get an exact,
+     * unambiguous match. A plain simple name first tries an exact match, then falls back to matching
+     * the last segment of qualified names; a name that already contains '.' never falls back to that
+     * partial match (so `"Vector3f.add"` will not accidentally resolve to `"LittleHistory.add"`).
      */
     fun getKDocForSymbol(symbolName: String): String? {
         val index = latestIndex ?: loadIndex() ?: return null

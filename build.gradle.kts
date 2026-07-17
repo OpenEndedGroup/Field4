@@ -461,7 +461,6 @@ fun configuredJdwpArg(): String? {
 plugins {
     kotlin("multiplatform") version "2.4.0"
     kotlin("plugin.serialization") version "2.4.0"
-    id("org.jetbrains.dokka") version "2.1.0"
     id("me.filippov.gradle.jvm.wrapper") version "0.14.0"
     id("com.github.node-gradle.node") version "7.1.0"
 }
@@ -1885,17 +1884,6 @@ tasks.register<JavaExec>("improveAiToolUseDryRun") {
     standardInput = System.`in`
 }
 
-tasks.register("generateApiDocs") {
-    group = "documentation"
-    description = "Generates API documentation (HTML) with Dokka"
-
-    dependsOn("dokkaGenerateHtml")
-
-    doLast {
-        println("API documentation generated in build/dokka/html/")
-        println("To build the MkDocs site, run: cd public && mkdocs build")
-    }
-}
 
 	val generateLocalKeystore = tasks.register("generateLocalKeystore") {
 		group = "application"

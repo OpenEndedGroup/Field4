@@ -94,7 +94,35 @@ private fun downloadTemplateFromServer(serverUrl: String, templateName: String):
 /**
  * Extract documentation from template boxes.
  * Accumulates metadata from all boxes, orders by increasing frame.y,
- * and creates a formatted documentation string.
+ * and creates a formatted documentation string used by the "insert from
+ * workspace" QuickPick/palette detail panel (see insertFromWorkspace in
+ * src/jsMain/kotlin/afield/commands.kt).
+ *
+ * Template-authoring guide
+ * ------------------------
+ * Template documentation lives in the `metadata` property of a template's
+ * boxes, written as YAML. Three fields are read and accumulated:
+ *
+ * ```yaml
+ * doc: |
+ *   Main documentation for this box. Can span multiple lines.
+ * docPreamble: "Introduction text for this section"
+ * boxPreamble: "Specific preamble for this box"
+ * ```
+ *
+ * - Boxes are ordered by increasing `frame.y` (top-to-bottom visual order),
+ *   so the accumulated documentation reads in the same order the boxes appear.
+ * - After the prose, a compressed box list is appended, e.g.
+ *   `Boxes: ShaderBox/{vertex,fragment}, ControlBox, DataBox/{compute}`.
+ *   The `{...}` suffix lists which sidecar-able properties each box carries.
+ * - The exact set of sidecar properties reported is the `sidecarProperties`
+ *   list below — treat that list as the source of truth, not any external doc,
+ *   since it changes as new shader stages are added. The `code` property is
+ *   deliberately excluded from this display.
+ * - Repeated box names are compressed (e.g. `Untitled × 5`).
+ *
+ * @param source label for where the template came from (workspace / bundled /
+ *   remote / etc.), surfaced in the palette description.
  */
 private fun extractTemplateMetadata(templatePath: String, templateName: String, source: String): TemplateMetadata? {
     try {

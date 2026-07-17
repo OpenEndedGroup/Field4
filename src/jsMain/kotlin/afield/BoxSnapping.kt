@@ -1,13 +1,20 @@
 /**
  * BoxSnapping.kt
- * 
- * A self-contained snapping system for box dragging in Field4.
- * When Caps Lock is enabled during dragging, this system:
- * - Aligns boxes to edges (top, bottom, left, right) of other boxes
- * - Maintains even spacing between boxes
- * 
- * Integrates with the existing drag system by adjusting computed positions
- * before they are sent to the server.
+ *
+ * A self-contained snapping system for box dragging and resizing in Field4.
+ * When Caps Lock is enabled, this system:
+ * - Aligns boxes to edges (top, bottom, left, right) and centers of other boxes
+ * - Maintains even spacing between boxes (drag only)
+ * - Applies edge snapping while resizing (all four edges)
+ * - Draws cyan SVG guide lines showing the detected alignments
+ *
+ * Integrates with the existing drag/resize system by adjusting computed positions
+ * (and sizes, during resize) before they are sent to the server, so the
+ * round-trip that prevents visual jitter is preserved.
+ *
+ * Debug console output is gated behind [DEBUG_SNAPPING] (false by default);
+ * nothing is logged in normal use unless the flag is flipped to true and the
+ * module recompiled.
  */
 
 package afield
@@ -60,7 +67,51 @@ data class SnapLine(
 )
 
 /**
- * Main snapping system class
+ * Main snapping system class.
+ *
+ * Lifecycle / integration (all call sites live in Main.kt):
+ * - [initialize] is called once at startup; it installs keydown/keyup listeners
+ *   that track Caps Lock via `getModifierState("CapsLock")` (also toggled on the
+ *   "CapsLock" key). All snapping is gated on that [capsLockEnabled] flag.
+ * - Drag: [applySnapping] is called from the drag move handler and returns the
+ *   snapped (x, y); [clearSnapGuides] is called on drag end.
+ * - Resize: [applySnappingForResize] is called from the resize move handler and
+ *   returns a snapped [Rect] (position + size); [clearSnapGuides] is called on
+ *   resize end.
+ * - [activeSnapReferenceBoxes] exposes the boxes currently participating in a
+ *   snap, for the renderer.
+ *
+ * Thresholds (fields below):
+ * - [SNAP_THRESHOLD] = 10px is the base applied-snap gate. [applySnapping] commits the
+ *   globally-closest target on each axis within a per-type gate ([applyThresholdFor]):
+ *   edge/center snaps within 10px, even-spacing snaps within SNAP_THRESHOLD*3 (30px).
+ *   [applySnappingForResize] snaps an edge within 10px.
+ * - Candidate *detection* uses matching windows: edge/center candidates are collected out
+ *   to SNAP_THRESHOLD*2 (20px, then gated at 10px on apply) and even-spacing candidates out
+ *   to SNAP_THRESHOLD*3 (30px), which is also their apply gate — so spacing engages across
+ *   its full detection window.
+ * - [MIN_SPACING] = 5px is the minimum gap that qualifies for an even-spacing
+ *   suggestion.
+ *
+ * Axis independence: horizontal and vertical snaps are computed and applied
+ * independently, so a box can snap on both axes at once (drag).
+ *
+ * [SnapType] has no CENTER value: horizontal center-alignment targets are tagged
+ * LEFT_EDGE and vertical center-alignment targets are tagged TOP_EDGE.
+ *
+ * Visual guides ([drawSnapGuides], [addEdgeMarkers], [addSpacingMarkers],
+ * [clearSnapGuides]) render into an SVG `<g id="snap-guides">` created lazily
+ * under `#overlaysvglayer` (throws via `error(...)` if that layer is missing —
+ * no graceful fallback). Style: dashed lines `stroke-dasharray "4 3"`,
+ * stroke-width 1.5, colour `rgba(72, 201, 255, 0.6)` (lines) / `0.8` (markers);
+ * edge markers are r=3 circles; spacing markers are ticks of half-length 5px
+ * (10px total span). Drag ([applySnapping]) draws at most one guide per axis
+ * (the closest); resize ([applySnappingForResize]) can draw several simultaneous
+ * edge guides from different boxes, since it appends every in-range edge match
+ * without picking a single closest.
+ *
+ * Complexity: O(N log N) per move (the even-spacing search sorts the other
+ * boxes by position).
  */
 class BoxSnappingSystem {
     // Snap threshold in pixels
@@ -68,6 +119,16 @@ class BoxSnappingSystem {
     
     // Minimum spacing to consider for even spacing detection
     private val MIN_SPACING = 5.0
+
+    /**
+     * Per-type distance gate for actually engaging a snap. Even-spacing candidates are searched out to
+     * [SNAP_THRESHOLD]*3, so they engage within that window; edge/center snaps engage within [SNAP_THRESHOLD].
+     * (Previously every type was gated at [SNAP_THRESHOLD], making the wider even-spacing search dead.)
+     */
+    private fun applyThresholdFor(type: SnapType): Double = when (type) {
+        SnapType.HORIZONTAL_SPACING, SnapType.VERTICAL_SPACING -> SNAP_THRESHOLD * 3
+        else -> SNAP_THRESHOLD
+    }
     
     // Track Caps Lock state
     private var capsLockEnabled = false
@@ -302,7 +363,7 @@ class BoxSnappingSystem {
         val activeTargets = mutableListOf<SnapTarget>()
         
         // Apply horizontal snap if within threshold
-        if (bestHorizontalSnap != null && bestHorizontalSnap.distance <= SNAP_THRESHOLD) {
+        if (bestHorizontalSnap != null && bestHorizontalSnap.distance <= applyThresholdFor(bestHorizontalSnap.type)) {
             snappedX = bestHorizontalSnap.x
             snapped = true
             activeTargets.add(bestHorizontalSnap)
@@ -310,7 +371,7 @@ class BoxSnappingSystem {
         }
         
         // Apply vertical snap if within threshold
-        if (bestVerticalSnap != null && bestVerticalSnap.distance <= SNAP_THRESHOLD) {
+        if (bestVerticalSnap != null && bestVerticalSnap.distance <= applyThresholdFor(bestVerticalSnap.type)) {
             snappedY = bestVerticalSnap.y
             snapped = true
             activeTargets.add(bestVerticalSnap)

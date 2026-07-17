@@ -649,8 +649,8 @@ internal fun kotlinInfoTypeName(value: Any?): String {
  * Controls which Kotlin scripting backend to use.
  *
  * Set via the system property `afield.kotlin.engine`:
- * - `k1` (default): Legacy KJvmReplCompilerWithIdeServices — well-tested, deprecated compiler
- * - `k2`: K2 compiler + Analysis API — future-proof, targeting Kotlin 2.4+
+ * - `k1`: Legacy KJvmReplCompilerWithIdeServices — well-tested, deprecated compiler
+ * - `k2` (default): K2 compiler + Analysis API — future-proof, targeting Kotlin 2.4+
  *
  * Can also be set programmatically before any KotlinScriptEngine is created.
  */

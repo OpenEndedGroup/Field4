@@ -17,23 +17,58 @@ import org.lwjgl.vulkan.VK10
 import kotlin.math.ceil
 
 /**
- * ImageReducer - A utility class for reducing an image to global summary statistics using compute shaders.
+ * ImageReducer - reduces an image ([HasImageView]) to global summary statistics using two Vulkan
+ * compute-shader passes.
  *
- * This class takes a HasImageView and uses a two-pass reduction strategy:
- * 1. First pass: Each workgroup processes a tile of the image and computes local accumulators
- * 2. Second pass: Reduces all local accumulators to final values
+ * Reduction strategy:
+ * 1. First pass: each 16x16 workgroup ([WORKGROUP_SIZE]) processes a tile of the image, reduces it in
+ *    shared memory, and writes one intermediate record per workgroup.
+ * 2. Second pass: a single 256-thread workgroup reduces all intermediate records (striding over
+ *    workgroups > 256) into the final result.
  *
- * The workgroup sizes are automatically calculated for good performance.
- * Results can be read back asynchronously.
+ * Workgroup counts are derived automatically from the image dimensions. Results are read back with
+ * [readResults] and may be read one frame late in the per-frame path.
  *
- * Usage:
+ * ## Source binding model
+ * The source image is bound as a *sampled* texture (`sampler2D`, or `sampler2DArray` for a
+ * `VK_IMAGE_VIEW_TYPE_2D_ARRAY` view) and read with `texelFetch` — it is **not** bound as a storage
+ * image and there is no `imageLoad`. This avoids mutating the source image's layout. Consequently the
+ * source image must include `VK_IMAGE_USAGE_SAMPLED_BIT`; [ensureInitialized] requires this and throws
+ * otherwise. Any color format that is valid for a sampled 2D texture works; there is no rgba8-only
+ * restriction.
+ *
+ * ## Buffer layout
+ * Both buffers are host-visible storage buffers sized from the companion constants:
+ * - Intermediate buffer: `ceil(width/16) * ceil(height/16) * INTERMEDIATE_VALUES_PER_RESULT * 4` bytes
+ *   (24 floats per workgroup: min.rgba, avgSum.rgba, max.rgba, then the pseudo-quartile accumulators
+ *   lowLumaSum/lowCount/highLumaSum/highCount/midSatSum/midCount and lowRgbSum.rgb/highRgbSum.rgb).
+ * - Result buffer: `FINAL_VALUES_PER_RESULT * 4` = 104 bytes (26 floats: see [ReductionResult]).
+ *   For a 1920x1080 image the intermediate buffer is ~765 KB (8160 workgroups) and the result is 104 B.
+ * Read the constants in this file rather than hard-coding these sizes elsewhere — they change in lockstep.
+ *
+ * ## Usage
+ * The `renderer` parameter defaults to `fromContext()`, so `ImageReducer(imageView = ...)` is valid.
+ * See [afield.examples.four.ImageReducerExample] for runnable one-shot and per-frame examples.
+ * - One-shot (synchronous): [reduceNow] records a command buffer, submits, waits on a fence, returns.
+ * - Per-frame: [installInto] adds the reduction to a [RenderTarget]'s `others` map; read with
+ *   [readResults] (or use the callback overload, which fires one frame later once the fence has signalled).
+ * - Manual: call [reduce] inside your own command-buffer recording, submit, then [readResults].
+ *
  * ```
  * val reducer = ImageReducer(renderer, imageView)
  * reducer.reduce(commandBuffer)
- * // Later, after GPU execution:
+ * // Later, after GPU execution has completed (fence wait):
  * val stats = reducer.readResults()
  * println(stats.contrastMichelson)
  * ```
+ *
+ * ## Notes and caveats
+ * - [readResults] guards against a premature read: it throws `IllegalStateException` unless a reduction
+ *   is known complete (after [reduceNow]'s fence wait, or when the [installInto] callback path knows the
+ *   fence has signalled). [VulkanBuffer.mapAndRead] itself performs no fence check, so this readiness
+ *   flag is what prevents reading stale/garbage data before the GPU has finished.
+ * - Not thread-safe: intended to be driven from the render thread. This is a convention only — nothing
+ *   in the class asserts or enforces it. Separate instances may target different images.
  */
 class ImageReducer(
     val renderer: Renderer = fromContext(),
@@ -87,6 +122,11 @@ class ImageReducer(
 
     // Track per-swapchain-image readiness so we can fire callbacks one frame later (after the fence signals).
     private var pendingCallbacksPerImage: BooleanArray? = null
+
+    // Guards [readResults] against a premature read: set true once a reduction is known complete
+    // (after [reduceNow]'s fence wait, or when the per-frame callback path knows the fence has
+    // signalled) and reset to false whenever a new reduction is recorded via [reduce].
+    private var resultsReady: Boolean = false
 
     // Sampling resources when the source image is only sampled
     private var textureSampler: TextureSampler? = null
@@ -596,6 +636,8 @@ class ImageReducer(
      */
     fun reduce(commandBuffer: CommandBuffer) {
         ensureInitialized()
+        // A fresh reduction is being recorded; previously read-back results are now stale.
+        resultsReady = false
 
         val firstPass = firstPassModule ?: throw IllegalStateException("First pass module not initialized")
         val secondPass = secondPassModule ?: throw IllegalStateException("Second pass module not initialized")
@@ -663,6 +705,10 @@ class ImageReducer(
      */
     fun readResults(): ReductionResult {
         val buffer = resultBuffer ?: throw IllegalStateException("Result buffer not initialized")
+        check(resultsReady) {
+            "ImageReducer.readResults() called before a reduction completed — results would be stale/garbage. " +
+                "Use reduceNow(), read via the installInto(...) { } callback, or wait on your submit fence first."
+        }
 
         val min = FloatArray(4)
         val avg = FloatArray(4)
@@ -755,6 +801,7 @@ class ImageReducer(
             }
             fence.fenceWait()
 
+            resultsReady = true
             return readResults()
         } finally {
             fence.cleanup()
@@ -812,6 +859,7 @@ class ImageReducer(
             // The fence for this swapchain image is waited at the start of its next reuse,
             // so when we are invoked for the same index again the previous reduction is complete.
             if (index in pending.indices && pending[index] && resultBuffer != null) {
+                resultsReady = true
                 onResults(readResults())
                 pending[index] = false
             }

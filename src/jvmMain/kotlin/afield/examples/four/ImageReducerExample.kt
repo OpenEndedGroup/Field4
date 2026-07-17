@@ -8,8 +8,12 @@ import afield.four.util.Window
 
 /**
  * Example demonstrating the usage of ImageReducer utility class.
- * 
- * Shows both the "just do it once" case and the "do it every frame" case.
+ *
+ * Shows both the "just do it once" case ([runOnce], via [ImageReducer.reduceNow]) and the
+ * "do it every frame" case ([runPerFrame], via [ImageReducer.installInto]).
+ *
+ * See the KDoc on [afield.four.util.ImageReducer] for the authoritative API, buffer layout, and
+ * sampled-texture binding model.
  */
 class ImageReducerExample {
     val window = Window("ImageReducer Example")

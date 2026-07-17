@@ -1498,11 +1498,27 @@ fun normalizeNestedPanForSelection() {
 
 @OptIn(ExperimentalJsExport::class)
 @JsExport
-fun newBox() {
-    val w = 100.0
-    val h = 100.0
+fun newBox(options: Any? = null) {
+    val o = options?.asDynamic()
+    fun num(v: dynamic): Double? = (v as? Number)?.toDouble()
+    val fr = o?.frame
+    val w = num(fr?.w) ?: num(fr?.width) ?: 100.0
+    val h = num(fr?.h) ?: num(fr?.height) ?: 100.0
+    val x = num(fr?.x) ?: num(fr?.left) ?: (lastMouse.first - w / 2)
+    val y = num(fr?.y) ?: num(fr?.top) ?: (lastMouse.second - h / 2)
+    val name = (o?.name as? String)?.takeIf { it.isNotBlank() } ?: "Untitled"
+    val code = (o?.code as? String)?.takeIf { it.isNotBlank() }
+
+    var createdUid: String? = null
     mainCanvas.append {
-        createBox("Untitled", frame = Rect(lastMouse.first - w / 2, lastMouse.second - h / 2, w, h))
+        val el = createBox(name, frame = Rect(x, y, w, h))
+        createdUid = el.asDynamic().uid as? String
+    }
+    // The code property is a sidecar; push it through the normal set-string sync once the box exists.
+    if (code != null) {
+        createdUid?.let { uid ->
+            send(Message("set-string").payload(Set_string(uid, "code", code)))
+        }
     }
     canvasGestures.rebuildConnectionGroup()
 }
@@ -2437,8 +2453,8 @@ fun registerBuiltinCommands() {
                 let a = event.key=='n' && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey
                 return a
             },
-            run: () => {
-                newBox()
+            run: (args) => {
+                newBox(args)
             }
         },{
             id:'set-main-language',

@@ -778,7 +778,21 @@ fun Box.transcript(channel: String = "transcript") {
     display(channel, html)
 }
 
-// Slider support
+/**
+ * One entry in a [sliders] group: a labelled numeric range plus its update callback.
+ *
+ * Note the defaults, which are mostly only sensible when every field is supplied explicitly
+ * (the usual case): [min] `0.0`, [max] `1.0`, [initialValue] `0.0`, and [step] `100.0` — the
+ * large default step means an unspecified [step] yields a whole-number-only slider, so pass a
+ * real step (e.g. `0.01`) for continuous control.
+ *
+ * @param label text shown beside the control
+ * @param min smallest selectable value
+ * @param max largest selectable value
+ * @param step increment used for interaction and displayed precision
+ * @param initialValue value shown when the control is created
+ * @param onUpdate callback invoked with the selected value
+ */
 data class SliderConfig(
     val label: String,
     val min: Double = 0.0,
@@ -826,6 +840,16 @@ internal fun getFLineClickCallback(callbackId: String): ((FLineIntersection) -> 
  * This control is recreated when the box runs. Use [syncToProperty] when the value should also be
  * written to a persistent box property.
  *
+ * Plumbing: [buildSliderHtml] emits a `div.field-control.field-slider` containing a hand-drawn
+ * `<svg class="field-slider-visual">` (rect hitbox + track/fill lines + thumb circles) and a
+ * `span.field-value`; there is no native `<input type="range">`. Dragging is wired browser-side
+ * in `src/commonMain/resources/sliders.js` (`startSliderDrag`/`dragSliderMove`/`endSliderDrag`
+ * using pointer capture, funnelling through `updateSlider` → `window.sendSliderUpdate`), not by
+ * inline HTML event attributes. Each change posts a [rpc.SliderUpdate] `{ sliderId, value }` over
+ * the WebSocket; the `slider-update` handler in `Server.kt` mirrors the value into the
+ * controller-control registry, broadcasts it, and invokes the callback registered here (by a
+ * per-slider UUID in a `ConcurrentHashMap`) on a coroutine.
+ *
  * @param label text shown beside the control
  * @param min smallest selectable value
  * @param max largest selectable value
@@ -850,6 +874,17 @@ fun Box.slider(
     display(channel, html)
 }
 
+/**
+ * Displays several [SliderConfig] sliders together under one disclosure [channel].
+ *
+ * Each pair is `id to SliderConfig(...)`; the id only distinguishes sliders within the group.
+ * This is the older, slider-only grouping path — prefer [controlGroup] when you want to combine a
+ * slider with other control types (checkbox, colour picker, etc.) in one compact surface. Wire-level
+ * behaviour matches [slider] (see its docs).
+ *
+ * @param channel output disclosure that receives the sliders
+ * @param configs id-to-[SliderConfig] pairs, one per slider
+ */
 fun Box.sliders(
     channel: String = "controls",
     vararg configs: Pair<String, SliderConfig>

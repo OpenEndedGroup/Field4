@@ -126,6 +126,16 @@ class SavingContext {
         }
     }
 
+    /**
+     * Serializes each box's persistent properties for save. Only properties whose name matches
+     * one of [Box.ioPersistentProperties] (regex-matched) are written; others are dropped.
+     *
+     * Root-box persistence relies on this path: callers that save (see `allBoxes.add(info.root)`
+     * in Server.kt before `SavingContext().save(...)`) explicitly add the root box to the save set,
+     * so its persistent root properties (e.g. "bookmarks", which is listed in
+     * [Box.ioPersistentProperties]) are serialized here. On load, `box("root")` resolves back to
+     * SessionInformation.root (Boxes.kt) and `setPropertyRaw` restores the property onto it.
+     */
     fun toTransfer(boxes: Set<Box>, directory: String): List<BoxTransferEdn> {
         val patterns = Box.ioPersistentProperties.map { it.toRegex() }
         return boxes.map { box ->

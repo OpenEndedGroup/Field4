@@ -5454,10 +5454,14 @@ suspend fun main() {
         overlay.innerHTML = ""
         cleanupChatWidgets()
 
-        // Add main content
+        // Add main content (animated typewriter reveal when requested)
         val contentDiv = document.createElement("div") as HTMLElement
-        contentDiv.innerHTML = note.html
         overlay.appendChild(contentDiv)
+        if (note.animated) {
+            animateSlideNoteText(contentDiv, note.html)
+        } else {
+            contentDiv.innerHTML = note.html
+        }
 
         // Add chat UI if slideshow ID and slide number are present
         if (note.slideshowId.isNotBlank() && note.slideNumber >= 0) {
