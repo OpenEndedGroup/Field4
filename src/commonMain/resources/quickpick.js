@@ -417,21 +417,45 @@ function bootstrapAnywhereProviders() {
                 })
         })
 
-        registerAnywhereProvider("semantic-current", (query) => {
+        // Semantic provider (AI4). A single embedding pass with no corpus
+        // filter searches every indexed corpus at once — the current document
+        // and the rest of the workspace ("workspace"), the Field source tree
+        // ("field-internals", i.e. src/), and the AI4-indexed documentation
+        // ("documentation", i.e. public/docs/**/*.md). Hits are split into
+        // categories by corpus below; current-document hits keep the strongest
+        // boost so local matches still surface first.
+        registerAnywhereProvider("semantic", (query) => {
                 const q = String(query || "").trim()
                 if (q.length < 3) return []
+                const currentDoc = currentDocumentNameForSemantic()
                 return paletteSemanticSearch(q, {
-                        corpus: "workspace",
-                        documentName: currentDocumentNameForSemantic(),
-                        limit: 12,
+                        limit: 30,
                         includeSource: true,
-                        timeoutMs: 2500,
-                }).then((hits) => hits.map((hit, index) => paletteItemForSemanticHit(hit, {
-                        prefix: "semantic-current",
-                        category: "Semantic in Current Document",
-                        score: 34 - index * 0.01,
-                }))).catch((error) => {
-                        console.warn("semantic current-document palette search failed", error)
+                        timeoutMs: 3000,
+                }).then((hits) => hits.map((hit, index) => {
+                        const corpus = String(hit.corpus || "").toLowerCase()
+                        let category
+                        let score
+                        if (corpus === "documentation") {
+                                category = "Documentation"
+                                score = 30 - index * 0.01
+                        } else if (corpus === "field-internals") {
+                                category = "Field Source (src/)"
+                                score = 28 - index * 0.01
+                        } else if (currentDoc && hit.documentName && hit.documentName === currentDoc) {
+                                category = "Semantic in Current Document"
+                                score = 34 - index * 0.01
+                        } else {
+                                category = "Semantic in Workspace"
+                                score = 30 - index * 0.01
+                        }
+                        return paletteItemForSemanticHit(hit, {
+                                prefix: `semantic-${corpus || "workspace"}`,
+                                category,
+                                score,
+                        })
+                })).catch((error) => {
+                        console.warn("semantic palette search failed", error)
                         return []
                 })
         })
@@ -536,6 +560,7 @@ const paletteProviderTitle = (provider) => {
         const titles = {
                 "box": "Boxes",
                 "box-prop": "Properties",
+                "semantic": "Semantic",
                 "semantic-current": "Semantic in Current Document",
                 "field": "Field",
                 "editor": "Editor",
@@ -816,12 +841,56 @@ const paletteSemanticPreview = (item) => {
         if (hit.boxId) {
                 bits.push(`<div class="afield-palette-doc-source"><span>box uid</span><code>${paletteEscapeHtml(hit.boxId)}</code></div>`)
         }
+        if (String(hit.corpus || "").toLowerCase() === "documentation" || String(hit.kind || "") === "docs-section") {
+                const docUrl = docsUrlForHit(hit)
+                if (docUrl) {
+                        bits.push(`<div class="afield-palette-doc-source"><span>docs</span><a class="afield-palette-source-link" href="#" data-doc-open data-url="${paletteEscapeHtml(docUrl)}" title="Open documentation"><code>${paletteEscapeHtml(docUrl)}</code></a></div>`)
+                }
+                bits.push(`<p class="afield-palette-doc-muted">Press Enter to open this documentation page.</p>`)
+        }
         bits.push(paletteTextPreview(hit.sourcePreview || hit.capsule || hit.signature || "", "No indexed source preview", hit.language || ""))
         return bits.join("")
 }
 
+// mkdocs (use_directory_urls: true) slugifies a heading into a URL anchor:
+// lowercase, drop punctuation, collapse whitespace/hyphens into single hyphens.
+const docsAnchorForTitle = (title) => {
+        const t = String(title || "").trim().toLowerCase()
+        if (!t) return ""
+        return t.replace(/[^\w\s-]/g, "").trim().replace(/[\s-]+/g, "-")
+}
+
+// Convert an indexed documentation path (e.g. "public/docs/colors_examples.md")
+// into the rendered docs-site URL. mkdocs builds with use_directory_urls, so
+// "foo.md" -> "foo/" and "index.md" -> the directory root.
+const docsUrlForHit = (hit) => {
+        let rel = String(hit && hit.path || "").trim()
+        if (!rel) return null
+        rel = rel.replace(/^(\.\/)?public\/docs\//i, "").replace(/\.md$/i, "")
+        rel = rel.replace(/(^|\/)index$/i, "$1")
+        const base = window.defaultDocsIframeUrl || "https://openendedgroup.com/field4/"
+        let url = base.endsWith("/") ? base : base + "/"
+        if (rel) url += rel.replace(/^\/+/, "").replace(/\/?$/, "/")
+        const anchor = docsAnchorForTitle(hit && (hit.symbol || hit.title))
+        if (anchor) url += "#" + anchor
+        return url
+}
+
+const openDocumentationHit = (hit) => {
+        const url = docsUrlForHit(hit)
+        if (!url) return
+        if (typeof window.switchToDocsIframe === "function") window.switchToDocsIframe(url)
+        else window.open(url, "_blank")
+}
+
 const runSemanticHit = (hit) => {
         if (!hit) return
+        // Documentation hits (AI4 "documentation" corpus) open the rendered doc
+        // page in the docs iframe rather than navigating to a box property.
+        if (String(hit.corpus || "").toLowerCase() === "documentation" || String(hit.kind || "") === "docs-section") {
+                openDocumentationHit(hit)
+                return
+        }
         const uid = String(hit.boxId || "").trim()
         const property = String(hit.property || "code").trim() || "code"
         const line = Math.max(1, Number(hit.line) || 1)
@@ -1128,7 +1197,7 @@ const paletteBoxLabel = (uid) => {
 
 const palettePreviewForAnywhere = (item) => {
         if (!item) return ""
-        if (item.provider === "semantic-current" || item.semanticHit) {
+        if (item.provider === "semantic" || item.provider === "semantic-current" || item.semanticHit) {
                 return paletteSemanticPreview(item)
         }
         if (item.provider === "macro") {
@@ -1301,6 +1370,17 @@ class FieldPaletteController {
                         if (srcLink) {
                                 event.preventDefault()
                                 this.viewSource(srcLink)
+                                return
+                        }
+                        const docLink = event.target.closest("[data-doc-open]")
+                        if (docLink) {
+                                event.preventDefault()
+                                const url = docLink.getAttribute("data-url")
+                                if (url) {
+                                        if (typeof window.switchToDocsIframe === "function") window.switchToDocsIframe(url)
+                                        else window.open(url, "_blank")
+                                        this.hide({ restoreFocus: false })
+                                }
                                 return
                         }
                         const row = event.target.closest(".afield-palette-row")
