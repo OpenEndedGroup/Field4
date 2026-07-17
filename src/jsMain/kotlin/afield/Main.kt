@@ -6519,7 +6519,7 @@ fun TagConsumer<HTMLElement>.createBox(
             position = Position.absolute
             color = rgb(255, 255, 255, 0.8)
             borderRadius = 5.px
-            backdropFilter = "blur(3px) saturate(3) contrast(1.1) brightness(0.9)"
+            backdropFilter = "blur(3px) saturate(2.5) contrast(1.1) brightness(0.9) hue-rotate(-38deg)"
             border = Border(1.px, BorderStyle.solid, rgb(255, 255, 255, 0.0))
             backgroundColor = rgb(50, 50, 50, 0.5)
             display = Display.flex
