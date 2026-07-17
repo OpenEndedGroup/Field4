@@ -126,7 +126,7 @@ private fun resolveDocumentTarget(documentName: String?, scratch: Boolean, sessi
     )
 }
 
-private fun createSessionInformation(target: DocumentTarget): SessionInformation {
+private fun createSessionInformation(target: DocumentTarget, agentManaged: Boolean): SessionInformation {
     val root = Box("root")
     root.name = "root"
     root.visible = false
@@ -140,7 +140,10 @@ private fun createSessionInformation(target: DocumentTarget): SessionInformation
         root = root,
         ephemeral = target.scratch
     )
-    info.agentManaged = true   // backdoor-loaded: keep the agent's box names (no AI auto-rename)
+    // Only genuine agent-backdoor loads are agent-managed: keep the agent's box names
+    // (no AI auto-rename). Interactive browser sessions (the `hello` handshake) must NOT set
+    // this, or AI auto box-naming is disabled for every normal terminal-launched session.
+    info.agentManaged = agentManaged
     root.inside = info
     attachRootToMetaroot(root)
     return info
@@ -151,7 +154,8 @@ internal fun attachDocumentSession(
     documentName: String?,
     username: String = "agent",
     scratch: Boolean = false,
-    sessionKey: String? = null
+    sessionKey: String? = null,
+    agentManaged: Boolean = false
 ): SessionInformation {
     val target = resolveDocumentTarget(documentName, scratch, sessionKey)
     File(home).mkdirs()
@@ -165,6 +169,9 @@ internal fun attachDocumentSession(
 
     val found = documents[target.sessionKey]
     if (found != null) {
+        // Once an agent backdoor has touched a live document, keep it agent-managed even if a
+        // browser later attaches to the same session — never downgrade agent protection.
+        if (agentManaged) found.agentManaged = true
         attachRootToMetaroot(found.root)
         registerDocumentSession(session, found)
         sendExpectedBoxCount(session, found)
@@ -199,7 +206,7 @@ internal fun attachDocumentSession(
         return found
     }
 
-    val info = createSessionInformation(target)
+    val info = createSessionInformation(target, agentManaged)
     info.loading = !target.scratch
     documents[target.sessionKey] = info
     registerDocumentSession(session, info)
@@ -394,7 +401,8 @@ internal fun launchDocumentSessionAttach(
     documentName: String?,
     username: String = "agent",
     scratch: Boolean = false,
-    sessionKey: String? = null
+    sessionKey: String? = null,
+    agentManaged: Boolean = false
 ) {
     agentBackdoorScope.launch {
         thisSession.set(session)
@@ -404,7 +412,8 @@ internal fun launchDocumentSessionAttach(
                 documentName = documentName,
                 username = username,
                 scratch = scratch,
-                sessionKey = sessionKey
+                sessionKey = sessionKey,
+                agentManaged = agentManaged
             )
         } catch (t: Throwable) {
             lprintln("error,agent_backdoor", "document attach failed for ${documentName ?: sessionKey ?: "<scratch>"}: ${t.message}")
@@ -912,7 +921,8 @@ fun installAgentBackdoorHandlers() {
             session = thisSession.get(),
             documentName = request.documentName,
             username = request.username,
-            scratch = request.scratch
+            scratch = request.scratch,
+            agentManaged = true
         )
         reply(Message("agent-open-document").payload(buildAgentSnapshot(info)))
         Handled.yes
