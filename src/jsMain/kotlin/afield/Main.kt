@@ -274,6 +274,7 @@ object LoadingTracker {
 lateinit var mainViewport: HTMLElement
 lateinit var mainCanvas: HTMLElement
 lateinit var overlaySVGLayer: SVGSVGElement
+lateinit var connectionSplineLayer: SVGSVGElement
 external val monaco: dynamic
 
 external val allActions: dynamic
@@ -5536,6 +5537,18 @@ suspend fun main() {
     }.first()
 
     initializeBackgroundGrid(mainViewport)
+
+    // Connection spline layer: lives *inside* the viewport, painted above the WebGL
+    // background but below the box canvas, so each box's backdrop-filter: blur(3px)
+    // picks up the splines passing behind it. The endpoint dots stay on the front
+    // layer (see ensureFrontConnectionLayer) so they still sit above the box borders.
+    connectionSplineLayer = (document.createElementNS("http://www.w3.org/2000/svg", "svg") as SVGSVGElement).also {
+        it.id = "connectionsplinelayer"
+        it.classList.add("connection-spline-layer")
+        it.setAttribute("height", "100%")
+        it.setAttribute("width", "100%")
+        mainViewport.appendChild(it)
+    }
 
     mainCanvas = mainViewport.append {
         div(classes = "field-main-canvas") {

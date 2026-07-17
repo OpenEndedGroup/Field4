@@ -1166,6 +1166,15 @@ body {
     pointer-events: none;
 }
 
+.connection-spline-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+}
+
 .field-main-canvas {
     position: relative;
     z-index: 1;

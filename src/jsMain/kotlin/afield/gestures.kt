@@ -1464,7 +1464,12 @@ class CanvasGestures(
         parent.setAttribute("viewBox", "${-mainTranslation[0]} ${-mainTranslation[1]} $vbw $vbh")
         frontParent.setAttribute("viewBox", "${-mainTranslation[0]} ${-mainTranslation[1]} $vbw $vbh")
 
-        val svg = getNamedSVGGroup("connections")
+        // Connection splines live on the in-viewport layer so boxes blur them through
+        // their backdrop-filter; keep its viewBox in lock-step with the overlay layers.
+        val splineParent = document.getElementById("connectionsplinelayer") as? SVGSVGElement
+        splineParent?.setAttribute("viewBox", "${-mainTranslation[0]} ${-mainTranslation[1]} $vbw $vbh")
+
+        val svg = (splineParent ?: parent).getGroupOrMake("connections")
         svg.innerHTML = ""
         getNamedSVGGroup("offscreen-hints").innerHTML = ""
         val hints = frontParent.getGroupOrMake("offscreen-hints-front")
