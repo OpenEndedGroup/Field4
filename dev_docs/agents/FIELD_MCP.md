@@ -78,6 +78,8 @@ Native bridge tools (always present):
 - `field_create_box`, `field_run_transcript` (inline operation-transcript YAML),
   `field_write_macro` / `field_run_macro` / `field_list_macros` / `field_read_macro`,
   `field_transcript_page` — build/edit/run.
+- `field_outline` — a token-efficient one-line-per-box orientation map of the document.
+- `field_read_note` / `field_write_note` — read/write a box's persistent `notes` property.
 - `field_screenshot_box` — render a box's output as an image.
 - `field_debug_probe` — inspect a live variable's value at runtime (see
   [Runtime debug probe](#runtime-debug-probe) below).
@@ -89,9 +91,12 @@ into the `field_*` namespace, currently **Tier-1** only:
 - `field_semantic_retrieval_search` / `_status` / `_rebuild`
 - `field_scratchpad_read` / `_update`, `field_checklist_read` / `_update`
 
-Tier-2 ai4 tools (CompileKotlin, EvaluateKotlin, ReloadShaders, CodeUse\*, …) are gated
-off until `installAi4()` is refactored to expose a shared context factory; the registry
-gates hide any tool whose provider is not wired, so they simply do not appear yet.
+`CompileKotlin` and `EvaluateKotlin` are already wired into the backdoor tool context
+(`Ai4BackdoorTools.buildContext` sets `compileKotlin`/`evaluateKotlinExpression`), so
+they appear as `field_compile_kotlin` / `field_evaluate_kotlin_expression` once attached.
+The remaining Tier-2 tools (`ReloadShaders`, `ListDefinitions`, `EditFile`, `CodeUse*`,
+and `workspaceSymbolSearch`) stay `null` in that same `buildContext` call and are hidden
+by the registry gate until `installAi4()` is refactored to expose a shared context factory.
 
 ## Runtime debug probe
 
@@ -109,8 +114,8 @@ Two targeting modes (give exactly one):
 - **Source mode — anywhere in loaded `src/`.** Pass `file` (path or basename, e.g.
   `Server.kt` or `src/jvmMain/kotlin/afield/Server.kt`) and/or `class` (fully qualified,
   e.g. `afield.Server`), with `line` the real file line and `symbol` the variable. This
-  is the "what is X here?" tool for framework code:
-  `{"file": "Server.kt", "line": 1758, "symbol": "now"}`.
+  is the "what is X here?" tool for framework code (line numbers illustrative):
+  `{"file": "Server.kt", "line": 1761, "symbol": "now"}`.
 - **Box mode — a running box's snippet.** Pass `box` (uid/name), `line` within the box
   `property` (default `code`), and `symbol`. Run the box first so its snippet is
   compiled and loaded.

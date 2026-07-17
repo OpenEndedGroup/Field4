@@ -1,278 +1,72 @@
 # SimdVerlet DirectedConstraints4 Extension
 
-## Overview
-
-This extension adds support for 4-slot distance constraints to the SimdVerlet physics engine, enabling more complex particle systems like cloth simulations with up to 4 neighbors per particle.
-
-## Changes Made
-
-### 1. DirectedConstraints4 Class
-
-A new constraint class that extends the capability from 3 to 4 distance constraints per particle.
-
-**Location**: `src/jvmMain/kotlin/afield/four/physics/SimdVerlet.kt`
-
-```kotlin
-class DirectedConstraints4(
-    val n0: IntArray,  // Neighbor indices for slot 0
-    val n1: IntArray,  // Neighbor indices for slot 1
-    val n2: IntArray,  // Neighbor indices for slot 2
-    val n3: IntArray,  // Neighbor indices for slot 3
-    val r0: FloatArray,  // Rest lengths for slot 0
-    val r1: FloatArray,  // Rest lengths for slot 1
-    val r2: FloatArray,  // Rest lengths for slot 2
-    val r3: FloatArray,  // Rest lengths for slot 3
-    val s0: FloatArray,  // Stiffness values for slot 0
-    val s1: FloatArray,  // Stiffness values for slot 1
-    val s2: FloatArray,  // Stiffness values for slot 2
-    val s3: FloatArray   // Stiffness values for slot 3
-)
-```
-
-**Methods**:
-- `setSlot(index, slot, neighbor, restLength, stiffness)` - Set a constraint in slots 0-3
-- `swapConstraints(i, j)` - Swap constraints between particles
-- `remapNeighbors(remap, newSize)` - Remap neighbor indices after particle removal
-
-### 2. SIMD Constraint Solver
-
-Added `solveDirectedDist4InPlace` and `solveDirectedDist4InPlaceRange` functions that use SIMD operations to efficiently solve 4-slot distance constraints.
-
-**Key Features**:
-- Vectorized constraint solving using JDK Incubator Vector API
-- Supports up to 4 constraints per particle
-- Thread-safe for parallel execution
-- Automatic fallback to scalar code for remainder lanes
-
-### 3. Step Function Overload
-
-Added `step()` function overload that accepts `DirectedConstraints4`:
-
-```kotlin
-fun step(
-    dt: Float,
-    damping: Float,
-    gravity: Float,
-    iterations: Int,
-    constraints: DirectedConstraints4?
-)
-```
-
-### 4. State Management Extensions
-
-Added `applyQueuedRemovalsSwap(constraints: DirectedConstraints4?)` to handle particle removal with 4-slot constraints.
-
-### 5. ConstraintScratch Extension
-
-Extended `ConstraintScratch` class to include `map3` for the 4th constraint slot, enabling efficient vectorized gather operations.
-
-## Usage Example
-
-### Basic Setup
-
-```kotlin
-// Create state
-val state = SimdVerlet.State3(
-    x = FloatArray(0),
-    y = FloatArray(0),
-    z = FloatArray(0),
-    px = FloatArray(0),
-    py = FloatArray(0),
-    pz = FloatArray(0),
-    ax = FloatArray(0),
-    ay = FloatArray(0),
-    az = FloatArray(0),
-    invMass = FloatArray(0)
-)
-
-// Create 4-slot constraints
-val constraints = SimdVerlet.DirectedConstraints4(
-    n0 = IntArray(particleCount) { -1 },
-    n1 = IntArray(particleCount) { -1 },
-    n2 = IntArray(particleCount) { -1 },
-    n3 = IntArray(particleCount) { -1 },
-    r0 = FloatArray(particleCount),
-    r1 = FloatArray(particleCount),
-    r2 = FloatArray(particleCount),
-    r3 = FloatArray(particleCount),
-    s0 = FloatArray(particleCount),
-    s1 = FloatArray(particleCount),
-    s2 = FloatArray(particleCount),
-    s3 = FloatArray(particleCount)
-)
-
-val sim = SimdVerlet(state, null)
-```
-
-### Adding Constraints
-
-```kotlin
-// Add particle
-val idx = sim.addParticle(x0 = 0f, y0 = 0f, z0 = 0f)
-
-// Set up to 4 constraints per particle
-constraints.setSlot(idx, 0, neighborIdx1, restLength = 1f, stiffness = 0.8f)
-constraints.setSlot(idx, 1, neighborIdx2, restLength = 1f, stiffness = 0.8f)
-constraints.setSlot(idx, 2, neighborIdx3, restLength = 1f, stiffness = 0.8f)
-constraints.setSlot(idx, 3, neighborIdx4, restLength = 1f, stiffness = 0.8f)
-```
-
-### Running Simulation
-
-```kotlin
-// Step simulation with 4-slot constraints
-sim.step(
-    dt = 1f / 60f,
-    damping = 0.99f,
-    gravity = -9.8f,
-    iterations = 8,
-    constraints = constraints
-)
-```
-
-## Cloth Simulation Example
-
-A complete interactive cloth simulation example is provided in `ClothSimulationExample.kt`:
-
-**Key Features**:
-- Grid-based cloth with 4-way constraints (up, down, left, right)
-- Returns `Sequence<List<FLine>>` for visualization (via `createClothSimulation`)
-- Optional curvature force for cloth flattening
-- Interactive particle grabbing capability exposed through `InteractiveClothSimulation`
-
-**Usage**:
-
-```kotlin
-val simulation = ClothSimulationExample.createInteractiveClothSimulation(
-    clothWidth = 20,
-    clothHeight = 20,
-    spacing = 0.5f,
-    enableCurvatureForce = true,
-    curvatureStrength = 0.05f
-)
-
-// Optional external interaction (for mouse/VR controllers/etc.)
-simulation.grabNearest(worldX, worldY, worldZ)
-simulation.moveGrabbed(worldX, worldY, worldZ)
-simulation.releaseGrabbed()
-
-// Or, from external code without a local simulation reference:
-ClothSimulationExample.grabNearest(worldX, worldY, worldZ)
-ClothSimulationExample.moveGrabbed(worldX, worldY, worldZ)
-ClothSimulationExample.releaseGrabbed()
-
-// Iterate frames
-for (lines in simulation.frames) {
-    // Render lines
-    // lines is List<FLine> representing the cloth wireframe
-}
-```
-
-Backward-compatible usage remains available:
-
-```kotlin
-val framesOnly: Sequence<List<FLine>> = ClothSimulationExample.createClothSimulation(...)
-```
-
-For compatibility, 2D overloads still exist (`grabNearest(x, y)` / `moveGrabbed(x, y)`) and default `z = 0f`.
-
-## Curvature Force Implementation
-
-The cloth simulation includes an optional curvature force that tries to flatten the cloth:
-
-```kotlin
-sim.addForceGenerator(idx, "curvature", generator2 {
-    while (true) {
-        val ctx = yield()
-        val i = ctx.index
-        
-        // Calculate average position of 4 neighbors
-        val avgX = (x[left] + x[right] + x[top] + x[bottom]) / 4f
-        val avgY = (y[left] + y[right] + y[top] + y[bottom]) / 4f
-        val avgZ = (z[left] + z[right] + z[top] + z[bottom]) / 4f
-        
-        // Apply force toward average
-        val dx = avgX - x[i]
-        val dy = avgY - y[i]
-        val dz = avgZ - z[i]
-        
-        ctx.state.ax[i] += dx * curvatureStrength
-        ctx.state.ay[i] += dy * curvatureStrength
-        ctx.state.az[i] += dz * curvatureStrength
-    }
-})
-```
-
-## Interactive Grabbing
-
-The cloth simulation exposes interactive particle manipulation on the returned `InteractiveClothSimulation`:
-
-```kotlin
-val simulation = ClothSimulationExample.createInteractiveClothSimulation(...)
-
-// Grab nearest particle
-simulation.grabNearest(worldX, worldY, worldZ)
-
-// Move grabbed particle
-simulation.moveGrabbed(worldX, worldY, worldZ)
-
-// Release grabbed particle
-simulation.releaseGrabbed()
-```
-
-These use PID position controllers to smoothly move particles to target positions.
-
-## Testing
-
-Run the test example:
-
-```bash
-./gradlew :jvmRun --args="afield.examples.TestDirectedConstraints4"
-```
-
-Or the full cloth simulation:
-
-```bash
-./gradlew :jvmRun --args="afield.examples.ClothSimulationExample"
-```
-
-## Performance Considerations
-
-- **SIMD Vectorization**: The solver uses SIMD operations for better performance on modern CPUs
-- **Iteration Count**: Higher iteration counts (8-10) provide more stable constraints but are slower
-- **Constraint Count**: 4 slots per particle is the maximum, use -1 or stiffness=0 for unused slots
-- **Curvature Force**: Optional but adds computational cost proportional to particle count
-
-## Implementation Details
-
-### SIMD Constraint Solving
-
-The 4-slot solver processes constraints in vectorized batches:
-
-1. **Gather Phase**: Load positions of neighbor particles using vector gather operations
-2. **Distance Calculation**: Compute distances using SIMD sqrt
-3. **Force Calculation**: Calculate constraint forces in parallel
-4. **Accumulation**: Accumulate forces with masking for invalid constraints
-5. **Scalar Fallback**: Process remaining particles with scalar code
-
-### Thread Safety
-
-The constraint solver is designed for range-parallel execution:
-- Each particle only updates its own accumulators
-- No scatter operations to neighbor particles
-- Safe to call on non-overlapping particle ranges
-
-## Future Enhancements
-
-Possible extensions:
-- Bending constraints using 4-slot configuration
-- Diagonal constraints for shear resistance
-- Adaptive constraint stiffness based on strain
-- Integration with spatial acceleration structures
-
-## References
-
-- Original SimdVerlet implementation: `SimdVerlet.kt`
-- Test example: `TestDirectedConstraints4.kt`
-- Full cloth simulation: `ClothSimulationExample.kt`
-- Tiny 3-constraint example: `SimdVerletTinyExample.kt`
+Design notes for the 4-slot distance-constraint extension to the `SimdVerlet`
+soft-body engine. The per-method API surface lives in KDoc on
+`SimdVerlet.DirectedConstraints4` (in
+`src/jvmMain/kotlin/afield/four/physics/SimdVerlet.kt`); this doc only captures
+the rationale that doesn't belong inline.
+
+## Why 4 slots
+
+`DirectedConstraints4` extends the existing `DirectedConstraints3` from 3 to 4
+outgoing distance constraints per particle. The motivating case is a regular
+cloth grid: each interior particle has four axis neighbors (up, down, left,
+right), so it needs four slots to pin all of them from a single owner. Slots are
+stored as parallel arrays (`n*` neighbor indices, `r*` rest lengths, `s*`
+stiffnesses); an unused slot is `neighbor = -1` or `stiffness = 0`.
+
+Populate with `setSlot(index, slot, neighbor, restLength, stiffness)`. Particle
+removal is handled by `State.applyQueuedRemovalsSwap`, which uses the (internal)
+`swapConstraints` / `remapNeighbors` helpers to keep the swap-remove compaction
+consistent.
+
+## SIMD solver and thread safety
+
+The constraints are solved by `solveDirectedDist4InPlace` /
+`solveDirectedDist4InPlaceRange` using the JDK Incubator Vector API. Neighbor
+positions are gathered through the per-slot maps in `ConstraintScratch`
+(`map0`..`map3` — the 4th map is what this extension added), distances use SIMD
+sqrt, and a scalar remainder-lane fallback finishes the tail.
+
+The important design constraint is that the solver is **range-parallel safe**:
+each particle accumulates only onto its own position, and there are *no scatter
+writes back to neighbors*. That means non-overlapping particle ranges can be
+solved on separate threads, each with its own scratch, without locking. This
+accumulate-own-particle-only rule is what makes the directed (rather than
+symmetric) constraint layout worthwhile.
+
+## Cloth grid wiring and curvature force
+
+`afield.examples.ClothSimulationExample` wires a grid of particles with 4-way
+constraints and returns a `Sequence<List<FLine>>` of the cloth wireframe for
+visualization. It exposes an optional **curvature force**: for each particle it
+computes the average position of its four grid neighbors and pushes the particle
+toward that average (scaled by `curvatureStrength`). This is a cheap bending
+term that tries to flatten local kinks in the cloth; it is off by default
+because it costs work proportional to particle count.
+
+Interactive grabbing is layered on top via `InteractiveClothSimulation`
+(`grabNearest` / `moveGrabbed` / `releaseGrabbed`, with 2D and 3D overloads).
+Grabs are implemented as PID position controllers that smoothly drive the
+grabbed particle to the target rather than teleporting it.
+
+## Running the examples
+
+`jvmRun` cannot launch these: its `mainClass` is hardcoded to `afield.Server`
+(see `build.gradle.kts`), so `./gradlew :jvmRun --args="afield.examples.X"` just
+boots the full Field4 server with a stray program argument — it never calls the
+example's `main()`. To actually run one, use an IDE run configuration on the
+example's `main()`, or add a dedicated `JavaExec` Gradle task pointed at the
+example class (the repo already uses this pattern, e.g. the
+`runSimdVerletBulkKernelsExample` task).
+
+Relevant examples:
+- `afield.examples.TestDirectedConstraints4` — minimal 4-slot smoke test.
+- `afield.examples.ClothSimulationExample` — full interactive cloth.
+- `afield.examples.SimdVerletTinyExample` — the 3-slot warmup.
+
+## Tuning
+
+- Higher iteration counts (8-10) give more stable constraints at higher cost.
+- 4 slots per particle is the maximum; leave unused slots at `-1` / stiffness 0.
+- The curvature force is optional and adds per-particle cost.

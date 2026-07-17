@@ -1,8 +1,16 @@
-# Value Visualizer Implementation Guide
+# Value Visualizer Guide
+
+Canonical prose reference for `ValueVisualizer` / `Box.viz()`
+(`src/jvmMain/kotlin/afield/visualization/ValueVisualizer.kt`).
+Runnable end-to-end examples: `dev_docs/viz_demo.kt`.
 
 ## Overview
 
-The Value Visualizer is a compact, monochrome visualization system for common Kotlin and JOML types. It integrates with Field4's existing `display()` function to show values in disclosure areas.
+The Value Visualizer is a compact visualizer for common Kotlin and Field linalg
+types. It renders values as small HTML fragments and integrates with Field4's
+`display()` function to show them in disclosure areas. Output uses a fixed,
+curated per-type color palette (see [Styling](#styling)) — not a single
+monochrome scheme.
 
 ## Quick Start
 
@@ -13,65 +21,75 @@ viz("numbers", listOf(1, 2, 3, 4, 5))
 viz("data", mapOf("x" to 1.0, "y" to 2.0))
 ```
 
-## Features
-
-### 1. Built-in Type Support
+## Type Support
 
 The visualizer automatically handles:
 
-- **Primitives**: Numbers (with smart formatting), booleans, strings, chars
-- **JOML Vectors**: Vector2f/3f/4f, Vector2d/3d/4d
-- **JOML Quaternions**: Quaternionf, Quaterniond
-- **JOML Matrices**: Matrix2f/3f/4f and their double counterparts
-- **Collections**: Lists, sets, maps, arrays (including primitive arrays)
+- **Primitives**: numbers (smart formatting), booleans, strings, chars
+- **Vectors**: `Vector2f/3f/4f` and `Vector2d/3d/4d` (Field's generated linalg
+  types in `afield.stdlib.linalg`; double-precision vectors are down-converted
+  to float for display) → `vec2(x, y)` / `vec3(...)` / `vec4(...)`
+- **Quaternions**: `Quaternionf` (`Quaternionfc`) only → `quat(x, y, z, w)`.
+  There is no double-precision quaternion type in this codebase.
+- **Matrices**: `Matrix2f/3f/4f` (single precision) → `mat4 [det=…, t=(…)]`.
+  Double-precision matrix branches are commented out in source and fall through
+  to the generic formatter.
+- **Collections**: lists, sets, maps, arrays (including primitive arrays)
 
-### 2. Smart Truncation
+These types are API-shaped like JOML but are backed by Field's own generated
+linalg package (`afield.stdlib.linalg`), not the `org.joml` library, following
+the JOML → generated-linalg migration.
 
-Large collections are automatically truncated with preview:
+### Rendering quick reference
+
+```kotlin
+viz("num", 42)                          // → 42
+viz("float", 3.14159)                   // → 3.142
+viz("bool", true)                       // → true
+viz("str", "hello")                     // → hello        (unquoted)
+viz("v3", vec(1, 2, 3))                 // → vec3(1, 2, 3)
+viz("quat", quat(45.0, vec(0, 1, 0)))   // → quat(x, y, z, w)
+viz("mat", mat4())                      // → mat4 [det=…, t=(…)]
+viz("list", listOf(1, 2, 3))            // → [1, 2, 3] (3)
+viz("map", mapOf("x" to 1, "y" to 2))   // → {x -> 1, y -> 2} (2)
+viz("set", setOf("a", "b", "c"))        // → {a, b, c} (3)
+```
+
+Note that map entries use an ASCII `->` separator, and strings render unquoted.
+
+## Smart Truncation
+
+Lists and sets are shown in full up to `LIST_INLINE_ELISION_THRESHOLD` (30)
+elements. Above that threshold, only the first `MAX_LIST_PREVIEW` (20) elements
+are previewed, followed by a `… +N more items` expander:
+
 ```kotlin
 val bigList = (1..100).toList()
 viz("large", bigList)
-// Shows: [1, 2, 3, 4, 5 … +95 more] (100)
+// Shows: [1, 2, …, 20 … +80 more items] (100)
 ```
 
-### 3. Summary Statistics
+Maps truncate separately, at `MAX_MAP_ENTRIES` (5) entries. Strings truncate
+after `MAX_STRING_LENGTH` (100) characters. Nesting is limited to `MAX_DEPTH`
+(3) levels.
 
-Numeric collections get automatic statistics:
+## Summary Statistics
+
+All-numeric collections get an automatic stats summary appended after the
+preview (`[μ=…, σ=…, range=…]`). The standard deviation is a population stdDev,
+and numeric literals are formatted to three decimals (trailing zeros trimmed):
+
 ```kotlin
 val data = (1..100).map { it * 0.1 }
 viz("stats", data)
-// Shows preview + [μ=5.05, σ=2.9, range=0.1…10]
+// [0.1, 0.2, …, 2.0 … +80 more items] [μ=5.05, σ=2.887, range=0.1…10] (100)
 ```
 
-### 4. Compact Formatting
-
-- Numbers use scientific notation for very large/small values
-- Strings truncate after 100 characters
-- Nested structures indent automatically
-- All output uses monochrome color scheme
-
-## Styling
-
-The visualizer uses these colors:
-
-```
-Numbers:           #8cf (cyan)
-Strings:           #8f8 (green)
-Booleans:          #f88 (red)
-JOML Vectors:      #fc8 (orange)
-JOML Quaternions:  #f8c (pink)
-JOML Matrices:     #cf8 (lime)
-Byte Arrays:       #c8f (purple)
-Structural:        #aaa, #888, #666 (grays)
-```
-
-## Advanced Features
-
-### Inline Sparklines for Numeric Collections
+## Inline Sparklines for Numeric Collections
 
 `DoubleArray`, `FloatArray`, `IntArray`, and predominantly-numeric `List<*>`
-values get a small inline SVG sparkline appended after their preview + stats
-(`[μ=…, σ=…, range=…]`), giving the *shape* of the series at a glance:
+values get a small inline SVG sparkline appended after their preview + stats,
+giving the *shape* of the series at a glance:
 
 ```kotlin
 viz("ramp", DoubleArray(64) { it.toDouble() })          // rising line
@@ -97,7 +115,60 @@ The renderer mirrors the safe recipe used for the Fn graph-card plot
 The whole render is wrapped in `runCatching`, so a misbehaving element costs only
 the sparkline, never the value display.
 
-### Custom Printers
+## Inline Geometric Thumbnails (linalg vectors & matrices)
+
+Beneath the terse text for the Field linalg types, `ValueVisualizer` appends a
+small, **guarded** inline SVG thumbnail — the same discipline as the Fn plot
+(`renderFnPlot` / `formatFn`) and the FLine thumbnail (`renderFLineThumbnail`):
+the text head is preserved verbatim and the thumbnail is a bonus wrapped in
+`runCatching`, so a misbehaving value costs only the thumbnail, never the value
+display.
+
+- **`Vector2fc` / `Vector4fc`** → an auto-scaled arrow from a centered origin
+  over faint axes (vec4 draws the (x, y) arrow; z/w stay in the text).
+  `renderVec2Thumbnail`.
+- **`Vector3fc`** → an isometric arrow with a fixed-pixel x/y/z reference frame
+  (the frame is decoupled from the data scale so it can never overflow).
+  `renderVec3Thumbnail`.
+- **`Matrix2/3/4fc`** → a compact colored cell grid, a diverging heatmap around
+  zero (neutral `#222` → `#6cf` for positive, → `#f83` for negative, by
+  |v| / maxAbs), with per-cell value labels for 2×2 and 3×3 (4×4 is colors-only).
+  Matrix storage is column-major (accessor `m<col><row>()`); cells are laid out
+  in row-major math order. `renderMatrixThumbnail`.
+
+Degenerate values are safe: a non-finite (NaN/∞) component skips the thumbnail
+(the plain text is preserved), a zero vector draws axes + an origin dot, and an
+all-zero matrix draws neutral cells. Sizes: `VEC_THUMBNAIL_SIZE` (84px square)
+and `MATRIX_CELL_SIZE` (24px per cell).
+
+Verified by `src/jvmTest/kotlin/afield/LinalgThumbnailVisualizerTest.kt` (drives
+the real `ValueVisualizer.visualize`). A loadable demo is
+`dev_docs/agents/transcripts/linalg_thumbnails_demo.yaml` — replay it into a
+fresh Field4 (agent backdoor / `field_run_transcript`) and look at each box's
+output.
+
+## Compact Formatting
+
+- Numbers use scientific notation for very large/small values
+- Strings truncate after 100 characters
+- Nested structures indent automatically
+
+## Styling
+
+The visualizer applies a distinct hue per type:
+
+```
+Numbers:      #8cf (cyan)
+Strings:      #8f8 (green)
+Booleans:     #f88 (red)
+Vectors:      #fc8 (orange)
+Quaternions:  #f8c (pink)
+Matrices:     #cf8 (lime)
+Byte Arrays:  #c8f (purple)
+Structural:   #aaa, #888, #666 (grays)
+```
+
+## Custom Printers
 
 Register custom formatters for your types:
 
@@ -113,7 +184,7 @@ registerValuePrinter<Point3D> { point ->
 viz("point", Point3D(1.0, 2.0, 3.0))
 ```
 
-### ToHTML Interface
+## ToHTML Interface
 
 Implement `ToHTML` for complete control:
 
@@ -134,22 +205,24 @@ data class ComplexData(val name: String, val values: List<Double>) : ToHTML {
 viz("complex", ComplexData("Dataset A", (1..50).map { it * 1.5 }))
 ```
 
-## Integration with Existing Visualizers
+## Integration
 
-Field4 already has several visualization functions:
+Field4 has several complementary visualization functions:
 
-- `tree(channel, value)` - Tree view for complex objects
-- `column(channel, value)` - Column browser for properties
-- `logs(channel, filter)` - Log stream display
+| Function    | Use case                | Output type              |
+|-------------|-------------------------|--------------------------|
+| `viz()`     | Compact inline display  | HTML in disclosure       |
+| `tree()`    | Deep object inspection  | Tree view (iframe)       |
+| `column()`  | Property browsing       | Column browser (iframe)  |
+| `println()` | Console output          | Text in output area      |
+| `display()` | Custom HTML             | Raw HTML in disclosure   |
 
-The `viz()` function complements these by providing:
-- Compact inline display
-- Fast preview of values
-- Statistical summaries for numeric data
+`viz()` complements the others with compact inline display, fast value preview,
+and statistical summaries for numeric data.
 
 ## Implementation Details
 
-### Core Function
+### Core function
 
 ```kotlin
 fun Box.viz(channel: String = "viz", value: Any?) {
@@ -157,26 +230,25 @@ fun Box.viz(channel: String = "viz", value: Any?) {
 }
 ```
 
-The `viz()` extension function wraps the visualizer and sends HTML to the disclosure area.
+The `viz()` extension wraps the visualizer and sends HTML to the disclosure
+area. (`Any?.h` exposes the same visualized HTML as a property.)
 
-### Visualization Pipeline
+### Visualization pipeline
 
-1. Check for `ToHTML` interface implementation
-2. Look up custom printer in registry
-3. Match against built-in type handlers
+1. Check for the `ToHTML` interface
+2. Look up a custom printer in `ValuePrinterRegistry`
+3. Match against the built-in type handlers
 4. Fall back to `toString()`
 
 ### Performance
 
 - Truncation limits prevent DOM bloat
-- Statistics calculated on-demand only for numeric collections
+- Statistics are calculated on-demand only for numeric collections
 - HTML is pre-escaped for safety
-- Maximum depth limit (3 levels) prevents infinite loops
-- **Circular reference detection** using identity hash tracking prevents infinite loops
+- A depth limit (`MAX_DEPTH` = 3) and circular-reference detection prevent
+  infinite loops
 
-### Circular Reference Handling
-
-The visualizer automatically detects and prevents infinite loops from circular references:
+### Circular reference handling
 
 ```kotlin
 class Node(val name: String) {
@@ -188,21 +260,14 @@ val node2 = Node("B")
 node1.next = node2
 node2.next = node1  // Circular reference
 
-viz("nodes", node1)  // Shows [circular reference] when it encounters node1 again
+viz("nodes", node1)  // Shows [circular reference] when node1 is revisited
 ```
 
-Objects are tracked using `System.identityHashCode()` to detect when the same object instance is visited multiple times. Primitives and value types (like JOML vectors) are not tracked as they cannot create circular references.
+Visited objects are tracked in an identity set backed by
+`java.util.IdentityHashMap` (`newIdentitySet()`), so the same instance is
+detected on a second visit. Primitives and linalg value types are not tracked —
+they cannot form circular references.
 
 ## Examples
 
-See `viz_demo.kt` for comprehensive examples of all features.
-
-## Future Enhancements
-
-Potential future additions:
-
-1. Interactive disclosure of truncated collections
-2. ~~Plotting numeric arrays~~ — done: inline sparklines (see Advanced Features)
-3. Syntax highlighting for code strings
-4. Image preview for byte arrays
-5. Thread `_print()` functions through visualizer
+See `dev_docs/viz_demo.kt` for comprehensive runnable examples of all features.

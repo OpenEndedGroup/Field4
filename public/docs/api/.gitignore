@@ -1,6 +1,0 @@
-# Ignore all generated Dokka files
-*
-
-# But keep the index file
-!index.md
-!.gitignore

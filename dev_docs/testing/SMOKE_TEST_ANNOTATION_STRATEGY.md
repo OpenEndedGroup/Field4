@@ -132,20 +132,6 @@ Suggested fields:
 - `capture` optional
 - `outputChannel` optional
 
-### `backdoor-document`
-
-For real saved documents or templates where the smoke test means "open this document and run a known box".
-
-Suggested fields:
-
-- `document`
-- `box`
-- `action` such as `run` or `launch`
-- `withPlaywright`
-- `capture`
-
-Use this for example workspaces in `metadata_store/` or curated docs projects.
-
 ## Expectation Schema
 
 Keep expectations small and additive.
@@ -198,8 +184,13 @@ Do not make the v1 expectation language too clever. Substring checks plus "did t
 The authoritative discovery query should be something like:
 
 ```bash
-rg -l 'FIELD_TEST' src/jvmMain/kotlin/afield/examples dev_docs public/docs metadata_store
+rg -l 'FIELD_TEST' src/jvmMain/kotlin/afield dev_docs public/docs metadata_store
 ```
+
+These roots match `DEFAULT_ROOTS` in `tools/discover_field_tests.py`. Note the
+Kotlin root is the whole `afield` tree, not just `afield/examples`, so
+annotations outside `examples/` (such as `CompiledSnippetTest.kt` and
+`PlyLoaderUnitTest.kt`) are still discovered.
 
 The runner then:
 
@@ -353,7 +344,6 @@ That runner can eventually do:
 
 - `jvm-main` by asking `tools/field_backdoor.py --json` to execute the annotated entrypoint and return stdout/stderr/exit status
 - `backdoor-box` by driving `tools/field_backdoor.py --json`
-- `backdoor-document` by opening named docs and running named boxes
 
 This keeps the system coherent without forcing algorithm-only tests through a browser/document runtime.
 

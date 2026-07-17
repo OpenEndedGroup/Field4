@@ -294,10 +294,12 @@ regenerated preamble both survive.
   which ops that reference your boxes are skipped, or CLI `launch`/`run` silently create
   an empty box. To reopen a saved document, either `save` it **into** a workspace dir and
   open it by its relative name, or point `--workspace` at the save location's parent.
-- **The CLI `run`/`launch <uid>` commands always send `--value`** (empty if you omit it),
-  which *overrides* the box's stored code — you'll see `codeLength: 0` and no output. To
-  run a box's **stored** code, use a transcript `execute`/`launch` op with no inline
-  `code:` (the stored-code fallback), not the bare CLI `run`/`launch`.
+- **`--value`/`--file` on CLI `run`/`launch <uid>` are optional and only override when
+  supplied.** Omitting them leaves the argparse default `None`, so `run_box`/`launch_box`
+  skip the `set_string` step and execute the box's currently *stored* code unchanged — the
+  same stored-code fallback the transcript `execute`/`launch` ops use. (A `codeLength: 0`
+  run means the box's cached `code` property is genuinely empty — e.g. a box created but
+  never snapshotted — not that an empty `--value` was sent.)
 - **Inline `code:` in YAML mangles Kotlin string templates.** `"${expr}"` inside a
   transcript code block can be eaten by interpolation; build strings with `+`
   concatenation (`"n=" + n`) in transcript-authored code.

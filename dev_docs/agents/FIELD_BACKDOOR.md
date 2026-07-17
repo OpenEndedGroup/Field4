@@ -137,8 +137,8 @@ Zensical, MkDocs, Playwright, or backdoor dependencies into an ad hoc virtualenv
 
 The root `pyproject.toml` defines two dependency groups:
 
-- `backdoor`: `websockets` and `PyYAML` for `tools/field_backdoor.py`.
-- `docs`: Zensical, the configured docs extensions, `pillow` for docs hooks, and the backdoor dependencies. The docs group intentionally includes the backdoor dependencies because `public/docs_hooks.py` launches `tools/field_backdoor.py` with the same Python interpreter that builds the docs.
+- `backdoor`: `websockets`, `PyYAML`, and `pillow` for `tools/field_backdoor.py`. Pillow backs the screenshot-diffing in `tools/run_field_tests.py` (region-mean/abs-diff helpers), which also runs under this group.
+- `docs`: Zensical, the configured docs extensions, and the backdoor dependencies. The docs group intentionally includes the backdoor dependencies because `public/docs_hooks.py` launches `tools/field_backdoor.py` with the same Python interpreter that builds the docs.
 
 Neither group needs the Python `playwright` package for Field browser captures.
 Use `--with-playwright` through the backdoor or `tools/run_ui_regressions.py`;
@@ -347,7 +347,7 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --port
 
 Three things that will otherwise waste your time (hard-won):
 
-- **`launch`/`run <uid>` always sends `--value` — empty if you omit it — which overrides the box's stored code.** So a bare `launch <uid>` runs an *empty* box (`codeLength: 0`, no pump, no output). Always pass `--file`/`--value` (or drive stored code via an OperationTranscript `launch` op with no inline code). This is the #1 cause of "I launched it but nothing happened."
+- **`--value`/`--file` only override when supplied; otherwise `launch`/`run <uid>` runs the box's stored code.** Omitting both leaves the argparse default `None`, so `launch_box`/`run_box` skip `set_string` and execute the box's cached `code` property. A bare `launch <uid>` therefore runs an empty box (`codeLength: 0`, no pump, no output) only when that box has no stored code yet — e.g. a box created in this session but never given code, or a box whose code snapshot hasn't loaded. If you loaded a saved document, a bare `launch <uid>` reruns its stored code as-is.
 - **`launch`, not `run`, gives you a message pump.** The window box's `start(renderer::run)` render loop only keeps ticking while the box stays launched; a one-shot `run` executes the fragment and stops. Confirm the pump with `wait-native-renderer --frames 5` (do not wait on `println` output — render-loop liveness is a different system).
 - **Renderers are disposed on document detach** (`SessionInformation.cleanup()` → `disposeBoxRenderer` per box, releasing the native GLFW/Vulkan surface). So (a) keep the backdoor session attached — a trailing `sleep` — for as long as you need frames, and (b) do not `open` a *different* document over a session whose current document has a **live** renderer (e.g. one a human GUI is actively rendering): the detach will tear that renderer down. Devices are per-`Renderer` (each `Renderer` owns its own `VkInstance`/`VkDevice`), so this is per-document teardown, not a shared-device bug.
 
@@ -665,7 +665,7 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json \
 
 `run` waits for the execution strand to finish and returns the events produced during that command.
 
-> Note: `run`/`launch <uid>` always **send** the `--value` (empty if you omit it), which overrides the box's stored code — you'll see `codeLength: 0` and no output. To run a box's *stored* code (e.g. after loading a saved document), use a transcript `execute`/`launch` op with no inline `code:` (the stored-code fallback), not bare CLI `run`. See [`OPERATION_TRANSCRIPT.md`](./OPERATION_TRANSCRIPT.md#execute-vs-launch).
+> Note: `--value`/`--file` are optional on `run`/`launch <uid>` and only override when supplied. Omit both to run the box's *stored* code (e.g. after loading a saved document) — `run_box`/`launch_box` fall back to the box's cached `code` property, the same stored-code fallback the transcript `execute`/`launch` ops use. A `codeLength: 0` run means that cached property is genuinely empty, not that an empty `--value` was sent. See [`OPERATION_TRANSCRIPT.md`](./OPERATION_TRANSCRIPT.md#execute-vs-launch).
 
 ### Launch a Box
 

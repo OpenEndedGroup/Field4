@@ -1,10 +1,16 @@
-# Audio Options for Synchronized Video Playback
+# Audio Backend Decision Record: Why OpenAL from LWJGL
 
-This document outlines the available audio options for synchronized audio playback with the existing FFmpeg video decoder in Field4.
+> **Historical ADR.** This is the pre-implementation decision record that compared audio
+> backends and argued for OpenAL from LWJGL. That choice shipped. For the current,
+> living API and how-to, see the "Audio Support" section of the video module's
+> `src/jvmMain/kotlin/afield/four/texture/video/README.md`, and
+> `PlaybackClock.kt` for the PlaybackClock/AudioClock sync design.
+> The comparison below is retained for the rationale ("why OpenAL"); it is not a to-do list.
 
 ## Overview
 
-With the bytedeco FFmpeg video decoder now working superbly, we need a solution for synchronized audio playback. The key requirements are:
+The requirement was a solution for synchronized audio playback alongside the bytedeco
+FFmpeg video decoder. The key requirements were:
 - **Audio extraction from video files**: Decode audio stream from video files using FFmpeg
 - **Low-latency playback**: Play audio with minimal delay to maintain sync with video
 - **Synchronization**: Keep audio and video in sync during playback, seeking, and pause/resume
@@ -144,77 +150,17 @@ OpenAL from LWJGL is the clear winner for this use case because:
 5. **Cross-Platform**: Single API works across all target platforms
 6. **Active Support**: Part of LWJGL ecosystem with regular updates
 
-## Implementation Strategy
+## Outcome
 
-### Phase 1: Audio Decoding
-- Create `AudioDecoder` class wrapping FFmpeg audio stream decoding
-- Extract audio frames in PCM format (16-bit signed, configurable sample rate)
-- Implement audio seeking synchronized with video seeking
-- Handle audio format conversion (mono/stereo, sample rate)
-
-### Phase 2: Audio Playback
-- Create `AudioPlayer` class managing OpenAL context and sources
-- Implement buffer queuing pattern for streaming playback
-- Add precise timing queries for synchronization
-- Handle audio device initialization and cleanup
-
-### Phase 3: Synchronization
-- Extend `VideoTexture` to optionally manage audio playback
-- Implement master clock for A/V synchronization
-- Add drift correction to handle timing discrepancies
-- Support audio-only or video-only playback modes
-
-### Phase 4: Integration
-- Integrate audio loading in `VideoTexture.load()`
-- Synchronize `update()` calls with audio playback time
-- Handle seeking, pause, resume with audio state
-- Add audio volume control and muting
-
-### Phase 5: Examples and Documentation
-- Update `VideoTextureExample.kt` with audio examples
-- Document audio API in README
-- Add troubleshooting guide for common audio issues
-- Document synchronization algorithm and tuning parameters
-
-## Alternative: Modular Audio Support
-
-For projects that don't need audio or want different audio solutions, we can make audio support **optional and modular**:
-
-```kotlin
-interface AudioProvider {
-    fun load(audioPath: String): Boolean
-    fun play()
-    fun pause()
-    fun seek(timestamp: Double)
-    fun getCurrentTime(): Double
-    fun cleanup()
-}
-
-class OpenALAudioProvider : AudioProvider { ... }
-class NoOpAudioProvider : AudioProvider { ... }
-
-// VideoTexture accepts optional audio provider
-class VideoTexture(
-    private val renderer: Renderer,
-    private val audioProvider: AudioProvider? = null
-)
-```
-
-This allows users to:
-- Use OpenAL (recommended)
-- Implement custom audio backend
-- Skip audio entirely (video-only)
-- Swap audio implementations without changing video code
-
-## Next Steps
-
-1. ✅ Document audio options (this document)
-2. ⏭️ Add OpenAL dependencies to `build.gradle.kts`
-3. ⏭️ Implement `AudioDecoder` for FFmpeg audio stream extraction
-4. ⏭️ Implement `AudioPlayer` for OpenAL playback
-5. ⏭️ Add synchronization logic to `VideoTexture`
-6. ⏭️ Create examples and documentation
-7. ⏭️ Test with various video files and formats
+The recommendation was implemented as `AudioDecoder` (FFmpeg audio decoding) and
+`AudioPlayer` (OpenAL playback) in `src/jvmMain/kotlin/afield/four/texture/video/`,
+with `lwjgl-openal` added to `build.gradle.kts`. A/V synchronization did **not** end up
+using a swappable `AudioProvider` interface as sketched in earlier drafts of this doc;
+instead it shipped as the `PlaybackClock` interface with `SystemClock` (internal
+wall-clock) and `AudioClock` (audio-hardware timing) implementations, passed to
+`VideoTexture` via a `clock: PlaybackClock? = null` constructor parameter. See
+`PlaybackClock.kt` and the video module `README.md` "Audio Support" section for the
+shipped design.
 
 ## References
 

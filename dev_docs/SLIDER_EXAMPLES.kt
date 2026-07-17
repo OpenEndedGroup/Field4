@@ -1,5 +1,9 @@
 // SLIDER USAGE EXAMPLES
-// Copy these into Field4 boxes to test the slider functionality
+// Copy these into Field4 boxes to test the slider functionality.
+//
+// API reference lives in the KDoc on Box.slider(), Box.sliders(), and SliderConfig in
+// src/jvmMain/kotlin/afield/outputs.kt; the full control family (checkbox, colorPicker,
+// vec2Control, controlGroup, ...) is documented in the KDoc on those factory functions.
 
 // ============================================
 // Example 1: Simple Parameter Slider
@@ -19,111 +23,42 @@ slider(
 }
 
 // ============================================
-// Example 2: Multiple Related Sliders
-// ============================================
-var x = 0.0
-var y = 0.0
-var rotation = 0.0
-
-sliders(
-    channel = "transform",
-    "x" to SliderConfig("X", -200.0, 200.0, 1.0, x) { x = it },
-    "y" to SliderConfig("Y", -200.0, 200.0, 1.0, y) { y = it },
-    "rot" to SliderConfig("Rotation", 0.0, 360.0, 1.0, rotation) { rotation = it }
-)
-
-// ============================================
-// Example 3: Color Picker
+// Example 2: Color Picker (hand-rolled RGB group)
+// A group of 0-255 sliders driving a live display() swatch.
+// (For a single native colour widget, use Box.colorPicker() instead.)
 // ============================================
 var r = 255.0
 var g = 128.0
 var b = 0.0
 
+fun showColor() {
+    val hex = "#%02X%02X%02X".format(r.toInt(), g.toInt(), b.toInt())
+    display("color", """
+        <div style="
+            width: 150px;
+            height: 150px;
+            background-color: $hex;
+            border: 2px solid white;
+            border-radius: 8px;
+            margin: 10px auto;
+        "></div>
+        <div style="text-align: center; color: white; font-family: monospace;">
+            $hex
+        </div>
+    """)
+}
+
 sliders(
     channel = "color picker",
-    "r" to SliderConfig("Red", 0.0, 255.0, 1.0, r) { 
-        r = it
-        // Local update function
-        val hex = "#%02X%02X%02X".format(r.toInt(), g.toInt(), b.toInt())
-        display("color", """
-            <div style="
-                width: 150px; 
-                height: 150px; 
-                background-color: $hex;
-                border: 2px solid white;
-                border-radius: 8px;
-                margin: 10px auto;
-            "></div>
-            <div style="text-align: center; color: white; font-family: monospace;">
-                $hex
-            </div>
-        """)
-    },
-    "g" to SliderConfig("Green", 0.0, 255.0, 1.0, g) { 
-        g = it
-        // Local update function
-        val hex = "#%02X%02X%02X".format(r.toInt(), g.toInt(), b.toInt())
-        display("color", """
-            <div style="
-                width: 150px; 
-                height: 150px; 
-                background-color: $hex;
-                border: 2px solid white;
-                border-radius: 8px;
-                margin: 10px auto;
-            "></div>
-            <div style="text-align: center; color: white; font-family: monospace;">
-                $hex
-            </div>
-        """)
-    },
-    "b" to SliderConfig("Blue", 0.0, 255.0, 1.0, b) { 
-        b = it
-        // Local update function
-        val hex = "#%02X%02X%02X".format(r.toInt(), g.toInt(), b.toInt())
-        display("color", """
-            <div style="
-                width: 150px; 
-                height: 150px; 
-                background-color: $hex;
-                border: 2px solid white;
-                border-radius: 8px;
-                margin: 10px auto;
-            "></div>
-            <div style="text-align: center; color: white; font-family: monospace;">
-                $hex
-            </div>
-        """)
-    }
+    "r" to SliderConfig("Red", 0.0, 255.0, 1.0, r) { r = it; showColor() },
+    "g" to SliderConfig("Green", 0.0, 255.0, 1.0, g) { g = it; showColor() },
+    "b" to SliderConfig("Blue", 0.0, 255.0, 1.0, b) { b = it; showColor() }
 )
 
-// Initial display
-val hex = "#%02X%02X%02X".format(r.toInt(), g.toInt(), b.toInt())
-display("color", """
-    <div style="
-        width: 150px; 
-        height: 150px; 
-        background-color: $hex;
-        border: 2px solid white;
-        border-radius: 8px;
-        margin: 10px auto;
-    "></div>
-    <div style="text-align: center; color: white; font-family: monospace;">
-        $hex
-    </div>
-""")
+showColor() // initial display
 
 // ============================================
-// Example 4: Fine Control with Different Steps
-// ============================================
-var coarse = 50.0
-var fine = 0.5
-
-slider("Coarse", 0.0, 100.0, 5.0, coarse, "precision") { coarse = it }
-slider("Fine", 0.0, 1.0, 0.001, fine, "precision") { fine = it }
-
-// ============================================
-// Example 5: Animation Control
+// Example 3: Animation Control
 // ============================================
 var animSpeed = 1.0
 var animAmplitude = 10.0
@@ -140,7 +75,7 @@ sliders(
 )
 
 // Use in an animation loop (example)
-// loop { 
+// loop {
 //     if (running) {
 //         val offset = animAmplitude * sin(time * animSpeed)
 //         // apply offset to your visualization

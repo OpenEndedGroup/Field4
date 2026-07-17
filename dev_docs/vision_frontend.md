@@ -1,9 +1,10 @@
 # Field4 visionOS front end — design note
 
 Status: **design agreed; fork deferred** (worktree `vision-frontend`). This note is the
-durable record of the architecture. The `/vision` route + `src/jsVision/` exist as a
-reserved, documented placeholder; the Kotlin/JS fork itself is deliberately deferred — see
-"Front-end strategy" for why (KMP constraints) and the decision.
+durable record of the architecture. The `/vision` route exists in `Server.kt` as a reserved
+fork point, but its resource tree (`src/jsVision/`) has not been scaffolded yet, so the route
+currently 404s. The Kotlin/JS fork itself is deliberately deferred — see "Front-end strategy"
+for why (KMP constraints) and the decision.
 
 ## The one-line thesis
 
@@ -226,8 +227,11 @@ change, not a pipeline change.
 
 We keep an experimental visionOS front end **out of the main front end** to avoid polluting
 it with spatial-specific HTML/JS. It's a fork of the *compiled Kotlin/JS app* (not just a
-static resource tree — Field has no extension registry; `extensions/remote_ar/` is served
-only incidentally by a catch-all static root).
+static resource tree — Field has no extension registry; arbitrary assets are served only
+incidentally, either from the served workspace `home` root via the catch-all `route("/")` in
+`Server.kt`, or via a user-configured entry in `dynamicRoutes` (`DynamicDirectoryRoutes` in
+`afield/internal/dynamicRouting.kt`) — the mechanism a `remote_js` box uses to expose an
+ngrok-tunneled asset directory).
 
 **The guardrail that makes the promised merge/de-dup real:**
 
@@ -284,13 +288,16 @@ The precedent for an alternate front end at its own prefix is the hand-wired
 `route("/welcome")` / `route("/code-use")` handlers in `Server.kt`. We mirror that, but as a
 placeholder pending the deferred fork:
 
-- `route("/vision")` (in `Server.kt`) — explicit handler serving
-  `src/jsVision/resources/index.html`. Explicit (not the incidental static root) so we
+- `route("/vision")` (in `Server.kt`) — explicit handler that reads
+  `./src/jsVision/resources/index.html`. Explicit (not the incidental static root) so we
   **dodge `IndexHtmlInterceptor`**'s `filter`/`injectInitialFramePreview` transforms, which we
-  don't want on a bespoke page. Today it serves a static "reserved fork point" page.
-- `src/jsVision/kotlin/afield/Main.kt` — a **deferred seed** (not wired into any compilation):
-  a worked example of the two things the vision bundle must do (construct the shared `Message`,
-  provide `actual fun _send`). Grows into the `jsMain` fork once the mechanism is chosen.
+  don't want on a bespoke page. That resource tree has not been checked in yet, so the handler
+  currently falls through to a `404` (`HttpStatusCode.NotFound`); adding
+  `src/jsVision/resources/index.html` is what turns the prefix into a live placeholder page.
+- A `src/jsVision/kotlin/afield/Main.kt` **seed** is described in the plan but not yet
+  written: a worked example of the two things the vision bundle must do (construct the shared
+  `Message`, provide `actual fun _send`). It is aspirational — it does not exist in the tree —
+  and would grow into the `jsMain` fork once the mechanism is chosen.
 - No `afield-vision` bundle or static roots exist yet — added when the fork is un-deferred.
 
 ## Sequencing
@@ -387,73 +394,60 @@ receiver untouched.
 
 ### Implementation status
 
-The Mac sender exists and boots: **`native/field-encode/`** (SwiftPM) driven by
-**`afield.four.stream.FieldEncodeProcess`** (JVM `ProcessBuilder`, stdin JSON commands
-`open`/`frame`/`bitrate`/`selftest`/`close`, JSON events back), streaming fragmented Annex-B
-HEVC/H.264 over UDP. The **wire + control contract** the Linux sender and the visionOS
-receiver both implement is `native/field-encode/WIRE_FORMAT.md`.
+Both sender backends exist. The shared **wire + control contract** the Linux sender and the
+visionOS receiver both implement is `native/field-encode/WIRE_FORMAT.md`. The seam:
+**producer hands over a filled surface(-handle) + a per-frame ready tick; the helper owns
+encode + wire.** Surface-backing the RTT and stereo rendering (Field already does SBS for
+OpenXR) are the producer's side.
 
-*Verified:* builds (Swift 6.3); the full encode→packetize→UDP path via `--selftest` (a
-synthetic IOSurface pattern) — a loopback receiver confirmed correct fragmentation, every
-frame delivered, periodic-IDR keyframes, on-target bitrate; and a JVM `ProcessBuilder`
-launching + driving the helper end-to-end over the stdio pipe. `field-encode --selftest
---dest <host:port>` is the "packets into the void" boot. *Not yet exercised:* encode from
-Field's *real* RTT IOSurface (vs. the self-test surface), and UDP reassembly/decode on
-device. Seam: **producer hands over a filled IOSurface(-ID) + a per-frame ready tick; the
-helper owns encode + wire.** IOSurface-backing the RTT (MoltenVK + `VK_EXT_metal_objects`)
-is the producer's side, as is stereo rendering (Field already does SBS for OpenXR).
+- **Mac** — `native/field-encode/` (SwiftPM), driven by
+  `afield.four.stream.FieldEncodeProcess` (JVM `ProcessBuilder`; stdin JSON commands
+  `open`/`frame`/`bitrate`/`selftest`/`close`, JSON events back), streaming fragmented
+  Annex-B HEVC/H.264 over UDP. The helper allocates the `IOSurface`; the JVM imports it into
+  Vulkan.
+- **Linux/NVENC** — `native/field-encode-linux/` (CMake/C++, dlopen'd against
+  `libcuda.so.1`/`libnvidia-encode.so.1` via vendored `ffnvcodec` headers — no CUDA toolkit or
+  Video Codec SDK install needed). Same control protocol and UDP wire format (see the "Linux
+  sender addendum" in `WIRE_FORMAT.md`), but **surface ownership is reversed**: a helper can't
+  allocate a *Vulkan* image, so there's no Linux `alloc` — the JVM allocates the RTT ring
+  itself (`VK_KHR_external_memory_fd`, opaque-fd handle type, `VK_IMAGE_TILING_LINEAR`,
+  **dedicated** allocation via `VkMemoryDedicatedAllocateInfo`) and passes the real fds via
+  **SCM_RIGHTS over a Unix domain socket** (JNI shim `native/field-fdpass/`); the helper
+  imports them into CUDA (`cuImportExternalMemory` → `cuExternalMemoryGetMappedBuffer` →
+  NVENC `NV_ENC_INPUT_RESOURCE_TYPE_CUDADEVICEPTR`). JVM side:
+  `afield.four.texture.VulkanExternalMemory` + `Image.exportOpaqueFd()` and
+  `FieldRTTStreamer.startLinux()`. `FieldRTTStreamer`'s public API
+  (`start()`/`surfaces`/`stop()`) is unchanged and branches on OS internally, so the same box
+  code drives both backends.
 
-**The Linux/NVENC backend now exists too, and is verified end-to-end against the real visionOS
-receiver**: `native/field-encode-linux/` (CMake/C++, dlopen'd against
-`libcuda.so.1`/`libnvidia-encode.so.1` via vendored `ffnvcodec` headers — no CUDA toolkit or Video
-Codec SDK install needed). Same control protocol and UDP wire format as Mac (see
-`native/field-encode/WIRE_FORMAT.md`'s "Linux sender addendum"), with one structural difference
-forced by the platform: surface ownership is reversed. A helper process can't allocate a *Vulkan*
-image, so there's no Linux `alloc` — the JVM allocates the RTT ring itself
-(`VK_KHR_external_memory_fd`, opaque-fd handle type, `VK_IMAGE_TILING_LINEAR`, and a *dedicated*
-allocation via `VkMemoryDedicatedAllocateInfo` — required, not optional, see below) and hands the
-real fds to the helper via **SCM_RIGHTS over a Unix domain socket** (a small JNI shim,
-`native/field-fdpass/`), then imports them into CUDA (`cuImportExternalMemory` →
-`cuExternalMemoryGetMappedBuffer` → registered with NVENC as
-`NV_ENC_INPUT_RESOURCE_TYPE_CUDADEVICEPTR`). JVM side: `afield.four.texture.VulkanExternalMemory`
-+ `Image.exportOpaqueFd()` (export) and `FieldRTTStreamer.startLinux()` (ring allocation +
-handoff) — `FieldRTTStreamer`'s public API (`start()`/`surfaces`/`stop()`) is unchanged and now
-branches on OS internally, so the same box code that drives the Mac backend runs unmodified on
-Linux.
+**Gotchas worth knowing before touching this code:**
 
-Two real bugs surfaced and got fixed getting the fd handoff working, both worth knowing about if
-touching this code: (1) a first design duplicated the fd out of the producer's
-`/proc/<pid>/fd/<fd>` (no native glue needed, works for anonymous-inode files like pipes) — but
-NVIDIA's opaque-fd export turned out to be backed by `/dev/nvidiactl` (a real device file), and
-reopening that path performs a *fresh* driver `open()`, numerically valid but semantically
-unrelated to the original memory, so `cuImportExternalMemory` failed with `CUDA_ERROR_UNKNOWN`
-(999) — replaced with real SCM_RIGHTS fd passing. (2) The Vulkan memory allocation must be
-declared *dedicated* to match a flag CUDA's import requires, or the same error occurs.
+- **Linux fd handoff must be real SCM_RIGHTS, not `/proc/<pid>/fd/<fd>` reopen.** NVIDIA's
+  opaque-fd export is backed by `/dev/nvidiactl` (a real device file); reopening that path
+  performs a *fresh* driver `open()` — numerically valid but semantically unrelated to the
+  original memory — so `cuImportExternalMemory` fails with `CUDA_ERROR_UNKNOWN` (999).
+- **The Vulkan allocation must be declared *dedicated*** (`VkMemoryDedicatedAllocateInfo`) to
+  match a flag CUDA's import requires, or you get the same `CUDA_ERROR_UNKNOWN`.
+- **Never add a manual/parallel frame-trigger loop alongside `FieldRTTStreamer.start()`** —
+  its registration in `renderer.renderList` (via
+  `Renderer.afterCurrentGraphicsFrameComplete`) is sufficient. A parallel poller triggers
+  `encoder.frame()` for overlapping frame numbers against different ring content, producing two
+  encoded frames sharing one `frameSeq`; the receiver drops the second as a stale duplicate,
+  breaking the P-frame reference chain (only IDRs survive) — the "grey/white flicker"
+  symptom. NVENC profile/tier/level/reference-count config details:
+  `native/field-encode-linux/README.md`.
 
-*Verified end-to-end against the real device*: a real Vulkan-rendered RTT → export → SCM_RIGHTS →
-CUDA import → NVENC encode → UDP → the actual Field4Vision app, sustained over the real network,
-receiver-reported "0 dropped, 0 malformed" across 3300+ datagrams. Also verified in isolation:
-builds against an RTX 4090 (driver 610.43.02); the full encode→packetize→UDP path via `--selftest`
-for both HEVC and H.264 (zero dropped/out-of-order fragments, correct IDR cadence, on-target
-bitrate, clean `ffprobe`/`ffmpeg -f null` decode).
+**Changelog (verification history):**
 
-**The "grey/white flicker" seen through most of live testing was a duplicate-`frameSeq` bug in ad
-hoc test scaffolding, not the encoder, wire format, or receiver** — found via a byte-level
-bitstream diff against the known-good Mac encoder (done receiver-side). `FieldRTTStreamer`'s
-automatic per-frame trigger (`Renderer.afterCurrentGraphicsFrameComplete`) works correctly on its
-own (confirmed by inspecting `Renderer`'s completion-callback queue directly — small and steadily
-draining, never backlogged). An early test wrongly concluded it "never fires" and added a manual
-polling thread as a workaround; that thread then ran *concurrently* with the real mechanism for
-the rest of the session, both independently triggering `encoder.frame()` for overlapping frame
-numbers against different ring-buffer content each time — producing two different encoded frames
-sharing one `frameSeq` on the wire. The receiver correctly drops the second as a stale duplicate
-per WIRE_FORMAT.md's rules, which breaks the P-frame reference chain (only self-contained IDRs
-survive) — exactly the observed "occasional correct color, grey otherwise." **Never add a
-manual/parallel frame-trigger loop alongside `FieldRTTStreamer.start()`** — its own registration
-in `renderer.renderList` is sufficient. Real (and worth keeping) NVENC config fixes landed
-alongside this misdiagnosis — see `native/field-encode-linux/README.md`'s Status section for the
-profile/tier/level/reference-count details — but they were not the actual cause of the symptom.
-
-*Open item, likely receiver-side, not yet re-checked against the fixed sender*: a ~70 second delay
-was observed once between first packet arrival and first successful decode despite zero packet
-loss reported the whole time — may or may not be related to the duplicate-`frameSeq` bug above.
+- Mac helper builds (Swift 6.3); full encode→packetize→UDP path proven via `--selftest` (a
+  synthetic IOSurface pattern) — correct fragmentation, every frame delivered, periodic-IDR
+  keyframes, on-target bitrate — and driven end-to-end by the JVM over stdio. *Not yet
+  exercised:* encode from Field's *real* RTT IOSurface, and on-device decode.
+- Linux/NVENC verified end-to-end against the real device: real Vulkan RTT → export →
+  SCM_RIGHTS → CUDA import → NVENC → UDP → the actual Field4Vision app, sustained over the real
+  network ("0 dropped, 0 malformed" across 3300+ datagrams). Also in isolation on an RTX 4090
+  (driver 610.43.02): `--selftest` for both HEVC and H.264, clean `ffprobe`/`ffmpeg -f null`
+  decode.
+- *Open item, likely receiver-side, not re-checked against the fixed sender:* a ~70 s delay
+  once observed between first packet arrival and first successful decode despite zero reported
+  loss.

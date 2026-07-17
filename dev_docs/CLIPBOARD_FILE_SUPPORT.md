@@ -30,16 +30,7 @@ The implementation uses the modern Clipboard API with `ClipboardItem` to write m
 
 ## Browser Compatibility
 
-The Clipboard API support varies by browser:
-
-| Browser | Write Text | Write File | Read Text | Read File |
-|---------|-----------|-----------|-----------|-----------|
-| Chrome 86+ | ✅ | ✅ | ✅ | ✅ |
-| Edge 86+ | ✅ | ✅ | ✅ | ✅ |
-| Safari 13.1+ | ✅ | ⚠️ Partial | ✅ | ⚠️ Partial |
-| Firefox | ✅ | ❌ | ✅ | ❌ |
-
-**Note:** The implementation includes fallbacks for browsers with limited support, ensuring the copy/paste functionality continues to work as before even if file clipboard isn't supported.
+The Clipboard API's `ClipboardItem` file support varies by browser (Chromium-based browsers are the most capable; Safari and Firefox have partial or no file-clipboard support). The implementation includes fallbacks for browsers with limited support, so plain copy/paste of boxes continues to work even when file clipboard isn't available. Verify current support against MDN / browser release notes rather than this doc.
 
 ## Testing Instructions
 
@@ -47,12 +38,15 @@ The Clipboard API support varies by browser:
 
 1. **Start the Field4 application**
    ```bash
-   ./gradlew jvmRun
+   ./gradlew runJvm
    ```
+   (or `./field.sh`, which wraps `runJvm`, or `./gradlew runDesktop`). The
+   `runJvm` task carries the required native-library JVM args; the
+   auto-generated `jvmRun` task does not and is not what you want here.
 
 2. **In the browser:**
    - Create or select one or more boxes
-   - Copy them using Cmd+Shift+D (Mac) or Ctrl+Shift+D (Windows/Linux)
+   - Copy them using Cmd+C (Mac) or Ctrl+C (Windows/Linux)
    - Open Finder/Explorer
    - Use Cmd+V (Mac) or Ctrl+V (Windows) to paste
    - A file named `metadata.edn` should appear
@@ -118,16 +112,6 @@ The implementation includes multiple fallback layers:
 3. **On paste, try read() first, then readText()** (maximum compatibility)
 
 This ensures the feature enhances the experience on supporting browsers while maintaining full functionality on all browsers.
-
-## Future Enhancements
-
-Possible future improvements:
-
-1. **Support multiple file formats** (JSON, YAML)
-2. **Custom file extensions** based on content
-3. **Bundle multiple selections** into a zip file
-4. **Rich preview** in clipboard viewers
-5. **Drag-and-drop export** directly to filesystem
 
 ## Related Files
 

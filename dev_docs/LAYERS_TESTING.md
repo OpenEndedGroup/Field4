@@ -19,7 +19,13 @@ The layers system allows boxes to be organized into multiple presentation layers
 thisBox.layers = "layer1,layer2"
 ```
 - Box should now be part of both "layer1" and "layer2"
-- Box should remain visible since "default" layer is still active
+- Setting `layers` replaces the box's layer set verbatim (no implicit "default"
+  is re-added). Since `visibleLayers` still defaults to `{"default"}`, the box
+  now has zero intersection and becomes HIDDEN. To make it visible, either
+  include "default" in the string (`"default,layer1,layer2"`) or call
+  `setVisibleLayers(setOf("default","layer1","layer2"))` first.
+  (`isBoxVisible` returns true only when a box's own layers intersect
+  `visibleLayers`.)
 
 ### 3. Test Layer Visibility Toggle
 ```kotlin
@@ -70,6 +76,11 @@ println(layers) // Should show all unique layer names from boxes and layerFrames
 - Verify layers and layerFrames are restored
 
 ### 7. Test Canvas Gesture Connection Drawing
+`gestures.kt` needs no layer-specific logic: box/connection culling rides on the
+existing visibility check. `updateAllBoxVisibility()` sets each box's CSS
+visibility from `isBoxVisible()`, and connection drawing skips boxes that are not
+visible, so hidden-layer boxes and their connections drop out automatically.
+
 - Create two boxes: Box A on "layer1", Box B on "layer2"
 - Connect them (make Box B a child of Box A)
 - Set visible layers to only "layer1"

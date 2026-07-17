@@ -95,10 +95,9 @@ Artifacts:
 - generated snippets: `build/field-tests/generated/`
 - captures: `build/field-tests/captures/`
 
-Supported runner shapes include:
+Supported runner shapes:
 - `jvm-main` for standalone smoke entrypoints
 - `backdoor-box` for scratch-box snippets
-- `backdoor-document` for saved documents/templates
 
 Add a `FIELD_TEST` when the behavior is primarily code/runtime correctness,
 example health, stdout/event assertions, or a simple capture connected to a
@@ -232,7 +231,7 @@ Current specialized references:
 - `dev_docs/HISTORY_TESTING_GUIDE.md`: manual document-history workflow details. The browser UI regression suite now has automated `history-panel` coverage for the panel smoke path.
 - `dev_docs/FileWatchManager_Testing.md`: manual external sidecar edit, internal save, rapid edit, and watcher cleanup scenarios.
 - `dev_docs/LAYERS_TESTING.md`: manual layer visibility, active-layer frame persistence, animated transitions, and connection visibility scenarios.
-- `dev_docs/TEST_VALUE_VISUALIZER.md`: value visualizer usage examples; candidates for future `FIELD_TEST` or docs-runner coverage.
+- `dev_docs/VALUE_VISUALIZER.md`: value visualizer usage examples; candidates for future `FIELD_TEST` or docs-runner coverage.
 - `dev_docs/manual_tests/test-offline-viewer.html`: manual offline viewer fixture.
 
 ## Choosing Where to Add Coverage
