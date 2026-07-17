@@ -129,4 +129,4 @@ Chat is deliberately optional. The slideshow system does not depend on it.
 ## Related docs
 
 - [interactive_guides.md](interactive_guides.md)
-- `dev_docs/GUIDE_CHAT_SYSTEM.md`
+- `dev_docs/GUIDE_CHAT_QUICKSTART.md`

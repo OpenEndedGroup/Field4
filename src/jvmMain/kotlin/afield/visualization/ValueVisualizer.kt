@@ -253,9 +253,8 @@ object ValueVisualizer {
         is Matrix2fc -> formatMatrix(value)
         is Matrix3fc -> formatMatrix(value)
         is Matrix4fc -> formatMatrix(value)
-//        is Matrix2dc -> formatMatrix(Matrix2f(value))
-//        is Matrix3dc -> formatMatrix(Matrix3f(value))
-//        is Matrix4dc -> formatMatrix(Matrix4f(value))
+        // The linalg system has no double-precision matrix/quaternion types
+        // (Matrix2dc/Quaterniondc etc.), so only single-precision (…fc) variants render here.
 
         // Collections
         is Map<*, *> -> formatMap(value, depth, visited, respectDepthLimit)

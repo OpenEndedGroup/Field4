@@ -297,7 +297,17 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
      *
      * When imageData is provided, it is interpreted as raw RGBA pixel data for an image of the
      * given width and height. The pixel data may come from any rendering backend (e.g. Vulkan,
-     * OpenGL, or software rendering).
+     * OpenGL, or software rendering) — the caller is responsible for reading the pixels back
+     * (e.g. a Vulkan staging-buffer copy) and freeing the ByteBuffer afterwards.
+     *
+     * The PNG is flipped vertically for you by [PngEncoder.encodeFromBuffer] with `flipY = true`
+     * (Vulkan/GL framebuffers are typically bottom-to-top). If the result looks upside-down you
+     * are likely double-flipping upstream; do not flip again here.
+     *
+     * To fire a capture from a render loop, register a poll callback with the Sequence idiom
+     * `window.onPoll[name] = sequence { while (true) { ...; yield(Unit) } }`
+     * (see KeyEvents.kt / MouseEvents.kt for the canonical usage) — [onPoll] is a
+     * [MapOfSequences] and has no `add(...)` method.
      *
      * @param imageData ByteBuffer containing RGBA pixel data (4 bytes per pixel), or null for a blank image
      * @param width Image width in pixels

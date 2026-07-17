@@ -1,3 +1,34 @@
+/**
+ * Self-contained graph / computational-geometry library over 2D and 3D point sets
+ * (`Vec2`/`Vec3`). Every algorithm has a `vec2*` and (where meaningful) a `vec3*` entry point
+ * returning a [PointGraph]; see each function's own KDoc for its definition and complexity.
+ *
+ * Proximity / neighbourhood families: KNN ([vec2KnnGraph]), Orthant ([vec2OrthantGraph]),
+ * Relative Neighborhood ([vec2RelativeNeighborhoodGraph]), Gabriel ([vec2GabrielGraph]),
+ * Beta-Skeleton ([vec2BetaSkeleton]), Nearest-Neighbor ([vec2NearestNeighborGraph]),
+ * Minimum Spanning Tree ([vec2MinimumSpanningTree]), Maximum-Diameter/radius
+ * ([vec2MaximumDiameterGraph]), Maximum-Cut ([vec2MaximumCutGraph]) and Complete
+ * ([vec2CompleteGraph]) graphs.
+ *
+ * JTS-backed (2D only): full Delaunay triangulation ([vec2DelaunayGraph], [vec2DelaunayTriangles]),
+ * Urquhart ([vec2UrquhartGraph], a real Urquhart graph built by removing the longest edge of each
+ * Delaunay triangle — the 3D [vec3UrquhartGraph] is an MST approximation because Field only wires
+ * 2D Delaunay), Voronoi diagram/dual ([vec2VoronoiDiagram], [vec2VoronoiDualGraph]) and convex
+ * hull ([vec2ConvexHull], [vec2ConvexHullGraph], [vec2HullProjectionGraph]).
+ *
+ * Traversal / analysis: BFS/DFS/A* path search, [GraphEdgeVisitState] greedy walks and
+ * graph-diameter path decomposition (see the search/path functions below), plus FLine rendering
+ * integration in `fline_graph_connectivity.kt`.
+ *
+ * Custom distance metrics: pass [GraphConnectivityOptions.customDistanceMetric]. It is honoured by
+ * the distance-driven algorithms (KNN, MST, RNG, Gabriel, Beta-Skeleton, Delaunay/Urquhart edge
+ * weights, etc.). This includes [vec2OrthantGraph]/[vec3OrthantGraph], whose nearest-neighbour
+ * ranking within each orthant honours `customDistanceMetric` when supplied (Euclidean otherwise).
+ *
+ * Smoke tests: `afield.examples.stdlib.GraphConnectivitySmokeTest` (its `runTests()` drives 35
+ * checks, covering path search, edge-visit-state and FLine rendering as well as the core graphs).
+ * Live rendered examples: `public/docs/graph_connectivity_examples.md`.
+ */
 @file:Suppress("MemberVisibilityCanBePrivate")
 @file:afield.CompletionCategory("Graphics")
 
@@ -618,6 +649,9 @@ fun vec3KnnGraph(
  * Two points are connected if they are mutual nearest neighbors in the same orthant.
  * An orthant is a quadrant defined by the coordinate axes relative to a point.
  *
+ * Note: orthant membership is axis-based; the nearest-neighbour distance ranking within each orthant
+ * uses [GraphConnectivityOptions.customDistanceMetric] when provided (Euclidean otherwise).
+ *
  * @param points List of 2D points
  * @param options Graph connectivity options
  * @return PointGraph with orthant neighborhood edges
@@ -660,7 +694,7 @@ fun vec2OrthantGraph(
                 val inOrthantY = if (yPos) dy > 0 else dy < 0
 
                 if (inOrthant && inOrthantY) {
-                    val dist = distance2D(pi, pj)
+                    val dist = computeDistance2D(pi, pj, options, i, j, points)
                     if (dist < nearestDist) {
                         nearestDist = dist
                         nearest = j
@@ -682,6 +716,9 @@ fun vec2OrthantGraph(
  *
  * Two points are connected if they are mutual nearest neighbors in the same orthant.
  * An orthant is an octant defined by the coordinate axes relative to a point.
+ *
+ * Note: orthant membership is axis-based; the nearest-neighbour distance ranking within each orthant
+ * uses [GraphConnectivityOptions.customDistanceMetric] when provided (Euclidean otherwise).
  *
  * @param points List of 3D points
  * @param options Graph connectivity options
@@ -731,7 +768,7 @@ fun vec3OrthantGraph(
                 val inOrthantZ = if (zPos) dz > 0 else dz < 0
 
                 if (inOrthantX && inOrthantY && inOrthantZ) {
-                    val dist = distance3D(pi, pj)
+                    val dist = computeDistance3D(pi, pj, options, i, j, points)
                     if (dist < nearestDist) {
                         nearestDist = dist
                         nearest = j

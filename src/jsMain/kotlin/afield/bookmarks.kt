@@ -13,10 +13,24 @@ private fun bookmarkDebug(message: String) {
 }
 
 /**
- * Bookmark System - Frontend Implementation
- * Manages 9 bookmarks (1-9) with keyboard shortcuts:
+ * Bookmark System - sole owner of the bookmark feature (this single file).
+ *
+ * Manages 9 numbered bookmark slots (1-9) with keyboard shortcuts:
  * - Shift+F1-F9: Restore bookmark
  * - Shift+Ctrl/Cmd+F1-F9: Save bookmark
+ *
+ * Slots are stored as JSON-encoded [BookmarkData] on the root box's "bookmarks"
+ * property, which rides the generic property machinery for session sync and disk
+ * persistence (see the two "bookmarks" entries in Box.uiResyncProperties /
+ * Box.ioPersistentProperties in src/jvmMain/kotlin/afield/Boxes.kt). Persistence to
+ * metadata.edn happens via the server's autosave loop, not an explicit save keystroke.
+ *
+ * Public entry point: [initializeBookmarkSystem] (called from Main.kt). Exported to JS:
+ * [saveBookmarkSlot]/[restoreBookmarkSlot]/[initializeBookmarkSystem]. Note box uid is a
+ * JS dynamic property, not an HTML attribute, so lookups go through [findBoxByUid]
+ * (iterating .box elements) rather than a CSS attribute selector.
+ *
+ * User-facing reference: public/docs/bookmarks.md.
  */
 
 @Serializable

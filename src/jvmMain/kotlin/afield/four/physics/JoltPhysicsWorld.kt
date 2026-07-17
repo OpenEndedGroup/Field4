@@ -249,6 +249,54 @@ data class JoltBodyPick(
     val signedDistanceToSurface: Double
 )
 
+/**
+ * Rigid-body physics world backed by the Jolt physics engine via the
+ * stephengold jolt-jni bindings. This is the single entry point of the
+ * `afield.four.physics` Jolt integration; the whole public surface
+ * ([JoltShape], [JoltBodyDef], [JoltBodyState], [JoltBodyPick], the
+ * [JoltBodyBuilder] DSL and this class) lives in this one file.
+ *
+ * Responsibilities:
+ * - Create and remove named rigid bodies ([createBody] / [removeBody]).
+ * - Advance the simulation and read back body states ([step]).
+ * - Apply forces, impulses, torque, transforms and velocities.
+ * - Point-near-surface picking ([pickBodyNearPoint]) and a kinematic
+ *   rigid-grab workflow for interactive control ([pickAndBeginRigidGrab]).
+ * - Emit debug wireframe [FLine]s with optional local axes ([debugWireLines3D]).
+ *
+ * Setup and constants:
+ * - Native init is lazy inside the constructor via
+ *   [JoltPhysicsBootstrap.ensureInitialized]; callers never bootstrap directly.
+ * - Simulation limits are hardcoded in the private companion (MAX_BODIES,
+ *   MAX_BODY_PAIRS, MAX_CONTACTS, mutex count).
+ * - Collision filtering uses exactly two object layers, moving
+ *   (OBJECT_LAYER_MOVING) and non-moving (OBJECT_LAYER_NON_MOVING); two
+ *   non-moving bodies never collide.
+ *
+ * Naming migration: prefer the unprefixed names above. Deprecated `*3D`
+ * typealiases (JoltShape3D, JoltBodyDef3D, JoltBodyState3D, JoltBodyPick3D,
+ * JoltPhysicsWorld3D) and the older aliases (ShapeDef3D, BodyDef3D,
+ * BodyState3D, BodyPick3D, SimplePhysics3D) are defined at the bottom of this
+ * file and forward to the current types. [JoltBodyDef]'s x/y/z Double
+ * secondary constructor is likewise @Deprecated — use `position: Vec3`
+ * (e.g. `position = vec(0.0, 3.0, 0.0)`) or [JoltBodyBuilder]'s `position(x, y, z)`.
+ *
+ * Minimal usage:
+ * ```kotlin
+ * JoltPhysicsWorld().use { world ->
+ *     world.createBody(JoltBodyDef(
+ *         name = "ground",
+ *         shape = JoltShape.Plane(ny = 1.0, constant = 0.0),
+ *         position = vec(0.0, 0.0, 0.0),
+ *         dynamic = false,
+ *     ))
+ *     world.cuboid("box", 1.0, 1.0, 1.0) { position(0.0, 3.0, 0.0) } // JoltBodyBuilder DSL
+ *     repeat(120) { world.step(1.0 / 60.0) }
+ * }
+ * ```
+ *
+ * A worked example is in `afield.examples.JoltPhysicsExample`.
+ */
 class JoltPhysicsWorld(
     gravityX: Double = 0.0,
     gravityY: Double = -9.8,

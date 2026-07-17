@@ -279,6 +279,11 @@ fun start(a: suspend Frames.() -> Unit): Frames {
     }
 }
 
+/**
+ * Thin wrapper around [frames] that starts a frame-based animation from a plain
+ * suspend lambda (no [Frames] receiver). The body is responsible for advancing
+ * frames if it needs multi-frame behavior.
+ */
 fun start(a: suspend () -> Unit): Frames {
     return frames {
         a()

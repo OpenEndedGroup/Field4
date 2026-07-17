@@ -276,6 +276,11 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "code_decorationState",
             "metadata",
             "offline",
+            // Bookmark feature: the root box's "bookmarks" property holds a JSON-encoded
+            // BookmarkData (9 numbered slots; see src/jsMain/kotlin/afield/bookmarks.kt).
+            // Registering it here rides the generic property machinery for UI/session
+            // resync (doResync); the matching ioPersistentProperties entry below gives it
+            // disk persistence. No bookmark-specific sync/storage code is needed.
             "bookmarks",
             "autorun",
             "layers",
@@ -337,6 +342,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "nestedIn",
             "playlist",
             "pauseList",
+            // Bookmark feature: persists the root box's "bookmarks" property to metadata.edn
+            // (see the uiResyncProperties entry above and src/jsMain/kotlin/afield/bookmarks.kt).
             "bookmarks",
             "slideShow",
             "autorun",

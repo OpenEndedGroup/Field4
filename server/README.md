@@ -31,7 +31,7 @@ python3 guide_chat_server.py
 - `POST /chat/<slideshow_id>/<slide_number>`: Post message
 - `WebSocket /ws`: Real-time chat connection
 
-See [../docs/GUIDE_CHAT_SYSTEM.md](../docs/GUIDE_CHAT_SYSTEM.md) for complete documentation.
+See [../dev_docs/GUIDE_CHAT_QUICKSTART.md](../dev_docs/GUIDE_CHAT_QUICKSTART.md) for complete documentation.
 
 ### Metadata Server (`metadata_server.py`)
 

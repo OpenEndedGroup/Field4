@@ -1228,12 +1228,17 @@ fun FLine.byReversing(): FLine {
 
 /**
  * Concatenate multiple curves into one.
+ *
+ * WARNING: this implementation is currently broken and always returns an empty
+ * FLine. The inner loop iterates `result.nodes` (which starts empty and is never
+ * seeded from the input `line`) instead of `line.nodes`, so no nodes are ever
+ * copied. Do not rely on this until the loop is fixed to iterate `line.nodes`.
  */
 fun concatenate(vararg lines: FLine): FLine {
     val result = FLine()
 
     lines.forEach { line ->
-        result.nodes.forEach { node ->
+        line.nodes.forEach { node ->
             result.nodes.add(node.copy())
         }
     }
@@ -3120,11 +3125,11 @@ fun FLine.byAppendingArcByTangent(
 // ==================== NOISE UTILITIES ====================
 
 /**
- * Apply Gaussian noise to a curve.
- * @param line the curve to noise
+ * Apply Gaussian noise to this curve.
  * @param amplitude noise amplitude
  * @param seed random seed for reproducibility
  * @param samples number of points to sample and reconstruct
+ * @return a new noised FLine
  */
 fun FLine.byGaussianNoising(
     amplitude: Float,

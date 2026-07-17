@@ -12,6 +12,8 @@ import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.sin
 
+// Wireframe FLine builders for the Jolt shapes, consumed by
+// JoltPhysicsWorld.debugWireLines3D; see JoltPhysicsWorld.kt for the physics API.
 private const val TAU = 2.0 * PI
 
 internal fun wireCuboid(width: Double, height: Double, depth: Double): List<FLine> {

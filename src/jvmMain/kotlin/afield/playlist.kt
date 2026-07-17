@@ -8,8 +8,9 @@ import afield.stdlib.begin
  *
  * This module provides helpers for executing boxes in a defined order based on their `playlist` property.
  * Boxes with a `playlist` property (a Double) will be executed in order from lowest to highest value.
- * Between each begin() call, frame() is called to allow the animation system to update.
- * If a box has a `pauseList` property, that many frame() calls will be made instead of the default 1.
+ * Between each `begin()` call, [executePlaylist] waits `pauseList` `frame()` calls (default 1).
+ *
+ * User-facing dev doc: dev_docs/Playlist.md (a pointer stub); this KDoc is the source of truth.
  */
 
 /**
@@ -18,8 +19,8 @@ import afield.stdlib.begin
 var Box.playlist by afield.stdlib.Delegation<Double>()
 
 /**
- * Extension property to get/set the number of frame() calls to make after begin() for a box
- * Default is 1 frame if not set
+ * The number of `frame()` calls [executePlaylist] makes after `begin()` before advancing to the next
+ * box. Defaults to 1 when unset; coerced to a minimum of 1.
  */
 var Box.pauseList by afield.stdlib.Delegation<Double>()
 
@@ -54,12 +55,12 @@ fun Box.findBoxesWithPlaylist(): List<Box> {
 }
 
 /**
- * Executes all boxes with playlist property in order
- * Sorts boxes by their playlist value (low to high) and calls begin() on each
- * Waits for the specified number of frames (pauseList or 1) between each begin()
- * 
- * This returns a Frames object that manages the execution
- * 
+ * Executes all boxes with the `playlist` property in order (sorted by `playlist` value, low to high),
+ * calling `begin(strand)` on each.
+ *
+ * Between boxes it waits `pauseList` `frame()` calls (default 1, minimum 1) — no fixed wall-clock
+ * delay and no floor.
+ *
  * @param strand The strand name to use for execution (default "default")
  * @return Frames object that can be used to control the execution
  */
@@ -87,17 +88,13 @@ fun Box.executePlaylist(strand: String = "default"): Frames {
                     // Get the number of frames to wait (pauseList or default 1)
                     // Use getPropertyRaw to safely check if pauseList is set
                     val pauseValue = box.getPropertyRaw("pauseList") as? Number
-                    var framesToWait = pauseValue?.toInt() ?: 1
-                    framesToWait = Math.max(200, framesToWait)
+                    val framesToWait = (pauseValue?.toInt() ?: 1).coerceAtLeast(1)
 
                     // Wait for the specified number of frames
-                    lprintln("playlist,execution", "-- `${box.name}` waiting")
-                    kotlinx.coroutines.delay(2000)
-                    lprintln("playlist,execution", "-- `${box.name}` waiting phase 2")
+                    lprintln("playlist,execution", "-- `${box.name}` waiting $framesToWait frame(s)")
                     repeat(framesToWait) {
                         frame()
                     }
-                    kotlinx.coroutines.delay(2000)
                     lprintln("playlist,execution", "-- `${box.name}` finished waiting")
                 } catch (e: Exception) {
                     lprintln("playlist,execution", "-- `${box.name}` (playlist) threw:")

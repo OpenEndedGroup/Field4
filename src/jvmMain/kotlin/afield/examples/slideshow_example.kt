@@ -562,7 +562,17 @@ fun Box.interactiveGuideExample() {
                 [[back]] [[next]]
                 """.trimIndent()
             )
-            // This chat would be shared across all instances of this template
+            // This chat would be shared across all instances of this template.
+            //
+            // withChat(id = ...) resolves the chat thread three ways (see the KDoc on
+            // SlideStepBuilder.withChat / Box.withChat in SlideShow.kt):
+            //   withChat()                 -> instance-specific (slideshow id, or box id
+            //                                 for the standalone Box.withChat helper)
+            //   withChat(id = "templateId")-> shared across all boxes from the same
+            //                                 template (resolves to Box.templateId)
+            //   withChat(id = "anything")  -> a custom shared thread across any boxes
+            // The standalone Box.withChat(id = ...) mounts the same chat UI into a box's
+            // "chat" output channel (outside a slideshow) with the identical id rules.
             withChat(id = "templateId")
             selectBox(hostBox)
         }

@@ -85,6 +85,71 @@ fun registerPLYLoader() {
     }
 }
 
+/**
+ * Self-contained PLY (Polygon File Format) loader for `afield.four`.
+ *
+ * Loads 3D triangle meshes and point clouds in both ASCII and binary PLY formats
+ * (little- and big-endian). Various property orderings and optional properties are
+ * handled; polygons are fan-triangulated to triangles internally.
+ *
+ * ## Supported elements
+ * - `vertex` (required): vertex data.
+ * - `face` (optional): face connectivity. Absence of a `face` element => point cloud.
+ *
+ * ## Supported vertex properties
+ * - `x`, `y`, `z` (float/double, required): positions.
+ * - `nx`, `ny`, `nz` (optional): normals; missing normals default to (0, 0, 1).
+ * - `red`/`green`/`blue` (and `diffuse_*` aliases; uchar or float): colors; `uchar`
+ *   values (0-255) are normalized to 0.0-1.0, float values pass through. Missing
+ *   colors default to white. `alpha`/`diffuse_alpha` optional, defaults to 1.0.
+ * - Face element supports `list` `vertex_indices`. List properties on the vertex
+ *   element are skipped.
+ *
+ * ## Supported data types (see the `readValue` type switch)
+ * `char`/`int8`, `uchar`/`uint8`, `short`/`int16`, `ushort`/`uint16`,
+ * `int`/`int32`, `uint`/`uint32`, `float`/`float32`, `double`/`float64`.
+ *
+ * ## Usage
+ * In a Field box, prefer the [Box.plyModelHere] / [Box.plyPointCloudHere] macros,
+ * which build a module wired to the bundled shaders and return the loaded model:
+ * ```kotlin
+ * val (module, model) = plyModelHere("model.ply") { /* optional Parameters */ }
+ * ```
+ * To load and apply manually, [loadPly] returns a [PlyModel]; [PlyModel.applyToMesh]
+ * uploads the packed vertex/index buffers, sets push constants, and sizes the mesh
+ * for drawing (drawing itself happens in the renderer's per-frame command recording,
+ * with the push-constant `ByteBuffer` stack-allocated per draw call):
+ * ```kotlin
+ * val model = PlySupport.loadPly("path/to/model.ply")
+ * model.applyToMesh(mesh, camera)   // camera defaults via fromContext()
+ * ```
+ * ASCII vs binary is detected automatically. `isPointCloud` on [PlyMeshBuffers]
+ * reports whether faces were present.
+ *
+ * ## Packed vertex layout
+ * Vertices are packed as `[pos.xyz][normal.xyz][color.rgba]` = 10 floats/vertex,
+ * matching the bundled shaders.
+ *
+ * ## Bundled GLSL shaders
+ * - [plyVertexShader] / [plyFragmentShader]: standard mesh rendering via SSBO
+ *   (buffer_reference) vertex pulling with simple directional lighting.
+ * - [plyPointCloudVertexShader] / [plyPointCloudFragmentShader]: point-cloud
+ *   rendering. The vertex shader generates 6 vertices (2 triangles = a screen-aligned
+ *   quad) per point via vertex pulling (`VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST`); the
+ *   fragment shader discards outside a circle for crisp anti-aliased dots. Use
+ *   [PlyModel.applyToMeshAsQuads] to supply `pointSize` and viewport dimensions.
+ *
+ * All four shaders read vertex/index data through Vulkan buffer references and take
+ * transformation matrices plus per-draw scalars via a single `push_constant` block.
+ * For point clouds, `pointSize` and `viewportSize` are additional fields in that same
+ * push-constant block (there is no separate uniform buffer object).
+ *
+ * ## Limitations
+ * No embedded textures, no vertex UVs, no skeletal animation; face normals are not
+ * auto-computed; vertex-element list properties are skipped.
+ *
+ * Reference: [PLY File Format Specification](http://paulbourke.net/dataformats/ply/)
+ */
 object PlySupport {
 
     // ------------------------------------------------------------------------

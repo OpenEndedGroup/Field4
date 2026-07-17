@@ -473,7 +473,7 @@ Debugging checklist:
 - The slideshow system is a small DSL for guiding people through a document:
   - Source: `src/jvmMain/kotlin/afield/SlideShow.kt` (entrypoint `Box.slideShow { step(...) { ... } }`)
   - Examples: `src/jvmMain/kotlin/afield/slideshow_example.kt`
-  - Supporting docs: `dev_docs/SLIDESHOW_VISUAL_GUIDE.md`, `dev_docs/INTERACTIVE_GUIDES.md`, `dev_docs/SLIDESHOW_ANNOTATIONS_QUICKREF.md`
+  - Supporting docs: `dev_docs/SLIDESHOW_FEATURE.md`, `dev_docs/SLIDESHOW_ANNOTATIONS.md`, `dev_docs/INTERACTIVE_GUIDES.md`
 - What a step can do:
   - Show an anchored note overlay (`note(...)` / `markdownNote(...)`) via `ShowSlideNote` (`src/commonMain/kotlin/rpc.kt`), rendered client-side in `src/jsMain/kotlin/afield/Main.kt` (`show-slide-note` handler).
   - Select a box + switch property + scroll/highlight a line (`selectBox(...)`, `SelectAndEditBox`).

@@ -664,9 +664,32 @@ class SimdVerlet(
     }
 
     /**
-     * Directed 4-slot constraint layout:
-     *   i -> n0[i], i -> n1[i], i -> n2[i], i -> n3[i]
-     * Unused slot: neighbor = -1 or stiffness = 0.
+     * Directed distance constraints with up to 4 neighbor slots per particle
+     * (the 4-slot sibling of [DirectedConstraints3]). Each particle `i` owns
+     * outgoing constraints to `n0[i], n1[i], n2[i], n3[i]`; an unused slot is
+     * marked with `neighbor = -1` or `stiffness = 0`. Slot arrays are parallel:
+     * `n*` are neighbor indices, `r*` rest lengths, `s*` stiffnesses, all of
+     * length [size]. The 4th slot is what lets a regular cloth grid attach all
+     * four of its axis neighbors (up/down/left/right) to a single particle.
+     *
+     * API surface:
+     * - [setSlot] (index, slot 0..3, neighbor, restLength, stiffness) — populate one slot.
+     * - `swapConstraints` / `remapNeighbors` (internal) — keep the swap-remove
+     *   compaction in [State.applyQueuedRemovalsSwap] consistent when particles
+     *   are deleted.
+     *
+     * Solved by [solveDirectedDist4InPlace] / [solveDirectedDist4InPlaceRange]
+     * (JDK Incubator Vector API): neighbor positions are gathered through the
+     * per-slot maps in [ConstraintScratch] (`map0`..`map3`), distances use SIMD
+     * sqrt, and a scalar remainder-lane fallback finishes the tail. The solver is
+     * range-parallel safe because each particle only accumulates onto its own
+     * position — there are no scatter writes to neighbors — so non-overlapping
+     * particle ranges can be solved on separate threads with one scratch each.
+     *
+     * Runnable usage lives next to the code: `afield.examples.ClothSimulationExample`
+     * (grid cloth, optional curvature flattening force, interactive grabbing via
+     * PID position controllers), `afield.examples.TestDirectedConstraints4`, and
+     * `afield.examples.SimdVerletTinyExample` (the 3-slot warmup).
      */
     class DirectedConstraints4(
         val n0: IntArray,

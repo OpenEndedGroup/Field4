@@ -8,6 +8,21 @@ import kotlin.concurrent.atomics.AtomicBoolean
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.coroutines.*
 
+/**
+ * A frame-based animation. Returning a [Frames] from launched box code makes Field
+ * run its [body] once per frame on the Runloop (see [Box.launchFrames] and the
+ * `Frames` return-value handler in `ReturnValueRegistry.registerFramesReturnValue`).
+ *
+ * Inside a [body] lambda the receiver is this [Frames], so these members are in scope:
+ * - [frameNumber]: current frame count, incremented by each [frame] call.
+ * - [end]: requests that the animation stop; it cancels the running job the next time
+ *   the loop reaches a frame boundary (or marks it stillborn if not yet launched).
+ * - [delay]: suspends for `ms` milliseconds and then advances one frame.
+ *
+ * Build one with [frames] (manual `frame()` control), [eachFrame]/`animate`
+ * (run body every frame while `frame()` is true), or [loop] (run body every pass,
+ * auto-advancing a frame if the body didn't).
+ */
 class Frames {
     var job: Job? = null
     private var stillborn = false
@@ -96,6 +111,10 @@ class Frames {
 
 class EndedException : Throwable()
 
+/**
+ * Lowest-level [Frames] builder: the body runs once and is responsible for calling
+ * [Frames.frame] itself to advance/suspend frames (e.g. `while (frame()) { ... }`).
+ */
 fun frames(block: suspend Frames.() -> Unit): Frames {
     val v = Frames()
 
@@ -122,6 +141,10 @@ fun forever(block: suspend Frames.() -> Boolean): Frames {
     return v
 }
 
+/**
+ * Runs [block] repeatedly. Unlike [eachFrame], it auto-advances one frame after each
+ * pass only if the body did not itself advance the frame (via [Frames.frame]/[Frames.delay]).
+ */
 fun loop(block: suspend Frames.() -> Unit): Frames {
     val v = Frames()
 
@@ -149,6 +172,10 @@ fun Frames.end(block: suspend Frames.() -> Unit): Frames {
 }
 
 
+/**
+ * Runs [block] once per frame while [Frames.frame] returns true. This is what
+ * `animate { }` (stdlib.kt) delegates to.
+ */
 fun eachFrame(block: suspend Frames.() -> Unit): Frames {
     return frames {
         while (frame()) {

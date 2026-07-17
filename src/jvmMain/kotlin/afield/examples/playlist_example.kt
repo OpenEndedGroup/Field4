@@ -21,7 +21,7 @@ box1.code = """
 
 val box2 = box("box2")
 box2.playlist = 2.0
-box2.pauseList = 2.0  // Wait 2 frames instead of 1
+box2.pauseList = 2.0  // Wait 2 frames before advancing to the next box
 box2.code = """
     println("Box 2 executing")
 """
@@ -35,13 +35,8 @@ box3.code = """
 // Execute all boxes in playlist order
 root.runPlaylist()
 
-// This will:
-// 1. Execute box1.begin()
-// 2. Wait 1 frame (default)
-// 3. Execute box2.begin()
-// 4. Wait 2 frames (pauseList = 2.0)
-// 5. Execute box3.begin()
-// 6. Wait 1 frame (default)
+// This will, for each box in playlist order: call begin(), then wait `pauseList`
+// frames (default 1) before advancing. box2 waits 2 frames; box1/box3 wait 1.
 
 // You can also find boxes with playlist property:
 val playlistBoxes = root.findBoxesWithPlaylist()
