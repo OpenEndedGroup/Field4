@@ -1,8 +1,12 @@
 name: hello_display_capture
-description: Backdoor replay transcript that creates a display box, captures its output events, and writes a cropped screenshot.
+description: >-
+  Blank-canvas macro that creates one display box and runs it. Pair it with the backdoor
+  capture commands (wait-output / output / screenshot-box) to collect its output events and a
+  cropped screenshot — capture is a transport concern, so it lives in backdoor commands, not
+  in the macro. See transcripts/README.md "Capturing output and screenshots".
 operations:
   - create:
-      box: hello_display
+      box: agent_hello_display_capture
       name: Agent Hello Display Capture
       frame:
         x: 80.0
@@ -11,24 +15,12 @@ operations:
         h: 120.0
       properties:
         code: |
-          display("main", "<div style=\"padding:16px;border:1px solid #6b8fb3;background:#eef7ff;color:#1b2a38\">hello from replay transcript</div>")
-  - run:
-      box: hello_display
+          display("main", "<div style=\"padding:16px;border:1px solid #6b8fb3;background:#eef7ff;color:#1b2a38\">hello from OperationTranscript</div>")
+  - execute:
+      box: agent_hello_display_capture
       property: code
+      type: fragment
       code: |
-        display("main", "<div style=\"padding:16px;border:1px solid #6b8fb3;background:#eef7ff;color:#1b2a38\">hello from replay transcript</div>")
-  - wait-output:
-      box: hello_display
-      kind: display
-      contains: hello from replay transcript
-  - capture-output:
-      box: hello_display
-      kind: all
-      as: hello_outputs
-      path: build/agent-transcripts/hello-display-output.json
-  - screenshot:
-      box: hello_display
-      mode: box
-      path: build/agent-transcripts/hello-display.png
-      padding: 18
-      open-outputs: true
+        display("main", "<div style=\"padding:16px;border:1px solid #6b8fb3;background:#eef7ff;color:#1b2a38\">hello from OperationTranscript</div>")
+  - wait:
+      millis: 250

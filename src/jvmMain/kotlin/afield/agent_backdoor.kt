@@ -666,6 +666,31 @@ private fun applyAgentProperty(box: Box, property: String, value: JsonElement) {
     }
 }
 
+/**
+ * String form of a box property for transcript recording, mirroring the UI `set-string`
+ * handler in [Server]: `name` reads from [Box.name], everything else from `getPropertyRaw`.
+ */
+private fun agentPropertyString(box: Box, property: String): String =
+    if (property == "name") box.name else box.getPropertyRaw(property)?.toString().orEmpty()
+
+/**
+ * Apply a backdoor property mutation and record it into [OperationTranscript], so
+ * backdoor-driven semantic edits land in the canonical transcript exactly like
+ * interactive UI edits do (see `set-string` in Server.kt). Structural create/move/connect
+ * are intentionally not recorded here — the UI does not record those either; the transcript
+ * tracks property edits, moves, and execution, and this closes the property-edit gap.
+ */
+private fun applyAgentPropertyRecorded(box: Box, property: String, value: JsonElement) {
+    if (property == "frame") {
+        applyAgentProperty(box, property, value)
+        return
+    }
+    val from = agentPropertyString(box, property)
+    applyAgentProperty(box, property, value)
+    val to = agentPropertyString(box, property)
+    OperationTranscript.recordEdit(box, property, from, to)
+}
+
 private fun ensureAgentGraphicsContext(info: SessionInformation): Pair<Box, Boolean> {
     val existing = info.root.children.firstOrNull {
         it.name == AGENT_GRAPHICS_CONTEXT_NAME && it.getPropertyRaw("renderer") is Renderer
@@ -1001,7 +1026,8 @@ fun installAgentBackdoorHandlers() {
         }
         // Direct set (string), reusing the create-box property path: handles sidecar
         // persistence for ioSeparateProperties like `notes` (written as a .md sidecar).
-        applyAgentProperty(target, request.property, JsonPrimitive(request.value))
+        // Records the edit into OperationTranscript, mirroring the UI set-string handler.
+        applyAgentPropertyRecorded(target, request.property, JsonPrimitive(request.value))
         needsResync.add(target to request.property)
         doResync()
         reply(
@@ -1024,7 +1050,7 @@ fun installAgentBackdoorHandlers() {
         created.name = request.name
         created.frame = request.frame
         request.properties.forEach { (property, value) ->
-            applyAgentProperty(created, property, value)
+            applyAgentPropertyRecorded(created, property, value)
         }
 
         needsResync.add(info.root to "children")

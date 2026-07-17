@@ -56,7 +56,7 @@ The backdoor can:
 - open the server-owned Playwright browser with `--with-playwright`
 - capture window, editor, box, native-window screenshots, and videos
 - run standalone JVM entrypoints with `run-jvm-main`
-- replay transcript macros for semantic document operations
+- run transcript macros (`macro write` / `macro run`) for semantic document operations
 
 For screenshot and DOM commands, the Python script sends websocket requests to
 Field; the browser is owned by the running JVM. Do not install or probe Python

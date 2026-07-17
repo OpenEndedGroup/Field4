@@ -15,7 +15,7 @@ Use it when you need to:
 
 Use the sidecar-file workflow when you want persistent workspace edits on disk. Use the backdoor when you want execution, output capture, and fast verification.
 
-For semantic automation, prefer transcript macros. `OperationTranscript` is the canonical format for Field document operations; the backdoor is the transport and capture harness around it. The legacy `replay-operations` / `play-operations` commands remain for compatibility while examples migrate to transcript macro YAML.
+For semantic automation, use transcript macros. `OperationTranscript` is the single canonical format for Field document operations (`macro write` / `macro run`); the backdoor is the transport and capture harness around it and does not carry its own document-op language. Capture is done with the backdoor's own commands — `screenshot-box` / `screenshot-editor` / `screenshot-window` / `native-screenshot`, and `output` / `wait-output` — run after the macro against the boxes it created.
 
 ## What It Does
 

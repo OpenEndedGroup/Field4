@@ -441,5 +441,5 @@ run **without** `--selection` — selection remapping is meant for single-box ed
 
 - [`FIELD_BACKDOOR.md`](./FIELD_BACKDOOR.md) — the run/capture/screenshot/video harness and CLI.
 - [`transcripts/README.md`](./transcripts/README.md) — curated runnable transcript corpus.
-- [`AGENT_BACKDOOR_CLEANUP_PLAN.md`](./AGENT_BACKDOOR_CLEANUP_PLAN.md) — why transcripts are the canonical layer and the backdoor is the harness.
+- [`README.md`](./README.md) — why transcripts are the canonical semantic layer and the backdoor is the transport/capture harness.
 - [`../DOCS_RUNNER_GPU_CAPTURES.md`](../DOCS_RUNNER_GPU_CAPTURES.md) — driving GPU/compute/probe captures from `diffstatic_runner` fences.

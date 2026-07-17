@@ -4,7 +4,7 @@ This directory documents how an agent drives Field: run code, capture output and
 errors, take screenshots and video, build and save documents, and read and rewrite the
 macros users have saved. It is the map; the linked docs are the detail.
 
-The canonical model (see [`AGENT_BACKDOOR_CLEANUP_PLAN.md`](./AGENT_BACKDOOR_CLEANUP_PLAN.md)):
+The canonical model:
 
 - **`OperationTranscript`** is the semantic automation layer — a YAML language for
   building, editing, launching, and saving documents. This is what you reach for to
@@ -48,7 +48,6 @@ detailed reference it points into.
 - **[`CODE_USE_TELEMETRY.md`](./CODE_USE_TELEMETRY.md)** — which snippets compiled/ran, with what result.
 - **[`SEMANTIC_RETRIEVAL.md`](./SEMANTIC_RETRIEVAL.md)** — natural-language code/doc discovery.
 - **[`TRANSCRIPT_SELF_IMPROVEMENT_LOOPS.md`](./TRANSCRIPT_SELF_IMPROVEMENT_LOOPS.md)** — turning real runs into reviewed Field improvements.
-- **[`AGENT_BACKDOOR_CLEANUP_PLAN.md`](./AGENT_BACKDOOR_CLEANUP_PLAN.md)** — the transcript/backdoor split and its boundaries.
 
 > The manual, on-disk way to edit a workspace — writing `boxid_code_.kt` sidecar files
 > and letting Field's `FileWatchManager` pick them up — is a *file-editing* convenience,

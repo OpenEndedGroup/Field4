@@ -10,8 +10,8 @@ vocabulary, the awaited launch/settle barrier, box output capture — live in th
 JVM (`operation_transcript.kt`) and are reused verbatim. See
 ``dev_docs/agents/OPERATION_TRANSCRIPT.md`` and ``FIELD_BACKDOOR.md``.
 
-Design intent (why a bridge, not a JVM MCP server): the cleanup plan
-(`dev_docs/agents/AGENT_BACKDOOR_CLEANUP_PLAN.md`) parked in-JVM MCP servers
+Design intent (why a bridge, not a JVM MCP server): the transcript/backdoor
+split (`dev_docs/agents/README.md`) parked in-JVM MCP servers
 until the transcript path was stable. It now is, so MCP comes back as the
 thinnest possible adapter over that stable path — no server code re-enters the
 JVM, and the floor-plan prototype under ``src/personal/kotlin/plans/mcp`` stays
