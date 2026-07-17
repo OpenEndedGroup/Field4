@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Field4 — vision (reserved)</title>
+    <style>
+        html, body {
+            margin: 0; height: 100%;
+            background: #111; color: #dcdcdc;
+            font-family: -apple-system, system-ui, sans-serif;
+            -webkit-text-size-adjust: 100%;
+        }
+        /* No pull-to-refresh / rubber-banding inside a WKWebView dock. */
+        body { overscroll-behavior: none; touch-action: manipulation; }
+        .wrap { padding: 2rem; max-width: 40rem; }
+        h1 { margin: 0 0 .5rem; font-weight: 600; }
+        p { margin: 0 0 .75rem; opacity: .7; line-height: 1.5; }
+        code { background: #222; padding: .1em .35em; border-radius: 4px; }
+        .muted { opacity: .45; font-size: .85rem; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <h1>Field4 — vision front end</h1>
+        <p>Reserved fork point. The Kotlin/JS fork is <strong>deferred</strong> — the native
+           shell points at <code>/welcome</code> and <code>/index.html</code> for now, and a
+           bundle grows here at the first spatial-specific divergence.</p>
+        <p class="muted">Design + fork-mechanism options (associate compilation vs. a shared
+           contract module): <code>dev_docs/vision_frontend.md</code>.</p>
+    </div>
+</body>
+</html>
