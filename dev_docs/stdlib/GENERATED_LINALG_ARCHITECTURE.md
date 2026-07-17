@@ -22,15 +22,20 @@ operation into heap objects, frame-arena handles, or mapped memory views.
 
 | Area | Current implementation |
 | --- | --- |
-| Heap values | Mutable `Vector2f`, `Vector3f`, `Vector4f`, their `Vector2d`/`Vector3d`/`Vector4d` double siblings, quaternions and matrices |
-| Read interfaces | `Vector2fc` through `Vector4fc`, `Vector2dc` through `Vector4dc`, `Quaternionfc`, matrix interfaces |
+| Heap values | Mutable `Vector2f`, `Vector3f`, `Vector4f`, their `Vector2d`/`Vector3d`/`Vector4d` double siblings, `Vector8h` (8-lane fp16, heap-only, for push-constant packing), quaternions and matrices (including a generated double-precision `Matrix3d`) |
+| Read interfaces | `Vector2fc` through `Vector4fc`, `Vector2dc` through `Vector4dc`, `Vector8hc`, `Quaternionfc`, matrix interfaces |
 | Scratch storage | `FrameArena`, `ArenaVec2f`, `ArenaVec3f`, `ArenaVec4f` |
 | Thread convenience | `FrameArena.current()` and `frameScratch { ... }` |
 | Foreign/mapped storage | `SegmentVec2Buffer`, `SegmentVec3Buffer`, `SegmentVec4Buffer`, packed and aligned layouts |
+| Bulk kernels | Generated struct-of-arrays `FloatArray` SIMD kernels in `afield.stdlib.linalg.bulk` (`addRange`/`subRange`/`mulRange`/`divRange`/`negateRange`/`minRange`/`maxRange`/`lerpRange`/`fmaRange`/`dotRange`/`lengthRange`, scalar and broadcast-vector overloads) |
 | Geometry | Closest point, barycentric, containment, ray/plane/triangle/AABB and sphere/AABB tests |
 | Generation | Typed vector-operation AST, typed core transform AST and deterministic compatibility shells |
 
-There is no JOML dependency or JOML compatibility package left in the runtime.
+There is no JOML dependency or JOML compatibility package left in the runtime. The
+JOML-removal migration plan (formerly a separate `GENERATED_LINALG_SPEC.md` draft) is
+complete: `org.joml` no longer appears anywhere in `src/`, `Boxes.kt` default imports
+and serialization (`LinalgSerialization.kt`) reference `afield.stdlib.linalg`, and this
+document is the current description of the shipped subsystem.
 
 ## Normative design rules
 
@@ -225,8 +230,10 @@ way to stamp out similar classes.
 `TransformModel.kt` now gives the core quaternion, Matrix3 and Matrix4 equations a
 second typed and validated model. It covers quaternion transform/dot/normalize/
 conjugate/invert/multiply; Matrix3 transform/determinant/multiply/invert/transpose;
-and Matrix4 transforms/determinant/multiply/translate/scale. The generated public
-compatibility shell delegates to `TransformSemantics.kt`.
+Matrix4 transforms/determinant/multiply/invert/transpose/translate/scale; and a
+double-precision `Matrix3d` equation set (multiply/transpose/determinant/invert) that
+retired the hand-written `Matrix3d` companion. The generated public compatibility shell
+delegates to `TransformSemantics.kt`.
 
 Branch-heavy construction and compatibility methods still live in the deterministic
 transform template. Moving those into typed statements, conditionals and explicit
@@ -340,9 +347,10 @@ model rather than hidden in emitter strings.
 
 - `PersistentArena` and region ownership;
 - arena quaternion and matrix handles;
-- generated `FloatArray` and segment matrix views;
+- segment matrix views (the SoA `FloatArray` bulk vector kernels have shipped — see
+  the "Bulk kernels" row above and `afield.stdlib.linalg.bulk`);
 - struct schemas shared by Kotlin, GLSL and Vulkan reflection;
-- generated bulk AoS/SoA operations;
+- generated bulk array-of-structs (AoS) operations and matrix bulk kernels;
 - mapped-buffer adapters integrated directly with Four's buffer ownership objects.
 
 ### Numerical and API work
@@ -461,7 +469,9 @@ FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_
 ```
 
 Generated output lives under `src/generatedLinalg`; edit the model or emitter, not
-the generated Kotlin. Both float and double heap vectors are emitted from the same operation model;
-`ScalarKind` in `AlgebraModel.kt` is the only per-scalar knob (literals, Kotlin type, buffer
-accessors, hash fold). Arena and segment backends are float-only by design and iterate
-`AlgebraModel.vectors`; the heap backend iterates `AlgebraModel.heapVectors` (float plus double).
+the generated Kotlin. Float, double and half (`Vector8h`) heap vectors are all emitted from the
+same operation model; `ScalarKind` in `AlgebraModel.kt` is the only per-scalar knob (literals,
+Kotlin type, buffer accessors, hash fold, and a storage-vs-compute type split used only by `HALF`,
+which stores `Short` bits but computes in `Float`). Arena and segment backends are float-only by
+design and iterate `AlgebraModel.vectors`; the heap backend iterates `AlgebraModel.heapVectors`
+(float, double and half).

@@ -143,22 +143,27 @@ KotlinSourceIndex.latestIndex?.vectorStoreId?.let { vsId ->
 ```
 
 This provides the AI with:
-- All Kotlin source files from `src/jvmMain/kotlin`
+- Kotlin source files from `src/jvmMain/kotlin`, `src/personal/kotlin`, and `src/generatedLinalg/kotlin`
 - KDoc comments and inline documentation
 - Code structure and patterns
 - File paths and locations
 
 ### AI Model Configuration
 
-By default, the feature uses GPT-5.5 for optimal results, with GPT-5.4 as the fallback model if the preferred model is unavailable:
+By default, the feature uses the flagship model (`gpt-5.5`) with a separate fallback model (`gpt-5.4`) when the preferred model is unavailable. Both are resolved through environment overrides in the constructor:
 
 ```kotlin
 class DocsSearchBridge(
-    model: String = Ai4ModelDefaults.FLAGSHIP_MODEL
-)
+    model: String = Ai4ModelDefaults.envOrDefault("AFIELD_DOCS_SEARCH_MODEL", Ai4ModelDefaults.FLAGSHIP_MODEL),
+    // ...
+) {
+    private val fallbackModel = Ai4ModelDefaults.envOrDefault(
+        "AFIELD_DOCS_SEARCH_FALLBACK_MODEL", Ai4ModelDefaults.FRONTIER_FALLBACK_MODEL
+    )
+}
 ```
 
-The model can be customized via environment variables or configuration.
+Set `AFIELD_DOCS_SEARCH_MODEL` / `AFIELD_DOCS_SEARCH_FALLBACK_MODEL` to override either model.
 
 ## Configuration
 
@@ -203,8 +208,8 @@ The model can be customized via environment variables or configuration.
 
 - First query may be slower (initializing AI bridge)
 - Subsequent queries in same session are faster (conversation context)
-- Switch to Monaco editor and back to start fresh conversation
-- Complex queries may take 10-30 seconds
+- Toggling between Monaco and the docs view does *not* reset the conversation: `setDocsIframeContent` only reassigns `iframe.src` when the URL changes or the iframe hasn't loaded yet, and `searchSessionId` (in `docs-search.html`) is generated once when the iframe's script first runs. To start a fresh conversation, reload the page/iframe or restart the server.
+- Complex queries can take a while (anecdotally on the order of tens of seconds); there is no fixed timeout or SLA in the code.
 
 ## Troubleshooting
 
@@ -241,13 +246,11 @@ The model can be customized via environment variables or configuration.
 
 ### Adding New Example Queries
 
-Edit the welcome section in `docs-search.html`:
+Edit the welcome section in `docs-search.html`. Example items are declared with a `data-example-query` attribute and wired up via `querySelectorAll('[data-example-query]')` + `addEventListener` (there is no `askExample()` function):
 
 ```html
 <ul>
-    <li onclick="askExample('Your new example')">
-        • Your new example
-    </li>
+    <li data-example-query="Your new example">• Your new example</li>
 </ul>
 ```
 
@@ -285,14 +288,9 @@ private fun formatMarkdownResponse(markdown: String): String {
 - No additional window management
 
 ### Filestore Mirror
-- Automatically uses indexed codebase
+- Automatically uses the indexed codebase
 - No additional configuration needed
-- Updates when codebase changes
-
-### Template System
-- Can suggest templates based on queries
-- Integrates with workspace templates
-- Provides code scaffolding recommendations
+- The index is (re)built once at server startup (`syncKotlinSourceIndex` runs `@RunsAt(early)` and calls `startBackgroundSync()` once). There is no file watcher or periodic resync, so a server restart is required to pick up new or changed source files.
 
 ### AI Completion
 - Complements AI4 code completion

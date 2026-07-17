@@ -15,9 +15,13 @@ The documentation iframe mode replaces the Monaco editor with an iframe of the s
 
 ### From Field's Command Menu
 
-1. Press `F1` or `Cmd/Ctrl+P` to open the command menu
-2. Type "Switch to Documentation Iframe"
-3. Enter a URL (can be local or remote)
+1. Press `F1` or `Cmd/Ctrl+Shift+P` to open the command menu. (Plain `Cmd/Ctrl+P`
+   without Shift opens a different "Open Anywhere" palette, not the command menu.)
+2. Type "Switch to Documentation Iframe" and run it.
+
+This loads the hardcoded default docs URL (`https://openendedgroup.com/field4/`) — the
+command no longer prompts for a URL. To open a *specific* URL, use the JS API
+(`window.switchToDocsIframe(url)`) shown in the "From Code" section below.
 
 ### From Code
 
@@ -105,17 +109,18 @@ FieldAPI.switchToEditor();
 #### Box Creation
 
 ```javascript
-// Create a new box (Note: currently in development)
-// This API is exposed but the server-side implementation is pending
-// Use the client-side newBox() function instead for now
+// Create a new box. createBox() routes through the 'new-box' action, which passes
+// the options to newBox(): `name` sets the box title, `frame` ({x,y,w,h}) sets its
+// position/size (defaults to a 100x100 box at the last mouse position), and `code`
+// sets the box's code (synced via set-string once the box exists).
 FieldAPI.createBox({
     name: 'New Box',
     code: 'println("Hello!")',
     frame: { x: 100, y: 100, w: 200, h: 150 }
 });
 
-// Alternative: Use Field's native newBox function directly
-window.newBox(); // Creates box at last mouse position
+// Or create a default empty box at the last mouse position:
+window.newBox();
 ```
 
 #### Commands

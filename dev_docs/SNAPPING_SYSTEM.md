@@ -36,9 +36,9 @@ The system recognizes when a box is being positioned between two other boxes and
 
 ### 3. Smart Threshold
 
-- **Snap threshold**: 10 pixels - The maximum distance at which snapping activates
-- **Extended threshold for spacing**: 30 pixels - Even spacing detection works at a longer range
-- **Minimum spacing**: 5 pixels - The minimum gap required for spacing suggestions
+- **Snap threshold**: 10 pixels (`SNAP_THRESHOLD`) - The applied-snap gate. On each axis, snapping only commits when the closest target is within 10px.
+- **Candidate detection + per-type apply gate**: Edge/center candidates are collected out to 20px (`SNAP_THRESHOLD * 2`) and engage when they are the closest target within 10px; even-spacing candidates are collected out to 30px (`SNAP_THRESHOLD * 3`) and engage within that same 30px window (`applyThresholdFor`). So a spacing snap applies across its full 30px detection window, while edge/center snaps commit within 10px.
+- **Minimum spacing**: 5 pixels (`MIN_SPACING`) - The minimum gap required for an even-spacing suggestion.
 
 ## Technical Details
 
@@ -100,6 +100,8 @@ The visual guides automatically appear when you get close to a snap point and di
 - **Line Style**: Dashed (4px dash, 3px gap)
 - **Markers**: Slightly more opaque cyan (`rgba(72, 201, 255, 0.8)`)
 
+> **Console debugging**: `BoxSnapping.kt` can log the snap decisions (enabled/disabled, per-axis snap type/distance, before→after coordinates), but this output is gated behind `private const val DEBUG_SNAPPING = false`. Nothing appears in the browser console during normal use — a developer must flip `DEBUG_SNAPPING` to `true` and recompile to see it.
+
 ## Resize Snapping
 
 In addition to drag-to-snap, the system now supports **resize snapping**:
@@ -138,45 +140,156 @@ Possible improvements for future versions:
 - If snapping feels too aggressive, the threshold can be adjusted in `BoxSnapping.kt` by changing `SNAP_THRESHOLD`
 - If spacing detection isn't working, check that boxes are reasonably aligned in the perpendicular axis
 
-## Examples
+## Illustrated
 
-### Example 1: Aligning Left Edges
+Conceptual ASCII diagrams of each snap type and the guide visuals. (Folded in from the former SNAPPING_VISUAL_GUIDE.md / SNAPPING_VISUAL_EXAMPLES.md.)
 
+### Edge-to-Edge Alignment
+
+#### Left Edge Snapping
 ```
-Before:                 After (with snap):
-┌─────┐                ┌─────┐
-│ Box1│                │ Box1│
-└─────┘                └─────┘
-  ┌─────┐              ┌─────┐
-  │ Box2│      →       │ Box2│  (left edges aligned)
-  └─────┘              └─────┘
-```
+Before dragging:              During drag (Caps Lock ON):
+┌────────┐                    ┌────────┐
+│  Box A │                    │  Box A │
+└────────┘                    └────────┘
 
-### Example 2: Even Spacing
-
-```
-Before:                 After (with snap):
-┌───┐  ┌───┐          ┌───┐   ┌───┐   ┌───┐
-│ A │  │ B │          │ A │   │ B │   │ C │
-└───┘  └───┘          └───┘   └───┘   └───┘
-         ┌───┐           (equal gaps maintained)
-         │ C │      →
-         └───┘
+      ┌────────┐              ┌────────┐
+      │  Box B │              │  Box B │    ← Snaps left edge to left edge
+      └────────┘              └────────┘
 ```
 
-### Example 3: Vertical Alignment
+#### Right Edge Snapping
+```
+Before dragging:              During drag (Caps Lock ON):
+    ┌────────┐                    ┌────────┐
+    │  Box A │                    │  Box A │
+    └────────┘                    └────────┘
+
+┌────────┐                    ┌────────┐
+│  Box B │                    │  Box B │    ← Snaps right edge to right edge
+└────────┘                    └────────┘
+```
+
+#### Top Edge Snapping
+```
+Before dragging:              During drag (Caps Lock ON):
+┌────────┐  ┌────────┐        ┌────────┐  ┌────────┐
+│  Box A │  │  Box B │        │  Box A │  │  Box B │  ← Tops aligned
+└────────┘  │        │        └────────┘  │        │
+            │        │                    │        │
+            └────────┘                    └────────┘
+```
+
+#### Bottom Edge Snapping
+```
+Before dragging:              During drag (Caps Lock ON):
+┌────────┐                    ┌────────┐
+│  Box A │  ┌────────┐        │  Box A │  ┌────────┐
+│        │  │  Box B │        │        │  │  Box B │  ← Bottoms aligned
+│        │  └────────┘        │        │  └────────┘
+└────────┘                    └────────┘
+```
+
+### Center Alignment
+
+Center alignment reuses the edge snap types internally: a horizontal center snap is tagged `LEFT_EDGE`, a vertical center snap is tagged `TOP_EDGE` (there is no `CENTER` value in the `SnapType` enum).
 
 ```
-Before:                 After (with snap):
-┌─────┐                ┌─────┐
-│     │                │     │
-│ Box1│                │ Box1│
-│     │                │     │
-└─────┘                └─────┘
-                       ┌─────┐
-┌─────┐                │     │
-│     │                │ Box2│ (top aligned with bottom of Box1)
-│ Box2│      →         │     │
-│     │                └─────┘
-└─────┘
+Horizontal Center:            Vertical Center:
+┌──────┐                      ┌─────┐ ┌─────────┐
+│ Box A│                      │Box A│ │  Box B  │
+└──────┘                      └─────┘ │         │  ← Centers aligned
+┌────────────┐               ↔──────↔└─────────┘
+│   Box B    │  ← Centers
+└────────────┘     aligned
 ```
+
+### Even Spacing (drag only)
+
+```
+Horizontal:                   Vertical:
+┌───┐     ┌───┐     ┌───┐     ┌─────┐
+│ A │     │ B │     │ C │     │  A  │
+└───┘     └───┘     └───┘     └─────┘
+     ↕         ↕                 ↕  Equal gap
+  Equal gap  Equal gap        ┌─────┐
+                              │  B  │
+                              └─────┘
+                                 ↕  Equal gap
+                              ┌─────┐
+                              │  C  │
+                              └─────┘
+```
+
+### Priority Selection & Independent Axes
+
+When several targets are in range on an axis, the closest one wins (drag). Horizontal and vertical snaps are computed independently, so a box can snap on both axes at once.
+
+```
+         ┌───┐               ┌───┐               ┌───┐
+         │ A │ ← 8px away     │ A │               │ B │
+         └───┘               └───┘               └───┘
+    ┌─────┐                          ┌─────┐
+    │  B  │ ← dragged                │  D  │  ← Being dragged
+    └─────┘                          └─────┘
+              ┌───┐          ┌───┐               ┌───┐
+              │ C │ ← 12px   │ C │               │ E │
+              └───┘          └───┘
+Result: snaps to A (closer)  Can snap horizontally to B's left edge AND
+                             vertically to C's top edge simultaneously.
+```
+
+### Resize Snapping
+
+Resize snaps all four edges (right/left/bottom/top) to the nearest matching edge of another box, with the same cyan guides. Unlike drag, resize appends every in-range edge match, so multiple simultaneous edge guides from different boxes can render at once.
+
+```
+Right edge:                          Bottom edge:
+┌──────────┐                         ┌──────────┐══┌──────────┐
+│  Box A   │                         │  Box A   │  │  Box B   │
+└──────────┘                         │          │  │ (resize) │
+│  cyan guide                        └──────────┘══└──────────┘
+┌────────────┐                                cyan guide
+│  Box B     │  ← right edge snapped
+└────────────┘     to Box A's right edge
+```
+
+### The Guides Themselves (SVG)
+
+Guides are drawn into a `<g id="snap-guides">` group created lazily under `#overlaysvglayer` (the overlay layer sits at `z-index: 17`; guides use `pointer-events: none`). If `#overlaysvglayer` is missing the code throws (`error(...)`) rather than degrading silently.
+
+#### Color / style reference
+| Property | Value |
+|----------|-------|
+| Line color | `rgba(72, 201, 255, 0.6)` (subtle cyan) |
+| Marker color | `rgba(72, 201, 255, 0.8)` |
+| Edge-marker fill | `rgba(72, 201, 255, 0.4)` |
+| Line style | Dashed (`stroke-dasharray "4 3"`) |
+| Line width | 1.5px |
+| Circle radius | 3px (edge markers) |
+| Tick half-length | 5px (10px total span, spacing markers) |
+
+#### Rendered markup (example)
+```xml
+<svg id="overlaysvglayer">
+  <g id="snap-guides">
+    <!-- Alignment line -->
+    <line x1="100" y1="50" x2="100" y2="200"
+          stroke="rgba(72, 201, 255, 0.6)"
+          stroke-width="1.5"
+          stroke-dasharray="4 3" pointer-events="none" />
+    <!-- Edge markers (circles) -->
+    <circle cx="100" cy="50" r="3"
+            fill="rgba(72, 201, 255, 0.4)"
+            stroke="rgba(72, 201, 255, 0.8)" pointer-events="none" />
+    <!-- Spacing ticks (for measurements) -->
+    <line x1="150" y1="95" x2="150" y2="105"
+          stroke="rgba(72, 201, 255, 0.8)"
+          stroke-width="1.5" pointer-events="none" />
+  </g>
+</svg>
+```
+
+### Complexity
+
+O(N log N) per drag/resize move for N boxes — the even-spacing search sorts the other boxes by position; edge alignment is O(N). Guides are only computed while Caps Lock is on.

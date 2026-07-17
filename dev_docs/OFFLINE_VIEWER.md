@@ -25,6 +25,19 @@ python3 -m http.server 8000
 http://localhost:8000/offline.html?file=metadata.edn
 ```
 
+Any `metadata.edn` saved by the Field·4 desktop app works directly — no conversion needed.
+
+### Navigation
+
+Once a document is open:
+
+- **Click a box** to view its code
+- **Middle-mouse drag** or **Shift+drag** to pan the canvas
+- **Mouse wheel** to scroll the canvas
+- **Arrow keys** to pan
+- **Escape** to deselect the box and hide the editor
+- **?** (or **h**) to toggle the help overlay
+
 ### Remote Files
 
 You can also view Field documents from any URL:
@@ -77,19 +90,13 @@ Because the `?file=` path is authored as an absolute `/field4/...` URL, the view
 - No real-time updates: Shows a snapshot of the document
 - Basic EDN support: Only supports the EDN features used by Field4 metadata
 
-## Converting Existing Documents
-
-All Field4 documents saved as `metadata.edn` files are automatically compatible with the offline viewer. No conversion needed!
-
 ## Integration with Field4
 
-When viewing a document in offline mode, click the "🚀 Open in Field4" button to open the same document in the desktop application (if Field4 is running locally).
+When viewing a document in offline mode, click the "Open in Field·4" button to open the same document in the desktop application (if Field4 is running locally). (The live button text has no emoji; only the descriptive copy in `examples-gallery.html` still uses the "🚀 Open in Field·4" phrasing.)
 
 ## Browser Compatibility
 
-- Modern Chrome, Firefox, Safari, Edge
-- Requires JavaScript enabled
-- Monaco editor requires ES2015+ support
+Runs in any modern evergreen browser (Chrome, Firefox, Safari, Edge) with JavaScript enabled. Syntax highlighting is provided by the vendored Monaco editor under `min/vs/`, which sets the practical baseline for supported browsers. No explicit feature-detection or browser-version gating is done in the viewer code.
 
 ## Development
 

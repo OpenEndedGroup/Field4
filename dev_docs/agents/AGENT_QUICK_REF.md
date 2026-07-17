@@ -28,7 +28,7 @@ EOF
 - `run` executes once and waits; `launch` starts a job and waits for first frame; `stop` ends it.
 - `@last` = the most recently created box this session.
 - Read the `events` array (and `data`) from the JSON. Compile errors and exceptions show up there.
-- `run`/`launch <uid>` **always send `--value`** (empty if omitted), overriding stored code. To run a box's *stored* code, use a transcript `execute`/`launch` op (below), not bare CLI `run`.
+- `--value`/`--file` are **optional** on `run`/`launch <uid>`: supply one to override the box's code, omit both to run the box's currently *stored* code (same stored-code fallback as the transcript `execute`/`launch` ops).
 
 ## Build / edit / save a document (OperationTranscript)
 
@@ -103,8 +103,8 @@ Ask the running JVM "what is this variable right now?" via the MCP tool
 required JDWP port (5005) automatically.
 
 ```jsonc
-// source mode — a symbol at a src/ file + real line:
-{"file": "Server.kt", "line": 1758, "symbol": "now"}
+// source mode — a symbol at a src/ file + real line (line numbers illustrative):
+{"file": "Server.kt", "line": 1761, "symbol": "now"}
 // box mode — a symbol in a running box's code:
 {"box": "MyBox", "line": 12, "symbol": "count"}
 ```

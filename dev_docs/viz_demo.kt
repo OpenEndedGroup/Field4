@@ -1,5 +1,5 @@
 // Value Visualizer Demo
-// This demonstrates the new viz() function for compact value display
+// This demonstrates the viz() function for compact value display
 
 // Basic types
 viz("primitives", 42)

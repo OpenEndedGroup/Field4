@@ -186,9 +186,9 @@ For high-resolution displays, consider using `srcset`:
 
 ## Related Documentation
 
-- **[SLIDESHOW_FEATURE.md](SLIDESHOW_FEATURE.md)**: Complete slideshow feature reference
-- **[SLIDESHOW_QUICKSTART.md](SLIDESHOW_QUICKSTART.md)**: Getting started guide
-- **[slideshow_example.kt](src/jvmMain/kotlin/afield/examples/slideshow_example.kt)**: Code examples
+- **[SLIDESHOW_FEATURE.md](SLIDESHOW_FEATURE.md)**: Complete slideshow feature reference (DSL, architecture, getting started)
+- **[SLIDESHOW_ANNOTATIONS.md](SLIDESHOW_ANNOTATIONS.md)**: Annotation lines and text animation
+- **slideshow_example.kt** (`src/jvmMain/kotlin/afield/examples/slideshow_example.kt`): Code examples
 
 ## Technical Details
 

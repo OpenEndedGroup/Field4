@@ -1,57 +1,70 @@
 # Slideshow Feature Documentation
 
+The canonical reference for Field's slideshow feature: the authoring DSL, the
+runtime, and how the pieces fit together. For the annotation/line-drawing and
+text-animation sub-feature see [SLIDESHOW_ANNOTATIONS.md](SLIDESHOW_ANNOTATIONS.md);
+for embedding images see [SLIDESHOW_IMAGES.md](SLIDESHOW_IMAGES.md).
+
 ## Overview
 
-The slideshow functionality provides a way to create guided tours through Field documents. This is ideal for:
+The slideshow functionality provides a way to create guided tours through Field
+documents. This is ideal for:
 - Onboarding new users
 - Creating interactive tutorials
 - Documenting complex workflows
 - Teaching Field concepts step-by-step
 
-## Features
+Key capabilities:
+1. **Kotlin DSL for slideshow authoring** — clean, type-safe API
+2. **Box selection & navigation** — select boxes and scroll to specific lines
+3. **Rich notes** — HTML or markdown content with links, images, and styling
+4. **Interactive navigation** — click links to move between steps
+5. **Lifecycle callbacks** — run code on entering or leaving a step
+6. **Choose-your-own-adventure** — non-linear navigation via step-jump links
+7. **Custom link callbacks and per-slide chat** — see `withChat`/`linkCallback`
 
-1. **Kotlin DSL for Slideshow Authoring**: Clean, type-safe API for creating slideshows
-2. **Box Selection & Navigation**: Automatically select boxes and scroll to specific lines
-3. **Rich HTML Notes**: Display formatted content with links, images, and styling
-4. **Interactive Navigation**: Click links to move between steps
-5. **Lifecycle Callbacks**: Execute code when entering or leaving steps
-6. **Choose-Your-Own-Adventure**: Support for non-linear navigation paths
+## Getting Started
 
-## Quick Start
-
-### Basic Example
+Create a box that holds the slideshow script and run it:
 
 ```kotlin
-// Create a simple slideshow
-val show = slideShow {
-    step("Introduction") {
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+
+// Get references to your boxes (by reference or by name)
+val box1 = root.children.first { it.name == "Box 1" }
+
+val tour = slideShow {
+    step("Welcome") {
         note("""
-            <h2>Welcome!</h2>
-            <p>This is your first step.</p>
-            <p><a href="#slideshow:next">Continue →</a></p>
+            <h2>Welcome to My Field Document!</h2>
+            <p>This tour will show you the key features.</p>
+            <p><a href="#slideshow:next">Start Tour →</a></p>
         """)
-        selectBox(myBox)
+        selectBox(this@slideShow)
     }
-    
-    step("Details") {
-        note("<p>Now let's look at line 10...</p>")
-        selectBox(myBox, line = 10, highlight = 10)
+
+    step("First Feature") {
+        note("<p>Check out line 1.</p><p><a href='#slideshow:next'>Next →</a></p>")
+        selectBox(box1, property = "code", line = 1)
+    }
+
+    step("Second Feature") {
+        note("<p>Line 10 is where the magic happens.</p><p><a href='#slideshow:stop'>Finish</a></p>")
+        // selectBoxByName searches recursively and opens parent disclosure areas
+        selectBoxByName("Box 2", property = "code", line = 10, highlight = 10)
     }
 }
 
-// Start the slideshow
-kotlinx.coroutines.GlobalScope.launch {
-    show.start()
-}
+// Start automatically...
+GlobalScope.launch { tour.start() }
+// ...or add control actions to the box's actions menu:
+this.installSlideShowControls()
 ```
 
-### Full Example
-
-See `src/jvmMain/kotlin/afield/examples/slideshow_example.kt` for comprehensive examples including:
-- Multi-step tours
-- Interactive navigation
-- Lifecycle callbacks
-- Control helpers
+See `src/jvmMain/kotlin/afield/examples/slideshow_example.kt` for comprehensive
+examples (multi-step tours, interactive navigation, lifecycle callbacks, control
+helpers).
 
 ## DSL Reference
 
@@ -69,11 +82,17 @@ Creates and returns a slideshow instance attached to the box.
 fun step(title: String, init: SlideStepBuilder.() -> Unit)
 ```
 
-Defines a step in the slideshow. Available within `SlideStepBuilder`:
+Available within `SlideStepBuilder`:
 
-#### `note(html: String, persistent: Boolean = false)`
+#### `note(html: String, persistent: Boolean = false, anchorBox: Box? = null, animated: Boolean = false)`
 
-Sets the HTML content to display. If `persistent = true`, the note includes a close button and won't auto-hide.
+Sets the note content (HTML or markdown — see `SlideMarkdown` in `SlideShow.kt`).
+If `persistent = true`, the note includes a close button and won't auto-hide.
+`anchorBox` anchors the note next to a different box than the slideshow host.
+
+When `animated = true`, the client's `show-slide-note` handler reveals the note
+letter-by-letter via `animateSlideNoteText()`.
+See [SLIDESHOW_ANNOTATIONS.md](SLIDESHOW_ANNOTATIONS.md#text-animation) for details.
 
 ```kotlin
 note("""
@@ -87,54 +106,38 @@ note("""
 
 Selects a box and optionally scrolls/highlights a line.
 
-```kotlin
-selectBox(myBox, property = "code", line = 15, highlight = 15)
-```
-
 #### `selectBoxByName(name: String, property: String = "code", line: Int? = null, highlight: Int? = null)`
 
-Selects a box by searching for it by name (recursively through all children). This is useful when you want to reference boxes by name rather than keeping explicit references.
+Selects a box by searching for it by name (recursively through all children,
+starting from `hostBox.root`). If the box is nested, the slideshow will
+automatically open parent disclosure areas and scroll it into view.
 
-```kotlin
-selectBoxByName("My Code Box", property = "code", line = 15, highlight = 15)
-```
+#### `onEnter(action: suspend () -> Unit)` / `onExit(action: suspend () -> Unit)`
 
-**Note**: If the box is nested inside other boxes, the slideshow will automatically open all parent disclosure areas and scroll to make the box visible.
+Code to run when entering / leaving this step.
 
-#### `onEnter(action: suspend () -> Unit)`
+#### `annotate(...)` / `annotateToLine(...)`
 
-Code to execute when entering this step.
+Draw annotation lines from the note to a box or a specific code line. Documented
+in [SLIDESHOW_ANNOTATIONS.md](SLIDESHOW_ANNOTATIONS.md).
 
-```kotlin
-onEnter {
-    lprintln("User entered this step")
-    myBox.someProperty = "new value"
-}
-```
+#### `withChat(id: String? = null)` / `linkCallback(name, action)`
 
-#### `onExit(action: suspend () -> Unit)`
+Enable a per-slide discussion thread, or register a handler for a
+`<a href="#custom:name">` link. See the KDoc in `SlideShow.kt`.
 
-Code to execute when leaving this step.
-
-```kotlin
-onExit {
-    // Cleanup or validation
-}
-```
-
-### Controlling Slideshow
+### Controlling a Slideshow
 
 ```kotlin
 val show: SlideShowInstance = box.slideShow { ... }
 
-// Navigation
 show.start()           // Start from beginning
 show.next()            // Go to next step
 show.previous()        // Go to previous step
 show.goToStep(index)   // Jump to specific step
+show.home()            // Return to first step
 show.stop()            // Stop and hide notes
 
-// State
 show.currentStep       // Current step or null
 show.currentStepIndex  // Current index
 show.hasNext()         // Check if there's a next step
@@ -143,176 +146,146 @@ show.hasPrevious()     // Check if there's a previous step
 
 ### Helper Functions
 
-#### Quick Selection
-
 ```kotlin
 box.selectAndEdit(property = "code", line = 10, highlight = 10)
-```
-
-#### Show Note
-
-```kotlin
 box.showNote("<p>A quick note</p>", persistent = false)
-```
-
-#### Hide Notes
-
-```kotlin
 hideNote()
+box.installSlideShowControls()   // adds slideshow control actions to the box menu
 ```
 
-## HTML Note Format
+## Note Content & Navigation Links
 
-Notes support full HTML with inline styles. Use links for navigation:
+Notes accept full HTML with inline styles (or markdown, rendered by
+`SlideMarkdown`). Use links for navigation:
 
 ```html
 <!-- Navigation links -->
 <a href="#slideshow:next">Next →</a>
 <a href="#slideshow:previous">← Previous</a>
 <a href="#slideshow:start">Restart</a>
+<a href="#slideshow:home">Home</a>
 <a href="#slideshow:stop">Exit Tour</a>
 
-<!-- Jump to specific step (0-indexed) -->
+<!-- Jump to a specific step (0-indexed) -->
 <a href="#slideshow:5">Go to step 5</a>
 
-<!-- Images from project directory -->
+<!-- Custom callback link (see linkCallback) -->
+<a href="#custom:myCallback">Do something</a>
+
+<!-- Images from the project directory (see SLIDESHOW_IMAGES.md) -->
 <img src="/project/myimage.png" alt="Description" style="max-width: 100%;">
-<img src="/project/images/diagram.jpg" alt="Diagram">
-
-<!-- Formatting -->
-<h2>Title</h2>
-<h3>Subtitle</h3>
-<p>Paragraph with <strong>bold</strong> and <em>italic</em></p>
-<ul>
-  <li>List item 1</li>
-  <li>List item 2</li>
-</ul>
-<code>inline code</code>
-<kbd>Cmd+Enter</kbd>
 ```
 
-### Using Images
-
-Images stored in your project directory (`$home` / workspace) can be referenced using the `/project/` prefix:
-
-- If you have `myimage.png` in your project root: `<img src="/project/myimage.png">`
-- For images in subdirectories: `<img src="/project/images/diagram.jpg">`
-- Always use forward slashes in paths, even on Windows
-
-Example with styled image:
-```kotlin
-step("Visual Example") {
-    note("""
-        <h3>System Architecture</h3>
-        <img src="/project/architecture.png" 
-             alt="Architecture diagram" 
-             style="max-width: 100%; border: 1px solid #ccc; margin: 10px 0;">
-        <p>The diagram above shows the overall structure.</p>
-        <a href="#slideshow:next">Next →</a>
-    """)
-}
-```
+Markdown notes can use `[[next]]`, `[[previous]]`, `[[home]]`, `[[start]]`,
+`[[stop]]` / `[[finish]]` shortcuts (optionally `[[next: Custom label]]`), which
+`SlideMarkdown` rewrites into the `#slideshow:` links above.
 
 ## Styling
 
-The slideshow overlay is styled with:
-- Semi-transparent dark background with blur effect
-- Fixed position in top-right corner
-- Responsive max-width
-- Smooth animations
-- Custom scrollbar
+The slide-note overlay (`#slide-note-overlay`) is styled in
+`src/commonMain/resources/field.css` (rules starting around `#slide-note-overlay`):
+semi-transparent dark background with a blur effect, a custom scrollbar, and
+responsive max-width. By default the overlay is positioned next to the anchored/
+selected box by `positionSlideNoteOverlay()` (in `Main.kt`); it falls back to a
+fixed top-right position (the `.fallback` class) only when there is no anchor box.
 
-Customize by editing `src/jsMain/resources/slideshow.css`.
+There is no separate `slideshow.css`; customize by editing the
+`#slide-note-overlay` rules in `field.css`.
 
 ## Architecture
 
-### Message Types (in `src/commonMain/kotlin/rpc.kt`)
+### Component overview
 
-1. **SelectAndEditBox**: Select box, change property, scroll to line
-2. **ShowSlideNote**: Display HTML note
-3. **HideSlideNote**: Hide note overlay
-4. **SlideShowCommand**: Control slideshow from client (next, previous, etc.)
+```
+┌─────────────────────────────┐        ┌──────────────────────────────┐
+│  Browser (JS)               │        │  Server (JVM / Kotlin)       │
+│                             │        │                              │
+│  Main.kt (message handlers) │◄──────►│  Server.kt ("slideshow-      │
+│    + slideshowSupport.kt    │  WS    │    command" handler)         │
+│         │                   │        │        │                     │
+│         ▼                   │        │        ▼                     │
+│  #slide-note-overlay (HTML) │        │  SlideShow.kt (DSL + runtime,│
+│  #slide-annotation-layer    │        │    SlideShowInstance)        │
+│  Monaco editor              │        │  Box (state)                 │
+└─────────────────────────────┘        └──────────────────────────────┘
+```
 
-### Server-Side (JVM)
+### Message flow
 
-- **SlideShow.kt**: DSL implementation and slideshow logic
-- **Server.kt**: Message handler for `slideshow-command`
-- **slideshow_example.kt**: Example implementations
+- **Start / advance:** `SlideShowInstance.goToStep(n)` (in `SlideShow.kt`) sends
+  `show-slide-note` (and, when a box is targeted, `select-and-edit-box`) over the
+  WebSocket. `Main.kt`'s handlers build/update the overlay, wire up link handlers,
+  and select/scroll the target box in Monaco.
+- **Navigate via link:** clicking `<a href="#slideshow:next">` in `Main.kt` sends
+  a `slideshow-command` message; `Server.kt`'s `slideshow-command` handler finds
+  the active slideshow and calls `next()`/`previous()`/`start()`/`home()`/`stop()`,
+  a `callback:<name>` (`executeCallback`), or a numeric `goToStep(n)`.
+- **Chat sub-feature:** per-slide discussion uses `load-chat-messages` /
+  `post-chat-message` (server: `src/jvmMain/kotlin/afield/server/chat.kt`) and
+  `chat-messages-loaded` / `chat-message-posted` (client: `Main.kt`).
 
-### Client-Side (JS)
+### Data structures (source of truth: `SlideShow.kt`)
 
-- **Main.kt**: Message handlers for selection, notes, and commands
-- **slideshow.css**: Overlay styling
-- **index.html**: CSS import
+```
+SlideShowInstance          SlideStep
+├─ hostBox: Box            ├─ title, noteHtml, noteAnchorBox
+├─ steps: List<SlideStep>  ├─ targetBox, targetProperty, targetLine, highlightLine
+├─ slideshowId: String     ├─ persistent, animated, withChat, customChatId
+├─ currentStepIndex        ├─ annotations: List<SlideAnnotation>
+└─ start/next/previous/    ├─ onEnter / onExit
+   goToStep/home/stop      └─ linkCallbacks: Map<String, ...>
+```
 
-## Creating Templates
+### Message types (source of truth: `src/commonMain/kotlin/rpc.kt`)
 
-To create a template with a guided tour:
+```
+SelectAndEditBox(uid, property="code", scrollToLine=null, highlightLine=null)
+ShowSlideNote(html, uid="", persistent=false, animated=false,
+              annotations=emptyList(), slideshowId="", slideNumber=-1)
+HideSlideNote(dummy=true)
+SlideShowCommand(command)   // "next"|"previous"|"start"|"home"|"stop"
+                            //   |"callback:<name>"|<step#>
+SlideAnnotation(id, targetUid, targetProperty=null, targetLine=null,
+                color="rgba(128,255,164,0.7)", strokeWidth=2.0, dashed=false)
+```
+(The chat sub-feature adds `PostChatMessage`, `LoadChatMessages`, `ChatMessage`,
+`ChatMessagesLoaded`, `ChatMessagePosted`.)
 
-1. Create boxes with your content
-2. Add a "Guide" box with the slideshow code
-3. Reference boxes by storing them in properties
-4. Use `installSlideShowControls()` to add menu actions
+### File map
 
-Example:
-
-```kotlin
-// In a setup box
-val guide = this
-val step1Box = children.first { it.name == "Step 1" }
-val step2Box = children.first { it.name == "Step 2" }
-
-// Create the slideshow
-guide.slideShow {
-    step("Introduction") {
-        note("Welcome! <a href='#slideshow:next'>Start →</a>")
-        selectBox(guide)
-    }
-    step("First Concept") {
-        note("Learn about X... <a href='#slideshow:next'>Next →</a>")
-        selectBox(step1Box, line = 1)
-    }
-    // ... more steps
-}
-
-// Add menu actions for control
-guide.installSlideShowControls()
+```
+src/commonMain/kotlin/rpc.kt                       Message / data-class types
+src/jvmMain/kotlin/afield/SlideShow.kt             DSL + runtime (SlideShowInstance)
+src/jvmMain/kotlin/afield/examples/slideshow_example.kt   Examples
+src/jvmMain/kotlin/afield/Server.kt                "slideshow-command" handler
+src/jvmMain/kotlin/afield/server/chat.kt           Chat handlers
+src/jsMain/kotlin/afield/Main.kt                   Client message handlers, overlay
+src/jsMain/kotlin/afield/slideshowSupport.kt       Annotation + text-animation client code
+src/commonMain/resources/field.css                 #slide-note-overlay styling
+src/commonMain/resources/index.html                Loads field.css (no slideshow.css)
 ```
 
 ## Best Practices
 
-1. **Keep Steps Focused**: Each step should cover one concept
-2. **Use Clear Navigation**: Always provide next/previous links
-3. **Test the Flow**: Run through the tour as a new user would
-4. **Provide Context**: Explain what users are looking at
-5. **Use Highlighting**: Draw attention to specific lines of code
-6. **Add Callbacks**: Use onEnter/onExit for dynamic content
-7. **Consider Branching**: Create different paths for different user goals
+1. **Keep steps focused** — one concept per step.
+2. **Use clear navigation** — always provide next/previous links.
+3. **Test the flow** — run through the tour as a new user would.
+4. **Provide context** — explain what the user is looking at.
+5. **Use highlighting** — draw attention to specific lines of code.
+6. **Add callbacks** — use `onEnter`/`onExit` for dynamic content.
+7. **Consider branching** — create different paths for different goals.
 
 ## Troubleshooting
 
-### Notes Don't Appear
-- Check browser console for errors
-- Verify slideshow.css is loaded
-- Ensure HTML is well-formed
+**Notes don't appear**
+- Check the browser console for errors.
+- Verify `field.css` is loaded (it contains the `#slide-note-overlay` styles).
+- Ensure the HTML is well-formed.
 
-### Box Selection Doesn't Work
-- Verify box UIDs are correct
-- Check that boxes exist before selection
-- Ensure boxes are visible
+**Box selection doesn't work**
+- Verify the box exists and its name/UID is correct.
+- Ensure the box is visible.
 
-### Line Scrolling Issues
-- Line numbers are 1-indexed
-- Monaco editor must be loaded
-- Property must contain code
-
-## Future Enhancements
-
-Potential additions:
-- Progress indicator (step X of Y)
-- Keyboard shortcuts for navigation
-- Bookmarking/resume functionality
-- Export tours as standalone HTML
-- Analytics/tracking for tutorial completion
-- Multiple tours per document
-- Tour templates/presets
+**Line scrolling issues**
+- Line numbers are 1-indexed.
+- Monaco editor must be loaded and the property must contain code.

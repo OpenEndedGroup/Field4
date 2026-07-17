@@ -93,12 +93,16 @@ uv run --project . --group backdoor python tools/run_ui_regressions.py \
   - Protects Monaco action invocation from losing its original `this` binding.
 - `command-palette-smoke-sweep`
   - Runs document, selected-property, and editor action categories through the Field command palette.
+- `monaco-context-menu-actions`
+  - Verifies the Monaco context menu shows one copy of each Field editor action after repeated editor refreshes.
 - `editor-open-edit-sync`
   - Verifies Monaco edits sync to box properties and survive property switches.
 - `insert-stack-marker-command`
   - Verifies the "Insert Stack Mark" palette command mutates Monaco and returns focus.
 - `output-area-basics`
   - Exercises `display(...)` replacement, embedded script execution, visible output DOM, and screenshot capture.
+- `toast-restack`
+  - Verifies notification toasts restack to the bottom-left after older toasts expire.
 - `controllers-editable-lines-output`
   - Covers `lines(foo, editable = true)` in `/controllers?page=outputs`.
 - `controllers-static-lines-output`
@@ -109,6 +113,10 @@ uv run --project . --group backdoor python tools/run_ui_regressions.py \
   - Covers the six-tab phone shell at 390×844 and 430×932, the compact 390×430 keyboard-height layout, shared Open Anything selection, embedded Monaco, AI4 chat input, and visible file-edit tool summaries.
 - `selection-screenshot-backdoor`
   - Verifies selected box/editor/window screenshot agreement and retained supplemental captures.
+- `selection-highlight-file-proxy`
+  - Verifies selected file-proxy boxes keep the visible selection ring on the box outline even with a subtitle.
+- `selection-highlight-language-box`
+  - Verifies selected non-Kotlin language boxes keep the normal selection border while showing the language label.
 - `history-panel`
   - Opens the document history iframe, waits for version data, interacts with controls, and closes it.
 - `visionos-shared-history-panel`

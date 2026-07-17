@@ -71,8 +71,9 @@ Example query body:
 ```
 
 Results include vector, BM25, and symbol ranks when available. Always report
-`capsuleBackend` and `embedderBackend` literally; the current capsule backend is
-`source-index-capsules`, not K2-resolved declaration analysis.
+`capsuleBackend` and `embedderBackend` literally, whatever string the field actually
+carries; the current capsule backend reports `source-index+workspace` (source-index
+declarations plus workspace docs), not K2-resolved declaration analysis.
 
 ## Smoke Test
 

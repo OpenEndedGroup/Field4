@@ -84,7 +84,12 @@ step("Multiple Pointers") {
 
 ### 2. Text Animation
 
-Enable letter-by-letter text animation with automatic pauses on punctuation:
+When `animated = true`, the client's `show-slide-note` handler
+(`src/jsMain/kotlin/afield/Main.kt`) calls `animateSlideNoteText()`
+(`src/jsMain/kotlin/afield/slideshowSupport.kt`) instead of setting
+`contentDiv.innerHTML` directly.
+
+Behavior — letter-by-letter text reveal with automatic pauses on punctuation:
 
 ```kotlin
 step("Animated Introduction") {
@@ -92,18 +97,18 @@ step("Animated Introduction") {
         <h2>Welcome!</h2>
         <p>This text will animate in character by character.</p>
         <p>Notice the pause at the end of sentences.</p>
-    """.trimIndent(), animated = true)  // Enable animation
+    """.trimIndent(), animated = true)  // currently has no effect (see above)
     
     selectBox(welcomeBox)
 }
 ```
 
-#### Animation Behavior
+#### Animation Behavior (as implemented in `animateSlideNoteText`)
 
 - **Base Speed**: 15ms per character
 - **Period/Exclamation/Question**: +300ms pause
 - **Comma/Semicolon/Colon**: +150ms pause
-- **HTML Preserved**: Animation works with HTML tags
+- **HTML Preserved**: Walks text nodes so tags/structure are preserved
 
 ## API Reference
 
@@ -116,9 +121,13 @@ Draws a line from the guide text to a target box.
 **Parameters:**
 - `id: String` - Unique identifier for this annotation
 - `targetBox: Box` - The box to point to
-- `color: String` (default: `"rgba(128, 255, 164, 0.7)"`) - Line color
+- `color: String` (default: `"rgba(255, 180, 100, 0.8)"`, orange) - Line color
 - `strokeWidth: Double` (default: `2.0`) - Line width in pixels
-- `dashed: Boolean` (default: `false`) - Whether to use dashed line
+- `dashed: Boolean` (default: `true`) - Whether to use dashed line
+
+> Note: `annotate()` defaults to an **orange, dashed** line, while
+> `annotateToLine()` (below) defaults to a **green, solid** line
+> (`rgba(128, 255, 164, 0.7)`, `dashed = false`).
 
 **Example:**
 ```kotlin
@@ -165,6 +174,7 @@ The `note()` function now accepts an `animated` parameter.
 - `persistent: Boolean` (default: `false`) - Show close button
 - `anchorBox: Box?` (default: `null`) - Box to anchor note to
 - `animated: Boolean` (default: `false`) - Enable letter-by-letter animation
+  (see the Text Animation section above)
 
 **Example:**
 ```kotlin
@@ -243,28 +253,41 @@ fun Box.annotatedSlideShow() {
 
 ## Technical Details
 
+All annotation rendering lives in `src/jsMain/kotlin/afield/slideshowSupport.kt`
+(`drawSlideAnnotations`, `redrawSlideAnnotations`, `drawDubinsAnnotation`,
+`ensureAnnotationLayer`). `Main.kt` only holds the `show-slide-note` /
+`hide-slide-note` message handlers that call into it.
+
 ### Rendering System
 
-Annotations use Field's existing SVG overlay system:
-- Lines drawn on the `overlaysvglayer` SVG element
-- Uses the `slideAnnotations` SVG group
-- Automatically cleared when steps change
-- Redrawn when overlay repositions
+- Lines are drawn on a **dedicated** `<svg id="slide-annotation-layer">` element
+  appended to `document.body`, created lazily by `ensureAnnotationLayer()`. This
+  is *not* the shared `overlaysvglayer` (that one is the general canvas-connection
+  SVG used by `gestures.kt`/`BoxSnapping.kt`). The annotation layer has
+  `z-index: 10002` (above the `#slide-note-overlay`, which is at 10000).
+- Annotations live in a `slideAnnotations` `<g>` group (`slideAnnotationGroup()`).
+- Cleared when steps change; redrawn on reposition/scroll via
+  `redrawSlideAnnotations()` / `scheduleSlideAnnotationRedraw()`.
 
-### Line Drawing
+### Line Drawing (`drawDubinsAnnotation`)
 
-- **Path Type**: Cubic Bezier curves for smooth appearance
-- **Start Point**: Right edge of guide overlay (vertically centered)
-- **End Point**: Left edge of target box (or specific line position)
-- **Control Points**: Calculated based on distance for natural curve
-- **Endpoints**: Small circles at both ends for clarity
+- **Path Type**: Dubins-path curves — `dubinsShortestPath()`/`sampleDubinsPath()`
+  compute a smooth path with a minimum turning radius, resampled into a polyline
+  of `lineTo()` segments (and blended frame-to-frame for smooth motion). These are
+  **not** cubic Bezier curves.
+- **Endpoints**: computed by `connectCenters()` (in `gestures.kt`) — a ray is cast
+  from each rectangle's center toward the other and clipped to whichever edge it
+  crosses, so the attachment edges depend on relative position (not fixed
+  right/left edges).
+- **Arrow head**: `addArrowHead()` draws an arrow at the path midpoint.
+- **End circles**: small filled circles at both ends, with radii scaled by
+  stroke width (`strokeWidth * 1.2` at the start, `strokeWidth * 1.4` at the end).
 
 ### Animation System
 
-- **DOM Traversal**: Walks text nodes in HTML structure
-- **Progressive Reveal**: Shows characters one at a time
-- **Punctuation Detection**: Pauses based on character type
-- **HTML Safe**: Preserves tags and structure
+`animateSlideNoteText()` (**currently not invoked** — see the Text Animation
+section): walks text nodes via `collectTextNodes()`, reveals characters
+progressively with `setTimeout`, and pauses on punctuation. Preserves HTML tags.
 
 ### Performance
 
@@ -357,7 +380,8 @@ step("Best of Both") {
 1. **Check Box IDs**: Ensure target boxes exist
 2. **Verify Visibility**: Target boxes must be visible
 3. **Check Console**: Look for JavaScript errors
-4. **SVG Layer**: Confirm overlaysvglayer exists
+4. **SVG Layer**: Confirm the `#slide-annotation-layer` SVG exists (created lazily
+   by `ensureAnnotationLayer()`)
 
 ### Animation Issues
 
@@ -401,9 +425,56 @@ Potential future additions:
 - Annotation labels
 - Monaco editor line position integration
 
+## Visual Reference
+
+### Annotation line anatomy
+
+```
+Note overlay ──○  (start circle, r = strokeWidth * 1.2)
+                ╲
+                 ╲   Dubins-path curve (smoothed polyline)
+                  ╲  → arrow head at midpoint
+                   ○  (end circle, r = strokeWidth * 1.4)
+              ┌────┴────────┐
+              │ Target Box  │
+              └─────────────┘
+```
+
+Endpoints are center-to-center rays clipped to each rectangle's edge, so the
+attachment sides depend on relative position (see `connectCenters` in
+`gestures.kt`).
+
+### Layer stack
+
+```
+z-index 10002 │ #slide-annotation-layer  (annotation lines, arrows)
+z-index 10000 │ #slide-note-overlay       (guide note HTML, link handlers)
+z-index varies│ Box elements / Monaco editors / output areas
+```
+
+### Per-step state machine
+
+```
+   No slideshow active ──start()──▶ Step shown (note + annotations)
+             ▲                              │
+             │                    next() / previous()
+          stop()                            ▼
+             │                    Clear old annotations
+             └──────────────────  Draw new annotations
+                                   (text animation would run here if wired in)
+```
+
+### Reposition flow (keeps lines attached on scroll/drag/resize)
+
+```
+canvasGestures.rebuildConnectionGroup()
+        └▶ repositionSlideNoteOverlayIfVisible()
+               ├▶ positionSlideNoteOverlay()     (move the note overlay)
+               └▶ redrawSlideAnnotations()        (recompute the line positions)
+```
+
 ## See Also
 
-- [Slideshow Quickstart](SLIDESHOW_QUICKSTART.md)
-- [Slideshow Feature Guide](SLIDESHOW_FEATURE.md)
-- [Slideshow Architecture](SLIDESHOW_ARCHITECTURE.md)
-- [Example Code](src/jvmMain/kotlin/afield/examples/slideshow_example.kt)
+- [Slideshow Feature Guide](SLIDESHOW_FEATURE.md) — DSL + architecture reference
+- [Slideshow Images](SLIDESHOW_IMAGES.md)
+- Example code: `src/jvmMain/kotlin/afield/examples/slideshow_example.kt`

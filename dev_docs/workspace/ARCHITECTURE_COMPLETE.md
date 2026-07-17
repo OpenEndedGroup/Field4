@@ -20,9 +20,8 @@ This document provides a comprehensive overview of the complete self-healing met
 │  │              Workspace Directory                         │   │
 │  │  ┌────────────────────────────────────────────────────┐ │   │
 │  │  │  Documentation (Auto-Deployed)                     │ │   │
-│  │  │  • README.md (workspace-specific guide)            │ │   │
-│  │  │  • AGENT_GUIDE.md (full documentation)             │ │   │
-│  │  │  • AGENT_QUICK_REF.md (quick reference)            │ │   │
+│  │  │  • README.md (human orientation)                   │ │   │
+│  │  │  • AGENTS.md (agent onboarding)                     │ │   │
 │  │  └────────────────────────────────────────────────────┘ │   │
 │  │  ┌────────────────────────────────────────────────────┐ │   │
 │  │  │  Metadata (Auto-Managed)                          │ │   │
@@ -254,7 +253,7 @@ Agent Edits metadata.edn
 **Key Methods:**
 - `save()` - Two-phase save (snapshot + background I/O)
 - `ensureDirectory()` - Create directory + copy guides
-- `ensureAgentGuides()` - Copy documentation files
+- `ensureAgentGuides()` - Copy README.md + AGENTS.md into new workspaces
 - `findRepositoryRoot()` - Locate source files
 - `exportEdnPackage()` - Generate metadata.edn content
 - `load()` - Load workspace from disk
@@ -315,8 +314,7 @@ Field4 Action                   Workspace Result
 Create workspace             → Directory created
                              → Guides copied
                              ← README.md
-                             ← AGENT_GUIDE.md
-                             ← AGENT_QUICK_REF.md
+                             ← AGENTS.md
 
 Save session                 → Snapshot properties
                              → Write sidecar files
@@ -343,16 +341,22 @@ Examples:
 
 ### Supported Properties
 
+The authoritative set of sidecar-backed properties and their extensions is
+`Box.ioSeparateProperties` in `Boxes.kt` — consult it rather than hardcoding a
+subset. A representative sample:
+
 | Property | Extension | Description |
 |----------|-----------|-------------|
 | `code` | `.kt` | Kotlin code |
 | `fragment` | `.glsl` | Fragment shader |
 | `vertex` | `.glsl` | Vertex shader |
 | `compute` | `.glsl` | Compute shader |
-| `task` | `.glsl` | Task shader |
-| `mesh` | `.glsl` | Mesh shader |
-| `customization` | `.js` | JavaScript customization |
-| `remote_js` | `.js` | Remote JavaScript |
+| `task` / `mesh` | `.glsl` | Task / mesh shaders |
+| `raygen` / `miss` / `closesthit` / `anyhit` / `intersection` / `callable` | `.glsl` | Ray-tracing shader stages |
+| `vertex_fragment` and the `*_s` variants | `.slang` | Slang shaders |
+| `stackSL` | `.stacksl` | StackSL |
+| `customization` / `remote_js` | `.js` | JavaScript |
+| `notes` | `.md` | Notes |
 | `metadata` | `.yaml` | YAML metadata |
 
 ## Frame Positioning Algorithm
@@ -384,23 +388,14 @@ Parameters:
 
 ### Overlap Detection
 
-```kotlin
-fun calculateNewBoxFrame(boxId: String): Rect {
-    // Try grid positions first
-    for (row in 0..100) {
-        for (col in 0..3) {
-            val frame = gridPosition(row, col)
-            if (!overlaps(frame, existingFrames)) {
-                return frame
-            }
-        }
-    }
-    
-    // Fallback: deterministic hash-based position
-    val offset = boxId.hashCode() % 200
-    return Rect(50 + offset, 50 + offset, 350, 250)
-}
-```
+`calculateNewBoxFrame(boxId)` walks the grid (row/col advancing, up to 100
+attempts) and returns the first cell that does not intersect any existing,
+non-tombstoned box frame. If no free cell is found it falls back to a
+deterministic hash-based offset — `(boxId.hashCode().toLong() and 0x7FFFFFFF) %
+200`. The `0x7FFFFFFF` mask is important: it keeps the offset non-negative so
+boxes never land at negative pixel coordinates, and it makes simultaneously
+created boxes land at distinct positions. See `calculateNewBoxFrame` in
+`FileWatchManager.kt` for the exact loop.
 
 ## Safety Mechanisms
 
@@ -452,19 +447,20 @@ fun calculateNewBoxFrame(boxId: String): Rect {
 
 - **Orphan detection**: Every 5 seconds
 - **File change detection**: < 1 second (OS events)
-- **Grace period**: 15 seconds (configurable)
+- **Grace period**: 15 seconds (hardcoded `internalSaveGraceMs`)
 - **UI sync**: Immediate (via WebSocket)
 
-## Configuration
+## Tuning Constants
 
-### Customizable Parameters
+These are hardcoded in the source (no runtime/config surface):
 
 ```kotlin
 // FileWatchManager.kt
-private val internalSaveGraceMs = 15000L  // Grace period
-private val orphanCheckInterval = 5000.milliseconds  // Check frequency
+private val internalSaveGraceMs = 15000L   // internal-save grace window
+private val internalSaveWindowMs = 120000L // how long a save signature is honored
+// orphan check cadence is a literal delay(5000.milliseconds) in start()
 
-// calculateNewBoxFrame()
+// calculateNewBoxFrame() (FileWatchManager.kt)
 val startX = 50.0
 val startY = 50.0
 val boxWidth = 350.0
@@ -488,8 +484,6 @@ This architecture provides:
 
 The system enables seamless collaboration between AI agents and Field4, with automatic documentation deployment and intelligent file management.
 
----
-
-**System Status**: ✅ Complete and Operational
-**Documentation**: ✅ Comprehensive
-**Testing**: ⏳ Runtime verification recommended
+Component-level detail for the file watcher lives in `dev_docs/FileWatchManager.md`;
+guide-deployment mechanics are colocated as KDoc on `ensureAgentGuides` /
+`findRepositoryRoot` in `saving.kt`, with the automation canon in `dev_docs/agents/`.

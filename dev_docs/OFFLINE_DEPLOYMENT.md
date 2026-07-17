@@ -22,17 +22,7 @@ metadata_store/      # Optional example documents
 
 ### Option 1: GitHub Pages
 
-1. Build the offline viewer bundle:
-   ```bash
-   ./build-offline-docs.sh
-   ```
-2. Copy the generated bundle:
-   ```bash
-   rm -rf docs
-   cp -r dist/offline-viewer docs
-   ```
-3. Enable GitHub Pages in repository settings (source: `docs/` folder)
-4. Access at: `https://yourusername.github.io/yourrepo/offline.html?file=metadata_store/example.edn`
+Build the bundle with `./build-offline-docs.sh`, copy `dist/offline-viewer/` into the folder GitHub Pages serves from (e.g. `cp -r dist/offline-viewer docs`), enable Pages in repository settings (source: `docs/`), then access at `https://<user>.github.io/<repo>/offline.html?file=metadata_store/example.edn`.
 
 ### Option 2: Netlify
 
@@ -246,12 +236,6 @@ Use the repository build script:
 ```
 
 Then deploy `dist/offline-viewer/` to your hosting provider.
-
-## Examples
-
-See these live examples:
-- [GitHub Pages example](https://example.com) (placeholder)
-- [Netlify example](https://example.com) (placeholder)
 
 ## Getting Help
 

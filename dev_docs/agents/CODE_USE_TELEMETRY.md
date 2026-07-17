@@ -48,7 +48,7 @@ The service enables WAL mode and stores full source text content-addressed by SH
 - `unresolved_uses`
 - `classpath_entries`
 
-The symbol tables are populated by a background analyzer worker. The current resolver tokenizes immutable snippet snapshots and resolves likely call/property/constructor references against the local Kotlin source index, falling back to a lightweight source scan if the index has not been built yet. This fills `symbols`, `symbol_uses`, and `unresolved_uses` with `source-index-match` confidence. It does not touch live K2 REPL state.
+The symbol tables are populated by a background analyzer worker. The current resolver tokenizes immutable snippet snapshots and resolves likely call/property/constructor references against the local Kotlin source index, falling back to a lightweight source scan if the index has not been built yet. A single unqualified match writes `symbol_uses` with `source-index-unique` confidence; a receiver-qualified single match writes `source-index-qualified`; ambiguous candidates are dropped (no `symbol_uses` row) and recorded in `unresolved_uses` instead. `source-index-match` is a legacy confidence value the store now prunes at startup, not live output. It does not touch live K2 REPL state.
 
 ## Browser/API
 
@@ -114,7 +114,7 @@ These return compact telemetry rows:
 - `hot-symbols`: observed source-symbol usage for `all`, `week`, `day`, or `month`.
 - `early-document-symbols`: symbols used in the first window of a document's observed telemetry and then rarely afterward.
 
-Rows include a `confidence` field. `source-index-match` means the background analyzer populated `symbol_uses` from the Kotlin source index; `textual` is a fallback from snippet text; a future isolated K2/FIR resolver can add stronger resolved edges without changing the API shape. Textual fallback deliberately suppresses highly ambiguous simple names so hot lists are not dominated by common helpers like `error` or `point`.
+Rows include a `confidence` field. `source-index-unique` / `source-index-qualified` mean the background analyzer populated `symbol_uses` from the Kotlin source index (unqualified vs. receiver-qualified single match); `k2-resolved` comes from the semantic sidecar; `textual` is a fallback from snippet text. The isolated K2/FIR resolver adds stronger resolved edges without changing the API shape. Textual fallback deliberately suppresses highly ambiguous simple names so hot lists are not dominated by common helpers like `error` or `point`.
 
 The browser has four views:
 
@@ -156,7 +156,7 @@ Sidecar response contract:
       "callableId": "afield/CodeUseTelemetryService.summary",
       "kind": "fun",
       "sourceFile": "src/jvmMain/kotlin/afield/CodeUseTelemetryService.kt",
-      "line": 378,
+      "line": 459,
       "useKind": "call",
       "snippetLine": 1,
       "snippetColumn": 25,
@@ -188,7 +188,7 @@ The intended semantic backend is an isolated K2 Analysis API worker:
 4. For each resolved call or reference, extract the callable/class/property symbol, receiver type where available, callable id or fully qualified name, PSI source location if it points into `src/`, and snippet line/column.
 5. Persist concrete semantic edges with confidence `k2-resolved`. If a symbol resolves to a library or generated location that cannot be mapped to `src/`, keep the edge but leave source-file fields empty or fall back to the source index. If resolution fails, write `unresolved_uses` with a K2 reason.
 
-The storage and browser API already support this stronger backend: `symbol_uses.confidence` can distinguish `k2-resolved`, `source-index-match`, and `textual`, while existing `line-callers`, `related-source-for-code`, and hot-symbol queries prefer persisted symbol edges before falling back to text.
+The storage and browser API already support this stronger backend: `symbol_uses.confidence` can distinguish `k2-resolved`, the source-index values (`source-index-unique` / `source-index-qualified`), and `textual`, while existing `line-callers`, `related-source-for-code`, and hot-symbol queries prefer persisted symbol edges before falling back to text.
 
 ## Smoke test
 

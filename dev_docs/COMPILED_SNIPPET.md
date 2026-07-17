@@ -1,8 +1,10 @@
-# CompiledSnippet - Compile Once, Evaluate Many Times
+# PreparedSnippet - Compile Once, Evaluate Many Times
 
 ## Overview
 
-The `CompiledSnippet` feature allows you to compile a piece of Kotlin code once within the context of a `KotlinInterface` and then evaluate it multiple times. This is more efficient than using `exec()` repeatedly for the same code, as compilation happens only once.
+`compileSnippet` lets you compile a piece of Kotlin code once within the context of a `KotlinScriptEngine` (`box.ki`) and then evaluate it multiple times. This is more efficient than using `exec()` repeatedly for the same code, as compilation happens only once.
+
+`compileSnippet(...)` returns the `PreparedSnippet` interface (`KotlinScriptEngine.kt`). Concrete instances are either `KotlinInterface.CompiledSnippet` (the legacy K1 engine) or `KotlinInterface2.K2PreparedSnippet` (the K2 engine, which is the default backend — `afield.kotlin.engine` defaults to `"k2"`). Both implement the same `PreparedSnippet` interface, so the examples below are identical across backends.
 
 For a complete runnable example, see [CompiledSnippetExample.kt](../src/jvmMain/kotlin/afield/examples/CompiledSnippetExample.kt).
 
@@ -23,35 +25,37 @@ suspend fun compileSnippet(
     s: String,
     implicits: List<Any> = emptyList(),
     onCompileError: (List<ScriptDiagnostic>) -> Unit = {}
-): CompiledSnippet?
+): PreparedSnippet?
 
 // Blocking version (convenient for simple cases)
 fun compileSnippetAndWait(
     s: String,
     implicits: List<Any> = emptyList(),
     onCompileError: (List<ScriptDiagnostic>) -> Unit = {}
-): CompiledSnippet?
+): PreparedSnippet?
 ```
 
 ### Evaluation
 
 ```kotlin
-// Async version
-suspend fun CompiledSnippet.eval(
+// Async version — note onEvalException rethrows by default
+suspend fun PreparedSnippet.eval(
     updateContext: Boolean = false,
-    implicits: List<Any> = defaultImplicits,
+    implicits: List<Any> = emptyList(),
     onEvalError: (List<ScriptDiagnostic>) -> Unit = {},
-    onEvalException: (Throwable) -> Unit = {}
+    onEvalException: (Throwable) -> Unit = { throw it }
 ): ResultValue?
 
 // Blocking version
-fun CompiledSnippet.evalAndWait(
+fun PreparedSnippet.evalAndWait(
     updateContext: Boolean = false,
-    implicits: List<Any> = defaultImplicits,
+    implicits: List<Any> = emptyList(),
     onEvalError: (List<ScriptDiagnostic>) -> Unit = {},
     onEvalException: (Throwable) -> Unit = {}
 ): ResultValue?
 ```
+
+Passing an empty `implicits` list (the default) falls back to the implicits captured at compile time; supply a non-empty list to override them for that evaluation.
 
 ## Examples
 
@@ -240,11 +244,11 @@ if (snippet != null) {
 
 ## Implementation Notes
 
-- The `CompiledSnippet` is an inner class of `KotlinInterface`, so it holds a reference to its parent interface
+- The returned `PreparedSnippet` is a concrete inner class of the active engine: `KotlinInterface.CompiledSnippet` (K1) or `KotlinInterface2.K2PreparedSnippet` (K2, default). Either way it holds a reference to its parent engine.
 - Compiled snippets capture the compilation configuration at compile time
 - Implicit receivers and properties are resolved during evaluation, so they can change between evaluations
 - The `updateContext` parameter controls whether evaluation results are added to the context for future use
 
 ## Thread Safety
 
-Like the rest of `KotlinInterface`, `CompiledSnippet` is not thread-safe. Use appropriate synchronization if accessing from multiple threads.
+Like the rest of the Kotlin script engine, a `PreparedSnippet` is not thread-safe. Use appropriate synchronization if accessing from multiple threads.

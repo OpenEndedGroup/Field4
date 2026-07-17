@@ -4,7 +4,7 @@ This directory documents how an agent drives Field: run code, capture output and
 errors, take screenshots and video, build and save documents, and read and rewrite the
 macros users have saved. It is the map; the linked docs are the detail.
 
-The canonical model (see [`AGENT_BACKDOOR_CLEANUP_PLAN.md`](./AGENT_BACKDOOR_CLEANUP_PLAN.md)):
+The canonical model:
 
 - **`OperationTranscript`** is the semantic automation layer — a YAML language for
   building, editing, launching, and saving documents. This is what you reach for to
@@ -12,6 +12,15 @@ The canonical model (see [`AGENT_BACKDOOR_CLEANUP_PLAN.md`](./AGENT_BACKDOOR_CLE
 - **The agent backdoor** (`tools/field_backdoor.py`) is the transport and capture
   harness — server lifecycle, output/error capture, Playwright, screenshots, video,
   JVM smoke. It carries transcripts and takes the pictures.
+
+Two hard boundaries keep that split clean:
+
+- The backdoor keeps its screenshot/video/Playwright/JVM-main support — those are not
+  transcript responsibilities and stay in the harness.
+- The backdoor does **not** grow a second durable operation language. Semantic mutations
+  belong in `OperationTranscript`; the [`FIELD_MCP.md`](./FIELD_MCP.md) bridge is
+  deliberately thin (it translates MCP calls into the same backdoor/transcript messages,
+  not a new op vocabulary).
 
 The repo-wide entry point is [`../../AGENTS.md`](../../AGENTS.md); this folder is the
 detailed reference it points into.
@@ -48,7 +57,6 @@ detailed reference it points into.
 - **[`CODE_USE_TELEMETRY.md`](./CODE_USE_TELEMETRY.md)** — which snippets compiled/ran, with what result.
 - **[`SEMANTIC_RETRIEVAL.md`](./SEMANTIC_RETRIEVAL.md)** — natural-language code/doc discovery.
 - **[`TRANSCRIPT_SELF_IMPROVEMENT_LOOPS.md`](./TRANSCRIPT_SELF_IMPROVEMENT_LOOPS.md)** — turning real runs into reviewed Field improvements.
-- **[`AGENT_BACKDOOR_CLEANUP_PLAN.md`](./AGENT_BACKDOOR_CLEANUP_PLAN.md)** — the transcript/backdoor split and its boundaries.
 
 > The manual, on-disk way to edit a workspace — writing `boxid_code_.kt` sidecar files
 > and letting Field's `FileWatchManager` pick them up — is a *file-editing* convenience,

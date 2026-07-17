@@ -2,7 +2,11 @@
 
 Canonical testing map: `dev_docs/testing/TESTING_STRATEGY.md`. This file is a
 feature-specific manual checklist; the automated history panel smoke path lives
-in the browser UI regression suite.
+in the browser UI regression suite (`history-panel`).
+
+For exact current UI terminology and behavior (button labels, status text,
+timeline layout) defer to `public/docs/document_history.md` — this checklist
+avoids restating UI strings that drift with every iteration.
 
 ## Prerequisites
 - Field4 server running (`./gradlew jvmRun`)
@@ -13,24 +17,14 @@ in the browser UI regression suite.
 ### Step 1: Create Initial Document
 1. Open Field4 in browser: `http://localhost:9092/?file=test_history`
 2. Create a few boxes (e.g., 3-4 boxes)
-3. Save the document (Ctrl+S or menu)
-   - This creates the first `metadata.edn`
+3. Save the document (Ctrl+S or menu) — creates the first `metadata.edn`
 
 ### Step 2: Make Changes to Create Backups
 1. Modify one of the boxes (change its code, name, or position)
-2. Save again
-   - This creates `backups/metadata_backup_00000.edn`
-   - And updates `metadata.edn`
-
-3. Add a new box
-4. Save
-   - Creates `backups/metadata_backup_00001.edn`
-
-5. Delete a box (or tombstone it)
-6. Save
-   - Creates `backups/metadata_backup_00002.edn`
-
-7. Repeat 2-3 more times with various changes
+2. Save again — creates `backups/metadata_backup_00000.edn` and updates `metadata.edn`
+3. Add a new box, save — creates `backups/metadata_backup_00001.edn`
+4. Delete a box (or tombstone it), save — creates `backups/metadata_backup_00002.edn`
+5. Repeat 2-3 more times with various changes
 
 You should now have:
 ```
@@ -51,10 +45,10 @@ test_history/
 
 1. Open: `http://localhost:9092/history?file=test_history`
 2. **Expected**:
-   - Status shows "Connected" (green)
-   - Timeline displays with all versions
+   - Status reads "Ready" (it passes through "Connecting" then "Loading history")
+   - The horizontal rail displays all versions, positioned left-to-right
    - Versions numbered from 0 (oldest) to N (current)
-   - Current version highlighted in green at bottom
+   - The current version's dot is rendered in a distinct dark style
    - Each version shows box count and timestamp
 
 **Verification**:
@@ -62,30 +56,26 @@ test_history/
 - [ ] Version numbers are sequential
 - [ ] Timestamps are correct
 - [ ] Box counts match expectations
-- [ ] Current version is highlighted
+- [ ] Current version is visually distinct
 
 ### Test 2: Version Selection
 **Goal**: Verify version selection and detail display
 
 1. Click on version #1 (second oldest)
 2. **Expected**:
-   - Info panel appears on right
-   - Shows correct version number
-   - Shows timestamp
-   - Shows box count
-   - Shows filename
-   - Restore button is enabled (not disabled)
+   - The side (`aside`) summary panel updates with version number, timestamp,
+     box count, and filename
+   - The "Apply — full restore" button is enabled
 
-3. Click on current version (last one)
+3. Click on the current version (last one)
 4. **Expected**:
-   - Restore button is disabled
-   - Button text changes to "Current Version"
+   - The "Apply — full restore" button is disabled (its label does not change)
 
 **Verification**:
-- [ ] Info panel appears on click
+- [ ] Summary panel updates on click
 - [ ] All details are correct
-- [ ] Current version disables restore button
-- [ ] Non-current versions enable restore button
+- [ ] Current version disables the restore button
+- [ ] Non-current versions enable the restore button
 
 ### Test 3: Version Restoration
 **Goal**: Verify restoring a previous version works correctly
@@ -93,13 +83,11 @@ test_history/
 **Setup**: Note the current state (which boxes exist)
 
 1. Click on version #2 (middle version)
-2. Click "Restore This Version"
-3. Confirm in the dialog
+2. Click "Apply — full restore"
+3. Confirm in the dialog (`Restore the whole document to version #2?`)
 4. **Expected**:
-   - Green success notification appears
-   - "Version restored successfully! Refresh..."
-   - Timeline reloads
-   - New version appears at bottom (the restored state)
+   - Success notification "Version restored" appears
+   - Timeline reloads with a new (restored) current version
 
 5. Go back to main document: `http://localhost:9092/?file=test_history`
 6. **Expected**:
@@ -120,45 +108,32 @@ test_history/
 
 1. After restoring version #2 (from Test 3)
 2. Check file: `test_history/versions.edn`
-3. **Expected**:
+3. **Expected** (`:names` is always written, even when empty):
    ```clojure
-   {:transitions [{:fromIndex 5
-                   :toIndex 2
-                   :timestamp <some-timestamp>}]}
+   {:transitions [{:fromIndex 5 :toIndex 2 :timestamp <some-timestamp>}]
+    :names {}}
    ```
-
-4. Restore another version (e.g., #4)
-5. Check `versions.edn` again
-6. **Expected**:
-   ```clojure
-   {:transitions [{:fromIndex 5
-                   :toIndex 2
-                   :timestamp <timestamp1>}
-                  {:fromIndex 2
-                   :toIndex 4
-                   :timestamp <timestamp2>}]}
-   ```
+4. Restore another version (e.g., #4), check `versions.edn` again
+5. **Expected**: a second transition appended to `:transitions`
 
 **Verification**:
 - [ ] versions.edn is created
-- [ ] Contains transitions array
+- [ ] Contains a `:transitions` array and a `:names` map
 - [ ] Each transition has fromIndex, toIndex, timestamp
 - [ ] Multiple restores add multiple transitions
 
 ### Test 5: Transition Visualization
-**Goal**: Verify transition arrows appear on timeline
+**Goal**: Verify transition paths appear on the timeline
 
 1. After performing multiple restorations (Test 4)
 2. Refresh history page: `http://localhost:9092/history?file=test_history`
 3. **Expected**:
-   - Curved dashed lines between non-sequential versions
-   - Arrows pointing to the "to" version
-   - Lines appear in semi-transparent white
+   - Thin gray dashed bezier curves connect the non-sequential rail positions
+     (no arrowheads)
 
 **Verification**:
 - [ ] Transition lines are visible
-- [ ] Lines connect correct versions
-- [ ] Arrows point in correct direction
+- [ ] Lines connect the correct versions
 - [ ] Multiple transitions all display
 
 ### Test 6: Empty History
@@ -168,29 +143,23 @@ test_history/
 2. Don't save anything
 3. Open: `http://localhost:9092/history?file=fresh_document`
 4. **Expected**:
-   - "No version history available yet." message
-   - No timeline displayed
+   - The live `metadata.edn` (if present) still shows as a single current version;
+     confirm the actual empty-state rendering against the current page rather than
+     assuming a specific message string
 
 **Verification**:
-- [ ] Empty state message appears
+- [ ] Page renders without crashing
 - [ ] No errors in console
-- [ ] Page doesn't crash
+- [ ] Behavior with zero backups is sensible
 
 ### Test 7: Hover Interactions
 **Goal**: Verify tooltips and hover states
 
 1. Open history page with multiple versions
 2. Hover over a version node
-3. **Expected**:
-   - Circle grows slightly
-   - Stroke gets thicker
-   - Tooltip appears showing exact timestamp
-   - Tooltip follows mouse
-
-4. Move mouse away
-5. **Expected**:
-   - Circle returns to normal
-   - Tooltip disappears
+3. **Expected**: node grows / stroke thickens, and a tooltip with the exact
+   timestamp appears and follows the mouse
+4. Move mouse away — node returns to normal, tooltip disappears
 
 **Verification**:
 - [ ] Hover effects work
@@ -201,22 +170,22 @@ test_history/
 ### Test 8: Error Handling
 **Goal**: Verify error scenarios are handled gracefully
 
-1. Try to restore with invalid version (manually edit JavaScript console):
+1. Try to restore with an invalid version (via the JavaScript console):
    ```javascript
    send({name: 'restore-history-version', payload: {versionIndex: 999}})
    ```
 2. **Expected**:
-   - Red error notification
-   - "Failed to restore version: Invalid version index"
+   - Error notification with the client-visible text "Failed to restore version"
+     (the detailed reason, e.g. the invalid index, appears only in server logs)
 
-3. Disconnect server while viewing history
+3. Disconnect the server while viewing history
 4. **Expected**:
    - Status changes to "Disconnected"
-   - Reconnects automatically after 2 seconds
+   - Reconnects automatically after 1.5 seconds
 
 **Verification**:
-- [ ] Invalid restore shows error notification
-- [ ] Error doesn't crash page
+- [ ] Invalid restore shows an error notification
+- [ ] Error doesn't crash the page
 - [ ] Connection loss is detected
 - [ ] Auto-reconnect works
 
@@ -225,9 +194,8 @@ test_history/
 
 1. Tab through the page
 2. **Expected**:
-   - Can focus on version nodes
-   - Can focus on restore button
-   - Enter key works on focused elements
+   - Can focus version nodes and the restore button
+   - Enter activates focused elements
 
 **Verification**:
 - [ ] Tab navigation works
@@ -238,52 +206,45 @@ test_history/
 **Goal**: Verify restored boxes have correct markers
 
 1. Restore version #2
-2. In main document, inspect a restored box's properties
+2. In the main document, inspect a restored box's properties
 3. **Expected**:
-   - Box has `_restored_from_version: 2` property
+   - Box has `_restored_from_version: 2`
    - Tombstoned boxes have `_tombstone: true`
-   - Un-tombstoned boxes have `_tombstone: false` (or property removed)
+   - Un-tombstoned boxes have `_tombstone: false` (or the property removed)
 
 **Verification**:
-- [ ] _restored_from_version property is set
+- [ ] `_restored_from_version` is set
 - [ ] Tombstoned boxes marked correctly
 - [ ] Un-tombstoned boxes marked correctly
 
 ## Known Limitations
-1. Must refresh main document page to see restored changes
-2. No undo for restoration (but new backup is created)
-3. Large number of versions (>100) may be slow
-4. No diff view between versions yet
+1. Must refresh the main document page to see restored changes
+2. No undo for restoration (but a new backup is created first)
+3. Large numbers of versions (>100) may be slow
 
 ## Troubleshooting
 
 ### Timeline doesn't appear
-- Check browser console for errors
-- Verify `?file=` parameter matches document name
-- Ensure document has at least one save
+- Check the browser console for errors
+- Verify the `?file=` parameter matches the document name
+- Ensure the document has at least one save
 
 ### Restore doesn't work
-- Check server console for errors
-- Verify backup files exist in `backups/` directory
-- Ensure backup files are valid EDN format
+- Check the server console for errors
+- Verify backup files exist in `backups/`
+- Ensure backup files are valid EDN
 
 ### Transitions don't show
-- Check that `versions.edn` exists
-- Verify transitions array is populated
-- Look for JavaScript errors in console
+- Check that `versions.edn` exists and its `:transitions` array is populated
+- Look for JavaScript errors in the console
 
 ## Success Criteria
-All test cases should pass with:
-- [ ] No errors in browser console
+- [ ] No errors in the browser console
 - [ ] No errors in server logs
 - [ ] All UI elements work as expected
 - [ ] Data persists correctly
 - [ ] Restoration works as documented
 
 ## Report Issues
-If any tests fail, note:
-1. Which test failed
-2. Expected vs actual behavior
-3. Browser console errors
-4. Server console errors
-5. Contents of problematic files (if relevant)
+If any tests fail, note: which test, expected vs actual behavior, browser console
+errors, server console errors, and contents of problematic files (if relevant).
