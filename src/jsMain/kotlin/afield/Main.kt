@@ -66,7 +66,7 @@ external fun switchToDefaultDocs(): dynamic
 external fun initMenuSupport(): dynamic
 
 
-external fun setDecorationsForEditor(uid: String, property: String, box: HTMLElement, decorSpec : dynamic)
+external fun setDecorationsForEditor(uid: String, property: String, box: HTMLElement, decorSpec: dynamic)
 
 external fun setActions(actions: dynamic): dynamic
 
@@ -772,7 +772,7 @@ private fun findAbsoluteFileProxyBox(path: String): HTMLElement? {
     return boxes.firstOrNull {
         val box = it.asDynamic()
         (box.file_proxy_mode as? String) == "absolute" &&
-            (box.file_proxy_path as? String) == path
+                (box.file_proxy_path as? String) == path
     } as? HTMLElement
 }
 
@@ -885,7 +885,13 @@ private fun drawActorArc(arc: ActorArc) {
  * (matching parent→child connection placement), with a small dot at
  * the receiving (end) side. Returns the clipped start/end points.
  */
-private fun drawClippedLine(parent: SVGElement, fromRect: DOMRect, toRect: DOMRect, color: String, svgNs: String): Pair<Point?, Point?> {
+private fun drawClippedLine(
+    parent: SVGElement,
+    fromRect: DOMRect,
+    toRect: DOMRect,
+    color: String,
+    svgNs: String
+): Pair<Point?, Point?> {
     val (fromClip, toClip) = connectCenters(fromRect, toRect)
     val a = fromClip.point
     val b = toClip.point
@@ -999,7 +1005,8 @@ private fun svgContentClientRect(svg: SVGElement): Rect? = runCatching {
 private fun svgGraphicClientRect(element: SVGElement): Rect? = runCatching {
     val bbox = element.asDynamic().getBBox?.invoke() ?: return@runCatching null
     val ctm = element.asDynamic().getScreenCTM?.invoke() ?: return@runCatching null
-    val pointFactory = (element.asDynamic().ownerSVGElement ?: element).asDynamic().createSVGPoint ?: return@runCatching null
+    val pointFactory =
+        (element.asDynamic().ownerSVGElement ?: element).asDynamic().createSVGPoint ?: return@runCatching null
     val x = (bbox.x as? Number)?.toDouble() ?: return@runCatching null
     val y = (bbox.y as? Number)?.toDouble() ?: return@runCatching null
     val w = (bbox.width as? Number)?.toDouble() ?: return@runCatching null
@@ -1086,12 +1093,12 @@ private fun hasStyledBox(element: HTMLElement): Boolean {
     val background = style.backgroundColor.trim().lowercase()
     val hasBackground =
         background != "transparent" &&
-        background != "rgba(0, 0, 0, 0)" &&
-        background != "rgba(0,0,0,0)"
+                background != "rgba(0, 0, 0, 0)" &&
+                background != "rgba(0,0,0,0)"
     val borderWidth = cssPixelsOrZero(style.borderTopWidth) +
-        cssPixelsOrZero(style.borderRightWidth) +
-        cssPixelsOrZero(style.borderBottomWidth) +
-        cssPixelsOrZero(style.borderLeftWidth)
+            cssPixelsOrZero(style.borderRightWidth) +
+            cssPixelsOrZero(style.borderBottomWidth) +
+            cssPixelsOrZero(style.borderLeftWidth)
     return hasBackground || borderWidth > 0.0
 }
 
@@ -1139,8 +1146,8 @@ private fun disclosureBodyClientRect(disclosure: HTMLElement): Rect? {
                 is HTMLElement -> {
                     val text = directText(element)
                     val include = element.children.length == 0 ||
-                        hasStyledBox(element) ||
-                        text.isNotEmpty()
+                            hasStyledBox(element) ||
+                            text.isNotEmpty()
                     if (include) rect else null
                 }
 
@@ -1175,7 +1182,8 @@ private fun collectOutputScreenshotRects(box: HTMLElement): List<Rect> {
         val disclosureTitleRect = disclosureTitleClientRect(disclosure)
         if (disclosureHasControls(disclosure)) {
             val bodyRect = disclosureBodyClientRect(disclosure) ?: disclosureRect
-            return if (disclosureTitleRect == null) bodyRect else unionRects(listOf(disclosureTitleRect, bodyRect)) ?: bodyRect
+            return if (disclosureTitleRect == null) bodyRect else unionRects(listOf(disclosureTitleRect, bodyRect))
+                ?: bodyRect
         }
         val svgRects = disclosure.querySelectorAll("svg").asList()
             .mapNotNull { node ->
@@ -1194,10 +1202,12 @@ private fun collectOutputScreenshotRects(box: HTMLElement): List<Rect> {
                     listOf(svgRects.maxByOrNull { it.w * it.h } ?: svgRects.last())
                 }
             ) ?: disclosureRect
-            return if (disclosureTitleRect == null) bodyRect else unionRects(listOf(disclosureTitleRect, bodyRect)) ?: bodyRect
+            return if (disclosureTitleRect == null) bodyRect else unionRects(listOf(disclosureTitleRect, bodyRect))
+                ?: bodyRect
         }
         val bodyRect = disclosureBodyClientRect(disclosure) ?: disclosureRect
-        return if (disclosureTitleRect == null) bodyRect else unionRects(listOf(disclosureTitleRect, bodyRect)) ?: bodyRect
+        return if (disclosureTitleRect == null) bodyRect else unionRects(listOf(disclosureTitleRect, bodyRect))
+            ?: bodyRect
     }
 
     if (disclosureElements.size > 1) {
@@ -1500,7 +1510,8 @@ private fun fitBoxWidthToOutputsForScreenshot(box: HTMLElement, outputArea: HTML
                     if (!isOverlayVisible(element)) return@mapNotNull null
                     val edgeW = element.getBoundingClientRect().right - contentRect.left
                     val html = element as? HTMLElement
-                    val intrinsicWidth = html?.let { dataAttributePixelsOrZero(it, "data-afield-intrinsic-width") } ?: 0.0
+                    val intrinsicWidth =
+                        html?.let { dataAttributePixelsOrZero(it, "data-afield-intrinsic-width") } ?: 0.0
                     max(
                         edgeW,
                         max(
@@ -2046,9 +2057,9 @@ private fun navigationSafeViewportRect(padding: Double = 16.0, occluderGap: Doub
     val occluderBottom = occluder.bottom
 
     val overlapsBase = occluder.x < base.right &&
-        occluderRight > base.x &&
-        occluder.y < base.bottom &&
-        occluderBottom > base.y
+            occluderRight > base.x &&
+            occluder.y < base.bottom &&
+            occluderBottom > base.y
     if (!overlapsBase) return base
 
     // Monaco/docs panel is generally side-docked; carve it out horizontally.
@@ -2194,7 +2205,11 @@ private fun prepareWindowScreenshot(req: WindowScreenshotRequest): WindowScreens
         return WindowScreenshotResponse(uid = req.uid, success = false, message = "showEditor requires a target box")
     }
     if (req.editorOnly && (!req.showEditor || box == null)) {
-        return WindowScreenshotResponse(uid = req.uid, success = false, message = "editorOnly requires a target box and showEditor")
+        return WindowScreenshotResponse(
+            uid = req.uid,
+            success = false,
+            message = "editorOnly requires a target box and showEditor"
+        )
     }
 
     selectedProperty = req.property
@@ -2683,7 +2698,8 @@ private fun stepBackgroundLerp(): Boolean {
     val deltaLarge = dotAlphaLargeTarget - dotAlphaLarge
     val deltaAxis = axisAlphaTarget - axisAlpha
     val deltaEditor = editorOpacityTarget - editorOpacity
-    val changed = abs(deltaSmall) > 0.0005 || abs(deltaLarge) > 0.0005 || abs(deltaAxis) > 0.0005 || abs(deltaEditor) > 0.005
+    val changed =
+        abs(deltaSmall) > 0.0005 || abs(deltaLarge) > 0.0005 || abs(deltaAxis) > 0.0005 || abs(deltaEditor) > 0.005
 
     dotAlphaSmall += deltaSmall * 0.18
     dotAlphaLarge += deltaLarge * 0.18
@@ -2726,8 +2742,18 @@ private fun bumpBackgroundVisibility() {
 fun updateBackgroundGrid(translationX: Double, translationY: Double, panning: Boolean = false) {
     if (!::mainViewport.isInitialized) return
 
-    val posSmall = "${normalizeOffset(translationX, dotSpacingSmall) - (dotSpacingSmall / 2) + 0.5}px ${normalizeOffset(translationY, dotSpacingSmall) - (dotSpacingSmall / 2) + 0.5}px"
-    val posLarge = "${normalizeOffset(translationX, dotSpacingLarge) - (dotSpacingLarge / 2) + 0.5}px ${normalizeOffset(translationY, dotSpacingLarge) - (dotSpacingLarge / 2) + 0.5}px"
+    val posSmall = "${normalizeOffset(translationX, dotSpacingSmall) - (dotSpacingSmall / 2) + 0.5}px ${
+        normalizeOffset(
+            translationY,
+            dotSpacingSmall
+        ) - (dotSpacingSmall / 2) + 0.5
+    }px"
+    val posLarge = "${normalizeOffset(translationX, dotSpacingLarge) - (dotSpacingLarge / 2) + 0.5}px ${
+        normalizeOffset(
+            translationY,
+            dotSpacingLarge
+        ) - (dotSpacingLarge / 2) + 0.5
+    }px"
     val posAxisX = "${translationX}px 0px"
     val posAxisY = "0px ${translationY}px"
 
@@ -2742,13 +2768,15 @@ fun updateBackgroundGrid(translationX: Double, translationY: Double, panning: Bo
 fun initializeBackgroundGrid(host: HTMLElement) {
     mainViewport = host
     host.style.backgroundColor = "rgb(20, 20, 20)"
-                        host.style.backgroundImage = "linear-gradient(90deg, rgba(255,255,255,var(--axis-alpha)) 1px, rgba(255,255,255,0) 1px), " +
-                            "linear-gradient(0deg, rgba(255,255,255,var(--axis-alpha)) 1px, rgba(255,255,255,0) 1px), " +
-                        "radial-gradient(circle at 50% 50%, rgba(255,255,255,var(--dot-alpha-25)) 0.8px, rgba(255,255,255,0) 1.2px), " +
-                        "radial-gradient(circle at 50% 50%, rgba(255,255,255,var(--dot-alpha-100)) 1.3px, rgba(255,255,255,0) 2.0px), " +
-                        "var(--field-vignette-background)"
+    host.style.backgroundImage =
+        "linear-gradient(90deg, rgba(255,255,255,var(--axis-alpha)) 1px, rgba(255,255,255,0) 1px), " +
+                "linear-gradient(0deg, rgba(255,255,255,var(--axis-alpha)) 1px, rgba(255,255,255,0) 1px), " +
+                "radial-gradient(circle at 50% 50%, rgba(255,255,255,var(--dot-alpha-25)) 0.8px, rgba(255,255,255,0) 1.2px), " +
+                "radial-gradient(circle at 50% 50%, rgba(255,255,255,var(--dot-alpha-100)) 1.3px, rgba(255,255,255,0) 2.0px), " +
+                "var(--field-vignette-background)"
     host.style.backgroundRepeat = "no-repeat, no-repeat, repeat, repeat, no-repeat"
-    host.style.backgroundSize = "1px 100%, 100% 1px, ${dotSpacingSmall}px ${dotSpacingSmall}px, ${dotSpacingLarge}px ${dotSpacingLarge}px, 100% 100%"
+    host.style.backgroundSize =
+        "1px 100%, 100% 1px, ${dotSpacingSmall}px ${dotSpacingSmall}px, ${dotSpacingLarge}px ${dotSpacingLarge}px, 100% 100%"
     host.style.backgroundPosition = "0px 0px, 0px 0px, 0px 0px, 0px 0px, center center"
     installWebGLBackground(host)
     applyBackgroundAlphas()
@@ -2850,7 +2878,10 @@ fun loadChatMessages(slideshowId: String, slideNumber: Int) {
 
 fun postChatMessage(slideshowId: String, slideNumber: Int, message: String) {
     val username = URLSearchParams(document.location?.search).get("username") ?: "anonymous"
-    send("post-chat-message", js("{slideshowId: slideshowId, slideNumber: slideNumber, username: username, message: message}"))
+    send(
+        "post-chat-message",
+        js("{slideshowId: slideshowId, slideNumber: slideNumber, username: username, message: message}")
+    )
 }
 
 private fun createChatWidget(
@@ -2940,7 +2971,12 @@ private fun createChatWidget(
     return widget
 }
 
-fun createChatUI(slideshowId: String, slideNumber: Int, expanded: Boolean = false, showHeader: Boolean = true): HTMLElement {
+fun createChatUI(
+    slideshowId: String,
+    slideNumber: Int,
+    expanded: Boolean = false,
+    showHeader: Boolean = true
+): HTMLElement {
     return createChatWidget(slideshowId, slideNumber, expanded, showHeader).container
 }
 
@@ -3373,7 +3409,10 @@ private fun applyFadeVisibility(element: HTMLElement, show: Boolean, duration: D
             element.asDynamic().__visibilityHideTimeout = null
         }, duration.toInt())
         element.asDynamic().__visibilityHideTimeout = hideHandle
-        layerDebugLog("applyFadeVisibility scheduled hide timer", json("id" to uid, "handle" to hideHandle, "duration" to duration))
+        layerDebugLog(
+            "applyFadeVisibility scheduled hide timer",
+            json("id" to uid, "handle" to hideHandle, "duration" to duration)
+        )
     }
 }
 
@@ -3536,8 +3575,10 @@ private fun findDirectionalSpatialTargets(anchor: HTMLElement): Map<CardinalDire
             if (dy > 0) CardinalDirection.SOUTH else CardinalDirection.NORTH
         }
 
-        val primary = if (direction == CardinalDirection.EAST || direction == CardinalDirection.WEST) abs(dx) else abs(dy)
-        val secondary = if (direction == CardinalDirection.EAST || direction == CardinalDirection.WEST) abs(dy) else abs(dx)
+        val primary =
+            if (direction == CardinalDirection.EAST || direction == CardinalDirection.WEST) abs(dx) else abs(dy)
+        val secondary =
+            if (direction == CardinalDirection.EAST || direction == CardinalDirection.WEST) abs(dy) else abs(dx)
         val score = primary + secondary * 0.2
 
         val existing = best[direction]
@@ -3643,8 +3684,16 @@ private fun renderSpatialNavOverlay(anchor: HTMLElement) {
         bookmarkMap[target.asDynamic().uid as? String ?: ""]?.let { slots ->
             val (arrowLeft, arrowTop) = when (direction) {
                 CardinalDirection.NORTH -> Pair(targetHighlight.left + targetHighlight.width / 2.0, targetHighlight.top)
-                CardinalDirection.SOUTH -> Pair(targetHighlight.left + targetHighlight.width / 2.0, targetHighlight.bottom)
-                CardinalDirection.EAST -> Pair(targetHighlight.right, targetHighlight.top + targetHighlight.height / 2.0)
+                CardinalDirection.SOUTH -> Pair(
+                    targetHighlight.left + targetHighlight.width / 2.0,
+                    targetHighlight.bottom
+                )
+
+                CardinalDirection.EAST -> Pair(
+                    targetHighlight.right,
+                    targetHighlight.top + targetHighlight.height / 2.0
+                )
+
                 CardinalDirection.WEST -> Pair(targetHighlight.left, targetHighlight.top + targetHighlight.height / 2.0)
             }
             appendBookmarkBadges(targetHighlight, slots, arrowLeft, arrowTop)
@@ -3740,10 +3789,10 @@ private fun installSpatialNavigationShortcut() {
         }
         val noInterveningKey = lastSerial != 0 && lastSerial == keydownSerial - 1
         val shouldTrigger = !alreadyPressed &&
-            lastPure &&
-            isPure &&
-            noInterveningKey &&
-            now - lastDown < spatialNavDoubleTapThresholdMs
+                lastPure &&
+                isPure &&
+                noInterveningKey &&
+                now - lastDown < spatialNavDoubleTapThresholdMs
 
         if (shouldTrigger) {
             event.preventDefault()
@@ -3883,7 +3932,7 @@ private fun bringBoxToFront(it: HTMLElement) {
     val selectedZ = it.style.zIndex.toIntOrNull() ?: 0
     if (maxBox == null) return
     if (maxCount == 1 && maxBox != it) {
-            maxBox.style.zIndex = selectedZ.toString()
+        maxBox.style.zIndex = selectedZ.toString()
         it.style.zIndex = maxZ.toString()
     } else {
         it.style.zIndex = (maxZ + 1).toString()
@@ -3901,9 +3950,10 @@ fun selectBox(it: HTMLElement) {
             if (explicitPropertySelectionInProgress) {
                 // Keep explicit property navigation from becoming a default for later box selections.
             } else if (editorPropertyStickinessMode() == "per-box") {
-                setSelectedEditorProperty(rememberedEditorPropertyForBox(it)
-                    ?: defaultProperty?.takeIf { property -> property.isNotBlank() }
-                    ?: "code")
+                setSelectedEditorProperty(
+                    rememberedEditorPropertyForBox(it)
+                        ?: defaultProperty?.takeIf { property -> property.isNotBlank() }
+                        ?: "code")
             } else if (editorPropertyStickinessMode() == "global" && boxHasPropertyContents(it, editorProperty)) {
                 setSelectedEditorProperty(editorProperty)
             } else if (!defaultProperty.isNullOrBlank()) {
@@ -3935,7 +3985,8 @@ fun selectBox(it: HTMLElement) {
 
 private const val FILE_PROXY_MENU_BOX_OFFSET_X = 120.0
 private const val FILE_PROXY_MENU_BOX_OFFSET_Y = 45.0
-private const val DESKTOP_DROP_PATH_HINT = "Run Field in the full Desktop client to use drag-and-drop with full file paths."
+private const val DESKTOP_DROP_PATH_HINT =
+    "Run Field in the full Desktop client to use drag-and-drop with full file paths."
 
 private data class DroppedFileProxy(
     val file: dynamic,
@@ -4067,7 +4118,8 @@ private fun copyDroppedPathToClipboard(dropped: DroppedFileProxy) {
             fallback.style.left = "-10000px"
             document.body?.appendChild(fallback)
             fallback.select()
-            val copied = runCatching { document.asDynamic().execCommand("copy") as? Boolean ?: false }.getOrDefault(false)
+            val copied =
+                runCatching { document.asDynamic().execCommand("copy") as? Boolean ?: false }.getOrDefault(false)
             fallback.parentElement?.removeChild(fallback)
             notify(
                 if (copied) "Copied to clipboard" else "Could not write to clipboard. $DESKTOP_DROP_PATH_HINT",
@@ -4133,11 +4185,11 @@ fun openUserThemeProxyBox() {
 
     val canvasDyn = mainCanvas.unsafeCast<dynamic>()
     val x = window.innerWidth.toDouble() / 2.0 -
-        ((canvasDyn.data_x as? Number)?.toDouble() ?: 0.0) -
-        FILE_PROXY_MENU_BOX_OFFSET_X
+            ((canvasDyn.data_x as? Number)?.toDouble() ?: 0.0) -
+            FILE_PROXY_MENU_BOX_OFFSET_X
     val y = window.innerHeight.toDouble() / 2.0 -
-        ((canvasDyn.data_y as? Number)?.toDouble() ?: 0.0) -
-        FILE_PROXY_MENU_BOX_OFFSET_Y
+            ((canvasDyn.data_y as? Number)?.toDouble() ?: 0.0) -
+            FILE_PROXY_MENU_BOX_OFFSET_Y
 
     sendCreateFileProxyBox(
         CreateFileProxyBox(
@@ -4181,11 +4233,11 @@ private fun showDroppedFileProxyMenu(event: dynamic, dropped: DroppedFileProxy) 
 
     val canvasDyn = mainCanvas.unsafeCast<dynamic>()
     val x = ((event.pageX as? Number)?.toDouble() ?: 0.0) -
-        ((canvasDyn.data_x as? Number)?.toDouble() ?: 0.0) -
-        FILE_PROXY_MENU_BOX_OFFSET_X
+            ((canvasDyn.data_x as? Number)?.toDouble() ?: 0.0) -
+            FILE_PROXY_MENU_BOX_OFFSET_X
     val y = ((event.pageY as? Number)?.toDouble() ?: 0.0) -
-        ((canvasDyn.data_y as? Number)?.toDouble() ?: 0.0) -
-        FILE_PROXY_MENU_BOX_OFFSET_Y
+            ((canvasDyn.data_y as? Number)?.toDouble() ?: 0.0) -
+            FILE_PROXY_MENU_BOX_OFFSET_Y
     val menus = arrayOf(
         json(
             "text" to "Copy path to clipboard",
@@ -4358,9 +4410,10 @@ suspend fun main() {
     window.unsafeCast<dynamic>().switchToProperty = { uid: String, property: String ->
         switchSelectionToProperty(uid, property, syncEditor = true)
     }
-    window.unsafeCast<dynamic>().navigateToBoxProperty = { uid: String, property: String, scrollToLine: Int?, highlightLine: Int? ->
-        navigateToBoxProperty(uid, property, scrollToLine, highlightLine)
-    }
+    window.unsafeCast<dynamic>().navigateToBoxProperty =
+        { uid: String, property: String, scrollToLine: Int?, highlightLine: Int? ->
+            navigateToBoxProperty(uid, property, scrollToLine, highlightLine)
+        }
     window.unsafeCast<dynamic>().selectBox = ::selectBox
     window.unsafeCast<dynamic>().deselectBox = ::deselectBox
     window.asDynamic().fieldBackdoorPrepareBoxScreenshot = { raw: dynamic -> prepareBoxScreenshotJson(raw) }
@@ -4407,7 +4460,11 @@ suspend fun main() {
         val w = window.unsafeCast<dynamic>()
         val fn = w.openAnywherePalette
         if (fn != undefined && fn != null) {
-            try { fn() } catch (e: Exception) { console.info("[palette] openAnywherePalette failed", e) }
+            try {
+                fn()
+            } catch (e: Exception) {
+                console.info("[palette] openAnywherePalette failed", e)
+            }
         } else {
             console.info("[palette] openAnywherePalette not available")
         }
@@ -4576,7 +4633,8 @@ suspend fun main() {
 
         if (found != null) {
             // Add transition CSS
-            found.style.transition = "transform ${set.duration}ms ease-in-out, width ${set.duration}ms ease-in-out, height ${set.duration}ms ease-in-out"
+            found.style.transition =
+                "transform ${set.duration}ms ease-in-out, width ${set.duration}ms ease-in-out, height ${set.duration}ms ease-in-out"
 
             // Apply new position and size
             applyFrameToBox(found, set.value)
@@ -4693,15 +4751,15 @@ suspend fun main() {
                     requestConnectionGroupRebuild()
                 }
             }
+
             "offline" -> {
-                if (found !=null) {
+                if (found != null) {
                     if (set.number) {
                         found.unsafeCast<HTMLElement>().classList.add("offline")
                         found.asDynamic().offline = true
                         applyBoxVisibilityImmediate(found.unsafeCast<HTMLElement>())
                         requestConnectionGroupRebuild()
-                    }
-                    else {
+                    } else {
                         found.unsafeCast<HTMLElement>().classList.remove("offline")
                         found.asDynamic().offline = false
                         LoadingTracker.boxOnline(u)
@@ -4711,16 +4769,19 @@ suspend fun main() {
                     }
                 }
             }
+
             AI4_AUTO_NAME_PROPERTY -> {
                 found?.let {
                     applyAi4AutoNameStyle(it.unsafeCast<HTMLElement>(), set.number)
                 }
             }
+
             "_tombstone" -> {
                 var target = found
                 if (target == null) {
                     mainCanvas.append {
-                        target = createBox("untitled", frame = Rect(0.0, 0.0, 0.0, 0.0), uid = u, sendInitialSync = false)
+                        target =
+                            createBox("untitled", frame = Rect(0.0, 0.0, 0.0, 0.0), uid = u, sendInitialSync = false)
                     }
                 }
                 target?.let { boxEl ->
@@ -4746,7 +4807,7 @@ suspend fun main() {
                     requestConnectionGroupRebuild()
                 }
             }
-         }
+        }
         Handled.yes
     }
 
@@ -4827,12 +4888,12 @@ suspend fun main() {
         val disclosureContent = (contain.querySelectorAll(".disclosure").asList().firstOrNull {
             (it.asDynamic().__disclosureId as? String) == "nested"
         } as? HTMLElement)?.querySelector(".disclosure-content") as? HTMLElement ?: (
-            inter.upsertDisclosure as (String, String, String) -> HTMLElement
-        ).invoke(
-            "nested",
-            "nested",
-            ""
-        )
+                inter.upsertDisclosure as (String, String, String) -> HTMLElement
+                ).invoke(
+                "nested",
+                "nested",
+                ""
+            )
         val nestedRoot = disclosureContent.querySelector(".nested-root") as? HTMLElement ?: run {
             val host = document.createElement("div") as HTMLElement
             host.classList.add("nested-root")
@@ -4990,7 +5051,7 @@ suspend fun main() {
 
         when (set.property) {
             "outputarea" -> {
-        handleOutputAreaRequest(found, set)
+                handleOutputAreaRequest(found, set)
             }
         }
         // Acknowledge receipt so the backend can release a back pressure slot.
@@ -5125,7 +5186,7 @@ suspend fun main() {
             set.property == "code_decorationState" -> {
                 found.unsafeCast<dynamic>().decorSpec = set.value
                 val sv = JSON.parse<dynamic>(set.value)
-                setDecorationsForEditor(u, "code",found.unsafeCast<HTMLElement>(), sv)
+                setDecorationsForEditor(u, "code", found.unsafeCast<HTMLElement>(), sv)
             }
 
             set.property == "code_language" -> {
@@ -5313,17 +5374,17 @@ suspend fun main() {
                 }
 
                 "layers" -> {
-                layerDebugLog(
-                    "recv set-string layers",
-                    json(
-                        "uid" to set.uid,
-                        "value" to set.value,
-                        "visibleLayers" to visibleLayers.toList()
+                    layerDebugLog(
+                        "recv set-string layers",
+                        json(
+                            "uid" to set.uid,
+                            "value" to set.value,
+                            "visibleLayers" to visibleLayers.toList()
+                        )
                     )
-                )
-                found.unsafeCast<dynamic>().box_layers = set.value
-                updateAllBoxVisibility()
-                requestConnectionGroupRebuild()
+                    found.unsafeCast<dynamic>().box_layers = set.value
+                    updateAllBoxVisibility()
+                    requestConnectionGroupRebuild()
                 }
 
                 "layerFrames" -> {
@@ -5332,7 +5393,11 @@ suspend fun main() {
                         val parsed = JSON.parse<dynamic>(set.value)
                         found.unsafeCast<dynamic>().box_layerFrames = parsed
                     } catch (e: Exception) {
-                        console.error("Failed to parse layerFrames for box " + set.uid + ". Value: '" + set.value.take(100) + "...'", e)
+                        console.error(
+                            "Failed to parse layerFrames for box " + set.uid + ". Value: '" + set.value.take(
+                                100
+                            ) + "...'", e
+                        )
                     }
                 }
 
@@ -5376,7 +5441,8 @@ suspend fun main() {
                 borderRadius = "8px"
                 boxShadow = "0 4px 12px rgba(0, 0, 0, 0.4)"
                 zIndex = "10000"
-                fontFamily = "\"Iosevka\", \"Iosevka Term\", \"Iosevka Nerd Font\", \"Fira Code\", Menlo, Consolas, monospace"
+                fontFamily =
+                    "\"Iosevka\", \"Iosevka Term\", \"Iosevka Nerd Font\", \"Fira Code\", Menlo, Consolas, monospace"
                 fontSize = "13px"
                 lineHeight = "1.6"
                 unsafeCast<dynamic>().backdropFilter = "blur(12px) brightness(1.04)"
@@ -5443,6 +5509,7 @@ suspend fun main() {
                             // Send command to server to control slideshow
                             send("slideshow-command", js("{command: command}"))
                         }
+
                         href.startsWith("#custom:") -> {
                             val callbackName = href.substring(8) // Remove "#custom:" prefix
                             // Send callback command to server
@@ -5564,7 +5631,17 @@ suspend fun main() {
 
     }.first()
 
-    registerOnOpen(Message("hello").payload(Hello(filename, username, sessionKey = sessionKey, scratch = scratch, shaderSelectionContext = shaderSelectionContext)))
+    registerOnOpen(
+        Message("hello").payload(
+            Hello(
+                filename,
+                username,
+                sessionKey = sessionKey,
+                scratch = scratch,
+                shaderSelectionContext = shaderSelectionContext
+            )
+        )
+    )
     initializeClient()
 
     overlaySVGLayer = document.getElementById("overlaysvglayer") as SVGSVGElement
@@ -5584,8 +5661,8 @@ suspend fun main() {
     }
 
     mainViewport.onmousedown = { event ->
-        if (event.buttons.toInt()==4) {}
-        else {
+        if (event.buttons.toInt() == 4) {
+        } else {
             if (event.target == mainViewport) {
                 canvasGestures.down(event)
             } else {
@@ -5594,12 +5671,13 @@ suspend fun main() {
         }
     }
     mainViewport.onmouseup = { event ->
-        if (event.buttons.toInt()==4) {} else {
+        if (event.buttons.toInt() == 4) {
+        } else {
             canvasGestures.up(event)
         }
     }
     mainViewport.onmousemove = { event ->
-        if (event.buttons.toInt() ===4) {
+        if (event.buttons.toInt() === 4) {
             // this is actually a drag gesture
             cancelNavigationPanAnimation()
             event.preventDefault()
@@ -5620,15 +5698,22 @@ suspend fun main() {
 
             updateBackgroundGrid(x.toDouble(), y.toDouble(), panning = true)
 
-            send(Message("set-viewport").payload(Set_rect(uid="root", property="viewport", Rect(x.toDouble(),y.toDouble(), window.innerWidth.toDouble(), window.innerHeight.toDouble()))))
+            send(
+                Message("set-viewport").payload(
+                    Set_rect(
+                        uid = "root",
+                        property = "viewport",
+                        Rect(x.toDouble(), y.toDouble(), window.innerWidth.toDouble(), window.innerHeight.toDouble())
+                    )
+                )
+            )
 
             canvasGestures.requestConnectionGroupRebuild(translationOnly = true)
             repositionSlideNoteOverlayIfVisible()
             if (spatialNavActive) {
                 refreshSpatialNavTargets()
             }
-        }
-        else
+        } else
             canvasGestures.move(event)
     }
 
@@ -5663,7 +5748,15 @@ suspend fun main() {
 
             updateBackgroundGrid(x.toDouble(), y.toDouble(), panning = true)
 
-            send(Message("set-viewport").payload(Set_rect(uid="root", property="viewport", Rect(x.toDouble(),y.toDouble(), window.innerWidth.toDouble(), window.innerHeight.toDouble()))))
+            send(
+                Message("set-viewport").payload(
+                    Set_rect(
+                        uid = "root",
+                        property = "viewport",
+                        Rect(x.toDouble(), y.toDouble(), window.innerWidth.toDouble(), window.innerHeight.toDouble())
+                    )
+                )
+            )
 
             canvasGestures.requestConnectionGroupRebuild(translationOnly = true)
             repositionSlideNoteOverlayIfVisible()
@@ -5763,7 +5856,7 @@ suspend fun main() {
         val dyn = el.asDynamic()
         if (dyn.data_initialized == true) return
         val isEditorOverlay = el.classList.contains("monaco-editor-container") ||
-            el.classList.contains("docs-iframe-container")
+                el.classList.contains("docs-iframe-container")
         if (isEditorOverlay) {
             applyEditorOverlayLayout(el, editorOverlayLayoutFromElement(currentEditorOverlayViewportKey, el))
             return
@@ -5965,11 +6058,17 @@ suspend fun main() {
         val width = min(max((event.rect.width as Number).toDouble(), minWidth), maxWidth)
         val height = min(max((event.rect.height as Number).toDouble(), minHeight), maxHeight)
         val x = min(
-            max(((target.data_x ?: 0.0) as Number).toDouble() + (event.deltaRect.left as Number).toDouble(), viewportGutter),
+            max(
+                ((target.data_x ?: 0.0) as Number).toDouble() + (event.deltaRect.left as Number).toDouble(),
+                viewportGutter
+            ),
             max(viewportGutter, window.innerWidth.toDouble() - width - viewportGutter)
         )
         val y = min(
-            max(((target.data_y ?: 0.0) as Number).toDouble() + (event.deltaRect.top as Number).toDouble(), viewportGutter),
+            max(
+                ((target.data_y ?: 0.0) as Number).toDouble() + (event.deltaRect.top as Number).toDouble(),
+                viewportGutter
+            ),
             max(viewportGutter, window.innerHeight.toDouble() - height - viewportGutter)
         )
 
@@ -6003,8 +6102,10 @@ suspend fun main() {
 
         // Apply snapping if Caps Lock is enabled
         val targetElement = target as HTMLElement
-        val width = ((target.data_w as? Number)?.toDouble() ?: (event.rect?.width as? Number)?.toDouble() ?: 0.0) - t * 2
-        val height = ((target.data_h as? Number)?.toDouble() ?: (event.rect?.height as? Number)?.toDouble() ?: 0.0) - t * 2
+        val width =
+            ((target.data_w as? Number)?.toDouble() ?: (event.rect?.width as? Number)?.toDouble() ?: 0.0) - t * 2
+        val height =
+            ((target.data_h as? Number)?.toDouble() ?: (event.rect?.height as? Number)?.toDouble() ?: 0.0) - t * 2
 
         val (snappedX, snappedY) = boxSnappingSystem.applySnapping(
             targetElement,
@@ -6027,7 +6128,7 @@ suspend fun main() {
             val upX = (event.clientX as? Number)?.toDouble() ?: pendingShiftToggleDownX
             val upY = (event.clientY as? Number)?.toDouble() ?: pendingShiftToggleDownY
             val moved = abs(upX - pendingShiftToggleDownX) > shiftToggleClickSlopPx ||
-                abs(upY - pendingShiftToggleDownY) > shiftToggleClickSlopPx
+                    abs(upY - pendingShiftToggleDownY) > shiftToggleClickSlopPx
             if (!pendingShiftToggleHadDrag && !moved && selected.contains(pendingBox)) {
                 deselectBox(pendingBox)
             }
@@ -6368,7 +6469,15 @@ suspend fun main() {
         true
     }
 
-    send(Message("set-viewport").payload(Set_rect(uid="root", property="viewport", Rect(0.0,0.0, window.innerWidth.toDouble(), window.innerHeight.toDouble()))))
+    send(
+        Message("set-viewport").payload(
+            Set_rect(
+                uid = "root",
+                property = "viewport",
+                Rect(0.0, 0.0, window.innerWidth.toDouble(), window.innerHeight.toDouble())
+            )
+        )
+    )
 
     registerMouseBug()
 
