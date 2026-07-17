@@ -5,6 +5,7 @@ import afield.ai.KotlinSourceIndex
 import afield.ai.shaderSpecForProperty
 import afield.four.synth.AudioPatchSpec
 import afield.four.synth.InlineAudioSummaryTarget
+import afield.logger.PinnedConsole
 import afield.logger.lprintln
 import afield.macros.checkAtticAndExecute
 import afield.macros.checkIntroductionAndExecute
@@ -1246,6 +1247,10 @@ class KotlinExecution : BoxExecution {
             Box.withBoxContext(box) {
                 configureOutputProxies(box, reply, request.originSession)
 
+                // Drop any stale pinned compile error up front; reportCompileDiagnostics re-pins if this
+                // compile also fails, so a clean compile simply leaves the panel cleared.
+                PinnedConsole.clearError(box.id)
+
                 for (compiledSource in expanded.sources) {
                     val snippet = box.ki.withSourceProperty(request.exec.property) {
                         box.ki.compileSnippet(
@@ -1277,18 +1282,42 @@ class KotlinExecution : BoxExecution {
         }
 
         private suspend fun runLaunchSetupBlocks(box: Box) {
-            val setupCompileError: (List<ScriptDiagnostic>) -> Unit = { diagnostics ->
-                diagnostics.forEach { lprintln("warning,macros", "setup compile: ${it.message} ${it.location}") }
-            }
-            val setupEvalError: (List<ScriptDiagnostic>) -> Unit = { diagnostics ->
-                diagnostics.forEach { lprintln("warning,macros", "setup eval: ${it.message}") }
-            }
-            val setupEvalException: (Throwable) -> Unit = { throwable ->
-                lprintln("error,macros", "setup exception: ${throwable.message}")
-            }
-            checkPreambleAndExecute(box, setupCompileError, setupEvalError, setupEvalException)
-            checkIntroductionAndExecute(box, setupCompileError, setupEvalError, setupEvalException)
-            checkAtticAndExecute(box, setupCompileError, setupEvalError, setupEvalException)
+            runSetupBlock(box, "preamble") { c, e, x -> checkPreambleAndExecute(box, c, e, x) }
+            runSetupBlock(box, "introduction") { c, e, x -> checkIntroductionAndExecute(box, c, e, x) }
+            runSetupBlock(box, "attic") { c, e, x -> checkAtticAndExecute(box, c, e, x) }
+        }
+
+        /**
+         * Run one setup block, wiring its compile/eval/exception callbacks to both the existing macro logs
+         * and a per-block sticky pinned panel (keyed `box#block`, distinct from the main [Box.id] key). The
+         * panel is cleared up front so a now-fixed block stops showing its old error, and re-pinned if this
+         * run still fails.
+         */
+        private suspend fun runSetupBlock(
+            box: Box,
+            block: String,
+            run: suspend (
+                onCompileError: (List<ScriptDiagnostic>) -> Unit,
+                onEvalError: (List<ScriptDiagnostic>) -> Unit,
+                onEvalException: (Throwable) -> Unit
+            ) -> Unit
+        ) {
+            val key = "${box.id}#$block"
+            PinnedConsole.clearError(key)
+            run(
+                { diagnostics ->
+                    diagnostics.forEach { lprintln("warning,macros", "setup compile: ${it.message} ${it.location}") }
+                    pinSetupError(box, key, block, diagnostics)
+                },
+                { diagnostics ->
+                    diagnostics.forEach { lprintln("warning,macros", "setup eval: ${it.message}") }
+                    pinSetupError(box, key, block, diagnostics)
+                },
+                { throwable ->
+                    lprintln("error,macros", "setup exception: ${throwable.message}")
+                    pinSetupException(box, key, block, throwable)
+                }
+            )
         }
 
         private suspend fun evaluatePreparedBatchLaunch(
@@ -1361,6 +1390,7 @@ class KotlinExecution : BoxExecution {
                             diagnostics.forEach {
                                 lprintln("error,execution", "  ${it.code} ${it.message} ${it.location}")
                             }
+                            pinEvalError(box, diagnostics)
                         },
                         onEvalException = { throwable ->
                             hasError = true
@@ -1408,6 +1438,67 @@ class KotlinExecution : BoxExecution {
             )
         }
 
+        /**
+         * Pin the current compile failure for [box] as a sticky panel at the top of the terminal (see
+         * [PinnedConsole.error]). Cleared on the next clean compile of the same box. The full diagnostic
+         * text still scrolls via the `error,execution` lines; this is the always-visible summary.
+         */
+        private fun pinCompileError(box: Box, diagnostics: List<ScriptDiagnostic>) {
+            val lines = diagnostics.mapNotNull { d ->
+                val loc = d.location?.start?.let { " (${it.line}:${it.col})" } ?: ""
+                "${d.severity}: ${d.message}$loc".trim().takeIf { it.isNotBlank() }
+            }
+            PinnedConsole.error(box.id, "compile error · ${box.id.take(8)}", lines)
+        }
+
+        /** Pin an eval-time diagnostic failure for [box] (see [pinCompileError]). Cleared on the next run. */
+        private fun pinEvalError(box: Box, diagnostics: List<ScriptDiagnostic>) {
+            val lines = diagnostics.mapNotNull { d ->
+                val loc = d.location?.start?.let { " (${it.line}:${it.col})" } ?: ""
+                "${d.severity}: ${d.message}$loc".trim().takeIf { it.isNotBlank() }
+            }
+            PinnedConsole.error(box.id, "eval error · ${box.id.take(8)}", lines)
+        }
+
+        /**
+         * Pin a runtime exception thrown while evaluating [box] as a sticky panel (see [pinCompileError]):
+         * the exception type + message plus the top few stack frames. The full trace still scrolls via the
+         * `error,execution` line; this is the always-visible summary. Cleared on the next run of the box.
+         */
+        private fun pinEvalException(box: Box, throwable: Throwable) {
+            val head = throwable.message?.takeIf { it.isNotBlank() } ?: throwable.javaClass.name
+            val frames = throwable.stackTrace.take(6).map { "at $it" }
+            PinnedConsole.error(
+                box.id,
+                "exception · ${box.id.take(8)}",
+                listOf("${throwable.javaClass.simpleName}: $head") + frames
+            )
+        }
+
+        /**
+         * Pin a setup-block (preamble/introduction/attic) diagnostic failure. These blocks run before the
+         * main code and their errors scroll past easily / are easy to miss, so they get their own sticky
+         * panel keyed per block+box (distinct from the main [box.id] key, which is cleared each compile).
+         */
+        private fun pinSetupError(box: Box, key: String, block: String, diagnostics: List<ScriptDiagnostic>) {
+            val lines = diagnostics.mapNotNull { d ->
+                val loc = d.location?.start?.let { " (${it.line}:${it.col})" } ?: ""
+                "${d.severity}: ${d.message}$loc".trim().takeIf { it.isNotBlank() }
+            }
+            PinnedConsole.error(key, "$block error · ${box.id.take(8)}", lines)
+        }
+
+        /** Pin a runtime exception thrown while running a setup block (see [pinSetupError]/[pinEvalException]). */
+        private fun pinSetupException(box: Box, key: String, block: String, throwable: Throwable) {
+            val head = throwable.message?.takeIf { it.isNotBlank() } ?: throwable.javaClass.name
+            val frames = throwable.stackTrace.take(6).map { "at $it" }
+            PinnedConsole.error(
+                key,
+                "$block exception · ${box.id.take(8)}",
+                listOf("${throwable.javaClass.simpleName}: $head") + frames
+            )
+        }
+
         private fun reportCompileDiagnostics(
             box: Box,
             reply: ((Message) -> Unit)?,
@@ -1418,6 +1509,7 @@ class KotlinExecution : BoxExecution {
             property: String = "code"
         ) {
             lprintln("error,execution", "compiler error")
+            pinCompileError(box, diagnostics)
             var first = true
             diagnostics.forEach {
                 lprintln("error,execution", "  ${it.code} ${it.message} ${it.location} ${it.severity}")
@@ -1472,6 +1564,7 @@ class KotlinExecution : BoxExecution {
         ) {
             lprintln("error,execution", "exception thrown in $context inside box $box")
             lprintln("error,execution", throwable.stackTraceToString())
+            pinEvalException(box, throwable)
 
             val location = editorLocationForEvalException(box, throwable)
             val stack = stackLocationsForEvalException(box, throwable, location, fallbackProperty)
@@ -2062,10 +2155,13 @@ class KotlinExecution : BoxExecution {
                     )
                 }
 
+                // Clear any stale pinned compile error before re-running; re-pinned below on failure.
+                PinnedConsole.clearError(box.id)
                 val returnValues: List<ResultValue?> = box.ki.withSourceProperty(property) {
                     standardExecutionPractice(box.ki, code, { compileError ->
                         hasError = true
                         lprintln("error,execution", "compiler error")
+                        pinCompileError(box, compileError)
                         var first = true
                         compileError.forEach {
                             lprintln("error,execution", "  ${it.code} ${it.message} ${it.location} ${it.severity}")
@@ -2123,10 +2219,12 @@ class KotlinExecution : BoxExecution {
                         evalError.forEach {
                             lprintln("error,execution", "  ${it.code} ${it.message} ${it.location}")
                         }
+                        pinEvalError(box, evalError)
                     }, { evalException ->
                         hasError = true
                         lprintln("error,execution", "exception thrown in fragment inside box $box")
                         lprintln("error,execution", evalException.stackTraceToString())
+                        pinEvalException(box, evalException)
 
                         val location = editorLocationForEvalException(box, evalException)
                         val firstLine = location?.line ?: ln

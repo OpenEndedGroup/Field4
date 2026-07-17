@@ -156,6 +156,21 @@ object PinnedConsole {
      * instead of a per-frame `lprintln`/`print`.
      */
     fun beat(channel: String) = activeSink?.beat(channel) ?: Unit
+
+    /**
+     * Pin a compilation/execution error as a sticky, multi-line panel at the very *top* of the header,
+     * keyed by [key] (use a stable id such as the box id so re-runs replace the same panel). Unlike the
+     * channel rows, an error panel never expires on the silence timer — a broken build stays put until
+     * [clearError] is called (typically on the next clean compile) or a fresh [error] for the same [key]
+     * replaces it. [title] is a short one-line summary; [lines] are the detail (each clipped to width,
+     * the panel body capped in height with a "+N more" tail). No-op when pinning is off (non-TTY); the
+     * error still scrolls via whatever `error`-channel line the caller already logged.
+     */
+    fun error(key: String, title: String, lines: List<String>) =
+        activeSink?.setError(key, title, lines) ?: Unit
+
+    /** Remove the sticky error panel [key] (e.g. once the box compiles cleanly). No-op if none exists. */
+    fun clearError(key: String) = activeSink?.clearError(key) ?: Unit
 }
 
 private class PinnedConsoleSink(initialChannels: List<PinnedChannel>) : LogSink {
@@ -179,6 +194,13 @@ private class PinnedConsoleSink(initialChannels: List<PinnedChannel>) : LogSink 
     private class BlockState(val id: String, val title: String, val start: java.time.Instant) {
         val body = ArrayDeque<String>() // recent in-scope lines; capped to BLOCK_HEIGHT (oldest drop = scroll)
     }
+
+    /**
+     * A sticky, multi-line error panel pinned above everything else. Never swept by the dim/expire
+     * lifecycle: it lives until [clearError]/[setError] replaces or removes it. [at] stamps when it
+     * was last raised, shown on the right of the panel's header row like other pinned rows.
+     */
+    private class ErrorPanel(val title: String, val lines: List<String>, val at: java.time.Instant)
 
     /** A spinner row driven by cheap per-frame [beat] calls instead of one log line per frame. */
     private class Heartbeat(val label: String) {
@@ -212,6 +234,9 @@ private class PinnedConsoleSink(initialChannels: List<PinnedChannel>) : LogSink 
 
     /** Open lblock ids -> owning entry, so END closes the right block and nested lines route to it. */
     private val openBlocks = HashMap<String, PinnedEntry>()
+
+    /** Sticky error panels, keyed (e.g. by box id). Rendered above all other rows. Guarded by [lock]. */
+    private val errorPanels = LinkedHashMap<String, ErrorPanel>()
 
     /** Heartbeat/spinner rows, keyed by channel. Counts are bumped lock-free; structure changes under [lock]. */
     private val heartbeats = java.util.concurrent.ConcurrentHashMap<String, Heartbeat>()
@@ -423,6 +448,26 @@ private class PinnedConsoleSink(initialChannels: List<PinnedChannel>) : LogSink 
 
     fun clearPinned(tag: String) = lock.withLock { if (entries.remove(tag) != null) dirty = true }
 
+    /**
+     * Pin/replace the sticky error panel [key] with [title] + [lines]. Shown above every other header
+     * row and never swept by the dim/expire lifecycle — it persists until [clearError] or the next
+     * [setError] for the same key. Degraded (non-TTY) console keeps nothing pinned; the caller's
+     * scrolling error line is the record there.
+     */
+    fun setError(key: String, title: String, lines: List<String>) {
+        if (!enabled) return
+        lock.withLock {
+            errorPanels[key] = ErrorPanel(title, lines.ifEmpty { listOf("(no detail)") }, java.time.Instant.now())
+            dirty = true // frame() grows the region to fit before repainting (headerHeight != reservedRows)
+        }
+    }
+
+    /** Remove the sticky error panel [key]. The freed rows fall back into the scrolling region. */
+    fun clearError(key: String) {
+        if (!enabled) return
+        lock.withLock { if (errorPanels.remove(key) != null) dirty = true }
+    }
+
     /** Cheap per-frame pulse: bumps [channel]'s spinner row (created on first call). Lock-free steady state. */
     fun beat(channel: String) {
         if (!enabled) return
@@ -630,14 +675,24 @@ private class PinnedConsoleSink(initialChannels: List<PinnedChannel>) : LogSink 
         if (anyLive) dirty = true // keep repainting to animate the spinner
     }
 
-    /** Rows the header wants: each live entry (blocks are multi-line) + heartbeats + rule, if tall enough. */
+    /** Rows the header wants: error panels + each live entry (blocks are multi-line) + heartbeats + rule. */
     private fun headerHeight(): Int {
         var rows = 0
+        for (panel in errorPanels.values) rows += panelHeight(panel)
         for (tag in pinnedTags.keys) rows += entries[tag]?.let { entryHeight(it) } ?: 0
         rows += heartbeatOrder.size
         if (rows == 0) return 0
         val want = rows + 1
-        return if (cachedH >= want + MIN_SCROLL_ROWS) want else 0
+        if (errorPanels.isEmpty()) {
+            // Unchanged behavior: if the header can't fit while leaving MIN_SCROLL_ROWS free, pin nothing.
+            return if (cachedH >= want + MIN_SCROLL_ROWS) want else 0
+        }
+        // An error is pinned: keep it visible even on a short terminal by clamping the header height
+        // (appendHeaderRows renders error panels first and drops the least-important tail rows) while
+        // still preserving MIN_SCROLL_ROWS of scrolling output.
+        val maxHeader = cachedH - MIN_SCROLL_ROWS
+        if (maxHeader < 2) return 0 // no room for even one content row plus the rule
+        return want.coerceAtMost(maxHeader)
     }
 
     /** A single-line channel is 1 row; an open block is a header + up to BLOCK_HEIGHT body rows. */
@@ -645,6 +700,9 @@ private class PinnedConsoleSink(initialChannels: List<PinnedChannel>) : LogSink 
         val b = e.block ?: return 1
         return 1 + minOf(BLOCK_HEIGHT, b.body.size)
     }
+
+    /** An error panel is a title row + its detail lines, capped at [ERROR_BODY_MAX] body rows. */
+    private fun panelHeight(panel: ErrorPanel): Int = 1 + minOf(panel.lines.size, ERROR_BODY_MAX)
 
     /** (Re)establish the DECSTBM scroll region so the top [headerHeight] rows never scroll. */
     private fun ensureRegion() {
@@ -676,50 +734,64 @@ private class PinnedConsoleSink(initialChannels: List<PinnedChannel>) : LogSink 
         write(sb)
     }
 
-    /** Emit the pinned entries + heartbeat rows + rule into rows 1..reservedRows (absolute positioning). */
+    /** Emit the header (error panels, then pinned entries, then heartbeats, then the rule) into rows 1.. */
     private fun appendHeaderRows(sb: StringBuilder) {
         val w = cachedW
-        var row = 1
+        // Build the ordered header content as plain row strings — error panels first so a broken build
+        // is never the row that gets dropped when space is tight — then pinned stat rows, then spinners.
+        val content = ArrayList<String>()
+        for (panel in errorPanels.values) content += renderErrorPanelRows(panel, w)
         for (tag in pinnedTags.keys) {
             val e = entries[tag] ?: continue
-            row = appendEntry(sb, tag, e, row, w)
+            content += renderEntryRows(tag, e, w)
         }
         for (key in heartbeatOrder) {
             val hb = heartbeats[key] ?: continue
+            content += renderHeartbeatRow(hb, w)
+        }
+        // reservedRows is content + 1 (the rule), clamped in headerHeight(); paint what fits, drop the
+        // tail, and blank any body row left over if content shrank since the region was last sized.
+        val bodyRows = (reservedRows - 1).coerceAtLeast(0)
+        var row = 1
+        while (row <= bodyRows) {
             sb.append(CSI).append(row).append(";1H").append(CLEAR_LINE)
-            sb.append(renderHeartbeatRow(hb, w))
+            if (row - 1 < content.size) sb.append(content[row - 1])
             row++
         }
         sb.append(CSI).append(row).append(";1H").append(CLEAR_LINE)
         sb.append(rule(w))
     }
 
-    /** Render one pinned entry (single line, or a block header + indented scrolling body). Returns next row. */
-    private fun appendEntry(sb: StringBuilder, tag: String, e: PinnedEntry, startRow: Int, w: Int): Int {
-        var row = startRow
+    /** Render one pinned entry as row string(s): a single line, or a block header + indented body. */
+    private fun renderEntryRows(tag: String, e: PinnedEntry, w: Int): List<String> {
         val head = if (e.dim) DIM else colorFor(levelOf(e.channel))
         val label = tag.take(LABEL_WIDTH).padEnd(LABEL_WIDTH)
         val time = timeFmt.format(e.at)
         val block = e.block
-        sb.append(CSI).append(row).append(";1H").append(CLEAR_LINE)
+        val out = ArrayList<String>()
         if (block != null) {
-            sb.append(styledRow(head, "▸ $label ${block.title}", time, w))
-            row++
+            out += styledRow(head, "▸ $label ${block.title}", time, w)
             val bodyStyle = if (e.dim) DIM else TextColors.gray
-            for (line in block.body) {
-                sb.append(CSI).append(row).append(";1H").append(CLEAR_LINE)
-                sb.append(styledRow(bodyStyle, "    $line", "", w)) // 4-space indent for block body
-                row++
-            }
+            for (line in block.body) out += styledRow(bodyStyle, "    $line", "", w) // 4-space indent
         } else {
             val prefix = StatsHeatmap.Fragment("$BULLET $label ", null)
             val lineText = (e.line ?: "").replace('\n', ' ')
             // Suppress heatmap coloring once dimmed (idle) so the whole row reads uniformly stale.
             val body = if (!e.dim) e.heatmap else null
-            sb.append(styledFragments(head, listOf(prefix) + (body ?: listOf(StatsHeatmap.Fragment(lineText, null))), time, w))
-            row++
+            out += styledFragments(head, listOf(prefix) + (body ?: listOf(StatsHeatmap.Fragment(lineText, null))), time, w)
         }
-        return row
+        return out
+    }
+
+    /** Render a sticky error panel as row strings: a red title row + up to [ERROR_BODY_MAX] detail rows. */
+    private fun renderErrorPanelRows(panel: ErrorPanel, w: Int): List<String> {
+        val out = ArrayList<String>()
+        out += styledRow(TextColors.brightRed, "✗ ${panel.title}", timeFmt.format(panel.at), w)
+        val truncated = panel.lines.size > ERROR_BODY_MAX
+        val shown = if (truncated) panel.lines.take(ERROR_BODY_MAX - 1) else panel.lines
+        for (line in shown) out += styledRow(TextColors.red, "    ${line.replace('\n', ' ')}", "", w)
+        if (truncated) out += styledRow(DIM, "    … (+${panel.lines.size - shown.size} more)", "", w)
+        return out
     }
 
     /** Clip [leftPlain] to fit beside [rightPlain] within [w], style the left with [style], dim the right. */
@@ -931,6 +1003,7 @@ private class PinnedConsoleSink(initialChannels: List<PinnedChannel>) : LogSink 
         const val HISTORY_MAX = 10_000      // scrollback ring-buffer capacity (logical lines)
         const val WHEEL_LINES = 3           // lines scrolled per mouse-wheel notch
         const val BLOCK_HEIGHT = 5          // max body rows shown for an open pinned lblock (scrolls beyond)
+        const val ERROR_BODY_MAX = 8        // max detail rows shown for a pinned error panel (rest -> "+N more")
         const val DIM_NANOS = 10_000_000_000L    // no output for 10s -> dim the entry
         const val EXPIRE_NANOS = 20_000_000_000L // no output for 20s -> remove the entry's row
         const val SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"    // braille spinner frames
