@@ -132,6 +132,58 @@ Here the pulse train is the raw material. A slower sine bends it, a blur softens
 
 The three traces separate cleanly: one jagged, one softened, one quantized into holds. That side-by-side picture helps when shaping sequencer data, stepped motion, triggers, or control-rate material. For statistical views of similar time-varying data, see [Timeseries examples](timeseries_examples.md) and [Stats examples](stats_examples.md).
 
+## 1D stack: fit a graph to a target (differentiable)
+
+So far we have *built* stacks by hand. You can also let Field *fit* one for you. A `Functions.Fn` is not only a function but an inspectable graph, and its numeric leaves (frequencies, amplitudes, offsets) are tunable "genes". `fitBest(target, seed, ...)` tunes those numbers by gradient descent (Adam) so the seed's curve slides onto a target signal — the differentiable cousin of the genetic `evolve(...)`.
+
+The catch, and the fun of it: amplitude and offset are easy to fit, but **oscillator frequency is not** — the error surface in frequency is bumpy, full of local minima, so a single descent from a wrong frequency gets stuck. `fitBest` handles that by running several jittered restarts and keeping the best, which reliably escapes into the true basin. Here the target is a *product* of two oscillators and the seed starts with badly wrong frequencies:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/fit_to_target_box.png" wait="1.5" capture="box" w="1200"}
+:::static
+import afield.graphics.FLine
+import afield.stdlib.Functions
+import afield.stdlib.fitBest
+
+with(Functions) {
+    val x0 = 40.0; val x1 = 940.0
+    val y0 = 40.0; val y1 = 400.0
+    val midY = 220.0; val amp = 150.0
+
+    // A target that is awkward to hand-tune: two oscillators multiplied together.
+    val target = cos(2) * sin(1.5, amplitude = 0.8, offset = 0.2)
+    // Same *shape*, deliberately wrong *numbers* (both frequencies far off).
+    val seed = cos(3.4) * sin(1.0, amplitude = 2.0)
+
+    // Gradient descent with jittered restarts. A single fitGradient would stall in a
+    // frequency local-minimum (~0.19); fitBest escapes it. domain defaults to 0..1.
+    val run = fitBest(target, seed, restarts = 16)   // RMSE ~0.72 -> ~0.006
+
+    fun asLine(fn: Functions.Fn, color: Vec4, thickness: Double): FLine =
+        fn.toFLine(0.0 .. 1.0, samples = 900, xScale = x1 - x0, yScale = amp, xOffset = x0, yOffset = midY).apply {
+            this.color = color; this.thickness = thickness
+        }
+    fun hLine(y: Double, color: Vec4, thickness: Double): FLine = fline {
+        moveTo(x0, y); lineTo(x1, y); this.color = color; this.thickness = thickness
+    }
+    val frame = fline {
+        moveTo(x0, y0); lineTo(x1, y0); lineTo(x1, y1); lineTo(x0, y1); lineTo(x0, y0)
+        color = vec(1.0, 1.0, 1.0, 0.28); thickness = 1.6
+    }
+
+    val guides = listOf(frame, hLine(midY, vec(1.0, 1.0, 1.0, 0.30), 1.2))
+    val targetLine = asLine(target, vec(0.30, 0.79, 0.94, 1.0), 4.5)      // cyan, thick
+    val fittedLine = asLine(run.fitted, vec(0.97, 0.45, 0.18, 1.0), 2.2)  // orange, thin, on top
+
+    lines(guides + targetLine + fittedLine, channel = "fit-graph", w = 980.0, h = 440.0, fitToSize = false)
+    display("notes", "<div style='padding:10px'><b>fit to target</b> &mdash; target (cyan) vs gradient-fitted (orange), RMSE ${"%.4f".format(run.finalRmse)}</div>")
+    run
+}
+```
+
+![](assets/functions_examples/fit_to_target_box.png)
+
+The thin orange (fitted) curve lands right on top of the thick cyan (target) — the restarts found the true frequencies, and `run` reports the RMSE collapsing from ~0.72 to ~0.006. Returning `run` in the box prints a compact summary with a loss-trajectory sparkline. Reach for `fitBest` when you have a shape in mind and just need the numbers dialed in; reach for `evolve(...)` / `fitHybrid(...)` when the *structure* itself (which operators) is still unknown.
+
 ## 2D stack: separate x(t) and y(t) Functions
 
 Once a function stack is no longer limited to "height over x", it can steer a path. One stack controls horizontal position; another controls vertical position.
