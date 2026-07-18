@@ -1365,6 +1365,7 @@ class FieldSuggestController {
   }
 
   renderDoc() {
+    this.publishActiveSuggestion();
     const doc = this.root.querySelector(".afield-suggest-doc");
     // Navigated into a source card: render it (recursively linkified) plus the
     // floating back/forward control, and stop — no completion lazy-resolve here.
@@ -1383,6 +1384,27 @@ class FieldSuggestController {
     prepareRuntimeDocumentation(doc);
     highlightCodeBlocks(doc);
     this.resolveDocumentation(item);
+  }
+
+  // Publish the highlighted completion on the editor so the bottom-left ambient
+  // badge can mirror it. While the user is still typing a partial word the token
+  // under the cursor isn't a real operator yet, so the badge would otherwise show
+  // nonsense (e.g. `arr (0->0)`); a language extension can instead resolve the
+  // context from the completion the popup is offering. Only local (language
+  // extension) items carry synchronous docs, so we don't publish RPC items.
+  publishActiveSuggestion() {
+    const item = this.items[this.activeIndex];
+    this.editor._afieldActiveSuggestion =
+      item && item.source === "local"
+        ? {
+            name: completionNameFor(item),
+            extensionId:
+              item.raw && item.raw.data && item.raw.data.source
+                ? item.raw.data.source
+                : item.languageId,
+            source: item.source,
+          }
+        : null;
   }
 
   baseNavTitle() {
@@ -1733,6 +1755,7 @@ class FieldSuggestController {
     this.baseItemsLoaded = false;
     this.aiItemsLoaded = false;
     this.activeIndex = -1;
+    this.editor._afieldActiveSuggestion = null;
     this.resetNav();
   }
 }

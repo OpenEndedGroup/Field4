@@ -399,6 +399,34 @@
 
   const tokenAt = (tokens, offset) => tokens.find((token) => token.start <= offset && offset <= token.end);
 
+  // Resolve the innermost meaningful token at [offset], descending through quote
+  // groups '( ... ). tokenize() keeps a whole quote as one token (for highlighting
+  // and flow), but the context badge wants the actual word the cursor sits on, even
+  // when it's nested inside one or more quotes.
+  const wordTokenAt = (tokens, offset) => {
+    let token = tokenAt(tokens, offset);
+    while (token && token.kind === "quote") {
+      const text = String(token.text || "");
+      const innerStart = token.start + 2;                 // past the opening '(
+      const closed = text.endsWith(")");
+      const innerEnd = token.end - (closed ? 1 : 0);      // before the closing )
+      if (offset <= innerStart || offset >= innerEnd) break; // cursor on a delimiter
+      const innerSource = closed ? text.slice(2, -1) : text.slice(2);
+      const inner = tokenAt(
+        tokenize(innerSource, innerStart).filter((t) => t.kind !== "comment"),
+        offset,
+      );
+      if (!inner || inner === token) break;
+      token = inner;
+    }
+    return token;
+  };
+
+  const wordIsKnown = (word) => {
+    const lower = String(word || "").toLowerCase();
+    return wordDocs.has(word) || wordDocs.has(lower) || effects.has(lower);
+  };
+
   const completionPrefixAt = (model, position) => {
     const offset = model.getOffsetAt(position);
     const value = model.getValue();
@@ -636,21 +664,39 @@
     const scope = sourceScope(model, offset);
     if (!scope) return null;
     const tokens = tokenize(scope.source, scope.bodyStart).filter((token) => token.kind !== "comment");
-    const active = tokenAt(tokens, offset);
+    const active = wordTokenAt(tokens, offset);
     if (!active) return null;
-    const effect = effectForToken(active);
     const resolved = resolveContext ? resolveContext(editor) : null;
     const contextKey = resolved && resolved.uid && resolved.property ? resolved.uid + "::" + resolved.property : extensionId;
-    const escaped = escapeHtml(active.text || "");
-    const doc = wordDocs.get(String(active.text || "")) || wordDocs.get(String(active.text || "").toLowerCase());
-    const arity = '<span class="afield-stacksl-muted">(' + effect[0] + '-&gt;' + effect[1] + ')</span>';
-    const signature = doc && doc.signature ? escapeHtml(doc.signature) + ' ' : '';
+
+    // Which word to describe. For a word token, prefer the completion the popup is
+    // currently highlighting when the typed text isn't a real word yet — so typing
+    // `arr` shows `array` (matching autocomplete) instead of a bogus arity.
+    let word = String(active.text || "");
+    let describable = active.kind === "word";
+    if (active.kind === "word" && !wordIsKnown(word)) {
+      const suggestion = editor._afieldActiveSuggestion;
+      const suggested = suggestion && suggestion.extensionId === extensionId ? String(suggestion.name || "") : "";
+      if (suggested && wordIsKnown(suggested)) {
+        word = suggested;
+      } else {
+        describable = false; // a half-typed / unknown word has no stack effect to claim
+      }
+    }
+
+    const lower = word.toLowerCase();
+    const doc = wordDocs.get(word) || wordDocs.get(lower);
+    const escaped = escapeHtml(word);
+    const effect = active.kind === "word" ? (effects.get(lower) || [0, 0]) : effectForToken(active);
+    const showArity = active.kind !== "word" || (describable && wordIsKnown(word));
+    const arity = showArity ? '<span class="afield-stacksl-muted">(' + effect[0] + '-&gt;' + effect[1] + ')</span>' : '';
+    const signature = doc && doc.signature ? escapeHtml(doc.signature) + (showArity ? ' ' : '') : '';
     const detail = doc && doc.detail ? '<div class="afield-stacksl-muted">' + escapeHtml(doc.detail) + '</div>' : '';
     const html = '<div class="afield-stacksl-context"><strong>RectSL</strong> ' +
       '<span class="afield-stacksl-word"><code>' + escaped + '</code> ' +
       '<span class="afield-stacksl-signature">' + signature + arity + '</span></span>' +
       detail + '</div>';
-    return { key: contextKey + "::" + (model.getVersionId ? model.getVersionId() : 0) + "::" + offset, editor, html, isLiveValue: false };
+    return { key: contextKey + "::" + (model.getVersionId ? model.getVersionId() : 0) + "::" + offset + "::" + word, editor, html, isLiveValue: false };
   };
 
   const install = (editor, monaco, registry) => {
