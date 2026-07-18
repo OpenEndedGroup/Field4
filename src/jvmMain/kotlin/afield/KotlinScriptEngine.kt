@@ -100,6 +100,15 @@ interface KotlinScriptEngine {
      */
     suspend fun warmCompletion() {}
 
+    /**
+     * Fire-and-forget proactive warm: schedule [warmCompletion] on the main-runloop dispatcher so
+     * the one heavy K1 bootstrap happens *before* the first completion/error-suggestion request
+     * rather than blocking it. Idempotent and self-de-duplicating (a no-op while a warm is already
+     * in flight, and cheap when already warm for the current preamble). Called on interactive code
+     * edits so the intelligent-error path is warm by run time. No-op for engines with no bootstrap.
+     */
+    fun warmCompletionAsync() {}
+
     fun completeAndWait(s: String, cursor: Int = s.length): CompletionResult
 
     fun applyMacros(box: Box, s: String, skipMacros: Set<String> = emptySet(), previewOnly: Boolean = false): String

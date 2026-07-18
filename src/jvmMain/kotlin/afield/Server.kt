@@ -2027,6 +2027,12 @@ class Server {
                         oldValue,
                         targetBox.getPropertyRaw(set.property)?.toString().orEmpty()
                     )
+                    // Proactively warm the K1 completion delegate as the user edits Kotlin code, so
+                    // the intelligent-error path (and completion) is warm by run time instead of
+                    // paying the ~1s bootstrap on the first compile error. Self-de-duplicating.
+                    if (set.property == "code") {
+                        targetBox.ki.warmCompletionAsync()
+                    }
                 }
 
                 // If this is a sidecar-backed property, mark it for persistence.

@@ -3443,18 +3443,31 @@ private fun suggestResolvableSymbols(
         }
     }
 
-    collectDefinedSymbols(box).forEach(::add)
-    collectLocalCodeSymbols(missing, code, diagnostic).forEach(::add)
-    collectAmbientCompletionSymbols(box, missing, code, diagnostic).forEach(::add)
-    collectImportHelpSymbols(missing).forEach(::add)
-    collectIndexedSymbols(missing).forEach(::add)
+    val defined = collectDefinedSymbols(box)
+    val local = collectLocalCodeSymbols(missing, code, diagnostic)
+    // Overlap the two dominant cost centres: the K1-backed ambient completion (kept on this thread,
+    // its two probes sequential because they share one K1 analysis session) runs concurrently with
+    // the CPU-bound classpath/index Levenshtein scans on Dispatchers.Default. Results are added in
+    // the original collector order below, so dedup precedence and final output are unchanged.
+    val (ambient, importHelp, indexed) = runBlocking {
+        val importDeferred = async(Dispatchers.Default) { collectImportHelpSymbols(missing) }
+        val indexedDeferred = async(Dispatchers.Default) { collectIndexedSymbols(missing) }
+        val ambient = collectAmbientCompletionSymbols(box, missing, code, diagnostic)
+        Triple(ambient, importDeferred.await(), indexedDeferred.await())
+    }
+
+    defined.forEach(::add)
+    local.forEach(::add)
+    ambient.forEach(::add)
+    importHelp.forEach(::add)
+    indexed.forEach(::add)
 
     val maxDistance = maxTypoDistance(missing)
     return candidates.values
         .mapNotNull { symbol ->
-            val distance = typoDistance(missing, symbol.name)
             val caseOnly = symbol.name.equals(missing, ignoreCase = true)
             val usefulPrefix = symbol.name.startsWith(missing, ignoreCase = true) && symbol.name.length > missing.length
+            val distance = if (caseOnly || usefulPrefix) 0 else typoDistanceWithin(missing, symbol.name, maxDistance)
             if (!caseOnly && !usefulPrefix && distance > maxDistance) return@mapNotNull null
             val score = when {
                 caseOnly -> 0
@@ -3583,9 +3596,9 @@ private fun collectImportHelpSymbols(missing: String): List<ErrorMessageSymbol> 
                         fqNames.any(::isUsefulImportCandidate)
             }
             .mapNotNull { (simpleName, fqNames) ->
-                val distance = typoDistance(missing, simpleName)
                 val usefulPrefix =
                     simpleName.startsWith(missing, ignoreCase = true) && simpleName.length > missing.length
+                val distance = if (usefulPrefix) 0 else typoDistanceWithin(missing, simpleName, maxDistance)
                 if (!usefulPrefix && distance > maxDistance) return@mapNotNull null
                 val fqName = fqNames.firstOrNull(::isUsefulImportCandidate) ?: return@mapNotNull null
                 val rank = if (usefulPrefix) 3 else 4 + distance
@@ -3612,10 +3625,11 @@ private fun collectIndexedSymbols(missing: String): List<ErrorMessageSymbol> {
     return index.definitions.asSequence()
         .mapNotNull { def ->
             val name = def.name.substringAfterLast('.')
-            val distance = typoDistance(missing, name)
             val caseOnly = name.equals(missing, ignoreCase = true)
             val usefulPrefix = name.startsWith(missing, ignoreCase = true) && name.length > missing.length
-            if (!caseOnly && !usefulPrefix && distance > maxDistance) return@mapNotNull null
+            if (!caseOnly && !usefulPrefix && typoDistanceWithin(missing, name, maxDistance) > maxDistance) {
+                return@mapNotNull null
+            }
             val importName = indexedImportQualifiedName(def)
             val detail = importName?.let(::importSuggestionDetail) ?: indexedSymbolDetail(def)
             ErrorMessageSymbol(
@@ -3777,6 +3791,17 @@ private fun maxTypoDistance(missing: String): Int =
     }
 
 private fun typoDistance(a: String, b: String): Int = damerauLevenshteinDistance(a.lowercase(), b.lowercase())
+
+/**
+ * Length-pruned [typoDistance]: the edit distance is always at least the length difference, so when
+ * the lengths differ by more than [max] the pair can be rejected without running the O(n·m) DP.
+ * Returns the exact distance when it is `<= max`, otherwise some value `> max` (enough for callers
+ * that only test `distance > max`). Exact-preserving versus [typoDistance] inside the accepted band.
+ */
+private fun typoDistanceWithin(a: String, b: String, max: Int): Int {
+    if (kotlin.math.abs(a.length - b.length) > max) return max + 1
+    return typoDistance(a, b)
+}
 
 private fun damerauLevenshteinDistance(a: String, b: String): Int {
     if (a == b) return 0

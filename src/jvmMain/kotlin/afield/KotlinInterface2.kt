@@ -9,8 +9,11 @@ import afield.macros.gatherPreambleUpwards
 import afield.stdlib.applyInsertToPreamble
 import afield.stdlib.normalizePreambleText
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -543,6 +546,35 @@ class KotlinInterface2(
      */
     override suspend fun warmCompletion() {
         k1CompletionDelegate()
+    }
+
+    @Volatile
+    private var completionWarmInFlight = false
+
+    /**
+     * Schedule [warmCompletion] on the main runloop (the same non-reentrant dispatcher [complete]
+     * uses) so the ~1s K1 bootstrap is paid ahead of the first real completion/error-suggestion
+     * request instead of stalling it. The [completionWarmInFlight] guard collapses the burst of
+     * edit events into a single scheduled warm; once warm for the current preamble, [warmCompletion]
+     * returns near-instantly (mutex + fingerprint check), and it re-bootstraps automatically when
+     * the preamble changes.
+     */
+    @OptIn(DelicateCoroutinesApi::class)
+    override fun warmCompletionAsync() {
+        if (completionWarmInFlight) return
+        completionWarmInFlight = true
+        GlobalScope.launch(Runloop.runLoop.main) {
+            try {
+                warmCompletion()
+            } catch (t: Throwable) {
+                lprintln(
+                    "warning,completion",
+                    "background warmCompletion failed: ${t.javaClass.simpleName}: ${t.message}"
+                )
+            } finally {
+                completionWarmInFlight = false
+            }
+        }
     }
 
     private var k1CompletionDelegate: KotlinInterface? = null
