@@ -14,6 +14,8 @@ fun main(rawArguments: Array<String>) {
     val emitter = KotlinEmitter(FieldAlgebraModel.build())
     val files = linkedMapOf(
         Path.of("afield/stdlib/linalg/Vectors.kt") to emitter.emitHeapVectors(),
+        Path.of("afield/stdlib/Swizzles.kt") to emitter.emitSwizzles(),
+        Path.of("afield/stdlib/VectorOperators.kt") to emitter.emitVectorOperators(),
         Path.of("afield/stdlib/linalg/arena/ArenaVectors.kt") to emitter.emitArenaVectors(),
         Path.of("afield/stdlib/linalg/storage/SegmentVectors.kt") to emitter.emitSegmentVectors(),
         Path.of("afield/stdlib/linalg/bulk/BulkVectors.kt") to emitter.emitBulkVectors(),

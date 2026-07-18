@@ -475,41 +475,8 @@ val Vector2fc.v3: Vector3f
 val Vector3fc.v2: Vector2f
     get() = Vector2f(this.x(), this.y())
 
-val Vector3fc.xy: Vector2fc
-    get() = Vector2f(this.x(), this.y())
-
-val Vector3fc.xz: Vector2fc
-    get() = Vector2f(this.x(), this.z())
-
-val Vector3fc.yz: Vector2fc
-    get() = Vector2f(this.y(), this.z())
-
-val Vector3fc.xx: Vector2fc
-    get() = Vector2f(this.x(), this.x())
-
-val Vector3fc.yy: Vector2fc
-    get() = Vector2f(this.y(), this.z())
-
-val Vector3fc.zz: Vector2fc
-    get() = Vector2f(this.z(), this.z())
-
-val Vector4fc.xy: Vector2fc
-    get() = Vector2f(this.x(), this.y())
-
-val Vector4fc.xz: Vector2fc
-    get() = Vector2f(this.x(), this.z())
-
-val Vector4fc.yz: Vector2fc
-    get() = Vector2f(this.y(), this.z())
-
-val Vector4fc.xx: Vector2fc
-    get() = Vector2f(this.x(), this.x())
-
-val Vector4fc.yy: Vector2fc
-    get() = Vector2f(this.y(), this.z())
-
-val Vector4fc.zz: Vector2fc
-    get() = Vector2f(this.z(), this.z())
+// Component swizzles (xyzw and rgba, read + write) are generated exhaustively into
+// afield.stdlib.Swizzles.kt by tools/linalg-generator.
 
 /**
  * Creates a mutable 2D [Vec2] from numeric coordinates, converting each component to [Float].
@@ -535,54 +502,9 @@ fun vec(v: Vec2, z: Number) = Vector3f(v.x, v.y, z.toFloat())
 fun vec(x : Number, yz: Vec2) = Vector3f(x.toFloat(), yz.x, yz.y)
 fun vec(x: Number, yzw: Vec3) = Vector4f(x.toFloat(), yzw.x, yzw.y, yzw.z)
 
-operator fun Vector4f.invoke(x: Float = this.x, y: Float = this.y, z: Float = this.z, w: Float = this.w) =
-    Vector4f(x, y, z, w)
-
-operator fun Vector3f.invoke(x: Float = this.x, y: Float = this.y, z: Float = this.z) = Vector3f(x, y, z)
-operator fun Vector2f.invoke(x: Float = this.x, y: Float = this.y) = Vector2f(x, y)
-
-infix fun Vector2f.len(l: Number) = this {
-    normalize().mul(l.toFloat())
-}
-
-infix fun Vector3f.len(l: Number) = this {
-    normalize().mul(l.toFloat())
-}
-
-infix fun Vector4f.len(l: Number) = this {
-    normalize().mul(l.toFloat())
-}
-
-operator fun Vector2f.invoke(m: Vector2f.() -> Unit): Vector2f {
-    val c = Vector2f(x, y)
-    c.m()
-    return c
-}
-
-operator fun Vector3f.invoke(m: Vector3f.() -> Unit): Vector3f {
-    val c = Vector3f(x, y, z)
-    c.m()
-    return c
-}
-
-operator fun Vector4f.invoke(m: Vector4f.() -> Unit): Vector4f {
-    val c = Vector4f(x, y, z, w)
-    c.m()
-    return c
-}
-
-operator fun Vector4f.remAssign(a: Vector4f) {
-    this.set(a)
-}
-
-operator fun Vector3f.remAssign(a: Vector3f) {
-    this.set(a)
-}
-
-operator fun Vector2f.remAssign(a: Vector2f) {
-    this.set(a)
-}
-
+// The vector `invoke` (copy-with-changes and copy-then-block), `%=` (remAssign) and `len` rescale
+// are generated for every float heap vector into afield.stdlib.VectorOperators.kt by
+// tools/linalg-generator. The transform types keep their hand-written in-place assignment below.
 
 operator fun Quat.remAssign(a: Quat) {
     this.set(a)

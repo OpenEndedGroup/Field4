@@ -1,14 +1,27 @@
 package afield.stdlib.linalg.codegen
 
-enum class Component(val sourceName: String) {
-    X("x"),
-    Y("y"),
-    Z("z"),
-    W("w"),
-    A("a"),
-    B("b"),
-    C("c"),
-    D("d"),
+enum class Component(val sourceName: String, val colorName: String?) {
+    X("x", "r"),
+    Y("y", "g"),
+    Z("z", "b"),
+    W("w", "a"),
+    A("a", null),
+    B("b", null),
+    C("c", null),
+    D("d", null),
+}
+
+/**
+ * A way to spell a component in a swizzle. `POSITIONAL` uses `x`/`y`/`z`/`w`; `COLOR` uses
+ * `r`/`g`/`b`/`a`. The two are never mixed within one swizzle (no `.xg`, no `.raa`), so a
+ * component's name in a swizzle is fully determined by its scheme.
+ */
+enum class SwizzleScheme(private val select: (Component) -> String?) {
+    POSITIONAL(Component::sourceName),
+    COLOR(Component::colorName);
+
+    /** The letter for [component] in this scheme, or null if the component has no name here. */
+    fun letterOf(component: Component): String? = select(component)
 }
 
 /**

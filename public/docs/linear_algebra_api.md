@@ -256,6 +256,26 @@ The half-precision (IEEE-754 binary16), heap-only vector. Its eight lanes pack i
 | `normalize()` | Keeps the vector's direction while scaling its length to one. A zero-length vector has no direction; normalizing it follows floating-point arithmetic and produces non-finite components. Check lengthSquared() first when zero is possible. |
 | `isFinite()` | Reports whether every component is finite. |
 
+## Swizzles
+
+Every float heap vector (`Vector2f`, `Vector3f`, `Vector4f`) carries the full combinatorial swizzle surface, generated rather than hand-written so the set is complete and correct by construction.
+
+- For each source vector, every length-2, length-3 and length-4 sequence of its components is a read swizzle — an extension `val` on the read interface, so any view can use it. Sequences may reorder (`v.zyx`), repeat (`v.xx`), and expand beyond the source arity (`v.xxxx`).
+- Components can be spelled two ways: positional `x`/`y`/`z`/`w` or color `r`/`g`/`b`/`a`. The two are never mixed within one swizzle.
+- A read swizzle returns a same-scalar `VectorKfc` of the swizzle's own arity (`v.xy` is a `Vector2fc`, `v.xyz` a `Vector3fc`).
+- When a swizzle's indices are all distinct it also has a writable `var` on the mutable type, so GLSL-style assignment works: `v.xy = other.zw`. Repeated-index swizzles (`v.xx`) have no unambiguous target and stay read-only.
+
+## Ergonomic operators
+
+The float heap vectors also carry a small generated operator surface for live coding:
+
+| Operator | Meaning |
+| --- | --- |
+| `v(y = 2f)` | Returns a copy with the named components replaced; unnamed components keep this vector's values. |
+| `v { normalize() }` | Returns a copy after applying the block to it, leaving this vector untouched. |
+| `a %= b` | In-place assignment: copies b's components into a. |
+| `v len 10` | Returns a copy rescaled to the given length, keeping direction. |
+
 ## Rotations and matrices
 
 Alongside the vectors, the library provides rotation and matrix types whose core equations are generated from the same transform model and which interoperate with the heap vectors.

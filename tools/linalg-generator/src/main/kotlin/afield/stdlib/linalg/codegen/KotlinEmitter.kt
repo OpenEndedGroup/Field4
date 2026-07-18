@@ -27,6 +27,112 @@ class KotlinEmitter(
         }
     }
 
+    /** The float heap vectors that carry the hand-written ergonomic surface: dims 2, 3 and 4. */
+    private val swizzleTypes: List<VectorType>
+        get() = model.heapVectors.filter { it.scalar == ScalarKind.FLOAT && it.dimension in 2..4 }
+
+    /**
+     * Emits the exhaustive component-swizzle surface for the float heap vectors.
+     *
+     * For each source vector (dims 2..4), each naming scheme (`xyzw` and `rgba`, never mixed) and
+     * each output arity 2..4, every length-K sequence of source components becomes a read swizzle —
+     * an extension `val` on the read interface returning a same-scalar `VectorKfc` (so any view can
+     * read it, e.g. `v.zyx`, `v.xxxx`). Sequences whose indices are all distinct additionally get a
+     * writable `var` on the mutable type, so GLSL-style assignment works: `v.xy = other.zw`. A
+     * repeated-index sequence (`v.xx`) has no unambiguous target, so it stays read-only.
+     *
+     * Generating these instead of hand-writing them makes the set complete and, more importantly,
+     * correct-by-construction: the previous hand-written `Vector3fc.yy`/`Vector4fc.yy` both returned
+     * `(y, z)`.
+     */
+    fun emitSwizzles(): String = buildString {
+        // Emitted into afield.stdlib (not afield.stdlib.linalg) because that is the package the
+        // hand-written swizzles lived in; box preambles and standalone scripts import it directly.
+        appendHeader("afield.stdlib", "@file:afield.CompletionCategory(\"Math\")")
+        appendLine("import afield.stdlib.linalg.*")
+        swizzleTypes.forEach { type ->
+            appendLine()
+            appendLine("// ${type.heapName} swizzles")
+            SwizzleScheme.entries.forEach { scheme ->
+                (2..4).forEach { arity ->
+                    componentSequences(type.components, arity).forEach { sequence ->
+                        emitSwizzle(type, sequence, scheme)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun StringBuilder.emitSwizzle(type: VectorType, sequence: List<Component>, scheme: SwizzleScheme) {
+        val name = sequence.joinToString("") { scheme.letterOf(it)!! }
+        val arity = sequence.size
+        val resultRead = "Vector${arity}fc"
+        val resultHeap = "Vector${arity}f"
+        val constructor = "$resultHeap(${sequence.joinToString { "${it.sourceName}()" }})"
+        val tuple = sequence.joinToString { it.sourceName }
+        val distinct = sequence.toSet().size == sequence.size
+        // The read accessor lives on the read interface so any view can use it. When the indices are
+        // all distinct the swizzle also has an unambiguous write target, so the mutable type gets a
+        // writable `var` overriding the same name — on a mutable receiver Kotlin picks the more
+        // specific receiver, giving assignment; read-only views still see the interface `val`.
+        appendLine("/** The ($tuple) swizzle. */")
+        appendLine("val ${type.readName}.$name: $resultRead get() = $constructor")
+        if (distinct) {
+            appendLine("/** Reads or writes the ($tuple) swizzle. */")
+            appendLine("var ${type.heapName}.$name: $resultRead")
+            appendLine("    get() = $constructor")
+            appendLine("    set(value) {")
+            sequence.forEachIndexed { position, component ->
+                appendLine("        this[${component.ordinal}] = value.${Component.entries[position].sourceName}()")
+            }
+            appendLine("    }")
+        }
+    }
+
+    /**
+     * Emits the small ergonomic operator surface for the float heap vectors — the copy-with-changes
+     * `invoke`, the in-place `%=` (`remAssign`), and the `len` rescale — as generated extensions so
+     * they stay in lockstep with the vector set instead of being hand-maintained per dimension.
+     */
+    fun emitVectorOperators(): String = buildString {
+        // Same package as the swizzles and the former hand-written operators: afield.stdlib.
+        appendHeader("afield.stdlib", "@file:afield.CompletionCategory(\"Math\")")
+        appendLine("import afield.stdlib.linalg.*")
+        swizzleTypes.forEach { type ->
+            val heap = type.heapName
+            val components = type.components
+            appendLine()
+            appendLine("// $heap operators")
+            appendLine("/** In-place assignment: `a %= b` copies b's components into a. */")
+            appendLine("operator fun $heap.remAssign(other: ${type.readName}) { set(other) }")
+            appendLine()
+            appendLine("/** Returns a copy with the named components replaced; the rest keep this vector's values. */")
+            appendLine(
+                "operator fun $heap.invoke(${components.joinToString { "${it.sourceName}: Float = this.${it.sourceName}" }}): $heap = " +
+                    "$heap(${components.joinToString { it.sourceName }})"
+            )
+            appendLine()
+            appendLine("/** Returns a copy after applying [block] to it, leaving this vector untouched: `v { normalize() }`. */")
+            appendLine("operator fun $heap.invoke(block: $heap.() -> Unit): $heap {")
+            appendLine("    val copy = $heap(this)")
+            appendLine("    copy.block()")
+            appendLine("    return copy")
+            appendLine("}")
+            appendLine()
+            appendLine("/** Returns a copy rescaled to length [l], keeping direction. */")
+            appendLine("infix fun $heap.len(l: Number): $heap = this { normalize().mul(l.toFloat()) }")
+        }
+    }
+
+    /** Every length-[arity] sequence of [components] (Cartesian power), in lexicographic order. */
+    private fun componentSequences(components: List<Component>, arity: Int): List<List<Component>> {
+        var sequences = listOf(emptyList<Component>())
+        repeat(arity) {
+            sequences = sequences.flatMap { prefix -> components.map { prefix + it } }
+        }
+        return sequences
+    }
+
     fun emitArenaVectors(): String = buildString {
         appendHeader("afield.stdlib.linalg.arena")
         appendLine("import afield.stdlib.linalg.*")
@@ -168,6 +274,26 @@ class KotlinEmitter(
             appendLine("| `isFinite()` | Reports whether every component is finite. |")
         }
         appendLine()
+        appendLine("## Swizzles")
+        appendLine()
+        appendLine("Every float heap vector (`Vector2f`, `Vector3f`, `Vector4f`) carries the full combinatorial swizzle surface, generated rather than hand-written so the set is complete and correct by construction.")
+        appendLine()
+        appendLine("- For each source vector, every length-2, length-3 and length-4 sequence of its components is a read swizzle — an extension `val` on the read interface, so any view can use it. Sequences may reorder (`v.zyx`), repeat (`v.xx`), and expand beyond the source arity (`v.xxxx`).")
+        appendLine("- Components can be spelled two ways: positional `x`/`y`/`z`/`w` or color `r`/`g`/`b`/`a`. The two are never mixed within one swizzle.")
+        appendLine("- A read swizzle returns a same-scalar `VectorKfc` of the swizzle's own arity (`v.xy` is a `Vector2fc`, `v.xyz` a `Vector3fc`).")
+        appendLine("- When a swizzle's indices are all distinct it also has a writable `var` on the mutable type, so GLSL-style assignment works: `v.xy = other.zw`. Repeated-index swizzles (`v.xx`) have no unambiguous target and stay read-only.")
+        appendLine()
+        appendLine("## Ergonomic operators")
+        appendLine()
+        appendLine("The float heap vectors also carry a small generated operator surface for live coding:")
+        appendLine()
+        appendLine("| Operator | Meaning |")
+        appendLine("| --- | --- |")
+        appendLine("| `v(y = 2f)` | Returns a copy with the named components replaced; unnamed components keep this vector's values. |")
+        appendLine("| `v { normalize() }` | Returns a copy after applying the block to it, leaving this vector untouched. |")
+        appendLine("| `a %= b` | In-place assignment: copies b's components into a. |")
+        appendLine("| `v len 10` | Returns a copy rescaled to the given length, keeping direction. |")
+        appendLine()
         appendLine("## Rotations and matrices")
         appendLine()
         appendLine("Alongside the vectors, the library provides rotation and matrix types whose core equations are generated from the same transform model and which interoperate with the heap vectors.")
@@ -299,10 +425,11 @@ class KotlinEmitter(
         appendLine("}")
     }
 
-    private fun StringBuilder.appendHeader(packageName: String) {
+    private fun StringBuilder.appendHeader(packageName: String, fileAnnotation: String? = null) {
         appendLine("// DO NOT EDIT — generated by tools/linalg-generator")
         appendLine("// generator-version: 1")
         appendLine("// model-version: field-f32-v1")
+        if (fileAnnotation != null) appendLine(fileAnnotation)
         appendLine("package $packageName")
         appendLine()
     }

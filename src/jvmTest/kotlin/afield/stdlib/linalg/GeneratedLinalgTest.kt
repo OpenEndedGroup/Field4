@@ -5,7 +5,21 @@ import afield.four.util.halfBitsToFloat
 import afield.stdlib.Vec2
 import afield.stdlib.Vec3
 import afield.stdlib.Vec4
+import afield.stdlib.invoke
+import afield.stdlib.len
+import afield.stdlib.remAssign
 import afield.stdlib.vec
+import afield.stdlib.wx
+import afield.stdlib.wz
+import afield.stdlib.xxxx
+import afield.stdlib.xy
+import afield.stdlib.yy
+import afield.stdlib.zx
+import afield.stdlib.zyx
+import afield.stdlib.bbr
+import afield.stdlib.rg
+import afield.stdlib.rgba
+import afield.stdlib.yyyy
 import afield.stdlib.linalg.arena.FrameArena
 import afield.stdlib.linalg.arena.closestPointOnSegment
 import afield.stdlib.linalg.arena.frameScratch
@@ -436,6 +450,70 @@ class GeneratedLinalgTest {
         { it.m10() }, { it.m11() }, { it.m12() },
         { it.m20() }, { it.m21() }, { it.m22() },
     )
+
+    @Test
+    fun readSwizzlesCoverEveryCombinationAndScheme() {
+        val v = Vector4f(1f, 2f, 3f, 4f)
+
+        // Reorder, repeat, and expand across arities; xyzw and rgba are interchangeable spellings.
+        assertVectorEquals(Vector2f(1f, 2f), Vector2f(v.xy))
+        assertVectorEquals(Vector2f(4f, 1f), Vector2f(v.wx))
+        assertVectorEquals(Vector3f(3f, 2f, 1f), Vector3f(v.zyx))
+        assertVectorEquals(Vector4f(2f, 2f, 2f, 2f), Vector4f(v.yyyy))
+        assertVectorEquals(Vector4f(1f, 2f, 3f, 4f), Vector4f(v.rgba))
+        assertVectorEquals(Vector3f(3f, 3f, 1f), Vector3f(v.bbr))
+
+        // A read swizzle works on a read-only view, not just the mutable type.
+        val view: Vector3fc = Vector3f(5f, 6f, 7f)
+        assertVectorEquals(Vector2f(7f, 5f), Vector2f(view.zx))
+        assertVectorEquals(Vector4f(5f, 5f, 5f, 5f), Vector4f(view.xxxx))
+
+        // Regression: the hand-written .yy used to return (y, z); the generated one is correct.
+        assertVectorEquals(Vector2f(6f, 6f), Vector2f(view.yy))
+        assertVectorEquals(Vector2f(2f, 2f), Vector2f(v.yy))
+    }
+
+    @Test
+    fun writeSwizzlesAssignThroughDistinctIndices() {
+        val v = Vector4f(0f, 0f, 0f, 0f)
+
+        // Assignment routes each source component to its named lane, including reordering.
+        v.xy = Vector2f(1f, 2f)
+        v.wz = Vector2f(4f, 3f) // w <- 4, z <- 3
+        assertVectorEquals(Vector4f(1f, 2f, 3f, 4f), v)
+
+        // A three-lane write with a permutation; the fourth lane is untouched.
+        v.zyx = Vector3f(10f, 20f, 30f) // z<-10, y<-20, x<-30
+        assertVectorEquals(Vector4f(30f, 20f, 10f, 4f), v)
+
+        // rgba spelling writes the same way.
+        v.rg = Vector2f(7f, 8f)
+        assertVectorEquals(Vector4f(7f, 8f, 10f, 4f), v)
+    }
+
+    @Test
+    fun vectorInvokeRemAssignAndLen() {
+        val base = Vector3f(1f, 2f, 3f)
+
+        // Copy-with-changes leaves the original intact and defaults unnamed components.
+        val changed = base(y = 20f)
+        assertVectorEquals(Vector3f(1f, 20f, 3f), changed)
+        assertVectorEquals(Vector3f(1f, 2f, 3f), base)
+
+        // Copy-then-block form.
+        val scaled = base { mul(2f) }
+        assertVectorEquals(Vector3f(2f, 4f, 6f), scaled)
+        assertVectorEquals(Vector3f(1f, 2f, 3f), base)
+
+        // %= is in-place assignment.
+        val target = Vector3f(9f, 9f, 9f)
+        target %= base
+        assertVectorEquals(Vector3f(1f, 2f, 3f), target)
+
+        // len rescales a copy to the requested length while keeping direction.
+        val unit = Vector3f(3f, 0f, 4f) len 10
+        assertVectorClose(6f, 0f, 8f, unit)
+    }
 
     private fun assertVectorEquals(expected: Vector3f, actual: Vector3f) {
         assertEquals(expected.x, actual.x)
