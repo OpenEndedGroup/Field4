@@ -63,3 +63,55 @@ from the *real* fitted `Fn` — inspected by eye.
 
 `dev_docs/agents/transcripts/fn_differentiable_fit_demo.yaml` — replayable into a fresh
 Field4: builds a box that fits a wobbly seed to a target sine and plots both.
+
+---
+
+## Execution log & results
+
+### Files changed
+- `src/jvmMain/kotlin/afield/stdlib/FunctionFit.kt` (new) — the whole differentiable fitter:
+  `extractParameters`/`applyParameters`/`parameterCount` (θ↔graph), `rmseLossAgainst`,
+  `finiteDifferenceGradient` (central diff, relative step, non-finite guard), `fitGradient`
+  (Adam + `FnFitRun` provenance), `fitHybrid` (+`FnHybridRun`), `FnFitStep`/`FnFitConfig`.
+- `src/jvmTest/kotlin/afield/stdlib/FunctionFitTest.kt` (new) — 7 tests incl. the PNG montage.
+- `fn_fit_montage.png` (new) — rendered from the real fitted `Fn`.
+- `dev_docs/stdlib/FN_GRAPH_FITTING.md` (new) — explainer (genetic vs differentiable).
+- `dev_docs/agents/transcripts/fn_differentiable_fit_demo.yaml` (new) — loadable demo.
+- `NIGHTLY_WORKLOG.md` — this file.
+
+### Verification (real, honest)
+- `./gradlew compileKotlinJvm` — BUILD SUCCESSFUL.
+- `./gradlew jvmTest --tests 'afield.stdlib.FunctionFitTest'` — **BUILD SUCCESSFUL, all 7
+  tests pass.** Asserted: RMSE drops to < 10% of initial on a sine target and < 25% on a
+  2-oscillator sum; identical trajectory + params for the same seed (determinism); gradient
+  final RMSE ≤ genetic `evolve` of matched evaluation budget (success criterion met); hybrid
+  polish never worsens the evolved RMSE; θ extract/apply round-trips exactly and moves the
+  signal when shifted.
+- **Pixel check (LOOKED at it):** `fn_fit_montage.png` shows the orange fitted curve sitting
+  right on top of the cyan target while the grey seed is visibly off (wrong freq/amp/offset).
+  Printed **initial RMSE 0.9597 → final 0.0082**. Not flat, not garbled — a genuine fit.
+- **NOT verified live:** the demo transcript was *not* replayed in a running Field4 (none was
+  running; port 9092 is shared with the primary tree, so launching risked cross-contaminating
+  `/Users/marc/field4`). The box code is type-checked by inspection against the real API
+  (`Box.plot(fn, channel=, sampleDomain=, title=)` at Functions.kt:3020; `sin`, `Domain`,
+  `Fn.withName`, `fitGradient` all confirmed) and mirrors the shape of the known-good
+  `linalg_thumbnails_demo.yaml`. The equivalent fit+plot logic *is* exercised by the passing
+  test. Confidence high but replay is unproven — first item to check on pickup.
+
+### Risks / unknowns
+- `applyParameters` swaps a changed leaf for a fresh `const` node (via `mapGraphNumbers`),
+  so a fitted graph's `param` leaves become `const`. Functionally identical; changes
+  `graphSignature`. Harmless here (we always apply to the unchanged base seed).
+- Finite-difference gradient cost is O(2·dim(θ)) evals/step — fine for the small graphs this
+  targets; not meant for hundreds of parameters.
+- Demo transcript replay unproven live (see above).
+
+### Recommendation
+**Merge.** Self-contained new files (no edits to existing code → zero regression surface),
+green module-scoped tests, real visual proof, and it satisfies the mission (differentiable
+counterpart to `evolve`, beats the genetic baseline on budget). Optional follow-up: replay
+the demo transcript in a live Field to close the one unproven gap.
+
+### Stray JVMs
+None started (no Field launched). Confirmed `lsof -i :9092 -i :9477` clean and no worktree
+java procs.
