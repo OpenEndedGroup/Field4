@@ -18,17 +18,17 @@ operations:
           import afield.stdlib.fitGradient
 
           with(Functions) {
-              val d = Domain(0.0, 1.0)
+              val d = Functions.Domain(0.0, 1.0)
               val target = sin(1.5, amplitude = 0.8, offset = 0.2).withName("target")
               val seed = sin(1.0, amplitude = 1.0, offset = 0.0).withName("seed")
 
               val run = fitGradient(target, seed, domain = d, iterations = 300, lr = 0.05)
 
-              plot(target, channel = "1 target", sampleDomain = d, title = "target  a·sin(freq·x)+b")
+              plot(target, 0.0 .. 1.0, channel = "1 target", title = "target  a·sin(freq·x)+b")
               plot(
                   run.fitted.withName("fitted"),
+                  0.0 .. 1.0,
                   channel = "2 fitted",
-                  sampleDomain = d,
                   title = "gradient-fitted (Adam)"
               )
 
@@ -44,17 +44,17 @@ operations:
           import afield.stdlib.fitGradient
 
           with(Functions) {
-              val d = Domain(0.0, 1.0)
+              val d = Functions.Domain(0.0, 1.0)
               val target = sin(1.5, amplitude = 0.8, offset = 0.2).withName("target")
               val seed = sin(1.0, amplitude = 1.0, offset = 0.0).withName("seed")
 
               val run = fitGradient(target, seed, domain = d, iterations = 300, lr = 0.05)
 
-              plot(target, channel = "1 target", sampleDomain = d, title = "target  a·sin(freq·x)+b")
+              plot(target, 0.0 .. 1.0, channel = "1 target", title = "target  a·sin(freq·x)+b")
               plot(
                   run.fitted.withName("fitted"),
+                  0.0 .. 1.0,
                   channel = "2 fitted",
-                  sampleDomain = d,
                   title = "gradient-fitted (Adam)"
               )
 

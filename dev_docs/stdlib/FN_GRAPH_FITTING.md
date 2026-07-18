@@ -27,7 +27,7 @@ the same leaf: a clean θ↔graph bijection. `parameterCount()` gives dim(θ).
 with(Functions) {
     val target = sin(1.5, amplitude = 0.8, offset = 0.2)      // a·sin(freq·x)+b
     val seed   = sin(1.0, amplitude = 1.0, offset = 0.0)      // same shape, wrong numbers
-    val run    = fitGradient(target, seed, domain = Domain(0.0, 1.0), iterations = 300, lr = 0.05)
+    val run    = fitGradient(target, seed, domain = Functions.Domain(0.0, 1.0), iterations = 300, lr = 0.05)
     // run.finalRmse ≈ 0.008 (from an initial ≈ 0.96); run.fitted overlays the target.
 }
 ```
