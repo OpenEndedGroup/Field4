@@ -23,6 +23,7 @@ nav:
     - Linear Algebra:
       - Guide: linear_algebra.md
       - Generated Vector API: linear_algebra_api.md
+      - Vector Algebra (swizzles & operators): vector_algebra.md
     - FLine Examples: fline_examples.md
     - Visualizers & Controls: visualizers.md
     - Reading Your Values: reading_your_values.md
