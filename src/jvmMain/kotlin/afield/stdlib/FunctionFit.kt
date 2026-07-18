@@ -13,6 +13,11 @@ import kotlin.random.Random
  * descends the RMSE loss against a target `Fn`. The two are complementary — [fitHybrid]
  * runs [evolve] to discover a shape, then polishes its constants here.
  *
+ * A lone [fitGradient] is *local* and will stall in a frequency local-minimum when the seed's
+ * oscillator frequencies are far from the target's (RMSE-vs-frequency is periodic, not convex);
+ * [fitBest] wraps it in deterministic jittered restarts and is the recommended entry when the
+ * starting numbers may be wrong. See [fitBest]'s KDoc for the why.
+ *
  * The θ extract/apply primitives ride on [Functions.Fn.mapGraphNumbers], whose post-order
  * DFS is stable and deterministic with `preserveSharing = false`: the *i*-th numeric leaf
  * seen while reading is the *i*-th leaf written while applying, so a plain index counter is
@@ -81,6 +86,16 @@ fun rmseLossAgainst(
     val fitness = matchFitness(target, domain, samples, complexityWeight = 0.0)
     return { candidate -> -fitness(candidate) }
 }
+
+/**
+ * A [Functions.Domain] is a `ClosedRange<Double>`, so the fitters accept either a bare range
+ * (`0.0 .. 1.0`) or a `Domain` and normalise here — no `Functions.Domain(...)` ceremony at the
+ * call site. The default across the fitters is the unit domain [Functions.Domain.DEFAULT]
+ * (`0..1`) — a bounded sampling window — because oscillator `Fn`s report [Functions.Domain.ALL]
+ * (±∞), which cannot be sampled; pass a range when you want to fit over anything else.
+ */
+private fun ClosedRange<Double>.asFnDomain(): Functions.Domain =
+    this as? Functions.Domain ?: Functions.Domain(start, endInclusive)
 
 /** One descent step's record: the loss (RMSE) after applying the step. */
 data class FnFitStep(
@@ -203,7 +218,7 @@ private fun finiteDifferenceGradient(
 fun fitGradient(
     target: Functions.Fn,
     seed: Functions.Fn,
-    domain: Functions.Domain = Functions.Domain.DEFAULT,
+    domain: ClosedRange<Double> = Functions.Domain.DEFAULT,
     iterations: Int = 200,
     lr: Double = 0.05,
     beta1: Double = 0.9,
@@ -219,10 +234,11 @@ fun fitGradient(
     require(lr > 0.0) { "lr must be positive" }
     require(samples >= 2) { "samples must be >= 2" }
 
+    val dom = domain.asFnDomain()
     val config = FnFitConfig(
-        iterations, lr, beta1, beta2, epsilon, fdStep, samples, domain, rngSeed, initJitter
+        iterations, lr, beta1, beta2, epsilon, fdStep, samples, dom, rngSeed, initJitter
     )
-    val loss = rmseLossAgainst(target, domain, samples)
+    val loss = rmseLossAgainst(target, dom, samples)
     val lossOfTheta: (DoubleArray) -> Double = { theta -> loss(seed.applyParameters(theta)) }
 
     val rng = Random(rngSeed)
@@ -292,6 +308,69 @@ fun fitGradient(
     )
 }
 
+/**
+ * Robust fit by multiple jittered restarts — the recommended entry point when the seed's
+ * numbers might be far from the target's.
+ *
+ * A single [fitGradient] is *local*: Adam follows the RMSE gradient into the nearest basin.
+ * For parameters that enter the loss linearly (amplitude, offset) that basin is the global
+ * one and one shot suffices. But **oscillator frequency/phase enter the loss periodically**,
+ * so RMSE-vs-frequency is riddled with local minima: a lone descent from the wrong frequency
+ * drifts into a spurious basin and stalls (empirically ~0.19 RMSE on a two-oscillator target
+ * whose global optimum is ~0.005). This runs [restarts] independent fits — restart 0 from the
+ * clean seed, the rest from `±restartJitter*(1+|θ|)` shakes of it (each seeded from
+ * `rngSeed + k`) — and keeps the lowest-RMSE result. One of the shakes usually lands in the
+ * global basin. Fully deterministic given [rngSeed].
+ *
+ * For a *structurally* wrong seed (missing operators, wrong topology) reach for [fitHybrid],
+ * which searches shape with [evolve] first; [fitBest] only searches numbers.
+ */
+fun fitBest(
+    target: Functions.Fn,
+    seed: Functions.Fn,
+    domain: ClosedRange<Double> = Functions.Domain.DEFAULT,
+    restarts: Int = 12,
+    iterations: Int = 300,
+    lr: Double = 0.05,
+    beta1: Double = 0.9,
+    beta2: Double = 0.999,
+    epsilon: Double = 1e-8,
+    fdStep: Double = 1e-4,
+    samples: Int = 128,
+    restartJitter: Double = 0.6,
+    rngSeed: Long = 0L
+): FnFitRun {
+    require(restarts >= 1) { "restarts must be >= 1" }
+    val reporter = afield.progressReporter("fit best")
+    var best: FnFitRun? = null
+    try {
+        for (k in 0 until restarts) {
+            // Restart 0 is the un-jittered anchor: fitBest is never worse than a plain fit.
+            val jitter = if (k == 0) 0.0 else restartJitter
+            val run = fitGradient(
+                target = target,
+                seed = seed,
+                domain = domain,
+                iterations = iterations,
+                lr = lr,
+                beta1 = beta1,
+                beta2 = beta2,
+                epsilon = epsilon,
+                fdStep = fdStep,
+                samples = samples,
+                rngSeed = rngSeed + k,
+                initJitter = jitter,
+                onIteration = { _, _ -> } // suppress inner bars; the outer one tracks restarts
+            )
+            if (best == null || run.finalRmse < best.finalRmse) best = run
+            reporter.update((k + 1).toLong(), restarts.toLong())
+        }
+    } finally {
+        reporter.finish()
+    }
+    return best!!
+}
+
 /** Result and provenance of a [fitHybrid] run: the structural search then the polish. */
 data class FnHybridRun(
     val evolveRun: FnEvolveRun,
@@ -318,7 +397,7 @@ data class FnHybridRun(
 fun fitHybrid(
     target: Functions.Fn,
     seed: Functions.Fn,
-    domain: Functions.Domain = Functions.Domain.DEFAULT,
+    domain: ClosedRange<Double> = Functions.Domain.DEFAULT,
     evolveIterations: Int = 64,
     evolveLambda: Int = 6,
     fitIterations: Int = 200,
@@ -332,7 +411,8 @@ fun fitHybrid(
     rngSeed: Long = 0L,
     mutations: List<Pair<String, FnMutation>> = FnMutations.defaults()
 ): FnHybridRun {
-    val fitness = matchFitness(target, domain, samples, complexityWeight)
+    val dom = domain.asFnDomain()
+    val fitness = matchFitness(target, dom, samples, complexityWeight)
     val evolveRun = evolve(
         seed = seed,
         iterations = evolveIterations,
@@ -344,7 +424,7 @@ fun fitHybrid(
     val fitRun = fitGradient(
         target = target,
         seed = evolveRun.best,
-        domain = domain,
+        domain = dom,
         iterations = fitIterations,
         lr = lr,
         beta1 = beta1,

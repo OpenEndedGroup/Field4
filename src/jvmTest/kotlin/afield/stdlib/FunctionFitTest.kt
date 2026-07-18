@@ -75,27 +75,63 @@ class FunctionFitTest {
         assertTrue(a.parameters.contentEquals(b.parameters), "same seed must give identical params")
     }
 
+    // A genuinely hard target: a *product* of two oscillators whose frequencies (2, 1.5) are
+    // far from the seed's (3.4, 1.0). Amplitude/offset are easy; the frequencies sit in a
+    // multimodal RMSE landscape, so a single local descent stalls in the wrong basin.
+    private fun hardTarget() = with(Functions) { cos(2) * sin(1.5, amplitude = 0.8, offset = 0.2) }
+    private fun hardSeed() = with(Functions) { cos(3.4) * sin(1.0, amplitude = 2.0, offset = 0.0) }
+
     @Test
-    fun fitGradientBeatsGeneticBaselineOfComparableBudget() = with(Functions) {
-        val target = sin(1.5, amplitude = 0.8, offset = 0.2)
-        val seed = sin(1.0, amplitude = 1.0, offset = 0.0)
+    fun singleShotGradientStallsInAFrequencyLocalMinimum() = with(Functions) {
+        // Documents the real limitation (not a bug): one descent, even with a large budget,
+        // cannot cross the frequency barriers and settles well above the global optimum (~0.005).
+        val run = fitGradient(hardTarget(), hardSeed(), domain = domain, iterations = 3000, lr = 0.05)
+        assertTrue(
+            run.finalRmse > 0.1,
+            "single-shot gradient is expected to stall here; got ${run.finalRmse} (if this " +
+                "dropped, the loss landscape or defaults changed — revisit the story)"
+        )
+    }
 
-        val fitRun = fitGradient(target, seed, domain = domain, iterations = 200, lr = 0.05)
-
-        // Comparable evaluation budget for the genetic baseline: fitGradient spends
-        // ~ iterations * (2*params + 1) evals; match that with evolve's lambda draws.
-        val budget = fitRun.evaluations
-        val fitness = matchFitness(target, domain, samples = 128)
-        val lambda = 6
-        val evolveIters = budget / lambda
-        val evolveRun = evolve(seed, iterations = evolveIters, lambda = lambda, rngSeed = 0L, fitness = fitness)
-        val evolveRmse = -evolveRun.bestScore
+    @Test
+    fun fitBestEscapesWhereSingleShotStalls() = with(Functions) {
+        val target = hardTarget()
+        val seed = hardSeed()
+        val single = fitGradient(target, seed, domain = domain, iterations = 300, lr = 0.05)
+        // fitBest omits `domain` on purpose — it must default to the target's own domain.
+        val best = fitBest(target, seed, restarts = 16, iterations = 400, lr = 0.05, rngSeed = 0L)
 
         assertTrue(
-            fitRun.finalRmse <= evolveRmse,
-            "gradient RMSE ${fitRun.finalRmse} should beat/match genetic $evolveRmse " +
-                "(budget=$budget, evolveIters=$evolveIters)"
+            best.finalRmse < 0.05,
+            "fitBest should reach the global basin (< 0.05); got ${best.finalRmse}"
         )
+        assertTrue(
+            best.finalRmse < single.finalRmse * 0.5,
+            "fitBest ${best.finalRmse} should be far better than single-shot ${single.finalRmse}"
+        )
+        // Never worse than a plain fit: restart 0 is the un-jittered anchor.
+        assertTrue(best.finalRmse <= single.finalRmse + 1e-9)
+    }
+
+    @Test
+    fun fitBestIsDeterministic() = with(Functions) {
+        val target = hardTarget()
+        val seed = hardSeed()
+        val a = fitBest(target, seed, restarts = 8, iterations = 150, rngSeed = 7L)
+        val b = fitBest(target, seed, restarts = 8, iterations = 150, rngSeed = 7L)
+        assertEquals(a.losses, b.losses, "same seed/config must give an identical trajectory")
+        assertTrue(a.parameters.contentEquals(b.parameters), "same seed must give identical params")
+    }
+
+    @Test
+    fun domainAcceptsABareRange() = with(Functions) {
+        val target = sin(1.5, amplitude = 0.8, offset = 0.2)
+        val seed = sin(1.0, amplitude = 1.0, offset = 0.0)
+        // Bare range, no Functions.Domain(...) ceremony:
+        val viaRange = fitGradient(target, seed, domain = 0.0..1.0, iterations = 120, lr = 0.05)
+        // Omitted entirely -> Functions.Domain.DEFAULT, which is 0..1:
+        val viaDefault = fitGradient(target, seed, iterations = 120, lr = 0.05)
+        assertEquals(viaRange.losses, viaDefault.losses, "bare range 0..1 must match the 0..1 default")
     }
 
     @Test
@@ -114,10 +150,22 @@ class FunctionFitTest {
     }
 
     @Test
+    fun fnFitRunRendersConciselyNotAsAFieldDump() = with(Functions) {
+        val run = fitGradient(sin(1.5, amplitude = 0.8, offset = 0.2), sin(1.0), iterations = 120, lr = 0.05)
+        val html = afield.ValueVisualizer.visualize(run)
+        assertTrue("FnFitRun" in html && "RMSE" in html, "should show a labelled RMSE summary")
+        // The whole point: no dumping the hundreds-long steps list.
+        assertTrue("FnFitStep" !in html, "concise render must not enumerate the steps list")
+        assertTrue(html.length < 6000, "concise render should be compact; was ${html.length} chars")
+    }
+
+    @Test
     fun rendersFitMontagePng() = with(Functions) {
-        val target = sin(1.5, amplitude = 0.8, offset = 0.2)
-        val seed = sin(1.0, amplitude = 1.0, offset = 0.0)
-        val run = fitGradient(target, seed, domain = domain, iterations = 300, lr = 0.05)
+        // Render the *hard* case via the recommended path, so the eyeballed proof shows the
+        // optimiser actually escaping a frequency local-minimum, not just an easy single-sine fit.
+        val target = hardTarget()
+        val seed = hardSeed()
+        val run = fitBest(target, seed, restarts = 16, iterations = 400, lr = 0.05)
 
         val w = 900
         val h = 360

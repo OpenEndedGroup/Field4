@@ -1,12 +1,14 @@
 name: fn_differentiable_fit_demo
 description: >
-  Self-contained demo of fitGradient — the differentiable counterpart to the genetic
-  evolve(). One box builds a target sine (a*sin(freq*x)+b), a deliberately-wrong seed of the
-  same shape, then runs Adam descent over the seed's numeric leaves to match the target. On
-  execute the box plots the target (channel "1 target") and the gradient-fitted curve
-  (channel "2 fitted"), and its text output reports RMSE before vs after — which should
-  collapse from ~1.0 to ~0.01. Open/replay this into a fresh Field4 and look at the box:
-  the fitted plot should sit right on top of the target's shape.
+  Self-contained demo of the differentiable fitter (afield.stdlib.fitBest / fitGradient) — the
+  gradient-descent counterpart to the genetic evolve(). The target is a *product* of two
+  oscillators, cos(2)*sin(1.5, ...), and the seed has deliberately-wrong frequencies
+  (cos(3.4)*sin(1.0, ...)). A single fitGradient stalls in a frequency local-minimum (RMSE ~0.19),
+  so the demo uses fitBest, which runs jittered restarts and lands in the global basin
+  (RMSE ~0.72 -> ~0.006). On execute the box plots the target (channel "1 target") and the fitted
+  curve (channel "2 fitted"), and returns the FnFitRun — Field renders it as a compact RMSE
+  before->after summary with a loss-trajectory sparkline. Open/replay this into a fresh Field4 and
+  look at the box: the fitted plot should sit right on top of the target.
 operations:
   - create:
       box: fn_fit_demo
@@ -15,25 +17,20 @@ operations:
       properties:
         code: |
           import afield.stdlib.Functions
-          import afield.stdlib.fitGradient
+          import afield.stdlib.fitBest
 
           with(Functions) {
-              val d = Functions.Domain(0.0, 1.0)
-              val target = sin(1.5, amplitude = 0.8, offset = 0.2).withName("target")
-              val seed = sin(1.0, amplitude = 1.0, offset = 0.0).withName("seed")
+              val target = cos(2) * sin(1.5, amplitude = 0.8, offset = 0.2)
+              val seed   = cos(3.4) * sin(1.0, amplitude = 2.0)
 
-              val run = fitGradient(target, seed, domain = d, iterations = 300, lr = 0.05)
+              // fitBest = jittered restarts; escapes the frequency local-minimum a single
+              // fitGradient would stall in. domain defaults to 0..1; no Functions.Domain(...) needed.
+              val run = fitBest(target, seed, restarts = 16)
 
-              plot(target, 0.0 .. 1.0, channel = "1 target", title = "target  a·sin(freq·x)+b")
-              plot(
-                  run.fitted.withName("fitted"),
-                  0.0 .. 1.0,
-                  channel = "2 fitted",
-                  title = "gradient-fitted (Adam)"
-              )
+              plot(target,     channel = "1 target", title = "target  cos·sin")
+              plot(run.fitted, channel = "2 fitted", title = "gradient-fitted (best of 16 restarts)")
 
-              "differentiable fit: RMSE %.4f -> %.4f over %d Adam steps (%d evals)"
-                  .format(run.initialRmse, run.finalRmse, run.iterations, run.evaluations)
+              run   // Field renders the FnFitRun: RMSE before -> after + a loss sparkline
           }
   - execute:
       box: fn_fit_demo
@@ -41,25 +38,18 @@ operations:
       type: fragment
       code: |
           import afield.stdlib.Functions
-          import afield.stdlib.fitGradient
+          import afield.stdlib.fitBest
 
           with(Functions) {
-              val d = Functions.Domain(0.0, 1.0)
-              val target = sin(1.5, amplitude = 0.8, offset = 0.2).withName("target")
-              val seed = sin(1.0, amplitude = 1.0, offset = 0.0).withName("seed")
+              val target = cos(2) * sin(1.5, amplitude = 0.8, offset = 0.2)
+              val seed   = cos(3.4) * sin(1.0, amplitude = 2.0)
 
-              val run = fitGradient(target, seed, domain = d, iterations = 300, lr = 0.05)
+              val run = fitBest(target, seed, restarts = 16)
 
-              plot(target, 0.0 .. 1.0, channel = "1 target", title = "target  a·sin(freq·x)+b")
-              plot(
-                  run.fitted.withName("fitted"),
-                  0.0 .. 1.0,
-                  channel = "2 fitted",
-                  title = "gradient-fitted (Adam)"
-              )
+              plot(target,     channel = "1 target", title = "target  cos·sin")
+              plot(run.fitted, channel = "2 fitted", title = "gradient-fitted (best of 16 restarts)")
 
-              "differentiable fit: RMSE %.4f -> %.4f over %d Adam steps (%d evals)"
-                  .format(run.initialRmse, run.finalRmse, run.iterations, run.evaluations)
+              run
           }
 
   - await:

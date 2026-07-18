@@ -268,6 +268,7 @@ object ValueVisualizer {
         is FLine -> formatFLine(value)
         is Functions.Domain -> formatDomain(value)
         is Functions.Fn -> formatFn(value, depth, visited, respectDepthLimit)
+        is afield.stdlib.FnFitRun -> formatFnFitRun(value)
         is Box -> formatBox(value)
         is Plot -> value.toHtml()
         is Function<*> -> formatFunction(value, null)
@@ -696,6 +697,32 @@ object ValueVisualizer {
      * domain is just `Domain { ∞ }`, a point is `Domain { x }`, everything else `Domain { a..b }`
      * (with ±∞ for a half-open end).
      */
+    /**
+     * Concise render of a [afield.stdlib.FnFitRun]: the RMSE it started at and landed on, the
+     * budget it spent, and a sparkline of the whole loss trajectory — instead of dumping the
+     * (often hundreds long) `steps`/`losses` arrays that the generic data-class renderer would.
+     */
+    private fun formatFnFitRun(run: afield.stdlib.FnFitRun): String = buildString {
+        val arrow = if (run.improved) "↓" else "→"
+        val arrowColour = if (run.improved) "#8f8" else "#f88"
+        append("<div>")
+        append("<span style='color: #cc8;'>FnFitRun</span> ")
+        append("<span style='color: #aaa;'>RMSE </span>")
+        append("<span style='color: #8cf;'>${fmt(run.initialRmse)}</span>")
+        append("<span style='color: $arrowColour;'> $arrow </span>")
+        append("<span style='color: #8f8;'>${fmt(run.finalRmse)}</span>")
+        append(
+            "<span style='color: #888;'>  ${run.iterations} steps · ${run.evaluations} evals · " +
+                "${run.parameters.size} params</span>"
+        )
+        append("</div>")
+        if (run.losses.size >= SPARKLINE_MIN_POINTS) {
+            append("<div style='margin-top: 2px;'>")
+            append(renderNumericSparkline(run.losses))
+            append("</div>")
+        }
+    }
+
     private fun formatDomain(d: Functions.Domain): String {
         val inner = when {
             d._isEmpty -> "<span style='color: #888;'>∅</span>"
