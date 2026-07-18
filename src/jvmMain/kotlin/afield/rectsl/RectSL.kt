@@ -977,10 +977,24 @@ data class ParseResult(
 }
 
 data class CompileResult(
-    val program: SceneProgram?,
+    val programOrNull: SceneProgram?,
     val diagnostics: List<String> = emptyList()
 ) {
-    val ok: Boolean get() = program != null && diagnostics.isEmpty()
+    val ok: Boolean get() = programOrNull != null && diagnostics.isEmpty()
+
+    /**
+     * The compiled program, or a [RectLangException] carrying the diagnostics if
+     * compilation failed. Prefer this (and the copy-paste-friendly `.program!!`,
+     * where the `!!` is now a harmless no-op) over reaching for [programOrNull]:
+     * a failed compile reports *why* — e.g. "Unknown word: arra" — instead of an
+     * opaque NullPointerException. Inspect [ok]/[diagnostics] first if you'd rather
+     * handle failure than throw.
+     */
+    val program: SceneProgram
+        get() = programOrNull ?: throw RectLangException(
+            if (diagnostics.isEmpty()) "RectSL compilation failed"
+            else "RectSL compilation failed:\n" + diagnostics.joinToString("\n")
+        )
 }
 
 interface AnimationOracle {
@@ -1242,8 +1256,44 @@ class RectLangVm(
             return
         }
 
-        val word = words[name] ?: throw RectLangException("Unknown word: $name")
+        val word = words[name] ?: throw RectLangException("Unknown word: $name" + suggestionFor(name))
         word.apply(this)
+    }
+
+    /**
+     * A "did you mean …?" tail for an unknown word — the vocabulary entries closest
+     * (by Levenshtein distance) to [name]. Catches the common typo, e.g. `arra`
+     * → `array`. Returns "" when nothing is near enough to be worth guessing.
+     */
+    private fun suggestionFor(name: String): String {
+        val vocabulary = words.keys + definitions.keys + namedTracks.keys + namedCurves.keys
+        val threshold = if (name.length <= 4) 1 else 2
+        val near = vocabulary
+            .map { it to levenshtein(name, it, threshold) }
+            .filter { it.second <= threshold }
+            .sortedWith(compareBy({ it.second }, { it.first }))
+            .map { it.first }
+            .take(3)
+        return if (near.isEmpty()) "" else " (did you mean ${near.joinToString(" or ") { "'$it'" }}?)"
+    }
+
+    /** Edit distance between [a] and [b], short-circuiting once it exceeds [max]. */
+    private fun levenshtein(a: String, b: String, max: Int): Int {
+        if (kotlin.math.abs(a.length - b.length) > max) return max + 1
+        var prev = IntArray(b.length + 1) { it }
+        var curr = IntArray(b.length + 1)
+        for (i in 1..a.length) {
+            curr[0] = i
+            var rowMin = curr[0]
+            for (j in 1..b.length) {
+                val cost = if (a[i - 1] == b[j - 1]) 0 else 1
+                curr[j] = minOf(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost)
+                if (curr[j] < rowMin) rowMin = curr[j]
+            }
+            if (rowMin > max) return max + 1
+            val tmp = prev; prev = curr; curr = tmp
+        }
+        return prev[b.length]
     }
 
     fun push(v: Value) {
@@ -3476,7 +3526,7 @@ object RectSLRenderRunner {
         progress: RectSLRenderProgress? = null
     ): RectSLRenderResult {
         val compile = RectAnimationOracle.compile(source)
-        if (!compile.ok || compile.program == null) {
+        if (!compile.ok || compile.programOrNull == null) {
             throw RectLangException("RectSL compile failed:\n${compile.diagnostics.joinToString("\n")}")
         }
         return renderJpgSequence(compile.program, settings, progress)
@@ -3778,7 +3828,7 @@ object RectSLSmokeTest {
     @JvmStatic
     fun main(args: Array<String>) {
         val result = RectAnimationOracle.compile(minimalAcceptanceSource)
-        check(result.ok && result.program != null) { result.diagnostics.joinToString("\n") }
+        check(result.ok && result.programOrNull != null) { result.diagnostics.joinToString("\n") }
 
         val program = result.program
         val rects = program.nodes.filterIsInstance<RectNode>()

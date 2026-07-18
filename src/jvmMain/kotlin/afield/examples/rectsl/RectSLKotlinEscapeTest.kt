@@ -35,7 +35,7 @@ object RectSLKotlinEscapeTest {
             "a" rect  {{ 1.0 + 2.0 }} 0 xy  1 square ;
             """.trimIndent(),
             engine = ki
-        ).program ?: error("numeric escape failed to compile")
+        ).programOrNull ?: error("numeric escape failed to compile")
         val ax = numeric.sample(0.0).rects.first().center.x
         require(kotlin.math.abs(ax - 3.0) < 1e-9) { "numeric escape expected x=3.0, got $ax" }
 
@@ -51,7 +51,7 @@ object RectSLKotlinEscapeTest {
             ;
             """.trimIndent(),
             engine = ki
-        ).program ?: error("Fn escape failed to compile")
+        ).programOrNull ?: error("Fn escape failed to compile")
         val alphas = bell.sample(0.0).rects.sortedBy { it.center.x }.map { it.alpha }
         require(alphas.size == 5) { "expected 5 rects, got ${alphas.size}" }
         require(kotlin.math.abs(alphas[2] - 1.0) < 1e-3) { "bell center should be ~1, got ${alphas[2]}" }
@@ -69,7 +69,7 @@ object RectSLKotlinEscapeTest {
             ;
             """.trimIndent(),
             engine = ki
-        ).program ?: error("per-copy escape failed to compile")
+        ).programOrNull ?: error("per-copy escape failed to compile")
         val pxs = perCopy.sample(0.0).rects.map { it.center.x }.sorted()
         listOf(0.0, 2.0, 4.0, 6.0, 8.0).forEachIndexed { idx, e ->
             require(kotlin.math.abs(pxs[idx] - e) < 1e-9) { "per-copy escape expected $e at $idx, got ${pxs[idx]}" }
@@ -84,7 +84,7 @@ object RectSLKotlinEscapeTest {
             "p" rect 0 0 xy 1 square  {{ (sin(2) through gain(0.5)).eval(0.25) }} alpha ;
             """.trimIndent(),
             engine = ki
-        ).program
+        ).programOrNull
         require(pipe != null) { "transform-pipeline escape failed to compile" }
         val pa = pipe.sample(0.0).rects.first().alpha
         require(pa in 0.0..1.0) { "pipeline alpha out of range: $pa" }
@@ -96,7 +96,7 @@ object RectSLKotlinEscapeTest {
             "z" rect {{ 1.0 }} 0 xy 1 square ;
             """.trimIndent()
         )
-        require(noEngine.program == null && noEngine.diagnostics.any { it.contains("Kotlin escape needs") }) {
+        require(noEngine.programOrNull == null && noEngine.diagnostics.any { it.contains("Kotlin escape needs") }) {
             "escape without an engine should fail with a clear message, got ${noEngine.diagnostics}"
         }
 

@@ -89,6 +89,23 @@ object RectSLWorkout {
         require(trailingQuote.diagnostics.single().contains("exactly three quotes")) {
             trailingQuote.diagnostics
         }
+
+        // An unknown word (typo) reports what it saw *and* suggests the closest real
+        // word — never a bare NullPointerException from `.program!!`.
+        val typo = RectAnimationOracle.compile(
+            """
+            "bar" rect 0 0 xy 1 square ;
+            "bar" 4 '( i 0 xy ) arra
+            """.trimIndent()
+        )
+        require(!typo.ok) { "Unknown word 'arra' should not compile" }
+        require(typo.diagnostics.single() == "Unknown word: arra (did you mean 'array'?)") {
+            "expected an unknown-word suggestion, got: ${typo.diagnostics}"
+        }
+        val npe = runCatching { typo.program }.exceptionOrNull()
+        require(npe is RectLangException && npe.message?.contains("Unknown word: arra") == true) {
+            ".program on a failed compile should throw the diagnostic, not an NPE; got $npe"
+        }
     }
 
     private fun minimalMirrorMesh() {
@@ -597,7 +614,7 @@ object RectSLWorkout {
             ;
             """.trimIndent(),
             mapOf("shape" to curve)
-        ).program ?: error("compileRectSL with curves failed")
+        ).programOrNull ?: error("compileRectSL with curves failed")
         val ia = injected.sample(0.0).rects.sortedBy { it.center.x }.map { it.alpha }
         near(1.0, ia[2])
         require(ia[0] < 0.05 && ia[4] < 0.05) { "injected curve did not drive the array: $ia" }
@@ -716,7 +733,7 @@ object RectSLWorkout {
     private fun compile(source: String): SceneProgram {
         val result = RectAnimationOracle.compile(source)
         require(result.ok) { result.diagnostics.joinToString("\n") }
-        return result.program!!
+        return result.program
     }
 
     private fun rotate(p: Vec2d, angle: Double): Vec2d =

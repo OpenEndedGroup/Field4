@@ -359,7 +359,7 @@ object RectSLGalleryHarness {
     ): SceneProgram {
         val precompiled = if ("{{" in source) prewarmRectSLEscapes(source, escapeEngine) else emptyMap()
         val result = compileRectSL(source, curves, precompiledEscapes = precompiled)
-        return result.program?.takeIf { result.ok }
+        return result.programOrNull?.takeIf { result.ok }
             ?: throw RectLangException("RectSL '$name' did not compile:\n${result.diagnostics.joinToString("\n")}")
     }
 

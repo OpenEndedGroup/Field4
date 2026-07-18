@@ -110,7 +110,7 @@ object RectSLExamples {
             "groupsAndStackSLMaterial" to groupsAndStackSLMaterial,
         ).forEach { (name, source) ->
             val result = RectAnimationOracle.compile(source)
-            check(result.ok && result.program != null) {
+            check(result.ok && result.programOrNull != null) {
                 "$name failed:\n" + result.diagnostics.joinToString("\n")
             }
         }
@@ -147,7 +147,7 @@ object RectSLExamples {
                 } else {
                     RectAnimationOracle.compile(source)
                 }
-                val program = result.program
+                val program = result.programOrNull
                 check(result.ok && program != null) {
                     "gallery '$name' failed to compile:\n" + result.diagnostics.joinToString("\n")
                 }
