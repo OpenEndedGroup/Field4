@@ -1,0 +1,14 @@
+#rectsl
+wall 20 9 meters
+duration 4
+fps 30
+
+10 5 '(
+  "c" rect
+    colc 1.7 *  rowc 1.7 *  xy
+    0.6 square
+    '( 0 0.15  1 1.15  2 0.15 ) 2 loop-time scale
+    colc abs  rowc abs  +  0.16 *  delay-all-time
+    0x14e0ff solid fill
+  ;
+) grid

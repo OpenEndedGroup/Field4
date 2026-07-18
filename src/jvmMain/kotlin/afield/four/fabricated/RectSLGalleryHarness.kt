@@ -9,13 +9,18 @@ import afield.four.modules.parameters
 import afield.four.modules.pointer
 import afield.four.targets.RenderToTexture
 import afield.logger.lprintln
-import afield.rectsl.RectAnimationOracle
-import afield.rectsl.RectLangException
+import afield.KotlinInterface2
+import afield.KotlinScriptEngine
 import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
+import afield.rectsl.RectLangException
 import afield.rectsl.SceneProgram
+import afield.rectsl.compileRectSL
+import afield.rectsl.prewarmRectSLEscapes
 import afield.rectsl.rectMaterialShaderCode
 import afield.rectsl.worldToClip
 import afield.rectsl.writeFrameToMesh
+import afield.stdlib.Functions
+import afield.stdlib.fitBest
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.yield
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R8G8B8A8_UNORM
@@ -156,6 +161,55 @@ object RectSLGalleryHarness {
         return written
     }
 
+    /**
+     * A dedicated illustration of the hardest bridge idea (#5): a RectSL
+     * distribution is a `Functions` graph, so the host can *fit* it to a target and
+     * RectSL just samples the winner. We fit a two-lobe target with [fitBest], bind
+     * the seed/target/fitted curves by name into a real RectSL program, and render
+     * three arrays — target (reference), seed (before), fitted (after) — so the gold
+     * "after" row visibly lands on the target silhouette that the muddy "before" row
+     * misses. The layout is the ordinary `array` + `sample` path; only the curve was
+     * searched for by the host.
+     */
+    suspend fun renderFitToTarget(outputDir: File, renderer: Renderer): File {
+        outputDir.mkdirs()
+        val (target, seed, fitted) = with(Functions) {
+            // A two-lobe silhouette that is awkward to hand-key; the seed has the
+            // same structure but deliberately wrong lobe positions/widths/heights.
+            val target = gaussian(0.30, 0.11) + gaussian(0.72, 0.13) * 0.80
+            val seed = gaussian(0.45, 0.20) + gaussian(0.60, 0.20) * 0.50
+            val run = fitBest(target, seed, restarts = 12)
+            lprintln("info,doc", "rectsl fit-to-target RMSE ${"%.4f".format(run.initialRmse)} -> ${"%.4f".format(run.finalRmse)}")
+            Triple(target, seed, run.fitted)
+        }
+        val program = compileForRender(
+            "fit-to-target",
+            FIT_SCENE_SOURCE,
+            mapOf("target" to target, "seed" to seed, "fit" to fitted)
+        )
+        val file = File(outputDir, "rectsl-fit-to-target.png")
+        renderStill(renderer, program, 0.0, file, "fit-to-target")
+        lprintln("info,doc", "rectsl fit-to-target wrote ${file.name} (${file.length()} bytes)")
+        return file
+    }
+
+    /** The scene rendered by [renderFitToTarget]; `target`/`seed`/`fit` are host-bound curves. */
+    val FIT_SCENE_SOURCE: String = """
+        #rectsl
+        wall 22 12 abstract
+        duration 1
+        fps 1
+
+        "trow" rect  0 -4 xy  0.5 1 wh  0x2e5a86 solid fill
+          40 '( ic 0.55 * 0 offset  target f sample 4 * 0.12 +  h ) array ;
+
+        "srow" rect  0 0 xy  0.5 1 wh  0x8a5a2b solid fill
+          40 '( ic 0.55 * 0 offset  seed f sample 4 * 0.12 +  h ) array ;
+
+        "frow" rect  0 4 xy  0.5 1 wh  0xffd23c solid fill
+          40 '( ic 0.55 * 0 offset  fit f sample {{ 4.0 }} * 0.12 +  h ) array ;
+    """.trimIndent()
+
     // ── render paths ────────────────────────────────────────────────────────────
 
     private suspend fun renderStill(
@@ -283,10 +337,30 @@ object RectSLGalleryHarness {
 
     // ── shared plumbing ───────────────────────────────────────────────────────────
 
-    private fun compile(example: Example): SceneProgram {
-        val result = RectAnimationOracle.compile(example.source)
+    private suspend fun compile(example: Example): SceneProgram = compileForRender(example.name, example.source)
+
+    // A dedicated Kotlin engine for pre-warming `{{ … }}` escapes. It must NOT be the
+    // render box's own engine: that one is busy *executing* the render code that calls
+    // us, so compiling a new snippet on it re-enters a single-threaded REPL and
+    // deadlocks. A fresh, idle engine compiles fine while the box engine runs.
+    private val escapeEngine: KotlinScriptEngine by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        KotlinInterface2(filePrefix = "RECTSL_ESCAPE_RENDER_")
+    }
+
+    /**
+     * Compile a program for rendering, pre-warming any `{{ … }}` escapes off the
+     * runloop first (see [prewarmRectSLEscapes]) so the render never triggers a
+     * blocking K2 compile inside the non-reentrant graphics runloop.
+     */
+    private suspend fun compileForRender(
+        name: String,
+        source: String,
+        curves: Map<String, Functions.Fn> = emptyMap()
+    ): SceneProgram {
+        val precompiled = if ("{{" in source) prewarmRectSLEscapes(source, escapeEngine) else emptyMap()
+        val result = compileRectSL(source, curves, precompiledEscapes = precompiled)
         return result.program?.takeIf { result.ok }
-            ?: throw RectLangException("RectSL '${example.name}' did not compile:\n${result.diagnostics.joinToString("\n")}")
+            ?: throw RectLangException("RectSL '$name' did not compile:\n${result.diagnostics.joinToString("\n")}")
     }
 
     /** Longest side [OUTPUT_LONG]; the other derived from the wall aspect, both even. */

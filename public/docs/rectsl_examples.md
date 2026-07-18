@@ -36,15 +36,15 @@ id: docs.rectsl.gallery
 runner: backdoor-box
 graphicsContext: true
 tags: [docs, rectsl, shaders, graphics]
-timeoutSec: 420
+timeoutSec: 600
 execution: launch
-waitSec: 90.0
+waitSec: 130.0
 expect:
   allowMissingOutput: true
   image:
     path: /tmp/docs-rectsl-gallery-hero.png
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/_gallery-hero.png" source-image="/tmp/docs-rectsl-gallery-hero.png" wait="90.0" timeout="420" execution="launch" embed=false graphics-context=true name="rectsl-gallery" hidden=true fabricate-scene="rectsl-gallery"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/_gallery-hero.png" source-image="/tmp/docs-rectsl-gallery-hero.png" wait="130.0" timeout="600" execution="launch" embed=false graphics-context=true name="rectsl-gallery" hidden=true fabricate-scene="rectsl-gallery"}
 ```
 
 <!--
@@ -53,19 +53,326 @@ id: docs.rectsl.animations
 runner: backdoor-box
 graphicsContext: true
 tags: [docs, rectsl, shaders, graphics, video]
-timeoutSec: 1200
+timeoutSec: 1800
 execution: launch
-waitSec: 360.0
+waitSec: 560.0
 expect:
   allowMissingOutput: true
   image:
     path: /tmp/docs-rectsl-animations-hero.png
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/_animations-hero.png" source-image="/tmp/docs-rectsl-animations-hero.png" wait="360.0" timeout="1200" execution="launch" embed=false graphics-context=true name="rectsl-animations" hidden=true fabricate-scene="rectsl-animations"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/_animations-hero.png" source-image="/tmp/docs-rectsl-animations-hero.png" wait="560.0" timeout="1800" execution="launch" embed=false graphics-context=true name="rectsl-animations" hidden=true fabricate-scene="rectsl-animations"}
 ```
 
 Each example shows its source first, then the render. The source is the whole
 `.rectsl` program — copy it into a `#rectsl` box or edit it in the viewer above.
+
+## Reproduction with modification — array primitives
+
+Motion-graphic design, from Oskar Fischinger's marching squares to today's
+title sequences, runs on one idea: take a single element and *multiply it with
+modification* — copies spaced across a row, a grid, a ring, or a beat, each one
+shifted a little in position, size, timing, or colour. RectSL's **array
+primitives** make that a first-class move. They reproduce a subexpression — a
+built rect or group, or a quote that builds one — and hand every copy a small
+**array context** so you can vary it terse-ly:
+
+- `array` — reproduce the active object `count` times; element 0 is the template,
+  the rest are fresh clones (deep for groups). The modifier quote runs on each.
+- `grid` — build `cols·rows` fresh cells with `col`/`row`/`cols`/`rows` (and the
+  centered `colc`/`rowc`) in scope.
+- `radial` — like `array`, but each copy lands on a circle before the modifier runs.
+- Context words `f` (fraction `0…1`), `fc` (centered `-1…1`), `f0` (cyclic
+  fraction), and `ic` (centered index) turn "which copy is this?" into a number
+  you can feed straight into `mix`, `offset`, `rotate`, `polar`, or `delay-all-time`.
+- For shapes richer than linear, the [Functions bridge](#distribution-curves-the-functions-bridge)
+  lets you `ease` a fraction through the Penner family or `sample` a `gaussian`,
+  `noise`, or `fbm` curve at `f`.
+
+See the [cheatsheet](rectsl_cheatsheet.md#array-primitives) for the full table.
+
+### Radial bloom
+
+`radial` drops sixteen petals onto a circle; `f0 tau *` turns each one to face
+around the ring, a shared `rotate` track spins the whole bloom, and `f` fades the
+alpha across the array. Colour comes from a StackSL `palette` material applied
+per copy.
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+wall 12 12 abstract
+duration 6
+fps 30
+
+material bloom '(
+  uv 5.0 * time 0.8 * + fbm palette
+)
+
+"petal" rect
+  0.5 2.6 wh
+  0xffffff solid fill
+  16 4.0 '(
+    f0 tau * rot
+    '( 0 0  6 6.28318 ) rotate
+    0.35 1 f mix alpha
+    bloom material
+  ) radial
+;
+```
+
+<video src="../assets/rectsl/rectsl-radial-bloom.mp4" poster="../assets/rectsl/rectsl-radial-bloom.png"
+       autoplay loop muted playsinline
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
+### Grid ripple
+
+A centered `grid` of fifty cells: `colc`/`rowc` place each cell symmetrically,
+a looping `scale` oscillator makes them breathe, and `delay-all-time` phased by
+Manhattan distance from the centre (`colc abs rowc abs +`) turns that breath into
+a concentric ripple — pure Fischinger *Studie*.
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+wall 20 9 meters
+duration 4
+fps 30
+
+10 5 '(
+  "c" rect
+    colc 1.7 *  rowc 1.7 *  xy
+    0.6 square
+    '( 0 0.15  1 1.15  2 0.15 ) 2 loop-time scale
+    colc abs  rowc abs  +  0.16 *  delay-all-time
+    0x14e0ff solid fill
+  ;
+) grid
+```
+
+<video src="../assets/rectsl/rectsl-grid-ripple.mp4" poster="../assets/rectsl/rectsl-grid-ripple.png"
+       autoplay loop muted playsinline
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
+### Stagger cascade
+
+One oscillating bar, reproduced twenty-six times with `array` and spread by the
+centered index `ic`. A single `stagger-time` then delays each copy's whole
+timeline in order, so the shared height oscillation reads as a travelling wave.
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+wall 22 8 meters
+duration 3
+fps 30
+
+"bar" rect
+  0 0 xy
+  0.55 1 wh
+  '( 0 0.4  0.5 4.5  1 0.4 ) 1 loop-time h
+  0xffd23c solid fill
+  26 '( ic 0.8 * 0 offset ) array
+  0.05 stagger-time
+;
+```
+
+<video src="../assets/rectsl/rectsl-stagger-cascade.mp4" poster="../assets/rectsl/rectsl-stagger-cascade.png"
+       autoplay loop muted playsinline
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
+### Spiral shards
+
+`array` plus `polar` builds a sunflower: each of forty-eight shards is placed at
+the golden angle (`i 2.39996 *`) with a radius that grows with the fraction `f`,
+then oriented and spun. A phyllotaxis pattern from three lines of RectSL.
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+wall 12 12 abstract
+duration 8
+fps 30
+
+material shimmer '(
+  uv 4.0 * time 0.5 * + fbm palette
+)
+
+"shard" rect
+  0.32 1.05 wh
+  0xffffff solid fill
+  48 '(
+    i 2.39996 *  f 4.6 *  polar
+    i 2.39996 *  rot
+    '( 0 0  8 6.28318 ) rotate
+    0.4 1 f mix alpha
+    shimmer material
+  ) array
+;
+```
+
+<video src="../assets/rectsl/rectsl-spiral-shards.mp4" poster="../assets/rectsl/rectsl-spiral-shards.png"
+       autoplay loop muted playsinline
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
+### Distribution curves — the Functions bridge
+
+Linear `mix` is rarely the shape you want across an array. RectSL borrows
+[`afield.stdlib.Functions`](functions_examples.md) — a tested library of easings,
+distributions, and noise defined over `[0, 1]`, which is exactly the range of the
+array fraction `f`. `ease` shapes a value through the full Penner family; `gaussian`,
+`noise`, and `fbm` push a reusable curve you `sample` at `f`; `reflect` and `tile`
+reshape it. Because the curves are graph-backed, the Functions rewrite/`evolve`
+tooling can even optimise an array's distribution toward a target.
+
+#### Gaussian comb
+
+Thirty-three bars, each a looping oscillator whose amplitude is a `gaussian`
+sampled at `f` — so the row breathes as a bell rather than a flat block. A seeded
+`noise` curve nudges each bar sideways, and `stagger-time` sweeps the motion into
+a wave.
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+wall 22 8 meters
+duration 3
+fps 30
+
+"bar" rect
+  0 -3 xy
+  0.42 1 wh
+  0xffd23c solid fill
+  33 '(
+    ic 0.62 * 0 offset
+    '( 0 0.12  0.5 1  1 0.12 ) 1 loop-time  gaussian f sample 6.5 * value*  h
+    7 noise f sample 0.45 *  0 translate
+    gaussian f sample 0.25 +  sat  alpha
+  ) array
+  0.05 stagger-time
+;
+```
+
+<video src="../assets/rectsl/rectsl-gaussian-comb.mp4" poster="../assets/rectsl/rectsl-gaussian-comb.png"
+       autoplay loop muted playsinline
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
+#### Eased orbit
+
+A `radial` ring of twenty dots whose `scale` grows around the ring through a
+`back-out` easing — so they overshoot and settle rather than ramp linearly — with
+a seeded `noise` curve jittering each dot's rotation. Colour is a StackSL palette
+material.
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+wall 12 12 abstract
+duration 6
+fps 30
+
+material tint '(
+  uv 3.0 * time 0.6 * + fbm palette
+)
+
+"dot" rect
+  0.9 square
+  0xffffff solid fill
+  20 4.2 '(
+    f "back-out" ease 0.25 +  scale
+    5 noise f sample 0.6 *  rotate
+    '( 0 0  6 6.28318 ) rotate
+    tint material
+  ) radial
+;
+```
+
+<video src="../assets/rectsl/rectsl-eased-orbit.mp4" poster="../assets/rectsl/rectsl-eased-orbit.png"
+       autoplay loop muted playsinline
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
+### Evolving a distribution toward a target
+
+This is the payoff — and the hardest idea to hold onto. A distribution curve is
+not just a function; it is an inspectable **graph** whose numeric leaves
+(positions, widths, heights) are tunable "genes". So you can hand the *host* a
+target shape and let it **search curve-space** — by gradient descent (`fitBest`)
+or genetically (`evolve`) — and then let RectSL lay out the array from the winner.
+RectSL itself does not change: it still just `sample`s a curve. What changes is
+that the curve came from an optimiser rather than from your fingers.
+
+The RectSL scene is ordinary — three rows of bars, each an `array` sampling a
+curve bound *by name* (`target`, `seed`, `fit`):
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+wall 22 12 abstract
+duration 1
+fps 1
+
+"trow" rect  0 -4 xy  0.5 1 wh  0x2e5a86 solid fill
+  40 '( ic 0.55 * 0 offset  target f sample 4 * 0.12 +  h ) array ;
+
+"srow" rect  0 0 xy  0.5 1 wh  0x8a5a2b solid fill
+  40 '( ic 0.55 * 0 offset  seed f sample 4 * 0.12 +  h ) array ;
+
+"frow" rect  0 4 xy  0.5 1 wh  0xffd23c solid fill
+  40 '( ic 0.55 * 0 offset  fit f sample {{ 4.0 }} * 0.12 +  h ) array ;
+```
+
+The gold row's height scale is written as a `{{ 4.0 }}` Kotlin escape rather than a literal — the same inline-Kotlin hatch, here proving escapes compile and run even inside the headless render. (That render is a long-running graphics loop on the box's own Kotlin engine, so the escape can't compile lazily on that engine mid-render; the harness pre-warms every escape on a *separate* idle engine before the render starts, then the render only invokes the cached lambdas.)
+
+The host builds a two-lobe target, seeds a curve with the *same structure* but
+deliberately wrong numbers, fits it, and binds all three curves into the program
+with `compileRectSL(source, curves)` — the Functions→RectSL half of the bridge:
+
+```diffstatic {data-lang=kotlin}
+import afield.rectsl.compileRectSL
+import afield.stdlib.Functions
+import afield.stdlib.fitBest
+
+with(Functions) {
+    val target = gaussian(0.30, 0.11) + gaussian(0.72, 0.13) * 0.80
+    val seed   = gaussian(0.45, 0.20) + gaussian(0.60, 0.20) * 0.50
+    val run    = fitBest(target, seed, restarts = 12)   // RMSE collapses toward ~0
+
+    val program = compileRectSL(
+        source,
+        mapOf("target" to target, "seed" to seed, "fit" to run.fitted)
+    ).program!!
+    // ... render program like any other scene ...
+}
+```
+
+<!--
+FIELD_TEST
+id: docs.rectsl.fit
+runner: backdoor-box
+graphicsContext: true
+tags: [docs, rectsl, shaders, graphics, functions]
+timeoutSec: 360
+execution: launch
+waitSec: 60.0
+expect:
+  allowMissingOutput: true
+  image:
+    path: /tmp/docs-rectsl-fit-hero.png
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/_fit-hero.png" source-image="/tmp/docs-rectsl-fit-hero.png" wait="60.0" timeout="360" execution="launch" embed=false graphics-context=true name="rectsl-fit" hidden=true fabricate-scene="rectsl-fit"}
+```
+
+<img src="../assets/rectsl/rectsl-fit-to-target.png" alt="fit a distribution to a target"
+     style="width:100%;max-width:640px;border-radius:8px;">
+
+The top (blue) row is the target silhouette; the middle (brown) row is the seed,
+whose two lobes start merged in the wrong place; the bottom (gold) row is the
+fitted curve — the same two-lobe shape as the target, recovered by the optimiser.
+`fitBest` tuned the seed's lobe positions, widths, and heights by gradient descent;
+RectSL only sampled the result. Reach for `fitBest` when you have a shape in mind
+and just need the numbers dialed in, and for `evolve(...)` when the *structure*
+itself (which operators) is still unknown.
+
+## Rendered gallery — more examples
 
 ### Mirrored orbit
 

@@ -173,6 +173,26 @@ object StandardRendererDocsHarness {
         return target
     }
 
+    /**
+     * Renders the "evolving a distribution" (#5) still — the host fits a curve to a
+     * target and RectSL lays out the array from it (see
+     * [RectSLGalleryHarness.renderFitToTarget]) — to `rectsl-fit-to-target.png`, then
+     * copies it to [outputPath] for the docs fence to validate.
+     */
+    suspend fun renderRectSLFit(
+        outputPath: String,
+        renderer: Renderer = rendererFromContextOrDocument()
+    ): File {
+        val assetsDir = File(System.getProperty("user.dir"), "public/docs/assets/rectsl")
+        val hero = RectSLGalleryHarness.renderFitToTarget(assetsDir, renderer)
+        val target = File(outputPath)
+        target.parentFile?.mkdirs()
+        target.delete()
+        target.writeBytes(hero.readBytes())
+        require(target.length() > 0L) { "rectsl fit hero copy wrote an empty PNG" }
+        return target
+    }
+
     suspend fun renderMetalnessComparison(
         outputPath: String,
         renderer: Renderer = rendererFromContextOrDocument(),

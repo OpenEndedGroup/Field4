@@ -16,7 +16,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import afield.Box
+import afield.KotlinScriptEngine
+import afield.stdlib.Functions
 import afield.stdlib.linalg.Matrix4f
+import kotlin.script.experimental.api.ResultValue
 import org.lwjgl.vulkan.VK10.VK_FORMAT_B8G8R8A8_SRGB
 import java.nio.file.Files
 import java.nio.file.Path
@@ -95,9 +99,26 @@ sealed interface Token {
     data class StringLit(val value: String) : Token
     data class ColorLit(val color: Color4) : Token
     data class Quote(val tokens: List<Token>, val source: String) : Token
+
+    /** `{{ kotlin }}` — a Kotlin expression evaluated in a `with(Functions){…}` scope. */
+    data class KotlinEscape(val source: String) : Token
 }
 
 class RectLangException(message: String) : IllegalArgumentException(message)
+
+/**
+ * The array/loop context a `{{ … }}` Kotlin escape sees, so escaped Kotlin can vary
+ * per copy: `i` (index), `n` (count), `f` (fraction 0..1), `f0` (cyclic), `fc`
+ * (centered -1..1), `ic` (centered index). All zero (n=1) outside a loop.
+ */
+class RectEscapeContext(
+    @JvmField val i: Double,
+    @JvmField val n: Double,
+    @JvmField val f: Double,
+    @JvmField val f0: Double,
+    @JvmField val fc: Double,
+    @JvmField val ic: Double
+)
 
 sealed interface Value
 data class VNum(val x: Double) : Value
@@ -111,6 +132,7 @@ data class VGroup(val id: String) : Value
 data class VSelection(val refs: List<NodeRef>) : Value
 data class VQuote(val tokens: List<Token>, val source: String) : Value
 data class VMaterialRef(val name: String) : Value
+data class VFn(val fn: afield.stdlib.Functions.Fn) : Value
 
 private fun Value.describe(): String = when (this) {
     is VNum -> "Number"
@@ -124,6 +146,7 @@ private fun Value.describe(): String = when (this) {
     is VSelection -> "Selection"
     is VQuote -> "Quote"
     is VMaterialRef -> "Material"
+    is VFn -> "Fn"
 }
 
 class RectLangTokenizer(private val source: String) {
@@ -136,11 +159,32 @@ class RectLangTokenizer(private val source: String) {
             if (i >= source.length) break
             if (source.startsWith("'(", i)) {
                 tokens += parseQuote()
+            } else if (source.startsWith("{{", i)) {
+                tokens += parseKotlinEscape()
             } else {
                 tokens += parseSingleToken()
             }
         }
         return tokens
+    }
+
+    private fun parseKotlinEscape(): Token.KotlinEscape {
+        i += 2 // consume "{{"
+        val start = i
+        var depth = 0
+        while (i < source.length) {
+            if (depth == 0 && source.startsWith("}}", i)) {
+                val raw = source.substring(start, i)
+                i += 2
+                return Token.KotlinEscape(raw.trim())
+            }
+            when (source[i]) {
+                '{' -> depth++
+                '}' -> depth--
+            }
+            i++
+        }
+        throw RectLangException("Unterminated {{ … }} Kotlin escape")
     }
 
     private fun parseQuote(): Token.Quote {
@@ -157,6 +201,8 @@ class RectLangTokenizer(private val source: String) {
             }
             if (source.startsWith("'(", i)) {
                 tokens += parseQuote()
+            } else if (source.startsWith("{{", i)) {
+                tokens += parseKotlinEscape()
             } else {
                 tokens += parseSingleToken(inQuote = true)
             }
@@ -499,6 +545,21 @@ private fun smoothstep(u: Double): Double = u * u * (3.0 - 2.0 * u)
 
 private fun easedTrack(word: String, track: Track<Double>, ease: (Double) -> Double): Track<Double> =
     EasedScalarTrack(track.keyedValues(word), word, ease)
+
+/**
+ * The full Penner easing family, keyed by kebab-case name (e.g. "back-out",
+ * "elastic-in-out", "smootherstep"). The math is borrowed from
+ * `afield.stdlib.Functions` so RectSL's `ease` reads identically to the rest of
+ * the procedural-animation toolkit rather than re-deriving the curves here.
+ */
+private val PENNER_EASINGS: Map<String, (Double) -> Double> = buildMap {
+    with(Functions) {
+        for (e in Functions.Easing.values()) {
+            val curve = identity().ease(e)
+            put(e.name.lowercase().replace('_', '-')) { x: Double -> curve.eval(x) }
+        }
+    }
+}
 
 data class MappedDoubleTrack(
     val source: Track<Double>,
@@ -955,19 +1016,106 @@ object RectAnimationOracle : AnimationOracle {
     override fun mutate(program: SceneProgram, edit: ProgramEdit): SceneProgram = program
 }
 
+/**
+ * Compile a RectSL program with host-supplied distribution curves bound by name.
+ * Each entry becomes a bare word that pushes its [Functions.Fn] (like a named
+ * track), so a program can `sample` a curve the host built — including one that
+ * `fitBest`/`evolve` optimised toward a target. This is the Functions→RectSL half
+ * of the bridge: the host searches curve-space, RectSL lays out the array from the
+ * winner.
+ */
+fun compileRectSL(
+    source: String,
+    curves: Map<String, Functions.Fn> = emptyMap(),
+    engine: KotlinScriptEngine? = null,
+    precompiledEscapes: Map<String, (RectEscapeContext) -> Any?> = emptyMap()
+): CompileResult =
+    try {
+        CompileResult(
+            RectLangVm(namedCurves = curves, escapeEngine = engine, precompiledEscapes = precompiledEscapes)
+                .eval(RectLangTokenizer(source).tokenize())
+        )
+    } catch (t: Throwable) {
+        CompileResult(null, listOf(t.message ?: t.toString()))
+    }
+
+private fun escapeWrappedSource(source: String): String =
+    "{ ctx: afield.rectsl.RectEscapeContext -> with(afield.stdlib.Functions){ with(ctx){\n$source\n} } }"
+
+@Suppress("UNCHECKED_CAST")
+private fun castEscapeLambda(value: Any?, source: String): (RectEscapeContext) -> Any? =
+    (value as? Function1<RectEscapeContext, Any?>)
+        ?: throw RectLangException("{{ … }} did not evaluate to a lambda (got ${value?.javaClass?.name}): ${source.take(60)}")
+
+private fun escapeSnippetValue(result: ResultValue?, source: String): Any? = when (result) {
+    is ResultValue.Value -> result.value
+    is ResultValue.Error -> throw RectLangException("{{ … }} threw while building: ${result.error.message}")
+    else -> throw RectLangException("{{ … }} produced no lambda: ${source.take(60)}")
+}
+
+/** All distinct `{{ … }}` escape sources in a token stream, recursing into quotes. */
+private fun collectEscapeSources(tokens: List<Token>): List<String> {
+    val out = LinkedHashSet<String>()
+    fun walk(ts: List<Token>) {
+        ts.forEach { t ->
+            when (t) {
+                is Token.KotlinEscape -> out += t.source
+                is Token.Quote -> walk(t.tokens)
+                else -> {}
+            }
+        }
+    }
+    walk(tokens)
+    return out.toList()
+}
+
+/**
+ * Compile every `{{ … }}` escape in [source] to its lambda **ahead of time**, using
+ * the engine's *suspend* API so the compile runs off the caller's thread (on the
+ * compilation dispatcher) rather than blocking it. Call this before a graphics render
+ * loop — whose runloop is non-reentrant, so a lazy `compileSnippetAndWait` on first
+ * use *during* the render would deadlock — then hand the result to [compileRectSL] as
+ * `precompiledEscapes`, so the render-time compile is pure (only cached lambda invokes).
+ */
+suspend fun prewarmRectSLEscapes(
+    source: String,
+    engine: KotlinScriptEngine
+): Map<String, (RectEscapeContext) -> Any?> {
+    val out = LinkedHashMap<String, (RectEscapeContext) -> Any?>()
+    collectEscapeSources(RectLangTokenizer(source).tokenize()).forEach { src ->
+        val diagnostics = mutableListOf<String>()
+        val snippet = engine.compileSnippet(escapeWrappedSource(src)) { diags -> diags.forEach { diagnostics += it.message } }
+            ?: throw RectLangException("{{ … }} did not compile: ${diagnostics.joinToString("; ").ifBlank { src.take(60) }}")
+        out[src] = castEscapeLambda(escapeSnippetValue(snippet.eval(onEvalException = { throw it }), src), src)
+    }
+    return out
+}
+
 fun interface Word {
     fun apply(vm: RectLangVm)
 }
 
-data class LoopFrame(val index: Int, val count: Int)
+data class LoopFrame(
+    val index: Int,
+    val count: Int,
+    val ordinal: Int = index,
+    val col: Int = -1,
+    val row: Int = -1,
+    val cols: Int = -1,
+    val rows: Int = -1
+)
 
 class RectLangVm(
     private val words: MutableMap<String, Word> = mutableMapOf(),
-    private val scene: SceneBuilder = SceneBuilder()
+    private val scene: SceneBuilder = SceneBuilder(),
+    private val namedCurves: Map<String, Functions.Fn> = emptyMap(),
+    private val escapeEngine: KotlinScriptEngine? = null,
+    precompiledEscapes: Map<String, (RectEscapeContext) -> Any?> = emptyMap()
 ) {
     private val stack = ArrayDeque<Value>()
     private val definitions = linkedMapOf<String, List<Token>>()
     private val namedTracks = linkedMapOf<String, Track<Double>>()
+    private val escapeLambdas = linkedMapOf<String, (RectEscapeContext) -> Any?>().apply { putAll(precompiledEscapes) }
     private val loopStack = ArrayDeque<LoopFrame>()
     private var tokens: List<Token> = emptyList()
     private var pc: Int = 0
@@ -1000,8 +1148,72 @@ class RectLangVm(
             is Token.StringLit -> push(VStr(token.value))
             is Token.ColorLit -> push(VColor(token.color))
             is Token.Quote -> push(VQuote(token.tokens, token.source))
+            is Token.KotlinEscape -> push(evalKotlinEscape(token.source))
             is Token.Word -> evalWord(token.name)
         }
+    }
+
+    /**
+     * Evaluate a `{{ … }}` escape and push the result. Each unique escape is compiled
+     * to a `(RectEscapeContext) -> Any?` lambda exactly **once** (a ~76 ms K2 compile +
+     * a ~5 ms eval-to-lambda), cached, then **invoked per use** as a plain JVM call —
+     * so an escape inside an `array` body pays the compile once, not per copy. Because
+     * it takes the array context, the Kotlin can read `i`/`n`/`f`/`f0`/`fc`/`ic` and
+     * vary per copy. Runs in a `with(Functions){…}` scope; the result maps to a Number,
+     * an `Fn`, or a `Track<Double>`. Needs a live Kotlin engine (the escapeEngine, or
+     * the current box's when run inside Field).
+     */
+    private fun evalKotlinEscape(source: String): Value {
+        val lambda = escapeLambdas.getOrPut(source) { compileEscape(source) }
+        val result = try {
+            lambda(currentEscapeContext())
+        } catch (t: Throwable) {
+            throw RectLangException("{{ … }} threw: ${t.message ?: t.toString()} — ${source.take(60)}")
+        }
+        return mapEscapeValue(result, source)
+    }
+
+    // Lazy (synchronous) compile — safe off a render loop (live editing, jvm-main, the
+    // smoke check). Inside a graphics render loop the runBlocking here would deadlock the
+    // non-reentrant runloop, so those paths must pre-warm via prewarmRectSLEscapes instead.
+    private fun compileEscape(source: String): (RectEscapeContext) -> Any? {
+        val engine = escapeEngine ?: Box.context.get()?.ki
+            ?: throw RectLangException(
+                "{{ … }} Kotlin escape needs a live Kotlin engine — run inside a Field box, or use " +
+                    "compileRectSL(source, engine = …). Escape: ${source.take(60)}"
+            )
+        val diagnostics = mutableListOf<String>()
+        val snippet = engine.compileSnippetAndWait(escapeWrappedSource(source)) { diags -> diags.forEach { diagnostics += it.message } }
+            ?: throw RectLangException(
+                "{{ … }} did not compile: ${diagnostics.joinToString("; ").ifBlank { source.take(60) }}"
+            )
+        return castEscapeLambda(escapeSnippetValue(snippet.evalAndWait(onEvalException = { throw it }), source), source)
+    }
+
+    private fun currentEscapeContext(): RectEscapeContext {
+        val frame = loopStack.lastOrNull() ?: return RectEscapeContext(0.0, 1.0, 0.0, 0.0, 0.0, 0.0)
+        val n = frame.count
+        val fr = if (n <= 1) 0.0 else frame.ordinal.toDouble() / (n - 1).toDouble()
+        return RectEscapeContext(
+            i = frame.index.toDouble(),
+            n = n.toDouble(),
+            f = fr,
+            f0 = if (n <= 0) 0.0 else frame.ordinal.toDouble() / n.toDouble(),
+            fc = if (n <= 1) 0.0 else fr * 2.0 - 1.0,
+            ic = frame.ordinal - (n - 1) / 2.0
+        )
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun mapEscapeValue(value: Any?, source: String): Value = when (value) {
+        is Functions.Fn -> VFn(value)
+        is Number -> VNum(value.toDouble())
+        is Track<*> -> if (value.kind == TrackValueKind.Double) VTrack(value as Track<Double>)
+        else throw RectLangException("{{ … }} returned Track<${value.kind}>, expected Track<Double>")
+        else -> throw RectLangException(
+            "{{ … }} must return a Number, an Fn, or a Track<Double>, but returned " +
+                "${value?.let { it::class.simpleName ?: it.javaClass.name } ?: "null"}: ${source.take(60)}"
+        )
     }
 
     private fun evalWord(name: String) {
@@ -1017,6 +1229,11 @@ class RectLangVm(
 
         namedTracks[name]?.let {
             push(VTrack(it))
+            return
+        }
+
+        namedCurves[name]?.let {
+            push(VFn(it))
             return
         }
 
@@ -1040,6 +1257,9 @@ class RectLangVm(
         if (stack.isEmpty()) throw RectLangException("Stack underflow") else stack.last()
 
     fun peekOrNull(): Value? = stack.lastOrNull()
+
+    /** The stack after evaluation — lets tooling/tests extract values (e.g. a built [VFn]). */
+    fun stackValues(): List<Value> = stack.toList()
 
     fun replaceStackRefs(oldId: String, newRef: Value) {
         val next = ArrayDeque<Value>()
@@ -1072,6 +1292,9 @@ class RectLangVm(
 
     fun popQuote(): VQuote =
         pop() as? VQuote ?: throw RectLangException("Expected quote")
+
+    fun popFn(label: String): Functions.Fn =
+        (pop() as? VFn)?.fn ?: throw RectLangException("$label expected an Fn (curve)")
 
     fun popColor(): Color4 = when (val v = pop()) {
         is VColor -> v.rgba
@@ -1159,8 +1382,8 @@ class RectLangVm(
     fun namedTrack(name: String): Track<Double> =
         namedTracks[name] ?: throw RectLangException("Unknown track '$name'")
 
-    fun withLoop(index: Int, count: Int, block: () -> Unit) {
-        loopStack.addLast(LoopFrame(index, count))
+    fun withLoop(index: Int, count: Int, ordinal: Int = index, block: () -> Unit) {
+        loopStack.addLast(LoopFrame(index, count, ordinal))
         try {
             block()
         } finally {
@@ -1168,11 +1391,54 @@ class RectLangVm(
         }
     }
 
-    fun loopIndex(): Int =
-        loopStack.lastOrNull()?.index ?: throw RectLangException("i is only available inside repeat/range")
+    fun withGrid(index: Int, count: Int, col: Int, row: Int, cols: Int, rows: Int, block: () -> Unit) {
+        loopStack.addLast(LoopFrame(index, count, index, col, row, cols, rows))
+        try {
+            block()
+        } finally {
+            loopStack.removeLast()
+        }
+    }
 
-    fun loopCount(): Int =
-        loopStack.lastOrNull()?.count ?: throw RectLangException("count is only available inside repeat/range")
+    private fun loopFrame(word: String): LoopFrame =
+        loopStack.lastOrNull() ?: throw RectLangException("$word is only available inside repeat/range/array/grid/radial")
+
+    fun loopIndex(): Int = loopFrame("i").index
+
+    fun loopCount(): Int = loopFrame("count").count
+
+    /** Normalized fraction across the array, i/(n-1) in [0,1]; 0 for a single element. */
+    fun loopFraction(): Double {
+        val f = loopFrame("f")
+        return if (f.count <= 1) 0.0 else f.ordinal.toDouble() / (f.count - 1).toDouble()
+    }
+
+    /** Cyclic fraction ordinal/n in [0,1); handy for rings (angle = f0 tau *). */
+    fun loopFraction0(): Double {
+        val f = loopFrame("f0")
+        return if (f.count <= 0) 0.0 else f.ordinal.toDouble() / f.count.toDouble()
+    }
+
+    /** Centered fraction 2f-1 in [-1,1]; 0 for a single element. */
+    fun loopFractionCentered(): Double = if (loopFrame("fc").count <= 1) 0.0 else loopFraction() * 2.0 - 1.0
+
+    /** Centered index ordinal-(n-1)/2, symmetric around 0. */
+    fun loopCenteredIndex(): Double {
+        val f = loopFrame("ic")
+        return f.ordinal - (f.count - 1) / 2.0
+    }
+
+    fun gridCol(): Int = loopFrame("col").col.also { if (it < 0) throw RectLangException("col is only available inside grid") }
+    fun gridRow(): Int = loopFrame("row").row.also { if (it < 0) throw RectLangException("row is only available inside grid") }
+    fun gridCols(): Int = loopFrame("cols").cols.also { if (it < 0) throw RectLangException("cols is only available inside grid") }
+    fun gridRows(): Int = loopFrame("rows").rows.also { if (it < 0) throw RectLangException("rows is only available inside grid") }
+
+    /** Template for array/radial: an explicit rect/group/id on the stack, else the active object. */
+    fun popTemplateRef(label: String): NodeRef {
+        val top = peekOrNull()
+        if (top is VRect || top is VGroup || top is VStr) return objectRefFromValue(pop())
+        return scene.activeRef() ?: throw RectLangException("$label expected an active object or a rect/group on the stack")
+    }
 
     fun nextTokenOrNull(): Token? = tokens.getOrNull(pc)
 
@@ -1795,8 +2061,8 @@ class RectLangVm(
             val values = generateSequence(start) { it + step }
                 .takeWhile { if (step > 0) it < end else it > end }
                 .toList()
-            values.forEach { value ->
-                vm.withLoop(value, values.size) {
+            values.forEachIndexed { ordinal, value ->
+                vm.withLoop(value, values.size, ordinal) {
                     vm.evalBlock(quote.tokens)
                 }
             }
@@ -1804,6 +2070,125 @@ class RectLangVm(
         word("i") { vm -> vm.push(VNum(vm.loopIndex().toDouble())) }
         word("loop-count") { vm -> vm.push(VNum(vm.loopCount().toDouble())) }
         word("n") { vm -> vm.push(VNum(vm.loopCount().toDouble())) }
+
+        // --- Array primitives: reproduce a subexpression with per-copy modification ---
+        // Extended per-copy context (valid inside repeat/range/array/grid/radial):
+        word("f") { vm -> vm.push(VNum(vm.loopFraction())) }
+        word("f0") { vm -> vm.push(VNum(vm.loopFraction0())) }
+        word("fc") { vm -> vm.push(VNum(vm.loopFractionCentered())) }
+        word("ic") { vm -> vm.push(VNum(vm.loopCenteredIndex())) }
+        // Grid context (valid inside grid):
+        word("col") { vm -> vm.push(VNum(vm.gridCol().toDouble())) }
+        word("row") { vm -> vm.push(VNum(vm.gridRow().toDouble())) }
+        word("cols") { vm -> vm.push(VNum(vm.gridCols().toDouble())) }
+        word("rows") { vm -> vm.push(VNum(vm.gridRows().toDouble())) }
+        word("colc") { vm -> vm.push(VNum(vm.gridCol() - (vm.gridCols() - 1) / 2.0)) }
+        word("rowc") { vm -> vm.push(VNum(vm.gridRow() - (vm.gridRows() - 1) / 2.0)) }
+
+        word("array") { vm ->
+            val mods = vm.popQuote()
+            val count = vm.popNum().toInt().coerceAtLeast(0)
+            if (count == 0) {
+                vm.push(VSelection(emptyList()))
+                return@word
+            }
+            val template = vm.popTemplateRef("array")
+            val refs = vm.builder().instantiateArray(template, count)
+            refs.forEachIndexed { ordinal, ref ->
+                vm.withSelected(ref) { vm.withLoop(ordinal, count, ordinal) { vm.evalBlock(mods.tokens) } }
+            }
+            vm.push(VSelection(refs))
+        }
+        word("radial") { vm ->
+            val mods = vm.popQuote()
+            val radius = vm.popNum()
+            val count = vm.popNum().toInt().coerceAtLeast(0)
+            if (count == 0) {
+                vm.push(VSelection(emptyList()))
+                return@word
+            }
+            val template = vm.popTemplateRef("radial")
+            val refs = vm.builder().instantiateArray(template, count)
+            refs.forEachIndexed { ordinal, ref ->
+                vm.withSelected(ref) {
+                    vm.withLoop(ordinal, count, ordinal) {
+                        val angle = ordinal.toDouble() / count.toDouble() * (PI * 2.0)
+                        vm.builder().setPolar(angle, radius)
+                        vm.evalBlock(mods.tokens)
+                    }
+                }
+            }
+            vm.push(VSelection(refs))
+        }
+        word("grid") { vm ->
+            val cell = vm.popQuote()
+            val rows = vm.popNum().toInt().coerceAtLeast(0)
+            val cols = vm.popNum().toInt().coerceAtLeast(0)
+            val total = cols * rows
+            val created = vm.builder().captureNewNodes {
+                var index = 0
+                for (r in 0 until rows) {
+                    for (c in 0 until cols) {
+                        vm.withGrid(index, total, c, r, cols, rows) { vm.evalBlock(cell.tokens) }
+                        index++
+                    }
+                }
+            }
+            vm.push(VSelection(created))
+        }
+        word("polar") { vm ->
+            val radius = vm.popNum()
+            val angle = vm.popNum()
+            vm.builder().setPolar(angle, radius)
+        }
+        word("stagger") { vm ->
+            val dy = vm.popNum()
+            val dx = vm.popNum()
+            val selection = vm.popSelectionOrActive("stagger")
+            vm.builder().stagger(selection.refs, dx, dy)
+            vm.push(selection)
+        }
+
+        // --- Functions.kt bridge: eased fractions + sampleable distribution curves ---
+        // `ease` shapes a scalar/track through the full Penner family (single source
+        // of truth: afield.stdlib.Functions). Curves (VFn) are graph-backed, so the
+        // Functions rewrite/evolve tooling can optimise an array's distribution.
+        word("ease") { vm ->
+            val name = vm.popString().trim().lowercase().replace('_', '-')
+            val ease = PENNER_EASINGS[name]
+                ?: throw RectLangException(
+                    "ease: unknown easing '$name' (try quad-out, cubic-in-out, sine-in-out, expo-out, " +
+                        "circ-in-out, back-out, elastic-in-out, bounce-out, smoothstep, smootherstep)"
+                )
+            // A constant (e.g. the array fraction f) eases straight to a number; a
+            // keyed track eases its interpolation like the ease-in/ease-out words.
+            when (val v = vm.pop()) {
+                is VNum -> vm.push(VNum(ease(v.x)))
+                else -> vm.push(VTrack(easedTrack("ease", vm.scalarTrackFrom(v, "ease"), ease)))
+            }
+        }
+        // Distribution curves over [0,1] — sample at the array fraction f.
+        word("gaussian") { vm -> vm.push(VFn(Functions.gaussian(mean = 0.5, sigma = 0.16, amplitude = 1.0))) }
+        word("noise") { vm ->
+            val seed = vm.popNum().toLong()
+            vm.push(VFn(Functions.valueNoise(seed = seed, frequency = 8.0)))
+        }
+        word("fbm") { vm ->
+            val seed = vm.popNum().toLong()
+            vm.push(VFn(Functions.fbm(seed = seed, frequency = 4.0)))
+        }
+        word("sample") { vm ->
+            val x = vm.popNum()
+            val fn = vm.popFn("sample")
+            vm.push(VNum(fn.eval(x)))
+        }
+        // Curve → curve transforms borrowed from the Functions pattern ops.
+        word("reflect") { vm -> vm.push(VFn(Functions.mirror(0.5).invoke(vm.popFn("reflect")))) }
+        word("tile") { vm ->
+            val k = vm.popNum().coerceAtLeast(1.0)
+            val fn = vm.popFn("tile")
+            vm.push(VFn(with(Functions) { fn / repeatEvery(1.0 / k) }))
+        }
     }
 
     private fun word(name: String, apply: (RectLangVm) -> Unit) {
@@ -1826,6 +2211,17 @@ class RectLangVm(
             TrackMode.Hold -> HoldScalarTrack(keys)
         }
     }
+}
+
+/**
+ * Evaluate a RectSL program and return its residual stack — for tooling and tests
+ * that need the values a program leaves behind (e.g. a [VFn] distribution curve
+ * built through the Functions bridge, to inspect or evolve its graph).
+ */
+fun evalRectSLStack(source: String): List<Value> {
+    val vm = RectLangVm()
+    vm.eval(RectLangTokenizer(source).tokenize())
+    return vm.stackValues()
 }
 
 sealed interface NodeRef {
@@ -2291,6 +2687,51 @@ class SceneBuilder {
             val delay = step * index
             mapScalarTracks(ref) { TimeWarpTrack(it) { t -> t - delay } }
         }
+    }
+
+    /** Element 0 is the template itself; the remaining count-1 are fresh clones (deep for groups). */
+    fun instantiateArray(template: NodeRef, count: Int): List<NodeRef> {
+        requireNode(template.id)
+        val refs = ArrayList<NodeRef>(count)
+        refs += template
+        repeat(count - 1) {
+            refs += when (requireNode(template.id)) {
+                is GroupDraft -> cloneNodeDeepRef(template)
+                is RectDraft -> cloneNodeRef(template)
+            }
+        }
+        return refs
+    }
+
+    /** Run block, then return the nodes it created, in creation order. */
+    fun captureNewNodes(block: () -> Unit): List<NodeRef> {
+        val before = HashSet(nodes.keys)
+        block()
+        return nodes.keys.filter { it !in before }.map { refFor(it) }
+    }
+
+    /** Increasing positional offset over selection order: element k moves by k*(dx,dy). */
+    fun stagger(refs: List<NodeRef>, dx: Double, dy: Double) {
+        refs.forEachIndexed { index, ref ->
+            val ox = dx * index
+            val oy = dy * index
+            when (val node = requireNode(ref.id)) {
+                is RectDraft -> {
+                    node.x = node.x + constantTrack(ox)
+                    node.y = node.y + constantTrack(oy)
+                }
+                is GroupDraft -> {
+                    node.x = node.x + constantTrack(ox)
+                    node.y = node.y + constantTrack(oy)
+                }
+            }
+        }
+    }
+
+    /** Place the active object on a circle of the given radius at the given angle (radians). */
+    fun setPolar(angle: Double, radius: Double) {
+        setX(constantTrack(radius * cos(angle)))
+        setY(constantTrack(radius * sin(angle)))
     }
 
     private fun mapScalarTracks(ref: NodeRef, transform: (Track<Double>) -> Track<Double>) {
