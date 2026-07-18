@@ -22,7 +22,7 @@ operation into heap objects, frame-arena handles, or mapped memory views.
 
 | Area | Current implementation |
 | --- | --- |
-| Heap values | Mutable `Vector2f`, `Vector3f`, `Vector4f`, their `Vector2d`/`Vector3d`/`Vector4d` double siblings, `Vector8h` (8-lane fp16, heap-only, for push-constant packing), quaternions and matrices (including a generated double-precision `Matrix3d`) |
+| Heap values | Mutable `Vector2f`, `Vector3f`, `Vector4f`, their `Vector2d`/`Vector3d`/`Vector4d` double siblings, `Vector8h` (8-lane fp16, heap-only, for push-constant packing), quaternions and matrices (including the generated double-precision `Matrix2d`/`Matrix3d`/`Matrix4d` family) |
 | Read interfaces | `Vector2fc` through `Vector4fc`, `Vector2dc` through `Vector4dc`, `Vector8hc`, `Quaternionfc`, matrix interfaces |
 | Scratch storage | `FrameArena`, `ArenaVec2f`, `ArenaVec3f`, `ArenaVec4f` |
 | Thread convenience | `FrameArena.current()` and `frameScratch { ... }` |
@@ -227,13 +227,18 @@ heap, frame-arena and segment vector emitters lower that same model into special
 storage access. This is the most important proof that generation is not just a
 way to stamp out similar classes.
 
-`TransformModel.kt` now gives the core quaternion, Matrix3 and Matrix4 equations a
+`TransformModel.kt` now gives the core quaternion and matrix equations a
 second typed and validated model. It covers quaternion transform/dot/normalize/
-conjugate/invert/multiply; Matrix3 transform/determinant/multiply/invert/transpose;
-Matrix4 transforms/determinant/multiply/invert/transpose/translate/scale; and a
-double-precision `Matrix3d` equation set (multiply/transpose/determinant/invert) that
-retired the hand-written `Matrix3d` companion. The generated public compatibility shell
-delegates to `TransformSemantics.kt`.
+conjugate/invert/multiply; Matrix2 determinant/multiply/invert/transpose; Matrix3
+transform/determinant/multiply/invert/transpose; and Matrix4
+transforms/determinant/multiply/invert/transpose/translate/scale. Because the emitter's
+precision comes from each operation's receiver `ScalarKind`, the **entire square matrix
+family is also instantiated in double precision** — `Matrix2d`, `Matrix3d` and `Matrix4d`
+share the identical equations as their f32 siblings (the f64 `Matrix3d` set retired the
+old hand-written companion; `Matrix2d`/`Matrix4d` were added the same way). Only the class
+*shells* (buffer I/O, and the f32-only camera/quaternion helpers such as
+`perspective`/`lookAt`) live in the deterministic transform template; the equations do
+not. The generated public compatibility shell delegates to `TransformSemantics.kt`.
 
 Branch-heavy construction and compatibility methods still live in the deterministic
 transform template. Moving those into typed statements, conditionals and explicit

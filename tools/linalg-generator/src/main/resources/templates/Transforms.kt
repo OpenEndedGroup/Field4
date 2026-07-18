@@ -222,9 +222,10 @@ open class Matrix3f() : Matrix3fc {
 /**
  * A read-only double-precision 3x3 column-major matrix.
  *
- * The generated matrix family is single-precision; this double sibling exists for numerically
- * sensitive code (e.g. Kalman covariance propagation) that must not drop to `float`. Its core
- * equations are generated from the same transform model as `Matrix3f`, in f64.
+ * The whole square matrix family comes in a double-precision variant (`Matrix2d`, `Matrix3d`,
+ * `Matrix4d`) for numerically sensitive code (e.g. Kalman covariance propagation) that must not
+ * drop to `float`. Its core equations are generated from the same transform model as `Matrix3f`,
+ * in f64.
  */
 interface Matrix3dc {
     fun m00(): Double; fun m01(): Double; fun m02(): Double
@@ -340,5 +341,58 @@ open class Matrix4f() : Matrix4fc {
     override fun getScale(dest:Vector3f):Vector3f=dest.set(sqrt(m00*m00+m01*m01+m02*m02),sqrt(m10*m10+m11*m11+m12*m12),sqrt(m20*m20+m21*m21+m22*m22));fun getScale():Vector3f=getScale(Vector3f())
     fun get3x3(dest:Matrix3f):Matrix3f=dest.set(m00,m01,m02,m10,m11,m12,m20,m21,m22)
     fun getUnnormalizedRotation(dest:Quaternionf):Quaternionf=dest.setFromNormalized(Matrix3f().set(m00,m01,m02,m10,m11,m12,m20,m21,m22))
+    override fun toString():String="[$m00 $m10 $m20 $m30; $m01 $m11 $m21 $m31; $m02 $m12 $m22 $m32; $m03 $m13 $m23 $m33]"
+}
+
+/**
+ * A read-only double-precision 4x4 column-major matrix; the f64 sibling of [Matrix4fc].
+ *
+ * Covers the linear/affine surface that is precision-agnostic (multiply, determinant, invert,
+ * transpose, translate, scale). Camera and quaternion helpers (`perspective`, `lookAt`,
+ * rotation-from-quaternion) stay on the single-precision `Matrix4f`, matching Field's f32
+ * quaternion and render/camera path.
+ */
+interface Matrix4dc {
+    fun m00():Double;fun m01():Double;fun m02():Double;fun m03():Double
+    fun m10():Double;fun m11():Double;fun m12():Double;fun m13():Double
+    fun m20():Double;fun m21():Double;fun m22():Double;fun m23():Double
+    fun m30():Double;fun m31():Double;fun m32():Double;fun m33():Double
+    fun determinant(): Double = determinantMatrix4d(this)
+}
+
+/** A mutable double-precision 4x4 column-major matrix initialized to identity. */
+open class Matrix4d() : Matrix4dc {
+    @JvmField var m00=1.0;@JvmField var m01=0.0;@JvmField var m02=0.0;@JvmField var m03=0.0
+    @JvmField var m10=0.0;@JvmField var m11=1.0;@JvmField var m12=0.0;@JvmField var m13=0.0
+    @JvmField var m20=0.0;@JvmField var m21=0.0;@JvmField var m22=1.0;@JvmField var m23=0.0
+    @JvmField var m30=0.0;@JvmField var m31=0.0;@JvmField var m32=0.0;@JvmField var m33=1.0
+    constructor(other:Matrix4dc):this(){set(other)}
+    constructor(a00:Double,a01:Double,a02:Double,a03:Double,a10:Double,a11:Double,a12:Double,a13:Double,a20:Double,a21:Double,a22:Double,a23:Double,a30:Double,a31:Double,a32:Double,a33:Double):this(){set(a00,a01,a02,a03,a10,a11,a12,a13,a20,a21,a22,a23,a30,a31,a32,a33)}
+    override fun m00()=m00;override fun m01()=m01;override fun m02()=m02;override fun m03()=m03;override fun m10()=m10;override fun m11()=m11;override fun m12()=m12;override fun m13()=m13;override fun m20()=m20;override fun m21()=m21;override fun m22()=m22;override fun m23()=m23;override fun m30()=m30;override fun m31()=m31;override fun m32()=m32;override fun m33()=m33
+    fun m00(v:Double)=apply{m00=v};fun m01(v:Double)=apply{m01=v};fun m02(v:Double)=apply{m02=v};fun m03(v:Double)=apply{m03=v};fun m10(v:Double)=apply{m10=v};fun m11(v:Double)=apply{m11=v};fun m12(v:Double)=apply{m12=v};fun m13(v:Double)=apply{m13=v};fun m20(v:Double)=apply{m20=v};fun m21(v:Double)=apply{m21=v};fun m22(v:Double)=apply{m22=v};fun m23(v:Double)=apply{m23=v};fun m30(v:Double)=apply{m30=v};fun m31(v:Double)=apply{m31=v};fun m32(v:Double)=apply{m32=v};fun m33(v:Double)=apply{m33=v}
+    fun identity():Matrix4d=set(1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0)
+    fun zero():Matrix4d=set(0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0)
+    fun set(o:Matrix4dc):Matrix4d=set(o.m00(),o.m01(),o.m02(),o.m03(),o.m10(),o.m11(),o.m12(),o.m13(),o.m20(),o.m21(),o.m22(),o.m23(),o.m30(),o.m31(),o.m32(),o.m33())
+    fun set(a00:Double,a01:Double,a02:Double,a03:Double,a10:Double,a11:Double,a12:Double,a13:Double,a20:Double,a21:Double,a22:Double,a23:Double,a30:Double,a31:Double,a32:Double,a33:Double):Matrix4d{m00=a00;m01=a01;m02=a02;m03=a03;m10=a10;m11=a11;m12=a12;m13=a13;m20=a20;m21=a21;m22=a22;m23=a23;m30=a30;m31=a31;m32=a32;m33=a33;return this}
+    fun set(buffer:java.nio.DoubleBuffer):Matrix4d{val i=buffer.position();return set(buffer[i],buffer[i+1],buffer[i+2],buffer[i+3],buffer[i+4],buffer[i+5],buffer[i+6],buffer[i+7],buffer[i+8],buffer[i+9],buffer[i+10],buffer[i+11],buffer[i+12],buffer[i+13],buffer[i+14],buffer[i+15])}
+    operator fun get(index:Int):Double=when(index){0->m00;1->m01;2->m02;3->m03;4->m10;5->m11;6->m12;7->m13;8->m20;9->m21;10->m22;11->m23;12->m30;13->m31;14->m32;15->m33;else->throw IndexOutOfBoundsException("matrix component $index")}
+    operator fun set(index:Int,value:Double){when(index){0->m00=value;1->m01=value;2->m02=value;3->m03=value;4->m10=value;5->m11=value;6->m12=value;7->m13=value;8->m20=value;9->m21=value;10->m22=value;11->m23=value;12->m30=value;13->m31=value;14->m32=value;15->m33=value;else->throw IndexOutOfBoundsException("matrix component $index")}}
+    operator fun get(column:Int,row:Int):Double=get(column*4+row)
+    operator fun set(column:Int,row:Int,value:Double){set(column*4+row,value)}
+    fun get(buffer:java.nio.DoubleBuffer):java.nio.DoubleBuffer{val i=buffer.position();for(n in 0 until 16)buffer.put(i+n,this[n]);return buffer}
+    fun get(dest:DoubleArray):DoubleArray{require(dest.size>=16);for(n in 0 until 16)dest[n]=this[n];return dest}
+    fun get(index:Int,buffer:ByteBuffer):ByteBuffer{for(n in 0 until 16)buffer.putDouble(index+n*8,this[n]);return buffer}
+    fun mul(r:Matrix4dc):Matrix4d=mul(r,this)
+    fun mul(r:Matrix4dc,d:Matrix4d):Matrix4d=multiplyMatrix4d(this,r,d)
+    fun translate(x:Double,y:Double,z:Double):Matrix4d=translateMatrix4d(this,x,y,z,this)
+    fun translation(x:Double,y:Double,z:Double):Matrix4d=identity().translate(x,y,z)
+    fun setTranslation(x:Double,y:Double,z:Double):Matrix4d{m30=x;m31=y;m32=z;return this}
+    fun scale(x:Double,y:Double,z:Double):Matrix4d=scaleMatrix4d(this,x,y,z,this);fun scale(s:Double)=scale(s,s,s)
+    fun scaling(x:Double,y:Double,z:Double):Matrix4d=identity().scale(x,y,z)
+    override fun determinant():Double=determinantMatrix4d(this)
+    fun transpose():Matrix4d=transposeMatrix4d(this,this)
+    fun transpose(dest:Matrix4d):Matrix4d=transposeMatrix4d(this,dest)
+    fun invert():Matrix4d=invertMatrix4d(this,this)
+    fun get3x3(dest:Matrix3d):Matrix3d=dest.set(m00,m01,m02,m10,m11,m12,m20,m21,m22)
     override fun toString():String="[$m00 $m10 $m20 $m30; $m01 $m11 $m21 $m31; $m02 $m12 $m22 $m32; $m03 $m13 $m23 $m33]"
 }
