@@ -208,6 +208,79 @@ Track quotes are flat `time value` pairs:
 | `i` | `-- number` | Current loop index/value. |
 | `loop-count`, `n` | `-- number` | Count for the current loop. |
 
+## Array primitives
+
+Array primitives *reproduce a subexpression with modification* — the Fischinger idea of one shape multiplied into a rhythm of copies, each shifted in space, time, size, or colour. Inside any `repeat`/`range`/`array`/`grid`/`radial` body the per-copy context words below are available; combine them with `mix`, `offset`, `rotate`, `polar`, and `delay-all-time` to vary each copy.
+
+| Word | Stack | Notes |
+| --- | --- | --- |
+| `array` | `[template] count quote -- selection` | Reproduce a template object `count` times, running `quote` on each copy with array context. Element 0 is the template itself; the rest are fresh clones (deep for groups). Template is the active object, or a rect/group taken from the stack. Pushes the selection of all copies. |
+| `radial` | `[template] count radius quote -- selection` | Like `array`, but each copy is first placed on a circle of `radius` at angle `ordinal/count · tau`, then `quote` runs. |
+| `grid` | `cols rows quote -- selection` | Runs `quote` `cols·rows` times to build fresh cells, with grid context available. Close each cell with `;` like `repeat`. Pushes the selection of created objects. |
+| `polar` | `angle radius --` | Place the active object on a circle: `x = radius·cos angle`, `y = radius·sin angle`. |
+| `f` | `-- number` | Normalized fraction `ordinal/(n-1)` in `[0, 1]`; `0` for a single element. Pairs with `mix`. |
+| `f0` | `-- number` | Cyclic fraction `ordinal/n` in `[0, 1)`; handy for rings (`f0 tau *`). |
+| `fc` | `-- number` | Centered fraction `2f-1` in `[-1, 1]`. |
+| `ic` | `-- number` | Centered index `ordinal - (n-1)/2`, symmetric around 0. |
+| `col`, `row` | `-- number` | Current column/row inside `grid`. |
+| `cols`, `rows` | `-- number` | Grid dimensions inside `grid`. |
+| `colc`, `rowc` | `-- number` | Centered column/row: `col-(cols-1)/2`, `row-(rows-1)/2`. |
+
+```diffstatic {data-lang=text}
+# eight petals fanned around a centre, each rotated to face outward
+"petal" rect  0.4 1.2 wh
+  8 3 '( f0 tau * rot ) radial
+;
+
+# a centered grid whose cell alpha ripples with distance from the middle
+5 3 '(
+  "c" rect  colc 1.4 *  rowc 1.4 *  xy  1 square
+    colc abs rowc abs max  0.4 *  1 swap - alpha
+  ;
+) grid
+```
+
+## Distribution curves (Functions bridge)
+
+Linear `mix` is rarely the shape you want across an array. RectSL borrows [`afield.stdlib.Functions`](functions_examples.md) — a tested library of easings, distributions, and noise defined over `[0, 1]`, exactly the range of the array fraction `f`. `ease` shapes a scalar/track through the full Penner family; the curve words push a reusable `Fn` value you `sample` at `f` (or any x). The curves are graph-backed, so the Functions rewrite/evolve tooling can optimise an array's distribution toward a target.
+
+| Word | Stack | Notes |
+| --- | --- | --- |
+| `ease` | `x name -- x` / `track name -- track` | Shape a value through a named Penner easing. `name` is any of `linear`, `quad-in/out/in-out`, `cubic-…`, `quart-…`, `quint-…`, `sine-…`, `expo-…`, `circ-…`, `back-…`, `elastic-…`, `bounce-…`, `smoothstep`, `smootherstep`. A constant eases to a number; a keyed track eases its interpolation. |
+| `gaussian` | `-- Fn` | A bell curve centred at `0.5` — bright in the middle of the array, dark at the edges. |
+| `noise` | `seed -- Fn` | Seeded value-noise curve — deterministic, reproducible scatter. |
+| `fbm` | `seed -- Fn` | Seeded fractal (fBm) noise curve — richer, multi-octave scatter. |
+| `sample` | `Fn x -- number` | Evaluate a curve at `x` (use the array fraction `f`). |
+| `reflect` | `Fn -- Fn` | Mirror a curve about `0.5`: `reflect(x) = fn(1-x)`. |
+| `tile` | `Fn k -- Fn` | Repeat a curve `k` times across `[0, 1]`. |
+
+```diffstatic {data-lang=text}
+# alpha eased across the array with an elastic overshoot
+"c" rect  1 square
+  9 '( ic 1.4 * 0 offset  f "elastic-out" ease alpha ) array
+;
+
+# a gaussian falloff and reproducible noise scatter, sampled at f
+"c" rect  0.6 square
+  12 '( ic 1.1 * 0 offset  gaussian f sample alpha  7 noise f sample 2 * rotate ) array
+;
+```
+
+Note: `gaussian`/`noise`/`fbm` here build CPU `Fn` curves on the RectSL stack; the `fbm`/`palette` seen inside `material '( … )` quotes are StackSL GPU words in a separate language — same names, different context.
+
+### Kotlin escape (experimental)
+
+For anything the built-in words don't cover, `{{ … }}` drops into Kotlin — in a `with(Functions){ … }` scope — anywhere a value is expected. The result (a Number, an `Fn`, or a `Track<Double>`) is pushed onto the stack, so the whole `Functions` API is available inline. The escape also sees the array context (`i`, `n`, `f`, `f0`, `fc`, `ic`), so it can vary per copy:
+
+```diffstatic {data-lang=text}
+# a curve sampled at f, and a per-copy value computed straight in Kotlin
+"c" rect  1 square
+  9 '( {{ i * 1.2 }} 0 offset  {{ sin(2) through gain(0.5) }} f sample alpha ) array
+;
+```
+
+Cost: each unique escape is compiled to a lambda **once** (~76 ms K2 compile + ~5 ms), then **invoked per use** as a plain JVM call — so an escape inside an `array` body pays the compile once, not per copy. It needs a live Kotlin engine — a Field box has one (or pass it via `compileRectSL(source, engine = …)`), so escapes work while live-editing. Inside a long-running graphics render you can't compile on the box's *own* engine (it's busy running the render, and its REPL is single-threaded), so the render harness pre-warms every escape on a separate idle engine before the render starts (`prewarmRectSLEscapes` → `compileRectSL(…, precompiledEscapes = …)`), after which the render only invokes cached lambdas. One caveat remains: the CPU docs-gallery smoke check compiles `.rectsl` with no engine, so escapes in the workspace `.rectsl` files would need an engine wired there too.
+
 ## Stack and scalar operators
 
 | Word | Stack | Notes |

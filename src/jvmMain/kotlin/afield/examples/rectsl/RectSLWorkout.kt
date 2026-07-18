@@ -1,6 +1,8 @@
 package afield.examples.rectsl
 
 import afield.rectsl.*
+import afield.stdlib.Functions
+import afield.stdlib.evolve
 
 import kotlin.math.PI
 import kotlin.math.abs
@@ -36,6 +38,8 @@ object RectSLWorkout {
             "operators and key lenses" to ::operatorsAndKeyLenses,
             "track modes and time warps" to ::trackModesAndTimeWarps,
             "layers tracks easing and repeat" to ::layersTracksEasingAndRepeat,
+            "array primitives" to ::arrayPrimitives,
+            "functions bridge" to ::functionsBridge,
             "gradient and material lowering" to ::gradientAndMaterialLowering,
             "semantic analysis" to ::semanticAnalysis,
             "StackSL material shader" to ::stackSLMaterialShader
@@ -387,6 +391,216 @@ object RectSLWorkout {
         val foreground = at0.first { it.id == "foreground" }
         val background = at0.first { it.id == "background" }
         require(foreground.z > background.z) { at0.map { it.id to it.z } }
+    }
+
+    private fun arrayPrimitives() {
+        // array: element 0 is the template; ic centers the run; f drives alpha across the array.
+        val linear = compile(
+            """
+            wall 20 8 meters
+            duration 1
+            fps 1
+
+            "cell" rect
+              0 0 xy
+              1 square
+              5 '( ic 2 * 0 offset  0 1 f mix alpha ) array
+            ;
+            """.trimIndent()
+        )
+        val cells = linear.sample(0.0).rects
+        require(cells.size == 5) { "array expected 5 rects, got ${cells.size}" }
+        val xs = cells.map { it.center.x }.sorted()
+        listOf(-4.0, -2.0, 0.0, 2.0, 4.0).forEachIndexed { i, e -> near(e, xs[i]) }
+        val alphas = cells.sortedBy { it.center.x }.map { it.alpha }
+        listOf(0.0, 0.25, 0.5, 0.75, 1.0).forEachIndexed { i, e -> near(e, alphas[i]) }
+
+        // radial: four copies placed on a circle of radius 3 at 0, 90, 180, 270 degrees.
+        val ring = compile(
+            """
+            wall 12 12 meters
+            duration 1
+            fps 1
+
+            "spoke" rect
+              0.5 square
+              4 3 '( ) radial
+            ;
+            """.trimIndent()
+        )
+        val spokes = ring.sample(0.0).rects
+        require(spokes.size == 4) { "radial expected 4 rects, got ${spokes.size}" }
+        val byId = spokes.sortedBy { it.center.x }
+        near(-3.0, byId.first().center.x)
+        near(3.0, byId.last().center.x)
+        require(spokes.any { near2(it.center.x, 0.0) && near2(it.center.y, 3.0) }) { spokes.map { it.center } }
+        require(spokes.any { near2(it.center.x, 0.0) && near2(it.center.y, -3.0) }) { spokes.map { it.center } }
+
+        // grid: cols x rows fresh cells, centered with colc/rowc; returns a selection to tag as a batch.
+        val grid = compile(
+            """
+            wall 20 12 meters
+            duration 1
+            fps 1
+
+            3 2 '(
+              "g" rect
+                colc 2 *  rowc 2 *  xy
+                0.5 square
+              ;
+            ) grid
+            '( "cell" tag ) each
+            """.trimIndent()
+        )
+        val gridRects = grid.sample(0.0).rects
+        require(gridRects.size == 6) { "grid expected 6 rects, got ${gridRects.size}" }
+        require(gridRects.all { "cell" in it.tags }) { "grid selection tag did not broadcast" }
+        require(gridRects.any { near2(it.center.x, -2.0) && near2(it.center.y, -1.0) }) { gridRects.map { it.center } }
+        require(gridRects.any { near2(it.center.x, 2.0) && near2(it.center.y, 1.0) }) { gridRects.map { it.center } }
+
+        // stagger: cumulative positional offset over a selection returned by array.
+        val staggered = compile(
+            """
+            wall 20 8 meters
+            duration 1
+            fps 1
+
+            "s" rect
+              0 0 xy
+              0.5 square
+              3 '( ) array
+              1 0 stagger
+            ;
+            """.trimIndent()
+        )
+        val stag = staggered.sample(0.0).rects.map { it.center.x }.sorted()
+        listOf(0.0, 1.0, 2.0).forEachIndexed { i, e -> near(e, stag[i]) }
+
+        // array of a group deep-clones the whole subtree.
+        val groups = compile(
+            """
+            wall 24 8 meters
+            duration 1
+            fps 1
+
+            "tile" group
+              "a" rect -0.5 0 xy 0.4 square ;
+              "b" rect 0.5 0 xy 0.4 square ;
+            end
+            "tile" select
+            3 '( ic 5 * 0 offset ) array
+            """.trimIndent()
+        )
+        require(groups.nodes.filterIsInstance<GroupNode>().size == 3) {
+            "array of a group expected 3 groups, got ${groups.nodes.filterIsInstance<GroupNode>().size}"
+        }
+        groups.nodes.filterIsInstance<GroupNode>().forEach {
+            require(it.children.size == 2) { "each cloned group should keep 2 children, got ${it.children.size}" }
+        }
+        val groupRects = groups.sample(0.0).rects
+        require(groupRects.size == 6) { "group array expected 6 child rects, got ${groupRects.size}" }
+        // centered ic offsets -5,0,5 shift each group; child "a" sits at group.x-0.5.
+        require(groupRects.any { near2(it.center.x, -5.5, 1e-4) }) { groupRects.map { it.center.x } }
+        require(groupRects.any { near2(it.center.x, 5.5, 1e-4) }) { groupRects.map { it.center.x } }
+    }
+
+    private fun near2(actual: Double, expected: Double, epsilon: Double = 1e-4): Boolean =
+        abs(actual - expected) <= epsilon
+
+    private fun functionsBridge() {
+        // #2 ease — a per-copy eased alpha matches the Functions Penner curve exactly.
+        val eased = compile(
+            """
+            wall 20 8 meters
+            duration 1
+            fps 1
+            "c" rect 0 0 xy 1 square
+              5 '( ic 2 * 0 offset  f "quad-out" ease alpha ) array
+            ;
+            """.trimIndent()
+        )
+        val alphas = eased.sample(0.0).rects.sortedBy { it.center.x }.map { it.alpha }
+        val expectedEase = with(Functions) {
+            val e = identity().ease(Functions.Easing.QUAD_OUT)
+            (0..4).map { e.eval(it / 4.0) }
+        }
+        alphas.zip(expectedEase).forEach { (a, e) -> near(e, a) }
+
+        // #1/#4 sample — a gaussian distribution sampled at f peaks in the middle and
+        // falls off symmetrically toward the edges of the array.
+        val bell = compile(
+            """
+            wall 20 8 meters
+            duration 1
+            fps 1
+            "c" rect 0 0 xy 1 square
+              5 '( ic 2 * 0 offset  gaussian f sample alpha ) array
+            ;
+            """.trimIndent()
+        )
+        val bs = bell.sample(0.0).rects.sortedBy { it.center.x }.map { it.alpha }
+        near(1.0, bs[2])
+        require(bs[0] < 0.05 && bs[4] < 0.05) { "gaussian edges should be dark: $bs" }
+        near(bs[0], bs[4])
+
+        // #4 seeded noise — deterministic for a seed, and different seeds diverge.
+        fun scatter(seed: Int) = compile(
+            """
+            wall 20 8 meters
+            duration 1
+            fps 1
+            "c" rect 0 0 xy 1 square
+              7 '( ic 1.5 * 0 offset  $seed noise f sample sat alpha ) array
+            ;
+            """.trimIndent()
+        ).sample(0.0).rects.sortedBy { it.center.x }.map { it.alpha }
+        require(scatter(1) == scatter(1)) { "seeded noise must be deterministic" }
+        require(scatter(1) != scatter(2)) { "different seeds must diverge" }
+
+        // #3 reflect — a curve transform: reflect(x) == source(1-x).
+        val plain = compile(
+            """
+            wall 4 4 meters
+            duration 1
+            fps 1
+            "c" rect 0 0 xy 1 square  3 noise 0.2 sample sat alpha ;
+            """.trimIndent()
+        ).sample(0.0).rects.first().alpha
+        val reflected = compile(
+            """
+            wall 4 4 meters
+            duration 1
+            fps 1
+            "c" rect 0 0 xy 1 square  3 noise reflect 0.8 sample sat alpha ;
+            """.trimIndent()
+        ).sample(0.0).rects.first().alpha
+        near(plain, reflected)
+
+        // #5 graph/evolve — a RectSL-built curve keeps its Functions graph, so the
+        // evolve tooling can optimise an array's distribution toward a target.
+        val fn = (evalRectSLStack("3 noise reflect").last() as VFn).fn
+        require(fn.graph != null) { "the Fn bridge dropped the Functions graph (needed for rewrite/evolve)" }
+        val target = 0.5
+        val run = evolve(seed = fn, iterations = 24, rngSeed = 1L) { c -> -abs(c.eval(0.5) - target) }
+        require(run.bestScore >= run.initialScore) { "evolve regressed fitness" }
+        require(run.best.eval(0.5).isFinite()) { "evolved curve is not samplable" }
+
+        // #5 injection — the host binds a curve by name; the RectSL array samples it.
+        val curve = with(Functions) { gaussian(0.5, 0.16) }
+        val injected = compileRectSL(
+            """
+            wall 20 8 meters
+            duration 1
+            fps 1
+            "c" rect 0 0 xy 1 square
+              5 '( ic 2 * 0 offset  shape f sample alpha ) array
+            ;
+            """.trimIndent(),
+            mapOf("shape" to curve)
+        ).program ?: error("compileRectSL with curves failed")
+        val ia = injected.sample(0.0).rects.sortedBy { it.center.x }.map { it.alpha }
+        near(1.0, ia[2])
+        require(ia[0] < 0.05 && ia[4] < 0.05) { "injected curve did not drive the array: $ia" }
     }
 
     private fun gradientAndMaterialLowering() {

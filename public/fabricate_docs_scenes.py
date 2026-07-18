@@ -94,6 +94,10 @@ FABRICATE_DOCS_SCENES: dict[str, tuple[str, str]] = {
         "renderRectSLAnimations",
         "rectsl animations ready",
     ),
+    "rectsl-fit": (
+        "renderRectSLFit",
+        "rectsl fit ready",
+    ),
 }
 
 HARNESS_RELATIVE_PATH = "src/jvmMain/kotlin/afield/four/fabricated/StandardRendererDocsHarness.kt"

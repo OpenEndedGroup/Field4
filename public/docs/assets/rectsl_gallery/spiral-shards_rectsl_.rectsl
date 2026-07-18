@@ -1,0 +1,20 @@
+#rectsl
+wall 12 12 abstract
+duration 8
+fps 30
+
+material shimmer '(
+  uv 4.0 * time 0.5 * + fbm palette
+)
+
+"shard" rect
+  0.32 1.05 wh
+  0xffffff solid fill
+  48 '(
+    i 2.39996 *  f 4.6 *  polar
+    i 2.39996 *  rot
+    '( 0 0  8 6.28318 ) rotate
+    0.4 1 f mix alpha
+    shimmer material
+  ) array
+;

@@ -1,0 +1,13 @@
+#rectsl
+wall 22 8 meters
+duration 3
+fps 30
+
+"bar" rect
+  0 0 xy
+  0.55 1 wh
+  '( 0 0.4  0.5 4.5  1 0.4 ) 1 loop-time h
+  0xffd23c solid fill
+  26 '( ic 0.8 * 0 offset ) array
+  0.05 stagger-time
+;

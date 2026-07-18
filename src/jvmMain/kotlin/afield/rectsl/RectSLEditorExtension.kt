@@ -36,8 +36,8 @@ private val rectslEditorExtensionJavascript: String = """
   const geometryWords = new Set(["xy", "nxy", "x", "y", "wh", "nwh", "w", "h", "square", "z", "layer", "rot", "rotation", "scale", "scale-xy", "alpha", "opacity*"]);
   const paintWords = new Set(["solid", "linear", "fill", "rgb", "rgba", "material", "shader"]);
   const trackWords = new Set(["track", "linear-track", "hold-track", "track-ref", "tcb", "linear", "hold", "tcb!", "x-track", "y-track", "w-track", "h-track", "rot-track", "rotation-track", "scale-x-track", "scale-y-track", "alpha-track", "z-track", "layer-track", "delay-time", "scale-time", "reverse-time", "loop-time", "pingpong-time", "time+", "time*", "value+", "value*", "clamp-values", "snap-time", "keys-before", "keys-after", "keys-between", "ease-in", "ease-out", "ease-in-out", "ease-smoothstep", "smooth"]);
-  const transformWords = new Set(["mirror-x", "mirror-y", "mirror-x-at", "mirror-y-at", "translate", "rotate", "offset", "stagger", "delay-all-time", "scale-all-time", "reverse-all-time", "loop-all-time", "pingpong-all-time", "stagger-time"]);
-  const higherWords = new Set(["all", "roots", "selected", "children", "descendants", "rects", "groups", "tagged", "tagged?", "each", "map", "filter", "where", "times", "repeat", "range", "i", "loop-count", "n"]);
+  const transformWords = new Set(["mirror-x", "mirror-y", "mirror-x-at", "mirror-y-at", "translate", "rotate", "offset", "stagger", "polar", "delay-all-time", "scale-all-time", "reverse-all-time", "loop-all-time", "pingpong-all-time", "stagger-time"]);
+  const higherWords = new Set(["all", "roots", "selected", "children", "descendants", "rects", "groups", "tagged", "tagged?", "each", "map", "filter", "where", "times", "repeat", "range", "i", "loop-count", "n", "array", "grid", "radial", "f", "f0", "fc", "ic", "col", "row", "cols", "rows", "colc", "rowc", "ease", "gaussian", "noise", "fbm", "sample", "reflect", "tile"]);
   const operatorWords = new Set(["+", "add", "-", "sub", "*", "mul", "/", "div", "mod", "pow", "min", "max", "neg", "negate", "abs", "floor", "ceil", "fract", "sqrt", "sin", "cos", "clamp", "sat", "saturate", "mix", "lerp", "smoothstep", "<", "lt", "<=", "lte", ">", "gt", ">=", "gte", "=", "eq", "!=", "<>", "neq", "and", "or", "not"]);
   const constants = new Set(["pi", "tau"]);
   const wordDoc = (signature, detail, insertText = null) => ({ signature, detail, insertText });
@@ -170,6 +170,29 @@ private val rectslEditorExtensionJavascript: String = """
     ["loop-count", wordDoc("-- number", "Push the current repeat/range count.")],
     ["n", wordDoc("-- number", "Alias for loop-count.")],
 
+    ["array", wordDoc("[template] count quote -- selection", "Reproduce a template object count times, running quote on each copy with array context. Element 0 is the template; the rest are fresh clones (deep for groups). Template is the active object, or a rect/group from the stack. Pushes the selection of all copies.")],
+    ["radial", wordDoc("[template] count radius quote -- selection", "Like array, but each copy is placed on a circle of radius at angle ordinal/count*tau before quote runs.")],
+    ["grid", wordDoc("cols rows quote -- selection", "Run quote cols*rows times to build fresh cells with grid context (col, row, cols, rows, colc, rowc). Close each cell with ;. Pushes the selection of created objects.")],
+    ["polar", wordDoc("angle radius --", "Place the active object on a circle: x = radius*cos angle, y = radius*sin angle.")],
+    ["f", wordDoc("-- number", "Normalized array fraction ordinal/(n-1) in [0,1]; 0 for a single element. Pairs with mix.")],
+    ["f0", wordDoc("-- number", "Cyclic array fraction ordinal/n in [0,1); handy for rings (f0 tau *).")],
+    ["fc", wordDoc("-- number", "Centered array fraction 2f-1 in [-1,1].")],
+    ["ic", wordDoc("-- number", "Centered array index ordinal-(n-1)/2, symmetric around 0.")],
+    ["col", wordDoc("-- number", "Current column inside grid.")],
+    ["row", wordDoc("-- number", "Current row inside grid.")],
+    ["cols", wordDoc("-- number", "Grid column count inside grid.")],
+    ["rows", wordDoc("-- number", "Grid row count inside grid.")],
+    ["colc", wordDoc("-- number", "Centered column col-(cols-1)/2 inside grid.")],
+    ["rowc", wordDoc("-- number", "Centered row row-(rows-1)/2 inside grid.")],
+
+    ["ease", wordDoc("x name -- x", "Shape a scalar/track through a named Penner easing (quad-out, cubic-in-out, back-out, elastic-in-out, bounce-out, sine-in-out, expo-out, circ-in-out, smoothstep, smootherstep, ...). Borrowed from afield.stdlib.Functions.")],
+    ["gaussian", wordDoc("-- Fn", "A bell-curve distribution over [0,1] centered at 0.5. Sample at the array fraction f.")],
+    ["noise", wordDoc("seed -- Fn", "A seeded value-noise curve over [0,1] — deterministic, reproducible scatter.")],
+    ["fbm", wordDoc("seed -- Fn", "A seeded fractal (fBm) noise curve over [0,1] — richer multi-octave scatter.")],
+    ["sample", wordDoc("Fn x -- number", "Evaluate a distribution curve at x (use the array fraction f).")],
+    ["reflect", wordDoc("Fn -- Fn", "Mirror a curve about 0.5: reflect(x) = fn(1-x).")],
+    ["tile", wordDoc("Fn k -- Fn", "Repeat a curve k times across [0,1].")],
+
     ["dup", wordDoc("a -- a a", "Duplicate the top stack value.")],
     ["drop", wordDoc("a --", "Drop the top stack value.")],
     ["swap", wordDoc("a b -- b a", "Swap the top two stack values.")],
@@ -211,9 +234,11 @@ private val rectslEditorExtensionJavascript: String = """
     ["x-track", [0, 1]], ["y-track", [0, 1]], ["w-track", [0, 1]], ["h-track", [0, 1]], ["rot-track", [0, 1]], ["rotation-track", [0, 1]], ["scale-x-track", [0, 1]], ["scale-y-track", [0, 1]], ["alpha-track", [0, 1]], ["z-track", [0, 1]], ["layer-track", [0, 1]],
     ["delay-time", [2, 1]], ["scale-time", [2, 1]], ["reverse-time", [1, 1]], ["loop-time", [2, 1]], ["pingpong-time", [2, 1]], ["time+", [2, 1]], ["time*", [2, 1]], ["value+", [2, 1]], ["value*", [2, 1]], ["clamp-values", [3, 1]], ["snap-time", [2, 1]], ["keys-before", [2, 1]], ["keys-after", [2, 1]], ["keys-between", [3, 1]],
     ["ease-in", [1, 1]], ["ease-out", [1, 1]], ["ease-in-out", [1, 1]], ["ease-smoothstep", [1, 1]], ["smooth", [1, 1]],
-    ["mirror-x-at", [1, 0]], ["mirror-y-at", [1, 0]], ["translate", [2, 0]], ["rotate", [1, 0]], ["offset", [2, 0]], ["stagger", [2, 0]],
+    ["mirror-x-at", [1, 0]], ["mirror-y-at", [1, 0]], ["translate", [2, 0]], ["rotate", [1, 0]], ["offset", [2, 0]], ["stagger", [2, 1]], ["polar", [2, 0]],
     ["all", [0, 1]], ["roots", [0, 1]], ["selected", [0, 1]], ["children", [1, 1]], ["descendants", [1, 1]], ["rects", [1, 1]], ["groups", [1, 1]], ["tagged", [2, 1]],
     ["each", [2, 1]], ["map", [2, 1]], ["filter", [2, 1]], ["where", [2, 1]], ["times", [2, 0]], ["repeat", [2, 0]], ["range", [3, 0]], ["i", [0, 1]], ["loop-count", [0, 1]], ["n", [0, 1]],
+    ["array", [2, 1]], ["radial", [3, 1]], ["grid", [3, 1]], ["f", [0, 1]], ["f0", [0, 1]], ["fc", [0, 1]], ["ic", [0, 1]], ["col", [0, 1]], ["row", [0, 1]], ["cols", [0, 1]], ["rows", [0, 1]], ["colc", [0, 1]], ["rowc", [0, 1]],
+    ["ease", [2, 1]], ["gaussian", [0, 1]], ["noise", [1, 1]], ["fbm", [1, 1]], ["sample", [2, 1]], ["reflect", [1, 1]], ["tile", [2, 1]],
     ["+", [2, 1]], ["-", [2, 1]], ["*", [2, 1]], ["/", [2, 1]], ["mod", [2, 1]], ["pow", [2, 1]], ["min", [2, 1]], ["max", [2, 1]],
     ["neg", [1, 1]], ["abs", [1, 1]], ["floor", [1, 1]], ["ceil", [1, 1]], ["fract", [1, 1]], ["sqrt", [1, 1]], ["sin", [1, 1]], ["cos", [1, 1]],
     ["clamp", [3, 1]], ["sat", [1, 1]], ["mix", [3, 1]], ["lerp", [3, 1]], ["smoothstep", [3, 1]],
