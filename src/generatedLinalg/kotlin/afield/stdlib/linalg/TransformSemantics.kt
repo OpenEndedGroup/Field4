@@ -53,6 +53,36 @@ internal fun multiplyQuaternion(self: Quaternionfc, right: Quaternionfc, dest: Q
     return dest.set(r0, r1, r2, r3)
 }
 
+internal fun multiplyMatrix2(self: Matrix2fc, right: Matrix2fc, dest: Matrix2f): Matrix2f {
+    val r0 = ((self.m00() * right.m00()) + (self.m10() * right.m01()))
+    val r1 = ((self.m01() * right.m00()) + (self.m11() * right.m01()))
+    val r2 = ((self.m00() * right.m10()) + (self.m10() * right.m11()))
+    val r3 = ((self.m01() * right.m10()) + (self.m11() * right.m11()))
+    return dest.set(r0, r1, r2, r3)
+}
+
+internal fun determinantMatrix2(self: Matrix2fc): Float {
+    return ((self.m00() * self.m11()) - (self.m10() * self.m01()))
+}
+
+internal fun invertMatrix2(self: Matrix2fc, dest: Matrix2f): Matrix2f {
+    val determinant = ((self.m00() * self.m11()) - (self.m10() * self.m01()))
+    val inverseDeterminant = (1f / determinant)
+    val r0 = (self.m11() * inverseDeterminant)
+    val r1 = ((-self.m01()) * inverseDeterminant)
+    val r2 = ((-self.m10()) * inverseDeterminant)
+    val r3 = (self.m00() * inverseDeterminant)
+    return dest.set(r0, r1, r2, r3)
+}
+
+internal fun transposeMatrix2(self: Matrix2fc, dest: Matrix2f): Matrix2f {
+    val r0 = self.m00()
+    val r1 = self.m10()
+    val r2 = self.m01()
+    val r3 = self.m11()
+    return dest.set(r0, r1, r2, r3)
+}
+
 internal fun transformMatrix3Vector3(self: Matrix3fc, value: Vector3fc, dest: Vector3f): Vector3f {
     val r0 = (((self.m00() * value.x()) + (self.m10() * value.y())) + (self.m20() * value.z()))
     val r1 = (((self.m01() * value.x()) + (self.m11() * value.y())) + (self.m21() * value.z()))
@@ -256,6 +286,36 @@ internal fun scaleMatrix4(self: Matrix4fc, x: Float, y: Float, z: Float, dest: M
     return dest.set(r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15)
 }
 
+internal fun multiplyMatrix2d(self: Matrix2dc, right: Matrix2dc, dest: Matrix2d): Matrix2d {
+    val r0 = ((self.m00() * right.m00()) + (self.m10() * right.m01()))
+    val r1 = ((self.m01() * right.m00()) + (self.m11() * right.m01()))
+    val r2 = ((self.m00() * right.m10()) + (self.m10() * right.m11()))
+    val r3 = ((self.m01() * right.m10()) + (self.m11() * right.m11()))
+    return dest.set(r0, r1, r2, r3)
+}
+
+internal fun determinantMatrix2d(self: Matrix2dc): Double {
+    return ((self.m00() * self.m11()) - (self.m10() * self.m01()))
+}
+
+internal fun invertMatrix2d(self: Matrix2dc, dest: Matrix2d): Matrix2d {
+    val determinant = ((self.m00() * self.m11()) - (self.m10() * self.m01()))
+    val inverseDeterminant = (1.0 / determinant)
+    val r0 = (self.m11() * inverseDeterminant)
+    val r1 = ((-self.m01()) * inverseDeterminant)
+    val r2 = ((-self.m10()) * inverseDeterminant)
+    val r3 = (self.m00() * inverseDeterminant)
+    return dest.set(r0, r1, r2, r3)
+}
+
+internal fun transposeMatrix2d(self: Matrix2dc, dest: Matrix2d): Matrix2d {
+    val r0 = self.m00()
+    val r1 = self.m10()
+    val r2 = self.m01()
+    val r3 = self.m11()
+    return dest.set(r0, r1, r2, r3)
+}
+
 internal fun multiplyMatrix3d(self: Matrix3dc, right: Matrix3dc, dest: Matrix3d): Matrix3d {
     val r0 = (((self.m00() * right.m00()) + (self.m10() * right.m01())) + (self.m20() * right.m02()))
     val r1 = (((self.m01() * right.m00()) + (self.m11() * right.m01())) + (self.m21() * right.m02()))
@@ -299,4 +359,133 @@ internal fun invertMatrix3d(self: Matrix3dc, dest: Matrix3d): Matrix3d {
     val r7 = (((self.m20() * self.m01()) - (self.m00() * self.m21())) * inverseDeterminant)
     val r8 = (((self.m00() * self.m11()) - (self.m10() * self.m01())) * inverseDeterminant)
     return dest.set(r0, r1, r2, r3, r4, r5, r6, r7, r8)
+}
+
+internal fun multiplyMatrix4d(self: Matrix4dc, right: Matrix4dc, dest: Matrix4d): Matrix4d {
+    val r0 = ((((self.m00() * right.m00()) + (self.m10() * right.m01())) + (self.m20() * right.m02())) + (self.m30() * right.m03()))
+    val r1 = ((((self.m01() * right.m00()) + (self.m11() * right.m01())) + (self.m21() * right.m02())) + (self.m31() * right.m03()))
+    val r2 = ((((self.m02() * right.m00()) + (self.m12() * right.m01())) + (self.m22() * right.m02())) + (self.m32() * right.m03()))
+    val r3 = ((((self.m03() * right.m00()) + (self.m13() * right.m01())) + (self.m23() * right.m02())) + (self.m33() * right.m03()))
+    val r4 = ((((self.m00() * right.m10()) + (self.m10() * right.m11())) + (self.m20() * right.m12())) + (self.m30() * right.m13()))
+    val r5 = ((((self.m01() * right.m10()) + (self.m11() * right.m11())) + (self.m21() * right.m12())) + (self.m31() * right.m13()))
+    val r6 = ((((self.m02() * right.m10()) + (self.m12() * right.m11())) + (self.m22() * right.m12())) + (self.m32() * right.m13()))
+    val r7 = ((((self.m03() * right.m10()) + (self.m13() * right.m11())) + (self.m23() * right.m12())) + (self.m33() * right.m13()))
+    val r8 = ((((self.m00() * right.m20()) + (self.m10() * right.m21())) + (self.m20() * right.m22())) + (self.m30() * right.m23()))
+    val r9 = ((((self.m01() * right.m20()) + (self.m11() * right.m21())) + (self.m21() * right.m22())) + (self.m31() * right.m23()))
+    val r10 = ((((self.m02() * right.m20()) + (self.m12() * right.m21())) + (self.m22() * right.m22())) + (self.m32() * right.m23()))
+    val r11 = ((((self.m03() * right.m20()) + (self.m13() * right.m21())) + (self.m23() * right.m22())) + (self.m33() * right.m23()))
+    val r12 = ((((self.m00() * right.m30()) + (self.m10() * right.m31())) + (self.m20() * right.m32())) + (self.m30() * right.m33()))
+    val r13 = ((((self.m01() * right.m30()) + (self.m11() * right.m31())) + (self.m21() * right.m32())) + (self.m31() * right.m33()))
+    val r14 = ((((self.m02() * right.m30()) + (self.m12() * right.m31())) + (self.m22() * right.m32())) + (self.m32() * right.m33()))
+    val r15 = ((((self.m03() * right.m30()) + (self.m13() * right.m31())) + (self.m23() * right.m32())) + (self.m33() * right.m33()))
+    return dest.set(r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15)
+}
+
+internal fun transposeMatrix4d(self: Matrix4dc, dest: Matrix4d): Matrix4d {
+    val r0 = self.m00()
+    val r1 = self.m10()
+    val r2 = self.m20()
+    val r3 = self.m30()
+    val r4 = self.m01()
+    val r5 = self.m11()
+    val r6 = self.m21()
+    val r7 = self.m31()
+    val r8 = self.m02()
+    val r9 = self.m12()
+    val r10 = self.m22()
+    val r11 = self.m32()
+    val r12 = self.m03()
+    val r13 = self.m13()
+    val r14 = self.m23()
+    val r15 = self.m33()
+    return dest.set(r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15)
+}
+
+internal fun determinantMatrix4d(self: Matrix4dc): Double {
+    val b00 = ((self.m00() * self.m11()) - (self.m01() * self.m10()))
+    val b01 = ((self.m00() * self.m12()) - (self.m02() * self.m10()))
+    val b02 = ((self.m00() * self.m13()) - (self.m03() * self.m10()))
+    val b03 = ((self.m01() * self.m12()) - (self.m02() * self.m11()))
+    val b04 = ((self.m01() * self.m13()) - (self.m03() * self.m11()))
+    val b05 = ((self.m02() * self.m13()) - (self.m03() * self.m12()))
+    val b06 = ((self.m20() * self.m31()) - (self.m21() * self.m30()))
+    val b07 = ((self.m20() * self.m32()) - (self.m22() * self.m30()))
+    val b08 = ((self.m20() * self.m33()) - (self.m23() * self.m30()))
+    val b09 = ((self.m21() * self.m32()) - (self.m22() * self.m31()))
+    val b10 = ((self.m21() * self.m33()) - (self.m23() * self.m31()))
+    val b11 = ((self.m22() * self.m33()) - (self.m23() * self.m32()))
+    return ((((((b00 * b11) - (b01 * b10)) + (b02 * b09)) + (b03 * b08)) - (b04 * b07)) + (b05 * b06))
+}
+
+internal fun invertMatrix4d(self: Matrix4dc, dest: Matrix4d): Matrix4d {
+    val b00 = ((self.m00() * self.m11()) - (self.m01() * self.m10()))
+    val b01 = ((self.m00() * self.m12()) - (self.m02() * self.m10()))
+    val b02 = ((self.m00() * self.m13()) - (self.m03() * self.m10()))
+    val b03 = ((self.m01() * self.m12()) - (self.m02() * self.m11()))
+    val b04 = ((self.m01() * self.m13()) - (self.m03() * self.m11()))
+    val b05 = ((self.m02() * self.m13()) - (self.m03() * self.m12()))
+    val b06 = ((self.m20() * self.m31()) - (self.m21() * self.m30()))
+    val b07 = ((self.m20() * self.m32()) - (self.m22() * self.m30()))
+    val b08 = ((self.m20() * self.m33()) - (self.m23() * self.m30()))
+    val b09 = ((self.m21() * self.m32()) - (self.m22() * self.m31()))
+    val b10 = ((self.m21() * self.m33()) - (self.m23() * self.m31()))
+    val b11 = ((self.m22() * self.m33()) - (self.m23() * self.m32()))
+    val inverseDeterminant = (1.0 / ((((((b00 * b11) - (b01 * b10)) + (b02 * b09)) + (b03 * b08)) - (b04 * b07)) + (b05 * b06)))
+    val r0 = ((((self.m11() * b11) - (self.m12() * b10)) + (self.m13() * b09)) * inverseDeterminant)
+    val r1 = ((((self.m02() * b10) - (self.m01() * b11)) - (self.m03() * b09)) * inverseDeterminant)
+    val r2 = ((((self.m31() * b05) - (self.m32() * b04)) + (self.m33() * b03)) * inverseDeterminant)
+    val r3 = ((((self.m22() * b04) - (self.m21() * b05)) - (self.m23() * b03)) * inverseDeterminant)
+    val r4 = ((((self.m12() * b08) - (self.m10() * b11)) - (self.m13() * b07)) * inverseDeterminant)
+    val r5 = ((((self.m00() * b11) - (self.m02() * b08)) + (self.m03() * b07)) * inverseDeterminant)
+    val r6 = ((((self.m32() * b02) - (self.m30() * b05)) - (self.m33() * b01)) * inverseDeterminant)
+    val r7 = ((((self.m20() * b05) - (self.m22() * b02)) + (self.m23() * b01)) * inverseDeterminant)
+    val r8 = ((((self.m10() * b10) - (self.m11() * b08)) + (self.m13() * b06)) * inverseDeterminant)
+    val r9 = ((((self.m01() * b08) - (self.m00() * b10)) - (self.m03() * b06)) * inverseDeterminant)
+    val r10 = ((((self.m30() * b04) - (self.m31() * b02)) + (self.m33() * b00)) * inverseDeterminant)
+    val r11 = ((((self.m21() * b02) - (self.m20() * b04)) - (self.m23() * b00)) * inverseDeterminant)
+    val r12 = ((((self.m11() * b07) - (self.m10() * b09)) - (self.m12() * b06)) * inverseDeterminant)
+    val r13 = ((((self.m00() * b09) - (self.m01() * b07)) + (self.m02() * b06)) * inverseDeterminant)
+    val r14 = ((((self.m31() * b01) - (self.m30() * b03)) - (self.m32() * b00)) * inverseDeterminant)
+    val r15 = ((((self.m20() * b03) - (self.m21() * b01)) + (self.m22() * b00)) * inverseDeterminant)
+    return dest.set(r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15)
+}
+
+internal fun translateMatrix4d(self: Matrix4dc, x: Double, y: Double, z: Double, dest: Matrix4d): Matrix4d {
+    val r0 = self.m00()
+    val r1 = self.m01()
+    val r2 = self.m02()
+    val r3 = self.m03()
+    val r4 = self.m10()
+    val r5 = self.m11()
+    val r6 = self.m12()
+    val r7 = self.m13()
+    val r8 = self.m20()
+    val r9 = self.m21()
+    val r10 = self.m22()
+    val r11 = self.m23()
+    val r12 = ((((self.m00() * x) + (self.m10() * y)) + (self.m20() * z)) + self.m30())
+    val r13 = ((((self.m01() * x) + (self.m11() * y)) + (self.m21() * z)) + self.m31())
+    val r14 = ((((self.m02() * x) + (self.m12() * y)) + (self.m22() * z)) + self.m32())
+    val r15 = ((((self.m03() * x) + (self.m13() * y)) + (self.m23() * z)) + self.m33())
+    return dest.set(r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15)
+}
+
+internal fun scaleMatrix4d(self: Matrix4dc, x: Double, y: Double, z: Double, dest: Matrix4d): Matrix4d {
+    val r0 = (self.m00() * x)
+    val r1 = (self.m01() * x)
+    val r2 = (self.m02() * x)
+    val r3 = (self.m03() * x)
+    val r4 = (self.m10() * y)
+    val r5 = (self.m11() * y)
+    val r6 = (self.m12() * y)
+    val r7 = (self.m13() * y)
+    val r8 = (self.m20() * z)
+    val r9 = (self.m21() * z)
+    val r10 = (self.m22() * z)
+    val r11 = (self.m23() * z)
+    val r12 = (self.m30() * 1.0)
+    val r13 = (self.m31() * 1.0)
+    val r14 = (self.m32() * 1.0)
+    val r15 = (self.m33() * 1.0)
+    return dest.set(r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15)
 }
