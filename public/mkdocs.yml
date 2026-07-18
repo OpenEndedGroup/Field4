@@ -18,6 +18,7 @@ nav:
     - AI Documentation Polish: ai_doc_polish.md
     - The Semantic Index: semantic_index.md
   - Kotlin Overview: kotlin_overview.md
+  - How Box Code Runs: box_code_pipeline.md
   - Building & Testing: building_and_testing.md
   - Reference:
     - Linear Algebra:

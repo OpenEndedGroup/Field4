@@ -619,6 +619,8 @@ once.myVec {
 
 This is useful in the graphics system because you often only want to open exactly one window and Vulkan Renderer. This pairs well with the exporting behavior of `prop` since these resources often want to be shared everywhere. For example, resources from the current box and all parent boxes are often automatically found by parts of the graphics system. 
 
+For the mechanism behind all of this — how `prop`/`once` expand, how properties propagate up the box graph, the `@exported` annotation, the typed accessors `moduleHere { }` generates, and the `//%-` fragment break — see [How Box Code Runs](box_code_pipeline.md).
+
 ## Nesting
 
 Boxes can be nested inside other boxes (`f1` "nest ...")
