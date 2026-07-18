@@ -94,6 +94,25 @@ var Box._fieldProbe by Delegation<ShaderFieldProbe?>()
 var Box._fieldProbeAutoController by Delegation<ShaderFieldAutoController?>()
 var Box._fieldStatsBinding by Delegation<ShaderFieldStatsBinding?>()
 
+// `once.vertex { ... }` / `once.fragment { ... }` etc. seed a box's shader-source property once,
+// mirroring `once.renderer { window = Window(...); Renderer(window) }`. `moduleHere { }` builds its
+// module from the box's `vertex`/`fragment` properties (not from assignments in the lambda — those
+// are overwritten by the box's prepared `_vertex`/`_fragment`), so this is how box code hands a
+// module a non-default shader. Set these in a fragment *before* the `moduleHere { }` fragment (split
+// with `//%-`) so the box's later `moduleHere` expansion prepares its shaders from what you supplied.
+val Once.vertex by Onceing<String>()
+val Once.fragment by Onceing<String>()
+val Once.vertex_fragment by Onceing<String>()
+val Once.compute by Onceing<String>()
+val Once.task by Onceing<String>()
+val Once.mesh by Onceing<String>()
+val Once.raygen by Onceing<String>()
+val Once.miss by Onceing<String>()
+val Once.closesthit by Onceing<String>()
+val Once.anyhit by Onceing<String>()
+val Once.intersection by Onceing<String>()
+val Once.callable by Onceing<String>()
+
 val Box.shaderTemplate by Delegation<MutableMap<String, Any>>(
     defaultValue = { HashMap<String, Any>() })
 

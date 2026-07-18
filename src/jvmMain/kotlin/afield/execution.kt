@@ -1089,15 +1089,6 @@ class KotlinExecution : BoxExecution {
             val originSession: WebSocketSession?
         )
 
-        private data class ExpandedBatchLaunch(
-            val request: BatchLaunchRequest,
-            val sources: List<String>
-        )
-
-        private data class PreparedBatchLaunch(
-            val request: BatchLaunchRequest,
-            val snippets: List<PreparedSnippet>
-        )
 
         private fun resetLaunchSetupState(box: Box) {
             box.properties.remove("_preamble")
@@ -1149,182 +1140,35 @@ class KotlinExecution : BoxExecution {
             reply: (Message) -> Unit
         ) {
             if (pending.isEmpty()) return
+            // Process boxes in order; within each box, interleave macro-expansion, compile, and eval per
+            // `//%-` fragment (expand fragment N+1 only after fragment N has *run*). This matches
+            // `standardExecutionPractice` (the executeAll / single-box launch path), so `//%-` means the
+            // same thing everywhere: a later fragment's macros observe earlier fragments' runtime effects
+            // (e.g. `once.vertex { ... } //%- moduleHere { }`). Boxes are serialized rather than compiled in
+            // parallel — correctness over the previous cross-box compile parallelism.
             withContext(Dispatchers.Default) {
-                val expanded = pending.map { request ->
-                    expandBatchLaunch(request, reply)
-                }
-
-                val prepared = expanded.map { launch ->
-                    async {
-                        compileBatchLaunch(launch, reply)
+                var evaluatedAny = false
+                for (request in pending) {
+                    if (evaluatedAny) {
+                        withContext(Runloop.runLoop.main) {
+                            repeat(BATCH_LAUNCH_INTER_BOX_YIELDS) { yield() }
+                        }
                     }
-                }.awaitAll()
-
-                inMain {
-                    evaluateBatchLaunchesInOrder(prepared, reply)
-                }.join()
-            }
-        }
-
-        private suspend fun evaluateBatchLaunchesInOrder(
-            prepared: List<PreparedBatchLaunch>,
-            reply: (Message) -> Unit
-        ) {
-            var evaluatedAny = false
-            prepared.forEach { launch ->
-                if (launch.snippets.isEmpty()) {
-                    clearPendingLaunch(launch.request)
-                    return@forEach
-                }
-
-                if (evaluatedAny) {
-                    repeat(BATCH_LAUNCH_INTER_BOX_YIELDS) { yield() }
-                }
-                evaluatedAny = true
-
-                evaluatePreparedBatchLaunch(launch, reply)
-            }
-        }
-
-        private fun normalizedLaunchCodeFor(exec: Execute): String {
-            val leadingLines = exec.line.coerceAtLeast(0)
-            return "\n".repeat(leadingLines) + exec.code.trimEnd()
-        }
-
-        private suspend fun expandBatchLaunch(
-            request: BatchLaunchRequest,
-            reply: (Message) -> Unit
-        ): ExpandedBatchLaunch {
-            val box = request.box
-            val sources = mutableListOf<String>()
-
-            Box.withBoxContext(box) {
-                configureOutputProxies(box, reply, request.originSession)
-                val lines = request.normalizedCode.lines()
-                val breaks = lines.mapIndexedNotNull { index, line ->
-                    if (line.trim().startsWith("//%-")) {
-                        index
-                    } else if (line.trim().startsWith("/*%-*/")) {
-                        index
-                    } else null
-                } + lines.size
-
-                var at = 0
-                var lineCounter = 0
-                for (breakIndex in breaks) {
-                    val source = lines.subList(at, breakIndex).joinToString("\n")
-                    val expanded = if (KotlinEngineConfig.offloadCompilation) {
-                        withContext(box.ki.compilationDispatcher) { box.ki.applyMacros(box, source) }
-                    } else {
-                        box.ki.applyMacros(box, source)
-                    }
-                    val compiledSource = expanded.split("\n").map { line ->
-                        lineCounter++
-                        line.replace("__line__", "${lineCounter - 1}")
-                    }.joinToString("\n")
-
-                    withContext(Runloop.runLoop.main) {
-                        runLaunchSetupBlocks(box)
-                    }
-
-                    sources += compiledSource
-                    at = breakIndex
+                    evaluatedAny = true
+                    evaluateInterleavedBatchLaunch(request, reply)
                 }
             }
-
-            return ExpandedBatchLaunch(request, sources)
-        }
-
-        private suspend fun compileBatchLaunch(
-            expanded: ExpandedBatchLaunch,
-            reply: (Message) -> Unit
-        ): PreparedBatchLaunch {
-            val request = expanded.request
-            val box = request.box
-            val snippets = mutableListOf<PreparedSnippet>()
-            var compileFailed = false
-
-            Box.withBoxContext(box) {
-                configureOutputProxies(box, reply, request.originSession)
-
-                // Drop any stale pinned compile error up front; reportCompileDiagnostics re-pins if this
-                // compile also fails, so a clean compile simply leaves the panel cleared.
-                PinnedConsole.clearError(box.id)
-
-                for (compiledSource in expanded.sources) {
-                    val snippet = box.ki.withSourceProperty(request.exec.property) {
-                        box.ki.compileSnippet(
-                            compiledSource,
-                            implicits = listOf(box),
-                            onCompileError = { diagnostics ->
-                                reportCompileDiagnostics(
-                                    box = box,
-                                    reply = reply,
-                                    originSession = request.originSession,
-                                    code = request.normalizedCode,
-                                    diagnostics = diagnostics,
-                                    fallbackLine = request.exec.line + request.normalizedCode.lines().size,
-                                    property = request.exec.property
-                                )
-                            }
-                        )
-                    }
-                    if (snippet == null) {
-                        compileFailed = true
-                        snippets.clear()
-                        return@withBoxContext
-                    }
-                    snippets += snippet
-                }
-            }
-
-            return PreparedBatchLaunch(request, if (compileFailed) emptyList() else snippets)
-        }
-
-        private suspend fun runLaunchSetupBlocks(box: Box) {
-            runSetupBlock(box, "preamble") { c, e, x -> checkPreambleAndExecute(box, c, e, x) }
-            runSetupBlock(box, "introduction") { c, e, x -> checkIntroductionAndExecute(box, c, e, x) }
-            runSetupBlock(box, "attic") { c, e, x -> checkAtticAndExecute(box, c, e, x) }
         }
 
         /**
-         * Run one setup block, wiring its compile/eval/exception callbacks to both the existing macro logs
-         * and a per-block sticky pinned panel (keyed `box#block`, distinct from the main [Box.id] key). The
-         * panel is cleared up front so a now-fixed block stops showing its old error, and re-pinned if this
-         * run still fails.
+         * Run one box's launch, interleaving expand -> compile -> eval per `//%-` fragment so a fragment's
+         * macro expansion observes prior fragments' runtime effects. Mirrors [standardExecutionPractice]
+         * but carries the launch lifecycle (pending watermark, output proxies, return-value launching).
          */
-        private suspend fun runSetupBlock(
-            box: Box,
-            block: String,
-            run: suspend (
-                onCompileError: (List<ScriptDiagnostic>) -> Unit,
-                onEvalError: (List<ScriptDiagnostic>) -> Unit,
-                onEvalException: (Throwable) -> Unit
-            ) -> Unit
-        ) {
-            val key = "${box.id}#$block"
-            PinnedConsole.clearError(key)
-            run(
-                { diagnostics ->
-                    diagnostics.forEach { lprintln("warning,macros", "setup compile: ${it.message} ${it.location}") }
-                    pinSetupError(box, key, block, diagnostics)
-                },
-                { diagnostics ->
-                    diagnostics.forEach { lprintln("warning,macros", "setup eval: ${it.message}") }
-                    pinSetupError(box, key, block, diagnostics)
-                },
-                { throwable ->
-                    lprintln("error,macros", "setup exception: ${throwable.message}")
-                    pinSetupException(box, key, block, throwable)
-                }
-            )
-        }
-
-        private suspend fun evaluatePreparedBatchLaunch(
-            prepared: PreparedBatchLaunch,
+        private suspend fun evaluateInterleavedBatchLaunch(
+            request: BatchLaunchRequest,
             reply: (Message) -> Unit
         ) {
-            val request = prepared.request
             val box = request.box
             clearPendingLaunch(request)
 
@@ -1332,6 +1176,8 @@ class KotlinExecution : BoxExecution {
                 box.resetStdlibRandom()
                 resetLaunchSetupState(box)
                 configureOutputProxies(box, reply, request.originSession)
+                // Drop any stale pinned compile error up front; reportCompileDiagnostics re-pins on failure.
+                PinnedConsole.clearError(box.id)
 
                 var hasError = false
                 val output = mutableListOf("")
@@ -1372,38 +1218,93 @@ class KotlinExecution : BoxExecution {
                 box.output.displayProxy = { channel, content ->
                     send(
                         Message("set-output").payload(
-                            Set_output(
-                                box.id,
-                                "outputarea",
-                                channel,
-                                renderDisplayContent(content)
-                            )
+                            Set_output(box.id, "outputarea", channel, renderDisplayContent(content))
                         )
                     )
                 }
 
-                val results = prepared.snippets.map { snippet ->
-                    snippet.eval(
-                        implicits = listOf(box),
-                        onEvalError = { diagnostics ->
-                            hasError = true
-                            diagnostics.forEach {
-                                lprintln("error,execution", "  ${it.code} ${it.message} ${it.location}")
+                val lines = request.normalizedCode.lines()
+                val breaks = lines.mapIndexedNotNull { index, line ->
+                    if (line.trim().startsWith("//%-") || line.trim().startsWith("/*%-*/")) index else null
+                } + lines.size
+
+                var at = 0
+                var lineCounter = 0
+                val results = mutableListOf<ResultValue?>()
+
+                for (breakIndex in breaks) {
+                    val source = lines.subList(at, breakIndex).joinToString("\n")
+                    at = breakIndex
+
+                    // 1) macro-expand this fragment (off the main thread), rewriting __line__ markers with a
+                    //    running global line counter so error locations stay correct across fragments.
+                    val expanded = if (KotlinEngineConfig.offloadCompilation) {
+                        withContext(box.ki.compilationDispatcher) { box.ki.applyMacros(box, source) }
+                    } else {
+                        box.ki.applyMacros(box, source)
+                    }
+                    val compiledSource = expanded.split("\n").joinToString("\n") { line ->
+                        lineCounter++
+                        line.replace("__line__", "${lineCounter - 1}")
+                    }
+
+                    // 2) setup blocks (preamble/introduction/attic) on the main thread.
+                    withContext(Runloop.runLoop.main) { runLaunchSetupBlocks(box) }
+
+                    // 3) compile this fragment.
+                    val snippet = box.ki.withSourceProperty(request.exec.property) {
+                        box.ki.compileSnippet(
+                            compiledSource,
+                            implicits = listOf(box),
+                            onCompileError = { diagnostics ->
+                                reportCompileDiagnostics(
+                                    box = box,
+                                    reply = reply,
+                                    originSession = request.originSession,
+                                    code = request.normalizedCode,
+                                    diagnostics = diagnostics,
+                                    fallbackLine = request.exec.line + request.normalizedCode.lines().size,
+                                    property = request.exec.property
+                                )
                             }
-                            pinEvalError(box, diagnostics)
-                        },
-                        onEvalException = { throwable ->
-                            hasError = true
-                            reportEvalException(
-                                box,
-                                reply,
-                                request.originSession,
-                                throwable,
-                                request.exec.line,
-                                request.exec.property
-                            )
-                        }
-                    )
+                        )
+                    }
+                    if (snippet == null) {
+                        hasError = true
+                        break
+                    }
+
+                    // 4) eval this fragment on the main thread. Its runtime effects (e.g. `once.vertex`
+                    //    setting the box's shader-source property) are visible to the NEXT fragment's
+                    //    macro expansion — which is the whole point of the `//%-` fragment break.
+                    var fragmentFailed = false
+                    val result = withContext(Runloop.runLoop.main) {
+                        snippet.eval(
+                            implicits = listOf(box),
+                            onEvalError = { diagnostics ->
+                                hasError = true
+                                fragmentFailed = true
+                                diagnostics.forEach {
+                                    lprintln("error,execution", "  ${it.code} ${it.message} ${it.location}")
+                                }
+                                pinEvalError(box, diagnostics)
+                            },
+                            onEvalException = { throwable ->
+                                hasError = true
+                                fragmentFailed = true
+                                reportEvalException(
+                                    box,
+                                    reply,
+                                    request.originSession,
+                                    throwable,
+                                    request.exec.line,
+                                    request.exec.property
+                                )
+                            }
+                        )
+                    }
+                    results += result
+                    if (fragmentFailed) break
                 }
 
                 if (!hasError) {
@@ -1421,9 +1322,53 @@ class KotlinExecution : BoxExecution {
                         )
                     }
                 } else {
-                    lprintln("error,execution", "batch launch eval finished with errors")
+                    lprintln("error,execution", "batch launch finished with errors")
                 }
             }
+        }
+
+        private fun normalizedLaunchCodeFor(exec: Execute): String {
+            val leadingLines = exec.line.coerceAtLeast(0)
+            return "\n".repeat(leadingLines) + exec.code.trimEnd()
+        }
+
+        private suspend fun runLaunchSetupBlocks(box: Box) {
+            runSetupBlock(box, "preamble") { c, e, x -> checkPreambleAndExecute(box, c, e, x) }
+            runSetupBlock(box, "introduction") { c, e, x -> checkIntroductionAndExecute(box, c, e, x) }
+            runSetupBlock(box, "attic") { c, e, x -> checkAtticAndExecute(box, c, e, x) }
+        }
+
+        /**
+         * Run one setup block, wiring its compile/eval/exception callbacks to both the existing macro logs
+         * and a per-block sticky pinned panel (keyed `box#block`, distinct from the main [Box.id] key). The
+         * panel is cleared up front so a now-fixed block stops showing its old error, and re-pinned if this
+         * run still fails.
+         */
+        private suspend fun runSetupBlock(
+            box: Box,
+            block: String,
+            run: suspend (
+                onCompileError: (List<ScriptDiagnostic>) -> Unit,
+                onEvalError: (List<ScriptDiagnostic>) -> Unit,
+                onEvalException: (Throwable) -> Unit
+            ) -> Unit
+        ) {
+            val key = "${box.id}#$block"
+            PinnedConsole.clearError(key)
+            run(
+                { diagnostics ->
+                    diagnostics.forEach { lprintln("warning,macros", "setup compile: ${it.message} ${it.location}") }
+                    pinSetupError(box, key, block, diagnostics)
+                },
+                { diagnostics ->
+                    diagnostics.forEach { lprintln("warning,macros", "setup eval: ${it.message}") }
+                    pinSetupError(box, key, block, diagnostics)
+                },
+                { throwable ->
+                    lprintln("error,macros", "setup exception: ${throwable.message}")
+                    pinSetupException(box, key, block, throwable)
+                }
+            )
         }
 
         private fun clearPendingLaunch(request: BatchLaunchRequest) {
