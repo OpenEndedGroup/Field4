@@ -1001,6 +1001,16 @@ tasks.register<JavaExec>("runDocsPanelCodeLinksSmokeTest") {
     jvmArgs(vectorizationJvmArgs)
 }
 
+tasks.register<JavaExec>("runSidecarPathParseSmokeTest") {
+    group = "verification"
+    description = "Verifies FileWatchManager.parseSidecarPath splits underscore-bearing box ids/properties without spawning phantom boxes."
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
+    })
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.examples.SidecarPathParseSmokeTest")
+}
+
 tasks.register<JavaExec>("runSimdVerletBulkKernelsExample") {
     group = "application"
     description = "Worked example of the generated bulk SIMD vector kernels and their SimdVerlet helpers (velocity read-out, spring-to-target force)."

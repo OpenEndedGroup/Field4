@@ -27,7 +27,7 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
     private val fileTimestamps = ConcurrentHashMap<String, Long>()
     private val startupSidecarFiles = ConcurrentHashMap.newKeySet<String>()
     private data class InternalSave(val lastModified: Long, val size: Long, val wallClockMs: Long)
-    private data class SidecarPath(val boxId: String, val propertyName: String)
+    internal data class SidecarPath(val boxId: String, val propertyName: String)
 
     private val internalSaveInfo = ConcurrentHashMap<String, InternalSave>()
     // Grace window to treat shortly-after writes as internal saves, avoiding misfired "external" reloads
@@ -188,15 +188,50 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
         return Box.ioSeparateProperties.values.contains(extension)
     }
 
-    private fun parseSidecarPath(file: File): SidecarPath? {
+    internal fun parseSidecarPath(file: File): SidecarPath? {
         val filename = file.name
         val lastUnderscore = filename.lastIndexOf("_.")
         if (lastUnderscore == -1) return null
 
+        // filenameFor(id, name, ext) == "$id" + "_" + "$name" + "_." + ext, so the text before the
+        // trailing "_." is "<boxId>_<propertyName>". Both a box id and a property name may themselves
+        // contain underscores (e.g. box "fn_fit_demo", property "remote_js"), so we cannot simply split
+        // on the first underscore — that mis-parsed "fn_fit_demo_code" into box "fn" / property
+        // "fit_demo_code", spawning a spurious phantom box. Property names come from a fixed vocabulary
+        // (Box.ioSeparateProperties keys) narrowed by the file extension, so match a known property as a
+        // suffix and take everything before it as the box id.
         val beforeLastUnderscore = filename.substring(0, lastUnderscore)
+        if (beforeLastUnderscore.isBlank()) return null
+
+        val extension = file.extension
+        val candidateProperties = Box.ioSeparateProperties
+            .filterValues { it.equals(extension, ignoreCase = true) }
+            .keys
+            // Longest property first so e.g. "vertex_fragment" wins over "fragment".
+            .sortedByDescending { it.length }
+
+        val suffixMatches = candidateProperties.mapNotNull { property ->
+            when {
+                // Whole string is the property → no box id, not a real sidecar.
+                beforeLastUnderscore == property -> null
+                beforeLastUnderscore.endsWith("_$property") ->
+                    beforeLastUnderscore.dropLast(property.length + 1)
+                        .takeIf { it.isNotBlank() }
+                        ?.let { SidecarPath(it, property) }
+                else -> null
+            }
+        }
+
+        // A genuinely ambiguous name (e.g. box "a_vertex" / "fragment" vs box "a" / "vertex_fragment")
+        // is resolved by preferring the parse whose box id already exists; otherwise the longest known
+        // property suffix wins.
+        suffixMatches.firstOrNull { sessionInfo.boxes.containsKey(it.boxId) }?.let { return it }
+        suffixMatches.firstOrNull()?.let { return it }
+
+        // Fallback for files that don't match any known property (external drops named loosely):
+        // preserve the original first-underscore heuristic.
         val firstUnderscore = beforeLastUnderscore.indexOf("_")
         if (firstUnderscore == -1) return null
-
         val boxId = beforeLastUnderscore.substring(0, firstUnderscore)
         val propertyName = beforeLastUnderscore.substring(firstUnderscore + 1)
         if (boxId.isBlank() || propertyName.isBlank()) return null
