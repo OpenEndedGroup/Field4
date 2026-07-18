@@ -2057,6 +2057,57 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
     window.updateStackSLEmbeddedHighlight = updateStackSLEmbeddedHighlight
     window.updateStackSLDiagnostics = updateStackSLDiagnostics
 
+    // StackSL words are whitespace-delimited; ( ) delimit comments. The current prefix is
+    // the run of non-delimiter characters immediately before the caret.
+    const stackSLCompletionPrefixAt = (model, position) => {
+            const offset = model.getOffsetAt(position)
+            const value = model.getValue()
+            let start = offset
+            while (start > 0 && !/\s/.test(value[start - 1]) && value[start - 1] !== "(" && value[start - 1] !== ")") start--
+            return { offset, start, text: value.slice(start, offset) }
+    }
+
+    // Autocomplete for StackSL words, scoped to a stacksl model or an embedded #stacksl
+    // region, with each word's documented signature + description surfaced inline. Fires
+    // through the shared field-suggest registry (window.fieldLanguageCompletionItems).
+    const provideStackSLCompletionItems = (editor, model, position, context = {}) => {
+            const monaco = (context && context.monaco) || window.globalMonaco || window.monaco
+            if (!model || !position || !monaco) return { suggestions: [] }
+            const offset = model.getOffsetAt(position)
+            const scope = resolveStackSLScope(model, offset)
+            if (!scope) return { suggestions: [] }
+            const prefix = stackSLCompletionPrefixAt(model, position)
+            const start = model.getPositionAt(prefix.start)
+            const range = new monaco.Range(start.lineNumber, start.column, position.lineNumber, position.column)
+            const kind = monaco.languages && monaco.languages.CompletionItemKind
+                    ? monaco.languages.CompletionItemKind.Function
+                    : 1
+            const wordStart = prefix.text.toLowerCase()
+            const suggestions = []
+            let index = 0
+            for (const [word, doc] of STACKSL_WORD_DOCS.entries()) {
+                    if (wordStart.length > 0 && !word.toLowerCase().startsWith(wordStart)) continue
+                    suggestions.push({
+                            label: word,
+                            insertText: word,
+                            filterText: word,
+                            sortText: "0200" + String(index).padStart(4, "0") + word,
+                            kind,
+                            range,
+                            detail: doc.signature,
+                            documentation: {
+                                    value: "**" + word + "** `" + doc.signature + "`\n\n" + doc.detail,
+                                    isTrusted: true,
+                                    supportThemeIcons: true,
+                                    supportHtml: true,
+                            },
+                            data: { source: "stacksl", aiDocResolved: true },
+                    })
+                    index++
+            }
+            return { suggestions }
+    }
+
     const stackSLLanguageExtension = {
             id: "stacksl",
             label: "StackSL",
@@ -2071,6 +2122,7 @@ define("bithero/stacksl", ["require", "vs/editor/editor.api"], function (require
             updateEmbeddedHighlight: updateStackSLEmbeddedHighlight,
             updateDiagnostics: updateStackSLDiagnostics,
             buildContextPayload: buildStackSLContextPayload,
+            provideCompletionItems: provideStackSLCompletionItems,
     }
     if (window.FieldLanguageExtensions && typeof window.FieldLanguageExtensions.register === "function") {
             window.FieldLanguageExtensions.register(stackSLLanguageExtension)

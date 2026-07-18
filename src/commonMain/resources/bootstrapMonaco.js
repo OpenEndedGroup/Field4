@@ -51,7 +51,7 @@ window.require(["vs/editor/editor.main"], function (e, is) {
         });
         window.require(["vs/basic-languages/markdown/markdown"], function (e, is) {
         });
-        window.require(["bithero/glsl", "bithero/slang", "bithero/forth", "bithero/fieldml", "bithero/languageExtensions", "bithero/stacksl", "bithero/fnrewrite", "bithero/nano"], function () {
+        window.require(["bithero/glsl", "bithero/slang", "bithero/forth", "bithero/fieldml", "bithero/languageExtensions", "bithero/stacksl", "bithero/rectsl", "bithero/fnrewrite", "bithero/nano"], function () {
                 initMonaco()
                 loadOptionalPersonalLanguageExtensions()
                 window.require(["vs/platform/quickinput/common/quickInput"], function (is) {

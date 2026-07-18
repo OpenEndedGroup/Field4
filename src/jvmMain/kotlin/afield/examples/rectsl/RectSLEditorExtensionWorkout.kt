@@ -32,6 +32,9 @@ object RectSLEditorExtensionWorkout {
         require("updateFlowLens" in js)
         require("buildContextPayload" in js)
         require("provideCompletionItems" in js)
+        require("registerRectSLLanguage" in js)
+        require("setLanguageConfiguration" in js)
+        require("analyzeLexical" in js)
         runNodeProbe(js)
         println("rectsl editor extension workout passed")
         return true
@@ -160,6 +163,18 @@ object RectSLEditorExtensionWorkout {
         const payload = extension.buildContextPayload(editor, () => ({ uid: "box", property: "code" }), {});
         if (!payload || !payload.html.includes("RectSL") || !payload.html.includes("2-&gt;0")) {
           throw new Error("bad context payload " + JSON.stringify(payload));
+        }
+        // Richer badge: the active word's documented signature is surfaced (xy -> "x y --").
+        if (!payload.html.includes("x y --")) {
+          throw new Error("context payload missing word signature " + JSON.stringify(payload));
+        }
+        // Lexical diagnostics: valid source is clean, an unterminated quote is flagged.
+        const analyzeLexical = window.__rectslExtensionProof.analyzeLexical;
+        if (analyzeLexical(regions[0].source).length !== 0) {
+          throw new Error("valid rectsl flagged: " + JSON.stringify(analyzeLexical(regions[0].source)));
+        }
+        if (analyzeLexical("'( 1 2 x").length === 0) {
+          throw new Error("unterminated quote not flagged");
         }
         const completionPosition = positionAt(text.indexOf("sq") + 2);
         const completions = extension.provideCompletionItems(editor, model, completionPosition, { monaco: window.globalMonaco });

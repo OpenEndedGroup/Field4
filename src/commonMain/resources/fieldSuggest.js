@@ -15,6 +15,8 @@ const DEFAULT_LANGUAGES = new Set([
   "bend",
   "fieldml",
   "yaml",
+  "stacksl",
+  "rectsl",
 ]);
 const MAX_VISIBLE_ITEMS = 80;
 const REFRESH_DELAY_MS = 110;
