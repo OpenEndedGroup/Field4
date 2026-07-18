@@ -4016,7 +4016,7 @@ private val OPERATION_VERBS = setOf(
     "wait", "marker"
 )
 
-private fun looksLikeOperationTranscript(text: String): Boolean {
+internal fun looksLikeOperationTranscript(text: String): Boolean {
     if (OPERATION_TRANSCRIPT_MARKER.containsMatchIn(text)) return true
     val firstMeaningful = text.lineSequence()
         .map { it.trim() }

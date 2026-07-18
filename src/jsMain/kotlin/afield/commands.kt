@@ -1781,6 +1781,15 @@ fun pasteBoxesFromClipboard() {
 }
 
 private fun processPasteText(text: String) {
+    // Mirror the file-drop handler (Main.kt body.ondrop): pasted text that is an
+    // operation transcript / macro runs itself (write-then-run) rather than being
+    // ingested as EDN boxes. EDN document snapshots don't match the transcript
+    // heuristic, so ordinary "paste boxes" is unaffected.
+    if (looksLikeOperationTranscript(text)) {
+        console.info("[transcript] running pasted transcript")
+        runDroppedTranscript("pasted-transcript", text)
+        return
+    }
     sendWithReply(Message("paste-boxes").payload(PasteBoxes(text)), "paste-boxes") { message, _ ->
         val result = Json.decodeFromJsonElement<PasteBoxesResult>(message.payload!!)
         later({
