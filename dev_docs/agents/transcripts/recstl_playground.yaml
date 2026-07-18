@@ -48,6 +48,10 @@ operations:
           import afield.rectsl.rectMaterialShaderCode
           import afield.rectsl.writeFrameToMesh
           import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
+          import afield.four.modules.Module
+          import afield.four.modules.Mesh
+          import afield.four.modules.parameters
+          import afield.four.modules.pointer
 
           val rectsl = """
           #rectsl
@@ -75,17 +79,26 @@ operations:
           """
 
           val program = RectAnimationOracle.compile(rectsl).program!!
-          val shader  = rectMaterialShaderCode(program)
+          val shaderCode = rectMaterialShaderCode(program)
 
-          val module = moduleHere {
+          // Build the render module explicitly — the same contract RectSLRenderRunner
+          // uses — instead of `moduleHere {}`. moduleHere shapes the mesh from this
+          // box's `vertex`/`fragment` *properties* at compile time, which on a freshly
+          // created box default to the `in vec3 pos` shader; the mesh would then be
+          // shaped for `pos` while writeFrameToMesh writes the RECT_ANIMATION_VERTEX_SHADER
+          // attributes (a_position/a_color/a_material/a_shader), and fail. Constructing
+          // the Module directly binds the correct vertex shader up front and stays
+          // consistent with writeFrameToMesh from the same build.
+          val module = Module(parameters(renderer) {
+              name = "rectsl"
               vertex = RECT_ANIMATION_VERTEX_SHADER
-              fragment = shader.exampleFragmentShader
+              fragment = shaderCode.exampleFragmentShader
               blend = true
               depthTest = false
               primitiveType = triangles
-          }
-          val m = Mesh()
-          module += "scene" to m
+          }).pointer()
+          val m = Mesh(renderer, module)
+          module.current.meshes["scene"] = m
           renderer += "rectsl" to module
 
           val ww = program.wall.width.toFloat()
