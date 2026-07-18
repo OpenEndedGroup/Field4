@@ -6293,6 +6293,7 @@ suspend fun main() {
         if (event.altKey) {
         } else if (originatingMouseDown.altKey) {
         } else {
+            bumpBackgroundVisibility()
             val pending = mutableListOf<Set_rect>()
             selected.forEach {
                 event.target = reorient(it)
