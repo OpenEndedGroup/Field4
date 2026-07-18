@@ -1,6 +1,9 @@
 package afield.examples.rectsl
 
+import afield.KotlinInterface2
+import afield.KotlinScriptEngine
 import afield.rectsl.RectAnimationOracle
+import afield.rectsl.compileRectSL
 import afield.rectsl.lowerSampledScene
 import afield.rectsl.rectMaterialShaderCode
 import java.io.File
@@ -11,7 +14,7 @@ id: rectsl.examples.smoke
 runner: jvm-main
 entrypoint: afield.examples.rectsl.RectSLExamples
 tags: [smoke, examples, rectsl]
-timeoutSec: 30
+timeoutSec: 180
 expect:
   exitCode: 0
   stdoutContains:
@@ -122,28 +125,46 @@ object RectSLExamples {
      * compile, sample, lower to a non-empty mesh, and have its StackSL materials
      * compile — all CPU-only, so this guards the gallery without a GPU. Silently
      * skips if the workspace is absent (partial checkout).
+     *
+     * Files using a `{{ … }}` Kotlin escape are compiled with a real Kotlin engine
+     * (lazily created, shared, disposed at the end). jvm-main is not a render loop, so
+     * the lazy synchronous compile path is safe here — no pre-warm needed.
      */
     private fun checkGalleryWorkspace() {
         val dir = File(System.getProperty("user.dir"), "public/docs/assets/rectsl_gallery")
         val files = dir.listFiles { f -> f.name.endsWith("_rectsl_.rectsl") } ?: return
         check(files.isNotEmpty()) { "rectsl gallery workspace has no programs: ${dir.absolutePath}" }
-        val names = mutableSetOf<String>()
-        files.sortedBy { it.name }.forEach { f ->
-            val name = f.name.removeSuffix("_rectsl_.rectsl")
-            names += name
-            val result = RectAnimationOracle.compile(f.readText())
-            val program = result.program
-            check(result.ok && program != null) {
-                "gallery '$name' failed to compile:\n" + result.diagnostics.joinToString("\n")
+        var escapeEngine: KotlinScriptEngine? = null
+        try {
+            val names = mutableSetOf<String>()
+            files.sortedBy { it.name }.forEach { f ->
+                val name = f.name.removeSuffix("_rectsl_.rectsl")
+                names += name
+                val source = f.readText()
+                val result = if ("{{" in source) {
+                    val engine = escapeEngine ?: KotlinInterface2(filePrefix = "RECTSL_SMOKE_ESCAPE_").also { escapeEngine = it }
+                    compileRectSL(source, engine = engine)
+                } else {
+                    RectAnimationOracle.compile(source)
+                }
+                val program = result.program
+                check(result.ok && program != null) {
+                    "gallery '$name' failed to compile:\n" + result.diagnostics.joinToString("\n")
+                }
+                val mesh = lowerSampledScene(program.sample(program.duration * 0.5))
+                check(mesh.vertices.isNotEmpty()) { "gallery '$name' lowered to an empty mesh (nothing to draw)" }
+                val shader = rectMaterialShaderCode(program)
+                check(shader.ok) {
+                    "gallery '$name' materials failed to compile:\n" + shader.diagnostics.joinToString("\n")
+                }
             }
-            val mesh = lowerSampledScene(program.sample(program.duration * 0.5))
-            check(mesh.vertices.isNotEmpty()) { "gallery '$name' lowered to an empty mesh (nothing to draw)" }
-            val shader = rectMaterialShaderCode(program)
-            check(shader.ok) {
-                "gallery '$name' materials failed to compile:\n" + shader.diagnostics.joinToString("\n")
-            }
+            checkGalleryEdn(dir, names)
+        } finally {
+            escapeEngine?.dispose()
         }
+    }
 
+    private fun checkGalleryEdn(dir: File, names: Set<String>) {
         // The workspace is also a real openable Field document (offline viewer +
         // download/inspect). Parse metadata.edn through Field's own EDN reader so a
         // malformed document fails here rather than only in the viewer, and confirm
@@ -155,6 +176,6 @@ object RectSLExamples {
         check(boxIds.containsAll(names)) {
             "metadata.edn is missing boxes for workspace examples: ${names - boxIds}"
         }
-        println("rectsl gallery workspace compiled ${files.size} program(s); metadata.edn boxes=${boxIds.size}")
+        println("rectsl gallery workspace compiled ${names.size} program(s); metadata.edn boxes=${boxIds.size}")
     }
 }

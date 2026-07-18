@@ -291,6 +291,42 @@ material tint '(
        style="width:100%;max-width:640px;border-radius:8px;">
 </video>
 
+#### Inline Kotlin — the escape hatch
+
+When the built-in words run out, `{{ … }}` drops into a `with(Functions){ … }`
+Kotlin scope right inside the program. Here each bar's height envelope is a whole
+Functions expression — a gaussian plus seeded fBm — composed and sampled at the
+array fraction `f` inline, then multiplied by a looping oscillator:
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+wall 22 8 meters
+duration 3
+fps 30
+
+"bar" rect
+  0 0 xy
+  0.42 1 wh
+  0x38e1b0 solid fill
+  32 '(
+    ic 0.66 * 0 offset
+    '( 0 0.15  0.5 1.15  1 0.15 ) 1 loop-time
+    {{ (gaussian(0.5, 0.2) + fbm(9) * 0.4).eval(f) }}  5.5 *  0.25 +  value*
+    h
+  ) array
+  0.05 stagger-time
+;
+```
+
+<img src="../assets/rectsl/rectsl-inline-functions.png" alt="inline Functions escape driving an array"
+     style="width:100%;max-width:640px;border-radius:8px;">
+
+The escape compiles once (K2) and is invoked per copy. This is a real
+headless-rendered gallery program, so it exercises the two places escapes must be
+handled off a busy engine: the render harness pre-warms every escape on a
+dedicated engine before drawing, and the CPU gallery smoke check compiles
+escape-bearing files with a dedicated engine too.
+
 ### Evolving a distribution toward a target
 
 This is the payoff — and the hardest idea to hold onto. A distribution curve is
