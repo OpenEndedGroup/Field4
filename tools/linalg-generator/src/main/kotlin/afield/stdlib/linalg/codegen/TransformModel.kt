@@ -113,9 +113,12 @@ object FieldTransformAlgebraModel {
     val vec3 = AlgebraShape("vec3", "Vector3fc", "Vector3f", listOf("x", "y", "z"))
     val vec4 = AlgebraShape("vec4", "Vector4fc", "Vector4f", listOf("x", "y", "z", "w"))
     val quaternion = AlgebraShape("quaternion", "Quaternionfc", "Quaternionf", listOf("x", "y", "z", "w"))
+    val matrix2 = AlgebraShape("matrix2", "Matrix2fc", "Matrix2f", matrixComponents(2))
     val matrix3 = AlgebraShape("matrix3", "Matrix3fc", "Matrix3f", matrixComponents(3))
     val matrix4 = AlgebraShape("matrix4", "Matrix4fc", "Matrix4f", matrixComponents(4))
+    val matrix2d = AlgebraShape("matrix2d", "Matrix2dc", "Matrix2d", matrixComponents(2), ScalarKind.DOUBLE)
     val matrix3d = AlgebraShape("matrix3d", "Matrix3dc", "Matrix3d", matrixComponents(3), ScalarKind.DOUBLE)
+    val matrix4d = AlgebraShape("matrix4d", "Matrix4dc", "Matrix4d", matrixComponents(4), ScalarKind.DOUBLE)
 
     fun build(): TransformAlgebraModel = TransformAlgebraModel(buildList {
         add(quaternionTransform())
@@ -124,6 +127,14 @@ object FieldTransformAlgebraModel {
         add(destination("conjugateQuaternion", quaternion, outputs = listOf(-q("x"), -q("y"), -q("z"), q("w"))))
         add(invertQuaternion())
         add(multiplyQuaternion())
+
+        // 2x2 matrices: the smallest square family. No transform (there is no vec2 transform shape),
+        // but multiply/determinant/invert/transpose mirror the larger arities so Matrix2f/Matrix2d
+        // carry the same linear surface.
+        add(multiplyMatrix(2, matrix2))
+        add(determinantMatrix2())
+        add(invertMatrix2())
+        add(transposeMatrix(2, matrix2))
 
         add(transformMatrix3Vector())
         add(determinantMatrix3())
@@ -141,12 +152,25 @@ object FieldTransformAlgebraModel {
         add(translateMatrix4())
         add(scaleMatrix4())
 
-        // Double-precision 3x3 matrix: the same equations lowered to f64 for numerically sensitive
-        // code (e.g. Kalman covariance). Retires the hand-written Matrix3d companion.
+        // Double-precision matrices: the same equations lowered to f64 for numerically sensitive
+        // code (e.g. Kalman covariance). The whole square family is generated in double precision
+        // from the identical model, so Matrix2d/Matrix3d/Matrix4d never drift from their f32 siblings.
+        add(multiplyMatrix(2, matrix2d, "multiplyMatrix2d"))
+        add(determinantMatrix2(matrix2d, "determinantMatrix2d"))
+        add(invertMatrix2(matrix2d, "invertMatrix2d"))
+        add(transposeMatrix(2, matrix2d, "transposeMatrix2d"))
+
         add(multiplyMatrix(3, matrix3d, "multiplyMatrix3d"))
         add(transposeMatrix(3, matrix3d, "transposeMatrix3d"))
         add(determinantMatrix3(matrix3d, "determinantMatrix3d"))
         add(invertMatrix3(matrix3d, "invertMatrix3d"))
+
+        add(multiplyMatrix(4, matrix4d, "multiplyMatrix4d"))
+        add(transposeMatrix(4, matrix4d, "transposeMatrix4d"))
+        add(determinantMatrix4(matrix4d, "determinantMatrix4d"))
+        add(invertMatrix4(matrix4d, "invertMatrix4d"))
+        add(translateMatrix4(matrix4d, "translateMatrix4d"))
+        add(scaleMatrix4(matrix4d, "scaleMatrix4d"))
     })
 
     private fun matrixComponents(size: Int): List<String> = buildList {
@@ -154,6 +178,7 @@ object FieldTransformAlgebraModel {
     }
 
     private fun q(component: String) = read("self", component)
+    private fun m2(column: Int, row: Int) = read("self", "m$column$row")
     private fun m3(column: Int, row: Int) = read("self", "m$column$row")
     private fun m4(column: Int, row: Int) = read("self", "m$column$row")
 
@@ -227,6 +252,26 @@ object FieldTransformAlgebraModel {
         )
     }
 
+    // Column-major 2x2 stored as m{col}{row}, i.e. the matrix rows are (m00, m10) and (m01, m11).
+    private fun determinantMatrix2(shape: AlgebraShape = matrix2, name: String = "determinantMatrix2"): TransformOperation {
+        val determinant = m2(0, 0) * m2(1, 1) - m2(1, 0) * m2(0, 1)
+        return TransformOperation(name, shape, result = TransformResult.Scalar(determinant))
+    }
+
+    private fun invertMatrix2(shape: AlgebraShape = matrix2, name: String = "invertMatrix2"): TransformOperation {
+        val determinant = TransformLocal("determinant", m2(0, 0) * m2(1, 1) - m2(1, 0) * m2(0, 1))
+        val d = TransformLocal("inverseDeterminant", scalar(1f) / local("determinant"))
+        val inv = local("inverseDeterminant")
+        return destination(
+            name, shape, locals = listOf(determinant, d), outputs = listOf(
+                m2(1, 1) * inv,     // m00 =  d / det
+                (-m2(0, 1)) * inv,  // m01 = -c / det
+                (-m2(1, 0)) * inv,  // m10 = -b / det
+                m2(0, 0) * inv,     // m11 =  a / det
+            ),
+        )
+    }
+
     private fun determinantMatrix3(shape: AlgebraShape = matrix3, name: String = "determinantMatrix3"): TransformOperation {
         val determinant = m3(0, 0) * (m3(1, 1) * m3(2, 2) - m3(2, 1) * m3(1, 2)) -
             m3(1, 0) * (m3(0, 1) * m3(2, 2) - m3(2, 1) * m3(0, 2)) +
@@ -292,9 +337,9 @@ object FieldTransformAlgebraModel {
         )
     }
 
-    private fun determinantMatrix4(): TransformOperation {
+    private fun determinantMatrix4(shape: AlgebraShape = matrix4, name: String = "determinantMatrix4"): TransformOperation {
         val b = matrix4CofactorLocals()
-        return TransformOperation("determinantMatrix4", matrix4, locals = b, result = TransformResult.Scalar(matrix4DeterminantExpr()))
+        return TransformOperation(name, shape, locals = b, result = TransformResult.Scalar(matrix4DeterminantExpr()))
     }
 
     private fun matrix4CofactorLocals(): List<TransformLocal> = listOf(
@@ -316,11 +361,11 @@ object FieldTransformAlgebraModel {
         local("b00")*local("b11") - local("b01")*local("b10") + local("b02")*local("b09") +
             local("b03")*local("b08") - local("b04")*local("b07") + local("b05")*local("b06")
 
-    private fun invertMatrix4(): TransformOperation {
+    private fun invertMatrix4(shape: AlgebraShape = matrix4, name: String = "invertMatrix4"): TransformOperation {
         val locals = matrix4CofactorLocals() + TransformLocal("inverseDeterminant", scalar(1f) / matrix4DeterminantExpr())
         val d = local("inverseDeterminant")
         return destination(
-            "invertMatrix4", matrix4, locals = locals, outputs = listOf(
+            name, shape, locals = locals, outputs = listOf(
                 (m4(1,1)*local("b11") - m4(1,2)*local("b10") + m4(1,3)*local("b09"))*d,
                 (m4(0,2)*local("b10") - m4(0,1)*local("b11") - m4(0,3)*local("b09"))*d,
                 (m4(3,1)*local("b05") - m4(3,2)*local("b04") + m4(3,3)*local("b03"))*d,
@@ -341,21 +386,21 @@ object FieldTransformAlgebraModel {
         )
     }
 
-    private fun translateMatrix4(): TransformOperation {
+    private fun translateMatrix4(shape: AlgebraShape = matrix4, name: String = "translateMatrix4"): TransformOperation {
         val parameters = listOf(TransformScalarParameter("x"), TransformScalarParameter("y"), TransformScalarParameter("z"))
         val x = parameter("x"); val y = parameter("y"); val z = parameter("z")
         val outputs = buildList {
             for (column in 0..2) for (row in 0..3) add(m4(column, row))
             for (row in 0..3) add(m4(0,row)*x + m4(1,row)*y + m4(2,row)*z + m4(3,row))
         }
-        return destination("translateMatrix4", matrix4, parameters, outputs = outputs)
+        return destination(name, shape, parameters, outputs = outputs)
     }
 
-    private fun scaleMatrix4(): TransformOperation {
+    private fun scaleMatrix4(shape: AlgebraShape = matrix4, name: String = "scaleMatrix4"): TransformOperation {
         val parameters = listOf(TransformScalarParameter("x"), TransformScalarParameter("y"), TransformScalarParameter("z"))
         val scales = listOf(parameter("x"), parameter("y"), parameter("z"), scalar(1f))
         return destination(
-            "scaleMatrix4", matrix4, parameters,
+            name, shape, parameters,
             outputs = buildList { for (column in 0..3) for (row in 0..3) add(m4(column,row) * scales[column]) },
         )
     }

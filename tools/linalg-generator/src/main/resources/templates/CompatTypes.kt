@@ -79,14 +79,61 @@ fun vec8h(lo:Vector4fc,hi:Vector4fc)=Vector8h(lo.x(),lo.y(),lo.z(),lo.w(),hi.x()
 fun vec8h(x:Number,y:Number,z:Number,w:Number,a:Number,b:Number,c:Number,d:Number)=
     Vector8h(x.toFloat(),y.toFloat(),z.toFloat(),w.toFloat(),a.toFloat(),b.toFloat(),c.toFloat(),d.toFloat())
 
-interface Matrix2fc { fun m00():Float;fun m01():Float;fun m10():Float;fun m11():Float }
+/** A read-only 2x2 column-major matrix. */
+interface Matrix2fc {
+    fun m00():Float;fun m01():Float;fun m10():Float;fun m11():Float
+    fun determinant(): Float = determinantMatrix2(this)
+}
+
+/** A mutable 2x2 column-major matrix initialized to identity. */
 open class Matrix2f(
     @JvmField var m00:Float=1f,@JvmField var m01:Float=0f,
     @JvmField var m10:Float=0f,@JvmField var m11:Float=1f
 ) : Matrix2fc {
+    constructor(other: Matrix2fc) : this() { set(other) }
     override fun m00()=m00;override fun m01()=m01;override fun m10()=m10;override fun m11()=m11
+    fun m00(v:Float)=apply{m00=v};fun m01(v:Float)=apply{m01=v};fun m10(v:Float)=apply{m10=v};fun m11(v:Float)=apply{m11=v}
+    fun identity():Matrix2f=set(1f,0f,0f,1f)
+    fun zero():Matrix2f=set(0f,0f,0f,0f)
+    fun set(other:Matrix2fc):Matrix2f=set(other.m00(),other.m01(),other.m10(),other.m11())
+    fun set(a00:Float,a01:Float,a10:Float,a11:Float):Matrix2f{m00=a00;m01=a01;m10=a10;m11=a11;return this}
+    fun mul(right:Matrix2fc):Matrix2f=multiplyMatrix2(this,right,this)
+    fun mul(right:Matrix2fc,dest:Matrix2f):Matrix2f=multiplyMatrix2(this,right,dest)
+    override fun determinant():Float=determinantMatrix2(this)
+    fun invert():Matrix2f=invertMatrix2(this,this)
+    fun transpose():Matrix2f=transposeMatrix2(this,this)
+    fun transpose(dest:Matrix2f):Matrix2f=transposeMatrix2(this,dest)
     fun get(buffer:FloatBuffer):FloatBuffer{val i=buffer.position();buffer.put(i,m00);buffer.put(i+1,m01);buffer.put(i+2,m10);buffer.put(i+3,m11);return buffer}
     fun get(index:Int,buffer:java.nio.ByteBuffer):java.nio.ByteBuffer{buffer.putFloat(index,m00);buffer.putFloat(index+4,m01);buffer.putFloat(index+8,m10);buffer.putFloat(index+12,m11);return buffer}
+}
+
+/** A read-only double-precision 2x2 column-major matrix; the f64 sibling of [Matrix2fc]. */
+interface Matrix2dc {
+    fun m00():Double;fun m01():Double;fun m10():Double;fun m11():Double
+    fun determinant(): Double = determinantMatrix2d(this)
+}
+
+/** A mutable double-precision 2x2 column-major matrix initialized to identity. */
+open class Matrix2d(
+    @JvmField var m00:Double=1.0,@JvmField var m01:Double=0.0,
+    @JvmField var m10:Double=0.0,@JvmField var m11:Double=1.0
+) : Matrix2dc {
+    constructor(other: Matrix2dc) : this() { set(other) }
+    override fun m00()=m00;override fun m01()=m01;override fun m10()=m10;override fun m11()=m11
+    fun m00(v:Double)=apply{m00=v};fun m01(v:Double)=apply{m01=v};fun m10(v:Double)=apply{m10=v};fun m11(v:Double)=apply{m11=v}
+    fun identity():Matrix2d=set(1.0,0.0,0.0,1.0)
+    fun zero():Matrix2d=set(0.0,0.0,0.0,0.0)
+    fun set(other:Matrix2dc):Matrix2d=set(other.m00(),other.m01(),other.m10(),other.m11())
+    fun set(a00:Double,a01:Double,a10:Double,a11:Double):Matrix2d{m00=a00;m01=a01;m10=a10;m11=a11;return this}
+    fun mul(right:Matrix2dc):Matrix2d=multiplyMatrix2d(this,right,this)
+    fun mul(right:Matrix2dc,dest:Matrix2d):Matrix2d=multiplyMatrix2d(this,right,dest)
+    override fun determinant():Double=determinantMatrix2d(this)
+    fun invert():Matrix2d=invertMatrix2d(this,this)
+    fun transpose():Matrix2d=transposeMatrix2d(this,this)
+    fun transpose(dest:Matrix2d):Matrix2d=transposeMatrix2d(this,dest)
+    fun get(buffer:java.nio.DoubleBuffer):java.nio.DoubleBuffer{val i=buffer.position();buffer.put(i,m00);buffer.put(i+1,m01);buffer.put(i+2,m10);buffer.put(i+3,m11);return buffer}
+    fun get(index:Int,buffer:java.nio.ByteBuffer):java.nio.ByteBuffer{buffer.putDouble(index,m00);buffer.putDouble(index+8,m01);buffer.putDouble(index+16,m10);buffer.putDouble(index+24,m11);return buffer}
+    override fun toString():String="[$m00 $m10; $m01 $m11]"
 }
 
 data class Rectanglef(
