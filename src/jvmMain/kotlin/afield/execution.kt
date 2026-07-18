@@ -1885,7 +1885,7 @@ class KotlinExecution : BoxExecution {
                 code,
                 reply,
                 originSession,
-                code.split("\n").size,
+                execute.line,
                 property = execute.property,
                 finishedHandler = {
                     send(Message("is-running").payload(IsRunning(execute.uid, false, wm, "__fragment__")))
