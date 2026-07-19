@@ -31,6 +31,14 @@ fails, that is not a valid reason to skip `--with-playwright`,
 Use custom high ports for automation. Avoid the default `9092` unless you
 explicitly want to attach to a developer-owned Field.
 
+Run the command matrix **serially within one checkout**. The smoke, UI, and docs
+entrypoints acquire `.field-backdoor/verification.lock`; if another supported
+verification command is active, they print its owner and wait with heartbeats.
+This is intentional: all three compile into or execute from the same Gradle/Kotlin
+outputs, and concurrent builds can corrupt incremental-compiler backups and class
+directories. Raw `./gradlew ...` commands do not participate in this Python lock,
+so run compile/test tasks before or after these entrypoints, never alongside them.
+
 ## Testing Layers
 
 ### 1. Compile and Static Sanity
@@ -87,7 +95,23 @@ uv run --project . --group backdoor python tools/run_field_tests.py --refresh-ca
 `tools/run_field_tests.py` does not accept a top-level `--timeout` flag. Per-test
 timeouts come from each `FIELD_TEST` annotation's `timeoutSec` value, and the
 runner passes that value through to `tools/field_backdoor.py` for the individual
-test execution.
+test execution. The catalog runner adds an outer process watchdog and prints a
+heartbeat every 15 seconds by default (`--heartbeat-interval` changes that). If
+all command results have arrived but the backdoor wrapper does not exit, the
+runner reports that exact condition and terminates the whole child process group
+after a short grace period instead of hanging indefinitely.
+
+The catalog defaults to dedicated automation port `9477`, starts a fresh Field for
+the run, and shuts down the process group afterward. Pass another high `--port`
+when you need isolation from an existing automation session. It never defaults to
+the developer-owned `9092` port. Gallery/video smoke artifacts are redirected to
+`build/field-tests/generated-doc-assets/`; only the docs runner writes the tracked
+captures under `public/docs/assets/`.
+
+When an image expectation names a concrete output path, the runner deletes the
+old output before launch and waits for the new file to become stable. It does not
+also sleep for `waitSec`: the artifact is the readiness signal. `waitSec` remains
+the bounded settle mechanism for tests that have no concrete file evidence.
 
 Artifacts:
 - catalog: `build/field-tests/catalog.json`
@@ -120,7 +144,10 @@ uv run --project . --group backdoor python tools/run_ui_regressions.py --port 94
 
 The runner uses the backdoor plus server-owned Playwright internally. Non-JSON
 mode prints `RUN`, heartbeat, `PASS`, and `FAIL` lines; tune progress output
-with `--heartbeat-interval <seconds>`.
+with `--heartbeat-interval <seconds>`. An outer watchdog gives Playwright one
+startup allowance plus one overall test budget; it does not multiply the budget
+by every setup command. Once all command results arrive, the wrapper has only a
+short exit grace before its process group is cleaned up.
 
 Artifacts:
 - generated fixtures: `build/ui-regressions/generated/`
@@ -129,6 +156,12 @@ Artifacts:
 - newest passing screenshot: `latest-pass.png`
 - newest failure screenshot: `latest-failure.png`
 - rolling pass history: `passes/` with the most recent 5 passing screenshots
+
+The retained screenshot is test evidence, not a ceremonial artifact. If the
+test concerns a transient palette, menu, toast, or panel, leave a representative
+instance visible for the final capture (or take a supplemental capture at the
+assertion point). The runner rejects missing, undecodable, and implausibly tiny
+screenshots; DOM assertions still own the semantic pass/fail decision.
 
 Current coverage includes command palette binding/smoke tests, editor sync,
 insert stack mark, output areas, `/controllers` editable/static lines and
@@ -170,7 +203,9 @@ Modes:
 - `FIELD_DOCS_RUNNER_MODE=always`: regenerate every capture
 
 Use `FIELD_DOCS_RUNNER_PORT=<high-port>` for capture runs. The docs runner owns
-that port and may restart stale Field sessions before graphics captures.
+that port for the entire capture run, replacing a stale/cross-run Field before the
+first capture and shutting down the process group at the end. Port `9477` is the
+safe default, but an explicit dedicated port makes ownership clearest in logs.
 
 Treat broken docs captures as real failures. If a screenshot is blank, red,
 tiny, stale, or visually wrong, inspect the backdoor events/logs and fix the

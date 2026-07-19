@@ -346,12 +346,13 @@ expect:
   allowMissingOutput: true
   image:
     path: /tmp/docs-fabricate-shader-checkerboard-native.png
-    lumaComparisons:
-      - darker: [0.54, 0.60, 0.025, 0.025]
-        lighter: [0.60, 0.60, 0.025, 0.025]
-        # The two small sample regions land on adjacent floor tiles, but their
-        # absolute contrast varies slightly with the GPU/driver lighting path.
-        marginGt: 4
+    regionsDifferent:
+      - a: [0.54, 0.60, 0.025, 0.025]
+        b: [0.60, 0.60, 0.025, 0.025]
+        # These regions cover neighboring tiles. Which one is brighter can
+        # change with checker phase and lighting, so assert contrast without
+        # assigning a fixed light/dark direction.
+        meanAbsDiffGt: 8
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-shader-generated-checkerboard.png" source-image="/tmp/docs-fabricate-shader-checkerboard-native.png" wait="20.0" timeout="180" execution="launch" embed=true graphics-context=true name="fabricate-shader-generated-checkerboard" hidden=true fabricate-scene="shader-generated-checkerboard"}
 ```

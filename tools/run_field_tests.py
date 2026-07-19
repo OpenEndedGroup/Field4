@@ -19,6 +19,7 @@ from PIL import Image, ImageChops, ImageStat
 
 from discover_field_tests import DEFAULT_ROOTS, discover
 from field_backdoor import gradle_command, health_check, make_unverified_ssl_context
+from verification_runtime import run_with_watchdog, terminate_process_tree, verification_lock
 
 
 TOOLS_ROOT = Path(__file__).resolve().parent
@@ -27,9 +28,11 @@ DEFAULT_CATALOG_PATH = REPO_ROOT / "build" / "field-tests" / "catalog.json"
 DEFAULT_RESULTS_PATH = REPO_ROOT / "build" / "field-tests" / "results.json"
 GENERATED_SNIPPETS_ROOT = REPO_ROOT / "build" / "field-tests" / "generated"
 CAPTURES_ROOT = REPO_ROOT / "build" / "field-tests" / "captures"
+GENERATED_DOC_ASSETS_ROOT = REPO_ROOT / "build" / "field-tests" / "generated-doc-assets"
 BACKDOOR_PATH = TOOLS_ROOT / "field_backdoor.py"
 
 PLAYWRIGHT_TIMEOUT_FLOOR = 180.0
+DEFAULT_AUTOMATION_PORT = 9477
 
 
 class RunnerError(RuntimeError):
@@ -146,6 +149,7 @@ def ensure_persistent_field(port: int, *, boot_timeout: float = 180.0) -> subpro
         recycle_field(port, ctx)
     log_path = REPO_ROOT / ".field-backdoor" / "logs" / f"smoke-prewarm-field-{port}.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
+    GENERATED_DOC_ASSETS_ROOT.mkdir(parents=True, exist_ok=True)
     log_file = log_path.open("w", encoding="utf-8")
     popen_kwargs: dict[str, Any] = {
         "cwd": str(REPO_ROOT),
@@ -153,7 +157,14 @@ def ensure_persistent_field(port: int, *, boot_timeout: float = 180.0) -> subpro
         "stderr": subprocess.STDOUT,
         "stdin": subprocess.DEVNULL,
         "text": True,
-        "env": {**os.environ, "PORT": str(port)},
+        "env": {
+            **os.environ,
+            "PORT": str(port),
+            # Gallery smoke tests must never rewrite tracked docs captures. The
+            # production docs runner leaves this unset and continues to own
+            # public/docs/assets.
+            "AFIELD_GENERATED_DOC_ASSET_ROOT": str(GENERATED_DOC_ASSETS_ROOT),
+        },
     }
     if os.name == "nt":
         popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]
@@ -167,19 +178,18 @@ def ensure_persistent_field(port: int, *, boot_timeout: float = 180.0) -> subpro
         if health_check(port, ctx):
             return proc
         time.sleep(0.5)
-    proc.terminate()
+    terminate_process_tree(proc)
+    if health_check(port, ctx):
+        recycle_field(port, ctx)
     raise SystemExit(f"Prewarm Field did not become healthy on port {port} within {boot_timeout:.0f}s; see {log_path}")
 
 
-def stop_persistent_field(proc: subprocess.Popen[Any] | None) -> None:
-    if proc is None or proc.poll() is not None:
-        return
-    proc.terminate()
-    try:
-        proc.wait(timeout=10)
-    except subprocess.TimeoutExpired:
-        proc.kill()
-        proc.wait(timeout=5)
+def stop_persistent_field(proc: subprocess.Popen[Any] | None, *, port: int) -> None:
+    if proc is not None and proc.poll() is None:
+        terminate_process_tree(proc, grace=10.0)
+    ctx = make_unverified_ssl_context()
+    if health_check(port, ctx):
+        recycle_field(port, ctx)
 
 
 def load_or_refresh_catalog(
@@ -568,8 +578,6 @@ def build_backdoor_command(
                     ]
                 )
             )
-        if wait_seconds > 0:
-            commands.append(shlex.join(["sleep", str(wait_seconds)]))
         image_path = image_expectation_path(test)
         if image_path is not None:
             commands.append(
@@ -579,9 +587,16 @@ def build_backdoor_command(
                         str(image_path),
                         "--timeout",
                         str(timeout),
+                        "--fail-on-error-uid",
+                        "@last",
                     ]
                 )
             )
+        elif wait_seconds > 0:
+            # Tests without a concrete readiness artifact still need a bounded
+            # settle period. Image-producing tests wait for the freshly deleted
+            # output file above instead of sleeping for their worst-case budget.
+            commands.append(shlex.join(["sleep", str(wait_seconds)]))
         if capture_path is not None:
             commands.append(build_screenshot_command(test, capture_path, timeout=timeout))
         if execution == "launch":
@@ -934,7 +949,28 @@ def evaluate_image_expectation(
     return failures
 
 
-def run_one_test(test: dict[str, Any], *, port: int, workspace: str | None) -> dict[str, Any]:
+def outer_process_timeout(test: dict[str, Any], command: list[str]) -> float:
+    """Budget the wrapper, not just the in-Field operation.
+
+    Commands execute serially. Give each its declared timeout plus fixed startup
+    and shutdown headroom; Playwright commands already carry a 180s first-run
+    floor. This watchdog is deliberately outside field_backdoor.py so it catches
+    the successful-command/non-exiting-wrapper failure mode as well.
+    """
+    per_command = float(test.get("timeoutSec") or 20.0)
+    if "--with-playwright" in command:
+        per_command = max(per_command, PLAYWRIGHT_TIMEOUT_FLOOR)
+    return 45.0 + per_command
+
+
+def run_one_test(
+    test: dict[str, Any],
+    *,
+    port: int,
+    workspace: str | None,
+    progress: Any = None,
+    heartbeat_interval: float = 15.0,
+) -> dict[str, Any]:
     test_id = str(test.get("id"))
     command, artifacts = build_backdoor_command(test, port=port, workspace=workspace)
     image_path = image_expectation_path(test)
@@ -943,14 +979,27 @@ def run_one_test(test: dict[str, Any], *, port: int, workspace: str | None) -> d
             image_path.unlink()
         except FileNotFoundError:
             pass
-    started = time.monotonic()
-    process = subprocess.run(
+    outer_timeout = outer_process_timeout(test, command)
+    expected_results = command.count("--command")
+
+    def commands_complete(stdout: str) -> bool:
+        if not stdout.strip():
+            return False
+        try:
+            return len(json_stream_loads(stdout, test_id=test_id)) >= expected_results
+        except RunnerError:
+            return False
+
+    process, duration_ms, timed_out = run_with_watchdog(
         command,
         cwd=REPO_ROOT,
-        text=True,
-        capture_output=True,
+        timeout=outer_timeout,
+        heartbeat_interval=heartbeat_interval,
+        heartbeat=progress,
+        label=test_id,
+        completion_probe=commands_complete,
+        exit_grace=10.0,
     )
-    duration_ms = round((time.monotonic() - started) * 1000.0)
 
     result: dict[str, Any] = {
         "id": test_id,
@@ -964,6 +1013,8 @@ def run_one_test(test: dict[str, Any], *, port: int, workspace: str | None) -> d
         "processExitCode": process.returncode,
         "stdout": process.stdout,
         "stderr": process.stderr,
+        "outerTimeoutSec": outer_timeout,
+        "runnerTimedOut": timed_out,
     }
 
     try:
@@ -971,6 +1022,16 @@ def run_one_test(test: dict[str, Any], *, port: int, workspace: str | None) -> d
         result["backdoorResults"] = backdoor_results
         result["backdoorResult"] = backdoor_results[-1]
         failures = evaluate_expectations(test, backdoor_results, process=process, artifacts=artifacts)
+        if timed_out:
+            completed_text = (
+                "all commands produced JSON results, but the backdoor process did not exit"
+                if len(backdoor_results) >= expected_results
+                else f"only {len(backdoor_results)} of {expected_results} commands produced JSON results"
+            )
+            failures.append(
+                f"{test_id}: runner watchdog fired after {duration_ms / 1000.0:.1f}s "
+                f"(outer limit {outer_timeout:.0f}s); {completed_text}"
+            )
     except RunnerError as exc:
         failures = [str(exc)]
         result["backdoorResults"] = []
@@ -996,9 +1057,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--tag", action="append", dest="tags")
     parser.add_argument("--runner", action="append", dest="runners")
     parser.add_argument("--workspace")
-    parser.add_argument("--port", type=int, default=9092)
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=DEFAULT_AUTOMATION_PORT,
+        help=f"Dedicated Field port (default: {DEFAULT_AUTOMATION_PORT}; never the developer port 9092).",
+    )
     parser.add_argument("--fail-fast", action="store_true")
     parser.add_argument("--json", action="store_true")
+    parser.add_argument("--heartbeat-interval", type=float, default=15.0)
     parser.add_argument(
         "--no-prewarm",
         action="store_true",
@@ -1007,8 +1074,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main() -> int:
-    args = parse_args()
+def run(args: argparse.Namespace) -> int:
     catalog_path = Path(args.catalog)
     if not catalog_path.is_absolute():
         catalog_path = REPO_ROOT / catalog_path
@@ -1063,7 +1129,13 @@ def main() -> int:
 
     try:
         for index, test in enumerate(tests, start=1):
-            result = run_one_test(test, port=args.port, workspace=args.workspace)
+            result = run_one_test(
+                test,
+                port=args.port,
+                workspace=args.workspace,
+                progress=progress,
+                heartbeat_interval=args.heartbeat_interval,
+            )
             results.append(result)
             if result["ok"]:
                 passed += 1
@@ -1082,7 +1154,7 @@ def main() -> int:
                 recycle_field(args.port, ctx)
                 field_proc = ensure_persistent_field(args.port)
     finally:
-        stop_persistent_field(field_proc)
+        stop_persistent_field(field_proc, port=args.port)
 
     report = {
         "catalog": str(catalog_path),
@@ -1107,6 +1179,18 @@ def main() -> int:
         print(f"Results: {results_path}")
 
     return 0 if failed == 0 else 1
+
+
+def main() -> int:
+    args = parse_args()
+    stream = sys.stderr if args.json else sys.stdout
+    with verification_lock(
+        REPO_ROOT,
+        label="FIELD_TEST smoke catalog",
+        progress=lambda message: print(message, file=stream, flush=True),
+        heartbeat_interval=args.heartbeat_interval,
+    ):
+        return run(args)
 
 
 if __name__ == "__main__":

@@ -61,7 +61,7 @@ id: docs.rectsl.animations
 runner: backdoor-box
 graphicsContext: true
 tags: [docs, rectsl, shaders, graphics, video]
-timeoutSec: 1800
+timeoutSec: 600
 execution: launch
 waitSec: 560.0
 expect:

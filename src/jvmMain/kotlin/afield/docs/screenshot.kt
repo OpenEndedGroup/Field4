@@ -404,7 +404,9 @@ private fun BoxScreenshotRequest.toPlaywrightArg(): Map<String, Any?> = mapOf(
     "padding" to padding,
     "panIntoView" to panIntoView,
     "hideMonaco" to hideMonaco,
-    "openOutputs" to openOutputs
+    "openOutputs" to openOutputs,
+    "preserveSelection" to preserveSelection,
+    "includeNotifications" to includeNotifications
 )
 
 private fun WindowScreenshotRequest.toPlaywrightArg(): Map<String, Any?> = mapOf(
@@ -415,7 +417,9 @@ private fun WindowScreenshotRequest.toPlaywrightArg(): Map<String, Any?> = mapOf
     "openOutputs" to openOutputs,
     "editorOnly" to editorOnly,
     "padding" to padding,
-    "waitMs" to waitMs
+    "waitMs" to waitMs,
+    "preserveSelection" to preserveSelection,
+    "includeNotifications" to includeNotifications
 )
 
 private fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest): BoxScreenshotResponse {
@@ -861,7 +865,9 @@ suspend fun captureWindowScreenshot(info: SessionInformation, request: AgentWind
                 openOutputs = request.openOutputs,
                 editorOnly = request.editorOnly,
                 padding = request.padding,
-                waitMs = request.waitMs
+                waitMs = request.waitMs,
+                preserveSelection = request.preserveSelection,
+                includeNotifications = request.includeNotifications
             )
         )
     }.getOrElse {
@@ -1000,7 +1006,9 @@ suspend fun captureBoxScreenshot(info: SessionInformation, request: AgentBoxScre
                 padding = request.padding,
                 panIntoView = request.panIntoView,
                 hideMonaco = true,
-                openOutputs = request.openOutputs
+                openOutputs = request.openOutputs,
+                preserveSelection = request.preserveSelection,
+                includeNotifications = request.includeNotifications
             )
         )
     }.getOrElse {

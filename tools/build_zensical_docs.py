@@ -14,6 +14,8 @@ from typing import Any
 
 import yaml
 
+from verification_runtime import verification_lock
+
 
 def _configure_logging() -> None:
     """Surface the docs runner's per-capture progress.
@@ -173,7 +175,7 @@ def emit_offline_viewer(*, site_dir: Path) -> None:
     sync_offline_assets.sync_target(site_dir, metadata=False, docs=False)
 
 
-def main() -> int:
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Preprocess Field docs runner fences, then build with Zensical.",
     )
@@ -192,7 +194,10 @@ def main() -> int:
             "Matches relative paths, filenames, stems, or shell globs; may be repeated."
         ),
     )
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def run(args: argparse.Namespace) -> int:
 
     repo_root = Path(__file__).resolve().parent.parent
     public_dir = (repo_root / args.public_dir).resolve()
@@ -246,6 +251,13 @@ def main() -> int:
     if returncode == 0:
         emit_offline_viewer(site_dir=public_dir / "field4")
     return returncode
+
+
+def main() -> int:
+    args = parse_args()
+    repo_root = Path(__file__).resolve().parent.parent
+    with verification_lock(repo_root, label="Zensical docs build", progress=lambda message: print(message, flush=True)):
+        return run(args)
 
 
 if __name__ == "__main__":

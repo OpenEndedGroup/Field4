@@ -83,7 +83,8 @@ optional fields:
 - `withPlaywright`; a screenshot expectation also enables Playwright;
 - `graphicsContext`: `true` or a mapping, which enables the transient renderer
   parent;
-- `waitSec` (or `wait`) before file/screenshot evidence;
+- `waitSec` (or `wait`) before screenshot evidence when no concrete image file
+  is expected; an `expect.image.path` is itself the readiness signal;
 - `timeoutSec`, applied to the backdoor and individual operations.
 
 For an editor screenshot, the runner sets the property, opens Monaco before

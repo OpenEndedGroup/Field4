@@ -12,9 +12,7 @@ import signal
 import socket
 import subprocess
 import sys
-import threading
 import time
-from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from types import SimpleNamespace
 from pathlib import Path
@@ -22,6 +20,11 @@ from typing import Any
 import urllib.error
 import urllib.request
 import ssl
+
+TOOLS_DIR = Path(__file__).resolve().parent.parent / "tools"
+if str(TOOLS_DIR) not in sys.path:
+    sys.path.insert(0, str(TOOLS_DIR))
+from verification_runtime import run_with_watchdog
 
 # Shared with tools/discover_field_tests.py; see public/fabricate_docs_scenes.py.
 # public/ is already on sys.path when the Zensical build imports this module, so
@@ -93,6 +96,7 @@ RUNNER_MODE_ENV = "FIELD_DOCS_RUNNER_MODE"
 RUNNER_CONTINUE_ON_ERROR_ENV = "FIELD_DOCS_RUNNER_CONTINUE_ON_ERROR"
 RUNNER_PORT_ENV = "FIELD_DOCS_RUNNER_PORT"
 RUNNER_WORKSPACE_ENV = "FIELD_DOCS_RUNNER_WORKSPACE"
+DEFAULT_RUNNER_PORT = 9477
 RUNNER_MODE_ALIASES = {
     "incremental": "incremental",
     "cache": "incremental",
@@ -191,7 +195,7 @@ class RunnerState:
         self.cache_path = config_path.parent / ".field-docs-runner-cache.json"
         self.shared_log_path = config_path.parent / ".field-docs-runner-field.log"
         self.runner_mode = resolve_runner_mode(os.environ.get(RUNNER_MODE_ENV))
-        self.backdoor_port = int(os.environ.get(RUNNER_PORT_ENV, "9092"))
+        self.backdoor_port = int(os.environ.get(RUNNER_PORT_ENV, str(DEFAULT_RUNNER_PORT)))
         self.continue_on_error = resolve_continue_on_error(
             os.environ.get(RUNNER_CONTINUE_ON_ERROR_ENV),
             runner_mode=self.runner_mode,
@@ -229,7 +233,7 @@ class RunnerState:
         if self.session_enabled:
             LOG.info("Field docs runner warm-session path ENABLED (experimental; fast path with per-process fallback)")
         if self.runner_mode != "never":
-            self._ensure_shared_field_server()
+            self._ensure_runner_owned_field_server(reason=f"{self.runner_mode} docs capture run")
         atexit.register(self.close)
 
     def handle_capture_error(self, *, page_path: Path, output_path: Path, error: Exception) -> None:
@@ -248,6 +252,21 @@ class RunnerState:
                 return body == "ok"
         except (OSError, urllib.error.URLError, urllib.error.HTTPError):
             return False
+
+    def _listener_pids(self) -> list[int]:
+        if os.name == "nt":
+            return []
+        try:
+            result = subprocess.run(
+                ["lsof", f"-tiTCP:{self.backdoor_port}", "-sTCP:LISTEN"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return []
+        return [int(token) for token in result.stdout.split() if token.isdigit()]
 
     def _request_shared_field_shutdown(self) -> None:
         url = f"https://localhost:{self.backdoor_port}/api/shutdown-instance"
@@ -361,29 +380,50 @@ class RunnerState:
                 self._shared_field_process = None
                 return
             time.sleep(0.25)
-        if process.poll() is not None:
-            self._shared_field_process = None
-            return
-        try:
-            if os.name == "nt":
-                process.terminate()
-            else:
-                os.killpg(process.pid, signal.SIGTERM)
-        except ProcessLookupError:
-            self._shared_field_process = None
-            return
-        try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
+        if process.poll() is None:
             try:
                 if os.name == "nt":
-                    process.kill()
+                    process.terminate()
                 else:
-                    os.killpg(process.pid, signal.SIGKILL)
+                    os.killpg(process.pid, signal.SIGTERM)
             except ProcessLookupError:
-                self._shared_field_process = None
-                return
-            process.wait(timeout=5)
+                pass
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                try:
+                    if os.name == "nt":
+                        process.kill()
+                    else:
+                        os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                process.wait(timeout=5)
+
+        # A Gradle daemon can parent the actual Field JVM outside the wrapper's
+        # process group. Never report shutdown merely because the wrapper exited.
+        if self._http_health_ok(self.backdoor_port, timeout=0.5):
+            if os.name == "nt":
+                raise RuntimeError(
+                    f"Field docs runner wrapper exited but port {self.backdoor_port} is still serving; "
+                    "stop that Field instance manually."
+                )
+            for pid in self._listener_pids():
+                try:
+                    os.kill(pid, signal.SIGINT)
+                except ProcessLookupError:
+                    pass
+            deadline = time.monotonic() + 5.0
+            while time.monotonic() < deadline and self._http_health_ok(self.backdoor_port, timeout=0.5):
+                time.sleep(0.25)
+            if self._http_health_ok(self.backdoor_port, timeout=0.5):
+                for pid in self._listener_pids():
+                    try:
+                        os.kill(pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+            if self._http_health_ok(self.backdoor_port, timeout=0.5):
+                raise RuntimeError(f"Field docs runner could not release port {self.backdoor_port}")
         self._shared_field_process = None
 
     def _restart_shared_field_server(self, *, reason: str) -> None:
@@ -739,6 +779,49 @@ class RunnerState:
             elapsed,
         )
 
+    def _run_capture_child(
+        self,
+        command: list[str],
+        *,
+        options: RunnerOptions,
+        label: str,
+        is_video: bool,
+        input_text: str | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        """Run one backdoor capture with process-group and exit-grace safety."""
+        expected_results = command.count("--command")
+
+        def commands_complete(stdout: str) -> bool:
+            return len(parse_backdoor_results(stdout)) >= expected_results
+
+        outer_timeout = runner_subprocess_timeout(options=options, is_video=is_video)
+        completed, duration_ms, timed_out = run_with_watchdog(
+            command,
+            cwd=self.repo_root,
+            timeout=outer_timeout,
+            heartbeat_interval=8.0,
+            heartbeat=lambda message: LOG.info("Field docs runner%s", message),
+            label=label,
+            completion_probe=commands_complete,
+            exit_grace=10.0,
+            input_text=input_text,
+        )
+        if timed_out:
+            emitted = len(parse_backdoor_results(completed.stdout))
+            reason = (
+                "all command results arrived, but field_backdoor.py did not exit within 10s"
+                if emitted >= expected_results
+                else f"only {emitted}/{expected_results} command results arrived before the outer limit"
+            )
+            stderr = completed.stderr + f"\nDocs capture watchdog: {reason}.\n"
+            raise subprocess.TimeoutExpired(
+                command,
+                duration_ms / 1000.0,
+                output=completed.stdout,
+                stderr=stderr,
+            )
+        return completed
+
     def ensure_video(self, *, code: str, options: RunnerOptions, page_path: Path, block_index: int) -> None:
         """Record a short video clip instead of taking a screenshot."""
         assert options.video is not None
@@ -826,16 +909,12 @@ class RunnerState:
         completed: subprocess.CompletedProcess[str] | None = None
         for attempt in range(1, RUNNER_RETRIES + 1):
             try:
-                completed = subprocess.run(
+                completed = self._run_capture_child(
                     command,
-                    cwd=self.repo_root,
-                    input=code,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                    capture_output=True,
-                    check=False,
-                    timeout=runner_subprocess_timeout(options=video_options, is_video=True),
+                    options=video_options,
+                    label=f"video {video_path.name}",
+                    is_video=True,
+                    input_text=code,
                 )
             except subprocess.TimeoutExpired as exc:
                 if attempt < RUNNER_RETRIES:
@@ -975,12 +1054,12 @@ class RunnerState:
         completed: subprocess.CompletedProcess[str] | None = None
         for attempt in range(1, RUNNER_RETRIES + 1):
             try:
-                with self._progress_heartbeat(f"ui drive {primary.name}"):
-                    completed = subprocess.run(
-                        command, cwd=self.repo_root, text=True, encoding="utf-8",
-                        errors="replace", capture_output=True, check=False,
-                        timeout=runner_subprocess_timeout(options=options, is_video=True),
-                    )
+                completed = self._run_capture_child(
+                    command,
+                    options=options,
+                    label=f"ui drive {primary.name}",
+                    is_video=True,
+                )
             except subprocess.TimeoutExpired as exc:
                 if attempt < RUNNER_RETRIES:
                     LOG.warning("Field docs runner ui drive attempt %s/%s timed out for %s; retrying",
@@ -1030,29 +1109,6 @@ class RunnerState:
         self.dirty = True
         self.videos_run += 1
         self.save()
-
-    @contextmanager
-    def _progress_heartbeat(self, label: str, *, interval: float = 8.0):
-        """Emit a periodic 'still working' line while a blocking capture runs.
-
-        A single capture (especially a graphics-context one, which cold-boots a
-        fresh Field JVM) can be silent for 20-40s. Without a heartbeat that reads
-        as a hang. A daemon thread logs elapsed time every `interval` seconds until
-        the wrapped block returns.
-        """
-        stop = threading.Event()
-        start = time.monotonic()
-
-        def beat() -> None:
-            while not stop.wait(interval):
-                LOG.info("Field docs runner … still capturing %s (%.0fs)", label, time.monotonic() - start)
-
-        thread = threading.Thread(target=beat, name="docs-capture-heartbeat", daemon=True)
-        thread.start()
-        try:
-            yield
-        finally:
-            stop.set()
 
     def ensure_screenshot(self, *, code: str, options: RunnerOptions, page_path: Path, block_index: int) -> None:
         screenshot_path = resolve_output_path(page_path, options.screenshot)
@@ -1177,18 +1233,13 @@ class RunnerState:
             if completed is not None:
                 break
             try:
-                with self._progress_heartbeat(capture_label):
-                    completed = subprocess.run(
-                        command,
-                        cwd=self.repo_root,
-                        input=code,
-                        text=True,
-                        encoding="utf-8",
-                        errors="replace",
-                        capture_output=True,
-                        check=False,
-                        timeout=runner_subprocess_timeout(options=options, is_video=False),
-                    )
+                completed = self._run_capture_child(
+                    command,
+                    options=options,
+                    label=capture_label,
+                    is_video=False,
+                    input_text=code,
+                )
             except subprocess.TimeoutExpired as exc:
                 if attempt < RUNNER_RETRIES:
                     LOG.warning(
@@ -2436,7 +2487,7 @@ def runner_code_expects_svg(code: str) -> bool:
     expects_svg_override = parse_codegen_expectation(code=code, key="FIELD_DOCS_EXPECT_SVG")
     if expects_svg_override is not None:
         return expects_svg_override
-    return re.search(r"\blines\s*\([\s\S]*?\bchannel\s*=", code) is not None
+    return re.search(r"\blines\s*\(", code) is not None
 
 
 def runner_code_expects_output_area(code: str) -> bool:
@@ -2448,7 +2499,7 @@ def runner_code_expects_output_area(code: str) -> bool:
 
 
 def validate_screenshot_pixels(*, screenshot_path: Path, options: RunnerOptions) -> str | None:
-    if not options.graphics_context or options.capture != "native-window" or options.source_image:
+    if options.source_image:
         return None
     try:
         from PIL import Image
@@ -2457,9 +2508,17 @@ def validate_screenshot_pixels(*, screenshot_path: Path, options: RunnerOptions)
         return None
     try:
         with Image.open(screenshot_path) as image:
+            width, height = image.size
             extrema = image.convert("RGB").getextrema()
     except Exception as exc:
         return f"Could not inspect screenshot pixels: {exc}"
+    if options.capture == "box" and (width < 96 or height < 80):
+        return (
+            f"Box screenshot is implausibly small ({width}x{height}). This usually means the box "
+            "or its expected output was not present when the crop was measured."
+        )
+    if not options.graphics_context or options.capture != "native-window":
+        return None
     if all(high <= 1 for _low, high in extrema):
         return (
             "Native graphics screenshot is all black. This usually means the capture ran before "
@@ -2738,7 +2797,7 @@ def build_backdoor_command(
     source_image_min_mtime: float | None = None,
     code: str | None = None,
 ) -> BackdoorInvocation:
-    port = int(os.environ.get(RUNNER_PORT_ENV, "9092"))
+    port = int(os.environ.get(RUNNER_PORT_ENV, str(DEFAULT_RUNNER_PORT)))
     capture_mode = effective_capture_mode(options)
     command = [
         sys.executable,

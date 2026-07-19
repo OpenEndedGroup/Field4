@@ -892,7 +892,9 @@ data class BoxScreenshotRequest(
     val padding: Double = 12.0,
     val panIntoView: Boolean = true,
     val hideMonaco: Boolean = true,
-    val openOutputs: Boolean = false
+    val openOutputs: Boolean = false,
+    val preserveSelection: Boolean = false,
+    val includeNotifications: Boolean = false
 )
 
 @Serializable
@@ -913,7 +915,9 @@ data class WindowScreenshotRequest(
     val openOutputs: Boolean = false,
     val editorOnly: Boolean = false,
     val padding: Double = 12.0,
-    val waitMs: Double = 0.0
+    val waitMs: Double = 0.0,
+    val preserveSelection: Boolean = false,
+    val includeNotifications: Boolean = false
 )
 
 @Serializable
@@ -935,7 +939,9 @@ data class AgentWindowScreenshot(
     val openOutputs: Boolean = false,
     val editorOnly: Boolean = false,
     val padding: Double = 12.0,
-    val waitMs: Double = 0.0
+    val waitMs: Double = 0.0,
+    val preserveSelection: Boolean = false,
+    val includeNotifications: Boolean = false
 )
 
 @Serializable
@@ -944,7 +950,9 @@ data class AgentBoxScreenshot(
     val path: String,
     val padding: Double = 12.0,
     val panIntoView: Boolean = true,
-    val openOutputs: Boolean = true
+    val openOutputs: Boolean = true,
+    val preserveSelection: Boolean = false,
+    val includeNotifications: Boolean = false
 )
 
 @Serializable

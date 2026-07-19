@@ -2130,9 +2130,9 @@ private fun prepareBoxScreenshot(req: BoxScreenshotRequest): BoxScreenshotRespon
     val box = findBoxElementByUid(req.uid)
         ?: return BoxScreenshotResponse(uid = req.uid, success = false, message = "box ${req.uid} not found")
 
-    hideNotificationsForScreenshot()
+    if (!req.includeNotifications) hideNotificationsForScreenshot()
     if (req.hideMonaco) {
-        clearSelectionForScreenshot()
+        if (!req.preserveSelection) clearSelectionForScreenshot()
         runCatching { hideMonaco() }
     }
 
@@ -2214,14 +2214,18 @@ private fun prepareWindowScreenshot(req: WindowScreenshotRequest): WindowScreens
 
     selectedProperty = req.property
     window.unsafeCast<dynamic>().selectedProperty = selectedProperty
-    hideNotificationsForScreenshot()
+    if (!req.includeNotifications) hideNotificationsForScreenshot()
 
     if (req.showEditor && box != null) {
-        if (!switchSelectionToProperty(req.uid, req.property, syncEditor = true, applyScreenshotLayout = true)) {
+        if (!req.preserveSelection && !switchSelectionToProperty(req.uid, req.property, syncEditor = true, applyScreenshotLayout = true)) {
             return WindowScreenshotResponse(uid = req.uid, success = false, message = "editor not synced yet")
         }
+        if (req.preserveSelection) {
+            prepareMonacoForScreenshotLayout()
+            layoutGlobalEditor()
+        }
     } else {
-        clearSelectionForScreenshot()
+        if (!req.preserveSelection) clearSelectionForScreenshot()
         runCatching { hideMonaco() }
     }
 
@@ -2298,7 +2302,9 @@ private fun rawToBoxScreenshotRequest(raw: dynamic) = BoxScreenshotRequest(
     padding = dynamicDouble(raw?.padding, 12.0),
     panIntoView = dynamicBoolean(raw?.panIntoView, true),
     hideMonaco = dynamicBoolean(raw?.hideMonaco, true),
-    openOutputs = dynamicBoolean(raw?.openOutputs, false)
+    openOutputs = dynamicBoolean(raw?.openOutputs, false),
+    preserveSelection = dynamicBoolean(raw?.preserveSelection, false),
+    includeNotifications = dynamicBoolean(raw?.includeNotifications, false)
 )
 
 private fun rawToWindowScreenshotRequest(raw: dynamic) = WindowScreenshotRequest(
@@ -2309,7 +2315,9 @@ private fun rawToWindowScreenshotRequest(raw: dynamic) = WindowScreenshotRequest
     openOutputs = dynamicBoolean(raw?.openOutputs, false),
     editorOnly = dynamicBoolean(raw?.editorOnly, false),
     padding = dynamicDouble(raw?.padding, 12.0),
-    waitMs = dynamicDouble(raw?.waitMs, 0.0)
+    waitMs = dynamicDouble(raw?.waitMs, 0.0),
+    preserveSelection = dynamicBoolean(raw?.preserveSelection, false),
+    includeNotifications = dynamicBoolean(raw?.includeNotifications, false)
 )
 
 private fun prepareBoxScreenshotJson(raw: dynamic): String {

@@ -81,6 +81,12 @@ the matrix below as the quick command crib.
 | Full recapture | `FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py --clean` | Regenerate every screenshot and video through Field. |
 | Offline asset ownership | `uv run python tools/check_offline_assets.py` | Verify canonical Monaco/font/offline assets exist and generated copies are not tracked. |
 
+Run these verification entrypoints one at a time in a checkout. The smoke, UI,
+and docs wrappers serialize themselves with `.field-backdoor/verification.lock`
+and print the current owner while waiting. Do not run raw `./gradlew` compile/test
+tasks concurrently with them: raw Gradle does not take that Python lock, and two
+builds can corrupt shared Kotlin class output and incremental-compiler backups.
+
 ### Gradle hygiene for agents
 
 - On Windows, agents should use the checked-in Gradle wrapper directly for compile checks:
@@ -247,6 +253,10 @@ uv run --project . --group backdoor python tools/run_field_tests.py --refresh-ca
 
 This regenerates `build/field-tests/catalog.json`, then runs each discovered `FIELD_TEST` entry one-by-one through `uv run --project . --group backdoor python tools/field_backdoor.py --json`.
 Do not pass `--timeout` to `tools/run_field_tests.py`; per-test timeouts come from `timeoutSec` in the `FIELD_TEST` annotation. The backdoor and UI regression runner have their own `--timeout` flags, but the smoke catalog runner does not.
+The smoke runner defaults to dedicated port `9477` (not developer port `9092`),
+prints per-test heartbeats, applies an outer process watchdog, and kills the whole
+child process group if a completed backdoor command refuses to exit. Use another
+high `--port` only when you need a separate automation session.
 The smoke runner now **prewarms one persistent Field** on `--port` for the whole run and tears it down once at the end, so tests no longer cold-boot (and self-kill) the JVM per test. Pass `--no-prewarm` to instead reuse an already-running server on `--port`. If a healthy Field is already serving that port, the runner reuses it and leaves it alive.
 
 To iterate on one or a few tests instead of the whole catalog, filter by `--id <catalog-id>` (repeatable; the `id:` from a `FIELD_TEST` block, e.g. `rectsl.language.workout`), `--tag smoke`, or `--runner jvm-main`. This is the correct way to verify a single `jvm-main` smoke — do **not** reach for a raw `java`/`gradlew JavaExec` launcher (see the JVM-args note under *Field Backdoor* above).
@@ -259,7 +269,7 @@ Browser UI regression runner:
 uv run --project . --group backdoor python tools/run_ui_regressions.py --port 9490 --timeout 45
 ```
 
-This runs browser-level regressions through `tools/field_backdoor.py` and the server-owned Playwright browser. It prints `RUN`, heartbeat, `PASS`, and `FAIL` lines by default; use `--heartbeat-interval <seconds>` to tune long-run telemetry and `--json` when machine-readable stdout matters. Screenshots are retained under `build/ui-regressions/artifacts/<test-id>/`, with `latest-pass.png`, `latest-failure.png`, and the most recent 5 passing screenshots in `passes/`.
+This runs browser-level regressions through `tools/field_backdoor.py` and the server-owned Playwright browser. It prints `RUN`, heartbeat, `PASS`, and `FAIL` lines by default; use `--heartbeat-interval <seconds>` to tune long-run telemetry and `--json` when machine-readable stdout matters. Screenshots are retained under `build/ui-regressions/artifacts/<test-id>/`, with `latest-pass.png`, `latest-failure.png`, and the most recent 5 passing screenshots in `passes/`. A passing screenshot must show meaningful evidence of the tested state; transient palettes, menus, toasts, and panels should still be visible in the final or a supplemental capture.
 
 Target one regression while iterating:
 

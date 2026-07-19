@@ -2,7 +2,9 @@ package afield
 
 import afield.logger.lprintln
 import afield.stdlib._currentlyExecutingFragment
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -453,7 +455,8 @@ object OperationTranscript {
                     if (result.getOrDefault(false)) applied++ else skipped++
                 } else {
                     skipped++
-                    errors += result.exceptionOrNull()?.message ?: "Unknown macro operation failure."
+                        errors += result.exceptionOrNull()?.let(::describeMacroFailure)
+                            ?: "Unknown macro operation failure."
                 }
                 index++
             }
@@ -1514,7 +1517,7 @@ object OperationTranscript {
                     ?: payload["seconds"]?.asDoubleOrNull()?.let { (it * 1000.0).toLong() }
                 val frames = payload["frames"]?.asLongOrDefault(-1L)
                 if (explicitMillis != null && explicitMillis >= 0L) {
-                    Thread.sleep(explicitMillis.coerceIn(0L, 30_000L))
+                    waitForMacroMillis(explicitMillis.coerceIn(0L, 30_000L))
                 } else if (frames != null && frames >= 0L) {
                     waitForRunloopFrames(frames.coerceIn(0L, 30_000L))
                 }
@@ -1691,11 +1694,27 @@ object OperationTranscript {
         info.topologyGeneration++
     }
 
+    private fun describeMacroFailure(failure: Throwable): String {
+        val detail = failure.message?.takeIf { it.isNotBlank() }
+        return if (detail == null) failure.javaClass.name else "${failure.javaClass.simpleName}: $detail"
+    }
+
+    private fun waitForMacroMillis(millis: Long) {
+        if (millis <= 0L) return
+        // Macro playback runs on Dispatchers.IO. Coroutine delay avoids inheriting
+        // a transient interrupt from compilation/launch work on a reused worker,
+        // which made otherwise successful waits fail with a message-less
+        // InterruptedException.
+        runBlocking { delay(millis) }
+    }
+
     private fun waitForRunloopFrames(frames: Long) {
         if (frames <= 0L) return
         val target = Runloop.runLoop.frame + frames
-        while (Runloop.runLoop.frame < target) {
-            Thread.sleep(1L)
+        runBlocking {
+            withTimeout(30_000L) {
+                while (Runloop.runLoop.frame < target) delay(1L)
+            }
         }
     }
 

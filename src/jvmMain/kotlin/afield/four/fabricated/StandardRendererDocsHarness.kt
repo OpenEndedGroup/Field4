@@ -38,6 +38,16 @@ object StandardRendererDocsHarness {
     private const val CAPTURE_MAX_DIM = 2048
     private val DATA_IMAGE_RE = Regex("base64,([^']+)")
 
+    private fun canonicalDocsAssetsDir(language: String): File =
+        File(System.getProperty("user.dir"), "public/docs/assets/$language")
+
+    private fun generatedDocsAssetsDir(language: String): File {
+        val overrideRoot = System.getenv("AFIELD_GENERATED_DOC_ASSET_ROOT")
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+        return if (overrideRoot == null) canonicalDocsAssetsDir(language) else File(overrideRoot, language)
+    }
+
     suspend fun renderDefaultScene(
         outputPath: String,
         renderer: Renderer = rendererFromContextOrDocument(),
@@ -89,7 +99,7 @@ object StandardRendererDocsHarness {
         outputPath: String,
         renderer: Renderer = rendererFromContextOrDocument()
     ): File {
-        val assetsDir = File(System.getProperty("user.dir"), "public/docs/assets/stacksl")
+        val assetsDir = generatedDocsAssetsDir("stacksl")
         lprintln("info,doc", "stacksl gallery output dir: ${assetsDir.absolutePath}")
         val hero = StackSLGalleryHarness.renderGallery(assetsDir, renderer)
         val target = File(outputPath)
@@ -110,7 +120,7 @@ object StandardRendererDocsHarness {
         outputPath: String,
         renderer: Renderer = rendererFromContextOrDocument()
     ): File {
-        val assetsDir = File(System.getProperty("user.dir"), "public/docs/assets/stacksl")
+        val assetsDir = generatedDocsAssetsDir("stacksl")
         val mp4s = StackSLGalleryHarness.renderAnimations(assetsDir, renderer)
         lprintln("info,doc", "stacksl animations wrote ${mp4s.size} mp4(s) to ${assetsDir.absolutePath}")
         val target = File(outputPath)
@@ -120,6 +130,9 @@ object StandardRendererDocsHarness {
         val hero = File(assetsDir, "stacksl-${StackSLGalleryHarness.loadExamples().first().name}.png")
             .takeIf { it.exists() }
             ?: assetsDir.listFiles { f -> f.name.startsWith("stacksl-") && f.name.endsWith(".png") }?.firstOrNull()
+            ?: canonicalDocsAssetsDir("stacksl")
+                .listFiles { f -> f.name.startsWith("stacksl-") && f.name.endsWith(".png") }
+                ?.firstOrNull()
             ?: error("stacksl animations: no gallery still available for the fence hero")
         target.writeBytes(hero.readBytes())
         require(target.length() > 0L) { "stacksl animations hero copy wrote an empty PNG" }
@@ -136,7 +149,7 @@ object StandardRendererDocsHarness {
         outputPath: String,
         renderer: Renderer = rendererFromContextOrDocument()
     ): File {
-        val assetsDir = File(System.getProperty("user.dir"), "public/docs/assets/rectsl")
+        val assetsDir = generatedDocsAssetsDir("rectsl")
         lprintln("info,doc", "rectsl gallery output dir: ${assetsDir.absolutePath}")
         val hero = RectSLGalleryHarness.renderGallery(assetsDir, renderer)
         val target = File(outputPath)
@@ -157,7 +170,7 @@ object StandardRendererDocsHarness {
         outputPath: String,
         renderer: Renderer = rendererFromContextOrDocument()
     ): File {
-        val assetsDir = File(System.getProperty("user.dir"), "public/docs/assets/rectsl")
+        val assetsDir = generatedDocsAssetsDir("rectsl")
         val mp4s = RectSLGalleryHarness.renderAnimations(assetsDir, renderer)
         lprintln("info,doc", "rectsl animations wrote ${mp4s.size} mp4(s) to ${assetsDir.absolutePath}")
         val target = File(outputPath)
@@ -167,6 +180,9 @@ object StandardRendererDocsHarness {
         val hero = File(assetsDir, "rectsl-${RectSLGalleryHarness.loadExamples().first().name}.png")
             .takeIf { it.exists() }
             ?: assetsDir.listFiles { f -> f.name.startsWith("rectsl-") && f.name.endsWith(".png") }?.firstOrNull()
+            ?: canonicalDocsAssetsDir("rectsl")
+                .listFiles { f -> f.name.startsWith("rectsl-") && f.name.endsWith(".png") }
+                ?.firstOrNull()
             ?: error("rectsl animations: no gallery still available for the fence hero")
         target.writeBytes(hero.readBytes())
         require(target.length() > 0L) { "rectsl animations hero copy wrote an empty PNG" }
@@ -183,7 +199,7 @@ object StandardRendererDocsHarness {
         outputPath: String,
         renderer: Renderer = rendererFromContextOrDocument()
     ): File {
-        val assetsDir = File(System.getProperty("user.dir"), "public/docs/assets/rectsl")
+        val assetsDir = generatedDocsAssetsDir("rectsl")
         val hero = RectSLGalleryHarness.renderFitToTarget(assetsDir, renderer)
         val target = File(outputPath)
         target.parentFile?.mkdirs()

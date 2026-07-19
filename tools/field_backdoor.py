@@ -848,6 +848,8 @@ class FieldBackdoor:
         pan_into_view: bool,
         wait_ms: float,
         timeout: float,
+        preserve_selection: bool = False,
+        include_notifications: bool = False,
     ) -> dict[str, Any]:
         resolved_uid = self.resolve_uid(uid) if uid is not None else None
         normalized_path = str(Path(path).expanduser().resolve())
@@ -880,6 +882,8 @@ class FieldBackdoor:
                 "editorOnly": editor_only,
                 "padding": padding,
                 "waitMs": wait_ms,
+                "preserveSelection": preserve_selection,
+                "includeNotifications": include_notifications,
             },
             timeout=timeout,
         )
@@ -898,6 +902,8 @@ class FieldBackdoor:
         pan_into_view: bool,
         open_outputs: bool,
         timeout: float,
+        preserve_selection: bool = False,
+        include_notifications: bool = False,
     ) -> dict[str, Any]:
         resolved_uid = self.resolve_uid(uid)
         normalized_path = str(Path(path).expanduser().resolve())
@@ -918,6 +924,8 @@ class FieldBackdoor:
                 "padding": padding,
                 "panIntoView": pan_into_view,
                 "openOutputs": open_outputs,
+                "preserveSelection": preserve_selection,
+                "includeNotifications": include_notifications,
             },
             timeout=timeout,
         )
@@ -2256,6 +2264,8 @@ def build_command_parser() -> argparse.ArgumentParser:
     screenshot_window.add_argument("--open-outputs", action="store_true")
     screenshot_window.add_argument("--no-pan", action="store_true")
     screenshot_window.add_argument("--wait-ms", type=float, default=0.0)
+    screenshot_window.add_argument("--preserve-selection", action="store_true")
+    screenshot_window.add_argument("--include-notifications", action="store_true")
     screenshot_window.add_argument("--timeout", type=float)
 
     screenshot_editor = subparsers.add_parser("screenshot-editor", add_help=False)
@@ -2274,6 +2284,8 @@ def build_command_parser() -> argparse.ArgumentParser:
     screenshot_box.add_argument("--open-outputs", dest="open_outputs", action="store_true", default=True)
     screenshot_box.add_argument("--no-open-outputs", dest="open_outputs", action="store_false")
     screenshot_box.add_argument("--no-pan", action="store_true")
+    screenshot_box.add_argument("--preserve-selection", action="store_true")
+    screenshot_box.add_argument("--include-notifications", action="store_true")
     screenshot_box.add_argument("--timeout", type=float)
 
     native_screenshot = subparsers.add_parser("native-screenshot", add_help=False)
@@ -2597,6 +2609,8 @@ async def dispatch_command(
             pan_into_view=not args.no_pan,
             wait_ms=args.wait_ms,
             timeout=timeout,
+            preserve_selection=args.preserve_selection,
+            include_notifications=args.include_notifications,
         )
         ok = bool(data.get("ok"))
         result = command_result(command_line, ok, data=data, events=[])
@@ -2643,6 +2657,8 @@ async def dispatch_command(
             pan_into_view=not args.no_pan,
             open_outputs=args.open_outputs,
             timeout=timeout,
+            preserve_selection=args.preserve_selection,
+            include_notifications=args.include_notifications,
         )
         ok = bool(data.get("ok"))
         result = command_result(command_line, ok, data=data, events=[])

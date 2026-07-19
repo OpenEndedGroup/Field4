@@ -119,6 +119,12 @@ The parser defines the options for these capture families:
 - `page-eval`: JSON-serializable DOM probes. Use `--file` for anything with
   meaningful quoting; `--body` needs an explicit JavaScript `return`.
 
+Browser screenshots hide notifications and, when Monaco is hidden, clear box
+selection by default so ordinary docs captures are clean. Use
+`--include-notifications` when the toast/notification stack is the evidence, and
+`--preserve-selection` when the selected outline is the behavior under test.
+Both flags are available on `screenshot-window` and `screenshot-box`.
+
 Inspect the produced PNG or MP4. Clip coordinates are CSS pixels and may not
 equal output pixel dimensions on a high-DPI browser. For a blank iframe, inspect
 both the iframe and its parent disclosure, including its intrinsic-size data.

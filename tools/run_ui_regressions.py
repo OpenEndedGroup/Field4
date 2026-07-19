@@ -21,6 +21,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from PIL import Image
+
+from verification_runtime import run_with_watchdog, verification_lock
+
 
 TOOLS_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = TOOLS_ROOT.parent
@@ -349,6 +353,19 @@ try {
     result.focus === true &&
     result.paletteVisible === false &&
     result.errors.length === 0;
+  if (result.ok) {
+    window.openFieldCommandPalette({ includeEditor: true, editor: ed });
+    await delay(150);
+    const captureInput = document.querySelector(".afield-palette-input");
+    if (captureInput) {
+      captureInput.value = "ui regression this binding";
+      captureInput.dispatchEvent(new Event("input", { bubbles: true }));
+      await delay(200);
+    }
+    const capturePalette = document.querySelector(".afield-palette");
+    result.capturePaletteVisible = !!captureInput && !!capturePalette && getComputedStyle(capturePalette).display !== "none";
+    result.ok = result.ok && result.capturePaletteVisible;
+  }
   return result;
 } finally {
   window.removeEventListener("error", onError);
@@ -361,8 +378,18 @@ const errors = [];
 const onError = (event) => errors.push(String(event.error && (event.error.stack || event.error.message) || event.message || event));
 window.addEventListener("error", onError);
 try {
+  const ed = window.globalEditor;
+  if (!ed) return { ok: false, reason: "globalEditor missing", errors };
+  const contextMenu = typeof ed.getContribution === "function"
+    ? ed.getContribution("editor.contrib.contextmenu")
+    : null;
+  if (!contextMenu || typeof contextMenu.showContextMenu !== "function") {
+    return { ok: false, reason: "Monaco context-menu contribution missing", errors };
+  }
+  contextMenu.showContextMenu();
   await delay(200);
-  const labels = [...document.querySelectorAll(".context-view .action-label, .monaco-menu .action-label")]
+  const contextRoot = document.querySelector(".shadow-root-host")?.shadowRoot || document;
+  const labels = [...contextRoot.querySelectorAll(".context-view .action-label, .monaco-menu .action-label")]
     .filter((node) => {
       const rect = node.getBoundingClientRect();
       const style = getComputedStyle(node);
@@ -377,7 +404,6 @@ try {
     .filter(([label, count]) => count > 1 && (label === "Go to Paired Shader Definition" || label.startsWith("Edit: ")))
     .map(([label, count]) => ({ label, count }));
   const editLabels = labels.filter((label) => label.startsWith("Edit: "));
-  const ed = window.globalEditor;
   const propertyIds = [
     "code", "vertex", "fragment", "stackSL", "vertex_fragment", "compute", "task", "mesh",
     "raygen", "miss", "closesthit", "anyhit", "intersection", "callable",
@@ -403,6 +429,7 @@ try {
     ? ed.afieldPropertyActionDisposables.length
     : 0;
   const result = {
+    menuVisible: labels.length > 0,
     labels: labels.slice(0, 80),
     editLabelCount: editLabels.length,
     duplicates,
@@ -412,7 +439,9 @@ try {
     actionDuplicates,
     errors,
   };
-  result.ok = duplicates.length === 0 &&
+  result.ok = result.menuVisible &&
+    editLabels.length > 0 &&
+    duplicates.length === 0 &&
     actionDuplicates.length === 0 &&
     fieldActions.length === fieldActionIds.length &&
     propertyHandleCount === propertyIds.length &&
@@ -544,6 +573,7 @@ try {
   const first = bottoms[0] ?? 0;
   const deltas = bottoms.slice(1).map((value, index) => value - bottoms[index]);
   const loading = document.createElement("div");
+  loading.id = "ui-regression-loading-evidence";
   loading.className = "field-startup-progress";
   loading.innerHTML = '<div class="field-startup-progress-title">Loading document</div><div class="field-startup-progress-detail"></div><div class="field-startup-progress-track"><div class="field-startup-progress-bar"></div></div>';
   document.body.appendChild(loading);
@@ -557,13 +587,26 @@ try {
     loadingBottom: Number.parseFloat(loadingStyle.bottom || "0") || 0,
     errors,
   };
-  loading.remove();
   result.ok = result.count >= 4 &&
     Math.abs(first - 10) <= 1.5 &&
     result.deltas.every((delta) => delta >= 6) &&
     Math.abs(result.loadingLeft - 10) <= 1.5 &&
     Math.abs(result.loadingBottom - 10) <= 1.5 &&
     result.errors.length === 0;
+  if (result.ok) {
+    [...document.querySelectorAll(".field-toast")].forEach((node) => node.remove());
+    loading.remove();
+    for (let i = 0; i < 4; i++) window.notify(`toast evidence ${i}`, `toast-evidence-${i}`);
+    await delay(100);
+    const captureToasts = [...document.querySelectorAll(".field-toast")];
+    result.captureToastCount = captureToasts.length;
+    result.captureVisibleToastCount = captureToasts.filter((node) => {
+      const rect = node.getBoundingClientRect();
+      const style = getComputedStyle(node);
+      return rect.width > 0 && rect.height > 0 && Number.parseFloat(style.opacity || "0") > 0.5;
+    }).length;
+    result.ok = result.ok && result.captureToastCount >= 4 && result.captureVisibleToastCount >= 4;
+  }
   return result;
 } finally {
   window.removeEventListener("error", onError);
@@ -668,6 +711,18 @@ try {
     result.propertyCommand.paletteVisible === false &&
     result.editorCommand.paletteVisible === false &&
     result.errors.length === 0;
+  if (result.ok) {
+    window.openFieldCommandPalette({ includeEditor: true, editor: ed });
+    await delay(150);
+    const captureInput = document.querySelector(".afield-palette-input");
+    if (captureInput) {
+      captureInput.value = "ui regression smoke action";
+      captureInput.dispatchEvent(new Event("input", { bubbles: true }));
+      await delay(200);
+    }
+    result.capturePaletteVisible = !!captureInput && paletteVisible();
+    result.ok = result.ok && result.capturePaletteVisible;
+  }
   return result;
 } finally {
   window.removeEventListener("error", onError);
@@ -2441,7 +2496,7 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 "sleep 0.5",
                 shell_join(["page-eval", "--body", "--file", str(files["this_binding_js"]), "--timeout", pw_timeout]),
             ],
-            screenshot=shell_join(["screenshot-window", "{screenshot}", "--uid", "@last", "--with-editor", "--no-pan", "--timeout", pw_timeout]),
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--uid", "@last", "--with-editor", "--no-pan", "--preserve-selection", "--timeout", pw_timeout]),
         ),
         UiRegression(
             id="command-palette-smoke-sweep",
@@ -2466,7 +2521,7 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 shell_join(["page-eval", "--body", "const ed = window.globalEditor; if (!ed) return { ok: false, reason: 'globalEditor missing' }; for (let i = 0; i < 5; i++) { if (typeof window.selectionContextChanged === 'function') window.selectionContextChanged(); await new Promise(resolve => setTimeout(resolve, 80)); } ed.focus(); ed.setPosition({ lineNumber: 1, column: 1 }); return { ok: true };", "--timeout", pw_timeout]),
                 shell_join(["page-eval", "--body", "--file", str(files["monaco_context_menu_actions_js"]), "--timeout", pw_timeout]),
             ],
-            screenshot=shell_join(["screenshot-window", "{screenshot}", "--uid", "@last", "--with-editor", "--no-pan", "--timeout", pw_timeout]),
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--uid", "@last", "--with-editor", "--no-pan", "--preserve-selection", "--timeout", pw_timeout]),
         ),
         UiRegression(
             id="editor-open-edit-sync",
@@ -2510,7 +2565,7 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 "sleep 0.5",
                 shell_join(["page-eval", "--body", "--file", str(files["toast_restack_js"]), "--timeout", pw_timeout]),
             ],
-            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--include-notifications", "--timeout", pw_timeout]),
         ),
         UiRegression(
             id="controllers-editable-lines-output",
@@ -2577,24 +2632,24 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             id="selection-highlight-file-proxy",
             description="Selected file-proxy boxes keep the visible selection ring on the box outline even with a subtitle.",
             commands=[
-                "new-box --name SelectionSubtitleRegression",
+                "new-box --name SelectionSubtitleRegression --w 260 --h 110",
                 shell_join(["set", "@last", "file_proxy_mode", "absolute"]),
                 shell_join(["set", "@last", "file_proxy_path", "/tmp/selection-subtitle-regression.txt"]),
                 "sleep 0.5",
                 shell_join(["page-eval", "--body", "--file", str(files["selection_subtitle_box_js"]), "--timeout", pw_timeout]),
             ],
-            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "24", "--no-open-outputs", "--preserve-selection", "--timeout", pw_timeout]),
         ),
         UiRegression(
             id="selection-highlight-language-box",
             description="Selected non-Kotlin language boxes keep the normal selection border while showing the language label.",
             commands=[
-                "new-box --name LanguageSelectionRegression",
+                "new-box --name LanguageSelectionRegression --w 260 --h 110",
                 shell_join(["set", "@last", "customization", "--file", str(files["language_selection_customization_js"])]),
                 "sleep 0.5",
                 shell_join(["page-eval", "--body", "--file", str(files["language_selection_box_js"]), "--timeout", pw_timeout]),
             ],
-            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "24", "--no-open-outputs", "--preserve-selection", "--timeout", pw_timeout]),
         ),
         UiRegression(
             id="history-panel",
@@ -2791,6 +2846,13 @@ def valid_png(path: Path) -> tuple[bool, str]:
         signature = handle.read(8)
     if signature != b"\x89PNG\r\n\x1a\n":
         return False, f"{path} is not a PNG screenshot"
+    try:
+        with Image.open(path) as image:
+            width, height = image.size
+    except OSError as exc:
+        return False, f"{path} could not be decoded: {exc}"
+    if width < 96 or height < 80:
+        return False, f"{path} is implausibly small for UI evidence ({width}x{height})"
     return True, ""
 
 
@@ -2863,30 +2925,41 @@ def elapsed_text(seconds: float) -> str:
 def run_backdoor_process(
     command: list[str],
     *,
+    operation_timeout: float,
     telemetry_label: str | None = None,
     heartbeat_interval: float = 15.0,
 ) -> tuple[subprocess.CompletedProcess[str], int]:
-    started = time.monotonic()
-    process = subprocess.Popen(
+    expected_results = command.count("--command")
+
+    def commands_complete(stdout: str) -> bool:
+        if not stdout.strip():
+            return False
+        try:
+            return len(json_stream_loads(stdout, test_id=telemetry_label or "ui-regression")) >= expected_results
+        except Exception:
+            return False
+
+    # Treat the regression's timeout as one overall operation budget rather than
+    # multiplying it by every setup/assertion command. Playwright gets a generous
+    # first-start allowance; the completion probe separately catches wrappers
+    # that emit every result and then refuse to exit.
+    outer_timeout = PLAYWRIGHT_TIMEOUT + 45.0 + max(30.0, operation_timeout)
+    process, duration_ms, timed_out = run_with_watchdog(
         command,
         cwd=REPO_ROOT,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        timeout=outer_timeout,
+        heartbeat_interval=heartbeat_interval,
+        heartbeat=(lambda message: print(message, flush=True)) if telemetry_label else None,
+        label=telemetry_label or "ui-regression",
+        completion_probe=commands_complete,
+        exit_grace=10.0,
     )
-    next_heartbeat = started + max(1.0, heartbeat_interval)
-    while True:
-        now = time.monotonic()
-        if telemetry_label and now >= next_heartbeat:
-            print(f"  {telemetry_label}: still running after {elapsed_text(now - started)}", flush=True)
-            next_heartbeat = now + max(1.0, heartbeat_interval)
-        try:
-            stdout, stderr = process.communicate(timeout=0.25)
-            break
-        except subprocess.TimeoutExpired:
-            continue
-    duration_ms = round((time.monotonic() - started) * 1000)
-    return subprocess.CompletedProcess(command, process.returncode, stdout, stderr), duration_ms
+    if timed_out:
+        process.stderr += (
+            f"\nUI regression process watchdog fired after {duration_ms / 1000.0:.1f}s "
+            f"(outer limit {outer_timeout:.0f}s).\n"
+        )
+    return process, duration_ms
 
 
 def run_one(
@@ -2907,6 +2980,7 @@ def run_one(
     command = backdoor_command(test, port=port, timeout=timeout, screenshot_path=screenshot_path)
     process, duration_ms = run_backdoor_process(
         command,
+        operation_timeout=timeout,
         telemetry_label=telemetry_label,
         heartbeat_interval=heartbeat_interval,
     )
@@ -3021,8 +3095,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main() -> int:
-    args = parse_args()
+def run(args: argparse.Namespace) -> int:
     files = prepare_generated_files()
     selected = tests(files, port=args.port, timeout=args.timeout)
     if args.ids:
@@ -3082,6 +3155,18 @@ def main() -> int:
         print(f"Results: {results_path}")
         print(f"Artifacts: {ARTIFACT_ROOT}")
     return 0 if failed == 0 else 1
+
+
+def main() -> int:
+    args = parse_args()
+    stream = sys.stderr if args.json else sys.stdout
+    with verification_lock(
+        REPO_ROOT,
+        label="browser UI regression suite",
+        progress=lambda message: print(message, file=stream, flush=True),
+        heartbeat_interval=args.heartbeat_interval,
+    ):
+        return run(args)
 
 
 if __name__ == "__main__":

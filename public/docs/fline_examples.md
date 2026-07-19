@@ -2338,7 +2338,7 @@ val curve = fline {
 }
 
 val query = vec(260, 60, 0)
-val (closest, _) = curve.closestPoint(query)
+val closest = curve.closestPoint(query).first
 
 val marker = polylineFrom(listOf(query.v2, closest.v2)).apply {
     thickness = 2.0
