@@ -234,7 +234,8 @@ object ValueVisualizer {
             is Vector2fc, is Vector3fc, is Vector4fc,
             is Vector2dc, is Vector3dc, is Vector4dc,
             is Quaternionfc,
-            is Matrix2fc, is Matrix3fc, is Matrix4fc -> false
+            is Matrix2fc, is Matrix3fc, is Matrix4fc,
+            is Matrix2dc, is Matrix3dc, is Matrix4dc -> false
             // Check data classes, collections and other objects
             else -> true
         }
@@ -263,12 +264,15 @@ object ValueVisualizer {
         // Field quaternions
         is Quaternionfc -> formatQuat(value)
 
-        // Field matrices
+        // Field matrices — both the single-precision (…fc) and the generated
+        // double-precision (…dc) families render as diverging heatmaps. (There is still no
+        // double-precision quaternion type, so quaternions stay single-precision above.)
         is Matrix2fc -> formatMatrix(value)
         is Matrix3fc -> formatMatrix(value)
         is Matrix4fc -> formatMatrix(value)
-        // The linalg system has no double-precision matrix/quaternion types
-        // (Matrix2dc/Quaterniondc etc.), so only single-precision (…fc) variants render here.
+        is Matrix2dc -> formatMatrix(value)
+        is Matrix3dc -> formatMatrix(value)
+        is Matrix4dc -> formatMatrix(value)
 
         // Collections
         is Map<*, *> -> formatMap(value, depth, visited, respectDepthLimit)
@@ -1310,6 +1314,83 @@ object ValueVisualizer {
             listOf(m.m01(), m.m11(), m.m21(), m.m31()),
             listOf(m.m02(), m.m12(), m.m22(), m.m32()),
             listOf(m.m03(), m.m13(), m.m23(), m.m33())
+        )
+        val side = 4 * MATRIX_CELL_SIZE
+        return withLinalgThumbnail(text, side, side) { renderMatrixThumbnail(rows) }
+    }
+
+    // ---- double-precision matrices ------------------------------------------
+    // Siblings of the …fc formatters above for the generated f64 matrix family
+    // (Matrix2d/Matrix3d/Matrix4d). Heatmap cells take Float, so the f64 entries are
+    // narrowed only for the thumbnail; the terse header prints the full-precision values.
+
+    private fun formatMatrix(m: Matrix2dc): String {
+        val text = buildString {
+            append(formatTypeName("mat2d", "#cf8"))
+            append(" ")
+            append(formatPunctuation("["))
+            append(formatNumericLiteral(m.m00()))
+            append(formatPunctuation(", "))
+            append(formatNumericLiteral(m.m10()))
+            append(formatPunctuation(" / "))
+            append(formatNumericLiteral(m.m01()))
+            append(formatPunctuation(", "))
+            append(formatNumericLiteral(m.m11()))
+            append(formatPunctuation("]"))
+        }
+        val rows = listOf(
+            listOf(m.m00().toFloat(), m.m10().toFloat()),
+            listOf(m.m01().toFloat(), m.m11().toFloat())
+        )
+        val side = 2 * MATRIX_CELL_SIZE
+        return withLinalgThumbnail(text, side, side) { renderMatrixThumbnail(rows) }
+    }
+
+    private fun formatMatrix(m: Matrix3dc): String {
+        val det = m.determinant()
+        val text = buildString {
+            append(formatTypeName("mat3d", "#cf8"))
+            append(" ")
+            append(formatPunctuation("["))
+            append(formatIdentifier("det"))
+            append(formatPunctuation("="))
+            append(formatNumericLiteral(det))
+            append(formatPunctuation("]"))
+        }
+        val rows = listOf(
+            listOf(m.m00().toFloat(), m.m10().toFloat(), m.m20().toFloat()),
+            listOf(m.m01().toFloat(), m.m11().toFloat(), m.m21().toFloat()),
+            listOf(m.m02().toFloat(), m.m12().toFloat(), m.m22().toFloat())
+        )
+        val side = 3 * MATRIX_CELL_SIZE
+        return withLinalgThumbnail(text, side, side) { renderMatrixThumbnail(rows) }
+    }
+
+    private fun formatMatrix(m: Matrix4dc): String {
+        val det = m.determinant()
+        val text = buildString {
+            append(formatTypeName("mat4d", "#cf8"))
+            append(" ")
+            append(formatPunctuation("["))
+            append(formatIdentifier("det"))
+            append(formatPunctuation("="))
+            append(formatNumericLiteral(det))
+            append(formatPunctuation(", "))
+            append(formatIdentifier("t"))
+            append(formatPunctuation("=("))
+            append(formatNumericLiteral(m.m30()))
+            append(formatPunctuation(", "))
+            append(formatNumericLiteral(m.m31()))
+            append(formatPunctuation(", "))
+            append(formatNumericLiteral(m.m32()))
+            append(formatPunctuation(")"))
+            append(formatPunctuation("]"))
+        }
+        val rows = listOf(
+            listOf(m.m00().toFloat(), m.m10().toFloat(), m.m20().toFloat(), m.m30().toFloat()),
+            listOf(m.m01().toFloat(), m.m11().toFloat(), m.m21().toFloat(), m.m31().toFloat()),
+            listOf(m.m02().toFloat(), m.m12().toFloat(), m.m22().toFloat(), m.m32().toFloat()),
+            listOf(m.m03().toFloat(), m.m13().toFloat(), m.m23().toFloat(), m.m33().toFloat())
         )
         val side = 4 * MATRIX_CELL_SIZE
         return withLinalgThumbnail(text, side, side) { renderMatrixThumbnail(rows) }

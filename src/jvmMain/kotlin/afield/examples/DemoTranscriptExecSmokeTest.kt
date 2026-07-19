@@ -76,6 +76,7 @@ object DemoTranscriptExecSmokeTest {
         "afield_four_traditional_triangle",
         "recstl_playground",
         "threebox",
+        "rectsl_dataviz",
     )
 
     /** Ops that build the box graph without compiling/running any box Kotlin. */
