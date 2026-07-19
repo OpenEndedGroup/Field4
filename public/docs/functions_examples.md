@@ -2495,9 +2495,29 @@ with(Functions) {
 }
 ```
 
-The committed montage below is rendered by the CPU-only `WaveshapeWorkedExample` harness (`./gradlew runWaveshapeWorkedExample`), which sweeps a ramp `-2..2` through each transform so every cell reads as the transform's *transfer curve* — the shape it imposes on its input. It is a pure function of the source signals, so re-running regenerates a byte-identical SVG.
+**The transfer curves.** Sweeping a ramp `-2..2` through each shaper and plotting the result against `x` draws that shaper's *transfer curve* directly — the shape it imposes on its input. The montage below runs the whole waveshaper family (`fold` / `rectify` / `quantize` / `crush` / `chebyshev` / `clip` / `softClip` / `clamp` / `wrapY`) live in a Field box. Each is a pure value shaper, so the curves are deterministic; the CPU-only `WaveshapeWorkedExample` harness (a jvm-main smoke + a JUnit test) asserts the same geometry and bit-for-bit reproducibility without a GPU.
 
-![Transfer curves of the waveshaping transforms: fold triangle, full/half rectifier, quantize staircase, and a folded sine](assets/functions/waveshape-transforms.svg)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/waveshape-transfer-curves.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-waveshape-transfer-curves"}
+:::static
+import afield.stdlib.Functions
+
+with(Functions) {
+    // A ramp sweeping -2..2 across the window: plotting a shaper of it against x draws
+    // that shaper's transfer curve directly — the shape it imposes on its input.
+    val sweep = ramp(-2.0, 2.0) over (0.0..1.0)
+    sweep.withName("input sweep -2..2").plot(channel = "sweep", title = "input: ramp -2..2", heightPx = 150)
+    (sweep / fold(0.7)).plot(channel = "fold", title = "fold(0.7) — wavefolder triangle", heightPx = 150)
+    (sweep / rectify(Functions.RectifyMode.FULL)).plot(channel = "rectFull", title = "rectify(FULL) — |x|", heightPx = 150)
+    (sweep / rectify(Functions.RectifyMode.HALF)).plot(channel = "rectHalf", title = "rectify(HALF) — max(0, x)", heightPx = 150)
+    (sweep / quantize(6)).plot(channel = "quant", title = "quantize(6) — staircase", heightPx = 150)
+    (sweep / crush(3)).plot(channel = "crush", title = "crush(3) — bit-depth steps", heightPx = 150)
+    (sweep / chebyshev(3)).plot(channel = "cheb", title = "chebyshev(3) — T₃ (clamps to [-1, 1])", heightPx = 150)
+    sweep.clip(0.8).plot(channel = "clip", title = "clip(0.8) — hard rails", heightPx = 150)
+    sweep.softClip(3.0).plot(channel = "soft", title = "softClip(3.0) — tanh knee", heightPx = 150)
+    sweep.clamp(-0.8, 0.8).plot(channel = "clamp", title = "clamp(-0.8, 0.8)", heightPx = 150)
+    sweep.wrapY(-0.8, 0.8).plot(channel = "wrap", title = "wrapY(-0.8, 0.8) — sawtooth wrap", heightPx = 150)
+}
+```
 
 **Replay it live.** A loadable operation transcript, [`assets/functions/waveshape-transforms.operations.yaml`](assets/functions/waveshape-transforms.operations.yaml), builds and plots the whole family in a fresh Field document. Replay it with `field_backdoor.py --scratch` (`macro write … && macro run …`) or hand the YAML to the `field_run_transcript` MCP tool. See [Automating Field](automating_field.md) for the transcript path. A companion transcript, [`assets/functions/chebyshev-waveshaper.operations.yaml`](assets/functions/chebyshev-waveshaper.operations.yaml), builds the two boxes captured below. A third, [`assets/functions/waveshaper-family-evolvable.operations.yaml`](assets/functions/waveshaper-family-evolvable.operations.yaml), plots `rectify`/`quantize`/`crush` *and* the payoff of making them first-class: it transmutes a clipped sine into each one by name through the rewrite DSL (`clip => op=rectify`, `op=quantize`, `op=crush`) — the same op vocabulary the evolve loop mutates over.
 
