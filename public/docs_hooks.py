@@ -825,9 +825,13 @@ class RunnerState:
     def ensure_video(self, *, code: str, options: RunnerOptions, page_path: Path, block_index: int) -> None:
         """Record a short video clip instead of taking a screenshot."""
         assert options.video is not None
-        # Always record docs videos from the editor pane.
-        # Keep screenshot capture mode independent when a fence emits both.
-        video_options = replace(options, capture="editor")
+        # Docs videos historically always recorded the editor pane. Respect a fence
+        # that explicitly asks for a different surface — a box output-area card
+        # (capture="box"), a native window (capture="native-window"), or a window —
+        # so, e.g., a live GPU-probe card can be recorded directly. Fences that do not
+        # name a video surface still record the editor.
+        video_capture = options.capture if options.capture in {"box", "window", "native-window"} else "editor"
+        video_options = replace(options, capture=video_capture)
         video_path = resolve_output_path(page_path, options.video)
         video_path.parent.mkdir(parents=True, exist_ok=True)
         cache_allowed = self.runner_mode != "always"
