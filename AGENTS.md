@@ -110,7 +110,7 @@ Mac OS X
 
 - When you need to verify Field behavior by actually running code, prefer `uv run --project . --group backdoor python tools/field_backdoor.py` over driving the browser manually.
 - When you need screenshots or DOM inspection, use `--with-playwright` or `tools/run_ui_regressions.py` through `uv run --project . --group backdoor`. Do not skip this because the current shell's Python environment lacks the `playwright` package; browser automation is provided by Field's JVM Playwright dependency and controlled through the backdoor.
-- When the thing you want to verify is a JVM entrypoint or smoke-style example, prefer the backdoor's `run-jvm-main` command over ad hoc `gradlew` `JavaExec`, temporary init scripts, or custom classpath launchers. Use transient scratch boxes for snippet-level checks and screenshots.
+- When the thing you want to verify is a JVM entrypoint or smoke-style example, prefer the backdoor's `run-jvm-main` command (or `tools/run_field_tests.py` for `FIELD_TEST` entrypoints) over ad hoc `gradlew` `JavaExec`, temporary init scripts, or custom classpath launchers. Use transient scratch boxes for snippet-level checks and screenshots. Both paths apply the required JVM args (`requiredAgentJvmArgs()`: `--add-opens=java.base/java.net=ALL-UNNAMED`, `-XstartOnFirstThread`, `--add-modules jdk.incubator.vector`, `-Dorg.lwjgl.system.stackSize`) for you — a hand-rolled `java -cp … afield.AgentJvmMainLauncher …` line will silently miss one and fail confusingly (e.g. `module java.base does not "opens java.net"`).
 - The backdoor attaches to an existing Field at `https://localhost:9092` or starts Field itself using the Gradle wrapper command above, opens a scratch document by default, and lets you create boxes, set code/shaders, run or launch them, stop them, and capture outputs/errors as JSON.
 - For agent automation, do not rely on the default port. Pass a custom high port such as `--port 9477` so the backdoor starts or reuses an isolated agent-owned Field instead of silently attaching to a stale dev server on `9092`.
 - Reuse the same custom port for one verification session, and pick a new custom port when you want a guaranteed fresh Field JVM. This avoids burning time and tokens debugging old code loaded in some unrelated existing server.
@@ -248,6 +248,10 @@ uv run --project . --group backdoor python tools/run_field_tests.py --refresh-ca
 This regenerates `build/field-tests/catalog.json`, then runs each discovered `FIELD_TEST` entry one-by-one through `uv run --project . --group backdoor python tools/field_backdoor.py --json`.
 Do not pass `--timeout` to `tools/run_field_tests.py`; per-test timeouts come from `timeoutSec` in the `FIELD_TEST` annotation. The backdoor and UI regression runner have their own `--timeout` flags, but the smoke catalog runner does not.
 The smoke runner now **prewarms one persistent Field** on `--port` for the whole run and tears it down once at the end, so tests no longer cold-boot (and self-kill) the JVM per test. Pass `--no-prewarm` to instead reuse an already-running server on `--port`. If a healthy Field is already serving that port, the runner reuses it and leaves it alive.
+
+To iterate on one or a few tests instead of the whole catalog, filter by `--id <catalog-id>` (repeatable; the `id:` from a `FIELD_TEST` block, e.g. `rectsl.language.workout`), `--tag smoke`, or `--runner jvm-main`. This is the correct way to verify a single `jvm-main` smoke — do **not** reach for a raw `java`/`gradlew JavaExec` launcher (see the JVM-args note under *Field Backdoor* above).
+
+Prewarm gotcha: it launches a full Field, whose build includes the JS bundle. A stale Kotlin daemon can throw a transient `:compileDevelopmentExecutableKotlinJs` "Internal compiler error" and fail prewarm even when `./gradlew compileKotlinJvm` succeeds — run `./gradlew --stop` and retry.
 
 Browser UI regression runner:
 
