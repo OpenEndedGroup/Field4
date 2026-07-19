@@ -84,9 +84,9 @@ object ReplBootstrapGateTest {
         require(err != null) {
             "expected out-of-order evaluation to fail (ReplState not yet loaded), but it succeeded"
         }
-        val msg = (err?.message.orEmpty() + " " + err?.cause?.message.orEmpty())
+        val msg = (err.message.orEmpty() + " " + err.cause?.message.orEmpty())
         require(msg.contains("ReplState") || msg.contains("REPL snippets")) {
-            "expected a ReplState-flavoured failure, got: $err (cause=${err?.cause})"
+            "expected a ReplState-flavoured failure, got: $err (cause=${err.cause})"
         }
 
         // Sanity: the *correct* order works on a clean engine.

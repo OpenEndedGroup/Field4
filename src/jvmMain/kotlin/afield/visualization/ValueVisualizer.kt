@@ -982,7 +982,7 @@ object ValueVisualizer {
             ((raw is Map<*, *> && raw.isNotEmpty()) || raw::class.isData)
         if (isStructLike) {
             if (raw in visited) return FieldValue.Inline("<span style='color: #f88;'>[circular reference]</span>")
-            visited.add(raw!!)
+            visited.add(raw)
             try {
                 return when (raw) {
                     is Map<*, *> -> structValueFromMap(raw, depth, visited, respectDepthLimit)
