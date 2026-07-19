@@ -16,8 +16,8 @@ wall 18 8 meters
 duration 6
 fps 30
 
-linear-track "rise" '( 0 -3   3 0   6 3 )
-hold-track "pulse" '( 0 0.2   2 1.0   4 0.45 )
+linear-track "rise" '( 0=-3   3=0   6=3 )
+hold-track "pulse" '( 0=0.2   2=1.0   4=0.45 )
 
 "bar-template" rect
   0 0 xy

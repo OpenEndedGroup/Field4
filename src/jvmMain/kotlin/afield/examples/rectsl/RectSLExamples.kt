@@ -31,7 +31,7 @@ object RectSLExamples {
           -5 0 xy
           1 square
           0xff3300 solid fill
-          '( 0 -5   5 0   10 5 ) x
+          '( 0=-5   5=0   10=5 ) x
         ;
 
         dup "right" rename
@@ -46,8 +46,8 @@ object RectSLExamples {
         duration 6
         fps 30
 
-        linear-track "rise" '( 0 -3   3 0   6 3 )
-        hold-track "pulse" '( 0 0.2   2 1.0   4 0.45 )
+        linear-track "rise" '( 0=-3   3=0   6=3 )
+        hold-track "pulse" '( 0=0.2   2=1.0   4=0.45 )
 
         "bar-template" rect
           0 -2 xy

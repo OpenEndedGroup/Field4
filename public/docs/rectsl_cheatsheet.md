@@ -124,10 +124,13 @@ Material StackSL receives rect/material data from the generated shader harness. 
 
 ## Tracks
 
-Track quotes are flat `time value` pairs:
+Track quotes are flat `time value` pairs. An optional `=` may sit between the
+time and value of a key to read the pairing aloud — `0=0.2` means "0.2 at time
+0". The two forms are interchangeable and may be mixed:
 
 ```diffstatic {data-lang=text}
 '( 0 -1  2 0  4 1 ) linear
+'( 0=-1  2=0  4=1 ) linear
 ```
 
 | Word | Stack | Notes |

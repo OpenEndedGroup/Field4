@@ -37,6 +37,7 @@ object RectSLWorkout {
             "selections and deep timing transforms" to ::selectionsAndDeepTimingTransforms,
             "operators and key lenses" to ::operatorsAndKeyLenses,
             "track modes and time warps" to ::trackModesAndTimeWarps,
+            "track pair separators" to ::trackPairSeparators,
             "layers tracks easing and repeat" to ::layersTracksEasingAndRepeat,
             "array primitives" to ::arrayPrimitives,
             "functions bridge" to ::functionsBridge,
@@ -334,6 +335,50 @@ object RectSLWorkout {
         val delayedAt3 = program.sample(3.0).rects.associateBy { it.id }.getValue("delayed")
         near(0.0, delayedAt1.center.x)
         near(2.0, delayedAt3.center.x)
+    }
+
+    private fun trackPairSeparators() {
+        // `time=value` is sugar for a plain space between the two numbers of a key.
+        // It must tokenize into the same keys, mix freely with spaces, and leave the
+        // comparison operators (`=`, `<=`, `!=`, `tcb!`) untouched elsewhere.
+        val program = compile(
+            """
+            wall 10 4 meters
+            duration 4
+            fps 30
+
+            hold-track pulse '( 0=0.2   2=1.0   4=0.45 )
+
+            "r" rect
+              0 0 xy
+              1 square
+              '( 0=-5   2 0   4=5 ) linear x
+              pulse alpha
+            ;
+            """.trimIndent()
+        )
+
+        val r0 = program.sample(0.0).rects.single()
+        val r2 = program.sample(2.0).rects.single()
+        val r4 = program.sample(4.0).rects.single()
+
+        // hold-track pulse, referenced as alpha.
+        near(0.2, r0.alpha)
+        near(1.0, r2.alpha)
+        near(0.45, r4.alpha)
+
+        // mixed `=` / space linear x track.
+        near(-5.0, r0.center.x)
+        near(0.0, r2.center.x)
+        near(5.0, r4.center.x)
+
+        // Operators containing `=` still tokenize as single words, and `=` is only a
+        // separator inside track quotes — not a general split (`tcb!` stays whole).
+        val ops = RectLangTokenizer("<= >= != <> = tcb! 0=0.2").tokenize()
+        val words = ops.filterIsInstance<Token.Word>().map { it.name }
+        require(words == listOf("<=", ">=", "!=", "<>", "=", "tcb!", "=")) { words }
+        val nums = ops.filterIsInstance<Token.Number>().map { it.value }
+        require(nums == listOf(0.0, 0.2)) { nums }
     }
 
     private fun layersTracksEasingAndRepeat() {

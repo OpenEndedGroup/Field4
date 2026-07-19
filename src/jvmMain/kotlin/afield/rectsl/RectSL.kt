@@ -152,6 +152,11 @@ private fun Value.describe(): String = when (this) {
 class RectLangTokenizer(private val source: String) {
     private var i = 0
 
+    private companion object {
+        // Longest match first so multi-char operators aren't split by their prefixes.
+        private val OPERATORS = listOf("<=", ">=", "!=", "<>", "<", ">", "=")
+    }
+
     fun tokenize(): List<Token> {
         val tokens = mutableListOf<Token>()
         while (true) {
@@ -218,10 +223,16 @@ class RectLangTokenizer(private val source: String) {
         }
         if (ch == ')' && inQuote) throw RectLangException("Unexpected ')' in quote")
 
+        // Comparison operators and the track-pair separator `=` are punctuation.
+        // Recognise them explicitly (longest match first) so `0=0.2` splits into
+        // `0` `=` `0.2` while `<=`, `>=`, `!=`, `<>` stay whole. `=` is also a
+        // break character below, so it separates operands even when glued to them.
+        matchOperator()?.let { return it }
+
         val start = i
         while (i < source.length) {
             val c = source[i]
-            if (c.isWhitespace() || c == '#' || c == '"' || c == ';' || c == ':') break
+            if (c.isWhitespace() || c == '#' || c == '"' || c == ';' || c == ':' || c == '=') break
             if (inQuote && c == ')') break
             if (source.startsWith("'(", i)) break
             i++
@@ -229,6 +240,16 @@ class RectLangTokenizer(private val source: String) {
         if (start == i) throw RectLangException("Unexpected character '${source[i]}'")
         val raw = source.substring(start, i)
         return atom(raw)
+    }
+
+    private fun matchOperator(): Token.Word? {
+        for (op in OPERATORS) {
+            if (source.startsWith(op, i)) {
+                i += op.length
+                return Token.Word(op)
+            }
+        }
+        return null
     }
 
     private fun parseString(): Token.StringLit {
@@ -2248,9 +2269,13 @@ class RectLangVm(
     enum class TrackMode { Tcb, Linear, Hold }
 
     fun quoteToScalarTrack(quote: VQuote, mode: TrackMode): Track<Double> {
-        val numbers = quote.tokens.map {
-            it as? Token.Number ?: throw RectLangException("Track quote expected only numbers, found $it")
-        }.map { it.value }
+        // `time=value` reads more clearly than a bare space between the two, so the
+        // `=` separator is accepted (and ignored) between the numbers of each pair.
+        val numbers = quote.tokens
+            .filterNot { it is Token.Word && it.name == "=" }
+            .map {
+                it as? Token.Number ?: throw RectLangException("Track quote expected only numbers, found $it")
+            }.map { it.value }
         if (numbers.size < 2 || numbers.size % 2 != 0) {
             throw RectLangException("Track quote expected time/value pairs")
         }
