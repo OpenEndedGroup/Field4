@@ -220,7 +220,13 @@ object DemoTranscriptExecSmokeTest {
         Box.withBoxContext(box) {
             // Expand macros first: this both rewrites moduleHere/prop/println/… AND writes the
             // prop<T>() delegate declarations into the box's preamble (applyInsertToPreamble).
+            // Then substitute the `__line__` sentinel the print macros emit — standardExecutionPractice
+            // (the real path) does this between applyMacros and eval; skipping it leaves an unresolved
+            // `__line__` reference. The exact number is irrelevant to compilation.
             val expanded = box.ki.applyMacros(box, box.code)
+                .split("\n")
+                .mapIndexed { i, line -> line.replace("__line__", "$i") }
+                .joinToString("\n")
 
             // Evaluate setup blocks (preamble/introduction/attic). These are declaration-only and
             // never open a Window; evaluating them puts the Box.<prop> extension symbols (gathered
