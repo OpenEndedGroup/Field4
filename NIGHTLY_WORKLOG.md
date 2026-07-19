@@ -89,4 +89,67 @@ an honest gap beats a false green or a false red.
   the harness FAIL with the real diagnostic, restore. Report both observations.
 
 ---
-(results appended below as work proceeds)
+
+## Results (step 5)
+
+### Files changed
+- **`src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt`** (new) — the harness /
+  FIELD_TEST `examples.demo-transcript.exec`. Boots a daemon runloop headless, iterates the shipped
+  transcripts, EXECUTEs the pure-compute ones via `OperationTranscript.runMacro` and COMPILE-checks
+  the graphics ones via the real macro-expand + preamble + K2 compile pipeline (eval skipped). Exits
+  0 only if every demo passes.
+- **`src/jvmMain/kotlin/afield/four/modules/Mesh.kt`** — bug fix (see "First catch" below).
+- **`dev_docs/agents/transcripts/README.md`**, **`dev_docs/testing/TESTING_STRATEGY.md`** — document
+  the harness and the EXECUTE/COMPILE_ONLY classification; "shipping a demo" now means its boxes
+  run/compile in CI.
+- **`NIGHTLY_WORKLOG.md`** (this file).
+
+### Per-demo treatment (and why)
+- **EXECUTE** (pure compute, safe to run to completion headless — asserted: `run.success` AND zero
+  `kind=="error"` output lines): `fn_differentiable_fit_demo`, `linalg_thumbnails_demo`,
+  `hello_display`, `hello_display_capture`, `two_box_context`.
+- **COMPILE-ONLY** (construct a GLFW `Window`/`Renderer` or depend on a running renderer's context —
+  a render loop is inappropriate/risky in unattended 2am CI; asserted: zero ERROR compile
+  diagnostics per box, eval skipped so no window opens): `graphics_renderer_launch`,
+  `afield_four_traditional_triangle`, `recstl_playground`, `threebox`. Notably the context-dependent
+  child boxes `tb_compute`/`tb_draw` (bare `renderer`/`outputPositions`) DO compile clean, because
+  `prop<T>()` writes `/**/`-suffixed delegate declarations into the parent preamble that
+  `gatherPreambleUpwards` propagates to children — so this is a real, faithful compile, not a
+  narrowed subset.
+
+### What I ran and observed
+- Green run (`python3 tools/run_field_tests.py --id examples.demo-transcript.exec`): **PASS** —
+  `DemoTranscriptExecSmokeTest ok — 9 demos verified (5 executed, 4 compiled)`, exitCode 0. Every
+  demo PASS, incl. the once-buggy `fn_differentiable_fit_demo`; every graphics box compiled clean.
+- Deliberate-break proof: injected `val dom = Domain(0.0, 1.0)` (the exact fn-fit class — an
+  unresolved reference) into `fn_differentiable_fit_demo.yaml`'s execute code, reran → **FAIL**,
+  exitCode 1, diagnostic: `fn_differentiable_fit_demo: box execution emitted 1 error diagnostic(s):
+  fn_fit_demo:8 Unresolved reference 'Domain'.` Restored the yaml (`git checkout`), reran → **PASS**
+  again. A verification test I watched fail on the real regression it is meant to catch, then pass
+  once fixed.
+
+### First catch — a real bug the harness surfaced
+Executing `two_box_context` (child reads a parent-set property via
+`fromContextWithNameOrNull<String>(...)`) threw `class LinkedHashMap$Entry cannot be cast to String`.
+Root cause: `fromContextWithNameOrNull` (Mesh.kt) did `return a as A` where `a` was a `Map.Entry`,
+not `a.value` — its property-inheritance path had **never** worked (only the ki-var path did). Fixed
+both occurrences (`return a.value as A`). This is precisely the class of latent breakage the harness
+exists to catch, found on its first real run.
+
+### Bootstrapping detail
+A jvm-main entrypoint runs in a fresh subprocess with no server, and box KI init + fragment execution
+both schedule onto the runloop (`inMain`). The harness starts `Runloop.runLoop.start()` on a daemon
+thread and waits for the first frame; teardown relies on the daemon runloop + AgentJvmMainLauncher's
+exitProcess safety net. Observed: the test process exits (run completes in ~17s; runner reports PASS).
+
+### Risks
+Low. The harness is additive test infra; the one production change (`fromContextWithNameOrNull`)
+strictly fixes a code path that always threw, so no working caller can regress. Compile-only demos do
+not open windows. Residual: the harness does not *run* graphics render loops (by design) — GLSL and
+render-loop behaviour stay covered by the graphics/render smokes; and it depends on the runloop
+starting within 30s (guarded with a clear error).
+
+### Recommendation
+**Merge.** Closes the documented verification-integrity gap (nothing ran shipped demo box Kotlin),
+proven to catch the exact fn-fit regression, and already caught a second real bug
+(`fromContextWithNameOrNull`) as a bonus. No loadable demo artifact is produced (kind B, test infra).
