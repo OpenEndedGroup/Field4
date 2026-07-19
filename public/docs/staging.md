@@ -40,7 +40,7 @@ Use this for a fast HTML-only rebuild from existing captures:
 FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --clean
 ```
 
-Do not install Zensical or MkDocs packages by hand for the normal docs flow;
+Do not install Zensical packages by hand for the normal docs flow;
 install `uv` if it is missing, then run the command above. Use `incremental`
 while writing normal docs, `strict` when runner changes should invalidate
 cached captures, and `never` when you only want to rebuild the site HTML from

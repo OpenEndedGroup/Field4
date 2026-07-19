@@ -852,7 +852,7 @@ const paletteSemanticPreview = (item) => {
         return bits.join("")
 }
 
-// mkdocs (use_directory_urls: true) slugifies a heading into a URL anchor:
+// Zensical (use_directory_urls: true) slugifies a heading into a URL anchor:
 // lowercase, drop punctuation, collapse whitespace/hyphens into single hyphens.
 const docsAnchorForTitle = (title) => {
         const t = String(title || "").trim().toLowerCase()
@@ -861,7 +861,7 @@ const docsAnchorForTitle = (title) => {
 }
 
 // Convert an indexed documentation path (e.g. "public/docs/colors_examples.md")
-// into the rendered docs-site URL. mkdocs builds with use_directory_urls, so
+// into the rendered docs-site URL. Zensical builds with use_directory_urls, so
 // "foo.md" -> "foo/" and "index.md" -> the directory root.
 const docsUrlForHit = (hit) => {
         let rel = String(hit && hit.path || "").trim()

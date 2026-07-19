@@ -144,7 +144,7 @@ FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_
 That one command is the supported Zensical path: `uv` resolves the docs
 dependencies from `pyproject.toml`/`uv.lock`, `tools/build_zensical_docs.py`
 preprocesses Field's runnable docs fences, and the wrapper then invokes
-Zensical. Do not create a separate virtualenv or install Zensical/MkDocs
+Zensical. Do not create a separate virtualenv or install Zensical
 packages by hand.
 
 Regenerate every screenshot and video through a fresh Field-backed docs run:

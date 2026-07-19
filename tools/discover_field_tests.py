@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 # Single source of truth for the fabricate docs scene registry, shared with the
-# mkdocs docs-build hook. The map lives next to that hook in public/, so add it
+# docs-build runner (docs_hooks.py). The map lives next to that runner in public/, so add it
 # to sys.path here rather than duplicating the map (the two used to drift and
 # break docs builds). See public/fabricate_docs_scenes.py.
 _REPO_ROOT = Path(__file__).resolve().parent.parent

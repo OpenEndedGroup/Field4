@@ -23,15 +23,17 @@ import urllib.error
 import urllib.request
 import ssl
 
-from mkdocs.structure.files import File
-
 # Shared with tools/discover_field_tests.py; see public/fabricate_docs_scenes.py.
-# public/ is already on sys.path when mkdocs loads this hook, so this stays a
-# clean leaf import with no sys.path manipulation.
-from fabricate_docs_scenes import FABRICATE_DOCS_SCENES, validate_scenes_against_harness
+# public/ is already on sys.path when the Zensical build imports this module, so
+# this stays a clean leaf import with no sys.path manipulation.
+from fabricate_docs_scenes import (
+    FABRICATE_DOCS_SCENES,
+    compute_scene_inputs_digest,
+    validate_scenes_against_harness,
+)
 
 
-LOG = logging.getLogger("mkdocs.field_runner")
+LOG = logging.getLogger("zensical.field_runner")
 
 RUNNER_TARGETS = {
     "diffstatic_runner": "diffstatic",
@@ -746,12 +748,14 @@ class RunnerState:
         video_path = resolve_output_path(page_path, options.video)
         video_path.parent.mkdir(parents=True, exist_ok=True)
         cache_allowed = self.runner_mode != "always"
+        scene_inputs = compute_scene_inputs_digest(self.repo_root, options.fabricate_scene)
         cache_metadata = compute_cache_metadata(
             code=code,
             options=video_options,
             page_path=page_path,
             block_index=block_index,
             runner_source_digest=self.runner_source_digest,
+            scene_inputs_digest=scene_inputs,
         )
         digest = compute_digest(
             code=code,
@@ -760,6 +764,7 @@ class RunnerState:
             block_index=block_index,
             runner_mode=self.runner_mode,
             runner_source_digest=self.runner_source_digest,
+            scene_inputs_digest=scene_inputs,
         )
         cache_key = str(video_path)
         cached_digest = self.cache.get(cache_key)
@@ -936,13 +941,15 @@ class RunnerState:
         primary = outputs[0]
 
         cache_allowed = self.runner_mode != "always"
+        scene_inputs = compute_scene_inputs_digest(self.repo_root, options.fabricate_scene)
         cache_metadata = compute_cache_metadata(
             code=code, options=options, page_path=page_path, block_index=block_index,
-            runner_source_digest=self.runner_source_digest,
+            runner_source_digest=self.runner_source_digest, scene_inputs_digest=scene_inputs,
         )
         digest = compute_digest(
             code=code, options=options, page_path=page_path, block_index=block_index,
             runner_mode=self.runner_mode, runner_source_digest=self.runner_source_digest,
+            scene_inputs_digest=scene_inputs,
         )
         cache_key = str(primary)
         cached_digest = self.cache.get(cache_key)
@@ -1051,12 +1058,14 @@ class RunnerState:
         screenshot_path = resolve_output_path(page_path, options.screenshot)
         screenshot_path.parent.mkdir(parents=True, exist_ok=True)
         cache_allowed = self.runner_mode != "always"
+        scene_inputs = compute_scene_inputs_digest(self.repo_root, options.fabricate_scene)
         cache_metadata = compute_cache_metadata(
             code=code,
             options=options,
             page_path=page_path,
             block_index=block_index,
             runner_source_digest=self.runner_source_digest,
+            scene_inputs_digest=scene_inputs,
         )
         digest = compute_digest(
             code=code,
@@ -1065,6 +1074,7 @@ class RunnerState:
             block_index=block_index,
             runner_mode=self.runner_mode,
             runner_source_digest=self.runner_source_digest,
+            scene_inputs_digest=scene_inputs,
         )
         cache_key = str(screenshot_path)
         cached_digest = self.cache.get(cache_key)
@@ -1290,16 +1300,6 @@ class RunnerState:
 
 
 STATE: RunnerState | None = None
-
-
-def on_page_markdown(markdown: str, page: Any, config: Any, files: Any) -> str:
-    state = ensure_state(config)
-    abs_src_path = getattr(page.file, "abs_src_path", None)
-    if abs_src_path:
-        page_path = Path(abs_src_path).resolve()
-    else:
-        page_path = (Path(config["docs_dir"]) / page.file.src_path).resolve()
-    return process_markdown(markdown=markdown, page_path=page_path, state=state, files=files)
 
 
 def on_post_build(config: Any) -> None:
@@ -1917,13 +1917,12 @@ def markdown_path_for(page_path: Path, screenshot: str) -> str:
 
 
 def register_generated_file(*, files: Any, docs_dir: Path, site_dir: Path, use_directory_urls: bool, output_path: Path) -> None:
-    try:
-        relative = output_path.relative_to(docs_dir).as_posix()
-    except ValueError:
-        return
-    if files.get_file_from_path(relative) is not None:
-        return
-    files.append(File(relative, str(docs_dir), str(site_dir), use_directory_urls))
+    # Obsolete under Zensical: generated capture assets are copied into the built
+    # site by tools/build_zensical_docs.py:copy_non_markdown_files, so there is no
+    # live Files collection to register with (the build passes a no-op stub). Kept
+    # as a no-op so the capture call sites need no change. The retired hook-based
+    # build path used this to register each generated asset with the served site.
+    del files, docs_dir, site_dir, use_directory_urls, output_path
 
 
 def path_is_relative_to(path: Path, parent: Path) -> bool:
@@ -2012,9 +2011,10 @@ def compute_cache_metadata(
     page_path: Path,
     block_index: int,
     runner_source_digest: str,
+    scene_inputs_digest: str = "",
 ) -> dict[str, Any]:
     options_payload = options_digest_payload(options)
-    return {
+    metadata = {
         "page": str(page_path),
         "block": block_index,
         "scriptVersion": SCRIPT_VERSION,
@@ -2023,6 +2023,11 @@ def compute_cache_metadata(
         "optionsDigest": digest_json(options_payload),
         "options": options_payload,
     }
+    # Only bulk-render gallery scenes declare inputs; omitting the key otherwise
+    # keeps every other fence's metadata byte-for-byte identical.
+    if scene_inputs_digest:
+        metadata["sceneInputs"] = scene_inputs_digest
+    return metadata
 
 
 def compute_digest(
@@ -2033,6 +2038,7 @@ def compute_digest(
     block_index: int,
     runner_mode: str,
     runner_source_digest: str,
+    scene_inputs_digest: str = "",
 ) -> str:
     payload = {
         "page": str(page_path),
@@ -2042,6 +2048,10 @@ def compute_digest(
         "code": code,
         "options": options_digest_payload(options),
     }
+    # See compute_cache_metadata: the key is present only for gallery scenes, so
+    # non-gallery fences hash to exactly the same digest as before this feature.
+    if scene_inputs_digest:
+        payload["sceneInputs"] = scene_inputs_digest
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
 
 
@@ -2229,7 +2239,7 @@ def reuse_existing_asset_for_incremental(
         return False
     if not isinstance(cached_metadata, dict):
         return False
-    stable_keys = ("page", "block", "scriptVersion", "codeDigest", "optionsDigest")
+    stable_keys = ("page", "block", "scriptVersion", "codeDigest", "optionsDigest", "sceneInputs")
     if any(cached_metadata.get(key) != current_metadata.get(key) for key in stable_keys):
         return False
     return cached_metadata.get("runnerSourceDigest") != current_metadata.get("runnerSourceDigest")

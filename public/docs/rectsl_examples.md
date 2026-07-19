@@ -22,6 +22,14 @@ example below in the offline viewer. A `window + renderer` box sets up the
 graphics context, and each example is a child of it, inheriting `renderer` and
 drawing its scene live:
 
+Editing or adding an example is picked up by *building the docs* — no extra step.
+The gallery directory is declared as a build input of the `rectsl-gallery` /
+`rectsl-animations` render scenes (`FABRICATE_SCENE_INPUTS` in
+`public/fabricate_docs_scenes.py`), so touching a `*_rectsl_.rectsl` file re-renders
+the stills and mp4s on the next docs build (`tools/build_zensical_docs.py`);
+`tools/check_doc_assets.py` then fails the build if any referenced clip was not
+rendered and committed.
+
 <iframe
   src="/offline.html?file=/field4/assets/rectsl_gallery/metadata.edn"
   title="RectSL gallery workspace"
@@ -856,6 +864,335 @@ end-group
        style="width:100%;max-width:640px;border-radius:8px;">
 </video>
 
+
+## Operator coverage — the rest of the language
+
+The gallery above is chosen for beauty; the clips below are chosen for *coverage*. Together
+they exercise every operator in the [cheatsheet](rectsl_cheatsheet.md) at least once — a smoke
+test (`rectsl.examples.smoke`) fails the build if that ever stops being true, treating aliases
+(`add`/`+`, `lte`/`<=`, `clone`/`copy`, …) as one. Each clip is a real headless render of an
+editable program in the same `assets/rectsl_gallery/` workspace.
+
+### Easing ladder
+
+Four markers ride the same up-and-down key track, but each shapes it with a different Penner curve — a linear reference, then `ease-in`, `ease-out`, and `ease-in-out` — so acceleration, deceleration, and the symmetric case visibly pull apart. `fit contain` keeps the wall's aspect ratio inside the frame.
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+wall 12 8 meters
+duration 4
+fps 30
+fit contain
+
+"linear" rect
+  -4.5 0 xy  1.1 square  0xff5a3c solid fill
+  '( 0 -3  2 3  4 -3 ) 4 loop-time y ;
+
+"ease-in" rect
+  -1.5 0 xy  1.1 square  0xffd23c solid fill
+  '( 0 -3  2 3  4 -3 ) ease-in 4 loop-time y ;
+
+"ease-out" rect
+  1.5 0 xy  1.1 square  0x38e1b0 solid fill
+  '( 0 -3  2 3  4 -3 ) ease-out 4 loop-time y ;
+
+"ease-inout" rect
+  4.5 0 xy  1.1 square  0x3c8cff solid fill
+  '( 0 -3  2 3  4 -3 ) ease-in-out 4 loop-time y ;
+```
+
+<video src="../assets/rectsl/rectsl-easing-ladder.mp4" poster="../assets/rectsl/rectsl-easing-ladder.png"
+       autoplay loop muted playsinline
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
+### Time canon
+
+One left-to-right sweep, reproduced as eight rows, each warped only in *time*: `delay-time` starts later, `scale-time` and `time*` change tempo, `time+` nudges the keys forward, `reverse-time` runs it backward, `pingpong-time` bounces, and `snap-time` quantises the key times to a grid. The shared motion falls into a round.
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+wall 20 12 meters
+duration 6
+fps 30
+
+"plain" rect  -8 5 xy  1 square  0xff5a3c solid fill
+  '( 0 -8  3 0  6 8 ) x ;
+"delayed" rect  -8 3.4 xy  1 square  0xff8c3c solid fill
+  '( 0 -8  3 0  6 8 ) 1.5 delay-time x ;
+"stretched" rect  -8 1.8 xy  1 square  0xffd23c solid fill
+  '( 0 -8  3 0  6 8 ) 0.5 scale-time x ;
+"shifted" rect  -8 0.2 xy  1 square  0xa6e22e solid fill
+  '( 0 -8  3 0  6 8 ) 1 time+ x ;
+"faster" rect  -8 -1.4 xy  1 square  0x38e1b0 solid fill
+  '( 0 -8  3 0  6 8 ) 1.4 time* x ;
+"reversed" rect  -8 -3 xy  1 square  0x3c8cff solid fill
+  '( 0 -8  3 0  6 8 ) reverse-time x ;
+"pinged" rect  -8 -4.6 xy  1 square  0xb45cff solid fill
+  '( 0 -8  1.5 8  3 -8 ) 3 pingpong-time x ;
+"snapped" rect  -8 -6 xy  1 square  0xff5ab4 solid fill
+  '( 0 -8  1.2 -2  2.4 4  3.6 8 ) 1 snap-time x ;
+```
+
+<video src="../assets/rectsl/rectsl-time-canon.mp4" poster="../assets/rectsl/rectsl-time-canon.png"
+       autoplay loop muted playsinline
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
+### Key lenses
+
+Every animated channel is also readable and re-writable. Each small square sets one track, then pulls it back out with an accessor — `x-track`, `y-track`, `w-track`, `h-track`, `rot-track`, `scale-x-track`/`scale-y-track`, `alpha-track`, `z-track`/`layer-track` — and reshapes it with `value+`, `clamp-values`, or the key-window filters `keys-before`/`keys-after`/`keys-between` before assigning it back. The last two squares show the three key modes: a named `track` (TCB), a `tcb` curve tuned with `tcb!`, and a stepped `hold`.
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+wall 16 10 meters
+duration 4
+fps 30
+
+track named-wobble '( 0 -1  1 1  2 -1  3 1  4 -1 )
+
+"lx" rect  -7 4 xy  1 square  0xff5a3c solid fill
+  '( 0 -2  4 2 ) x
+  x-track  3 value+  x ;
+"ly" rect  -5 4 xy  1 square  0xffd23c solid fill
+  '( 0 -4  2 4  4 -4 ) y
+  y-track  -2 2 clamp-values  y ;
+"lw" rect  -3 4 xy  2 1 wh  0x38e1b0 solid fill
+  '( 0 0.5  2 3  4 0.5 ) w
+  w-track  2 keys-before  w ;
+"lh" rect  -1 4 xy  1 2 wh  0x3c8cff solid fill
+  '( 0 0.5  2 3  4 0.5 ) h
+  h-track  2 keys-after  h ;
+"lr" rect  1 4 xy  1.4 square  0xb45cff solid fill
+  '( 0 0  2 3.14159  4 6.28318 ) rot
+  rot-track  1 3 keys-between  rot ;
+"ls" rect  3 4 xy  1.2 square  0xff5ab4 solid fill
+  '( 0 0.6  2 1.6  4 0.6 )  '( 0 1.4  2 0.6  4 1.4 ) scale-xy
+  scale-x-track  1.1 value*  scale-y-track  scale-xy ;
+"la" rect  5 4 xy  1.4 square  0xffffff solid fill
+  '( 0 0.15  2 1  4 0.15 ) alpha
+  alpha-track  0.2 value+  0 1 clamp-values  alpha ;
+"lz" rect  0 -1 xy  3 square  0x224466 solid fill
+  '( 0 0  4 2 ) z
+  z-track  1 value+  z
+  layer-track  0 4 keys-between  layer ;
+"modes-tcb" rect  -6 -4 xy  0.9 square  0xff5a3c solid fill
+  "named-wobble" track-ref  1.5 value*  y
+  '( 0 0.6  2 1.6  4 0.6 ) tcb  -0.4 0 0 tcb!  scale ;
+"modes-hold" rect  -4 -4 xy  0.9 square  0xffd23c solid fill
+  '( 0 -3  1 -1  2 -3  3 1  4 3 ) hold y ;
+```
+
+<video src="../assets/rectsl/rectsl-key-lenses.mp4" poster="../assets/rectsl/rectsl-key-lenses.png"
+       autoplay loop muted playsinline
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
+### Selection & logic
+
+Build first, sort by logic second. A `times` loop lays down a strip of tagged cells whose brightness and size are gated by comparisons (`<`, `<=`, `>`, `>=`, `=`, `!=`) and booleans (`and`, `or`, `not`) on the loop index. Then the scene organises itself: `all`, `roots`, `children`, and `descendants` walk the tree; `rects`, `groups`, `tagged` and the predicates `rect?`/`group?`/`tagged?`/`id` filter it; and `each`/`map`/`filter` transform the survivors — finishing with a `copy-deep` of the whole strip and a `group-selected` that gathers the sparks into a new group.
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+wall 20 10 meters
+duration 4
+fps 30
+
+"strip" group
+  8 '(
+    "cell" rect
+      i 3.5 - 2.2 *  0  xy
+      1.3 square
+      "cell" tag
+      0x2e5a86 solid fill
+      i 2 >=  i 6 <=  and  not   0.55 *  0.45 +   alpha
+      i 3 <  i 4 >  or   i 5 != and   0.25 *  0.85 +   scale
+      '( 0 -0.2  2 0.2  4 -0.2 ) 4 loop-time rot
+  ) times
+end
+
+"decor" group
+  "dot-a" rect  -8 3.5 xy  0.6 square  0xffd23c solid fill  "spark" tag ;
+  "dot-b" rect   8 3.5 xy  0.6 square  0xffd23c solid fill  "spark" tag ;
+end
+
+all rects  '( 0.85 opacity* ) each ;
+all  '( "spark" tagged? ) filter  '( 1.4 scale ) map ;
+all  '( rect? ) filter  '( ) each ;
+all  '( group? ) filter  '( ) each ;
+all groups  '( ) each ;
+all  "spark" tagged  '( ) map ;
+all rects  '( id "cell" = ) filter  '( 0xff5a3c solid fill ) each ;
+all rects  '( id "cell" != ) filter  '( ) each ;
+roots  '( ) each ;
+"strip" select selected  '( ) each ;
+"strip" select children  '( 0.95 opacity* ) each ;
+"strip" select descendants rects  '( ) each ;
+"strip" select copy-deep "strip2" rename ;
+"strip2" select  0 -4 translate ;
+all rects  '( "spark" tagged? ) filter  "sparks" group-selected ;
+```
+
+<video src="../assets/rectsl/rectsl-selection-logic.mp4" poster="../assets/rectsl/rectsl-selection-logic.png"
+       autoplay loop muted playsinline
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
+### Whole-timeline transforms
+
+Where the key-lens words retime one track, the `*-all-time` words retime *every* track on an object at once: `loop-all-time`, `pingpong-all-time`, `reverse-all-time`, and `scale-all-time` each bend one spinning square's whole timeline. The fan below reproduces a square with `array` and spreads the copies with `stagger`, tinting each by its centered fraction `fc`.
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+wall 20 10 meters
+duration 6
+fps 30
+
+"loopy" rect  -6 2.5 xy  1.6 square  0xff5a3c solid fill
+  '( 0 0  3 6.28318 ) rot  '( 0 0.6  1.5 1.5  3 0.6 ) scale
+  2 loop-all-time ;
+"pongy" rect  -2 2.5 xy  1.6 square  0xffd23c solid fill
+  '( 0 0  3 6.28318 ) rot  '( 0 0.6  1.5 1.5  3 0.6 ) scale
+  2 pingpong-all-time ;
+"revvy" rect  2 2.5 xy  1.6 square  0x38e1b0 solid fill
+  '( 0 -6  6 6 ) x  '( 0 0  6 6.28318 ) rot
+  reverse-all-time ;
+"slowy" rect  6 2.5 xy  1.6 square  0x3c8cff solid fill
+  '( 0 0  3 6.28318 ) rot  '( 0 0.6  1.5 1.5  3 0.6 ) scale
+  0.5 scale-all-time ;
+
+"fan" rect  0 -3 xy  0.7 square  0xffffff solid fill
+  '( 0 0  6 6.28318 ) rot
+  9 '( fc abs 0.7 *  0.3 +  alpha ) array
+  1.7 0 stagger ;
+```
+
+<video src="../assets/rectsl/rectsl-all-time.mp4" poster="../assets/rectsl/rectsl-all-time.png"
+       autoplay loop muted playsinline
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
+### Kaleidoscope
+
+A single travelling seed, mirrored three ways: `mirror-x-at` and `mirror-y-at` fold it across custom axes and `mirror-y` across the origin, while `front` and `back` decide which copy wins where they overlap. `background` sets the dark field behind them.
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+wall 14 14 abstract
+background 0x101018
+duration 6
+fps 30
+
+"seed" rect
+  -3.5 -3.5 xy  2.4 square  0xff5a3c solid fill
+  '( 0 0  6 6.28318 ) rot
+  '( 0 -4.5  3 -2.5  6 -4.5 ) x ;
+
+"seed" select clone "mx" rename
+  3.5 mirror-x-at  0x38e1b0 solid fill  front ;
+"seed" select clone "my" rename
+  0 mirror-y-at  0xffd23c solid fill  back ;
+"seed" select clone "myy" rename
+  mirror-y  0x3c8cff solid fill ;
+```
+
+<video src="../assets/rectsl/rectsl-kaleidoscope.mp4" poster="../assets/rectsl/rectsl-kaleidoscope.png"
+       autoplay loop muted playsinline
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
+### Grid field
+
+A `grid` hands each cell its `col`/`row` and the grid's `cols`/`rows`; from those this field computes a radial falloff and a quantised rotation with the scalar toolbox — `sqrt`, `pow`, `min`, `max`, `neg`, `ceil`, `clamp`, `smoothstep`, `pi` — plus the stack shuffles `over` and `drop`. The wall is sized in `pixels` and `fit cover` fills the frame.
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+wall 1600 900 pixels
+fit cover
+duration 4
+fps 30
+
+12 7 '(
+  "c" rect
+    colc 110 *  rowc 110 *  xy
+    76 square
+    colc dup *  rowc dup *  +  sqrt
+    dup  0 5 smoothstep  neg 1 +  0.05 max  0 1 clamp  0.9 *  0.1 +  alpha
+    5 min  neg 5 +  5 /  0.4 pow  40 *  40 +  w
+    col cols 1 - /  row rows 1 - /  over  +  0.5 *  swap drop
+    4 *  ceil  4 /  pi *  rot
+  ) grid
+```
+
+<video src="../assets/rectsl/rectsl-grid-field.mp4" poster="../assets/rectsl/rectsl-grid-field.png"
+       autoplay loop muted playsinline
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
+### Curve transforms
+
+Two more moves from the [Functions bridge](#distribution-curves-the-functions-bridge): `tile` repeats a `gaussian` into a comb of identical bumps that scales each bar's looping height, and `reflect` mirrors a seeded `noise` curve to nudge each bar sideways.
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+wall 22 8 meters
+duration 3
+fps 30
+
+"bar" rect  0 -3 xy  0.5 1 wh  0x38e1b0 solid fill
+  24 '(
+    ic 0.85 * 0 offset
+    '( 0 0.15  1.5 1.1  3 0.15 ) 3 loop-time
+    gaussian 3 tile  f sample  5.5 *  value*
+    h
+    7 noise reflect  f sample  0.3 *  0 translate
+  ) array
+;
+```
+
+<video src="../assets/rectsl/rectsl-curve-transforms.mp4" poster="../assets/rectsl/rectsl-curve-transforms.png"
+       autoplay loop muted playsinline
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
+### Paint & scene kit
+
+The paint and scene-setup words in one panel-and-chips composition: `rgb`/`rgba` build fills channel-by-channel, `nxy`/`nwh` place and size the panel in normalised `[0, 1]` wall space, and each chip carries per-rect `shader` data read by its material. The strip is built with a `times` loop that normalises its index with `loop-count` and `fract`, runs a quote immediately with `apply`, marks one quote with `defer`, and the scene declares `fit stretch`.
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+wall 12 8 meters
+background 0x0a0a12
+fit stretch
+duration 4
+fps 30
+
+material chip '(
+  uv 3.0 * time 0.6 * + fbm palette
+)
+
+"panel" rect
+  0.5 0.5 nxy
+  0.9 0.5 nwh
+  rgb 0.12 0.34 0.62 solid fill
+  '( 0 -0.2  2 0.2  4 -0.2 ) rot ;
+
+6 '(
+  "chip" rect
+    i loop-count 1 - /  fract  4.5 *  2.25 -  -2.2 xy
+    0.7 square
+    rgba 0.9 0.4 0.2 0.85 solid fill
+    i 0.15 *  0.2  0.5  0  shader
+    chip material
+    '( 0.9 opacity* ) apply
+    '( ) defer drop
+) times
+```
+
+<video src="../assets/rectsl/rectsl-paint-kit.mp4" poster="../assets/rectsl/rectsl-paint-kit.png"
+       autoplay loop muted playsinline
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
 
 ## Rendering JPG frames
 

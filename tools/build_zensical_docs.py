@@ -18,9 +18,9 @@ import yaml
 def _configure_logging() -> None:
     """Surface the docs runner's per-capture progress.
 
-    The runner logs rich progress through `logging.getLogger("mkdocs.field_runner")`
-    at INFO, but running the hook standalone (outside `mkdocs`) leaves the root
-    logger unconfigured, so only WARNINGs reach the terminal and a build looks
+    The runner logs rich progress through `logging.getLogger("zensical.field_runner")`
+    at INFO, but running the preprocessor standalone leaves the root logger
+    unconfigured, so only WARNINGs reach the terminal and a build looks
     silent/hung between the sparse warnings. Configure a concise INFO handler once
     (respect FIELD_DOCS_LOG_LEVEL for override) so `capturing ... / completed ...`
     lines are visible.
@@ -82,11 +82,10 @@ def matches_page_filter(relative: Path, filters: tuple[str, ...]) -> bool:
 
 
 def build_generated_config(*, public_dir: Path, generated_root: Path) -> Path:
-    source_config = public_dir / "mkdocs.yml"
+    source_config = public_dir / "zensical.yml"
     with source_config.open("r", encoding="utf-8") as handle:
         config = yaml.load(handle, Loader=yaml.Loader)  # noqa: S506 - existing config uses Python tags.
 
-    config.pop("hooks", None)
     config["docs_dir"] = os.path.relpath(generated_root / "docs", public_dir)
     config["site_dir"] = "field4"
 
@@ -107,7 +106,7 @@ def preprocess_docs(*, public_dir: Path, generated_docs: Path, page_filters: tup
 
     source_docs = public_dir / "docs"
     config = DocsConfig(
-        config_file_path=public_dir / "mkdocs.yml",
+        config_file_path=public_dir / "zensical.yml",
         docs_dir=source_docs,
         site_dir=public_dir / "field4",
     )

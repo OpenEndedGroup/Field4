@@ -8,13 +8,13 @@ CI. This script catches that class before it merges.
 
 Scope
 -----
-By default only pages listed in ``public/mkdocs.yml`` ``nav:`` are checked — that is
+By default only pages listed in ``public/zensical.yml`` ``nav:`` are checked — that is
 what actually ships. Unpublished POC pages (e.g. ``diff-player.md``) and ``dev_docs``
 are skipped. Pass ``--all`` to scan every markdown file under the docs root.
 
 Resolution
 ----------
-References are resolved the way mkdocs serves the site, checked against the *source*
+References are resolved the way Zensical serves the site, checked against the *source*
 tree:
 
 * markdown-processed refs (``screenshot=``, ``poster=``, ``![](...)``, ``<img src>``)
@@ -58,13 +58,13 @@ def repo_root() -> Path:
     return Path(top) if top else Path.cwd()
 
 
-def nav_pages(mkdocs_yml: Path) -> set[str]:
-    """Collect every `*.md` path listed under the mkdocs `nav:` block (relative to docs_dir)."""
+def nav_pages(config_yml: Path) -> set[str]:
+    """Collect every `*.md` path listed under the config `nav:` block (relative to docs_dir)."""
     pages: set[str] = set()
-    if not mkdocs_yml.exists():
+    if not config_yml.exists():
         return pages
     in_nav = False
-    for line in mkdocs_yml.read_text(encoding="utf-8").splitlines():
+    for line in config_yml.read_text(encoding="utf-8").splitlines():
         if re.match(r"^nav:\s*$", line):
             in_nav = True
             continue
@@ -99,7 +99,7 @@ def resolve_candidates(page: Path, ref: str) -> list[Path]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--docs-root", default="public/docs", help="Docs directory (default: public/docs).")
-    parser.add_argument("--mkdocs", default="public/mkdocs.yml", help="mkdocs config for the nav (default: public/mkdocs.yml).")
+    parser.add_argument("--config", default="public/zensical.yml", help="Zensical config for the nav (default: public/zensical.yml).")
     parser.add_argument("--all", action="store_true", help="Scan every *.md under the docs root, not just nav pages.")
     parser.add_argument("--ignore", action="append", default=[], metavar="PAGE",
                         help="Docs-root-relative page path to skip (repeatable).")
@@ -117,7 +117,7 @@ def main() -> int:
     if args.all:
         pages = sorted(docs_root.rglob("*.md"))
     else:
-        nav = nav_pages(root / args.mkdocs)
+        nav = nav_pages(root / args.config)
         pages = sorted(docs_root / p for p in nav if (docs_root / p).exists())
 
     def rel(p: Path) -> str | None:

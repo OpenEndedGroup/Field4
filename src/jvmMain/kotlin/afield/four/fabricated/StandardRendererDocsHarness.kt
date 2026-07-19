@@ -30,7 +30,7 @@ import kotlin.math.min
 /**
  * Small native-render harness for docs and smoke tests. It renders deterministic
  * `StandardRenderer` scenes to PNGs and can turn those PNGs into HTML for display(...)
- * so MkDocs can capture them through the normal backdoor screenshot path.
+ * so the docs build can capture them through the normal backdoor screenshot path.
  */
 object StandardRendererDocsHarness {
 

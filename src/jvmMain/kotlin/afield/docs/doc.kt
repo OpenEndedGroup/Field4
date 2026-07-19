@@ -67,7 +67,7 @@ fun coerceToDouble(orDefault: Any?): Double {
  * the idea here is that we have two kinds of ways of 'exporting' a Field + Workspace based on metadata associated with the boxes, one for humans and one for AI (incrementally resyncable)
  */
 
-// baseDirectory points to the base of the mkdocs site, subDirectory is relative to that, where we're going to be putting things and where we're going to be putting assets associated with them
+// baseDirectory points to the base of the docs site, subDirectory is relative to that, where we're going to be putting things and where we're going to be putting assets associated with them
 suspend fun exportToDocumentation(
     root: Box = thisSessionInfo.get().root, baseDirectory: String, subDirectory: String, docName: String
 ) {

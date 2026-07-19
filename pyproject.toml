@@ -12,9 +12,6 @@ backdoor = [
     "websockets>=15.0.0",
 ]
 docs = [
-    "mkdocs-include-dir-to-nav>=1.2.0",
-    "mkdocs-jupyter>=0.26.0",
-    "mkdocs-material>=9.7.0",
     "pillow>=10.0.0",
     "pymdown-extensions>=11.0.0",
     "pyyaml>=6.0.0",

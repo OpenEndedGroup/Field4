@@ -24,7 +24,7 @@
   "forwardPorts": [9092, 8000],
   "portsAttributes": {
     "9092": { "label": "Field4 Server" },
-    "8000": { "label": "MkDocs" }
+    "8000": { "label": "Docs (Zensical)" }
   },
   "remoteEnv": {
     "JAVA_HOME": "/usr/lib/jvm/temurin-25-jdk"

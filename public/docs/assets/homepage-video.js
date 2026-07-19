@@ -1,7 +1,7 @@
 /* ── Homepage full-bleed video background ─────────────────────
    Restores the front-page video loop lost in the Zensical port.
 
-   In the mkdocs-material build this markup (and the
+   In the previous Material-theme build this markup (and the
    `data-field-homepage` flag that dot-grid.js reads) was injected
    by `overrides/main.html`. Zensical does not honour that per-page
    template override, so we reproduce it here via `extra_javascript`.

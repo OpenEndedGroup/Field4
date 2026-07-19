@@ -33,10 +33,7 @@ ENV PATH="${JAVA_HOME}/bin:${PATH}"
 RUN pip3 install --break-system-packages --no-cache-dir \
         # Field backdoor
         websockets \
-        # MkDocs docs site
-        mkdocs-material \
-        mkdocs-jupyter \
-        mkdocs-include-dir-to-nav \
+        # Docs syntax highlighting (Zensical docs deps come from `uv --group docs`)
         pygments \
         # Docs runner / test runner
         Pillow \

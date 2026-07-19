@@ -116,6 +116,7 @@ object RectSLExamples {
         }
 
         checkGalleryWorkspace()
+        checkCheatsheetCoverage()
         println("rectsl examples passed")
     }
 
@@ -178,4 +179,94 @@ object RectSLExamples {
         }
         println("rectsl gallery workspace compiled ${names.size} program(s); metadata.edn boxes=${boxIds.size}")
     }
+
+    // ── cheatsheet coverage guard ────────────────────────────────────────────────
+
+    /**
+     * Every operator documented in `rectsl_cheatsheet.md` must appear in at least one
+     * *worked, animated* example — a gallery `*_rectsl_.rectsl` program or a
+     * `data-lang=rectsl`/`data-lang=text` code block in `rectsl_examples.md`. This
+     * makes "every operator is demonstrated" an enforced invariant, not a fact that
+     * silently rots the next time a word is added.
+     *
+     * Aliases and alternate spellings collapse to one representative (see [ALIAS_GROUPS]):
+     * demonstrating `+` covers `add`, `<=` covers `lte`, `clone` covers `copy`, etc.
+     * The `Model` (literals/syntax) and `Kotlin entry points` cheatsheet sections are
+     * API surface, not stack operators, so they are excluded. Silently skips if the
+     * docs are absent (partial checkout).
+     */
+    private fun checkCheatsheetCoverage() {
+        val root = File(System.getProperty("user.dir"))
+        val cheatsheet = File(root, "public/docs/rectsl_cheatsheet.md").takeIf { it.exists() } ?: return
+        val examples = File(root, "public/docs/rectsl_examples.md")
+        val galleryDir = File(root, "public/docs/assets/rectsl_gallery")
+
+        val operators = cheatsheetOperators(cheatsheet.readText())
+        check(operators.size > 100) { "cheatsheet operator scrape looks wrong: only ${operators.size} found" }
+
+        val corpus = buildString {
+            galleryDir.listFiles { f -> f.name.endsWith("_rectsl_.rectsl") }?.forEach { append(it.readText()).append('\n') }
+            if (examples.exists()) rectslCodeBlocks(examples.readText()).forEach { append(it).append('\n') }
+        }
+        val used = corpusTokens(corpus).map(::canonicalOperator).toSet()
+
+        val missing = operators.filter { canonicalOperator(it) !in used }.map(::canonicalOperator).distinct()
+        check(missing.isEmpty()) {
+            "these cheatsheet operators have no worked/animated example (add one to the RectSL gallery or " +
+                "rectsl_examples.md, or note the alias): ${missing.joinToString(", ")}"
+        }
+        println("rectsl cheatsheet coverage: all ${operators.size} operators demonstrated")
+    }
+
+    /** First-column backticked tokens of every operator table, phrase words expanded. */
+    private fun cheatsheetOperators(text: String): List<String> {
+        val skip = setOf("Model", "Kotlin entry points")
+        val phrase = mapOf(
+            "wall meters" to listOf("wall", "meters"), "wall pixels" to listOf("wall", "pixels"),
+            "wall abstract" to listOf("wall", "abstract"), "fit contain" to listOf("fit", "contain"),
+            "fit cover" to listOf("fit", "cover"), "fit stretch" to listOf("fit", "stretch"),
+            "material name '( ... )" to listOf("material"), "name material" to listOf("material"),
+        )
+        val backtick = Regex("`([^`]+)`")
+        val out = LinkedHashSet<String>()
+        var section: String? = null
+        text.lineSequence().forEach { line ->
+            val header = Regex("^##+\\s+(.*)").find(line)
+            if (header != null) { section = header.groupValues[1].trim(); return@forEach }
+            if (section in skip) return@forEach
+            val cell = Regex("^\\|\\s*(.+?)\\s*\\|").find(line)?.groupValues?.get(1) ?: return@forEach
+            if (cell in setOf("Word", "Syntax", "API") || cell.all { it == '-' || it == '|' || it == ' ' }) return@forEach
+            backtick.findAll(cell).forEach { m -> out.addAll(phrase[m.groupValues[1]] ?: listOf(m.groupValues[1])) }
+        }
+        return out.toList()
+    }
+
+    /** Bodies of ```… data-lang=rectsl/text …``` fenced blocks. */
+    private fun rectslCodeBlocks(text: String): List<String> =
+        Regex("```([^\\n]*)\\n(.*?)```", RegexOption.DOT_MATCHES_ALL).findAll(text)
+            .filter { "data-lang=rectsl" in it.groupValues[1] || "data-lang=text" in it.groupValues[1] }
+            .map { it.groupValues[2] }
+            .toList()
+
+    /** Whitespace-split tokens with `#`-to-end-of-line comments stripped. */
+    private fun corpusTokens(text: String): Set<String> =
+        text.lineSequence()
+            .map { it.substringBefore('#') }
+            .flatMap { it.trim().split(Regex("\\s+")) }
+            .filter { it.isNotEmpty() }
+            .toSet()
+
+    private val ALIAS_GROUPS: List<List<String>> = listOf(
+        listOf("+", "add"), listOf("-", "sub"), listOf("*", "mul"), listOf("/", "div"),
+        listOf("rot", "rotation"), listOf("rot-track", "rotation-track"),
+        listOf("neg", "negate"), listOf("sat", "saturate"), listOf("mix", "lerp"),
+        listOf("copy", "clone"), listOf("copy-deep", "clone-deep"), listOf("end", "end-group"),
+        listOf("filter", "where"), listOf("loop-count", "n"),
+        listOf("<", "lt"), listOf("<=", "lte"), listOf(">", "gt"), listOf(">=", "gte"),
+        listOf("=", "eq"), listOf("!=", "<>", "neq"), listOf("ease-smoothstep", "smooth"),
+    )
+    private val CANONICAL: Map<String, String> =
+        ALIAS_GROUPS.flatMap { g -> g.map { it to g.first() } }.toMap()
+
+    private fun canonicalOperator(word: String): String = CANONICAL[word] ?: word
 }

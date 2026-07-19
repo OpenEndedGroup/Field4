@@ -1,7 +1,7 @@
 site_name: OpenEndedGroup | Field·4
 
-hooks:
-  - docs_hooks.py
+# The docs runner (docs_hooks.py) is invoked directly by tools/build_zensical_docs.py,
+# not through a config hook key — so there is no `hooks:` entry here.
 
 nav:
   - Home: index.md
@@ -88,13 +88,7 @@ markdown_extensions:
   - pymdownx.inlinehilite
 
 plugins:
-    - mkdocs-jupyter:
-        include_requirejs: true
-        include_source: True
     - search
-    - include_dir_to_nav:
-        file_pattern: ".*[.md,.ipynb]"
-        recurse: false
 
 theme:
   name: material

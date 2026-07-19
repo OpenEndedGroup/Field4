@@ -143,7 +143,7 @@ Public docs are a testing surface. Examples using `diffstatic_runner` execute
 through Field and can regenerate screenshots/videos during docs builds.
 
 The supported build path is a uv one-liner. Do not create a manual venv or
-install Zensical/MkDocs dependencies by hand:
+install Zensical dependencies by hand:
 
 ```bash
 FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --clean
