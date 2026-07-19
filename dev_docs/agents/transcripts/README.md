@@ -85,6 +85,42 @@ For renderer boxes, keep `start(renderer::run)` as the final expression of the l
 - `recstl_playground.yaml`: a one-stop, drag-in **RectSL playground**. Builds a "window + renderer" parent box and a child "recstl" box connected beneath it; the child compiles a `#rectsl` snippet, draws it live in the on-screen window, and publishes a `controlGroup("transport")` in its output area — `play`/`loop` checkboxes, a `speed` slider, and a `time` scrub slider. Edit the `rectsl` string and re-run the child to change it live; check `play` to loop it, or scrub `time` while paused to freeze on a frame. Requires a GPU/Vulkan window (like `threebox.yaml`); capture its window with a follow-on `native-screenshot <path>` (`--with-playwright`). Because it starts with `name:`/`operations:`, dropping the file onto a Field document is recognized as a transcript and run (write-then-run) — this is the intended "drag in to get started" path.
 - `threebox.yaml`: self-contained capstone. One transcript builds a three-box particle system on a blank canvas — a renderer box (owns `Window` + `Renderer`, pumps the loop), a compute box (simulates particles into a `buffer_reference` buffer and probes speed via `{% include "fieldProbe" %}`, publishing the buffer as `prop<FrameBufferGroup>(outputPositions)`), and a draw box (reads `outputPositions` and renders). Requires a GPU/Vulkan window. Demonstrates cross-box property publish/read and the `await` barrier between the three launches; the transcript itself produces no image artifact (no screenshot step) — capture its native window with a follow-on `native-screenshot <path>` backdoor command (`--with-playwright`).
 
+## Verified in CI — the executing harness
+
+Every transcript in this directory is exercised end-to-end by the FIELD_TEST
+`examples.demo-transcript.exec`
+(`src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt`, run with
+`python3 tools/run_field_tests.py --id examples.demo-transcript.exec`). **"Shipping a demo
+transcript" now means its box bodies actually execute (or compile) in CI, not merely that the
+`code` string round-trips.** This exists because on 2026-07-18 `fn_differentiable_fit_demo.yaml`
+shipped with two compile errors in its box body (`Domain(...)` unresolved; an ambiguous `plot(...)`)
+and merged — nothing in CI ran the box Kotlin. (`OperationTranscriptMacroSmokeTest` only *applies*
+ops and diffs the `code` string.)
+
+The harness classifies each transcript into exactly one bucket:
+
+- **EXECUTE** (pure-compute; no `Window`/`Renderer`): replayed in full through the real
+  `OperationTranscript.runMacro` path — the same path an agent uses — and asserted to emit **zero
+  error-kind output** and `run.success`. A box compile error does not throw and does not clear
+  `run.success`; it surfaces only as an output line with `kind == "error"`, which the harness scans
+  for. Current EXECUTE demos: `fn_differentiable_fit_demo`, `linalg_thumbnails_demo`,
+  `hello_display`, `hello_display_capture`, `two_box_context`.
+- **COMPILE-ONLY** (open a GLFW `Window`/`Renderer`, or a box that depends on a running renderer's
+  published context — unsafe to spin a render loop headless in unattended CI): the box graph is built
+  with the real create/connect apply path, then each box's Kotlin `code` is run through the real
+  macro expander (`applyMacros`), the real preamble machinery (`checkPreambleAndExecute` — which only
+  evaluates property-delegate declarations, never a `Window`) and the real K2 compiler
+  (`compileSnippetAndWait`) **with evaluation skipped**. This still catches the fn-fit class of error
+  (unresolved refs, ambiguous overloads). GLSL shader properties (`vertex`/`fragment`/`compute`) are
+  not Kotlin and are not compiled here — they are exercised by the graphics render smokes. Current
+  COMPILE-ONLY demos: `graphics_renderer_launch`, `afield_four_traditional_triangle`,
+  `recstl_playground`, `threebox`.
+
+**Adding a demo:** drop the `*.yaml` here, then add its `name` (the file's stem) to exactly one of
+`EXECUTE` or `COMPILE_ONLY` in `DemoTranscriptExecSmokeTest.kt`. An unclassified transcript fails the
+test on purpose. Choose EXECUTE when the boxes are pure compute and safe to run to completion
+headless; choose COMPILE-ONLY when a box constructs a `Window`/`Renderer` or launches a render loop.
+
 ## Growth Rules
 
 Keep examples small and agent-useful:
