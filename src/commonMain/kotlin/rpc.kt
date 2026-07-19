@@ -870,6 +870,19 @@ data class PasteBoxesResult(val newUids: List<String>)
 @Serializable
 data class ImportMetadata(val ednText: String)
 
+/**
+ * Payload for importing a dropped Jupyter notebook (`.ipynb`). The backend parses
+ * [notebookJson], creates one child box per cell under a fresh python-root parent,
+ * and lays them out as a vertical column anchored at document-space ([x], [y]).
+ */
+@Serializable
+data class ImportNotebook(
+    val fileName: String,
+    val notebookJson: String,
+    val x: Double = 0.0,
+    val y: Double = 0.0,
+)
+
 @Serializable
 data class Set_rect(val uid: String, val property: String, val value: Rect)
 
