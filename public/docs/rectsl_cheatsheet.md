@@ -243,6 +243,59 @@ Array primitives *reproduce a subexpression with modification* — the Fischinge
 ) grid
 ```
 
+## Data visualization
+
+Dense data is an explicit target for RectSL. A **colormap** turns a value in `[0, 1]` into a perceptually-uniform colour; a **`Data`** value is a plain numeric list you can normalize and bind to size/colour; the **chart words** fold both into ready-made bar charts, heatmaps, and scatter plots that emit ordinary rects — so everything you already know (`each`, `stagger-time`, `group`, tracks) still applies to the result.
+
+### Colormaps
+
+| Word | Stack | Notes |
+| --- | --- | --- |
+| `colormap`, `cmap` | `name t -- color` | Look up a named ramp at `t` in `[0, 1]` (clamped). Pushes a `Color` usable anywhere colour is (`solid`, `linear`, `fill`, `rgb`). Names: `viridis`, `magma`, `inferno`, `plasma`, `turbo`, `coolwarm` (diverging), `grayscale`. |
+
+### Data
+
+| Word | Stack | Notes |
+| --- | --- | --- |
+| `data` | `quote -- data` | Run `quote` and collect every `Number` it leaves into a `Data` list (`'( 3 1 4 1 5 ) data`, or computed: `'( 8 times [ i i * ] ) data`). |
+| `linspace` | `lo hi count -- data` | `count` evenly spaced values from `lo` to `hi` inclusive. |
+| `normalize` | `data -- data` | Rescale a list to `[0, 1]` by its own min/max (a flat list maps to `0.5`). |
+| `extent` | `data -- min max` | Push the list's minimum then maximum. |
+| `dmin`, `dmax` | `data -- number` | Minimum / maximum of a list. |
+| `data-len` | `data -- number` | Number of values. |
+| `data-at` | `data i -- number` | Value at index `i` (clamped to range). |
+| `data-map` | `data quote -- data` | Transform each value through `quote` (the value is on the stack; `i`/`f` array context is available). |
+
+### Chart idioms
+
+| Word | Stack | Notes |
+| --- | --- | --- |
+| `bars` | `data name -- selection` | Bottom-anchored bar chart spanning the wall; bar height and colour both from the value normalized by the list's extent, coloured with colormap `name`. Pushes the selection of bars. |
+| `heat`, `heatmap` | `data cols rows name -- selection` | Row-major grid heatmap filling the wall (row 0 at top); each cell coloured with colormap `name` by its normalized value. Pushes the selection of cells. |
+| `scatter` | `xdata ydata name -- selection` | Plot `(x, y)` points as small squares, each axis normalized to the wall; colour follows normalized `y` through colormap `name`. Pushes the selection of points. |
+
+```diffstatic {data-lang=text}
+# a colour legend: 24 thin rects sweeping one colormap across the wall
+"swatch" rect  0.6 3 wh
+  24 '( fc 11 * 0 offset  "viridis" f colormap solid fill ) array
+;
+
+# a bar chart from literal data, staggered fade-in, coloured by value
+'( 3 7 2 9 5 8 4 6 ) data "magma" bars
+  '( '( 0=0 0.6=1 ) ease-out alpha ) each  0.08 stagger-time
+
+# a heatmap of a computed field (linspace + data-map fill the grid)
+0 1 48 linspace  '( 6 * sin 1 + ) data-map  8 6 "turbo" heat
+
+# a scatter plot: y against x, coloured by y
+0 1 20 linspace  dup  '( 3 * sin ) data-map  "plasma" scatter
+
+# data helpers: extent / dmin / dmax / data-len / data-at read without consuming
+'( 10 20 30 40 ) data
+  dup extent drop drop  dup dmin drop  dup dmax drop
+  dup data-len drop  dup 2 data-at drop  normalize "coolwarm" bars
+```
+
 ## Distribution curves (Functions bridge)
 
 Linear `mix` is rarely the shape you want across an array. RectSL borrows [`afield.stdlib.Functions`](functions_examples.md) — a tested library of easings, distributions, and noise defined over `[0, 1]`, exactly the range of the array fraction `f`. `ease` shapes a scalar/track through the full Penner family; the curve words push a reusable `Fn` value you `sample` at `f` (or any x). The curves are graph-backed, so the Functions rewrite/evolve tooling can optimise an array's distribution toward a target.

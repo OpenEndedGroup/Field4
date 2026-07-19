@@ -416,6 +416,101 @@ RectSL only sampled the result. Reach for `fitBest` when you have a shape in min
 and just need the numbers dialed in, and for `evolve(...)` when the *structure*
 itself (which operators) is still unknown.
 
+## Data visualization
+
+Dense data is an explicit target for RectSL. Three pieces compose it: a **colormap**
+(`colormap`/`cmap`) turns a value in `[0, 1]` into a perceptually-uniform colour; a
+**`Data`** value (`data`, `linspace`) is a numeric list you `normalize` and inspect
+(`extent`, `dmin`, `dmax`, `data-len`, `data-at`, `data-map`); and the **chart words**
+(`bars`, `heat`/`heatmap`, `scatter`) fold both into ready-made rects. Because a chart
+returns an ordinary `Selection`, everything else in the language — `each`, tracks,
+`stagger-time`, `group` — still applies, so a static chart animates with one more line.
+
+### Colormap legend
+
+The seven ramps are named `viridis`, `magma`, `inferno`, `plasma`, `turbo`,
+`coolwarm` (diverging), and `grayscale`. Sample one across the array fraction `f` to
+draw a colour bar — this is the honest way to *see* a colormap:
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+wall 24 4 abstract
+duration 4
+fps 30
+
+"swatch" rect  0.7 3 wh
+  24 '( fc 11 *  0 offset  "viridis" f colormap solid fill ) array
+;
+```
+
+### Bar chart from data
+
+`data` collects the numbers a quote leaves; `bars` normalizes them by their own extent
+for both height and colour. The chart is a plain selection, so a keyed `alpha` track run
+through `each` plus `stagger-time` gives a staggered fade-in:
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+wall 18 8 abstract
+duration 5
+fps 30
+
+'( 3 7 2 9 5 8 4 6 1 6 ) data  normalize  "magma" bars
+  '( '( 0=0 0.6=1 ) ease-out alpha ) each
+  0.07 stagger-time
+```
+
+### Heatmap of a computed field
+
+`linspace` lays down evenly spaced samples; `data-map` runs each value through a quote
+(here `sin`, so the field ripples); `heat` tiles them row-major into wall-filling cells:
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+wall 12 8 abstract
+duration 4
+fps 30
+
+0 1 48 linspace  '( 6 * sin 1 + ) data-map  8 6 "turbo" heat
+  '( '( 0=0 0.5=1 ) ease-in-out alpha ) each
+  0.03 stagger-time
+```
+
+`heatmap` is an alias for `heat`.
+
+### Scatter plot
+
+`scatter` plots `(x, y)` points, each axis normalized to the wall, coloured by `y`:
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+wall 10 10 abstract
+duration 4
+fps 30
+
+0 1 40 linspace  dup  '( 7 * sin ) data-map  "plasma" scatter
+```
+
+### Reading a Data value
+
+The inspection words read a list without consuming it (with `dup`); `extent` pushes min
+then max, `dmin`/`dmax`/`data-len`/`data-at` pull one number out:
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+wall 16 6 abstract
+duration 2
+fps 30
+
+'( 12 5 27 3 19 8 ) data
+  dup extent  drop drop
+  dup dmin drop
+  dup dmax drop
+  dup data-len drop
+  dup 2 data-at drop
+  "coolwarm" bars
+```
+
 ## Rendered gallery — more examples
 
 ### Mirrored orbit
