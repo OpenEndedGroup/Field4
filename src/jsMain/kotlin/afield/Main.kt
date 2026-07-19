@@ -3100,7 +3100,11 @@ fun select(selector: String): List<HTMLElement> {
     }
 }
 
-// Layers system functions
+/**
+ * Replace the browser's visible-layer set, mirror it to the session server, and recompute box,
+ * output, and connection visibility. An empty set hides every layered box. [duration] is
+ * milliseconds and matters only when [animated] is true.
+ */
 fun setVisibleLayers(layers: Set<String>, animated: Boolean = false, duration: Double = 300.0) {
     val before = visibleLayers.toList()
     visibleLayers.clear()
@@ -3124,6 +3128,11 @@ fun setVisibleLayers(layers: Set<String>, animated: Boolean = false, duration: D
     }
 }
 
+/**
+ * Ask the server to leave the current active layer and enter [layer]. The server snapshots frames
+ * for boxes belonging to the old layer, then applies stored frames for the new layer. Passing null
+ * deactivates frame capture but does not restore a pre-layer baseline.
+ */
 fun setActiveLayer(layer: String?, animated: Boolean = false, duration: Double = 500.0) {
     val before = activeLayer
     activeLayer = layer
@@ -3139,6 +3148,7 @@ fun setActiveLayer(layer: String?, animated: Boolean = false, duration: Double =
     send(Message("set-active-layer").payload(SetActiveLayer(layer, animated, duration)))
 }
 
+/** Read layer names currently represented in browser box properties, returning `default` if empty. */
 fun getAllLayers(): Set<String> {
     val allLayers = mutableSetOf<String>()
     select(".box").forEach { box ->
@@ -3354,6 +3364,10 @@ private fun applyBoxVisibilityImmediate(box: HTMLElement, includeOutputArea: Boo
     }
 }
 
+/**
+ * True only for a renderable, server-visible, non-tombstoned box whose comma-separated `layers`
+ * property intersects [visibleLayers]. A missing `layers` property means `default`.
+ */
 fun isBoxVisible(box: HTMLElement): Boolean {
     if (!hasRenderableFrame(box)) return false
     if (((box.asDynamic().server_visible as? Boolean) ?: true).not()) return false

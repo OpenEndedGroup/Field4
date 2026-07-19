@@ -25,7 +25,9 @@ println("hello from stdin")
 EOF
 ```
 
-- `run` executes once and waits; `launch` starts a job and waits for first frame; `stop` ends it.
+- Backdoor `run` executes once and waits; backdoor `launch` starts a job and waits for its
+  running signal. Transcript Kotlin-only launch groups additionally use the awaited batch
+  path; mixed/non-Kotlin transcript groups do not promise the same first-frame barrier.
 - `@last` = the most recently created box this session.
 - Read the `events` array (and `data`) from the JSON. Compile errors and exceptions show up there.
 - `--value`/`--file` are **optional** on `run`/`launch <uid>`: supply one to override the box's code, omit both to run the box's currently *stored* code (same stored-code fallback as the transcript `execute`/`launch` ops).
@@ -98,7 +100,8 @@ async boundary: `val renderer: Renderer = fromContext()` at top level, before `s
 ## Inspect a live value at runtime (debug probe)
 
 Ask the running JVM "what is this variable right now?" via the MCP tool
-`field_debug_probe` — a non-suspending JDWP probe. Source mode targets any loaded
+`field_debug_probe` — a JDWP probe that suspends only the hitting event thread
+while reading the value, then immediately resumes it. Source mode targets loaded
 `src/` code; box mode targets a running box. Backdoor-launched Field enables the
 required JDWP port (5005) automatically.
 

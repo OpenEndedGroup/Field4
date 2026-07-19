@@ -777,7 +777,7 @@ try {
     before,
     after,
     changed: before !== after,
-    inserted: /__m\("[A-Za-z0-9-]+"\)/.test(after),
+    inserted: /__m\("[A-Za-z0-9+\/-]+"\)/.test(after),
     focus: ed.hasTextFocus(),
     paletteVisible: palette ? getComputedStyle(palette).display !== "none" : null,
     errors,
@@ -1534,11 +1534,11 @@ try {
     };
     const versionNumber = Number(String(result.targetVersion || "").replace("#", ""));
     const metricBoxCount = Number.parseInt(String(result.metricBoxes || "0"), 10) || 0;
-    const targetMetaBoxMatch = String(result.targetMeta || "").match(/(\d+)\s+boxes/);
+    const targetMetaBoxMatch = String(result.targetMeta || "").match(/(\d+)\s+box(?:es)?/);
     const targetMetaBoxCount = targetMetaBoxMatch ? Number.parseInt(targetMetaBoxMatch[1], 10) || 0 : 0;
     result.ok = result.iframeSrc.includes("/history") &&
       Number.isFinite(versionNumber) &&
-      versionNumber >= 1 &&
+      versionNumber >= 0 &&
       (metricBoxCount >= 1 || targetMetaBoxCount >= 1) &&
       result.targetMeta.length > 0 &&
       result.hasRefresh &&
@@ -1677,6 +1677,9 @@ try {
     };
   }
 
+  // fieldBackdoorUiReady means the page is initialized; allow the two hello messages to reach
+  // the server and join their shared context before sending an intentionally ephemeral intent.
+  await delay(1500);
   editorFrame.contentWindow.showDocumentHistory();
   const historyContainer = await waitFor(() => {
     const node = canvasFrame.contentDocument?.querySelector(".history-iframe-container");

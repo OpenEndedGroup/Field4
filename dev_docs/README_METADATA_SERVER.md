@@ -1,74 +1,40 @@
-# Metadata Server — Field Integration
+# Metadata template server integration
 
-A simple Flask server for hosting `metadata.edn` templates that can be imported into Field. This
-document covers the **Field-side integration** (how Field discovers and imports remote templates).
+The durable Field-side contract is documented beside `templateServers` and `templating()` in
+`src/jvmMain/kotlin/afield/server/templating.kt`. The Flask protocol and storage paths live beside
+the implementation in `server/metadata_server.py` and `server/README.md`.
 
-For running the server itself, its dependencies, endpoints, and where template files live, see the
-canonical, code-colocated docs:
+The similarly named top-level `metadata_store/` is not served by this Flask app; it is an input to
+`tools/sync_offline_assets.py`. The Flask app serves
+`server/metadata_store/<template>/metadata.edn`.
 
-- **`server/README.md`** — how to run `metadata_server.py` (and the sibling `guide_chat_server.py`),
-  the `/list`, `/download/<name>`, and `/telemetry` endpoints, and the
-  `METADATA_SERVER_PORT` / `METADATA_SERVER_DEBUG` env vars.
-- **`server/requirements.txt`** — Python dependencies (`pip install -r server/requirements.txt`).
-- **`server/metadata_server.py`** — the server code. Templates it serves live in
-  `server/metadata_store/<name>/metadata.edn` (the directory is auto-created next to the script).
-
-> Note: the top-level `metadata_store/` directory (with `agent_demo/`, `example_template/`,
-> `simple_hello/`) is **unrelated** to this server — it backs the offline-docs asset bundler
-> (`tools/sync_offline_assets.py`), not `metadata_server.py`.
-
-## Purpose
-
-This server provides a lightweight way to share Field templates (`metadata.edn` files) that aren't
-part of Field's built-in templating system. Templates can be listed via `/list` and fetched via
-`/download/<name>`, then imported into Field.
-
-## Integration with Field
-
-This server complements Field's built-in template system. Field's built-in templates are stored in:
-
-- `~/Documents/AFieldWorkspace/` (user workspace)
-- `app/templates/` (application templates)
-
-The metadata server provides an additional source of templates that can be shared across teams,
-hosted remotely, version-controlled separately from Field, and distributed without modifying a
-Field installation.
-
-### Automatic Integration (Recommended)
-
-Field can query template servers at startup and make their templates available alongside local
-templates. The integration lives in `src/jvmMain/kotlin/afield/server/templating.kt`.
-
-**Configuration:**
+## Configure Field
 
 Set the `AFIELD_TEMPLATE_SERVERS` environment variable to a comma-separated list of server URLs
 before starting Field:
 
 ```bash
 export AFIELD_TEMPLATE_SERVERS="http://localhost:5001,http://templates.example.com:5001"
-./gradlew run
+./gradlew runJvm
 ```
 
 Or use the equivalent system property:
 
 ```bash
-./gradlew run -Dafield.templateServers="http://localhost:5001,http://templates.example.com:5001"
+./gradlew -Dafield.templateServers="http://localhost:5001,http://templates.example.com:5001" runJvm
 ```
 
-**Behavior:**
+Field fetches each configured `/list` once in a background coroutine. Successful non-empty results
+remain in memory for the life of the process; there is no periodic refresh. The template picker
+combines entries found in the workspace, `workspace/templates`, bundled templates, and the remote
+cache. Insertion currently resolves `workspace/templates`, bundled templates, then remote servers.
+An entry found only directly beneath the workspace can therefore be listed without being insertable;
+that is a current implementation limitation, not a supported storage location.
 
-- Configured servers are fetched in a background coroutine at startup (`initializeTemplateServers`)
-  to hide latency; results are held in an in-memory cache.
-- Remote templates appear in Field's template list alongside local templates.
-- When inserting a remote template, Field downloads and imports it with **fresh UUIDs** (the same
-  ID transformation used by `cloneInto`) to avoid conflicts.
-- No manual download or drag-and-drop is required.
+Remote insertion downloads `/download/<name>` and remaps box IDs with fresh UUIDs. When two sources
+have the same name, the insertion search order above determines which one wins.
 
-### Manual alternatives
-
-If you are not using automatic integration:
-
-**Download and import**
+## Manual import
 
 ```bash
 curl -O http://localhost:5001/download/example_template
@@ -76,25 +42,17 @@ curl -O http://localhost:5001/download/example_template
 
 Drag the downloaded `metadata.edn` into Field's interface; Field imports the boxes with fresh UUIDs.
 
-**Copy to local workspace** (for frequently used templates)
+For a reusable local template, place it under the configured workspace's `templates` directory:
 
 ```bash
-curl -o ~/Documents/AFieldWorkspace/my_template/metadata.edn \
+mkdir -p /path/to/workspace/templates/my_template
+curl -o /path/to/workspace/templates/my_template/metadata.edn \
   http://localhost:5001/download/my_template
 ```
 
-It then appears in Field's built-in template list.
+## Security boundary
 
-## Remote hosting & security
-
-The server can be deployed on a shared host so a team's Field instances point at one server. CORS is
-enabled so the Field frontend (on a different port) can reach it. For production deployment, consider:
-
-- A production WSGI server (e.g. Gunicorn, uWSGI)
-- Authentication (e.g. API keys, OAuth)
-- HTTPS for secure transport
-- A reverse proxy (e.g. nginx)
-
-The server binds all interfaces (`0.0.0.0`) and enables debug mode by default; disable debug with
-`METADATA_SERVER_DEBUG=false` and restrict the bind address for production use. It applies basic
-path sanitization against directory traversal.
+`metadata_server.py` is a development server: CORS is unrestricted, Flask debug mode defaults on,
+and `app.run` uses Flask's default all-interface bind. The download route reduces the requested name
+to its final path component, but the service has no authentication or TLS. Do not expose it directly
+as a production service.

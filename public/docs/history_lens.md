@@ -14,9 +14,14 @@ The lens opens as a small zone directly beneath your selection. There is no keyb
 
 ## What it shows
 
-The lens looks up that exact line or selection across every saved version of the document and lists how it read in each one — a per-line time machine, a little like `git blame` crossed with a scrubber.
+The lens traces the selected line or range through saved versions using line alignment and selection
+change detection, then lists the versions relevant to that trace. It is a per-line time machine, a
+little like `git blame` crossed with a scrubber; it is not a dump of every save.
 
-Each row is one past version, labelled the same way the [history panel](document_history.md) labels them (`#2858`, `#2857`, …) with a little metadata (box count, size, age) for the version it came from. The value that line held at that point is shown with the changed tokens highlighted, so you can see at a glance *what* moved between versions, not just *that* it moved. In the screenshot above, the same `print(...)` line walks back from `"b"` to `"a"` to `""` across three saves.
+Each row is one matching version, labelled the same way the [history panel](document_history.md)
+labels it (`#2858`, `#2857`, …), with metadata such as box count, size, and age. The value at that
+version is shown with changed tokens highlighted, so you can see *what* moved between the listed
+versions, not just *that* it moved.
 
 Step through the versions with the ‹ › arrows to preview each one. When you find the state you want, the **Rollback** buttons put it back at the scope you choose:
 

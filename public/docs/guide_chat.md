@@ -24,6 +24,10 @@ Guide chat has four parts:
 4. `src/jvmMain/kotlin/afield/SlideShow.kt`
    Passes `slideshowId` and slide-number metadata from the guide runtime.
 
+The Field browser talks only to Field's normal RPC transport. Field proxies HTTP requests to the
+Flask service and broadcasts successful posts back to Field clients; the browser does not connect
+to Flask's Socket.IO endpoint.
+
 ## Setup
 
 Install the Python dependencies:

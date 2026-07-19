@@ -606,7 +606,7 @@ Prints `10.0`. You can think about this mechanism as 'exporting' particular vari
 
 Anything that has an exportable type in Kotlin can travel — this includes Kotlin lambdas, `Vec3` etc. But, alas, not types defined inside boxes.
 
-Properties also have a few other uses. One is to conspire to run code exactly once:
+Properties also support lazy initialization:
 
 ```diffstatic {data-lang=kotlin}
 prop<Vec2>(myVec)
@@ -617,7 +617,9 @@ once.myVec {
 }
 ```
 
-This is useful in the graphics system because you often only want to open exactly one window and Vulkan Renderer. This pairs well with the exporting behavior of `prop` since these resources often want to be shared everywhere. For example, resources from the current box and all parent boxes are often automatically found by parts of the graphics system. 
+`once.myVec { ... }` computes when the property is `null` and caches a non-null result on the box.
+(`null` itself is not cached.) This is useful in the graphics system because a box often wants to
+create one window and Vulkan renderer, then publish those resources to descendants through `prop`.
 
 For the mechanism behind all of this — how `prop`/`once` expand, how properties propagate up the box graph, the `@exported` annotation, the typed accessors `moduleHere { }` generates, and the `//%-` fragment break — see [How Box Code Runs](box_code_pipeline.md).
 
@@ -647,7 +649,9 @@ Field's back-end just serves pages to any browser that contacts it; it's just us
 	<source src="assets/collab.mp4" type="video/mp4">
 </video>
 
-Additionally, if more than one person has the webpage open at the same time, everything should just work — people will see each other's boxes, and non-overlapping edits to code should merge correctly if possible.
+Multiple browser clients receive the same server-side box and property updates. Field attempts to
+preserve non-overlapping editor changes, but simultaneous edits to the same text are not a promised
+conflict-free collaboration protocol.
 
 ## Multiple editors
 

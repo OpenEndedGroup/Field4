@@ -29,10 +29,6 @@ The running example throughout is a compute-shader particle system: a swirl of
 particles advected by a simple force field, drawn as soft quads. We instrument
 the one quantity that is otherwise invisible — each particle's **speed**.
 
-<video controls autoplay loop muted playsinline style="width: min(100%, 720px);">
-	<source src="assets/field_probes/probe-card.mp4" type="video/mp4">
-</video>
-
 ---
 
 ## The particle system
@@ -229,57 +225,14 @@ snap.summaryHtml(previous = last) // the card (histogram + chips)
 previous snapshot is what produces the delta colouring (rising values tint one
 way, falling the other), which is why the live card looks alive.
 
-### The card, live
+### The live card
 
-The card is produced by `FieldProbeSnapshot.summaryHtml(previous)` — the very
-method `display(...)` calls each frame, with `previous` supplying the delta
-colouring. The clip at the top of this page (and reproduced below) renders that
-card directly from a slowly drifting stand-in distribution, so it can be captured
-without a GPU. Wired to a shader as shown above, the *identical* card is driven by
-live read-back instead of the hand-rolled samples here.
-
-```diffstatic_runner {data-lang=kotlin video="assets/field_probes/probe-card.mp4" screenshot="assets/field_probes/probe-card.png" capture="box" execution="launch" duration="6" fps="15" wait="1.0" timeout="120" open-outputs=true embed=true name="probe-card"}
-import afield.four.util.FieldProbeSnapshot
-import afield.stdlib.Vec4
-import kotlin.math.sin
-
-// A pool of speeds we nudge every frame so the histogram and metric chips breathe
-// like a live probe. In a real shader these are the values passed to fieldProbe(...).
-val speeds = DoubleArray(4096) { 0.2 + 0.6 * Math.random() }
-var previous: FieldProbeSnapshot? = null
-var t = 0.0
-
-frames {
-    while (true) {
-        t += 0.05
-        for (i in speeds.indices) {
-            val target = 0.5 + 0.35 * sin(t * 0.5 + i * 0.0002)
-            speeds[i] += (target - speeds[i]) * 0.08 + (Math.random() - 0.5) * 0.02
-            if (speeds[i] < 0.0) speeds[i] = 0.0
-        }
-
-        var mn = speeds[0]; var mx = speeds[0]
-        for (s in speeds) { if (s < mn) mn = s; if (s > mx) mx = s }
-
-        val snapshot = FieldProbeSnapshot(
-            dimensions = 1,
-            invocationCount = speeds.size.toLong(),
-            acceptedCount = speeds.size.toLong(),
-            finiteCount = speeds.size.toLong(),
-            sampleCount = speeds.size,
-            nanCount = 0L, infCount = 0L,
-            nonZeroCount = speeds.count { it != 0.0 }.toLong(),
-            typeMismatchCount = 0L,
-            exactMin = doubleArrayOf(mn),
-            exactMax = doubleArrayOf(mx),
-            samples = speeds.map { Vec4(it.toFloat(), 0f, 0f, 0f) }
-        )
-        display("probe", snapshot.summaryHtml(previous = previous))
-        previous = snapshot
-        frame()
-    }
-}
-```
+`display(...)` renders `FieldProbeSnapshot.summaryHtml(previous)`, with `previous`
+supplying the delta colouring. This page intentionally does not embed a card capture
+yet: the docs hook currently frames the editor rather than the output card when a
+GPU-backed graphics context is active. The former video used a CPU-created snapshot
+and therefore did not test the shader, buffer, read-back, or probe lifecycle described
+here. A capture belongs here only after the hook can record the real GPU-driven card.
 
 ---
 

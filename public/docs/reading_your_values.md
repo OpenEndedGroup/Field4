@@ -1,6 +1,6 @@
 # Reading your values: Field's inline visualizers
 
-Most environments answer "what is this value?" with a line of `toString()`. Field answers with a *picture*. Whenever you ask Field to show a value, the **value visualizer** turns it into a compact, monochrome HTML view — a reflective tree for arbitrary objects, and, for the types Field draws with, a little inline graphic that reads at a glance.
+Most environments answer "what is this value?" with a line of `toString()`. Field answers with a *picture*. Whenever you ask Field to show a value, the **value visualizer** turns it into a compact HTML view — a reflective tree for arbitrary objects, and, for the types Field draws with, a little inline graphic that reads at a glance. A small per-type colour palette distinguishes parts of the view.
 
 This page is a worked tour of what that renderer produces today. Every image below was captured straight from the real renderer (`ValueVisualizer.visualize(...)`, in `src/jvmMain/kotlin/afield/visualization/ValueVisualizer.kt`) — nothing here is a mock-up.
 
@@ -17,7 +17,11 @@ box.viz(value = value)        // convenience: visualize into the box's "viz" cha
 
 `.h` is the lightweight view used throughout Field; its heavier sibling `.h2` opens a paged browser for large structures. (For the full family of *instruments* — inline `__m` probes, control surfaces, synth scopes — see [Visualizers, Displays, and Little Instruments](visualizers.md). This page is only about the value renderer itself.)
 
-The renderer is deliberately forgiving: it tracks recursion by reference, caps depth and preview sizes, and wraps every risky step (a misbehaving getter, a throwing `evalFn`) in a guard, so an awkward value degrades to less detail rather than throwing.
+The built-in and reflective paths are deliberately forgiving: they track recursion by reference,
+cap depth and preview sizes, catch reflective getter failures, and guard optional plots and
+thumbnails (including a throwing `Fn.evalFn`). Objects implementing `ToHTML` and callbacks
+registered with `registerValuePrinter` are extension points whose returned HTML is trusted; those
+callbacks are not wrapped by the renderer and should handle their own failures.
 
 ## The reflective tree
 

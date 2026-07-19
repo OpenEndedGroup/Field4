@@ -10,15 +10,15 @@ viz("primitives", "Hello, Field4!")
 // Very long string
 viz("long string", "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.")
 
-// JOML vectors
+// Field linalg vectors
 viz("vectors", vec(1.0, 2.0))
 viz("vectors", vec(1.0, 2.0, 3.0))
 viz("vectors", vec(1.0, 2.0, 3.0, 1.0))
 
-// JOML quaternion
+// Field linalg quaternion
 viz("quaternion", quat(45.0, vec(0, 1, 0)))
 
-// JOML matrix
+// Field linalg matrix
 val m = mat4()
 viz("matrix", m)
 

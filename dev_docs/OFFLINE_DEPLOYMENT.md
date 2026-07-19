@@ -1,246 +1,41 @@
-# Offline Viewer Deployment Guide
+# Offline viewer distribution
 
-This guide shows you how to deploy the Field4 offline viewer to various static hosting platforms.
+The canonical bundle definition is
+[`tools/sync_offline_assets.py`](../tools/sync_offline_assets.py). Do not maintain a
+second hand-written file list here.
 
-## Quick Start
-
-The offline viewer consists of these files:
-
-```
-offline.html          # Main viewer page
-edn-parser.js         # EDN format parser
-offline-viewer.js     # Viewer logic
-examples-gallery.html # Optional: example gallery
-iosevka.css          # Font styles (from main Field4)
-woff2/               # Iosevka font files
-min/vs/              # Monaco editor (from main Field4)
-outputareas.css      # Styles (from main Field4)
-metadata_store/      # Optional example documents
-```
-
-## Deployment Options
-
-### Option 1: GitHub Pages
-
-Build the bundle with `./build-offline-docs.sh`, copy `dist/offline-viewer/` into the folder GitHub Pages serves from (e.g. `cp -r dist/offline-viewer docs`), enable Pages in repository settings (source: `docs/`), then access at `https://<user>.github.io/<repo>/offline.html?file=metadata_store/example.edn`.
-
-### Option 2: Netlify
-
-1. Create a `public/` folder with all required files
-2. Add a `netlify.toml`:
-   ```toml
-   [build]
-     publish = "public"
-   
-   [[redirects]]
-     from = "/viewer"
-     to = "/offline.html"
-     status = 200
-   ```
-3. Deploy: `netlify deploy --prod --dir=public`
-
-### Option 3: Vercel
-
-1. Create a `public/` folder with all required files
-2. Add `vercel.json`:
-   ```json
-   {
-     "routes": [
-       { "src": "/viewer", "dest": "/offline.html" }
-     ]
-   }
-   ```
-3. Deploy: `vercel --prod`
-
-### Option 4: Any Static Host
-
-Simply upload all files to any web server or CDN. The viewer works with:
-- Amazon S3 + CloudFront
-- Firebase Hosting
-- Cloudflare Pages
-- Google Cloud Storage
-- Azure Static Web Apps
-- Any traditional web hosting
-
-## File Structure
-
-Recommended directory structure:
-
-```
-public/
-├── offline.html
-├── edn-parser.js
-├── offline-viewer.js
-├── examples-gallery.html
-├── iosevka.css
-├── woff2/
-├── outputareas.css
-├── min/
-│   └── vs/
-│       ├── loader.js
-│       └── ...
-└── docs/
-    ├── example1.edn
-    ├── example2.edn
-    └── ...
-```
-
-## Creating Beautiful Documentation Sites
-
-### Example: Documentation Hub
-
-Create an `index.html` that links to all your examples:
-
-```html
-<!DOCTYPE html>
-<html>
-<head>
-    <title>My Field4 Projects</title>
-    <link rel="stylesheet" href="iosevka.css">
-    <style>
-        /* Use the styles from examples-gallery.html */
-    </style>
-</head>
-<body>
-    <h1>My Field4 Projects</h1>
-    <div class="gallery">
-        <a href="offline.html?file=docs/project1.edn">Project 1</a>
-        <a href="offline.html?file=docs/project2.edn">Project 2</a>
-    </div>
-</body>
-</html>
-```
-
-### Example: Course Materials
-
-For educational content, organize by topic:
-
-```
-public/
-├── offline.html
-├── basics/
-│   ├── hello-world.edn
-│   └── variables.edn
-├── graphics/
-│   ├── simple-shapes.edn
-│   └── animations.edn
-└── advanced/
-    ├── shaders.edn
-    └── optimization.edn
-```
-
-Link to them:
-```
-offline.html?file=basics/hello-world.edn
-offline.html?file=graphics/animations.edn
-```
-
-## Custom Branding
-
-You can customize the offline viewer:
-
-### Change Colors
-
-Edit the CSS variables in `offline.html`:
-
-```css
-:root {
-    --field-cyan-rgb: 72, 201, 255;  /* Change to your brand color */
-    --field-cyan: rgb(var(--field-cyan-rgb));
-}
-```
-
-### Custom Banner
-
-Modify the offline banner in `offline.html`:
-
-```html
-<div class="offline-banner">
-    🎨 Your Project Name — Interactive Documentation
-</div>
-```
-
-### Custom Help Text
-
-Edit the help overlay in `offline-viewer.js` function `setupHelpOverlay()`.
-
-## CORS Considerations
-
-If loading `.edn` files from a different domain, ensure CORS headers are set:
-
-```
-Access-Control-Allow-Origin: *
-```
-
-For S3:
-```json
-{
-  "CORSRules": [{
-    "AllowedOrigins": ["*"],
-    "AllowedMethods": ["GET"],
-    "AllowedHeaders": ["*"]
-  }]
-}
-```
-
-## Performance Tips
-
-1. **Compress Monaco**: The `min/vs/` directory can be gzipped
-2. **CDN**: Use a CDN for fonts and Monaco editor
-3. **Lazy Loading**: Load Monaco only when a box is selected
-4. **Cache Headers**: Set long cache times for static assets
-
-## Security Notes
-
-- The viewer runs entirely client-side
-- No code execution - only display
-- Safe to host on public sites
-- `.edn` files are just data
-
-## Testing Locally
-
-Simple Python server:
-```bash
-python3 -m http.server 8000
-# Visit: http://localhost:8000/offline.html?file=example.edn
-```
-
-Node.js:
-```bash
-npx http-server -p 8000
-```
-
-## Troubleshooting
-
-**Monaco editor not loading:**
-- Check that `min/vs/loader.js` exists
-- Check browser console for 404 errors
-- Ensure paths are relative to `offline.html`
-
-**EDN file not loading:**
-- Check CORS if loading from different domain
-- Verify file path is correct
-- Check browser network tab for errors
-
-**Fonts not loading:**
-- Ensure `woff2/` exists beside `iosevka.css`
-- Check `iosevka.css` paths
-- May need to adjust font paths for your hosting
-
-## Advanced: Build Script
-
-Use the repository build script:
+Build the standalone distribution with:
 
 ```bash
 ./build-offline-docs.sh
 ```
 
-Then deploy `dist/offline-viewer/` to your hosting provider.
+This synchronizes the canonical resources into `dist/offline-viewer/`. The same
+Python synchronizer is used by the documentation build, so fixes belong in the
+source resources or in that script rather than in generated output.
 
-## Getting Help
+The bundle is a static site and must be served over HTTP; opening `offline.html`
+directly as a `file:` URL is not a supported path. A local smoke is:
 
-If you encounter issues:
-1. Check the browser console for errors
-2. Verify all files are accessible
-3. Test with the sample `.edn` files first
-4. Open an issue on the Field4 repository
+```bash
+cd dist/offline-viewer
+python3 -m http.server 8000
+```
+
+Then open
+`http://localhost:8000/offline.html?file=metadata_store/simple_hello/metadata.edn`.
+Remote `?file=` URLs require the document server to permit the viewer's origin
+with CORS.
+
+## Trust boundary
+
+Rendering is client-side and does not execute box code. The `Open in Field·4`
+button is different: after an explicit click it submits the source EDN to an
+embedding Field instance, or to `https://localhost:9092/api/import-offline-doc`.
+That endpoint creates a new document directory in the active workspace and writes
+the supplied text as `metadata.edn`. Imported documents therefore remain
+untrusted input; inspect them before running their code.
+
+The exact viewer behavior and source ownership are recorded in
+[`OFFLINE_VIEWER.md`](OFFLINE_VIEWER.md) and in the header comment of
+[`offline-viewer.js`](../src/commonMain/resources/offline-viewer.js).

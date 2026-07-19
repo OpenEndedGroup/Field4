@@ -87,6 +87,6 @@ answer is one click away and one click back, inside the same popup you already
 opened to write the line. It turns the completion panel from a label into a way
 to read the codebase by following its own cross-references.
 
-The same card viewer backs the conversational
-[documentation & code search](semantic_index.md), and the underlying
-autocomplete is covered in the [Survival Guide](survivalGuide.md#autocomplete).
+The underlying autocomplete is covered in the
+[Survival Guide](survivalGuide.md#autocomplete). Conversational code search is
+a separate UI and retrieval path; see [Semantic retrieval](semantic_index.md).

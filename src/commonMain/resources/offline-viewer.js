@@ -1,6 +1,17 @@
 /**
- * Field·4 Offline Viewer
- * Renders Field documents in read-only mode without backend connection
+ * Static, read-only renderer for the Field metadata subset parsed by
+ * `edn-parser.js`.
+ *
+ * The viewer fetches the `?file=` document, omits tombstones/root/unnamed or
+ * empty-code boxes, draws box frames and parent edges, and shows string code
+ * properties in a read-only Monaco model (or a graph-only fallback when Monaco
+ * cannot load). It does not connect to Field's websocket or execute box code.
+ *
+ * `Open in Field·4` is deliberately outside that read-only boundary. A click
+ * first asks an embedding Field docs frame to import the EDN, then falls back to
+ * POSTing it to `https://localhost:9092/api/import-offline-doc`. That operation
+ * creates a new workspace document; callers must therefore treat remotely
+ * supplied EDN as untrusted even though viewing it here does not execute it.
  */
 
 let monacoEditor = null;
@@ -929,13 +940,15 @@ function showError(message) {
 
     loading.style.display = 'none';
     error.style.display = 'block';
-    error.innerHTML = `
-        <h3>Error</h3>
-        <p>${message}</p>
-        <p style="margin-top: 16px; font-size: 12px; opacity: 0.7;">
-            Make sure the EDN file exists and is accessible from this page.
-        </p>
-    `;
+    error.replaceChildren();
+    const heading = document.createElement('h3');
+    heading.textContent = 'Error';
+    const detail = document.createElement('p');
+    detail.textContent = String(message);
+    const hint = document.createElement('p');
+    hint.style.cssText = 'margin-top: 16px; font-size: 12px; opacity: 0.7;';
+    hint.textContent = 'Make sure the EDN file exists and is accessible from this page.';
+    error.append(heading, detail, hint);
 }
 
 function showDocumentInfo(data, fileUrl) {
@@ -944,11 +957,10 @@ function showDocumentInfo(data, fileUrl) {
     const boxCount = data.boxes ? data.boxes.filter(b => !(b.properties || {})._tombstone).length : 0;
     const version = data.version || 'unknown';
 
-    banner.innerHTML = `
-        <span style="opacity: 0.7; font-size: 11px;">
-            ${fileName} • ${boxCount} box${boxCount !== 1 ? 'es' : ''} • v${version}
-        </span>
-    `;
+    const summary = document.createElement('span');
+    summary.style.cssText = 'opacity: 0.7; font-size: 11px;';
+    summary.textContent = `${fileName} • ${boxCount} box${boxCount !== 1 ? 'es' : ''} • v${version}`;
+    banner.replaceChildren(summary);
 }
 
 // Handle window resize

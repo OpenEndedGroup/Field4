@@ -11,14 +11,29 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 /**
- * FileWatchManager monitors workspace directories for external file changes
- * and reloads sidecar files into Box properties, syncing to the frontend.
- * 
- * Enhanced with self-healing capabilities:
- * - Detects orphaned sidecar files (files without corresponding boxes)
- * - Auto-creates boxes with sensible defaults (frame, name)
- * - Watches metadata.edn for external changes
- * - Reconciles box hierarchy when metadata is edited externally
+ * Keeps one open document synchronized with external edits to its workspace directory.
+ *
+ * The watcher registers only [SessionInformation.filename] itself (not subdirectories) for create,
+ * modify, and delete events. Sidecar names are decoded against [Box.ioSeparateProperties]; an
+ * external create or modification reloads the property on Field's main thread and resynchronizes
+ * the box. If the referenced box is absent, the watcher creates it, assigns a free grid position,
+ * loads the property, and saves the document. Sidecars that already existed when [start] ran are
+ * recorded as the baseline and are not treated as newly dropped orphan files.
+ *
+ * [SavingContext] calls [markInternalSave] after its own writes. Matching watch events are ignored
+ * while their size and modification-time signature remains valid, as are events for properties
+ * that the session still considers pending local saves. Deleting a sidecar externally only clears
+ * the watcher's bookkeeping: it deliberately does not erase the in-memory property. Deleting
+ * `metadata.edn` is ignored.
+ *
+ * An external `metadata.edn` modification is reconciled rather than loaded as a replacement
+ * session. New active boxes are added, boxes absent from the file are tombstoned, and topology
+ * references to tombstoned boxes are removed. Existing boxes are not otherwise overwritten by the
+ * reconciliation pass.
+ *
+ * The manager owns an IO coroutine scope and a Java [WatchService]. [stop] is terminal for an
+ * instance because it cancels that scope and closes the watch service; create a new manager to
+ * restart watching. [SessionInformation] owns this lifecycle.
  */
 class FileWatchManager(private val sessionInfo: SessionInformation) {
 
@@ -52,7 +67,8 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
     private fun isReservedBoxId(boxId: String): Boolean = boxId == ROOT_BOX_ID
 
     /**
-     * Start watching the workspace directory for external file changes
+     * Establish the current sidecars as the baseline, register the workspace, and start the event
+     * loop plus the five-second orphan scan. Calling this while already running is a no-op.
      */
     fun start() {
         if (isRunning) return
@@ -94,7 +110,8 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
     }
 
     /**
-     * Stop watching for file changes
+     * Cancel both jobs, discard all baselines and save signatures, and close the watch service.
+     * Calling this when not running is a no-op; a stopped instance cannot be started again.
      */
     fun stop() {
         if (!isRunning) return
@@ -119,7 +136,8 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
     }
 
     /**
-     * Mark a file as saved by Field internally (so we don't reload it)
+     * Record the file's modification time and size after a Field save so the resulting watch event
+     * is not mistaken for an external edit. Missing files are ignored.
      */
     fun markInternalSave(file: File) {
         if (!file.exists()) {
@@ -418,7 +436,8 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
     }
     
     /**
-     * Handle changes to metadata.edn file
+     * Debounce and reconcile a newer external `metadata.edn` modification on Field's main thread.
+     * Internal-save signatures and non-increasing modification times are ignored.
      */
     private suspend fun handleMetadataChange(file: File) {
         try {
@@ -472,8 +491,11 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
     }
     
     /**
-     * Reconcile the current box hierarchy with metadata.edn
-     * This handles external additions/deletions to metadata
+     * Add active boxes found only on disk and tombstone session boxes absent from disk.
+     *
+     * This is intentionally not a general merge: properties of boxes already present in the
+     * session are left alone. Topology values loaded for new boxes are restricted to active boxes
+     * plus the root, and references to tombstoned boxes are removed.
      */
     private fun reconcileMetadata(workspaceDir: File) {
         try {
@@ -575,7 +597,8 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
     }
     
     /**
-     * Check for orphaned sidecar files and auto-create boxes for them
+     * Find sidecars created or changed after [start] whose decoded box id is absent, and create the
+     * corresponding boxes. The root id and unchanged startup sidecars are ignored.
      */
     @OptIn(ExperimentalUuidApi::class)
     private suspend fun checkForOrphanedFiles(workspaceDir: File) {
@@ -610,8 +633,8 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
     }
     
     /**
-     * Auto-create a box for an orphaned sidecar file
-     * Returns the created box or null if creation failed
+     * Create and initialize a non-root box for an orphaned sidecar, load its property, mark the
+     * property pending, and request a save. Returns `null` if any part of creation fails.
      */
     @OptIn(ExperimentalUuidApi::class)
     private fun autoCreateBoxForSidecarFile(file: File, boxId: String, propertyName: String): Box? {
@@ -681,9 +704,9 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
     }
     
     /**
-     * Calculate a non-overlapping frame for a new box
-     * Uses a simple grid layout starting at (50, 50) with 350x250 boxes
-     * @param boxId The box ID to use for deterministic fallback positioning
+     * Return the first unoccupied cell among 100 cells in a four-column grid of 350x250 boxes,
+     * starting at (50, 50) with 20 pixels between cells. If the grid is full, use [boxId] to choose
+     * a deterministic non-negative diagonal offset from the origin.
      */
     private fun calculateNewBoxFrame(boxId: String): Rect {
         val startX = 50.0

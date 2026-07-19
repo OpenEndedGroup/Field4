@@ -38,7 +38,10 @@ The basic workflow:
 4. Choose **Apply — full restore**.
 5. Confirm when prompted ("Restore the whole document to version #N?").
 
-Before the restore settles, Field rotates the state you are leaving into a fresh backup, so restoring an older version never throws away the state you are leaving behind — you can always come back.
+Saving the restored result rotates the previous on-disk `metadata.edn` into the backup set, so the
+last saved state remains available in history. As with any recovery tool, unsaved in-memory edits
+are not an additional durable checkpoint; let Field save (or make an explicit save) before a
+high-stakes restore.
 
 ### Restore just a few boxes
 

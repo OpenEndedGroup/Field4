@@ -43,7 +43,8 @@ screenshot by hand — that never enters the docs pipeline.)
 
 | You want… | Do this | Status |
 |---|---|---|
-| A GPU **compute** result / a `fieldProbe`/`fieldStats` card | **one compute-only box** (`computeModuleHere` + `ComputeMesh`, no draw), `graphics-context=true` | ✅ works |
+| A GPU **compute** result | **one compute-only box** (`computeModuleHere` + `ComputeMesh`, no draw), `graphics-context=true` | ✅ works |
+| A real `fieldProbe` output card | GPU compute box plus an output-area capture | Runtime works; docs framing remains open, so no capture is embedded |
 | A **graphics** still (vertex/fragment) | one graphics box (`moduleHere` + `Mesh`), `capture="native-window"` | ✅ works (see `afield_four_graphics.md`) |
 | An **editor/output video** (a live `display(...)` card) | `capture="box"` + `video=` (auto-rewritten to editor recording), `execution="launch"`, a `frames { while(true){…; frame() } }` loop | ✅ works |
 | A **compute + draw** particle system **in one box** | — | ❌ see "Known limitation" |
@@ -96,12 +97,9 @@ AI completions stream in a few seconds later and merge (they no longer block the
 fixed in `fieldSuggest.js`). For an AI-completion shot, wait a beat longer after the first row so
 the `AI` section is populated.
 
-**Known compromise to fix — the `field_probes.md` CPU probe card.** It currently builds a
-`FieldProbeSnapshot(...)` from a stand-in distribution on the CPU and captures `.summaryHtml()`,
-because the genuinely GPU-driven probe card is mis-framed by the hook (see "Framing" below). It
-renders the *same* card component, but it is **not** exercising the real GPU probe path — so it is
-a stopgap, not a pattern to copy. The right fix is to capture the real GPU-driven card (fix the
-framing); until then this stand-in should be treated as a documented gap, per the Principle above.
+`field_probes.md` deliberately omits its card capture until the hook can frame the output area of
+the real GPU-driven probe. The former CPU-created `FieldProbeSnapshot` stand-in was removed because
+it exercised only card rendering, not the documented probe path.
 
 ---
 
@@ -156,9 +154,8 @@ important mechanics (all verified by reading the hook + logs):
 
 `capture="box"` + `video=` records the **editor pane with `--open-outputs`**.
 
-- **Without** `graphics-context`, the recording frames the box's output area — so a
-  `display("probe", html)` card fills the clip. This is how the `field_probes` CPU stand-in card
-  is currently captured (a compromise — see above; it does not drive the real GPU probe).
+- **Without** `graphics-context`, the recording frames the box's output area, so a
+  `display("probe", html)` card fills the clip.
 - **With** `graphics-context`, the recording frames the *code editor* of the
   macro-created child box, so the card ends up off-frame (you get the source + a
   tiny "ok"). The fix is to **correct the framing in the hook** so the genuinely GPU-driven probe

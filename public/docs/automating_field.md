@@ -11,8 +11,9 @@ powers three things you can use:
 - **The backdoor** — a command-line way for scripts and AI agents to drive a running
   Field: build documents, run code, capture output and errors, and take screenshots.
 
-The screenshots and rendered figures throughout this documentation are produced by
-exactly this machinery — Field building and running the examples during the docs build.
+The documentation's executable capture fences use this machinery: Field builds and runs the
+example, then captures its real browser or native graphics output. A few reference images and
+component-specific test captures are maintained by their owning test or platform workflow instead.
 
 ## Operations as data
 
@@ -76,5 +77,5 @@ are made.
 - **[Building & Testing](building_and_testing.md)** covers the backdoor as a test harness.
 - For the complete reference — every operation, the observable results, and worked
   examples on the canvas and in `afield.four` Vulkan graphics — see `dev_docs/agents/`
-  in the Field repository (`OPERATION_TRANSCRIPT.md` and `FIELD_BACKDOOR.md`). Every Field
-  workspace also carries a short `AGENTS.md` that onboards an agent working inside it.
+  in the Field repository (`OPERATION_TRANSCRIPT.md` and `FIELD_BACKDOOR.md`). Field's default
+  workspace setup also writes a short `AGENTS.md` for agents working inside that workspace.

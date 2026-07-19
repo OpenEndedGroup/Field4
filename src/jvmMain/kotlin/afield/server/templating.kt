@@ -29,7 +29,15 @@ data class TemplateMetadata(
     val source: String = "template"
 )
 
-// Configuration for template servers - comma-separated list of URLs
+/**
+ * Remote metadata-template servers, read once from `AFIELD_TEMPLATE_SERVERS` or, when the
+ * environment variable is absent, `afield.templateServers`.
+ *
+ * [templating] starts one background fetch of each `/list` endpoint. The cache is not refreshed
+ * afterwards, and failed or empty responses do not create cache entries. Template insertion checks
+ * `$home/templates`, then bundled templates, then cached remote servers; it does not insert the
+ * document entries that [SavingContext.listTemplates] finds directly beneath `$home`.
+ */
 val templateServers: List<String> by lazy {
     val serversEnv = System.getenv("AFIELD_TEMPLATE_SERVERS") ?: System.getProperty("afield.templateServers") ?: ""
     if (serversEnv.isBlank()) emptyList()
@@ -249,9 +257,7 @@ private fun extractTemplateMetadata(templatePath: String, templateName: String, 
     }
 }
 
-/**
- * Initialize template server querying in the background
- */
+/** Populate the process-local remote-template cache once, without delaying server startup. */
 private fun initializeTemplateServers() {
     if (templateServers.isEmpty()) {
         lprintln("warning,template", "No template servers configured (use AFIELD_TEMPLATE_SERVERS environment variable)")

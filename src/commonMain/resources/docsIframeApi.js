@@ -1,8 +1,16 @@
 /**
- * Field Documentation Iframe API
- * 
- * This module provides a bidirectional API between Field and documentation pages loaded in the iframe.
- * Documentation pages can call these methods to control Field's behavior.
+ * Message contract between Field and the page currently loaded in `#docs-iframe`.
+ *
+ * This file runs in both contexts. In the child it publishes `window.FieldAPI`; in Field it installs
+ * `handleDocsIframeMessage`. The parent accepts messages only from the current iframe window (or,
+ * for offline-document import, its immediate nested child), but deliberately does not restrict the
+ * iframe's origin. A loaded page can execute/launch/stop boxes, change selection and editor state,
+ * run palette actions, and request imports, so the iframe URL is a trust boundary.
+ *
+ * `bootstrapMonaco.js` injects this script after a same-origin iframe load. Browser origin rules make
+ * that injection impossible for cross-origin pages; those pages must load this script themselves if
+ * they want `FieldAPI`. All child requests use `postMessage`; callbacks such as `getSelection` are
+ * correlated by a generated message id.
  */
 
 // API for iframe contents to control Field

@@ -1,72 +1,34 @@
-# SimdVerlet DirectedConstraints4 Extension
+# SimdVerlet four-slot directed constraints
 
-Design notes for the 4-slot distance-constraint extension to the `SimdVerlet`
-soft-body engine. The per-method API surface lives in KDoc on
-`SimdVerlet.DirectedConstraints4` (in
-`src/jvmMain/kotlin/afield/four/physics/SimdVerlet.kt`); this doc only captures
-the rationale that doesn't belong inline.
+The API and solver contract are documented beside
+`SimdVerlet.DirectedConstraints4` in
+`src/jvmMain/kotlin/afield/four/physics/SimdVerlet.kt`. This note records only
+the design rationale and runnable examples.
 
-## Why 4 slots
+Four outgoing slots match the up/down/left/right neighborhood of an interior
+cloth-grid particle. Each particle owns its four neighbor indices, rest lengths,
+and stiffness values in parallel arrays; `setSlot(...)` accepts slots 0 through
+3. Particle swap-removal updates those arrays and remaps neighbor indices.
 
-`DirectedConstraints4` extends the existing `DirectedConstraints3` from 3 to 4
-outgoing distance constraints per particle. The motivating case is a regular
-cloth grid: each interior particle has four axis neighbors (up, down, left,
-right), so it needs four slots to pin all of them from a single owner. Slots are
-stored as parallel arrays (`n*` neighbor indices, `r*` rest lengths, `s*`
-stiffnesses); an unused slot is `neighbor = -1` or `stiffness = 0`.
+`solveDirectedDist4InPlaceRange(...)` gathers neighbor positions with the JDK
+Incubator Vector API and writes each correction only to the particle that owns
+the constraint. It never scatters a correction to the neighbor. Non-overlapping
+particle ranges can therefore run concurrently when each worker has its own
+`ConstraintScratch`.
 
-Populate with `setSlot(index, slot, neighbor, restLength, stiffness)`. Particle
-removal is handled by `State.applyQueuedRemovalsSwap`, which uses the (internal)
-`swapConstraints` / `remapNeighbors` helpers to keep the swap-remove compaction
-consistent.
+`afield.examples.ClothSimulationExample` demonstrates the layout. Its optional
+curvature generator moves interior particles toward the mean of their four axis
+neighbors; `enableCurvatureForce` is **true by default**. Its interactive wrapper
+uses PID position controllers for grabbing rather than teleporting particles.
 
-## SIMD solver and thread safety
+Runnable entry points:
 
-The constraints are solved by `solveDirectedDist4InPlace` /
-`solveDirectedDist4InPlaceRange` using the JDK Incubator Vector API. Neighbor
-positions are gathered through the per-slot maps in `ConstraintScratch`
-(`map0`..`map3` — the 4th map is what this extension added), distances use SIMD
-sqrt, and a scalar remainder-lane fallback finishes the tail.
+- `afield.examples.TestDirectedConstraints4`: minimal four-slot smoke.
+- `afield.examples.ClothSimulationExample`: cloth and interaction example.
+- `afield.examples.SimdVerletTinyExample`: earlier three-slot example.
+- `./gradlew runSimdVerletBulkKernelsExample`: the repository's dedicated
+  `JavaExec` example task.
 
-The important design constraint is that the solver is **range-parallel safe**:
-each particle accumulates only onto its own position, and there are *no scatter
-writes back to neighbors*. That means non-overlapping particle ranges can be
-solved on separate threads, each with its own scratch, without locking. This
-accumulate-own-particle-only rule is what makes the directed (rather than
-symmetric) constraint layout worthwhile.
-
-## Cloth grid wiring and curvature force
-
-`afield.examples.ClothSimulationExample` wires a grid of particles with 4-way
-constraints and returns a `Sequence<List<FLine>>` of the cloth wireframe for
-visualization. It exposes an optional **curvature force**: for each particle it
-computes the average position of its four grid neighbors and pushes the particle
-toward that average (scaled by `curvatureStrength`). This is a cheap bending
-term that tries to flatten local kinks in the cloth; it is off by default
-because it costs work proportional to particle count.
-
-Interactive grabbing is layered on top via `InteractiveClothSimulation`
-(`grabNearest` / `moveGrabbed` / `releaseGrabbed`, with 2D and 3D overloads).
-Grabs are implemented as PID position controllers that smoothly drive the
-grabbed particle to the target rather than teleporting it.
-
-## Running the examples
-
-`jvmRun` cannot launch these: its `mainClass` is hardcoded to `afield.Server`
-(see `build.gradle.kts`), so `./gradlew :jvmRun --args="afield.examples.X"` just
-boots the full Field4 server with a stray program argument — it never calls the
-example's `main()`. To actually run one, use an IDE run configuration on the
-example's `main()`, or add a dedicated `JavaExec` Gradle task pointed at the
-example class (the repo already uses this pattern, e.g. the
-`runSimdVerletBulkKernelsExample` task).
-
-Relevant examples:
-- `afield.examples.TestDirectedConstraints4` — minimal 4-slot smoke test.
-- `afield.examples.ClothSimulationExample` — full interactive cloth.
-- `afield.examples.SimdVerletTinyExample` — the 3-slot warmup.
-
-## Tuning
-
-- Higher iteration counts (8-10) give more stable constraints at higher cost.
-- 4 slots per particle is the maximum; leave unused slots at `-1` / stiffness 0.
-- The curvature force is optional and adds per-particle cost.
+The normal JVM run task starts `afield.Server`; passing an example class in
+`--args` does not select another main class. For the other entry points use
+`field_backdoor.py`'s `run-jvm-main` command or an IDE run configuration.

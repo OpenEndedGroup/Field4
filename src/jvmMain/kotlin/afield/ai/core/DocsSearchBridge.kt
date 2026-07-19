@@ -15,8 +15,21 @@ import com.openai.core.JsonValue
 import java.util.*
 
 /**
- * AI bridge specifically designed for documentation and code search.
- * Uses the filestore mirror to provide context about Field4 codebase.
+ * Stateful Responses API bridge used by the docs-search iframe.
+ *
+ * [startConversation] creates a remote conversation and appends the fixed system
+ * instructions. [search] grounds a query with the startup-built
+ * [KotlinSourceIndex] vector store and any query-selected GLSL include-library
+ * stores, when present. The Kotlin store contains `src/jvmMain/kotlin`,
+ * `src/personal/kotlin`, and `src/generatedLinalg/kotlin`; this bridge does not
+ * index `public/docs` or `dev_docs`. With no available store it still sends an
+ * ungrounded request and logs a warning.
+ *
+ * Responses stream text deltas when the SDK stream succeeds and fall back to a
+ * non-streaming create on any streaming failure. A missing configured model is
+ * retried once with `AFIELD_DOCS_SEARCH_FALLBACK_MODEL`; other failures are
+ * returned as [SearchResult.success] false. Conversation continuation uses the
+ * previous response id after the first turn.
  */
 class DocsSearchBridge(
     private val client: OpenAIClient = OpenAIOkHttpClient.fromEnv(),

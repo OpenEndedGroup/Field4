@@ -42,6 +42,15 @@ data class ActiveProbe(
     var lastScope: ScopeSnapshotPayload? = null
 )
 
+/**
+ * Installs JDI class-prepare and breakpoint requests for runtime value probes.
+ *
+ * Requests use [EventRequest.SUSPEND_EVENT_THREAD], never `SUSPEND_ALL`: the
+ * thread that hits the probe is paused while [handleEventSet] reads its stack
+ * value and is resumed in that function's `finally` block. Probes are therefore
+ * deliberately brief and VM-local, but they are not literally non-suspending;
+ * value rendering cost is paid by the event thread at each sampled hit.
+ */
 class JdiProbeService(
     private val vm: VirtualMachine,
     private val out: PrintWriter

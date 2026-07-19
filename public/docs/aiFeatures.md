@@ -1,46 +1,60 @@
-# AI Features
+# AI features
 
-Field aims to have a complete set of AI-facing features, even when it might not be so clear as to what that might mean yet. This page collects them together.
+Field's AI features share the current box and editor context, but they serve
+different jobs: conversation, targeted edits, completion, and generated helper
+functions. They require an OpenAI or OpenRouter API key configured from
+[`/welcome`](history_overview.md) or the environment.
 
-## AI Chat about this box
+## Chat about one box
 
-`command/ctrl-4` (or "AI Chat (Panel)") opens an output area on this box where you can chat to GPT-5.3 about the code in this box. This agent has access to a full complement of tools for reading and editing your code, its properties and the internal files and documents that make up Field.
+Select one box and press `command/ctrl-4`, or run **AI Chat (panel)** from the
+command palette. Field opens the `ai-chat` output area for that box. The chat
+receives the box's current code and can use the Field tools made available by
+the server to inspect or propose edits to box properties and related source.
 
 ![](assets/screenshot_47.png)
 
-This agent tends to work very hard, especially at the beginning of the conversation. You can follow it's innermost thoughts and tool calls in the terminal.
-
-Image based attachments are supported — just paste an image into the text box and let the Agent see the results of the code.
+You can paste images into the chat input. Field sends those attachments with
+the next message, which is useful when the desired change is easier to point at
+than describe.
 
 ![](assets/screenshot_53.png)
 
-This means that 'can you make the thick lines a little more red' really is something you can have a concrete conversation about.
+## Chat at an editor location
 
-## AI 'Inline' chat
-
-`command/ctrl-3` (or "AI Inline Chat") let's you indicate a spot in your code that you'd like some help with:
+Press `command/ctrl-3`, or run **AI Chat in editor**. With a selection, Field
+marks that range as the requested rewrite; without a selection, it marks the
+cursor position. The request also identifies the current box property and line.
 
 ![](assets/screenshot_46.png)
 
-That should, quite quickly, give you:
-
-```diffstatic {data-lang=kotlin}
-var v = listOf<Vec2>()
-
-v = List(100) { Vec2(Math.random().toFloat(), Math.random().toFloat()) }
-```
-
-If there are significant changes to your code, Field will bundle these into a provisional edit:
+An edit can arrive as a *provisional* value rather than immediately replacing
+the saved property:
 
 ![](assets/screenshot_48.png)
 
-Green lines are additions and red deletions. This may include changes to other properties associated with a box (GLSL shader code), and it might include other boxes. You can review and accept or reject changes with the mouse or a command:
+Monaco shows additions and deletions. Use the editor controls or the command
+palette actions **Accept All Provisional** / **Reject All Provisional**, either
+for the current editor or everywhere, to resolve them.
 
 ![](assets/screenshot_49.png)
 
-## AI Auto-complete
+## Ask AI about a displayed error
 
-`ctrl-space` opens Field's custom completion panel. Field typically does a type-based analysis of what can complete here (Kotlin's internal compiler for Kotlin, the Jedi package for Python etc.); in the background it also fires off a request for up to 3 AI completions and updates the same FieldSuggest list when they arrive:
+**Apply Intelligence to Error message** sends the current editor context plus
+Field's last displayed error. Any resulting code change follows the same
+provisional-edit path, so it remains reviewable before acceptance.
+
+![](assets/screenshot_51.png)
+
+![](assets/screenshot_52.png)
+
+## AI-assisted completion
+
+`ctrl-space` opens Field's completion panel. Kotlin completions come from
+Field's compiler-backed completion path; Python completion uses Jedi. Field can
+also request AI candidates in the background and add at most three of them to
+the same list when they arrive.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="editor" warm-completion=true screenshot="assets/ai-autocomplete.png" wait="0" timeout="90" embed=true hidden=true name="ai-autocomplete"}
 ui.eval("window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text.ok{display:none !important}';document.head.appendChild(s);return 'setup';")
@@ -57,49 +71,47 @@ ui.waitForSelector("text=AI 1", 20000.0)
 ui.pause(600)
 ```
 
-In our testing these things seem to be particularly good at GLSL code, often one-shotting large chunks of the standard issue "Book of Shaders"-level shader repertoire. 
+AI completion is asynchronous. The ordinary completion list can be used before
+the AI request finishes, and a missing key or remote failure should not prevent
+compiler-backed candidates from appearing.
 
-## Just fix the error, damnit. 
+## The `ai()` function macro
 
-This one is my favorite:
-
-![](assets/screenshot_51.png)
-
-Yields:
-
-![](assets/screenshot_52.png)
-
-And a quick `f1`-"Accept All Provisional (Everywhere)" gets your code working. In addition to the code and the usual set of tools, this agent gets the error message on the screen as part of it's prompt.
-
-## Really "wishful thinking" coding.
-
-Wishful thinking coding is a top down process by which you pretend that you have a complex function that does the thing you want and then iteratively decompose it into smaller pretend functions. Eventually, the idea is, you get to functions that are so small it's not worth pretending any more (or you realize your architecture is bad and try again). AI can enter this way of breaking programs down quite directly. Field supports this:
+Inside a named Kotlin function with explicit parameter and return types,
+`ai("description")` asks Field to generate the implementation of a private
+forwarded function:
 
 ```diffstatic {data-lang=kotlin}
-var f = FLine()
-
-fun randomWiggle(radius : Double, center : Vec3) : FLine {
+fun randomWiggle(radius: Double, center: Vec3): FLine {
     ai("makes an FLine that wiggles around center")
 }
-
-lines(randomWiggle(100.0, vec(1,2,3)))
 ```
 
-Automatically, upon first run, that function notices that it doesn't exist yet, asks the LLM to write one, iterates on it until it compiles and then, having compiled it, continues on. On subsequent executions Field notices that it already has a function definition to hand (changing the signature or the prompt gets you a fresh function).
+On the first expansion, Field asks the configured model for a function with the
+derived name and exact signature. It retries compilation up to three times.
+The generated block is stored in the box's `attic` property. Later expansions
+reuse it only while the function signature and prompt still match; changing
+either causes Field to generate a replacement.
 
 ![](assets/screenshot_56.png)
 
-You can find the place where these AI functions are 'stored' in the `attic` property associated with the box. 
+## Provider and key settings
 
+The simplest setup is the AI settings card on `/welcome`, where you can select
+OpenAI or OpenRouter, save the corresponding key, and optionally override model
+names. Saved keys live under `~/.afield/`; they are not stored in a document.
 
-# Behind the scenes
+For environment-based setup, Field reads:
 
-Behind the scene's there's a couple of things going on. First of all, for any of this to work, you'll need your own OpenAI platform key. You can introduce this into the terminal that you are running Field from. On Mac, you can `export OPENAI_API_KEY=sk-proj-QU_auyboSk_OpQmTfJ37HiQLxTXV4XQaNLrgDB93XY8ZioJIdzLYWxXqivnH63LsmyP0X1wSHmT3BlbkFJfZF3ZXoRj7R1ETrBOS1MLHJ2iItWSlqd24opyhfLslAucbXZO4tgguXPd329RAORBF7A0CT8A` (that's not a real key). Alternatively you can run:
+- `OPENAI_PLATFORM_KEY` or `OPENAI_API_KEY` for OpenAI
+- `OPENROUTER_API_KEY` for OpenRouter
+- `AFIELD_AI_PROVIDER` to choose the provider
 
-```diffstatic {data-lang=kotlin}
-System.setProperty("OPENAI_API_KEY", "your key here")
-```
+Environment variables take precedence over saved provider and credential
+files. `AFIELD_AI_BASE_URL` can override the active provider's base URL.
 
-Early on in your session.
-
-Field will also open a filestore in that OpenAI's account, upload most of it's source and documentation to it, to allow agents to search it quickly. It will keep this filestore in sync when you upgrade your Field. So, the first time you open Field with AI extensions, expect some traffic.
+Some AI features maintain remote conversation or source-search state with the
+configured provider. The documentation/code search path currently indexes
+selected Kotlin source roots, with separate GLSL stores selected by the current
+context; it does not upload `public/docs` or `dev_docs` as a Markdown manual.
+See [Semantic retrieval](semantic_index.md) for Field's separate local indexes.

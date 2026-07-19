@@ -25,7 +25,10 @@ var Box.introduction by Delegation<String>(defaultValue = { "" })
 var Box.attic by Delegation<String>(defaultValue = { "" })
 var Box.notes by Delegation<String>(defaultValue = { "" })
 var Box.autorun by Delegation<Boolean>(defaultValue = { false })
+/** Comma-separated membership used by the frontend and server visibility intersection. */
 var Box.layers by Delegation<String>(defaultValue = { "default" })
+
+/** Persisted frame overrides keyed by layer; updated when the session leaves an active layer. */
 var Box.layerFrames by Delegation<MutableMap<String, Rect>>(defaultValue = { mutableMapOf() })
 var Box.templateId by Delegation<String?>(defaultValue = { null }) // tracks which template this box was created from
 
@@ -559,12 +562,12 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                         return@launch
                     }
 
-                    notify("Applied update, please restart Field", "update")
                     val success = promoteStagingToLive()
                     if (!success) {
                         notify("Error applying update", "update")
                     } else {
                         writeLocalVersion(ui)
+                        notify("Applied update, please restart Field", "update")
                     }
                 }
             }

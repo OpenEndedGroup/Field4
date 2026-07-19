@@ -154,6 +154,35 @@ class GeneratedLinalgTest {
     }
 
     @Test
+    fun rotationExtractionRemovesNonUniformScale() {
+        val expected = Quaternionf().setAngleAxis(0.73f, 1f, 2f, -0.5f).normalize()
+        val matrix = Matrix4f().translate(3f, -2f, 5f).rotate(expected).scale(2f, 4f, 0.5f)
+        val extracted = matrix.getUnnormalizedRotation(Quaternionf()).normalize()
+        val value = Vector3f(0.3f, -0.8f, 1.1f)
+
+        val expectedDirection = expected.transform(value, Vector3f())
+        val extractedDirection = extracted.transform(value, Vector3f())
+        assertVectorClose(
+            expectedDirection.x,
+            expectedDirection.y,
+            expectedDirection.z,
+            extractedDirection,
+            3e-5f
+        )
+    }
+
+    @Test
+    fun lookAtMapsEyeToOriginAndTargetDownNegativeZ() {
+        val eye = Vector3f(2.695f, 1.332f, -3.575f)
+        val target = Vector3f(0f, 0.32f, 0f)
+        val view = Matrix4f().lookAtField(eye, target, Vector3f(0f, 1f, 0f))
+
+        assertVectorClose(0f, 0f, 0f, view.transformPosition(Vector3f(eye)), 2e-5f)
+        val viewedTarget = view.transformPosition(Vector3f(target))
+        assertVectorClose(0f, 0f, -eye.distance(target), viewedTarget, 2e-5f)
+    }
+
+    @Test
     fun typedTransformSemanticsPreserveCompositionDeterminantAndInverse() {
         val random = Random(0x71a4)
         repeat(250) {

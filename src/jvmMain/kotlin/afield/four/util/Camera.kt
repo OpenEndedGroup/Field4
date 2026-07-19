@@ -68,35 +68,7 @@ class Camera(val renderer: Renderer = fromContext()) {
     /**
      * Compute model-view matrix from at/target/up.
      */
-    fun modelView(): Matrix4f {
-        val f = forward
-        var u = Vector3f(up).normalize()
-        val s = (f x u)
-        u = (s x f).normalize()
-
-        val m = Matrix4f()
-
-        // Basis (right, up, -forward) — camera looks down -Z in view space
-        m[0 * 4 + 0] = s.x
-        m[1 * 4 + 0] = s.y
-        m[2 * 4 + 0] = s.z
-
-        m[0 * 4 + 1] = u.x
-        m[1 * 4 + 1] = u.y
-        m[2 * 4 + 1] = u.z
-
-        m[0 * 4 + 2] = -f.x
-        m[1 * 4 + 2] = -f.y
-        m[2 * 4 + 2] = -f.z
-
-        m[3 * 4 + 3] = 1f
-
-        m.transpose()
-        // View = R^T * T(-eye)
-        m.translate(-at.x, -at.y, -at.z)
-
-        return m
-    }
+    fun modelView(): Matrix4f = Matrix4f().lookAtField(at, target, up)
 
     // -------------------------------------------------------------------------
     // High-level programmatic control

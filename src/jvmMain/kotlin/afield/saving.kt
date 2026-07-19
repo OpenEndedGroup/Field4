@@ -1578,9 +1578,12 @@ class SavingContext {
     }
 
     /**
-     * Ensure agent guides are present in the workspace directory.
-     * Copies README and agent guide files if they don't exist.
-     * This helps AI agents working in the workspace understand how to interact with Field4.
+     * Seed a workspace with human and agent orientation without overwriting user files.
+     *
+     * `templates/WORKSPACE_README.md` becomes `README.md` and
+     * `templates/WORKSPACE_AGENTS.md` becomes `AGENTS.md`. Each file is copied only when the source
+     * exists and the destination does not. Guide discovery or copying failures are logged but never
+     * fail workspace creation.
      */
     private fun ensureAgentGuides(workspaceDir: String) {
         try {
@@ -1622,8 +1625,10 @@ class SavingContext {
     }
 
     /**
-     * Find the repository root by looking for characteristic files.
-     * Searches up the directory tree for build.gradle.kts or .git directory.
+     * Search at most ten parent directories from `user.dir` for `build.gradle.kts` or `.git`.
+     *
+     * If neither marker is found, return `user.dir` so callers can still attempt source lookup and
+     * degrade through their normal missing-file checks.
      */
     private fun findRepositoryRoot(): File? {
         // Try common locations relative to the classpath

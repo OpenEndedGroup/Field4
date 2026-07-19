@@ -7,6 +7,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URI
+import java.nio.file.Paths
 import java.util.zip.ZipInputStream
 
 data class UpdateInfo(
@@ -73,9 +74,23 @@ fun writeLocalVersion(info: UpdateInfo, localFile: String = defaultLocalFile) {
     File(localFile).writeText(jsonObject.toString())
 }
 
+/** Resolves one ZIP entry and rejects absolute or parent-traversal paths outside [stagingRoot]. */
+internal fun safeUpdateArchiveTarget(stagingRoot: File, entryName: String): File {
+    require(!Paths.get(entryName).isAbsolute) {
+        "Update archive entry is absolute: $entryName"
+    }
+    val canonicalRoot = stagingRoot.canonicalFile
+    val target = File(canonicalRoot, entryName).canonicalFile
+    require(target.toPath().startsWith(canonicalRoot.toPath())) {
+        "Update archive entry escapes staging directory: $entryName"
+    }
+    return target
+}
+
 
 /**
  * Downloads a ZIP from [zipUrl] and unzips it into the "staging" folder.
+ * Archive entries are resolved canonically and rejected if they escape that folder.
  * Suspends on I/O using [Dispatchers.IO].
  */
 suspend fun downloadAndUnzip(zipUrl: String): Boolean = withContext(Dispatchers.IO) {
@@ -101,13 +116,15 @@ suspend fun downloadAndUnzip(zipUrl: String): Boolean = withContext(Dispatchers.
         }
 
         // Step 4: Unzip the contents into the staging directory.
+        val stagingRoot = stagingDir.canonicalFile
+
         val zipInputStream = ZipInputStream(connection.inputStream)
         var zipEntry = zipInputStream.nextEntry
         val buffer = ByteArray(1024)
 
         while (zipEntry != null) {
             if (!zipEntry.isDirectory) {
-                val outFile = File(stagingDir, zipEntry.name)
+                val outFile = safeUpdateArchiveTarget(stagingRoot, zipEntry.name)
                 // Ensure parent directories exist.
                 outFile.parentFile?.mkdirs()
 
@@ -133,7 +150,7 @@ suspend fun downloadAndUnzip(zipUrl: String): Boolean = withContext(Dispatchers.
 
             } else {
                 // If it's a directory, create it.
-                val dir = File(stagingDir, zipEntry.name)
+                val dir = safeUpdateArchiveTarget(stagingRoot, zipEntry.name)
                 dir.mkdirs()
             }
 
@@ -149,8 +166,8 @@ suspend fun downloadAndUnzip(zipUrl: String): Boolean = withContext(Dispatchers.
 }
 
 /**
- * Moves the content of "staging" into "live".
- * If a file in "live" would be overwritten, it is renamed to avoid collisions.
+ * Moves each top-level item from `staging/field4` into the current checkout.
+ * If a destination item already exists, it is renamed to a collision-free sibling first.
  */
 fun promoteStagingToLive(): Boolean {
     return try {
@@ -165,7 +182,7 @@ fun promoteStagingToLive(): Boolean {
             liveDir.mkdirs()
         }
 
-        // Recursively move the contents from staging to live.
+        // Move each top-level archive item into the checkout.
         stagingDir.listFiles()?.forEach { item ->
             moveRecursively(item, liveDir)
         }

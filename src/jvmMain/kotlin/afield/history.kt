@@ -11,17 +11,19 @@ import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Manages document history and version restoration.
+ * Reads, compares, searches, and restores the saved versions of one document directory.
  *
- * This system uses the backup files created by safeSave() to provide:
- * - A timeline of all document versions
- * - Ability to restore any previous version
- * - Tracking of version transitions
- * - Support for future forking/merging scenarios
+ * A version list is the lexically sorted `backups/metadata_backup_*.edn` files followed by
+ * the live `metadata.edn`, when present. The list metadata is cached per document and updated by
+ * [onVersionSaved]. Archived content needed for box counts and diffs is loaded lazily; the live
+ * entry's box IDs come from the attached session. `versions.edn` is a separate index of user names
+ * and full-restore transitions.
  *
- * To optimize performance, this manager maintains an in-memory cache of version metadata
- * that is updated incrementally when saves occur, avoiding the need to reparse all
- * backup files on every request.
+ * Full restore is deliberately non-destructive: target properties are restored, boxes absent or
+ * tombstoned in the target remain as tombstoned objects, the transition is recorded, and the result
+ * is saved through [SavingContext] before clients are resynchronized. Cherry-pick, diff, search,
+ * line-history, screenshot, and naming operations are installed as RPC handlers by
+ * [installHistoryHandlers]. The browser implementation is `history.html`.
  */
 object HistoryManager {
 
@@ -396,13 +398,10 @@ object HistoryManager {
     }
 
     /**
-     * Restore a document to a specific version
-     *
-     * This:
-     * 1. Loads boxes from the target version
-     * 2. Tombstones boxes not in that version
-     * 3. Un-tombstones boxes that were in that version
-     * 4. Records the transition in versions.edn
+     * Restore the indexed version into [sessionInfo]. Returns false for an invalid index or a
+     * synchronous snapshot/restore failure. [SavingContext.save] writes the resulting state in the
+     * background, so a later disk-write failure is reported by the saving subsystem rather than by
+     * this return value. The RPC layer sends a generic error for synchronous failures.
      */
     fun restoreVersion(
         documentPath: String,
@@ -2369,6 +2368,19 @@ private fun launchHistoryStatsStream(
             lprintln("warning,history", "Failed to load initial history summary for version ${versionSnapshot.firstOrNull()?.index}: ${e.message}")
             null
         }
+        val initialBoxIds = previousSummary?.boxIds ?: emptySet()
+        reply(
+            Message("history-version-stats-progress").payload(
+                HistoryVersionStatsProgress(
+                    versionIndex = versionSnapshot.first().index,
+                    completed = 0,
+                    total = total,
+                    boxCount = initialBoxIds.size,
+                    boxIds = initialBoxIds.toList().sorted(),
+                    done = total == 0
+                )
+            )
+        )
         for (i in 1 until versionSnapshot.size) {
             if (!isActive) return@launch
             val loadStartedAt = System.nanoTime()
@@ -2580,14 +2592,20 @@ fun installHistoryHandlers() {
         val activityMs = SaveReloadLog.elapsedMillis(activityStartedAt)
 
         val dtoStartedAt = System.nanoTime()
+        val currentBoxIds = info.boxes.values
+            .asSequence()
+            .filter { it.id != "root" && !it.getPropertyRaw("_tombstone").isTrue() }
+            .map { it.id }
+            .toSortedSet()
         val historyVersions = versions.map { v ->
+            val boxIds = if (v.file.name == "metadata.edn") currentBoxIds else v.boxIds
             HistoryVersion(
                 index = v.index,
                 filename = v.file.name,
                 timestamp = v.timestamp,
-                boxCount = v.boxCount,
+                boxCount = boxIds.size,
                 byteSize = v.byteSize,
-                boxIds = v.boxIds.toList().sorted(),
+                boxIds = boxIds.toList(),
                 message = names[v.index] ?: if (v.file.name == "metadata.edn") "Current" else "",
                 diffStats = null,
                 activityStats = activityByVersion[v.index]
@@ -2628,7 +2646,7 @@ fun installHistoryHandlers() {
         )
 
         val total = (versions.size - 1).coerceAtLeast(0)
-        if (total == 0) {
+        if (versions.isEmpty()) {
             reply(
                 Message("history-version-stats-progress").payload(
                     HistoryVersionStatsProgress(
@@ -2641,16 +2659,18 @@ fun installHistoryHandlers() {
             )
         } else {
             lprintln("info,history", "history stats stream queued doc=$documentPath total=$total")
-            reply(
-                Message("history-version-stats-progress").payload(
-                    HistoryVersionStatsProgress(
-                        versionIndex = -1,
-                        completed = 0,
-                        total = total,
-                        done = false
+            if (total > 0) {
+                reply(
+                    Message("history-version-stats-progress").payload(
+                        HistoryVersionStatsProgress(
+                            versionIndex = -1,
+                            completed = 0,
+                            total = total,
+                            done = false
+                        )
                     )
                 )
-            )
+            }
             val statsKey = "${System.identityHashCode(session)}:${info.filename}"
             val oldJob = historyStatsJobs.remove(statsKey)
             if (oldJob != null) {

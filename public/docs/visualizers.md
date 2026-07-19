@@ -136,7 +136,8 @@ loop {
 }
 ```
 
-Run that as a launch, not a plain execute. For docs or screenshots, though, finite fake data is usually easier and more stable.
+Run that as a launch, not a plain execute. When motion is not part of the behavior being taught,
+finite deterministic input is easier to reproduce while still exercising the real visualizer.
 
 ### Piano rolls in the editor
 
@@ -547,7 +548,7 @@ And if you are documenting or testing it:
 - use an **editor screenshot** for inline visuals
 - use a **box screenshot** for output channels and controls
 - remember that `histogram(...)` and `history(...)` are **passthrough probes** for debugging live values
-- prefer **finite fake data** for docs when the visualizer does not need motion
+- prefer **finite deterministic input** when the visualizer does not need motion
 - save `loop {}` + launch for genuinely live examples
 
 The nice part is that all of these tools compose. One box can have a little inline history, a piano roll, a browser in one output channel, and a control surface in another. Field is very happy when code is also an interface.

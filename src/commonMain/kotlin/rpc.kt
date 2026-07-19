@@ -1055,7 +1055,10 @@ data class HideSlideNote(val dummy: Boolean = true)
 @Serializable
 data class SlideShowCommand(val command: String)
 
-// Slide annotation for drawing lines from guide text to boxes/editor positions
+/**
+ * Draw one line from the note overlay as a whole to a box or editor line. [id] is only the stable
+ * interpolation-state key; it is not a DOM element id inside the note.
+ */
 @Serializable
 data class SlideAnnotation(
     val id: String,

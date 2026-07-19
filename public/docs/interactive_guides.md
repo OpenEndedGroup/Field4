@@ -236,7 +236,7 @@ Annotations let a note point at an exact target.
 
 Use them when a sentence is about one box, one property, or one line.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/annotations.png" wait="1.5" capture="box" open-outputs="false" embed=true name="guide-annotations" w="560" h="140" padding="32"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/annotations.png" wait="5" capture="window-editor" open-outputs="false" embed=true name="guide-annotations" padding="12"}
 :::static
 import afield.markdownNote
 import afield.slideShow
@@ -253,12 +253,12 @@ val show = slideShow {
             Guides can point at whole boxes and exact code lines.
 
             - the green line targets the box,
-            - the orange dashed line targets line 8 in this guide box.
+            - the orange dashed line targets line 21 in this guide box.
             """.trimIndent(),
             animated = true
         )
 
-        selectBox(host, property = "code", line = 8, highlight = 8)
+        selectBox(host, property = "code", line = 21, highlight = 21)
 
         annotate(
             id = "target-box",
@@ -271,7 +271,7 @@ val show = slideShow {
             id = "target-line",
             targetBox = host,
             property = "code",
-            line = 8,
+            line = 21,
             color = "rgba(255, 180, 100, 0.8)",
             strokeWidth = 2.0,
             dashed = true

@@ -1,11 +1,6 @@
 package afield.four.texture.video
 
-/**
- * PlaybackClock interface for providing timing information for synchronized playback.
- * 
- * This allows video to synchronize to an external clock source (such as audio playback)
- * to prevent drift over long durations.
- */
+/** Time source consumed by [VideoTexture] when selecting the frame for the current update. */
 interface PlaybackClock {
     /**
      * Get the current playback time in seconds.
@@ -21,8 +16,9 @@ interface PlaybackClock {
 }
 
 /**
- * System clock implementation that uses wall-clock time.
- * This is the default clock used when no external clock is provided.
+ * Monotonic process clock with explicit play, pause, seek, and reset state.
+ *
+ * [VideoTexture] creates this implementation internally when no external [PlaybackClock] is given.
  */
 class SystemClock : PlaybackClock {
     private var startTime: Long = 0
@@ -66,10 +62,7 @@ class SystemClock : PlaybackClock {
     }
 }
 
-/**
- * AudioPlayer clock implementation that uses audio playback time.
- * This provides accurate timing synchronized to audio hardware.
- */
+/** Delegates time and playing state to [AudioPlayer]'s processed-sample and OpenAL-offset clock. */
 class AudioClock(private val audioPlayer: AudioPlayer) : PlaybackClock {
     override fun getCurrentTime(): Double {
         return audioPlayer.getCurrentTime()

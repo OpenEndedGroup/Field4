@@ -276,7 +276,7 @@ class KotlinEmitter(
         appendLine()
         appendLine("## Swizzles")
         appendLine()
-        appendLine("Every float heap vector (`Vector2f`, `Vector3f`, `Vector4f`) carries the full combinatorial swizzle surface, generated rather than hand-written so the set is complete and correct by construction.")
+        appendLine("Every float heap vector (`Vector2f`, `Vector3f`, `Vector4f`) carries the modeled combinatorial swizzle surface. The generator emits the combinations systematically, and generated-source checks plus behavior tests guard the surface; generation is not a substitute for verification.")
         appendLine()
         appendLine("- For each source vector, every length-2, length-3 and length-4 sequence of its components is a read swizzle — an extension `val` on the read interface, so any view can use it. Sequences may reorder (`v.zyx`), repeat (`v.xx`), and expand beyond the source arity (`v.xxxx`).")
         appendLine("- Components can be spelled two ways: positional `x`/`y`/`z`/`w` or color `r`/`g`/`b`/`a`. The two are never mixed within one swizzle.")

@@ -29,7 +29,7 @@ detailed reference it points into.
 
 | Goal | Read | In one line |
 |---|---|---|
-| **Run code and see its output/errors** | [`OPERATION_TRANSCRIPT.md`](./OPERATION_TRANSCRIPT.md) → [`FIELD_BACKDOOR.md`](./FIELD_BACKDOOR.md) | `launch`/`execute` ops await and capture `output`; loud on failure |
+| **Run code and see its output/errors** | [`OPERATION_TRANSCRIPT.md`](./OPERATION_TRANSCRIPT.md) → [`FIELD_BACKDOOR.md`](./FIELD_BACKDOOR.md) | `execute` awaits; Kotlin-only launch groups use the awaited batch path; failures are returned explicitly |
 | **Take a screenshot or record a video** | [`FIELD_BACKDOOR.md`](./FIELD_BACKDOOR.md) | `screenshot-*` / `native-screenshot` / `record-*` with `--with-playwright` |
 | **Collect errors deterministically** | [`OPERATION_TRANSCRIPT.md`](./OPERATION_TRANSCRIPT.md#observability) | read `success` / `errors` / `output` from the run result |
 | **Build a document from nothing** | [`OPERATION_TRANSCRIPT.md`](./OPERATION_TRANSCRIPT.md) | `create` + `connect` + `launch` on a `--scratch` doc |

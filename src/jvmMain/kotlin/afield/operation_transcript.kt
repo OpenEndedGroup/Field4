@@ -1540,7 +1540,9 @@ object OperationTranscript {
                     .toSet()
                 val latch = java.util.concurrent.CountDownLatch(1)
                 SavingContext().save(path, boxes, onComplete = { latch.countDown() })
-                latch.await(30, java.util.concurrent.TimeUnit.SECONDS)
+                check(latch.await(30, java.util.concurrent.TimeUnit.SECONDS)) {
+                    "`$verb` timed out after 30 seconds waiting for SavingContext to complete `$path`"
+                }
                 true
             }
             "marker" -> false

@@ -153,7 +153,8 @@ function initMarkerSupport(globalEditor) {
                 }
         })
 
-        const markerRegex = /__m\("[A-Za-z0-9-]*"\)/g;
+        // epoch64() uses the standard Base64 alphabet, then appends a hyphen and suffix.
+        const markerRegex = /__m\("[A-Za-z0-9+\/-]*"\)/g;
 
         editor.onDidChangeModelContent(() => {
                 const model = editor.getModel();

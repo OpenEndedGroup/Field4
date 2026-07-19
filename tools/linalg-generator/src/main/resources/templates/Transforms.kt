@@ -340,7 +340,17 @@ open class Matrix4f() : Matrix4fc {
     override fun getTranslation(dest:Vector3f):Vector3f=dest.set(m30,m31,m32);fun getTranslation():Vector3f=getTranslation(Vector3f())
     override fun getScale(dest:Vector3f):Vector3f=dest.set(sqrt(m00*m00+m01*m01+m02*m02),sqrt(m10*m10+m11*m11+m12*m12),sqrt(m20*m20+m21*m21+m22*m22));fun getScale():Vector3f=getScale(Vector3f())
     fun get3x3(dest:Matrix3f):Matrix3f=dest.set(m00,m01,m02,m10,m11,m12,m20,m21,m22)
-    fun getUnnormalizedRotation(dest:Quaternionf):Quaternionf=dest.setFromNormalized(Matrix3f().set(m00,m01,m02,m10,m11,m12,m20,m21,m22))
+    /** Extracts rotation after removing the scale carried by each basis column. */
+    fun getUnnormalizedRotation(dest:Quaternionf):Quaternionf {
+        val sx=sqrt(m00*m00+m01*m01+m02*m02).takeIf{it>1e-12f}?:1f
+        val sy=sqrt(m10*m10+m11*m11+m12*m12).takeIf{it>1e-12f}?:1f
+        val sz=sqrt(m20*m20+m21*m21+m22*m22).takeIf{it>1e-12f}?:1f
+        return dest.setFromNormalized(Matrix3f().set(
+            m00/sx,m01/sx,m02/sx,
+            m10/sy,m11/sy,m12/sy,
+            m20/sz,m21/sz,m22/sz
+        ))
+    }
     override fun toString():String="[$m00 $m10 $m20 $m30; $m01 $m11 $m21 $m31; $m02 $m12 $m22 $m32; $m03 $m13 $m23 $m33]"
 }
 

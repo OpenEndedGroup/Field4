@@ -28,7 +28,7 @@ Python dependency environment, `tools/build_zensical_docs.py` preprocesses the
 runnable Field fences into `public/.zensical-generated/`, writes
 `public/zensical.generated.yml`, and then invokes Zensical.
 
-Use this when every screenshot or video should be regenerated:
+Use this when every executable runner capture should be regenerated:
 
 ```diffstatic {data-lang=bash}
 FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py --clean
@@ -53,7 +53,7 @@ The practical test matrix is:
 | HTML-only docs build | `FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --clean` from the repository root | Markdown, navigation, links, and checked-in/generated assets, without launching Field. |
 | Normal docs authoring | `FIELD_DOCS_RUNNER_MODE=incremental FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py` from the repository root | Changed captures are run through Field; unchanged captures use the cache. |
 | Runner or transcript changes | `FIELD_DOCS_RUNNER_MODE=strict FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py` from the repository root | Capture behavior changes invalidate the cache. |
-| Full recapture | `FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py --clean` from the repository root | Every screenshot and video is regenerated from a live Field session. |
+| Full recapture | `FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py --clean` from the repository root | Every runner-managed screenshot and video is regenerated from a live Field session; static reference assets remain owned by their component-specific workflows. |
 | Offline asset ownership | `uv run python tools/check_offline_assets.py` from the repository root | Monaco, Iosevka, and offline viewer sources are present; generated public copies are not checked in twice. |
 
 At the end of a build, the runner prints a compact summary with regenerated captures, skipped captures, failures, server starts/restarts, and elapsed time. That line is the first place to look when a docs build feels suspiciously fast, slow, or quiet.

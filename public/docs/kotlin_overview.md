@@ -2,7 +2,10 @@
 
 Field uses _Kotlin_, which is a language that might be new to you. Promoted by Google as the "official" language for Android app development, Kotlin was initiated by (and is still maintained by) Jetbrains — a company that is primarily responsible for a really good Java development environment. Kotlin has emerged over the last decade as the winner of an attempt to invent a "better Java" through a cunning combination of interoperability (which means the ecosystem is _huge_), a terser syntax (which means it's much more fun to write), and quality of life improvements like operator overloading (which means that doing the kind of math that computer graphics wants us to do is tolerable).
  
-All in all, 'live-coding' Kotlin is a fairly pleasant experience — safer than JS or Python (there's a compiler that checks your code before it runs), quicker than JS or Python (there's a real type system that can offer real help) and yet still understandable by LLMs. This document is to get you oriented towards 'live coding' in Kotlin.
+For live coding, Kotlin gives Field a useful combination: the compiler catches many mistakes before
+execution, and static types let completion and navigation offer specific help. The tradeoff is that
+some experiments need more explicit types and conversions than their Python or JavaScript
+equivalents. This document introduces the Kotlin used in Field.
 
 ## Basics
 
@@ -86,9 +89,11 @@ val sumF = f + i.toFloat()     // result: 2.0f
 // If you want a Double literal, write 1.0; if you want Float, write 1.0f.
 ```
 
-In Python and JavaScript there’s effectively “just number” in everyday code, so it’s easy to forget what kind of numeric value you’re holding. In Kotlin you’ll often add an explicit `.toDouble()`/`.toFloat()` at the boundary.
+Python distinguishes integers and floating-point values, and JavaScript's ordinary `Number` is a
+single double-precision type, but neither has Kotlin's compile-time numeric conversion rules. In
+Kotlin you will often add an explicit `.toDouble()` or `.toFloat()` at an API boundary.
 
-Field defines some extra psuedo-syntatical sauce for `.toDouble()` and friends by default:
+Field's default live-coding imports add short `Number` extension properties for these conversions:
 
 ```diffstatic {data-lang=kotlin}
 :::static

@@ -1,14 +1,18 @@
 # Your History with Field
 
-Field remembers. Not just the document you have open right now, but the whole shape of how you got here — every save, every value that streamed through a line of code, every question you asked an agent and every tool it reached for in reply.
+Field keeps several different kinds of history. Saved document versions live on disk; selected
+runtime visualizers keep short in-memory value windows; AI4 writes per-send tool-use logs; and the
+semantic index represents the code corpus it has most recently indexed. These records have
+different retention and are not one exhaustive event log.
 
 That memory is spread across a handful of tools, and this section pulls them together. They all answer the same question from different angles: *what happened, and how did we get to now?*
 
-- **[Document history](document_history.md)** — a full-page timeline of every saved version of a document, with restore, cherry-pick and diff. This is content-level recovery.
+- **[Document history](document_history.md)** — a full-page timeline of the versions retained in the document's history store, with restore, cherry-pick and diff. This is content-level recovery.
 - **[Inline history: the History Lens](history_lens.md)** — right there in the editor, scrub a single line or selection back through the versions it has lived in.
-- **[AI tool-use history](ai_tool_use_history.md)** — a log of every tool call the agents make, and a loop that reads that log back to improve itself.
+- **[AI tool-use history](ai_tool_use_history.md)** — the per-send tool calls recorded by AI4, and a loop that reads those logs back to propose improvements.
 - **[AI documentation polish](ai_doc_polish.md)** — the cache of AI-generated documentation and the cycle that folds it back into real source comments.
-- **[The semantic index](semantic_index.md)** — a searchable, meaning-aware index of everything you have ever built across all your documents.
+- **[The semantic index](semantic_index.md)** — a searchable, meaning-aware index of the indexed
+  workspace code corpus.
 
 ## The `/welcome` dashboard
 
@@ -18,7 +22,10 @@ Most of the AI-facing history tools are launched and monitored from one place: t
 
 You can also reach it at any time from the hero buttons of a running instance, or by navigating straight to `/welcome`.
 
-The left of the page is about *documents*: a search box, the list of everything in your workspace, and whatever is running right now. The search box is not a filename filter — it is a front-end for the [semantic index](semantic_index.md), so you can search the *contents* of every box you have ever written by meaning.
+The left of the page is about *documents*: a search box, the workspace list, and currently running
+documents. Searching combines `/api/workspace-search` text/name matches with semantic matches when
+the [semantic index](semantic_index.md) is enabled and available. Semantic failures do not remove
+the ordinary workspace-search results.
 
 The right of the page is a stack of collapsible panels. The one that matters here is **AI**, which is the hub for the background AI tasks:
 
@@ -42,4 +49,4 @@ Clicking a task's run button starts the work *and* opens its dedicated inspectio
 | Watch a running value change over time | the inline `history()` visualizer — see [Visualizers & Controls](visualizers.md) |
 | Understand what the agents are doing and make them do it better | [AI tool-use history](ai_tool_use_history.md) |
 | Turn scattered AI-written docs into real source comments | [AI documentation polish](ai_doc_polish.md) |
-| Find something you built months ago, by describing it | [The semantic index](semantic_index.md) |
+| Find indexed workspace code by describing it | [The semantic index](semantic_index.md) |

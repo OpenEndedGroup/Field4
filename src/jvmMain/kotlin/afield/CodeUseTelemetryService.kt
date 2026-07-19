@@ -291,6 +291,25 @@ private data class CodeUseSemanticSidecarHealthResult(
     val workspaceRoot: String = ""
 )
 
+/**
+ * Asynchronous, best-effort history of code compiled and run by Field.
+ *
+ * Compile/evaluation/launch hooks enqueue immutable records and never wait for SQLite or source
+ * analysis. One worker persists content-addressed source plus event/context rows; a separate
+ * low-priority worker resolves likely source symbols. Queue overflow, database failure, and
+ * analyzer failure are reported in [CodeUseSummary] but must not break user-code execution.
+ *
+ * The built-in analyzer uses [KotlinSourceIndex] and records only unambiguous unqualified or
+ * receiver-qualified matches. [semanticAnalyzeCode] may ask the configured out-of-process K2
+ * sidecar for stronger `k2-resolved` edges, then enriches those edges with local SQLite evidence;
+ * timeout or failure returns the local `source-index-fallback` shape. Neither analyzer touches the
+ * live REPL compilation state.
+ *
+ * Storage defaults to `~/.afield/code-use/field-code-use.sqlite` and can be overridden by the
+ * `afield.codeUse.path` property or `AFIELD_CODE_USE_PATH`. The public HTTP routes and AI tool
+ * adapters are installed in `Server.kt` and `Ai4Installer.kt`; keep their user-facing inventories
+ * in `dev_docs/agents/CODE_USE_TELEMETRY.md` rather than duplicating query schemas here.
+ */
 object CodeUseTelemetryService {
     private const val QUEUE_CAPACITY = 4096
     private const val ANALYSIS_QUEUE_CAPACITY = 2048
@@ -1967,6 +1986,11 @@ object CodeUseTelemetryService {
                         drained++
                     }
                     conn.commit()
+                    // A summary computed while this batch was still queued must not remain cached
+                    // for the full TTL after the rows become visible. Besides making status polls
+                    // truthful sooner, this closes a race in callers that wait for persistence by
+                    // polling summary().
+                    summaryCache = null
                 }
             }
         } catch (t: Throwable) {

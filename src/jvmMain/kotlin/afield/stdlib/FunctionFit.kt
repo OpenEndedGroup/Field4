@@ -90,9 +90,9 @@ fun rmseLossAgainst(
 /**
  * A [Functions.Domain] is a `ClosedRange<Double>`, so the fitters accept either a bare range
  * (`0.0 .. 1.0`) or a `Domain` and normalise here — no `Functions.Domain(...)` ceremony at the
- * call site. The default across the fitters is the unit domain [Functions.Domain.DEFAULT]
- * (`0..1`) — a bounded sampling window — because oscillator `Fn`s report [Functions.Domain.ALL]
- * (±∞), which cannot be sampled; pass a range when you want to fit over anything else.
+ * call site. [fitGradient] and [fitHybrid] default to the bounded unit domain
+ * [Functions.Domain.DEFAULT]. [fitBest] instead uses its target's domain when that domain is
+ * finite, falling back to the unit domain for unbounded or empty targets.
  */
 private fun ClosedRange<Double>.asFnDomain(): Functions.Domain =
     this as? Functions.Domain ?: Functions.Domain(start, endInclusive)
@@ -316,19 +316,21 @@ fun fitGradient(
  * For parameters that enter the loss linearly (amplitude, offset) that basin is the global
  * one and one shot suffices. But **oscillator frequency/phase enter the loss periodically**,
  * so RMSE-vs-frequency is riddled with local minima: a lone descent from the wrong frequency
- * drifts into a spurious basin and stalls (empirically ~0.19 RMSE on a two-oscillator target
- * whose global optimum is ~0.005). This runs [restarts] independent fits — restart 0 from the
+ * can drift into a spurious basin and stall. This runs [restarts] independent fits — restart 0 from the
  * clean seed, the rest from `±restartJitter*(1+|θ|)` shakes of it (each seeded from
  * `rngSeed + k`) — and keeps the lowest-RMSE result. One of the shakes usually lands in the
  * global basin. Fully deterministic given [rngSeed].
  *
  * For a *structurally* wrong seed (missing operators, wrong topology) reach for [fitHybrid],
  * which searches shape with [evolve] first; [fitBest] only searches numbers.
+ *
+ * @param domain sampling range for the loss. When omitted, use [target]'s domain if it is finite;
+ *        otherwise use the bounded unit domain [Functions.Domain.DEFAULT].
  */
 fun fitBest(
     target: Functions.Fn,
     seed: Functions.Fn,
-    domain: ClosedRange<Double> = Functions.Domain.DEFAULT,
+    domain: ClosedRange<Double> = target.domain.takeIf { it.isFinite } ?: Functions.Domain.DEFAULT,
     restarts: Int = 12,
     iterations: Int = 300,
     lr: Double = 0.05,

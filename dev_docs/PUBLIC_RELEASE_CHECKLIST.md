@@ -1,7 +1,7 @@
 # Public Release Checklist
 
-This checklist tracks repository cleanup work needed before the first public
-source release.
+This is a release-readiness checklist, not a description of current support. Items remain
+open until a named release candidate records evidence for them.
 
 ## Repository Hygiene
 
@@ -17,9 +17,9 @@ source release.
 - Add source/package license identifiers where appropriate.
 - Confirm redistribution terms for bundled jars, native libraries, and browser
   assets.
-- Decide how to distribute `libs/libken_ceres_jvm.dylib`; it is referenced by
-  the Gradle run configuration and Ceres smoke tasks, but is currently local and
-  macOS arm64 only.
+- Decide how to distribute `libs/libken_ceres_jvm.dylib`; it is tracked and
+  referenced by the Gradle run configuration and Ceres smoke tasks, but the
+  checked-in binary is Mach-O arm64 and therefore not a cross-platform artifact.
 - Document which native libraries are optional and which are required to run the
   default app.
 - Decide whether generated/offline documentation archives belong in releases,
@@ -37,7 +37,7 @@ source release.
 ## Build and Test
 
 - Run `./gradlew compileKotlinJvm`.
-- Run `python3 tools/run_field_tests.py --refresh-catalog`.
+- Run `uv run --project . --group backdoor python tools/run_field_tests.py --refresh-catalog`.
 - Run `FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --clean`.
 - Before tagging, run `FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py --clean`
   to regenerate documentation captures from source.
@@ -46,7 +46,7 @@ source release.
 
 ## Release Packaging
 
-- Choose the first public version number.
+- Choose the release version number.
 - Remove or quarantine local crash logs, screenshots, scratch scripts, and
   generated caches from the release workspace.
 - Create a short changelog entry describing the initial public source release.

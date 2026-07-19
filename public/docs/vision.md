@@ -68,9 +68,11 @@ corners to resize.
 ## RTT streaming — working (mono)
 
 For everything that isn't lines — the full Vulkan-rendered scene — Field streams the render target
-to the headset as native video. The render target is captured with zero extra copies, encoded to
-HEVC, sent over a thin custom UDP link, decoded on-device, and presented on a screen you can place
-in the room.
+to the headset as native video. On macOS the Vulkan RTT is backed directly by an IOSurface that
+VideoToolbox can wrap; on Linux the sender imports an exported Vulkan allocation through CUDA.
+The encoded HEVC/H.264 access units travel over a small UDP protocol. The visionOS client
+reassembles and decodes them, converts the decoded NV12 buffer into a RealityKit texture, and
+presents it on a screen you can place in the room.
 
 This spine is **verified end-to-end**: Field renders → encodes → streams → the visionOS app
 reassembles, decodes, and displays it, with correct colour, and it survives the sender restarting.

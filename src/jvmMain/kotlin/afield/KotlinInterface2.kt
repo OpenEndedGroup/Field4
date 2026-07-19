@@ -2674,9 +2674,7 @@ class KotlinInterface2(
         }
     }
 
-    /**
-     * PreparedSnippet represents a pre-compiled code snippet that can be evaluated multiple times.
-     */
+    /** K2 implementation of [PreparedSnippet]; see that interface for the evaluation contract. */
     inner class K2PreparedSnippet internal constructor(
         private val compiled: LinkedSnippet<out CompiledScript>,
         private val defaultImplicits: List<Any>

@@ -51,15 +51,17 @@ Camera Index Switch splits it. See `WIRE_FORMAT.md` for the full protocol.
 
 ## Status
 
-- **Verified:** builds (Swift 6.3); control-loop parse/dispatch + error paths; full
-  encode→packetize→UDP via `--selftest` (a synthetic IOSurface pattern) — a loopback
-  receiver confirmed correct fragmentation, all frames delivered, periodic IDR keyframes,
-  and on-target bitrate; and a JVM `ProcessBuilder` launching + driving the helper over
-  stdin/stdout end-to-end (`FieldEncodeProcess`).
-- **Not yet exercised** (needs the real producer + a receiver): encode from Field's *actual*
-  RTT IOSurface (vs. the synthetic self-test surface), and UDP reassembly + decode on the
-  visionOS side. IOSurface-backing the RTT (MoltenVK + `VK_EXT_metal_objects`) is the
-  producer's responsibility (owner: renderer); the receiver is spec'd in `WIRE_FORMAT.md`.
+The helper's local `--selftest` covers control parsing, VideoToolbox encode,
+packetization, UDP delivery, periodic IDR frames, and bitrate behavior with
+synthetic IOSurfaces. `FieldEncodeProcess` also exercises launching and driving
+the helper from the JVM.
+
+The repository's current integration goes further: `FieldRTTStreamer` imports
+helper-allocated IOSurfaces as the real Vulkan RTT ring, and the visionOS client
+has received, decoded, and displayed that stream. Integration history and the
+remaining device-only presentation checks live in
+`../field-visionos/README.md`; the exact transport contract lives in
+`WIRE_FORMAT.md`.
 
 ## Correctness gate (producer side)
 

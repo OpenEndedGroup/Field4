@@ -9,6 +9,35 @@ import org.lwjgl.vulkan.VK12.VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 
+/**
+ * Per-writer, per-swapchain-image geometry buffers that fan one module invocation out into one
+ * invocation per writer published for the current renderer frame.
+ *
+ * A pool participates only while its [Renderer] has an open geometry phase. The normal phase is
+ * opened by [Renderer.render], after image acquisition and before command recording, and runs the
+ * callbacks in [Renderer.geometryProducers]. Runloop code that must launch producers earlier can
+ * instead bracket writes with [Renderer.beginGeometryWrites] and [Renderer.endGeometryWrites].
+ * Writes outside either window fail.
+ *
+ * Obtain a stable writer with [writer], write or append one or more named channels, then call
+ * [ParallelGeometryWriter.publish] every frame in which that writer should be visible. Publication
+ * is strict per-frame liveness; data retained in a channel is not dispatched in a later frame
+ * unless the writer publishes again. The sealed writer list is ordered by ascending writer id.
+ * Writer slots that have not been touched beyond [idleRetainFrames] are removed and their Vulkan
+ * buffers are queued on [Renderer.cleanup]. Call [cleanup] to unregister the pool and release all
+ * remaining slots.
+ *
+ * Bind [ref] values to `buffer_reference` push constants on `Mesh`, `ComputeMesh`, or `MeshMesh`.
+ * At command recording, any such reference switches the module to fan-out mode: it dispatches once
+ * for each published writer and resolves every reference from that writer's channels. All parallel
+ * references in one push-constant structure must belong to this same pool. A missing channel fails
+ * that module invocation. Optional counts supplied to `publish` override the module's normal draw
+ * or dispatch dimensions for that writer; omitted counts retain the module defaults.
+ *
+ * [targetWindowIndex] selects the swapchain-image set owned by the channel buffers. External
+ * geometry windows currently support only window zero, as enforced by
+ * [Renderer.beginGeometryWrites].
+ */
 class ParallelGeometryPool(
     val renderer: Renderer = fromContext(),
     val targetWindowIndex: Int = 0,
@@ -231,18 +260,25 @@ class ParallelGeometryPool(
     }
 }
 
+/** A stable writer-id view into one [ParallelGeometryPool]. */
 class ParallelGeometryWriter internal constructor(
     private val pool: ParallelGeometryPool,
     val writerId: Long
 ) {
+    /** Replace this frame image's [channel] contents. */
     fun write(channel: String, block: DynamicBuffer.() -> Unit) {
         pool.write(writerId, channel, append = false, block)
     }
 
+    /** Append to this frame image's existing [channel] contents. */
     fun append(channel: String, block: DynamicBuffer.() -> Unit) {
         pool.write(writerId, channel, append = true, block)
     }
 
+    /**
+     * Make this writer live for the current frame, optionally overriding the module's normal draw
+     * or dispatch dimensions. Publishing without writing is allowed and reuses retained channels.
+     */
     fun publish(
         vertexCount: Int? = null,
         indexCount: Int? = null,
@@ -254,6 +290,10 @@ class ParallelGeometryWriter internal constructor(
     }
 }
 
+/**
+ * Late-bound reference to one channel of the writer currently being recorded by fan-out dispatch.
+ * Resolving it outside that dispatch, or for a writer that lacks [channel], is an error.
+ */
 class ParallelGeometryRef internal constructor(
     val pool: ParallelGeometryPool,
     val channel: String

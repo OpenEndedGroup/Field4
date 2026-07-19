@@ -65,7 +65,8 @@ val Once.savemarker by Onceing<Int>() /**/
 - **Writing** `savemarker = …` stores the value **on this box**.
 - **Reading** `savemarker` returns this box's value if set, otherwise walks *up the box graph* to the first ancestor that has one (that is what `Inheritance` does — see **Property inheritance** below).
 
-The companion `once.savemarker { … }` runs its lambda **once**, caches the result in the property, and returns the cached value on every later call:
+The companion `once.savemarker { … }` computes and stores the value when the property is `null`,
+then returns the stored value on later calls:
 
 ```diffstatic {data-lang=kotlin}
 class Onceing<T> {
@@ -77,13 +78,16 @@ class Onceing<T> {
 }
 ```
 
-`prop` and `once` are two halves of one feature: `prop` declares the typed, inheritable slot; `once` fills it lazily. This is the idiom behind a renderer box publishing its window and renderer to its children:
+`prop` and `once` are two halves of one feature: `prop` declares the typed, inheritable slot; `once`
+fills a non-null value lazily. Because `null` is the empty sentinel, a computation that returns
+`null` is not cached and may run again. This is the idiom behind a renderer box publishing its
+window and renderer to its children:
 
 ```diffstatic {data-lang=kotlin}
 prop<Window>(window)
 prop<Renderer>(renderer)
 
-once.renderer {                       // runs exactly once for this box
+once.renderer {                       // cached after the first non-null result
     window = Window("My sketch")
     Renderer(window)
 }
@@ -149,8 +153,9 @@ and the values are bound on the box. **Note the leading underscore**: `@exported
 Three variants set **where** the accessor goes:
 
 - `@exported` → this box (and therefore its descendants).
-- `@rootExported` → the document root (visible document-wide).
-- `@metarootExported` → the cross-document metaroot (shared across open documents).
+- `@rootExported` → this box **and** the document root (visible document-wide).
+- `@metarootExported` → this box **and** the cross-document metaroot (shared across open
+  documents).
 
 That makes `@rootExported`/`@metarootExported` the tidy way to define a helper once and share it across boxes.
 
@@ -233,13 +238,13 @@ Walk it through:
 - **Without** the `//%-`, both are one compilation unit. All of its macros expand first, then it runs. So `moduleHere` expands — reading the box's shaders, finding none, seeding the **default `in vec3 pos`** shader and generating accessors for *that* — *before* `once.vertex` has ever run. The result: the module uses the wrong shader (and, for RectSL, the mesh's vertex attributes won't match the shader's inputs).
 - **With** the `//%-`, fragment 1 runs first: `once.vertex`/`once.fragment` set the box's real shader source. Then fragment 2 is expanded, and `moduleHere` now sees the shader you supplied and generates the correct accessors and module.
 
-So `//%-` is not cosmetic here — it is what makes "set some state, then run a macro that reads it" work. This interleaving holds on **every** execution path: an interactive run, a single-box launch, and the batched path used by the transcript drag-in and the multi-box alt-drag chord.
+So `//%-` is not cosmetic here — it is what makes "set some state, then run a macro that reads it" work. Interactive execution expands and evaluates fragments in sequence. A single Kotlin box launched through the transcript/multi-box path is also awaited fragment by fragment; mixed-language launch groups do not promise the same first-frame ordering across boxes.
 
 ---
 
 ## Putting it together
 
-- Your box code is **fragmented** on `//%-`, and each fragment is **macro-expanded, compiled, and evaluated in turn** — so a fragment sees the runtime effects of the fragments before it.
+- During interactive execution, Kotlin box code is **fragmented** on `//%-`, and each fragment is **macro-expanded, compiled, and evaluated in turn** — so a fragment sees the runtime effects of earlier fragments in that box.
 - **Macros** (`prop`, `moduleHere`, …) rewrite calls *before* compilation and inject glue into the **preamble**; some also mutate box state or compile shaders during expansion.
 - **`@exported`** promotes declarations into the preamble *after* a run.
 - The **preamble** is the shared glue layer: a box's effective preamble is gathered from itself plus its ancestors' `import` and ` /**/`-tagged lines — which is how typed accessors from `prop`/`@exported`/`moduleHere` reach child boxes.

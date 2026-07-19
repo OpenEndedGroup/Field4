@@ -117,12 +117,21 @@ interface KotlinScriptEngine {
 
     fun findLastImport(s: String): Int
 
+    /**
+     * Compile [s] against this engine's current REPL state without evaluating it.
+     *
+     * The returned [PreparedSnippet] can be evaluated repeatedly without recompiling [s].
+     * [implicits] become its default implicit receivers; a non-empty list passed to
+     * [PreparedSnippet.eval] overrides them for that evaluation. Returns `null` after reporting
+     * compiler diagnostics through [onCompileError].
+     */
     suspend fun compileSnippet(
         s: String,
         implicits: List<Any> = emptyList(),
         onCompileError: (List<ScriptDiagnostic>) -> Unit = {}
     ): PreparedSnippet?
 
+    /** Blocking wrapper around [compileSnippet]. */
     fun compileSnippetAndWait(
         s: String,
         implicits: List<Any> = emptyList(),
@@ -167,8 +176,15 @@ suspend fun <T> KotlinScriptEngine.withSourceProperty(property: String, block: s
 }
 
 /**
- * A pre-compiled code snippet that can be evaluated multiple times.
- * Obtained from [KotlinScriptEngine.compileSnippet] or [KotlinScriptEngine.compileSnippetAndWait].
+ * Code compiled against one [KotlinScriptEngine] REPL state and reusable within that state.
+ *
+ * Evaluation observes changes subsequently made to variables in the parent engine. With
+ * `updateContext` false, declarations and assignments made by the snippet are not committed to
+ * later REPL evaluations; use true when the snippet intentionally advances shared state.
+ *
+ * The suspending [eval] rethrows runtime exceptions by default. The blocking [evalAndWait] instead
+ * has a no-op default exception callback, matching the other blocking engine helpers. In either
+ * form, a non-empty `implicits` list replaces the defaults captured at compile time.
  */
 interface PreparedSnippet {
     suspend fun eval(

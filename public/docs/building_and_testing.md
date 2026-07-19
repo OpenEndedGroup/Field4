@@ -63,10 +63,10 @@ cd public && python3 -m http.server 8000
 > failure — not a flaky capture. Fix the snippet (or the runtime), then rebuild
 > that page.
 
-> **Optional warm-session speedup.** Set `FIELD_DOCS_RUNNER_SESSION=1` to route
+> **Optional warm-session mode.** Set `FIELD_DOCS_RUNNER_SESSION=1` to route
 > eligible captures through one persistent, pre-warmed Field session instead of a
-> fresh process per capture (~2x faster on capture-heavy pages). It's opt-in and
-> falls back automatically, so the output is identical either way.
+> fresh process per capture. It is opt-in and falls back to the ordinary capture
+> path after a configured session failure.
 
 ## Watching progress & debugging a build
 
@@ -78,9 +78,9 @@ Field docs runner [12] capturing fline_examples.md -> arcs_arcto.png
 Field docs runner … still capturing fline_examples.md -> arcs_arcto.png (8s)
 ```
 
-Each capture logs a numbered start line; if one runs long (a graphics-context
-capture cold-boots a fresh Field JVM, which can take 20–40s), a heartbeat prints
-every 8s so you can see it's alive. Progress is `INFO`-level and on by default;
+Each capture logs a numbered start line; if one runs long (for example while a
+graphics-context capture starts Field), a heartbeat prints every 8s so you can
+see it is alive. Progress is `INFO`-level and on by default;
 set `FIELD_DOCS_LOG_LEVEL=WARNING` to quiet it or `=DEBUG` for more.
 
 To *watch* the capture browser — e.g. a capture that stalls or renders wrong —

@@ -155,7 +155,8 @@ with(Functions) {
     val seed = cos(3.4) * sin(1.0, amplitude = 2.0)
 
     // Gradient descent with jittered restarts. A single fitGradient would stall in a
-    // frequency local-minimum (~0.19); fitBest escapes it. domain defaults to 0..1.
+    // frequency local-minimum (~0.19); fitBest escapes it. This target is unbounded,
+    // so fitBest falls back to the finite 0..1 sampling domain.
     val run = fitBest(target, seed, restarts = 16)   // RMSE ~0.72 -> ~0.006
 
     fun asLine(fn: Functions.Fn, color: Vec4, thickness: Double): FLine =
@@ -639,7 +640,7 @@ declared parameter type by completing the operator token itself (an infix `foo` 
 `foo(ParamType)`), then rewards candidates whose return type matches. So the same help
 appears after `then ` (want another `FnTransform`), and the mechanism keeps working as new
 transform builders are added. Implementation: `InfixCompletion` in
-`src/jvmMain/kotlin/afield/execution.kt` (commit `3f731751`).
+`src/jvmMain/kotlin/afield/execution.kt`.
 
 Once you can build one gesture this way, you can evolve a whole *family* of them: the
 [variety-generation section](#variety-generation-novelty-search-for-a-set-of-gestures)

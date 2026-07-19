@@ -1,5 +1,16 @@
 package afield
 
+/**
+ * Browser-side rendering for [SlideAnnotation] and animated slideshow-note text.
+ *
+ * Annotation paths are Dubins curves clipped to the note and target rectangles, resampled and
+ * blended against their preceding path to reduce jumps. Targets may be whole boxes or Monaco line
+ * regions. One SVG overlay is redrawn while notes type, boxes/editor move, selection changes, or
+ * observed editor state changes; [clearSlideAnnotations] removes both DOM and interpolation state.
+ * Text animation preserves the supplied HTML structure and reveals text-node characters at 15 ms,
+ * with extra pauses after punctuation. It is visual only and does not sanitize note HTML.
+ */
+
 import DubinsPose
 import addArrowHead
 import connectCenters

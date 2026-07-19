@@ -7,7 +7,7 @@ import kotlin.test.assertTrue
 import kotlin.test.fail
 
 /**
- * Regression guard for commit fd603986 ("oscillators default to infinite domains").
+ * Regression guard for oscillators whose default domain is unbounded.
  *
  * That change flipped every periodic constructor (sin/cos/saw/triangle/square and the
  * pulseTrain/impulseTrain/pulseBurst family) to default `domain = Domain.ALL`, and made the

@@ -42,8 +42,9 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --scra
 - `macro run <name>` applies the operations in order and returns a machine-readable
   result (see [Observability](#observability)).
 
-The YAML shape is a top-level `operations:` list. Each entry is a single-key map whose
-key is the **verb** and whose value is the **payload**:
+The preferred YAML shape is a top-level `operations:` list. The loader also accepts
+`ops:` and a bare top-level list. Each entry is a single-key map whose key is the
+**verb** and whose value is the **payload**:
 
 ```yaml
 name: my_scene            # optional; macro write --name overrides
@@ -77,7 +78,7 @@ any of `box` / `uid` / `id` / `target`.
 | `move` (`frame`, `set-rect`) | Move/resize a box | `box`, `to` (or `frame`) |
 | `connect` / `disconnect` | Change parent→child graph topology | `parent`, `child` |
 | `execute` (`execute-fragment`) | Run a code fragment **once**, awaited | `box`, `property`, `code` |
-| `launch` (`launch-all`, `launch-fragment`) | Launch code as a running job, awaited to first frame | `box`, `property`, `code`, `strand` |
+| `launch` (`launch-all`, `launch-fragment`) | Launch code as a running job; Kotlin-only groups use the awaited batch path | `box`, `property`, `code`, `strand` |
 | `stop` (`stop-all`, `stop-box`) | Stop a running job | `box` |
 | `wait` | Sleep, or wait N real runloop frames | `millis`/`ms`/`seconds`, `frames`, `pending` |
 | `await` (`sync`, `settle`, `wait-pending`) | **Barrier**: drain all pending fragments/launches | `wait: pending` |
@@ -174,8 +175,7 @@ pressing `g` in the UI. For `afield.four`, a graphics example box must be connec
 
 ### execute vs launch
 
-Both run code. Both **await** completion so the code's output is captured (see
-[Observability](#observability)). Both fall back to the box's **stored** code when the
+Both run code and fall back to the box's **stored** code when the
 op carries no inline `code:` — so a `create` that sets `code`, followed by a bare
 `execute`/`launch`, runs that stored code:
 
@@ -186,9 +186,13 @@ op carries no inline `code:` — so a `create` that sets `code`, followed by a b
 
 - **`execute`** runs a fragment once and returns (`executeFragmentAndWait` — it joins,
   so it does not stall a headless server). Use it for one-shot setup or a computed result.
-- **`launch`** starts a running job and awaits its first frame. **This is the primary
-  execution verb** — renderers, compute loops, and draw loops are all launched. A
-  renderer box's launched code should end in `start(renderer::run)`.
+- **`launch`** starts a running job. A group whose targets all use
+  `KotlinExecution` goes through `launchBatchAndWait`, which captures replies and
+  waits for the batch's launch barrier. If any target uses another execution
+  runtime, the current implementation dispatches each `launchAll` without that
+  shared awaited-batch guarantee. **This is the primary execution verb** for
+  renderers, compute loops, and draw loops. A renderer box's launched code should
+  end in `start(renderer::run)`.
 
 `property` selects which property holds the code (default `code`; use `compute`,
 `fragment`, etc. for shader properties). `strand` (default `default`) names the
@@ -214,10 +218,11 @@ reports `applied=N skipped=0 errors=0` with the code's output in `output`.
 - `wait` sleeps a fixed time (`millis`/`ms`/`seconds`, capped) or advances a fixed
   number of real runloop frames (`frames`). Reserve it for genuinely time-based waits.
 - **`await`** (aka `sync`/`settle`/`wait-pending`, or `wait: { pending: true }`) is the
-  **barrier**: it advances runloop frames until no box has a currently-executing
-  fragment and launched jobs have reached their first frame, then settles a few extra
-  frames. Put an `await` after fire-and-forget work so its output is captured and any
-  published buffers are populated before a later box reads them or you screenshot.
+  Field-state barrier implemented by `awaitPending`: it advances runloop frames
+  until tracked fragments and launches satisfy that function's readiness checks,
+  then settles extra frames. It cannot manufacture an acknowledgement that an
+  optional execution runtime never reports. Put it after fire-and-forget work, and
+  use a feature-specific readiness assertion when downstream state matters.
 
 ### save
 
@@ -227,12 +232,13 @@ reports `applied=N skipped=0 errors=0` with the code's output in `output`.
 ```
 
 `save` snapshots the live boxes (excluding the synthetic root and tombstoned boxes) and
-writes a full **`metadata.edn` document** at `path` — `metadata.edn`, one
-`<box>_<property>_.{kt,glsl,…}` sidecar per large text property, plus `document.md` /
-`README.md` / `history_metrics.edn`. The op **awaits** the background write, so the
-folder exists on disk when it returns. Box preambles are regenerated in the snapshot,
-so a reopened document recompiles cleanly. This is how an agent turns an assembled
-scene into a loadable document.
+calls `SavingContext.save(path, boxes)`. That path writes `metadata.edn`, configured
+sidecar properties, and `document.md`; directory initialization seeds `README.md` and
+`AGENTS.md` only when their templates exist and the destinations do not. On a changed
+save, the history/metrics machinery runs as part of `SavingContext`. The transcript op
+waits up to 30 seconds on the save callback and fails if it times out. Callers that
+require durable evidence may additionally inspect the target files. This is how an
+agent turns an assembled scene into a loadable document.
 
 ---
 

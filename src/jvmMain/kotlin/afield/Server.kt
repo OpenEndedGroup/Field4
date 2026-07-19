@@ -4101,6 +4101,14 @@ class Server {
                             }
                         }
 
+                        // Cross-origin bridge used only after the offline viewer's explicit
+                        // "Open in Field" click. It sanitizes the suggested directory name,
+                        // chooses a non-colliding child of the current workspace, and writes
+                        // the submitted EDN verbatim as metadata.edn. It neither parses nor
+                        // executes the document here; opening/running the imported document is
+                        // a separate Field action. CORS is intentionally enabled for static
+                        // documentation sites, so this is a write-capable localhost endpoint,
+                        // not part of the viewer's read-only security boundary.
                         post("/api/import-offline-doc") {
                             try {
                                 val payload = call.receive<OfflineImportRequest>()
@@ -4483,14 +4491,17 @@ class Server {
                         route("/project") {
                             get("{...}") {
                                 lprintln("debug,server", "routing /project for ${call.request.uri}")
-                                // Serve files from the project directory ($home)
+                                // Serve regular files whose canonical path is inside the canonical workspace.
+                                // Path.startsWith is component-aware; a string prefix check would incorrectly
+                                // accept a sibling such as `/tmp/workspace-evil` for workspace `/tmp/workspace`.
                                 val fullUri = call.request.uri
                                 val pathOnly = URI(fullUri).path
                                 val relativeUri = pathOnly.removePrefix("/project/")
 
                                 val file = File(home, relativeUri)
-                                if (file.exists() && file.isFile && file.canonicalPath.startsWith(File(home).canonicalPath)) {
-                                    // Security check: ensure the file is within the home directory
+                                val workspacePath = File(home).canonicalFile.toPath()
+                                val filePath = file.canonicalFile.toPath()
+                                if (file.exists() && file.isFile && filePath.startsWith(workspacePath)) {
                                     call.respondFile(file)
                                 } else {
                                     lprintln(

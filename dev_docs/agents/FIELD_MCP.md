@@ -5,8 +5,8 @@
 MCP `tools/call` is translated into the same WebSocket messages the agent backdoor
 already speaks (`agent-snapshot`, `agent-open-document`, `macro-transcript-command`,
 `agent-create-box`, `agent-box-screenshot`, and the ai4 tool registry). All semantics —
-the operation-transcript op vocabulary, the awaited launch/settle barrier, output
-capture — live in the JVM and are reused verbatim. See
+the operation-transcript op vocabulary, runtime-specific launch behavior, settle
+barrier, and output capture — live in the JVM and are reused verbatim. See
 [`OPERATION_TRANSCRIPT.md`](./OPERATION_TRANSCRIPT.md) and [`FIELD_BACKDOOR.md`](./FIELD_BACKDOOR.md).
 
 The bridge talks to an **already-running** Field; it never launches the JVM. The point
@@ -101,11 +101,13 @@ by the registry gate until `installAi4()` is refactored to expose a shared conte
 ## Runtime debug probe
 
 `field_debug_probe` lets an agent **ask the running JVM what a variable's value is at
-runtime, and get the answer as data.** It installs a *non-suspending* JDWP probe (via
-the JDI debug helper) that watches one symbol at one source line and samples its value
-each time that line executes. It never pauses Field's render/compute loop
-(`SUSPEND_EVENT_THREAD`, resume immediately), so it is safe against a live session. The
-result carries the observed `samples` (value text, type, thread, resolution) plus any
+runtime, and get the answer as data.** It installs a JDWP breakpoint through the JDI
+helper that watches one symbol at one source line and samples its value each time that
+line executes. The request uses `SUSPEND_EVENT_THREAD`, not `SUSPEND_ALL`: the hitting
+thread pauses briefly while its value is read, and the event set is resumed in a
+`finally` block. This avoids stopping the whole VM, but the probe is not literally
+non-suspending and a hot/high-hit probe can perturb its target thread. The result
+carries the observed `samples` (value text, type, thread, resolution) plus any
 in-scope `scope` symbols — the same data the editor's debug-probe card shows, minus the
 HTML.
 

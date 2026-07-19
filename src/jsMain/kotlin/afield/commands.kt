@@ -1620,6 +1620,14 @@ fun connectFromNestParentToSelection() {
     }
 }
 
+/**
+ * Serialize the selected boxes through the server and copy the EDN to the browser clipboard.
+ *
+ * `text/plain` is the guaranteed representation. When `ClipboardItem.supports` reports either
+ * `application/edn` or `application/octet-stream`, the same item also carries a `File` named
+ * `metadata.edn`; any construction or write failure falls back to `writeText`. Whether an external
+ * desktop file manager materializes that `File` is a browser/OS capability, not a Field guarantee.
+ */
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun copySelectedBoxesToClipboard() {
@@ -1707,6 +1715,13 @@ fun exportDocumentToDownload() {
     }
 }
 
+/**
+ * Read the first browser clipboard item, preferring `application/edn`, then `text/plain`, then
+ * `readText()`. The resulting text is routed through [processPasteText].
+ *
+ * `application/octet-stream` does not need a separate read branch for Field-created items because
+ * they also contain `text/plain`.
+ */
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun pasteBoxesFromClipboard() {
@@ -1780,6 +1795,7 @@ fun pasteBoxesFromClipboard() {
     })
 }
 
+/** Run operation-transcript YAML as a macro; otherwise ask the server to import an EDN package. */
 private fun processPasteText(text: String) {
     // Mirror the file-drop handler (Main.kt body.ondrop): pasted text that is an
     // operation transcript / macro runs itself (write-then-run) rather than being

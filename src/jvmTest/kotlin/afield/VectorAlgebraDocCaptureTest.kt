@@ -15,8 +15,8 @@ import kotlin.test.assertTrue
  * (`public/docs/vector_algebra.md`).
  *
  * Like [ValueVisualizerDocCaptureTest], this is NOT a behavioural test: it is the honest
- * capture step for the docs page. Each worked-example value is built with the REAL swizzle /
- * operator API shipped in `e6177fd3` and rendered by the REAL [ValueVisualizer.visualize],
+ * capture step for the docs page. Each worked-example value is built with the repository's current
+ * swizzle/operator API and rendered by [ValueVisualizer.visualize],
  * whose HTML (with its auto-scaled arrow thumbnails) is rasterized to a PNG by Playwright/
  * chromium. Nothing is hand-drawn or synthesized — the bytes come straight from the visualizer.
  *

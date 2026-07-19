@@ -12,6 +12,16 @@ import java.util.concurrent.ConcurrentHashMap
 
 private val docsSearchScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+/**
+ * Installs the `docs_search_input` Field message handler.
+ *
+ * The prefix of `Message.uid` before `_` is the browser session key. One
+ * [DocsSearchBridge.SearchState] is retained per key for the lifetime of this
+ * installer; there is no eviction or explicit reset message. Work runs on the
+ * process-wide IO scope and replies are marshalled through [inMain]. Phase 1 is
+ * provisional HTML and phase 20 is terminal HTML. The incoming phase is not
+ * consulted.
+ */
 fun installDocsSearch() {
     var docsSearchBridge: DocsSearchBridge? = null
     val searchStateBySession = ConcurrentHashMap<String, DocsSearchBridge.SearchState>()
@@ -67,7 +77,7 @@ fun installDocsSearch() {
                         )))
                     } else {
                         reply(Message("docs_search_input").payload(DocsSearch_input(
-                            value = "<div style='color: red;'>${result.text}</div>",
+                            value = "<div style='color: red;'>${escapeHtml(result.text)}</div>",
                             phase = 20
                         )))
                     }
@@ -77,7 +87,7 @@ fun installDocsSearch() {
                 e.printStackTrace()
                 inMain {
                     reply(Message("docs_search_input").payload(DocsSearch_input(
-                        value = "<div style='color: red;'>Error: ${e.message}</div>",
+                        value = "<div style='color: red;'>Error: ${escapeHtml(e.message ?: e::class.java.simpleName)}</div>",
                         phase = 20
                     )))
                 }

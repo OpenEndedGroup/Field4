@@ -54,6 +54,10 @@ reports `embedderBackend=disabled`.
 ```text
 GET  /api/semantic-search/status
 GET  /api/semantic-search/model
+GET  /api/semantic-search/settings
+POST /api/semantic-search/settings
+POST /api/semantic-search/download
+POST /api/semantic-search/cache/delete
 POST /api/semantic-search/rebuild
 POST /api/semantic-search/query
 ```

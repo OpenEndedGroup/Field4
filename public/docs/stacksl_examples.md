@@ -967,7 +967,8 @@ void main() {
 
 Template expansion emits the `program` function exactly once per stage. Until
 Kotlin binds it, the slot is the stable fallback `vec4 program(vec4 program_in) { return vec4(0.0); }`,
-so the shader always compiles.
+so an unbound slot still contributes a syntactically valid function (other shader errors can of
+course still fail compilation).
 
 Every discovered `stack.auto.*` name becomes an assignable property on the
 shader module. Assigning it compiles the StackSL first, and only swaps the

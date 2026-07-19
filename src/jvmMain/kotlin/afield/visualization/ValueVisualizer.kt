@@ -71,7 +71,21 @@ object ValuePrinterRegistry {
 }
 
 /**
- * Compact, monochrome visualizer for common Kotlin and Field linalg types
+ * Render a Kotlin value as a compact, escaped HTML fragment for Field output areas.
+ *
+ * Dispatch order is [ToHTML], a [ValuePrinterRegistry] match, built-in formatters, then reflective
+ * or `toString()` fallback. Built-ins cover primitives, arrays and collections, Field linalg,
+ * [FLine], [Functions.Fn], Plotly plots, and other repository types. Numeric series may add summary
+ * statistics and guarded SVG sparklines; vectors, matrices, FLines, and functions may add guarded
+ * thumbnails. The renderer uses a curated per-type color palette, not a monochrome theme.
+ *
+ * Lists, maps, strings, fields, nesting, plots, and thumbnails have explicit bounds below. Circular
+ * detection is identity-based and scoped to the current recursion path, so a repeated acyclic value
+ * is not mislabeled. User-supplied [ToHTML] and registered-printer output is trusted HTML; ordinary
+ * strings, characters, keys, and reflective values are escaped by their formatters.
+ *
+ * [visualize] returns the outer `.value-viz` element. [Box.viz] sends it to a display channel,
+ * [Any.h] returns it directly, and [registerValuePrinter] extends the registry process-wide.
  */
 object ValueVisualizer {
     private const val MAX_LIST_PREVIEW = 20

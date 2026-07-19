@@ -526,17 +526,7 @@ class KotlinInterface(
         }
     }
 
-    /**
-     * CompiledSnippet represents a pre-compiled code snippet that can be evaluated multiple times.
-     * This is useful for code that needs to be executed repeatedly without the compilation overhead.
-     *
-     * Example usage:
-     * ```
-     * val snippet = ki.compileSnippet("println(\"Hello \${x}\")")
-     * snippet.eval { println("x = 1") }  // prints "Hello 1"
-     * snippet.eval { println("x = 2") }  // prints "Hello 2"
-     * ```
-     */
+    /** K1 implementation of [PreparedSnippet]; see that interface for the evaluation contract. */
     inner class CompiledSnippet internal constructor(
         private val compiled: LinkedSnippet<KJvmCompiledScript>,
         private val defaultImplicits: List<Any>
@@ -591,16 +581,7 @@ class KotlinInterface(
         }
     }
 
-    /**
-     * Compiles a code snippet that can be evaluated multiple times.
-     * This is more efficient than calling exec() repeatedly for the same code,
-     * as compilation happens only once.
-     *
-     * @param s The code to compile
-     * @param implicits Default implicit receiver objects (e.g., Box instances)
-     * @param onCompileError Callback for compilation errors
-     * @return A CompiledSnippet that can be evaluated multiple times, or null on error
-     */
+    /** Compile a K1 [CompiledSnippet]; the shared contract is on the overridden interface method. */
     override suspend fun compileSnippet(
         s: String,
         implicits: List<Any>,
@@ -619,9 +600,7 @@ class KotlinInterface(
         }
     }
 
-    /**
-     * Synchronous version of compileSnippet() that blocks until compilation completes.
-     */
+    /** Blocking wrapper around [compileSnippet]. */
     override fun compileSnippetAndWait(
         s: String,
         implicits: List<Any>,

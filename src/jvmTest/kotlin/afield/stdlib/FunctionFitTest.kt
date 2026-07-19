@@ -98,8 +98,9 @@ class FunctionFitTest {
         val target = hardTarget()
         val seed = hardSeed()
         val single = fitGradient(target, seed, domain = domain, iterations = 300, lr = 0.05)
-        // fitBest omits `domain` on purpose — it must default to the target's own domain.
+        // This oscillator target is unbounded, so an omitted domain must use the bounded fallback.
         val best = fitBest(target, seed, restarts = 16, iterations = 400, lr = 0.05, rngSeed = 0L)
+        assertEquals(Functions.Domain.DEFAULT, best.config.domain)
 
         assertTrue(
             best.finalRmse < 0.05,
@@ -121,6 +122,23 @@ class FunctionFitTest {
         val b = fitBest(target, seed, restarts = 8, iterations = 150, rngSeed = 7L)
         assertEquals(a.losses, b.losses, "same seed/config must give an identical trajectory")
         assertTrue(a.parameters.contentEquals(b.parameters), "same seed must give identical params")
+    }
+
+    @Test
+    fun fitBestDefaultsToFiniteTargetDomainAndAllowsAnOverride() = with(Functions) {
+        val targetDomain = Functions.Domain(2.0, 4.0)
+        val target = c(1.0, targetDomain)
+        val seed = c(0.0, targetDomain)
+
+        val inferred = fitBest(target, seed, restarts = 1, iterations = 0)
+        assertEquals(targetDomain, inferred.config.domain)
+
+        val override = Functions.Domain(-1.0, 1.0)
+        val explicit = fitBest(target, seed, domain = override, restarts = 1, iterations = 0)
+        assertEquals(override, explicit.config.domain)
+
+        val unbounded = fitBest(sin(1.0), sin(0.5), restarts = 1, iterations = 0)
+        assertEquals(Functions.Domain.DEFAULT, unbounded.config.domain)
     }
 
     @Test

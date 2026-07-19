@@ -60,9 +60,7 @@ import java.util.UUID
 // Extension property to store slideshow on a box
 var Box.slideShow by Delegation<SlideShowInstance?>()
 
-/**
- * Creates and launches a new slideshow
- */
+/** Build a slideshow, store it on this box, and return it. Call [SlideShowInstance.start] to show it. */
 fun Box.slideShow(init: SlideShowBuilder.() -> Unit): SlideShowInstance {
     val builder = SlideShowBuilder(this)
     builder.init()

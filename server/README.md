@@ -100,10 +100,10 @@ curl http://localhost:5002/chat/test-slideshow/0
 Messages are stored in `../chat_data/<slideshow_id>/slide_<number>.json`
 
 ### Metadata
-Templates are stored in `../metadata_store/<template-name>/metadata.edn`
+Templates are stored in `metadata_store/<template-name>/metadata.edn`, relative to this directory.
 
 ### Telemetry
-Server usage data is stored in `../metadata_server_telemetry.json`
+Server usage data is stored in `metadata_server_telemetry.json`, relative to this directory.
 
 ## Requirements
 

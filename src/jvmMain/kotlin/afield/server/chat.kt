@@ -15,12 +15,17 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 
 /**
- * Chat server integration for guide/slideshow discussion functionality.
+ * Install Field's guide-chat RPC bridge.
  *
- * This module handles communication with the Flask chat server, providing
- * handlers for loading and posting chat messages to per-slide discussion threads.
+ * `load-chat-messages` and `post-chat-message` proxy to the Flask service selected by
+ * `CHAT_SERVER_URL` (default `http://localhost:5002`). Loads reply only to their requester; a
+ * successful post broadcasts `chat-message-posted` through Field so visible widgets reload the
+ * thread. Field's browser does not connect directly to the Flask Socket.IO endpoint.
+ *
+ * Requests run in [GlobalScope] and the client is process-lived. A load failure is represented as
+ * an empty list; a post failure is logged and has no success/error reply. The service is therefore
+ * optional and intentionally outside slideshow execution.
  */
-
 @RunsAt(installHandlers)
 @OptIn(DelicateCoroutinesApi::class)
 fun chat() {

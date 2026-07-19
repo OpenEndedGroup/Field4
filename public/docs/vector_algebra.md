@@ -1,6 +1,6 @@
 # Vector algebra: swizzles & operators
 
-Field's float heap vectors — `Vector2f`, `Vector3f`, `Vector4f` — read like GLSL. You can reorder their components by name, do arithmetic with the usual `+ - *` symbols, copy a vector with one field changed, and rescale it to a length, all without reaching for a method call. This surface is *generated* rather than hand-written (from the typed algebra model in `tools/linalg-generator`), so it is complete and correct by construction: every swizzle exists, and the old hand-written `.yy` bug is gone.
+Field's float heap vectors — `Vector2f`, `Vector3f`, `Vector4f` — read like GLSL. You can reorder their components by name, do arithmetic with the usual `+ - *` symbols, copy a vector with one field changed, and rescale it to a length, all without reaching for a method call. This surface is *generated* rather than hand-written (from the typed algebra model in `tools/linalg-generator`): the generator emits every modeled swizzle combination, and its tests cover the old hand-written `.yy` regression.
 
 This page is a worked tour. Every image below is captured straight from Field's real value visualizer — `ValueVisualizer.visualize(...)`, the same renderer described in [Reading your values](reading_your_values.md) — fed the actual result of the code above it. The vectors draw as auto-scaled arrows (a 2D arrow for `vec2`, an isometric frame for `vec3`, the x/y arrow for `vec4`), so a reorder or a rescale is something you can *see*. Nothing here is mocked. For the exhaustive member list, see the [Generated Vector API](linear_algebra_api.md); for the wider library, the [Linear Algebra guide](linear_algebra.md).
 
@@ -87,14 +87,14 @@ val v = vec(3, 4)     // length 5
 v(y = 1f)             // vec2(3, 1) — copy, only y changed
 ```
 
-Called with a block, it returns a **copy after applying the block**, leaving the original alone — handy for the mutating JOML methods:
+Called with a block, it returns a **copy after applying the block**, leaving the original alone — handy for mutating vector methods:
 
 ```diffstatic {data-lang=kotlin}
 :::static
 v { normalize() }     // vec2(0.6, 0.8) — a normalized copy; v is untouched
 ```
 
-Finally, the infix `len` returns a copy **rescaled to a given length**, keeping direction. It is a *setter*, not a getter — for the current magnitude use JOML's `v.length()`:
+Finally, the infix `len` returns a copy **rescaled to a given length**, keeping direction. It is a *setter*, not a getter — for the current magnitude use `v.length()`:
 
 ```diffstatic {data-lang=kotlin}
 :::static

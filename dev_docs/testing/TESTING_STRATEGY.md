@@ -212,13 +212,16 @@ ownership with:
 uv run python tools/check_offline_assets.py
 ```
 
-Refresh generated copies only when needed:
+Build and verify a disposable standalone distribution when changing ownership:
 
 ```bash
-uv run python tools/sync_offline_assets.py --target public --target dev_docs --no-docs
+./build-offline-docs.sh
+uv run python tools/check_offline_assets.py --target dist/offline-viewer
 ```
 
-Do not track generated duplicates unless the owning docs explicitly require it.
+Do not synchronize generated copies into `public/` or `dev_docs/`; the checker
+explicitly rejects those paths if they become tracked. The docs build emits its
+own site-local copy under `public/field4/`.
 
 ### 9. Specialized Manual References
 
@@ -228,10 +231,10 @@ high-value checks from these notes into `FIELD_TEST`, UI regressions, or
 executable docs when they start catching real regressions.
 
 Current specialized references:
-- `dev_docs/HISTORY_TESTING_GUIDE.md`: manual document-history workflow details. The browser UI regression suite now has automated `history-panel` coverage for the panel smoke path.
+- `dev_docs/HISTORY_TESTING_GUIDE.md`: history invariants and the remaining manual restore workflows. The browser UI regression suite has automated `history-panel` coverage for the panel smoke path.
 - `dev_docs/FileWatchManager_Testing.md`: manual external sidecar edit, internal save, rapid edit, and watcher cleanup scenarios.
 - `dev_docs/LAYERS_TESTING.md`: manual layer visibility, active-layer frame persistence, animated transitions, and connection visibility scenarios.
-- `dev_docs/VALUE_VISUALIZER.md`: value visualizer usage examples; candidates for future `FIELD_TEST` or docs-runner coverage.
+- `dev_docs/VALUE_VISUALIZER.md`: implementation ownership and current verification gaps; public runner-backed examples live in `reading_your_values.md` and `vector_algebra.md`.
 - `dev_docs/manual_tests/test-offline-viewer.html`: manual offline viewer fixture.
 
 ## Choosing Where to Add Coverage

@@ -1,112 +1,45 @@
-# Field4 Offline Viewer
+# Offline viewer implementation
 
-The offline viewer allows you to view Field4 documents (`.edn` metadata files) in a web browser without running the Field4 server. This is perfect for documentation, sharing examples, and viewing Field projects on systems where Field4 is not installed.
+The offline viewer is a static, read-only presentation of Field metadata. Its
+behavior belongs with these files:
 
-## Features
+- `src/commonMain/resources/offline-viewer.js`: loading, filtering, drawing,
+  navigation, read-only Monaco/literate views, and the import button.
+- `src/commonMain/resources/edn-parser.js`: the supported EDN subset.
+- `src/commonMain/resources/offline.html`: layout and static styles.
+- `tools/sync_offline_assets.py`: authoritative distribution contents.
+- `src/jvmMain/kotlin/afield/Server.kt`, route
+  `/api/import-offline-doc`: optional transfer into a running Field workspace.
 
-- **No Backend Required**: Pure client-side rendering of Field documents
-- **Read-Only Mode**: View boxes and their code without execution
-- **Monaco Editor Integration**: Syntax-highlighted code viewing
-- **Property Switching**: Switch between different code properties (code, glsl, python, etc.)
-- **Beautiful Documentation**: Clean, professional presentation of Field projects
-- **One-Click Local Opening**: Direct link to open the document in Field4 desktop app
+The renderer omits the root, tombstones, boxes without a nonblank name, and boxes
+whose string `code` property is blank. It draws stored frames and parent edges,
+and exposes string properties from its supported property list as read-only
+editor tabs. Monaco failure degrades to the box graph rather than failing the
+whole page. It does not reproduce live outputs, graphics, execution, websocket
+updates, or editing.
 
-## Usage
+Navigation is implemented directly in `offline-viewer.js`: click selects,
+middle-drag or Shift+left-drag pans, the wheel and arrow keys pan, Escape
+deselects, and `?`/`h` toggles help when the editor is not consuming input.
 
-### Local Files
+The docs build calls the synchronizer and embeds the generated `offline.html`.
+`ednFileCandidates()` handles the two supported mount shapes: a site mounted
+under `/field4/`, and the built `public/field4/` directory served as the HTTP
+root.
 
-To view a local Field document:
+## Import boundary
 
-```bash
-# Start a simple HTTP server in your project directory
-python3 -m http.server 8000
+Viewing does not execute code. Clicking `Open in Field·4` does mutate local
+state: the viewer first asks its embedding Field docs frame to import, then falls
+back to the HTTPS localhost endpoint. The server sanitizes the suggested name,
+chooses a non-colliding workspace child, and writes the submitted EDN verbatim.
+Opening or executing imported code is separate, and imported documents must be
+treated as untrusted.
 
-# Open the viewer in your browser
-http://localhost:8000/offline.html?file=metadata.edn
-```
+## Verification
 
-Any `metadata.edn` saved by the Field·4 desktop app works directly — no conversion needed.
-
-### Navigation
-
-Once a document is open:
-
-- **Click a box** to view its code
-- **Middle-mouse drag** or **Shift+drag** to pan the canvas
-- **Mouse wheel** to scroll the canvas
-- **Arrow keys** to pan
-- **Escape** to deselect the box and hide the editor
-- **?** (or **h**) to toggle the help overlay
-
-### Remote Files
-
-You can also view Field documents from any URL:
-
-```
-http://your-server.com/offline.html?file=http://example.com/path/to/metadata.edn
-```
-
-### Publishing Documentation
-
-1. Build a static bundle:
-   ```bash
-   ./build-offline-docs.sh
-   ```
-
-2. Copy `dist/offline-viewer/` to your web server. It contains:
-   - `offline.html`
-   - `edn-parser.js`
-   - `offline-viewer.js`
-   - `examples-gallery.html`
-   - `iosevka.css` and `woff2/` (fonts)
-   - `min/vs/` directory (Monaco editor)
-   - `metadata_store/` example documents
-
-3. Create an HTML page linking to your Field documents:
-
-```html
-<a href="offline.html?file=examples/hello-world.edn">
-  View Hello World Example
-</a>
-```
-
-### Embedding in the Field docs site
-
-The Zensical docs embed the viewer directly with `<iframe src="/offline.html?file=/field4/assets/<workspace>/metadata.edn">`. `tools/build_zensical_docs.py` copies the viewer bundle (via `tools/sync_offline_assets.py`) into the built site (`public/field4/`) after every successful build, so `/offline.html` and its assets are self-contained when the site is served statically — no running Field server required.
-
-Because the `?file=` path is authored as an absolute `/field4/...` URL, the viewer tries several candidate resolutions (as-is, then with the leading site segment stripped) so the same iframe works whether the site is served at its root (e.g. `python -m http.server` in `public/field4`) or mounted under `/field4/`. If none resolve, it fails fast with a visible error instead of hanging.
-
-## How It Works
-
-1. **EDN Parser**: A lightweight JavaScript parser reads Field's EDN metadata format
-2. **Box Rendering**: Boxes are rendered in their correct positions on a pannable canvas
-3. **Monaco Editor**: Provides syntax highlighting for all supported languages
-4. **Read-Only**: No WebSocket connection, no code execution - pure documentation
-
-## Limitations
-
-- Read-only: Cannot edit or execute code
-- No graphics: Cannot display visual output from boxes
-- No real-time updates: Shows a snapshot of the document
-- Basic EDN support: Only supports the EDN features used by Field4 metadata
-
-## Integration with Field4
-
-When viewing a document in offline mode, click the "Open in Field·4" button to open the same document in the desktop application (if Field4 is running locally). (The live button text has no emoji; only the descriptive copy in `examples-gallery.html` still uses the "🚀 Open in Field·4" phrasing.)
-
-## Browser Compatibility
-
-Runs in any modern evergreen browser (Chrome, Firefox, Safari, Edge) with JavaScript enabled. Syntax highlighting is provided by the vendored Monaco editor under `min/vs/`, which sets the practical baseline for supported browsers. No explicit feature-detection or browser-version gating is done in the viewer code.
-
-## Development
-
-The offline viewer is built with:
-- Vanilla JavaScript (no frameworks)
-- Monaco Editor (from VS Code)
-- Custom EDN parser
-- Iosevka Web font
-
-Source files:
-- `src/commonMain/resources/offline.html` - Main HTML page
-- `src/commonMain/resources/edn-parser.js` - EDN format parser
-- `src/commonMain/resources/offline-viewer.js` - Viewer logic
+Run `./build-offline-docs.sh`, serve `dist/offline-viewer/`, and verify the sample
+URL documented by the script. Check graph-only fallback by withholding
+`min/vs/loader.js`. Import testing must use a disposable workspace and confirm
+both name sanitization and collision suffixing; do not aim the test at a user's
+active workspace.

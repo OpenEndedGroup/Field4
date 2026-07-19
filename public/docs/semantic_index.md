@@ -1,47 +1,64 @@
 # The Semantic Index
 
-The [`/welcome`](history_overview.md) search box does not do what you might expect. Type into it and it does not filter document *names* — it searches the *contents* of every box you have ever written, by meaning. Ask for "the thing that wiggled a line around a point" and it will find the box where you wrote `randomWiggle`, even though none of those words appear in it.
+The search field on [`/welcome`](history_overview.md) combines two searches over
+the current workspace:
 
-That is the **semantic index** at work: a local, meaning-aware index of your whole history with Field. (It is the search box at the top of the document list on the [welcome dashboard](history_overview.md).)
+- the ordinary workspace search, which matches document metadata and box text;
+- semantic-index hits, when semantic search is enabled and an index exists.
 
-## What it indexes
+Results from both are merged by document. Semantic hits are labelled, ranked
+ahead of ordinary matches within each document, and limited to short source
+previews. If the semantic request fails or exceeds the welcome page's short
+timeout, ordinary search results still work.
 
-The index is built from three corpora:
+## What the local index contains
 
-- **workspace** — *your* documents. It walks every document in your workspace, reads each box's code and text properties, and splits them into per-declaration fragments. This is the "history" corpus: a searchable memory of everything you have built, across every document, not just the one you have open.
-- **field-internals** — Field's own Kotlin source declarations, so the same search can turn up the built-in function you half-remember.
-- **documentation** — the pages of this documentation set.
+A rebuild creates three selectable corpora:
 
-You can scope a query to any of these, and within the workspace corpus you can narrow to a specific document, box, or property.
+- **workspace**: current sidecar-backed source/text properties found in documents
+  under the configured workspace root, split into box/property and declaration
+  fragments;
+- **field-internals**: declarations from Field's indexed Kotlin source roots;
+- **documentation**: Markdown sections under `public/docs`.
 
-## How it works
+The welcome search requests only the `workspace` corpus. Other clients of
+`/api/semantic-search/query` can request one corpus, several corpora, a workspace
+document, a box, or a property.
 
-Under the hood the index is a local [Apache Lucene](https://lucene.apache.org/) index, stored under `~/.afield/semantic-search/`. It never leaves your machine.
+This is an index of the current files scanned during rebuild, not every historical
+version of every box. Field marks the index stale when its workspace fingerprint
+no longer matches; rebuild to incorporate current changes.
 
-Search blends three signals — dense vector similarity (semantic "meaning" matching), classic BM25 keyword scoring, and symbol-name matching — and fuses their rankings together, so a query lands whether you remember the *idea*, the *words*, or the *name*.
+## Ranking and privacy
 
-The dense-vector half is optional. With a small embedding model downloaded it does true semantic matching; without one it gracefully falls back to the keyword-and-symbol baseline and reports itself as running with the embedder disabled. Everything still works either way — you just lose the "search by vibe" quality.
+The index is stored below `~/.afield/semantic-search/`. Lucene BM25 and symbol
+fields are always available when the feature is enabled. Dense-vector ranking is
+optional: it is added only when a configured ONNX model and tokenizer load
+successfully. The result reports the actual `embedderBackend`; `disabled` means
+the search is lexical/symbolic rather than meaning-based.
+
+Indexing and querying run in the Field JVM. Downloading a model preset uses the
+network, but workspace/source text is not sent to an external search service by
+this local retrieval path.
 
 ## Managing it
 
 ![The semantic search panel on the welcome page](assets/semantic-search.png)
 
-The **Semantic search** panel in the `/welcome` AI section is the control room:
+The **Semantic search** panel in `/welcome` exposes the implemented settings and
+cache operations: enable/disable, model preset and paths, dimension/token limit,
+model download, save, rebuild, delete index, and delete models. Rebuild runs in a
+background worker and publishes progress/status to the page.
 
-- an **enabled** toggle and a live status badge
-- a **model preset** picker with a **Download model** button (models are cached under `~/.afield/semantic-search/models/`)
-- **Rebuild index**, **Delete index**, and **Delete models** actions, with a progress bar for long rebuilds
+## Conversational code search is separate
 
-The index tracks whether its contents have drifted from your workspace and reports itself as stale when they have, so you know when a rebuild is worth running. A rebuild happens on a background thread — you can keep working while it recollects.
+**Search Documentation & Code** (`Ctrl/Cmd+Shift+D`) opens a generated-answer
+surface in the documentation pane. Despite its historical label, its retrieval
+store currently covers Field's indexed Kotlin roots and query-selected GLSL
+include libraries; it does not use this local workspace/documentation Lucene
+corpus. With no remote vector store it can still answer ungrounded, and therefore
+should not be treated as source-of-truth search.
 
-## A second, conversational search
-
-There is a related but distinct feature worth knowing about. **Search Documentation & Code** — `command/ctrl-shift-d`, or the command of the same name — opens a conversational search over Field's code and docs in the documentation pane.
-
-![Conversational documentation and code search](assets/docs-search.png)
-
-This one is powered by the AI provider's own retrieval over Field's uploaded source rather than the local Lucene index, and it answers in prose rather than a hit list. Use the `/welcome` search box to find *your own* work by meaning; use `command/ctrl-shift-d` to ask questions *about Field* and get an explained answer.
-
-## Why it is a "history" tool
-
-The workspace corpus is the point. Field accumulates documents for as long as you use it, and after a while "where did I do that thing?" becomes a real question. The semantic index is the answer: it turns the entire sediment of your past work into something you can interrogate by describing what you half-remember, instead of hunting through filenames.
+Use the `/welcome` field to locate current workspace material. Use the local
+semantic-search API for explicit source/docs corpora. Use conversational search
+when a prose answer is useful, and verify its cited paths against the code.

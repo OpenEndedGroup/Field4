@@ -2,6 +2,7 @@ package afield.examples.rectsl
 
 import afield.rectsl.*
 
+import java.io.File
 import java.nio.file.Files
 import kotlin.io.path.writeText
 
@@ -47,13 +48,39 @@ object RectSLEditorExtensionWorkout {
         extensionFile.writeText(extensionSource)
         probeFile.writeText(nodeProbeSource())
 
-        val process = ProcessBuilder("node", probeFile.toString(), extensionFile.toString())
+        val process = ProcessBuilder(nodeExecutable(), probeFile.toString(), extensionFile.toString())
             .redirectErrorStream(true)
             .start()
         val output = process.inputStream.bufferedReader().readText()
         val exit = process.waitFor()
         require(exit == 0) { "node probe failed with exit $exit\n$output" }
         require("rectsl node probe passed" in output) { output }
+    }
+
+    /**
+     * Prefer an explicit Node override, then the repository-local Node installed by Gradle. The
+     * smoke runner can launch its child JVM with a deliberately small PATH, so relying on the bare
+     * `node` command makes this otherwise hermetic workout depend on the agent's login shell.
+     */
+    private fun nodeExecutable(): String {
+        listOf("AFIELD_NODE", "NODE").firstNotNullOfOrNull { name ->
+            System.getenv(name)?.takeIf(String::isNotBlank)?.let(::File)?.takeIf(File::canExecute)
+        }?.let { return it.absolutePath }
+
+        val executableName = if (System.getProperty("os.name").startsWith("Windows", ignoreCase = true)) {
+            "node.exe"
+        } else {
+            "node"
+        }
+        val managedRoot = File(System.getProperty("user.dir"), ".gradle/nodejs")
+        managedRoot.listFiles()
+            .orEmpty()
+            .asSequence()
+            .map { File(it, "bin/$executableName") }
+            .firstOrNull(File::canExecute)
+            ?.let { return it.absolutePath }
+
+        return executableName
     }
 
     private fun nodeProbeSource(): String = """
