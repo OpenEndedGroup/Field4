@@ -1022,17 +1022,6 @@ tasks.register<JavaExec>("runSimdVerletBulkKernelsExample") {
     jvmArgs(vectorizationJvmArgs)
 }
 
-tasks.register<JavaExec>("runEvolveWorkedExample") {
-    group = "application"
-    description = "CPU-only worked example of the Functions evolve harness: writes an SVG overlay + trace under public/docs/assets/evolve/."
-    javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
-    })
-    classpath = sourceSets["jvmMain"].runtimeClasspath
-    mainClass.set("afield.examples.functions.EvolveWorkedExample")
-    jvmArgs(vectorizationJvmArgs)
-}
-
 tasks.named<JavaExec>("runJvm").configure {
     val requiredJvmArgs = requiredRunJvmArgs()
 

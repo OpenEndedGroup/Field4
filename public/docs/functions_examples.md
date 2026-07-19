@@ -3763,7 +3763,7 @@ run.best.browseGraph(channel = "evolved")
 
 #### A worked run (CPU-only, reproducible)
 
-Prose is easy to distrust, so here is an actual run — no GPU, no window, just the harness. The worked example lives in `afield.examples.functions.EvolveWorkedExample` (run it with `./gradlew runEvolveWorkedExample`); it renders the plot below and the trace table as committed evidence, and a `@Test` asserts the numbers are reproducible.
+Prose is easy to distrust, so here is an actual run — no GPU, no window, just the harness. The worked example lives in `afield.examples.functions.EvolveWorkedExample`; it runs this exact search on the CPU, and `EvolveWorkedExampleTest` asserts the numbers below reproduce exactly under the fixed seed (and match the values printed here). The figure that follows is a live capture of the same run plotted in a box.
 
 The setup is deliberately adversarial in two independent ways at once. The **target** is a half-amplitude sine, `sin(frequency = 1.0, amplitude = 0.5)`. The **seed** is a full-amplitude *cosine*, `cos(frequency = 1.0, amplitude = 1.0)` — the wrong op *and* the wrong amplitude. To reach the target a run must both transmute the operator (via `substituteOp`, staying inside the oscillator family) and dial in the numeric leaves (via `jitter`/`nudge`), with `prune` trimming structure for parsimony. Everything runs under a fixed `rngSeed = 3`.
 
@@ -3779,9 +3779,58 @@ val run = evolve(
 )
 ```
 
-![Target vs seed vs evolved-best sine functions, showing the evolved curve tracking the target](assets/evolve/evolve-overlay.svg)
+The same run, plotted live in a box — target, seed, and `run.best` overlaid by converting each `Fn` to an `FLine` and drawing all three with `lines(...)`:
 
-The dashed grey curve is the seed cosine; the red curve is the target; the blue curve is `run.best`. The blue tracks the red almost exactly — the fitness (negative RMSE minus a small complexity penalty) climbs from **−0.8421** at the seed to **−0.1568** at the best, an ~81% reduction in error. The accepted-mutation trace shows *how*:
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/evolve-overlay.png" wait="2.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-evolve-overlay"}
+:::static
+import afield.graphics.FLine
+import afield.stdlib.Functions
+import afield.stdlib.evolve
+import afield.stdlib.matchFitness
+
+with(Functions) {
+    val x0 = 40.0; val x1 = 940.0
+    val y0 = 40.0; val y1 = 400.0
+    val midY = 220.0; val amp = 150.0
+
+    // Adversarial setup: the target is a half-amplitude sine; the seed is a
+    // full-amplitude COSINE — the wrong op AND the wrong amplitude. A good run must
+    // both substitute the op and dial in the numeric leaves. Fixed rngSeed = 3L, so
+    // the run — and this figure — reproduces exactly.
+    val target = sin(frequency = 1.0, amplitude = 0.5)
+    val seed = cos(frequency = 1.0, amplitude = 1.0)
+    val run = evolve(
+        seed = seed,
+        iterations = 120,
+        lambda = 8,
+        rngSeed = 3L,
+        fitness = matchFitness(target, samples = 160, complexityWeight = 0.01)
+    )
+
+    fun asLine(fn: Functions.Fn, color: Vec4, thickness: Double): FLine =
+        fn.toFLine(0.0 .. 1.0, samples = 160, xScale = x1 - x0, yScale = -amp, xOffset = x0, yOffset = midY).apply {
+            this.color = color; this.thickness = thickness
+        }
+    fun hLine(y: Double, color: Vec4, thickness: Double): FLine = fline {
+        moveTo(x0, y); lineTo(x1, y); this.color = color; this.thickness = thickness
+    }
+    val frame = fline {
+        moveTo(x0, y0); lineTo(x1, y0); lineTo(x1, y1); lineTo(x0, y1); lineTo(x0, y0)
+        color = vec(1.0, 1.0, 1.0, 0.28); thickness = 1.6
+    }
+
+    val guides = listOf(frame, hLine(midY, vec(1.0, 1.0, 1.0, 0.30), 1.2))
+    val seedLine   = asLine(seed,     vec(0.55, 0.55, 0.55, 0.9), 2.0)   // grey: where it started
+    val targetLine = asLine(target,   vec(0.84, 0.15, 0.16, 1.0), 4.5)   // red: the target
+    val bestLine   = asLine(run.best, vec(0.12, 0.47, 0.71, 1.0), 2.4)   // blue: evolved best, on top
+
+    lines(guides + seedLine + targetLine + bestLine, channel = "evolve-overlay", w = 980.0, h = 440.0, fitToSize = false)
+    display("notes", "<div style='padding:10px'><b>evolve</b> &mdash; seed cosine (grey) &rarr; target sine (red); the evolved best (blue) tracks the target. score ${"%.4f".format(run.initialScore)} &rarr; ${"%.4f".format(run.bestScore)}</div>")
+    run
+}
+```
+
+The grey curve is the seed cosine; the red curve is the target; the blue curve is `run.best`. The blue tracks the red almost exactly — the fitness (negative RMSE minus a small complexity penalty) climbs from **−0.8421** at the seed to **−0.1568** at the best, an ~81% reduction in error. The accepted-mutation trace shows *how*:
 
 | iteration | accepted mutation | score (−RMSE − penalty) |
 | --- | --- | --- |
@@ -3827,9 +3876,68 @@ There is a subtlety worth understanding, because it decides whether variety sear
 
 Passing `normalize = true` z-scores each descriptor (subtract the mean, divide by the RMS) before measuring distance, so amplitude and offset fall out and novelty is forced to explore *shape* — sine versus saw versus pulse versus something pruned flat. As a bonus the default mutation palette now behaves: `duplicateSubtree` only rescales a copy, which normalization ignores, so it can no longer run away. This is the counterpart of the structural cost from `graphMetrics` — one asks "how big is the graph", the other "how different is what it does".
 
-Here is an actual `normalize = true` run — the same CPU-only harness as above (`./gradlew runEvolveWorkedExample`), plotting each result's z-scored behaviour so the cells share one scale and read as pure shape:
+Here is an actual `normalize = true` run, plotted live in a box — each slot's stored z-scored `behaviour` drawn as an `FLine` in its own cell of a 3×2 montage, so the grid shares one scale and reads as pure shape:
 
-![Six behaviourally distinct evolved gestures from one seed, each a normalized waveform](assets/evolve/evolve-variety.svg)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/evolve-variety.png" wait="2.5" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-evolve-variety"}
+:::static
+import afield.graphics.FLine
+import afield.stdlib.Functions
+import afield.stdlib.evolveVariety
+
+with(Functions) {
+    // Same run as the harness: grow 6 behaviourally distinct gestures from one seed by
+    // novelty search. normalize = true measures distance in *shape*, not amplitude, so
+    // the set spreads across genuinely different waveforms. Fixed rngSeed = 7L.
+    val variety = evolveVariety(
+        seed = sin(2.0) * 0.5,
+        count = 6,
+        iterations = 48,
+        rngSeed = 7L,
+        samples = 120,
+        neighbours = 3,
+        normalize = true
+    )
+
+    val cols = 3
+    val cellW = 300.0; val cellH = 180.0
+    val gap = 20.0; val topPad = 44.0
+    val out = mutableListOf<FLine>()
+
+    // One mini-plot per result, laid out in a grid. Plot the stored *normalized*
+    // behaviour (variety.behaviours[i].samples) so every cell shares one z-scored
+    // scale and the montage reads as pure shape variety, not "the same wave rescaled".
+    variety.behaviours.forEachIndexed { i, b ->
+        val col = i % cols; val row = i / cols
+        val cx0 = gap + col * (cellW + gap)
+        val cy0 = topPad + row * (cellH + gap)
+        val cyc = cy0 + cellH / 2
+        val amp = (cellH / 2 - 12) / 2.6   // z-scored signal spans roughly +/-2.6
+
+        out += fline {
+            moveTo(cx0, cy0); lineTo(cx0 + cellW, cy0); lineTo(cx0 + cellW, cy0 + cellH)
+            lineTo(cx0, cy0 + cellH); lineTo(cx0, cy0)
+            color = vec(1.0, 1.0, 1.0, 0.22); thickness = 1.2
+        }
+        out += fline {
+            moveTo(cx0, cyc); lineTo(cx0 + cellW, cyc)
+            color = vec(1.0, 1.0, 1.0, 0.18); thickness = 1.0
+        }
+        val s = b.samples
+        val curve = FLine()
+        for (k in s.indices) {
+            val px = cx0 + 8 + (cellW - 16) * k / (s.size - 1).toDouble()
+            val py = cyc - amp * s[k]
+            if (k == 0) curve.moveTo(px, py) else curve.lineTo(px, py)
+        }
+        curve.color = vec(0.12, 0.47, 0.71, 1.0); curve.thickness = 2.2
+        out += curve
+    }
+
+    lines(out, channel = "evolve-variety", w = 980.0, h = 440.0, fitToSize = false)
+    display("notes", "<div style='padding:10px'><b>evolveVariety</b> &mdash; ${variety.results.size} behaviourally distinct gestures from one seed, meanPairwiseDistance ${"%.3f".format(variety.meanPairwiseDistance)} (normalized shape)</div>")
+    variety
+}
+```
 
 Six slots grown from a single `sin(2.0) * 0.5` seed, `meanPairwiseDistance = 1.51` across the set — every cell is a genuinely different shape (all six polylines are distinct), not the same wave rescaled. Re-running regenerates a byte-identical montage. Try it without `normalize` and watch the spread balloon into the billions while the montage degenerates to one spike: a compact demonstration of *why the metric matters* in open-ended generation.
 
