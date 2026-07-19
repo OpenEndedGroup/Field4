@@ -238,6 +238,17 @@ Useful references:
 The UI regression suite already covers the macro/transcript panel itself. Add
 new transcript files when the reusable workflow matters outside one test.
 
+Every shipped demo transcript under `dev_docs/agents/transcripts/` is now
+executed (or, for graphics demos, compiled) end-to-end by the FIELD_TEST
+`examples.demo-transcript.exec`
+(`src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt`).
+**"Shipping a demo" means its box bodies run/compile with no diagnostics in CI**,
+not just that the `code` string round-trips — `OperationTranscriptMacroSmokeTest`
+only *applies* ops and diffs `code`, which is how `fn_differentiable_fit_demo`
+shipped with two compile errors on 2026-07-18. When you add a transcript, add its
+name to `EXECUTE` or `COMPILE_ONLY` in that harness (see the transcript README's
+"Verified in CI" section).
+
 ### 8. Offline Viewer and Asset Ownership
 
 The offline viewer has generated copies of Monaco/fonts/docs assets. Verify

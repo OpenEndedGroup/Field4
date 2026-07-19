@@ -67,7 +67,7 @@ inline fun <reified A> fromContextWithNameOrNull(name: String, defaultValue: A? 
 
     val a =
         f.properties.entries.firstOrNull { it.value != null && it.key == name && it.value!!::class.isSubclassOf(A::class) }
-    if (a != null) return a as A
+    if (a != null) return a.value as A
 
     f.ki.context.vars.entries.firstOrNull {
         if (it.value.value == null) return@firstOrNull false
@@ -87,7 +87,7 @@ inline fun <reified A> fromContextWithNameOrNull(name: String, defaultValue: A? 
             val a = it.properties.entries.firstOrNull {
                 it.value != null && it.key == name && it.value!!::class.isSubclassOf(A::class)
             }
-            if (a != null) return a as A
+            if (a != null) return a.value as A
             it.ki.context.vars.entries.firstOrNull {
                 if (it.value.value == null) return@firstOrNull false
                 it.key == name && it.value.value!!::class.isSubclassOf(A::class)
