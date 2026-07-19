@@ -3902,7 +3902,17 @@ canvas {
     }
 
     private fun List<Fn>.sequenceParts(): List<SequencePart> =
-        map { fn -> SequencePart(fn, fn.domain, sequenceDuration(fn.domain)) }
+        map { fn ->
+            // Oscillators (and other unbounded fns) default to Domain.ALL. The slot
+            // sampler maps a local coordinate into the source via sourceDomain.lerp(alpha),
+            // which is +/-inf/NaN for an unbounded domain — so the source is evaluated at
+            // infinity and every sequence-family combinator (sequence/shuffleLoop/palindrome/
+            // roundRobin/randomSequence/...) collapses to `outside`. Preview an unbounded
+            // source over a finite window here, the same finiteSweep() guard the other
+            // implicit-domain samplers use; finite domains pass through unchanged.
+            val sweep = fn.domain.finiteSweep()
+            SequencePart(fn, sweep, sequenceDuration(sweep))
+        }
 
     // Composition parameters are functions too. Literal overloads are just
     // adapters to constant Fns; parametric overloads sample near the place where
