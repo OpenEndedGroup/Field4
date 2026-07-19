@@ -1235,17 +1235,48 @@ class PythonInterface {
 
         fun currentPythonSettingsStatus(): PythonSettingsStatus {
             val persisted = readPersistedPythonChoice()
-            val path = persisted?.path.orEmpty()
+            val configPath = pythonSettingsFile().absolutePath
+
+            // The live JVM binds JEP once at startup and can't rebind. If the persisted choice
+            // differs from the interpreter currently bound (e.g. right after Save/Install JEP),
+            // report the *saved* target with a "restart required" note instead of parroting the
+            // stale live state — otherwise a working install looks like it failed.
+            if (persisted != null) {
+                val expectedExe = when (persisted.kind) {
+                    "venv" -> pythonExecutableForVenv(File(persisted.path))?.path
+                    else -> persisted.path
+                }?.let { File(it).absolutePath }
+                val liveExe = resolvedPythonExecutable?.let { File(it).absolutePath }
+                if (expectedExe != null && expectedExe != liveExe) {
+                    val resolved = runCatching { resolveChoice(persisted) }.getOrNull()
+                    if (resolved != null) {
+                        return PythonSettingsStatus(
+                            configured = true,
+                            source = "saved (restart required)",
+                            kind = persisted.kind,
+                            path = persisted.path,
+                            pythonExecutable = resolved.pythonExecutable,
+                            pythonHome = resolved.pythonHome,
+                            jepLibrary = resolved.jepLibrary,
+                            sitePackages = resolved.sitePackages,
+                            configPath = configPath,
+                            message = "Saved Python: ${persisted.path}. Restart Field for JEP to bind this interpreter.",
+                            restartRequired = true,
+                        )
+                    }
+                }
+            }
+
             return PythonSettingsStatus(
                 configured = pythonConfigAvailable,
                 source = resolvedPythonSource,
                 kind = persisted?.kind ?: "",
-                path = path,
+                path = persisted?.path.orEmpty(),
                 pythonExecutable = resolvedPythonExecutable,
                 pythonHome = resolvedPythonHome,
                 jepLibrary = resolvedJepLibrary,
                 sitePackages = resolvedVenvSitePackagesPath,
-                configPath = pythonSettingsFile().absolutePath,
+                configPath = configPath,
                 message = pythonConfigMessage,
                 restartRequired = false,
             )
