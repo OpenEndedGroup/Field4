@@ -13,8 +13,10 @@ import afield.installHandlers
 import afield.needsResync
 import afield.thisSessionInfo
 import afield.ImportMetadata
+import afield.ImportMetadataNested
 import afield.ImportNotebook
 import afield.doResync
+import afield.nestInto
 import afield.notify
 import afield.logger.lprintln
 import afield.python.isPythonRoot
@@ -88,6 +90,31 @@ fun importing() {
         }
     })
 
+    handlers["import-metadata-edn-nested"] = mutableSetOf({ message, reply ->
+        try {
+            val request = Json.decodeFromJsonElement<ImportMetadataNested>(message.payload!!)
+            val created = importMetadataAsNest(
+                ednText = request.ednText,
+                anchorX = request.x,
+                anchorY = request.y,
+                nestName = request.nestName,
+            )
+            thisSessionInfo.get().topologyGeneration++
+            doResync()
+            val nestedCount = created.size - 1
+            notify(
+                "Imported $nestedCount box${if (nestedCount == 1) "" else "es"} into a new nest box",
+                "import",
+            )
+            Handled.yes
+        } catch (e: Exception) {
+            lprintln("error,import", "Failed to import metadata.edn as nest: ${e.message}")
+            e.printStackTrace()
+            notify("Failed to import metadata.edn: ${e.message}", "error")
+            Handled.yes
+        }
+    })
+
     handlers["import-ipynb"] = mutableSetOf({ message, reply ->
         try {
             val request = Json.decodeFromJsonElement<ImportNotebook>(message.payload!!)
@@ -113,6 +140,66 @@ fun importing() {
             Handled.yes
         }
     })
+}
+
+// --- metadata.edn -> nested subtree import ----------------------------------
+//
+// Loads a dropped metadata.edn with fresh UUIDs (like the flat import-metadata-edn
+// path) and then wraps the top-level imported boxes inside one new nest-parent box
+// (afield.nested / nestedIn), so they land as a single collapsible/zoomable group
+// rather than scattered across the document root.
+
+private const val NEST_IMPORT_DEFAULT_NAME = "imported boxes"
+private const val NEST_IMPORT_HEADER_HEIGHT = 40.0
+private const val NEST_IMPORT_MIN_WIDTH = 260.0
+
+/**
+ * Parse [ednText], remap its ids to fresh UUIDs, and nest the top-level imported
+ * boxes inside a new nest-parent box anchored at document-space ([anchorX],
+ * [anchorY]). Returns the created boxes with the nest parent first.
+ */
+@OptIn(ExperimentalUuidApi::class)
+fun importMetadataAsNest(
+    ednText: String,
+    anchorX: Double,
+    anchorY: Double,
+    nestName: String = "",
+    info: SessionInformation = thisSessionInfo.get(),
+): List<Box> {
+    val seen = mutableMapOf("root" to "root")
+    val boxes = SavingContext().loadFromEdnText(
+        ednText,
+        info.filename,
+        { id -> seen.computeIfAbsent(id) { Uuid.random().toString() } }
+    )
+    val imported = boxes.filter { it.id != "root" }
+    val importedSet = imported.toSet()
+
+    // Nest only the top-level boxes of the imported subtree: those with no parent
+    // inside the imported set (e.g. children of the document root). Their imported
+    // descendants ride along via the children edges nestInto preserves.
+    val topLevel = imported.filter { box -> box.parents.none { it in importedSet } }
+        .ifEmpty { imported }
+
+    // The nested canvas pans/zooms, so this is only the parent's initial footprint.
+    val width = (topLevel.maxOfOrNull { it.frame.w } ?: NEST_IMPORT_MIN_WIDTH)
+        .coerceAtLeast(NEST_IMPORT_MIN_WIDTH)
+    val nestParent = box(Uuid.random().toString(), createIfMissing = true, initIfCreated = true, root = info)
+    nestParent.name = nestName.ifBlank { NEST_IMPORT_DEFAULT_NAME }
+    nestParent.frame = Rect(anchorX, anchorY, width, NEST_IMPORT_HEADER_HEIGHT)
+
+    // nestInto sets nested/nestedIn (converting each frame to parent-relative). Like the
+    // interactive "-nest-into" action it leaves the boxes' document-root edge in place —
+    // the client relocates a box into the nest canvas by its nestedIn, not by re-parenting.
+    topLevel.forEach { child -> child.nestInto(nestParent) }
+
+    nestParent.resyncAll()
+    imported.forEach { it.resyncAll() }
+    needsResync.add(info.root to "children")
+    needsResync.add(nestParent to "nested")
+    topLevel.forEach { needsResync.add(it to "nestedIn") }
+
+    return listOf(nestParent) + imported
 }
 
 // --- Jupyter notebook (.ipynb) import ---------------------------------------

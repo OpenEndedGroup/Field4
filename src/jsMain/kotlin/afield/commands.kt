@@ -1302,6 +1302,70 @@ fun macroTranscriptUndoOnSelection() {
     sendMacroTranscriptCommand(MacroTranscriptCommandRequest(command = "undo", name = name, selection = getSelectedIds()))
 }
 
+/** Macro name derived from a dropped transcript's file name (path + extension stripped). */
+private fun droppedMacroName(fileName: String): String =
+    fileName
+        .substringAfterLast('/')
+        .substringAfterLast('\\')
+        .substringBeforeLast('.')
+        .ifBlank { "dropped-transcript" }
+
+/**
+ * Query the macro scopes available for the current document. Invokes [after] with the
+ * name of the project this document belongs to ("" when it belongs to no project), so
+ * the drag-drop menu can decide whether to offer an "Add to project macros" option.
+ */
+fun queryMacroScopesForDrop(after: (projectName: String) -> Unit) {
+    sendMacroTranscriptCommand(
+        MacroTranscriptCommandRequest(command = "state"),
+        announce = false
+    ) { response ->
+        after(response.projectName)
+    }
+}
+
+/**
+ * Write a dropped transcript / macro YAML into [scope]'s macro folder WITHOUT running
+ * it (contrast [runDroppedTranscript], which writes then runs). The macro name is
+ * derived from the file. [projectName] selects the project folder when scope=project.
+ */
+fun addDroppedTranscriptToScope(
+    fileName: String,
+    content: String,
+    scope: String,
+    projectName: String = ""
+) {
+    if (content.isBlank()) {
+        notify("Dropped transcript '$fileName' is empty.", "error")
+        return
+    }
+    val macroName = droppedMacroName(fileName)
+    sendMacroTranscriptCommand(
+        MacroTranscriptCommandRequest(
+            command = "write",
+            name = macroName,
+            content = content,
+            scope = scope,
+            projectName = projectName
+        ),
+        announce = false
+    ) { response ->
+        if (response.success) {
+            val where = when (scope) {
+                "project" -> {
+                    val name = response.projectName.ifBlank { projectName }
+                    if (name.isNotBlank()) "project '$name'" else "project"
+                }
+                "workspace" -> "workspace"
+                else -> "document"
+            }
+            notify("Saved macro '$macroName' to $where macros", "macro")
+        } else {
+            notify("Could not save macro '$macroName': ${response.message}", "error")
+        }
+    }
+}
+
 /**
  * Load a dropped operation-transcript / macro YAML file into the current document's
  * macro scope under a name derived from the file, then run it against the current
@@ -1312,11 +1376,7 @@ fun runDroppedTranscript(fileName: String, content: String) {
         notify("Dropped transcript '$fileName' is empty.", "error")
         return
     }
-    val macroName = fileName
-        .substringAfterLast('/')
-        .substringAfterLast('\\')
-        .substringBeforeLast('.')
-        .ifBlank { "dropped-transcript" }
+    val macroName = droppedMacroName(fileName)
     // Write the content verbatim: the macro is keyed by the `name` parameter
     // (sanitizeMacroName), not by any `name:` line in the YAML. Rewriting the
     // content's first `name:` would corrupt transcripts whose first `name:` is a

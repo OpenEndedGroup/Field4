@@ -39,6 +39,7 @@ import tripleTap
 import web.cssom.important
 import web.timers.clearTimeout
 import web.timers.setTimeout
+import kotlin.js.Date
 import kotlin.js.json
 import kotlin.js.jsTypeOf
 import kotlin.math.abs
@@ -4245,7 +4246,26 @@ private fun createDocumentCopyProxyForDrop(dropped: DroppedFileProxy, x: Double,
     }
 }
 
-private fun showDroppedFileProxyMenu(event: dynamic, dropped: DroppedFileProxy) {
+// --- Dropped-file marking menu ----------------------------------------------
+//
+// Every dropped file is classified into a DropKind (classifyDroppedFile) and then
+// offered a small radial marking menu of actions for that kind. showDropMenu is the
+// single menu presenter; per-kind option builders below supply the entries. The
+// builders receive the drop point in canvas (document) space.
+
+/** One entry in a dropped-file marking menu. [angle] is auto-distributed when null. */
+private class DropMenuOption(
+    val text: String,
+    val angle: Double? = null,
+    val action: () -> Unit,
+)
+
+/**
+ * Present a radial marking menu for a dropped file at the event location. [build]
+ * receives the drop point in canvas/document space and returns the menu entries; the
+ * first entry selected fires exactly once (marking menus can fire on release + move).
+ */
+private fun showDropMenu(event: dynamic, build: (x: Double, y: Double) -> List<DropMenuOption>) {
     var fired = false
     fun once(action: () -> Unit) {
         if (fired) return
@@ -4260,26 +4280,20 @@ private fun showDroppedFileProxyMenu(event: dynamic, dropped: DroppedFileProxy) 
     val y = ((event.pageY as? Number)?.toDouble() ?: 0.0) -
             ((canvasDyn.data_y as? Number)?.toDouble() ?: 0.0) -
             FILE_PROXY_MENU_BOX_OFFSET_Y
-    val menus = arrayOf(
+
+    val options = build(x, y)
+    val count = options.size.coerceAtLeast(1)
+    val menus = options.mapIndexed { index, option ->
+        // Evenly distribute around the circle (top-first, clockwise) unless the
+        // option pins its own angle — the PLAIN proxy menu keeps its historical layout.
+        val angle = option.angle ?: (90.0 - index * (360.0 / count))
         json(
-            "text" to "Copy path to clipboard",
-            "callback" to { _: dynamic -> once { copyDroppedPathToClipboard(dropped) } },
+            "text" to option.text,
+            "callback" to { _: dynamic -> once { option.action() } },
             "radius" to 1.0,
-            "angle" to 270.0
-        ),
-        json(
-            "text" to "Create absolute proxy box",
-            "callback" to { _: dynamic -> once { createAbsoluteProxyForDrop(dropped, x, y) } },
-            "radius" to 1.0,
-            "angle" to 90.0
-        ),
-        json(
-            "text" to "Create proxy for copy in document folder",
-            "callback" to { _: dynamic -> once { createDocumentCopyProxyForDrop(dropped, x, y) } },
-            "radius" to 1.0,
-            "angle" to 0.0
+            "angle" to angle
         )
-    )
+    }.toTypedArray()
     goMarkingMenu(
         (event.clientX as? Number)?.toDouble() ?: 0.0,
         (event.clientY as? Number)?.toDouble() ?: 0.0,
@@ -4287,6 +4301,139 @@ private fun showDroppedFileProxyMenu(event: dynamic, dropped: DroppedFileProxy) 
         event,
         {}
     )
+}
+
+/** Plain-file options: the historical file-proxy menu (unchanged labels + angles). */
+private fun plainDropOptions(dropped: DroppedFileProxy, x: Double, y: Double): List<DropMenuOption> = listOf(
+    DropMenuOption("Copy path to clipboard", angle = 270.0) { copyDroppedPathToClipboard(dropped) },
+    DropMenuOption("Create absolute proxy box", angle = 90.0) { createAbsoluteProxyForDrop(dropped, x, y) },
+    DropMenuOption("Create proxy for copy in document folder", angle = 0.0) { createDocumentCopyProxyForDrop(dropped, x, y) },
+)
+
+private fun showDroppedFileProxyMenu(event: dynamic, dropped: DroppedFileProxy) =
+    showDropMenu(event) { x, y -> plainDropOptions(dropped, x, y) }
+
+/** metadata.edn options: flat import (current), open as a new document, or nested import. */
+private fun metadataDropOptions(
+    dropped: DroppedFileProxy,
+    ednText: String,
+    x: Double,
+    y: Double,
+): List<DropMenuOption> = listOf(
+    DropMenuOption("Import into this document") {
+        send(Message("import-metadata-edn").payload(ImportMetadata(ednText)))
+        notify("Importing ${dropped.fileName}...", "import")
+    },
+    DropMenuOption("Open as new document in a new tab") {
+        openImportInNewTab("edn", dropped.fileName, ednText)
+    },
+    DropMenuOption("Import nested in a new box") {
+        send(Message("import-metadata-edn-nested").payload(ImportMetadataNested(ednText, x, y)))
+        notify("Importing ${dropped.fileName} into a new nest box...", "import")
+    },
+)
+
+/** .ipynb options: python-cell import (current), open as a new document, or file-proxy fallbacks. */
+private fun notebookDropOptions(
+    dropped: DroppedFileProxy,
+    notebookJson: String,
+    x: Double,
+    y: Double,
+): List<DropMenuOption> = listOf(
+    DropMenuOption("Import as Python cells") {
+        send(Message("import-ipynb").payload(ImportNotebook(dropped.fileName, notebookJson, x, y)))
+        notify("Importing notebook ${dropped.fileName}...", "import")
+    },
+    DropMenuOption("Open as new document in a new tab") {
+        openImportInNewTab("ipynb", dropped.fileName, notebookJson)
+    },
+    DropMenuOption("Copy path to clipboard") { copyDroppedPathToClipboard(dropped) },
+    DropMenuOption("Create absolute proxy box") { createAbsoluteProxyForDrop(dropped, x, y) },
+    DropMenuOption("Create proxy for copy in document folder") { createDocumentCopyProxyForDrop(dropped, x, y) },
+)
+
+/**
+ * Macro/transcript options: run on selection (current), or save into a macro folder
+ * without running. The project entry is only present when [projectName] is non-blank
+ * (the document belongs to a project — see queryMacroScopesForDrop).
+ */
+private fun transcriptDropOptions(
+    dropped: DroppedFileProxy,
+    content: String,
+    projectName: String,
+): List<DropMenuOption> = buildList {
+    add(DropMenuOption("Run on selection") { runDroppedTranscript(dropped.fileName, content) })
+    add(DropMenuOption("Add to document macros") {
+        addDroppedTranscriptToScope(dropped.fileName, content, "document")
+    })
+    if (projectName.isNotBlank()) {
+        add(DropMenuOption("Add to project macros") {
+            addDroppedTranscriptToScope(dropped.fileName, content, "project", projectName)
+        })
+    }
+    add(DropMenuOption("Add to workspace macros") {
+        addDroppedTranscriptToScope(dropped.fileName, content, "workspace")
+    })
+}
+
+/**
+ * Open a new document in a new browser tab and replay [payloadText] there through the
+ * existing import handler. A same-origin localStorage handoff carries the payload: the
+ * new tab reads it via the ?pendingImport token on load (see replayPendingImport).
+ * [type] is "edn" or "ipynb".
+ */
+private fun openImportInNewTab(type: String, fileName: String, payloadText: String) {
+    val stamp = Date.now().toLong().toString()
+    val baseName = fileName.substringAfterLast('/').substringAfterLast('\\').substringBeforeLast('.')
+    val safeBase = baseName.replace(Regex("[^A-Za-z0-9_-]"), "-").trim('-').ifBlank { "imported" }
+    val docName = "$safeBase-$stamp"
+    val token = "field-pending-import-$stamp"
+    val record = json(
+        "type" to type,
+        "fileName" to fileName,
+        "payload" to payloadText
+    )
+    window.localStorage.setItem(token, JSON.stringify(record))
+    val encode = { value: String -> js("encodeURIComponent")(value) as String }
+    val url = "/index.html?file=${encode(docName)}&pendingImport=${encode(token)}"
+    val opened = window.open(url, "_blank")
+    if (opened == null) {
+        window.localStorage.removeItem(token)
+        notify("Could not open a new tab (popup blocked?)", "error")
+    } else {
+        notify("Opening $docName in a new tab...", "import")
+    }
+}
+
+/**
+ * On load, replay a pending import handed off from another tab (see openImportInNewTab).
+ * The message is registered on the websocket open queue so it is sent right after the
+ * `hello` handshake, once the fresh document's session exists server-side.
+ */
+private fun replayPendingImport(token: String) {
+    val raw = window.localStorage.getItem(token) ?: return
+    window.localStorage.removeItem(token)
+    val record = runCatching { JSON.parse<dynamic>(raw) }.getOrNull() ?: return
+    val type = record.type as? String ?: return
+    val fileName = (record.fileName as? String) ?: "imported"
+    val payload = (record.payload as? String) ?: return
+    when (type) {
+        "edn" -> registerOnOpen(Message("import-metadata-edn").payload(ImportMetadata(payload)))
+        "ipynb" -> registerOnOpen(Message("import-ipynb").payload(ImportNotebook(fileName, payload, 40.0, 40.0)))
+        else -> return
+    }
+    notify("Importing $fileName into this new document...", "import")
+}
+
+/** How a dropped file is handled. Owns identification order (ipynb before transcript, etc.). */
+private enum class DropKind { METADATA_EDN, NOTEBOOK, TRANSCRIPT_CANDIDATE, PLAIN }
+
+private fun classifyDroppedFile(fileName: String, lowerName: String, mimeType: String?): DropKind = when {
+    fileName == "metadata.edn" -> DropKind.METADATA_EDN
+    // .ipynb is JSON and would otherwise be sniffed as a transcript — classify it first.
+    lowerName.endsWith(".ipynb") -> DropKind.NOTEBOOK
+    isTranscriptCandidateFile(lowerName, mimeType) -> DropKind.TRANSCRIPT_CANDIDATE
+    else -> DropKind.PLAIN
 }
 
 private fun applyFileProxyErrorStatus(box: HTMLElement, message: String) {
@@ -5670,6 +5817,10 @@ suspend fun main() {
     )
     initializeClient()
 
+    // Fresh tab opened by a drag-drop "open as new document" action? Replay the
+    // handed-off import once the socket is up (queued after the hello handshake).
+    searchParams.get("pendingImport")?.takeIf { it.isNotBlank() }?.let { replayPendingImport(it) }
+
     overlaySVGLayer = document.getElementById("overlaysvglayer") as SVGSVGElement
     ensureAnnotationLayer()
 
@@ -5815,58 +5966,43 @@ suspend fun main() {
             val file = files[0]
             val fileName = (file.name as? String)?.ifBlank { "dropped-file" } ?: "dropped-file"
             val lowerName = fileName.lowercase()
-            val proxyFallback = {
-                showDroppedFileProxyMenu(
-                    dropEvent,
-                    DroppedFileProxy(
-                        file = file,
-                        fileName = fileName,
-                        path = extractDroppedFilePath(file, dropEvent.dataTransfer),
-                        mimeType = file.type as? String
-                    )
-                )
+            val mimeType = file.type as? String
+            val dropped = DroppedFileProxy(
+                file = file,
+                fileName = fileName,
+                path = extractDroppedFilePath(file, dropEvent.dataTransfer),
+                mimeType = mimeType
+            )
+            val plainMenu = { showDroppedFileProxyMenu(dropEvent, dropped) }
+            val readText = { onText: (String) -> Unit ->
+                val reader = js("new FileReader()")
+                reader.onload = { loadEvent: dynamic -> onText(loadEvent.target.result as String) }
+                reader.readAsText(file)
             }
-            if (fileName == "metadata.edn") {
-                val reader = js("new FileReader()")
-                reader.onload = { loadEvent: dynamic ->
-                    val ednText = loadEvent.target.result as String
+
+            when (classifyDroppedFile(fileName, lowerName, mimeType)) {
+                DropKind.METADATA_EDN -> readText { ednText ->
                     console.info("[import] metadata.edn file: $fileName")
-                    send(Message("import-metadata-edn").payload(ImportMetadata(ednText)))
-                    notify("Importing $fileName...", "import")
+                    showDropMenu(dropEvent) { x, y -> metadataDropOptions(dropped, ednText, x, y) }
                 }
-                reader.readAsText(file)
-            } else if (lowerName.endsWith(".ipynb")) {
-                // Jupyter notebook: build a python-root parent + one box per cell.
-                // Checked before the transcript branch because .ipynb is JSON and
-                // would otherwise be read and sniffed as a possible transcript.
-                val reader = js("new FileReader()")
-                reader.onload = { loadEvent: dynamic ->
-                    val notebookJson = loadEvent.target.result as String
-                    val canvasDyn = mainCanvas.unsafeCast<dynamic>()
-                    val dropX = ((dropEvent.pageX as? Number)?.toDouble() ?: 0.0) -
-                            ((canvasDyn.data_x as? Number)?.toDouble() ?: 0.0)
-                    val dropY = ((dropEvent.pageY as? Number)?.toDouble() ?: 0.0) -
-                            ((canvasDyn.data_y as? Number)?.toDouble() ?: 0.0)
+                DropKind.NOTEBOOK -> readText { notebookJson ->
                     console.info("[import] notebook file: $fileName")
-                    send(Message("import-ipynb").payload(ImportNotebook(fileName, notebookJson, dropX, dropY)))
-                    notify("Importing notebook $fileName...", "import")
+                    showDropMenu(dropEvent) { x, y -> notebookDropOptions(dropped, notebookJson, x, y) }
                 }
-                reader.readAsText(file)
-            } else if (isTranscriptCandidateFile(lowerName, file.type as? String)) {
-                val reader = js("new FileReader()")
-                reader.onload = { loadEvent: dynamic ->
-                    val text = loadEvent.target.result as String
+                DropKind.TRANSCRIPT_CANDIDATE -> readText { text ->
                     if (looksLikeOperationTranscript(text)) {
-                        console.info("[transcript] running dropped transcript: $fileName")
-                        runDroppedTranscript(fileName, text)
+                        console.info("[transcript] dropped transcript: $fileName")
+                        // Resolve project availability before building the menu so the
+                        // "Add to project macros" entry only shows when it applies.
+                        queryMacroScopesForDrop { projectName ->
+                            showDropMenu(dropEvent) { _, _ -> transcriptDropOptions(dropped, text, projectName) }
+                        }
                     } else {
                         // Text file, but not an operation transcript — treat it as a plain file.
-                        proxyFallback()
+                        plainMenu()
                     }
                 }
-                reader.readAsText(file)
-            } else {
-                proxyFallback()
+                DropKind.PLAIN -> plainMenu()
             }
         }
         null
