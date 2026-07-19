@@ -55,6 +55,15 @@ data class PythonSettingsStatus(
     val restartRequired: Boolean = false,
 )
 
+@Serializable
+data class PythonInstallResult(
+    val success: Boolean,
+    val message: String,
+    val log: String,
+    /** The status after a successful install (settings are persisted so a restart binds JEP). */
+    val status: PythonSettingsStatus? = null,
+)
+
 
 @RunsAt(early, priority = -20)
 fun makeInterpreter() {
@@ -1278,6 +1287,88 @@ class PythonInterface {
                 message = "Python settings saved. Restart Field for JEP to use this interpreter.",
                 restartRequired = true,
             )
+        }
+
+        /**
+         * Bootstrap `pip` (via `ensurepip`) and `pip install jep` into the chosen venv/interpreter,
+         * then — if that leaves a working JEP — persist the choice so a restart binds it.
+         *
+         * This is the "effectively `<venv>/bin/python -m pip install ensurepip; ... install jep`"
+         * action offered in /welcome, done correctly: pip is bootstrapped with the stdlib
+         * `ensurepip` module rather than the (nonexistent) PyPI `ensurepip` package.
+         */
+        fun installJep(request: PythonSettingsRequest): PythonInstallResult {
+            val kind = request.kind.trim().lowercase(Locale.US).ifBlank { "venv" }
+            require(kind in setOf("venv", "executable")) { "Python kind must be `venv` or `executable`." }
+            val rawPath = request.path.trim()
+            require(rawPath.isNotBlank()) { "Python path is blank." }
+            val path = expandPath(rawPath)
+
+            val executable = when (kind) {
+                "venv" -> pythonExecutableForVenv(File(path))
+                    ?: throw IllegalArgumentException("No Python executable under $rawPath. Point at a venv directory created with `python -m venv`.")
+                "executable" -> File(path).takeIf { it.exists() && it.canExecute() }
+                    ?: throw IllegalArgumentException("$rawPath is not an executable Python interpreter.")
+                else -> throw IllegalArgumentException("Python kind must be `venv` or `executable`.")
+            }
+
+            val log = StringBuilder()
+            // jep is a C/JNI extension; its build needs JAVA_HOME to locate jni.h.
+            val javaHome = System.getProperty("java.home")
+
+            fun step(label: String, vararg args: String): Boolean {
+                log.append("$ ").append(args.joinToString(" ")).append('\n')
+                val (code, out) = runPythonCommand(javaHome, args.toList())
+                if (out.isNotBlank()) log.append(out).append(if (out.endsWith("\n")) "" else "\n")
+                log.append("[$label exit ").append(code).append("]\n\n")
+                return code == 0
+            }
+
+            // 1. Make sure pip exists (no-op if it already does).
+            step("ensurepip", executable.path, "-m", "ensurepip", "--upgrade")
+            // 2. Install jep.
+            val installed = step("pip install jep", executable.path, "-m", "pip", "install", "--upgrade", "jep")
+            if (!installed) {
+                return PythonInstallResult(
+                    success = false,
+                    message = "`pip install jep` failed. See the log below (a C compiler and JDK headers are required to build jep).",
+                    log = log.toString(),
+                )
+            }
+
+            // 3. Confirm the native library is now present, and persist the choice on success.
+            if (resolveChoice(PythonConfigChoice(kind, path, "welcome install")) == null) {
+                return PythonInstallResult(
+                    success = false,
+                    message = "jep installed but its native library could not be located. See the log below.",
+                    log = log.toString(),
+                )
+            }
+
+            val status = savePythonSettings(PythonSettingsRequest(kind = kind, path = path))
+            log.append("Saved Python settings to ${status.configPath}\n")
+            return PythonInstallResult(
+                success = true,
+                message = "jep installed. Restart Field for JEP to bind the new native library.",
+                log = log.toString(),
+                status = status,
+            )
+        }
+
+        private fun runPythonCommand(javaHome: String?, args: List<String>): Pair<Int, String> {
+            val process = ProcessBuilder(args)
+                .redirectErrorStream(true)
+                .apply {
+                    if (javaHome != null) environment()["JAVA_HOME"] = javaHome
+                }
+                .start()
+            val output = process.inputStream.bufferedReader().readText()
+            // jep builds a C extension from source; allow generous time.
+            if (!process.waitFor(6, TimeUnit.MINUTES)) {
+                process.destroyForcibly()
+                return -1 to (output + "\n[timed out after 6 minutes]")
+            }
+            return process.exitValue() to output
         }
 
         /**

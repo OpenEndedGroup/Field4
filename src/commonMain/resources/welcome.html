@@ -602,6 +602,15 @@
             color: var(--field-text-soft);
         }
 
+        #python-settings-status {
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 16em;
+            overflow-y: auto;
+            font-family: var(--field-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+            line-height: 1.4;
+        }
+
         #workspace-status.error,
         #project-management-status.error,
         #maven-status.error,
@@ -1837,10 +1846,11 @@
                             <input id="python-directory-picker" type="file" webkitdirectory directory hidden>
                             <input id="python-file-picker" type="file" hidden>
                             <button id="choose-python-path" type="button">Open</button>
+                            <button id="install-python-jep" type="button">Install JEP</button>
                             <button id="save-python-settings" type="button">Save</button>
                         </div>
                         <div class="python-settings-note">
-                            Choose a venv or Python executable where <code>pip install jep</code> has been run. Saving validates the path; restart Field for JEP to bind the new native library.
+                            Choose a venv or Python executable where <code>pip install jep</code> has been run, then <b>Save</b> to validate. Or pick a venv and press <b>Install JEP</b> to run <code>python -m ensurepip</code> and <code>pip install jep</code> into it for you. Either way, restart Field for JEP to bind the new native library.
                         </div>
                         <div id="python-settings-status" aria-live="polite"></div>
                     </div>
@@ -3128,6 +3138,7 @@
         const kindInput = document.getElementById("python-settings-kind");
         const pathInput = document.getElementById("python-settings-path");
         const chooseButton = document.getElementById("choose-python-path");
+        const installButton = document.getElementById("install-python-jep");
         const saveButton = document.getElementById("save-python-settings");
         const configured = !!settings.configured;
         const kind = settings.kind === "executable" ? "executable" : "venv";
@@ -3145,9 +3156,11 @@
         if (kindInput && document.activeElement !== kindInput) kindInput.value = kind;
         if (pathInput && document.activeElement !== pathInput) pathInput.value = path;
 
-        [kindInput, pathInput, chooseButton, saveButton].filter(Boolean).forEach((node) => {
-            node.disabled = !!state.savingPythonSettings;
+        const busy = !!state.savingPythonSettings || !!state.installingJep;
+        [kindInput, pathInput, chooseButton, installButton, saveButton].filter(Boolean).forEach((node) => {
+            node.disabled = busy;
         });
+        if (installButton) installButton.textContent = state.installingJep ? "Installing…" : "Install JEP";
 
         const details = [];
         if (settings.restartRequired) details.push("Restart Field for this Python setting to take effect.");
@@ -4892,6 +4905,48 @@
         }
     }
 
+    async function installJep() {
+        const request = readPythonSettingsForm();
+        if (!request.path) {
+            setPythonSettingsStatus("Enter a venv directory or Python executable path.", true);
+            return;
+        }
+
+        state.installingJep = true;
+        renderPythonSettings();
+        setPythonSettingsStatus("Installing jep (ensurepip + pip install jep). This can take a few minutes…");
+
+        let statusText = "";
+        let statusError = false;
+        try {
+            const response = await fetch("/api/python-install-jep", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                cache: "no-store",
+                body: JSON.stringify(request)
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(payload.error || `HTTP ${response.status}`);
+            }
+
+            if (payload.status) state.pythonSettings = payload.status;
+            const parts = [payload.message].filter(Boolean);
+            if (payload.log) parts.push(payload.log);
+            statusText = parts.join("\n\n");
+            statusError = !payload.success;
+        } catch (error) {
+            console.error("Failed to install jep", error);
+            statusText = error?.message || "Could not install jep.";
+            statusError = true;
+        } finally {
+            state.installingJep = false;
+            // renderPythonSettings() rewrites the status line, so set the log/result after it.
+            renderPythonSettings();
+            if (statusText) setPythonSettingsStatus(statusText, statusError);
+        }
+    }
+
     async function saveAiSettings() {
         const provider = state.aiSettings?.provider === "openrouter" ? "openrouter" : "openai";
         const openAiInput = document.getElementById("openai-platform-key");
@@ -5524,6 +5579,7 @@
         const pythonSettingsKind = document.getElementById("python-settings-kind");
         const pythonSettingsPath = document.getElementById("python-settings-path");
         const choosePythonPathButton = document.getElementById("choose-python-path");
+        const installPythonJepButton = document.getElementById("install-python-jep");
         const savePythonSettingsButton = document.getElementById("save-python-settings");
         const runCompletionDocPolishButton = document.getElementById("run-completion-doc-polish");
         const runAiToolUseReviewButton = document.getElementById("run-ai-tool-use-review");
@@ -5678,6 +5734,7 @@
 
         saveAiSettingsButton?.addEventListener("click", saveAiSettings);
         choosePythonPathButton?.addEventListener("click", choosePythonPath);
+        installPythonJepButton?.addEventListener("click", installJep);
         savePythonSettingsButton?.addEventListener("click", savePythonSettings);
         runCompletionDocPolishButton?.addEventListener("click", runCompletionDocPolish);
         runAiToolUseReviewButton?.addEventListener("click", () => runAiToolUseImprovement(true));

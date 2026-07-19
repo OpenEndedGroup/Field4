@@ -3677,6 +3677,26 @@ class Server {
                             }
                         }
 
+                        post("/api/python-install-jep") {
+                            try {
+                                val request = call.receive<PythonSettingsRequest>()
+                                call.respond(PythonInterface.installJep(request))
+                            } catch (e: IllegalArgumentException) {
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf("error" to (e.message ?: "invalid Python settings"))
+                                )
+                            } catch (e: SerializationException) {
+                                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "invalid Python settings payload"))
+                            } catch (e: Exception) {
+                                lprintln("error,server", "installing jep failed: ${e.message}")
+                                call.respond(
+                                    HttpStatusCode.InternalServerError,
+                                    mapOf("error" to (e.message ?: "could not install jep"))
+                                )
+                            }
+                        }
+
                         post("/api/preferences") {
                             try {
                                 val request = call.receive<FieldPreferencesUpdateRequest>()
