@@ -93,6 +93,80 @@ data class Color4(
     }
 }
 
+/**
+ * Perceptually-uniform colormaps as named colour ramps — matplotlib's viridis / magma /
+ * plasma / inferno, Google's turbo, Kenneth Moreland's coolwarm diverging map, and a plain
+ * grayscale. Each map is a table of evenly-spaced RGB control points taken from the published
+ * data (the viridisLite 9-class swatches for the matplotlib family, the turbo_srgb_floats LUT
+ * sampled every 16th entry, Moreland's cool→warm table); [sampleStops] interpolates linearly
+ * between them. This is reusable domain code — the single source of truth for RectSL's
+ * `colormap`/`cmap`, `bars`, `heat`, and `scatter` words, and directly callable from Kotlin.
+ */
+object Colormaps {
+    private fun hex(vararg codes: Long): List<Color4> = codes.map { Color4.fromHex(it) }
+    private fun rgb255(vararg triples: Int): List<Color4> =
+        triples.toList().chunked(3).map { Color4(it[0] / 255.0, it[1] / 255.0, it[2] / 255.0) }
+
+    // matplotlib family — viridisLite 9-class hex swatches (dark → bright).
+    val viridis: List<Color4> = hex(0x440154, 0x472D7B, 0x3B528B, 0x2C718E, 0x21908C, 0x28AE80, 0x5EC962, 0xADDC30, 0xFDE725)
+    val magma: List<Color4> = hex(0x000004, 0x1C1044, 0x4F127B, 0x812581, 0xB5367A, 0xE55064, 0xFB8861, 0xFEC287, 0xFCFDBF)
+    val inferno: List<Color4> = hex(0x000004, 0x1B0C42, 0x4B0C6B, 0x781C6D, 0xA52C60, 0xCF4446, 0xED6925, 0xFB9A06, 0xFCFFA4)
+    val plasma: List<Color4> = hex(0x0D0887, 0x47039F, 0x7301A8, 0x9C179E, 0xBD3786, 0xD8576B, 0xED7953, 0xFA9E3B, 0xF0F921)
+
+    // Google turbo — turbo_srgb_floats sampled at indices 0,16,…,240,255.
+    val turbo: List<Color4> = listOf(
+        Color4(0.18995, 0.07176, 0.23217), Color4(0.25107, 0.25237, 0.63374),
+        Color4(0.27628, 0.42118, 0.89123), Color4(0.26592, 0.55979, 0.99583),
+        Color4(0.20708, 0.66866, 0.97423), Color4(0.09532, 0.84455, 0.79299),
+        Color4(0.12733, 0.91701, 0.67627), Color4(0.22142, 0.95692, 0.56914),
+        Color4(0.32006, 0.97974, 0.47654), Color4(0.43321, 0.99551, 0.37345),
+        Color4(0.54658, 0.99907, 0.29581), Color4(0.64362, 0.98999, 0.23356),
+        Color4(0.74617, 0.95593, 0.20406), Color4(0.85010, 0.89328, 0.21074),
+        Color4(0.93909, 0.80439, 0.22744), Color4(0.99314, 0.67408, 0.20348),
+        Color4(0.47960, 0.01583, 0.01055)
+    )
+
+    // Moreland's coolwarm — diverging blue → light grey → red (sampled every 1/8).
+    val coolwarm: List<Color4> = rgb255(
+        59, 76, 192, 98, 130, 234, 141, 176, 254, 184, 208, 249,
+        221, 221, 221, 245, 196, 173, 244, 154, 123, 222, 96, 77, 180, 4, 38
+    )
+
+    val grayscale: List<Color4> = hex(0x000000, 0xFFFFFF)
+
+    private val maps: Map<String, List<Color4>> = linkedMapOf(
+        "viridis" to viridis, "magma" to magma, "inferno" to inferno, "plasma" to plasma,
+        "turbo" to turbo, "coolwarm" to coolwarm, "grayscale" to grayscale, "gray" to grayscale, "greys" to grayscale
+    )
+
+    val names: List<String> = listOf("viridis", "magma", "inferno", "plasma", "turbo", "coolwarm", "grayscale")
+
+    fun stops(name: String): List<Color4> =
+        maps[name.trim().lowercase()]
+            ?: throw RectLangException("unknown colormap '$name' (try ${names.joinToString(", ")})")
+
+    /** Look up colormap [name] at parameter [t] in `[0,1]` (clamped). */
+    fun sample(name: String, t: Double): Color4 = sampleStops(stops(name), t)
+
+    /** Linearly interpolate an evenly-spaced list of control points at [t] in `[0,1]` (clamped). */
+    fun sampleStops(stops: List<Color4>, t: Double): Color4 {
+        require(stops.isNotEmpty()) { "colormap has no control points" }
+        if (stops.size == 1) return stops[0]
+        val scaled = t.coerceIn(0.0, 1.0) * (stops.size - 1)
+        val lo = floor(scaled).toInt().coerceIn(0, stops.size - 2)
+        return stops[lo].mix(stops[lo + 1], scaled - lo)
+    }
+}
+
+/** Map a numeric list to `[0,1]` by its own min/max; a flat list maps to all `0.5`. */
+internal fun normalizeValues(values: List<Double>): List<Double> {
+    if (values.isEmpty()) return values
+    val lo = values.minOrNull()!!
+    val hi = values.maxOrNull()!!
+    val range = hi - lo
+    return if (abs(range) <= 1e-12) values.map { 0.5 } else values.map { (it - lo) / range }
+}
+
 sealed interface Token {
     data class Word(val name: String) : Token
     data class Number(val value: Double) : Token
@@ -133,12 +207,14 @@ data class VSelection(val refs: List<NodeRef>) : Value
 data class VQuote(val tokens: List<Token>, val source: String) : Value
 data class VMaterialRef(val name: String) : Value
 data class VFn(val fn: afield.stdlib.Functions.Fn) : Value
+data class VData(val values: List<Double>) : Value
 
 private fun Value.describe(): String = when (this) {
     is VNum -> "Number"
     is VStr -> "String"
     is VColor -> "Color"
     is VVec2 -> "Vec2"
+    is VData -> "Data"
     is VPaint -> "Paint"
     is VTrack<*> -> "Track<${track.kind}>"
     is VRect -> "Rect"
@@ -1367,6 +1443,23 @@ class RectLangVm(
     fun popFn(label: String): Functions.Fn =
         (pop() as? VFn)?.fn ?: throw RectLangException("$label expected an Fn (curve)")
 
+    fun popData(label: String): List<Double> =
+        (pop() as? VData)?.values ?: throw RectLangException("$label expected Data (a numeric list — build one with `data`, `linspace`, or `normalize`)")
+
+    /** Current stack depth — mark it before an [evalBlock], then [drainNumbersAbove] the mark. */
+    fun stackDepth(): Int = stack.size
+
+    /** Pop everything pushed above [mark] as a list of Numbers, preserving push order. */
+    fun drainNumbersAbove(mark: Int, label: String): List<Double> {
+        val out = ArrayDeque<Double>()
+        while (stack.size > mark) {
+            val v = stack.removeLast()
+            out.addFirst((v as? VNum)?.x
+                ?: throw RectLangException("$label expected the quote to leave only Numbers, found ${v.describe()}"))
+        }
+        return out.toList()
+    }
+
     fun popColor(): Color4 = when (val v = pop()) {
         is VColor -> v.rgba
         is VNum -> Color4.fromHex(v.x.toLong())
@@ -2260,6 +2353,161 @@ class RectLangVm(
             val fn = vm.popFn("tile")
             vm.push(VFn(with(Functions) { fn / repeatEvery(1.0 / k) }))
         }
+
+        // --- Data visualization: perceptually-uniform colormaps ---------------------
+        // `colormap`/`cmap` look up a named ramp (viridis, magma, inferno, plasma,
+        // turbo, coolwarm, grayscale) at t in [0,1] and push a Color — usable anywhere
+        // a colour is (solid/linear/fill/rgb slot). Reuses Color4/PaintSpec, no parallel
+        // colour system. Single source of truth for the tables: [Colormaps].
+        word("colormap") { vm ->
+            val t = vm.popNum()
+            val name = vm.popString()
+            vm.push(VColor(Colormaps.sample(name, t)))
+        }
+        word("cmap") { vm ->
+            val t = vm.popNum()
+            val name = vm.popString()
+            vm.push(VColor(Colormaps.sample(name, t)))
+        }
+
+        // --- Data ingestion + normalization -----------------------------------------
+        // A `VData` is a plain numeric list. `data` runs a quote and collects every
+        // Number it leaves (so `'( 3 1 4 1 5 ) data` or a computed `'( 8 times [ i i * ] )
+        // data` both work); `linspace` generates evenly spaced values.
+        word("data") { vm ->
+            val quote = vm.popQuote()
+            val mark = vm.stackDepth()
+            vm.evalBlock(quote.tokens)
+            vm.push(VData(vm.drainNumbersAbove(mark, "data")))
+        }
+        word("linspace") { vm ->
+            val count = vm.popNum().toInt().coerceAtLeast(0)
+            val hi = vm.popNum()
+            val lo = vm.popNum()
+            val values = when {
+                count <= 0 -> emptyList()
+                count == 1 -> listOf(lo)
+                else -> (0 until count).map { lo + (hi - lo) * it / (count - 1).toDouble() }
+            }
+            vm.push(VData(values))
+        }
+        word("data-len") { vm -> vm.push(VNum(vm.popData("data-len").size.toDouble())) }
+        word("data-at") { vm ->
+            val index = vm.popNum().toInt()
+            val d = vm.popData("data-at")
+            if (d.isEmpty()) throw RectLangException("data-at: empty data")
+            vm.push(VNum(d[index.coerceIn(0, d.size - 1)]))
+        }
+        word("extent") { vm ->
+            val d = vm.popData("extent")
+            if (d.isEmpty()) throw RectLangException("extent: empty data")
+            vm.push(VNum(d.minOrNull()!!))
+            vm.push(VNum(d.maxOrNull()!!))
+        }
+        word("dmin") { vm ->
+            val d = vm.popData("dmin")
+            vm.push(VNum(d.minOrNull() ?: throw RectLangException("dmin: empty data")))
+        }
+        word("dmax") { vm ->
+            val d = vm.popData("dmax")
+            vm.push(VNum(d.maxOrNull() ?: throw RectLangException("dmax: empty data")))
+        }
+        word("normalize") { vm -> vm.push(VData(normalizeValues(vm.popData("normalize")))) }
+        word("data-map") { vm ->
+            val quote = vm.popQuote()
+            val d = vm.popData("data-map")
+            val out = d.mapIndexed { index, value ->
+                var result = 0.0
+                vm.withLoop(index, d.size, index) {
+                    vm.push(VNum(value))
+                    vm.evalBlock(quote.tokens)
+                    result = vm.popNum()
+                }
+                result
+            }
+            vm.push(VData(out))
+        }
+
+        // --- Chart idioms: produce plain rects + colormap colours -------------------
+        // These are pure RectSL builders — no renderer changes. Values are normalized by
+        // their own extent for both size and colour; the returned Selection can be
+        // animated/transformed like any other (alpha, stagger-time, group, …).
+        word("bars") { vm ->
+            val name = vm.popString()
+            val data = vm.popData("bars")
+            val stops = Colormaps.stops(name)
+            val wall = vm.builder().wall
+            val n = data.size
+            val nv = normalizeValues(data)
+            val slot = if (n > 0) wall.width / n else wall.width
+            val refs = ArrayList<NodeRef>(n)
+            data.indices.forEach { i ->
+                val rect = vm.builder().createRect("bar-$i")
+                val height = (nv[i] * wall.height * 0.9).coerceAtLeast(wall.height * 0.002)
+                vm.builder().setX(constantTrack(-wall.width / 2.0 + slot * (i + 0.5)))
+                vm.builder().setY(constantTrack(-wall.height / 2.0 + height / 2.0))
+                vm.builder().setW(constantTrack(slot * 0.8))
+                vm.builder().setH(constantTrack(height))
+                vm.builder().setFill(constantPaintTrack(PaintSpec.Solid(Colormaps.sampleStops(stops, nv[i]))))
+                refs += NodeRef.Rect(rect.id)
+                vm.builder().endScope()
+            }
+            vm.push(VSelection(refs))
+        }
+        word("heat") { vm -> vm.heatmap() }
+        word("heatmap") { vm -> vm.heatmap() }
+        word("scatter") { vm ->
+            val name = vm.popString()
+            val ydata = vm.popData("scatter")
+            val xdata = vm.popData("scatter")
+            val stops = Colormaps.stops(name)
+            val wall = vm.builder().wall
+            val n = min(xdata.size, ydata.size)
+            val nx = normalizeValues(xdata.take(n))
+            val ny = normalizeValues(ydata.take(n))
+            val dot = min(wall.width, wall.height) * 0.035
+            val refs = ArrayList<NodeRef>(n)
+            for (i in 0 until n) {
+                val rect = vm.builder().createRect("point-$i")
+                vm.builder().setX(constantTrack((nx[i] - 0.5) * wall.width * 0.92))
+                vm.builder().setY(constantTrack((ny[i] - 0.5) * wall.height * 0.92))
+                vm.builder().setW(constantTrack(dot))
+                vm.builder().setH(constantTrack(dot))
+                vm.builder().setFill(constantPaintTrack(PaintSpec.Solid(Colormaps.sampleStops(stops, ny[i]))))
+                refs += NodeRef.Rect(rect.id)
+                vm.builder().endScope()
+            }
+            vm.push(VSelection(refs))
+        }
+    }
+
+    /** Grid heatmap: `data cols rows name heat` → row-major cells (row 0 at top). */
+    private fun heatmap() {
+        val name = popString()
+        val rows = popNum().toInt().coerceAtLeast(1)
+        val cols = popNum().toInt().coerceAtLeast(1)
+        val data = popData("heat")
+        val stops = Colormaps.stops(name)
+        val wall = builder().wall
+        val nv = normalizeValues(data)
+        val cellW = wall.width / cols
+        val cellH = wall.height / rows
+        val refs = ArrayList<NodeRef>(cols * rows)
+        for (r in 0 until rows) {
+            for (c in 0 until cols) {
+                val index = r * cols + c
+                val value = if (nv.isEmpty()) 0.0 else nv[index % nv.size]
+                val rect = builder().createRect("cell-$c-$r")
+                builder().setX(constantTrack(-wall.width / 2.0 + cellW * (c + 0.5)))
+                builder().setY(constantTrack(wall.height / 2.0 - cellH * (r + 0.5)))
+                builder().setW(constantTrack(cellW * 0.98))
+                builder().setH(constantTrack(cellH * 0.98))
+                builder().setFill(constantPaintTrack(PaintSpec.Solid(Colormaps.sampleStops(stops, value))))
+                refs += NodeRef.Rect(rect.id)
+                builder().endScope()
+            }
+        }
+        push(VSelection(refs))
     }
 
     private fun word(name: String, apply: (RectLangVm) -> Unit) {

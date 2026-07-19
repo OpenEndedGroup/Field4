@@ -264,6 +264,7 @@ object RectSLExamples {
         listOf("filter", "where"), listOf("loop-count", "n"),
         listOf("<", "lt"), listOf("<=", "lte"), listOf(">", "gt"), listOf(">=", "gte"),
         listOf("=", "eq"), listOf("!=", "<>", "neq"), listOf("ease-smoothstep", "smooth"),
+        listOf("colormap", "cmap"), listOf("heat", "heatmap"),
     )
     private val CANONICAL: Map<String, String> =
         ALIAS_GROUPS.flatMap { g -> g.map { it to g.first() } }.toMap()
