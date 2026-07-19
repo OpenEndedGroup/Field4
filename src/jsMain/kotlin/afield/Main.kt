@@ -5835,6 +5835,23 @@ suspend fun main() {
                     notify("Importing $fileName...", "import")
                 }
                 reader.readAsText(file)
+            } else if (lowerName.endsWith(".ipynb")) {
+                // Jupyter notebook: build a python-root parent + one box per cell.
+                // Checked before the transcript branch because .ipynb is JSON and
+                // would otherwise be read and sniffed as a possible transcript.
+                val reader = js("new FileReader()")
+                reader.onload = { loadEvent: dynamic ->
+                    val notebookJson = loadEvent.target.result as String
+                    val canvasDyn = mainCanvas.unsafeCast<dynamic>()
+                    val dropX = ((dropEvent.pageX as? Number)?.toDouble() ?: 0.0) -
+                            ((canvasDyn.data_x as? Number)?.toDouble() ?: 0.0)
+                    val dropY = ((dropEvent.pageY as? Number)?.toDouble() ?: 0.0) -
+                            ((canvasDyn.data_y as? Number)?.toDouble() ?: 0.0)
+                    console.info("[import] notebook file: $fileName")
+                    send(Message("import-ipynb").payload(ImportNotebook(fileName, notebookJson, dropX, dropY)))
+                    notify("Importing notebook $fileName...", "import")
+                }
+                reader.readAsText(file)
             } else if (isTranscriptCandidateFile(lowerName, file.type as? String)) {
                 val reader = js("new FileReader()")
                 reader.onload = { loadEvent: dynamic ->
