@@ -53,7 +53,26 @@ object RectSLDataVizProof {
         "heatmap-field" to 2.0,
         "scatter-plot" to 2.0,
         "data-inspect" to 1.0,
+        "dataviz-demo" to 3.0,
     )
+
+    /** The loadable-demo program (kept identical to dev_docs/agents/transcripts/rectsl_dataviz.yaml). */
+    val DEMO_SOURCE: String = """
+        #rectsl
+        wall 20 10 meters
+        duration 6
+        fps 30
+
+        # colour legend across the top: 40 swatches sweeping viridis
+        "leg" rect  0.5 0.8 wh
+          40 '( fc 9.6 *  4.3 offset  "viridis" f colormap solid fill ) array
+        ;
+
+        # bar chart from data, viridis by value, staggered grow-in
+        '( 4 7 2 9 5 8 3 6 1 6 5 9 4 7 3 8 ) data  normalize  "viridis" bars
+          '( '( 0=0 0.7=1 ) ease-out alpha ) each
+          0.05 stagger-time
+    """.trimIndent()
 
     private fun source(name: String): String = when (name) {
         "colormap-legend" -> """
@@ -103,6 +122,7 @@ object RectSLDataVizProof {
               dup 2 data-at drop
               "coolwarm" bars
         """.trimIndent()
+        "dataviz-demo" -> DEMO_SOURCE
         else -> error("unknown program $name")
     }
 
