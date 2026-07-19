@@ -2055,7 +2055,36 @@ class FieldBackdoor:
             collected.append(event)
         return collected
 
-    async def wait_output(self, uid: str, *, channel: str | None, kind: str, contains: str | None, timeout: float) -> tuple[list[dict[str, Any]], bool]:
+    def _execution_error_event(self, resolved: str) -> dict[str, Any] | None:
+        """The first execution-error event this box has emitted, if any.
+
+        Mirrors the error detection `wait-file --fail-on-error-uid` uses: a box
+        compile/runtime failure surfaces as an `output`/`peer-output` with
+        `kind` in {error, err}, or a `notify` with category `error`.
+        """
+        for event in self.event_log:
+            if event.get("uid") != resolved:
+                continue
+            name = event.get("name") or event.get("messageName")
+            payload = event.get("payload")
+            if not isinstance(payload, dict):
+                continue
+            if name in {"output", "peer-output"} and payload.get("kind") in {"error", "err"}:
+                return event
+            if name == "notify" and str(payload.get("category", "")).strip().lower() == "error":
+                return event
+        return None
+
+    async def wait_output(
+        self,
+        uid: str,
+        *,
+        channel: str | None,
+        kind: str,
+        contains: str | None,
+        timeout: float,
+        fail_on_error: bool = True,
+    ) -> tuple[list[dict[str, Any]], bool, dict[str, Any] | None]:
         resolved = self.resolve_box_token(uid)
         self.logger.log(
             "wait_output_start",
@@ -2064,18 +2093,38 @@ class FieldBackdoor:
             kind=kind,
             contains=contains,
             timeout=timeout,
+            failOnError=fail_on_error,
         )
 
+        # Distinguish "found the output" from "the box errored" so a failed box
+        # aborts the wait immediately instead of blocking for the full timeout
+        # (and then getting killed by the caller's subprocess timeout, which
+        # discards the error entirely). See docs-capture silent-timeout fix.
         def predicate():
             events = self._matching_output_events(resolved, channel=channel, kind=kind, contains=contains)
-            return events if events else None
+            if events:
+                return ("ok", events)
+            if fail_on_error:
+                error = self._execution_error_event(resolved)
+                if error is not None:
+                    return ("error", error)
+            return None
 
         timed_out = False
+        error_event: dict[str, Any] | None = None
         try:
-            events = await self.wait_for(predicate, timeout, f"wait-output:{resolved}")
+            outcome, detail = await self.wait_for(predicate, timeout, f"wait-output:{resolved}")
+            if outcome == "error":
+                error_event = detail
+                events = self._matching_output_events(resolved, channel=channel, kind=kind, contains=contains)
+            else:
+                events = detail
         except asyncio.TimeoutError:
             timed_out = True
             events = self._matching_output_events(resolved, channel=channel, kind=kind, contains=contains)
+            if fail_on_error:
+                # A late-arriving error (after the deadline) is still worth reporting.
+                error_event = self._execution_error_event(resolved)
 
         self.logger.log(
             "wait_output_complete",
@@ -2084,9 +2133,10 @@ class FieldBackdoor:
             kind=kind,
             contains=contains,
             timedOut=timed_out,
+            hasError=error_event is not None,
             count=len(events),
         )
-        return events, timed_out
+        return events, timed_out, error_event
 
     def execution_errors(self, events: list[dict[str, Any]]) -> list[str]:
         problems: list[str] = []
@@ -2377,6 +2427,11 @@ def build_command_parser() -> argparse.ArgumentParser:
     wait_output_parser.add_argument("--kind", choices=("inline", "display", "all"), default="all")
     wait_output_parser.add_argument("--contains")
     wait_output_parser.add_argument("--timeout", type=float)
+    wait_output_parser.add_argument(
+        "--no-fail-on-error",
+        action="store_true",
+        help="Do not abort early if the target box emits a compile/runtime error while waiting.",
+    )
 
     raw_send = subparsers.add_parser("raw-send", add_help=False)
     raw_send.add_argument("name")
@@ -2909,12 +2964,13 @@ async def dispatch_command(
 
     if args.command == "wait-output":
         timeout = args.timeout or client.default_timeout
-        events, timed_out = await client.wait_output(
+        events, timed_out, error_event = await client.wait_output(
             args.uid,
             channel=args.channel,
             kind=args.kind,
             contains=args.contains,
             timeout=timeout,
+            fail_on_error=not args.no_fail_on_error,
         )
         data = {
             "uid": client.resolve_uid(args.uid),
@@ -2923,8 +2979,24 @@ async def dispatch_command(
             "contains": args.contains,
             "count": len(events),
         }
-        result = command_result(command_line, not timed_out, data=data, events=events, timed_out=timed_out)
-        client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"], eventCount=len(events), timedOut=timed_out)
+        if error_event is not None:
+            payload = error_event.get("payload") or {}
+            html = str(payload.get("html") or payload.get("text") or "execution error").replace("\n", " ").strip()
+            data["error"] = f"target {client.resolve_uid(args.uid)} emitted an error while waiting for output: {html}"
+            data["failedEvent"] = error_event
+            # Surface the error event downstream (docs runner's
+            # extract_backdoor_execution_error scans each command result's events).
+            events = list(events) + [error_event]
+        ok = (not timed_out) and (error_event is None)
+        result = command_result(command_line, ok, data=data, events=events, timed_out=timed_out)
+        client.logger.log(
+            "command_dispatch_complete",
+            commandLine=command_line,
+            ok=result["ok"],
+            eventCount=len(events),
+            timedOut=timed_out,
+            hasError=error_event is not None,
+        )
         return result
 
     if args.command == "input-key":

@@ -858,6 +858,14 @@ class RunnerState:
                     f"Command: {shlex.join(command)}\n"
                     f"Timed out after {exc.timeout:.1f}s"
                 ) from exc
+            deterministic = deterministic_execution_error(
+                completed, page_path=page_path, output_path=video_path, command=command
+            )
+            if deterministic is not None:
+                self._restart_shared_field_server(
+                    reason=f"execution error while recording {page_path.name} -> {video_path}"
+                )
+                raise deterministic
             if completed.returncode == 0:
                 break
             if attempt < RUNNER_RETRIES:
@@ -977,6 +985,12 @@ class RunnerState:
                     f"Field docs runner ui drive timed out for {page_path.name} -> {primary}.\n"
                     f"Command: {shlex.join(command)}\nTimed out after {exc.timeout:.1f}s"
                 ) from exc
+            deterministic = deterministic_execution_error(
+                completed, page_path=page_path, output_path=primary, command=command
+            )
+            if deterministic is not None:
+                self._restart_shared_field_server(reason=f"execution error ui drive {primary}")
+                raise deterministic
             if completed.returncode == 0:
                 break
             if attempt < RUNNER_RETRIES:
@@ -1191,6 +1205,14 @@ class RunnerState:
                     f"Command: {shlex.join(command)}\n"
                     f"Timed out after {exc.timeout:.1f}s"
                 ) from exc
+            deterministic = deterministic_execution_error(
+                completed, page_path=page_path, output_path=screenshot_path, command=command
+            )
+            if deterministic is not None:
+                self._restart_shared_field_server(
+                    reason=f"execution error while capturing {page_path.name} -> {screenshot_path}"
+                )
+                raise deterministic
             if completed.returncode == 0:
                 break
             if attempt < RUNNER_RETRIES:
@@ -2235,6 +2257,32 @@ def parse_backdoor_results(stdout: str) -> list[dict[str, Any]]:
             results.append(payload)
         idx = next_idx
     return results
+
+
+def deterministic_execution_error(
+    completed: subprocess.CompletedProcess[str],
+    *,
+    page_path: Path,
+    output_path: Path,
+    command: list[str],
+) -> RuntimeError | None:
+    """A clean error to raise when a capture failed on a box compile/runtime error.
+
+    Such an error is deterministic — retrying (with a full server restart) cannot
+    fix it and only buries the diagnostic under repeated bare-"failed"/"timed out"
+    messages. When the backdoor stdout carries a real execution error, return a
+    RuntimeError the caller can raise immediately instead of retrying.
+    """
+    if completed.returncode == 0:
+        return None
+    error = extract_backdoor_execution_error(completed.stdout)
+    if error is None:
+        return None
+    return RuntimeError(
+        f"Field docs runner execution error for {page_path.name} -> {output_path}.\n"
+        f"Command: {shlex.join(command)}\n"
+        f"{error}"
+    )
 
 
 def extract_backdoor_execution_error(stdout: str) -> str | None:
