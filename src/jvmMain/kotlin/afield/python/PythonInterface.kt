@@ -4,8 +4,11 @@ import afield.*
 import afield.logger.lprintln
 import afield.python.PythonInterface.Companion.conf
 import afield.python.PythonInterface.Companion.deliverErr
+import afield.python.PythonInterface.Companion.deliverProgress
 import afield.python.PythonInterface.Companion.deliverStdOut
+import afield.python.PythonInterface.Companion.formatOutput
 import afield.python.PythonInterface.Companion.hasHadOutput
+import afield.python.PythonInterface.Companion.truncateOutput
 import afield.python.PythonInterface.Companion.inited
 import afield.python.PythonInterface.Companion.thisBox
 import afield.python.PythonInterface.Companion.thisLineOffset
@@ -33,6 +36,74 @@ import java.util.concurrent.TimeUnit
 
 var Box.isPythonRoot by Delegation<Boolean?>()
 var Box._pythonLocals by Delegation<LinkedHashMap<*,*>>(defaultValue = { LinkedHashMap<Any, Any>() })
+
+/**
+ * Splits a byte stream from the Python interpreter into frames.
+ *
+ * A frame terminated by `\n` is a completed line and is handed to [onLine] (with its trailing
+ * newline preserved, matching the previous behaviour). A frame terminated by `\r` is an *in-place*
+ * update — the signature of a progress bar such as `tqdm` — and is handed to [onProgress]. The final
+ * `\n` that closes a carriage-return sequence is also treated as a progress frame rather than a line,
+ * so a tqdm bar surfaces live instead of arriving as one giant string (or error) at the very end.
+ *
+ * Bytes are buffered and decoded as UTF-8 per frame, so multi-byte glyphs (tqdm's block characters)
+ * survive intact — the old byte-at-a-time `Char(b)` decode mangled anything outside ASCII.
+ */
+private class OutputFramer(
+    val onLine: (String) -> Unit,
+    val onProgress: (String) -> Unit,
+) : OutputStream() {
+    private val buf = java.io.ByteArrayOutputStream(256)
+    private var sawCarriageReturn = false
+
+    override fun write(b: Int) {
+        when (b) {
+            '\n'.code -> {
+                val frame = drain()
+                if (sawCarriageReturn) {
+                    if (frame.isNotBlank()) onProgress(frame)
+                    sawCarriageReturn = false
+                } else {
+                    onLine(frame + "\n")
+                }
+            }
+            '\r'.code -> {
+                val frame = drain()
+                if (frame.isNotBlank()) onProgress(frame)
+                sawCarriageReturn = true
+            }
+            else -> buf.write(b)
+        }
+    }
+
+    private fun drain(): String {
+        val s = buf.toString(Charsets.UTF_8)
+        buf.reset()
+        return s
+    }
+}
+
+/** tqdm renders `desc: 42%|██▍   | 42/100 [00:01<00:02, 20.1it/s]`; capture desc, percent, and detail. */
+private val tqdmBarRegex = Regex("""(?:(.*?):\s*)?(\d{1,3})%\|[^|]*\|(.*)""")
+
+/** Render a carriage-return progress frame as a live Field progress bar (updates in place). */
+private fun deliverProgressText(box: Box, raw: String) {
+    val text = raw.trim()
+    if (text.isEmpty()) return
+    val m = tqdmBarRegex.find(text)
+    if (m != null) {
+        val desc = m.groupValues[1].trim()
+        val pct = m.groupValues[2].toIntOrNull()?.coerceIn(0, 100) ?: 0
+        val detail = m.groupValues[3].trim()
+        val label = listOf(desc, detail).filter { it.isNotEmpty() }.joinToString("  •  ")
+        box.progressBar("tqdm", pct / 100.0, label.ifEmpty { null })
+    } else {
+        // No percentage (e.g. an indeterminate tqdm bar or a bespoke \r spinner): show the raw
+        // frame as the detail of an indeterminate bar.
+        box.progressBarIndeterminate("tqdm", text)
+    }
+    PythonInterface.hasHadOutput = true
+}
 
 @Serializable
 data class PythonSettingsRequest(
@@ -125,27 +196,19 @@ class PythonExecution : BoxExecution {
 
     fun interpreter(b: Box? = null): SharedInterpreter {
         if (!inited) {
-            conf.redirectStdout(object : OutputStream() {
-                var line = ""
-                override fun write(b: Int) {
-                    line += Char(b).toString()
-                    if (line.endsWith('\n')) {
-                        print(line)
-                        deliverStdOut(line)
-                        line = ""
-                    }
-                }
-            }).redirectStdErr(object : OutputStream() {
-                var line = ""
-                override fun write(b: Int) {
-                    line += Char(b).toString()
-                    if (line.endsWith('\n')) {
-                        print("(error) $line")
-                        deliverErr(line)
-                        line = ""
-                    }
-                }
-            })
+            conf.redirectStdout(OutputFramer(
+                onLine = { line ->
+                    print(line)
+                    deliverStdOut(line)
+                },
+                onProgress = { frame -> deliverProgress(frame) },
+            )).redirectStdErr(OutputFramer(
+                onLine = { line ->
+                    print("(error) $line")
+                    deliverErr(line)
+                },
+                onProgress = { frame -> deliverProgress(frame) },
+            ))
             SharedInterpreter.setConfig(conf);
 
             // JEP 4.3.1 sets Jep.threadUsed=true during setConfig, which then
@@ -938,7 +1001,109 @@ async def cancel_tasks(source_id: str, *, timeout: float = 2.0) -> dict:
     _TASKS_BY_SOURCE[source_id] -= done
     return {"requested": len(tasks), "done": len(done), "pending": len(pending)}
 
-print(" python interpreter has finished starting up ")
+# ---------------------------
+# print override
+# ---------------------------
+# Route print() through Field so its output is formatted once, centrally: multi-line values
+# (2-D numpy arrays, DataFrames) render in a faithful monospace block instead of being torn
+# line-by-line by the stdout redirect, and enormous output is truncated rather than shipped
+# whole to the browser (which used to lock up the front end).
+import builtins as _builtins
+_orig_print = _builtins.print
+
+def _field_print(*args, sep=' ', end='\n', file=None, flush=False):
+    from afield.python import PythonInterface
+    box = PythonInterface.thisBox
+    if box is None or (file is not None and file is not sys.stdout):
+        return _orig_print(*args, sep=sep, end=end, file=file, flush=flush)
+    text = sep.join(str(a) for a in args)
+    box.getOutput().getProxy()(PythonInterface.formatOutput(text), False, -1)
+    PythonInterface.hasHadOutput = True
+
+_builtins.print = _field_print
+
+# ---------------------------
+# Embedded browser output
+# ---------------------------
+# When a library (plotly's fig.show(), bokeh, folium, ...) tries to open a page in an external
+# web browser, embed that page in an output-area iframe instead. plotly's default renderer runs a
+# one-shot local HTTP server and calls webbrowser.get(...).open(url); we intercept both the module
+# function and the controller returned by webbrowser.get so either path lands in Field.
+import webbrowser as _webbrowser
+import urllib.parse as _urllib_parse
+import urllib.request as _urllib_request
+import threading as _threading
+
+_FIELD_EMBED_CHANNEL = "browser"
+
+def _field_embed_show(box, iframe_html):
+    box.display(_FIELD_EMBED_CHANNEL, iframe_html)
+    try:
+        from afield import OutputsKt
+        OutputsKt.displayOpen(box, _FIELD_EMBED_CHANNEL)
+    except Exception:
+        pass
+    from afield.python import PythonInterface
+    PythonInterface.hasHadOutput = True
+
+_FIELD_IFRAME_STYLE = "width:100%;height:640px;border:none;background:#fff;border-radius:8px;"
+
+def _field_embed_document(box, full_html):
+    srcdoc = full_html.replace("&", "&amp;").replace('"', "&quot;")
+    iframe = '<iframe class="afield-embed-frame" style="' + _FIELD_IFRAME_STYLE + '" srcdoc="' + srcdoc + '"></iframe>'
+    _field_embed_show(box, iframe)
+
+def _field_embed_src(box, url):
+    iframe = '<iframe class="afield-embed-frame" style="' + _FIELD_IFRAME_STYLE + '" src="' + _html_mod.escape(url, quote=True) + '"></iframe>'
+    _field_embed_show(box, iframe)
+
+def _field_open_url(url, new=0, autoraise=True):
+    from afield.python import PythonInterface
+    box = PythonInterface.thisBox
+    if box is None or not isinstance(url, str):
+        return _orig_webbrowser_open(url, new, autoraise)
+    try:
+        parsed = _urllib_parse.urlparse(url)
+        if parsed.scheme == "file":
+            path = _urllib_request.url2pathname(parsed.path)
+            with open(path, "r", encoding="utf-8", errors="replace") as fh:
+                _field_embed_document(box, fh.read())
+            return True
+        if parsed.scheme in ("http", "https") and parsed.hostname in ("127.0.0.1", "localhost", "::1"):
+            # plotly/bokeh started a one-shot local server and will block in handle_request()
+            # until this URL is fetched. Fetch it ourselves on a daemon thread: our GET satisfies
+            # the server (so the cell never hangs — no dependency on a front end being present)
+            # and hands us the whole document, which we embed as a self-contained srcdoc iframe.
+            def _worker(b=box, u=url):
+                try:
+                    with _urllib_request.urlopen(u, timeout=20) as resp:
+                        data = resp.read().decode("utf-8", "replace")
+                    _field_embed_document(b, data)
+                except Exception:
+                    pass
+            _threading.Thread(target=_worker, name="field-embed-fetch", daemon=True).start()
+            PythonInterface.hasHadOutput = True
+            return True
+        _field_embed_src(box, url)
+        return True
+    except Exception:
+        return _orig_webbrowser_open(url, new, autoraise)
+
+class _FieldBrowser:
+    def open(self, url, new=0, autoraise=True):
+        return _field_open_url(url, new, autoraise)
+    def open_new(self, url):
+        return _field_open_url(url, 1)
+    def open_new_tab(self, url):
+        return _field_open_url(url, 2)
+
+_orig_webbrowser_open = _webbrowser.open
+_webbrowser.open = _field_open_url
+_webbrowser.open_new = lambda url: _field_open_url(url, 1)
+_webbrowser.open_new_tab = lambda url: _field_open_url(url, 2)
+_webbrowser.get = lambda using=None: _FieldBrowser()
+
+_orig_print(" python interpreter has finished starting up ")
 
             """.trimIndent()
 
@@ -962,13 +1127,15 @@ print(" python interpreter has finished starting up ")
             configureOutputProxies(inside, reply, originSession)
             hasHadOutput = false
             deliverStdOut = {
-                inside.print(it)
+                inside.print(formatOutput(it))
                 hasHadOutput = true
             }
             deliverErr = {
-                inside.error(it)
+                // Errors are HTML-escaped downstream by errorProxy, so only truncate here.
+                inside.error(truncateOutput(it.trimEnd('\n')))
                 hasHadOutput = true
             }
+            deliverProgress = { deliverProgressText(inside, it) }
             var c = execute.code
 //            for (n in 0 until execute.line) c = "\n" + c
             val wm = ++inside.fragmentGeneration
@@ -1018,7 +1185,7 @@ print(" python interpreter has finished starting up ")
                     } else {
                         if (!hasHadOutput) {
                             inside.output.proxy(
-                                ret.toString(), false, execute.line + execute.code.split("\n").count()
+                                formatOutput(ret.toString()), false, execute.line + execute.code.split("\n").count()
                             )
                         }
                     }
@@ -1182,6 +1349,60 @@ class PythonInterface {
     companion object {
         var deliverStdOut: (String) -> Unit = {}
         var deliverErr: (String) -> Unit = {}
+        var deliverProgress: (String) -> Unit = {}
+
+        /** Cap on the characters / lines a single output event may carry before it is truncated. */
+        const val MAX_OUTPUT_CHARS = 40_000
+        const val MAX_OUTPUT_LINES = 400
+
+        /**
+         * Truncate, escape, and (for multi-line text) wrap output for display in the editor.
+         *
+         * Called from both Kotlin (the last-expression repr, raw stdout lines) and the Python `print`
+         * override, so all printed text funnels through one place. Multi-line text — a 2-D numpy array,
+         * a DataFrame, a formatted dict — is wrapped in a monospace, whitespace-preserving `<pre>` so it
+         * renders faithfully (bracket-balanced, column-aligned) instead of being flattened into `<br>`s.
+         */
+        @JvmStatic
+        fun formatOutput(text: String): String {
+            val truncated = truncateOutput(text.trimEnd('\n'))
+            val escaped = escapeOutputHtml(truncated)
+            return if (truncated.contains('\n')) {
+                "<pre class=\"afield-python-output afield-appendable-output\">$escaped</pre>"
+            } else {
+                escaped
+            }
+        }
+
+        /** Clip [text] to [MAX_OUTPUT_CHARS]/[MAX_OUTPUT_LINES], keeping the head and tail with a marker. */
+        @JvmStatic
+        fun truncateOutput(text: String): String {
+            var t = text
+            if (t.length > MAX_OUTPUT_CHARS) {
+                val half = MAX_OUTPUT_CHARS / 2
+                val removed = t.length - 2 * half
+                t = t.substring(0, half) + "\n… [$removed characters truncated] …\n" + t.substring(t.length - half)
+            }
+            val lines = t.split('\n')
+            if (lines.size > MAX_OUTPUT_LINES) {
+                val head = lines.take(MAX_OUTPUT_LINES / 2)
+                val tail = lines.takeLast(MAX_OUTPUT_LINES / 2)
+                val removed = lines.size - head.size - tail.size
+                t = (head + "… [$removed lines truncated] …" + tail).joinToString("\n")
+            }
+            return t
+        }
+
+        private fun escapeOutputHtml(text: String): String = buildString(text.length) {
+            text.forEach {
+                when (it) {
+                    '&' -> append("&amp;")
+                    '<' -> append("&lt;")
+                    '>' -> append("&gt;")
+                    else -> append(it)
+                }
+            }
+        }
 
         var inited = false
 
