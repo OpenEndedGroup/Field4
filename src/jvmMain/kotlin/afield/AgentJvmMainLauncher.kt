@@ -13,14 +13,47 @@ object AgentJvmMainLauncher {
 
         val entrypoint = args.first()
         val forwardedArgs = args.drop(1).toTypedArray()
-        val exitCode = runCatching {
+        var exitCode = runCatching {
             invokeEntrypoint(entrypoint, forwardedArgs)
         }.getOrElse { throwable ->
             System.err.println("AgentJvmMainLauncher failed for $entrypoint: ${throwable.message}")
             throwable.printStackTrace(System.err)
             1
         }
+
+        // A jvm-main entrypoint should let the JVM terminate on its own; the exitProcess
+        // below is only a safety net. Any lingering non-daemon thread means the process
+        // would otherwise hang — a latent source of CI timeouts. Surface it (and, under
+        // AFIELD_JVM_MAIN_STRICT_EXIT, fail the run) so regressions can't hide.
+        val lingering = lingeringNonDaemonThreads()
+        if (lingering.isNotEmpty()) {
+            System.err.println(
+                "AgentJvmMainLauncher: $entrypoint left ${lingering.size} lingering non-daemon " +
+                    "thread(s) after main returned; the JVM would not have exited naturally:"
+            )
+            for (t in lingering) {
+                System.err.println("  - '${t.name}' state=${t.state}")
+                t.stackTrace.take(5).forEach { System.err.println("      at $it") }
+            }
+            if (exitCode == 0 && System.getenv("AFIELD_JVM_MAIN_STRICT_EXIT")?.isNotBlank() == true) {
+                exitCode = 3
+            }
+        }
+
         exitProcess(exitCode)
+    }
+
+    /**
+     * Non-daemon threads still alive after the entrypoint returned, excluding this main
+     * thread. A short settle lets thread pools wind down before we judge. These are the
+     * threads that would keep the JVM from terminating without the exitProcess safety net.
+     */
+    private fun lingeringNonDaemonThreads(): List<Thread> {
+        Thread.sleep(1_500)
+        val self = Thread.currentThread()
+        return Thread.getAllStackTraces().keys.filter { t ->
+            t.isAlive && !t.isDaemon && t !== self && t.name != "DestroyJavaVM"
+        }
     }
 
     private fun invokeEntrypoint(entrypoint: String, args: Array<String>): Int {

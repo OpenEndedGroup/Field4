@@ -616,8 +616,12 @@ class KotlinInterface(
 
         var sharedClassLoader: ClassLoader? = null
 
-        // multi-threaded compilation broken in current kotlin compiler
-        var compilationThread = Executors.newFixedThreadPool(1).asCoroutineDispatcher()
+        // multi-threaded compilation broken in current kotlin compiler.
+        // Daemon-threaded so this shared compile dispatcher never keeps a JVM alive
+        // (it leaked as a non-daemon `pool-N` thread in headless smoke tests).
+        var compilationThread = Executors.newFixedThreadPool(1) { runnable ->
+            Thread(runnable, "afield-ki-compile").apply { isDaemon = true }
+        }.asCoroutineDispatcher()
 
         // Delegates to shared top-level functions for backwards compatibility
         fun functionSignature(function: KFunction<*>) = afield.functionSignature(function)

@@ -144,15 +144,28 @@ class PersistentDouble(val defaultValue: (() -> Double)? = { 0.0 }) {
 object PersistOnExit {
 
     var needingPersistance = ConcurrentHashMap<String, Any>()
-    var checkThread = thread {
+
+    private fun drainPending() {
+        needingPersistance.entries.removeIf {
+            save(it.key, it.value)
+            true
+        }
+    }
+
+    // Daemon: this is a best-effort background flusher and must never be the reason a
+    // JVM stays alive (otherwise every jvm-main smoke test that touches a persisted
+    // property would hang until the launcher force-exits). A shutdown hook flushes any
+    // last-second changes on graceful exit so we keep the "persist on exit" guarantee.
+    var checkThread = thread(isDaemon = true) {
         while (true) {
             Thread.sleep(1000)
             if (needingPersistance.size > 0) lprintln("info,persist", "persistence number is ${needingPersistance.size}")
-            needingPersistance.entries.removeIf {
-                save(it.key, it.value)
-                true
-            }
+            drainPending()
         }
+    }
+
+    init {
+        Runtime.getRuntime().addShutdownHook(Thread({ drainPending() }, "afield-persist-flush"))
     }
 
     fun save(name: String, t: Any?) {

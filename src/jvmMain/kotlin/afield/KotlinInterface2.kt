@@ -2769,8 +2769,11 @@ class KotlinInterface2(
 
         var sharedClassLoader: ClassLoader? = null
 
-        // multi-threaded compilation broken in current kotlin compiler
-        var compilationThread = Executors.newFixedThreadPool(1).asCoroutineDispatcher()
+        // multi-threaded compilation broken in current kotlin compiler.
+        // Daemon-threaded so this shared compile dispatcher never keeps a JVM alive.
+        var compilationThread = Executors.newFixedThreadPool(1) { runnable ->
+            Thread(runnable, "afield-ki2-compile").apply { isDaemon = true }
+        }.asCoroutineDispatcher()
 
         fun functionSignature(function: KFunction<*>) = afield.functionSignature(function)
 
