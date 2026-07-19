@@ -69,6 +69,46 @@ class OscillatorDomainGuardTest {
         }
     }
 
+    /**
+     * Regression guard for the sequence-combinator family over infinite-domain sources.
+     *
+     * `SequencePlacement.sample` maps a slot-local coordinate into the source function via
+     * `sourceDomain.lerp(alpha)`. When the source is a fresh oscillator (default `Domain.ALL`)
+     * that lerp is +/-Infinity / NaN, so every source was evaluated at infinity and returned
+     * `outside` — collapsing `sequence`/`shuffleLoop`/`palindrome`/`roundRobin`/`randomSequence`
+     * to a flat zero. `sequenceParts()` now previews an unbounded source over `finiteSweep()`
+     * before sampling. This asserts each combinator produces real, finite signal (not ~all zeros).
+     */
+    @Test
+    fun sequenceCombinatorsOverInfiniteDomainOscillatorsProduceSignal() = with(Functions) {
+        val items = listOf(sin(2.0), saw(0.13), pulseTrain(0.08))
+
+        // Premise: the sources must really be unbounded, else this guard is a no-op.
+        for (fn in items) assertFalse(
+            fn.domain.isFinite,
+            "sequence guard needs infinite-domain sources for it to be meaningful"
+        )
+
+        val combinators: List<Pair<String, Fn>> = listOf(
+            "sequence" to items.sequence(overlap = 0.1),
+            "shuffleLoop" to items.shuffleLoop(seed = 12, overlap = 0.1),
+            "palindrome" to items.palindrome(overlap = 0.1),
+            "roundRobin" to items.roundRobin(slot = 1.0, overlap = 0.1),
+            "randomSequence" to items.randomSequence(seed = 3, slot = 1.0)
+        )
+
+        for ((name, fn) in combinators) {
+            val ys = (fn over (0.0..6.0)).toDoubleArray(512)
+            assertTrue(ys.all { it.isFinite() }, "$name produced a non-finite sample")
+            val nonZero = ys.count { kotlin.math.abs(it) > 1e-6 }
+            assertTrue(
+                nonZero > ys.size / 10,
+                "$name collapsed to ~all-zeros ($nonZero/${ys.size} nonzero) — sequence sampling over " +
+                    "an infinite-domain oscillator regressed (finiteSweep dropped from sequenceParts?)"
+            )
+        }
+    }
+
     /** Runs [block] on a daemon worker; fails (rather than hangs) if it does not finish. */
     private fun runBounded(label: String, block: () -> Unit) {
         var failure: Throwable? = null

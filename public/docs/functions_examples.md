@@ -2451,7 +2451,7 @@ import afield.Keyframe
 import afield.stdlib.Functions
 
 with(Functions) {
-    val f = (fbm(4, 5.0, 1.0) / all / slower(ramp(0.8, 1.7)) / highPass(ramp(0.02, 0.08)) / turbulence(0.02, ramp(8.0, 18.0)) / crush(5) / mirrorEvery(0.4)) over (0.0..4.0)
+    val f = (fbm(4, 5.0, 1.0) / all / slower(ramp(0.8, 1.7)) / highPass(remap(0.02, 0.08)) / turbulence(0.02, ramp(8.0, 18.0)) / crush(5) / mirrorEvery(0.4)) over (0.0..4.0)
     f.plot()
 }
 ```
