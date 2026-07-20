@@ -62,3 +62,12 @@ application {
 kotlin {
     jvmToolchain(25)
 }
+
+// Phase 1 completion spike runner: java -cp <runtime> afield.tools.codeuse.CompletionSpike
+tasks.register<JavaExec>("runSpike") {
+    group = "verification"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("afield.tools.codeuse.CompletionSpike")
+    jvmArgs("-Dapple.awt.UIElement=true", "-Xmx6g")
+    args((project.findProperty("spikeArgs") as String? ?: "").split(" ").filter { it.isNotBlank() })
+}
