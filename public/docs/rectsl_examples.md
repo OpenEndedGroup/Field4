@@ -339,6 +339,56 @@ fps 30
        style="width:100%;max-width:640px;border-radius:8px;">
 </video>
 
+### Recursive splitting — a cascade
+
+`split` composes: because a shard's flight is authored around the origin in
+split-relative local time, a *nested* `split` inside a shard's own modifiers just
+works — the grand-shard's split time adds onto its parent's, and it is born on the
+parent's split-point. That single fact turns one word into a fireworks cascade. An
+off-centre mortar arcs up and bursts into a wide, gravity-drooped, `turbo`-tinted fan;
+then every shard splits *again* — at a per-shard-staggered time `2.2 + f·1.3`, so the
+secondary sprays ripple outward around the ring rather than all at once — into a
+smaller self-orienting spray. Nothing here is a particle simulation: it is a fixed,
+scrubbable scene of pure-function tracks, sampled.
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+wall 12 10 abstract
+duration 7
+fps 30
+
+"seed" rect
+  0.5 0.28 wh
+  0xfff0a0 solid fill
+  '( 0=-5    1.4=-0.5 ) x
+  '( 0=-4.5  1.4=2.5 ) y
+  face-travel
+  14 1.4 '(
+    0.4 0.15 wh
+    "turbo" 0.35 f 0.6 * + cmap solid fill
+    '( 0=0  3.8=1 )  3.5 f 3 * +  value*   0.4 fc 2.6 * +  cos  value*
+    '( 0=0  3.8=1 )  3.5 f 3 * +  value*   0.4 fc 2.6 * +  sin  value*
+    translate
+    0  '( 0=0  3.8=-1.6 )  translate
+    face-travel
+    5  2.2 f 1.3 * +  '(
+      0.24 0.09 wh
+      0xffe08a solid fill
+      '( 0=0  2.4=1 )  1.1 fc 0.8 * +  value*   fc 1.2 * 0.3 +  cos  value*
+      '( 0=0  2.4=1 )  1.1 fc 0.8 * +  value*   fc 1.2 * 0.3 +  sin  value*
+      translate
+      0  '( 0=0  2.4=-1.1 )  translate
+      face-travel
+    ) split  drop
+  ) split
+;
+```
+
+<video src="../assets/rectsl/rectsl-cascade-split.mp4" poster="../assets/rectsl/rectsl-cascade-split.png"
+       autoplay loop muted playsinline
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
 ### More array generators — arc, spiral, sunflower
 
 Beyond `radial`'s full circle, three placement generators cover the common

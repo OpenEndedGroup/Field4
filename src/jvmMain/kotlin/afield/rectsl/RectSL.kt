@@ -2402,12 +2402,21 @@ class RectLangVm(
             b.withActive(parent) { b.gateVisibility(Double.NEGATIVE_INFINITY, atTime) }
             val dur = b.duration
             shards.forEachIndexed { ordinal, shard ->
-                // Author each shard's flight around the origin, in split-relative local time…
-                vm.withSelected(shard) { vm.withLoop(ordinal, count, ordinal) { vm.evalBlock(mods.tokens) } }
-                // …then translate onto the split point and fire it at the split time.
-                b.withActive(shard) {
-                    b.translate(constantTrack(point.x), constantTrack(point.y))
-                    b.live(atTime, dur - atTime)
+                // Author each shard's flight around the origin, in split-relative local time.
+                // The mods may create sub-structure — including a nested `split` — so capture
+                // every node they produce.
+                val spawned = b.captureNewNodes {
+                    vm.withSelected(shard) { vm.withLoop(ordinal, count, ordinal) { vm.evalBlock(mods.tokens) } }
+                }
+                // The shard's frame — its split point and birth time — applies to the shard
+                // AND everything its mods produced. This is what makes `split` recursive: a
+                // grand-shard's time adds onto its parent's (t1 then +t2) and its position is
+                // offset onto this shard's split point.
+                (listOf(shard) + spawned).forEach { node ->
+                    b.withActive(node) {
+                        b.translate(constantTrack(point.x), constantTrack(point.y))
+                        b.live(atTime, dur - atTime)
+                    }
                 }
             }
             vm.push(VSelection(shards))
