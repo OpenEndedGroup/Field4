@@ -1447,8 +1447,12 @@ fun recordWindowMp4() {
     )
 }
 
-private fun downloadEdnFile(filename: String, edn: String) {
-    val blob = js("new Blob([edn], { type: 'application/edn' })")
+private fun downloadEdnFile(filename: String, edn: String) =
+    downloadTextFile(filename, edn, "application/edn")
+
+/** Trigger a browser download of [text] as [filename] with the given MIME [type]. */
+private fun downloadTextFile(filename: String, text: String, type: String) {
+    val blob = js("new Blob([text], { type: type })")
     val url = URL.createObjectURL(blob)
     val link = document.createElement("a")
     link.setAttribute("href", url)
@@ -1771,6 +1775,27 @@ fun exportDocumentToDownload() {
         val result = Json.decodeFromJsonElement<ExportDocumentResult>(message.payload!!)
         val name = if (result.filename.isNotBlank()) result.filename else "document"
         downloadEdnFile("$name.edn", result.edn)
+        Handled.yes_remove
+    }
+}
+
+/**
+ * Export the selected python-root box back out to an `.ipynb` file (the inverse of
+ * dropping a notebook in). Sends the first selected box's uid; the backend validates
+ * it is a python root and replies with nbformat-4 JSON, which we download as a Blob.
+ */
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun exportNotebookToDownload() {
+    val ids = getSelectedIds()
+    if (ids.isEmpty()) {
+        notify("Select a python-root box to export as a notebook", "error")
+        return
+    }
+    sendWithReply(Message("export-ipynb").payload(ExportNotebook(ids.first())), "export-ipynb") { message, _ ->
+        val result = Json.decodeFromJsonElement<ExportNotebookResult>(message.payload!!)
+        val name = if (result.fileName.isNotBlank()) result.fileName else "notebook"
+        downloadTextFile("$name.ipynb", result.notebookJson, "application/x-ipynb+json")
         Handled.yes_remove
     }
 }
@@ -2638,6 +2663,14 @@ fun registerBuiltinCommands() {
             canvasKeybinding: (event) => false,
             run: () => {
                 exportDocumentToDownload()
+            }
+        },{
+            id:'export-ipynb',
+            label:"Export notebook (.ipynb)",
+            detail:"Download the selected python-root box column as a Jupyter notebook",
+            canvasKeybinding: (event) => false,
+            run: () => {
+                exportNotebookToDownload()
             }
         },{
             id:'move-forward',
