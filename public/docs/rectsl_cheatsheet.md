@@ -296,6 +296,36 @@ Dense data is an explicit target for RectSL. A **colormap** turns a value in `[0
   dup data-len drop  dup 2 data-at drop  normalize "coolwarm" bars
 ```
 
+### Plotting layer
+
+The chart idioms above each normalize by their own extent and fill the wall. The **plotting layer** adds a *shared* coordinate frame so several series overlay in one domain, with axes, ticks, numeric labels, and legends. Set a `domain` (or let the first series adopt its own extent) and optional `frame`/`margins`; then `axes`, the domain-aware series (`line`/`plot`, `area`, `points`), and `colorbar`/`legend` all map through it. The classic `bars`/`heat`/`scatter` are unchanged — the plotting words are additive. RectSL has no text primitive, so tick/colorbar labels are numerals drawn as a 3×5 grid of rects (numbers only — no titles/series-name text).
+
+| Word | Stack | Notes |
+| --- | --- | --- |
+| `domain` | `x0 x1 y0 y1 --` | Set an explicit shared x and y data domain. Series and `axes` map data → the plot frame through it. |
+| `xdomain`, `ydomain` | `lo hi --` | Set just the x (or y) domain. |
+| `margins` | `l r b t --` | Reserve plot-frame margins as wall fractions (left/right/bottom/top) — room for axis labels and a colorbar. |
+| `frame` | `--` | Apply sensible default margins (used only when none are set, so an explicit `margins` wins). |
+| `axes` | `-- selection` | Draw x/y axis rules, nice-number ticks, numeric tick labels (in the margins), and faint gridlines for the current domain. Draw it *before* the series so they paint on top. |
+| `line`, `plot` | `xdata ydata name -- selection` | Polyline through the shared domain as rotated thin rects, coloured along colormap `name` by point order. |
+| `area` | `xdata ydata name -- selection` | Column-filled area from the `y = 0` baseline to each sample, coloured by normalized `y`. |
+| `points` | `xdata ydata name -- selection` | Domain-aware scatter (shares the frame with other series); colour follows normalized `y`. |
+| `colorbar` | `name -- selection` | A continuous colour ramp for `name` in the right margin, with min/mid/max numerals from the y domain. |
+| `legend` | `count name -- selection` | A key of `count` discrete colour swatches sampling colormap `name`, stacked top-right. |
+
+```diffstatic {data-lang=text}
+# one shared domain, axes underneath, three series overlaid, plus legends
+wall 16 10 abstract
+0 10 xdomain   0 1 ydomain     # or `0 10 0 1 domain` in one go
+0.12 0.14 0.12 0.06 margins    # or just `frame` for sensible defaults
+axes
+0 10 40 linspace  dup '( 0.7 * sin 1 + 2 / ) data-map   "viridis" area
+0 10 40 linspace  dup '( 0.55 * cos 1 + 2 / ) data-map  "plasma"  line
+0 10 12 linspace  dup '( 0.9 * sin 1 + 2 / ) data-map   "turbo"   points
+"viridis" colorbar
+5 "turbo" legend
+```
+
 ## Distribution curves (Functions bridge)
 
 Linear `mix` is rarely the shape you want across an array. RectSL borrows [`afield.stdlib.Functions`](functions_examples.md) — a tested library of easings, distributions, and noise defined over `[0, 1]`, exactly the range of the array fraction `f`. `ease` shapes a scalar/track through the full Penner family; the curve words push a reusable `Fn` value you `sample` at `f` (or any x). The curves are graph-backed, so the Functions rewrite/evolve tooling can optimise an array's distribution toward a target.
