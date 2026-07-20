@@ -871,6 +871,19 @@ data class PasteBoxesResult(val newUids: List<String>)
 data class ImportMetadata(val ednText: String)
 
 /**
+ * Payload for importing a dropped `metadata.edn` as a nested subtree: the backend
+ * loads the EDN with fresh UUIDs (like [ImportMetadata]), then wraps the top-level
+ * imported boxes inside a new nest-parent box anchored at document-space ([x], [y]).
+ */
+@Serializable
+data class ImportMetadataNested(
+    val ednText: String,
+    val x: Double = 0.0,
+    val y: Double = 0.0,
+    val nestName: String = "",
+)
+
+/**
  * Payload for importing a dropped Jupyter notebook (`.ipynb`). The backend parses
  * [notebookJson], creates one child box per cell under a fresh python-root parent,
  * and lays them out as a vertical column anchored at document-space ([x], [y]).
