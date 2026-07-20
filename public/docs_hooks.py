@@ -51,6 +51,15 @@ FENCE_NAMES = sorted(RUNNER_TARGETS, key=len, reverse=True)
 SCRIPT_VERSION = 17
 RUNNER_RETRIES = 3
 RUNNER_SUBPROCESS_GRACE_SEC = 5.0
+# A shared Field server (re)start can be slow to become healthy on a busy machine,
+# and — after many docs-capture start/stop cycles in one run — a cold JVM start can
+# legitimately exceed a single fixed deadline (TIME_WAIT port churn, file-descriptor
+# and JVM-startup pressure). A one-shot start that raised on the first timeout aborted
+# the whole HTML build even when every capture had already succeeded. Retry the start
+# a few times, each with its own deadline, before giving up.
+SERVER_START_DEADLINE_SEC = float(os.environ.get("AFIELD_DOCS_SERVER_START_TIMEOUT", "120"))
+SERVER_START_ATTEMPTS = max(1, int(os.environ.get("AFIELD_DOCS_SERVER_START_ATTEMPTS", "3")))
+SERVER_START_RETRY_BACKOFF_SEC = 3.0
 # Kept consistent with tools/field_backdoor.py: the first Playwright attach on a
 # machine may download browser binaries. While that marker is absent, give the
 # capture subprocess enough headroom to finish the download instead of killing it
@@ -285,6 +294,35 @@ class RunnerState:
             LOG.info("Field docs runner using existing Field server on port %s", self.backdoor_port)
             return
 
+        last_error: str | None = None
+        for attempt in range(1, SERVER_START_ATTEMPTS + 1):
+            outcome = self._start_shared_field_server_once(attempt=attempt)
+            if outcome is None:
+                return
+            last_error = outcome
+            # Tear down whatever partially started and let the port drain before retrying;
+            # a lingering half-up JVM or a socket in TIME_WAIT poisons the next attempt.
+            self._kill_shared_field_process()
+            if attempt < SERVER_START_ATTEMPTS:
+                LOG.warning(
+                    "Field docs runner shared Field server start attempt %s/%s failed (%s); retrying",
+                    attempt,
+                    SERVER_START_ATTEMPTS,
+                    last_error,
+                )
+                time.sleep(SERVER_START_RETRY_BACKOFF_SEC)
+
+        raise RuntimeError(
+            f"Field docs runner could not start shared Field server on port {self.backdoor_port} "
+            f"after {SERVER_START_ATTEMPTS} attempt(s): {last_error}. See {self.shared_log_path}"
+        )
+
+    def _start_shared_field_server_once(self, *, attempt: int) -> str | None:
+        """Start one shared Field server and wait for health.
+
+        Returns None on success; otherwise a short reason string describing why the
+        attempt failed (so the caller can retry or surface it).
+        """
         gradle_wrapper = "gradlew.bat" if os.name == "nt" else "./gradlew"
         cmd = [str(self.repo_root / gradle_wrapper), "runJvm"]
         workspace = os.environ.get(RUNNER_WORKSPACE_ENV)
@@ -307,30 +345,63 @@ class RunnerState:
         else:
             popen_kwargs["start_new_session"] = True
 
-        LOG.info("Field docs runner starting shared Field server on port %s", self.backdoor_port)
+        LOG.info(
+            "Field docs runner starting shared Field server on port %s (attempt %s/%s)",
+            self.backdoor_port,
+            attempt,
+            SERVER_START_ATTEMPTS,
+        )
         self._shared_field_process = subprocess.Popen(cmd, **popen_kwargs)
         self._shared_field_started_by_runner = True
         self.server_starts += 1
 
-        deadline = time.monotonic() + 120.0
+        deadline = time.monotonic() + SERVER_START_DEADLINE_SEC
         while time.monotonic() < deadline:
             process = self._shared_field_process
             if process is None:
-                break
+                return "start process handle was cleared"
             if process.poll() is not None:
-                raise RuntimeError(
-                    "Field docs runner could not start shared Field server; "
-                    f"process exited with code {process.returncode}. See {self.shared_log_path}"
-                )
+                return f"process exited with code {process.returncode}"
             if self._http_health_ok(self.backdoor_port):
                 LOG.info("Field docs runner shared Field server ready on port %s", self.backdoor_port)
-                return
+                return None
             time.sleep(0.5)
 
-        raise RuntimeError(
-            f"Field docs runner timed out waiting for shared Field server on port {self.backdoor_port}. "
-            f"See {self.shared_log_path}"
-        )
+        return f"timed out after {SERVER_START_DEADLINE_SEC:.0f}s waiting for health"
+
+    def _kill_shared_field_process(self) -> None:
+        """Best-effort teardown of the current shared Field process (for start retries).
+
+        Unlike `_stop_shared_field_server`, this does not require a graceful backdoor
+        shutdown or assert the port is released -- it just makes sure the process group
+        we launched is gone so the next start attempt begins from a clean slate.
+        """
+        process = self._shared_field_process
+        self._shared_field_process = None
+        if process is None:
+            return
+        if process.poll() is None:
+            try:
+                if os.name == "nt":
+                    process.terminate()
+                else:
+                    os.killpg(process.pid, signal.SIGTERM)
+            except (ProcessLookupError, OSError):
+                pass
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                try:
+                    if os.name == "nt":
+                        process.kill()
+                    else:
+                        os.killpg(process.pid, signal.SIGKILL)
+                except (ProcessLookupError, OSError):
+                    pass
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    pass
 
     def _ensure_runner_owned_field_server(self, *, reason: str) -> None:
         if self._shared_field_started_by_runner and self._http_health_ok(self.backdoor_port):
@@ -1349,9 +1420,23 @@ class RunnerState:
         self.screenshots_run += 1
         self.save()
         if options.graphics_context:
-            self._restart_shared_field_server(
-                reason=f"completed graphics-context capture for {page_path.name} -> {screenshot_path}"
-            )
+            # Restart to leave a fresh server for the NEXT graphics-context capture --
+            # this is leave-it-clean cleanup, not correctness-critical for the capture we
+            # just finished: it already succeeded and its asset is on disk. The next
+            # graphics-context capture's leading `_ensure_runner_owned_field_server`
+            # re-establishes the server if this restart leaves it down, and the final
+            # capture of a run has no successor to serve. So a slow/failed restart here
+            # must never abort the build (which would discard every capture already made).
+            try:
+                self._restart_shared_field_server(
+                    reason=f"completed graphics-context capture for {page_path.name} -> {screenshot_path}"
+                )
+            except RuntimeError as exc:
+                LOG.warning(
+                    "Field docs runner post-capture server restart failed (non-fatal; "
+                    "next graphics-context capture will re-establish the server): %s",
+                    exc,
+                )
 
 
 STATE: RunnerState | None = None
@@ -2340,7 +2425,14 @@ def deterministic_execution_error(
     """
     if completed.returncode == 0:
         return None
-    error = extract_backdoor_execution_error(completed.stdout)
+    # Only a *diagnosed* failure is deterministic: an error output/notify event, or a real
+    # command error message — proof the box's code is broken, where retrying cannot help. A
+    # bare per-command timeout (server too slow to `new-box` under load) or an opaque
+    # "command failed" with no diagnostic (e.g. a transient `macro run graphics_renderer_launch`
+    # hiccup after many GPU server restarts — the same launch succeeds dozens of times around
+    # it) is an infrastructure hiccup a server restart + retry can recover from, exactly like
+    # the outer subprocess-timeout path. Require a diagnostic so those fall through to retry.
+    error = extract_backdoor_execution_error(completed.stdout, require_diagnostic=True)
     if error is None:
         return None
     return RuntimeError(
@@ -2350,7 +2442,15 @@ def deterministic_execution_error(
     )
 
 
-def extract_backdoor_execution_error(stdout: str) -> str | None:
+def extract_backdoor_execution_error(stdout: str, *, require_diagnostic: bool = False) -> str | None:
+    """Summarize execution problems found in backdoor stdout, or None if clean.
+
+    With `require_diagnostic=True`, only *diagnosed* problems count -- a real command
+    error message (`data.error`) or an error output/notify event. Bare timeouts and bare
+    "command failed" results (no diagnostic) are excluded, so callers deciding whether a
+    failure is deterministic (non-retryable) don't treat transient infrastructure hiccups
+    as broken examples. The default (False) reports every problem, including bare ones.
+    """
     results = parse_backdoor_results(stdout)
     if not results:
         return None
@@ -2390,7 +2490,8 @@ def extract_backdoor_execution_error(stdout: str) -> str | None:
             and "--best-effort" in command
             and bool(data.get("bestEffort"))
         )
-        if result.get("timedOut") and not best_effort_timeout:
+        timed_out = bool(result.get("timedOut")) and not best_effort_timeout
+        if timed_out and not require_diagnostic:
             problems.append(f"{command}: timed out")
         if not bool(result.get("ok", False)):
             error_text = None
@@ -2398,7 +2499,14 @@ def extract_backdoor_execution_error(stdout: str) -> str | None:
                 raw_error = data.get("error")
                 if raw_error is not None:
                     error_text = str(raw_error)
-            problems.append(f"{command}: {error_text or 'command failed'}")
+            if error_text:
+                # A real command error message is a genuine (diagnosed) failure.
+                problems.append(f"{command}: {error_text}")
+            elif not require_diagnostic:
+                # A bare "command failed" with no diagnostic (opaque or timeout-only) is not
+                # proof of a broken example; exclude it when a diagnostic is required so a
+                # transient hiccup isn't misread as a deterministic execution error.
+                problems.append(f"{command}: command failed")
 
         events = result.get("events")
         if not isinstance(events, list):
