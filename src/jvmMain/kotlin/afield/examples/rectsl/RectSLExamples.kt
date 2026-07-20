@@ -118,6 +118,7 @@ object RectSLExamples {
         checkFaceTravelHeading()
         checkLifeWindows()
         checkSplit()
+        checkRecursiveSplit()
         checkArrayGenerators()
         checkGalleryWorkspace()
         checkCheatsheetCoverage()
@@ -237,6 +238,47 @@ object RectSLExamples {
         check(atSplit.all { Math.hypot(it.center.x, it.center.y) < 1e-9 }) { "shards must start at the split point" }
         check(shards(4.0).all { Math.hypot(it.center.x, it.center.y) > 1.0 }) { "shards should fly outward after the split" }
         println("rectsl split check: shell -> 4 shards born at split point, flying outward")
+    }
+
+    /**
+     * A nested `split` must compose: a grand-shard is born at `t1 + t2` (its split time
+     * adds onto its parent's) and starts exactly on its parent shard's split-point. Here
+     * the seed splits at t=1 into a shard flying +x; that shard splits again at local t=1
+     * (global t=2) into a grand-shard flying +y. At t=1 only the shard is alive at (0,0);
+     * at t=2 the shard has died and the grand-shard is born at (1,0) — where the shard was.
+     */
+    private fun checkRecursiveSplit() {
+        val src = """
+            #rectsl
+            wall 10 10 abstract
+            duration 8
+            fps 30
+            "seed" rect
+              0.4 square
+              0xffffff solid fill
+              1 1 '(
+                '( 0=0  4=4 ) linear x
+                1 1 '(
+                  '( 0=0  4=4 ) linear y
+                ) split
+              ) split
+            ;
+        """.trimIndent()
+        val r = RectAnimationOracle.compile(src)
+        check(r.ok && r.programOrNull != null) { "recursive split failed:\n" + r.diagnostics.joinToString("\n") }
+        val p = r.programOrNull!!
+        fun near(a: Double, b: Double) = Math.abs(a - b) < 1e-9
+        fun visibleNonSeed(t: Double) = p.sample(t).rects.filter { it.id != "seed" && it.alpha > 0.5 }
+        check(p.sample(1.0).rects.size == 3) { "recursive split should make seed + shard + grand = 3 rects" }
+        val atSplit1 = visibleNonSeed(1.0)
+        check(atSplit1.size == 1 && near(atSplit1[0].center.x, 0.0) && near(atSplit1[0].center.y, 0.0)) {
+            "at t=1 exactly the shard should be alive at (0,0), got ${atSplit1.map { it.center }}"
+        }
+        val atSplit2 = visibleNonSeed(2.0)
+        check(atSplit2.size == 1 && near(atSplit2[0].center.x, 1.0) && near(atSplit2[0].center.y, 0.0)) {
+            "at t=2 exactly the grand-shard should be born at (1,0), got ${atSplit2.map { it.center }}"
+        }
+        println("rectsl recursive-split check: grand-shard born at t1+t2 on the parent split point")
     }
 
     /**
