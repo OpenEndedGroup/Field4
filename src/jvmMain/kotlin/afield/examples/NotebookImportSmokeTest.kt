@@ -85,12 +85,14 @@ object NotebookImportSmokeTest {
             require(markdown !in pythonRoot.children) { "Markdown cell must not be a python child" }
             require(root in markdown.parents) { "Markdown cell should remain a document-root box" }
 
-            // Code cells: children of the python root, detached from the document root.
+            // Code cells: children of the python root AND still children of the document
+            // root (applyRuntimeToggle keeps a box in-language while it has any
+            // language-root parent, so notebook cells no longer detach from the root).
             listOf(code1, code2).forEach { cell ->
                 require(cell in pythonRoot.children) { "Code cell must be a child of the python root" }
                 require(pythonRoot in cell.parents) { "Code cell must list the python root as parent" }
-                require(root !in cell.parents) { "Code cell must be detached from the document root" }
-                require(cell !in root.children) { "Code cell must not remain in the document root's children" }
+                require(root in cell.parents) { "Code cell should remain a child of the document root" }
+                require(cell in root.children) { "Code cell should remain in the document root's children" }
                 require(cell.name.isBlank()) { "Cell boxes must be left unnamed for AI naming, got '${cell.name}'" }
             }
             require(code1.code == "import numpy as np\nx = np.arange(5)") { "code1 body wrong: '${code1.code}'" }

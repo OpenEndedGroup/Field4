@@ -264,11 +264,11 @@ fun importNotebookCells(
 
         if (type == "code") {
             cellBox.setPropertyRaw("code", source, doResync = false)
-            // Reparent under the python root: connect first, then drop the default
-            // document-root edge so the root's own toggle pass can't flip the cell
-            // back to Kotlin (applyRuntimeToggle detaches Python from non-root children).
+            // Connect under the python root so applyRuntimeToggle turns the cell into a
+            // Python cell. The cell stays a child of the document root too — the toggle
+            // now keeps a box in-language while it has any language-root parent, so no
+            // need to detach it from the root (see applyRuntimeToggle).
             pythonRoot.connect(cellBox)
-            info.root.disconnect(cellBox)
             val height = cellHeight(source, NOTEBOOK_CODE_PADDING, maxHeight = 560.0)
             cellBox.frame = Rect(anchorX, cursorY, NOTEBOOK_COLUMN_WIDTH, height)
             cursorY += height + NOTEBOOK_VERTICAL_GAP
