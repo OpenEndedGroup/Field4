@@ -33,6 +33,8 @@ import kotlin.math.atan2
 import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.floor
+import kotlin.math.hypot
+import kotlin.math.log10
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
@@ -1230,6 +1232,19 @@ class RectLangVm(
     private val loopStack = ArrayDeque<LoopFrame>()
     private var tokens: List<Token> = emptyList()
     private var pc: Int = 0
+
+    // --- Plotting layer (rectsl-plot-axes) --------------------------------------
+    // A shared data→world coordinate frame so several series overlay in one domain,
+    // with axes/ticks/labels/legends. All fields default to null/0, so they are
+    // invisible to the classic chart words (`bars`/`scatter`/`heat`), which are left
+    // byte-identical — a hard compatibility requirement. See [plotFrame], the
+    // `frame`/`margins`/`domain` words, and `axes`/`line`/`area`/`points`/`colorbar`.
+    private var plotXDomain: Pair<Double, Double>? = null
+    private var plotYDomain: Pair<Double, Double>? = null
+    private var plotMarginL: Double = 0.0
+    private var plotMarginR: Double = 0.0
+    private var plotMarginB: Double = 0.0
+    private var plotMarginT: Double = 0.0
 
     init {
         installCoreWords()
@@ -2479,6 +2494,38 @@ class RectLangVm(
             }
             vm.push(VSelection(refs))
         }
+
+        // --- Plotting layer: shared domain + axes + legend + domain-aware series -----
+        // Everything below is a PURE RectSL builder (rects only, no renderer changes),
+        // reusing createRect/PaintSpec/Colormaps exactly like the chart words above. The
+        // classic bars/heat/scatter words are deliberately left untouched, so existing
+        // programs — which never set a domain or margins — are byte-identical. A shared
+        // data→world frame lets several series overlay in one coordinate system: the
+        // first series (or an explicit `domain`) fixes the domain, later series + `axes`
+        // + `colorbar` reuse it. There is no text primitive in RectSL, so numeric tick
+        // labels are drawn with a 3x5 dot-matrix numeral font built from rects.
+        word("margins") { vm ->
+            val t = vm.popNum(); val b = vm.popNum(); val r = vm.popNum(); val l = vm.popNum()
+            vm.setPlotMargins(l, r, b, t)
+        }
+        word("frame") { vm -> vm.applyDefaultFrame() }
+        word("domain") { vm ->
+            val y1 = vm.popNum(); val y0 = vm.popNum(); val x1 = vm.popNum(); val x0 = vm.popNum()
+            vm.setXDomain(x0, x1); vm.setYDomain(y0, y1)
+        }
+        word("xdomain") { vm ->
+            val x1 = vm.popNum(); val x0 = vm.popNum(); vm.setXDomain(x0, x1)
+        }
+        word("ydomain") { vm ->
+            val y1 = vm.popNum(); val y0 = vm.popNum(); vm.setYDomain(y0, y1)
+        }
+        word("axes") { vm -> vm.drawAxes() }
+        word("line") { vm -> vm.lineSeries() }
+        word("plot") { vm -> vm.lineSeries() }
+        word("area") { vm -> vm.areaSeries() }
+        word("points") { vm -> vm.pointsSeries() }
+        word("colorbar") { vm -> vm.drawColorbar() }
+        word("legend") { vm -> vm.drawLegend() }
     }
 
     /** Grid heatmap: `data cols rows name heat` → row-major cells (row 0 at top). */
@@ -2506,6 +2553,320 @@ class RectLangVm(
                 refs += NodeRef.Rect(rect.id)
                 builder().endScope()
             }
+        }
+        push(VSelection(refs))
+    }
+
+    // ── Plotting layer helpers ───────────────────────────────────────────────────
+    // A shared data→world frame + axes/ticks/labels/legends, all built from rects.
+
+    private var plotRectSeq = 0
+
+    /** World-space rectangle of the plotting area; equals the whole wall when no
+     *  margins are set (wall is centred at origin, +y up). */
+    private fun plotFrame(): PlotFrame {
+        val wall = builder().wall
+        return PlotFrame(
+            left = -wall.width / 2.0 + plotMarginL * wall.width,
+            right = wall.width / 2.0 - plotMarginR * wall.width,
+            bottom = -wall.height / 2.0 + plotMarginB * wall.height,
+            top = wall.height / 2.0 - plotMarginT * wall.height
+        )
+    }
+
+    private fun safeSpan(lo: Double, hi: Double): Pair<Double, Double> {
+        if (!lo.isFinite() || !hi.isFinite()) return 0.0 to 1.0
+        if (hi - lo <= 1e-9) { val c = (lo + hi) / 2.0; return (c - 0.5) to (c + 0.5) }
+        return lo to hi
+    }
+
+    private fun setXDomain(x0: Double, x1: Double) { plotXDomain = safeSpan(min(x0, x1), max(x0, x1)) }
+    private fun setYDomain(y0: Double, y1: Double) { plotYDomain = safeSpan(min(y0, y1), max(y0, y1)) }
+
+    /** Resolve the x domain, lazily adopting [fallback] (a series' own extent) so the
+     *  first plotted series fixes the shared domain and later series + `axes` reuse it. */
+    private fun resolveXDomain(fallback: Pair<Double, Double>): Pair<Double, Double> =
+        plotXDomain ?: safeSpan(fallback.first, fallback.second).also { plotXDomain = it }
+
+    private fun resolveYDomain(fallback: Pair<Double, Double>): Pair<Double, Double> =
+        plotYDomain ?: safeSpan(fallback.first, fallback.second).also { plotYDomain = it }
+
+    private fun setPlotMargins(l: Double, r: Double, b: Double, t: Double) {
+        plotMarginL = l.coerceIn(0.0, 0.45); plotMarginR = r.coerceIn(0.0, 0.45)
+        plotMarginB = b.coerceIn(0.0, 0.45); plotMarginT = t.coerceIn(0.0, 0.45)
+    }
+
+    /** `frame` — sensible default margins (room for axis labels left/bottom, a colorbar
+     *  on the right), applied only when none are set so an explicit `margins` wins. */
+    private fun applyDefaultFrame() {
+        if (plotMarginL == 0.0 && plotMarginR == 0.0 && plotMarginB == 0.0 && plotMarginT == 0.0) {
+            plotMarginL = 0.12; plotMarginR = 0.10; plotMarginB = 0.12; plotMarginT = 0.06
+        }
+    }
+
+    private fun minMax(v: List<Double>): Pair<Double, Double> =
+        if (v.isEmpty()) 0.0 to 1.0 else (v.min() to v.max())
+
+    /** One filled rect in the plot; records its ref and closes the builder scope. */
+    private fun plotRect(
+        idPrefix: String, cx: Double, cy: Double, w: Double, h: Double,
+        color: Color4, refs: MutableList<NodeRef>, rotation: Double = 0.0
+    ) {
+        if (w <= 0.0 || h <= 0.0 || !cx.isFinite() || !cy.isFinite()) return
+        val rect = builder().createRect("$idPrefix-${plotRectSeq++}")
+        builder().setX(constantTrack(cx))
+        builder().setY(constantTrack(cy))
+        builder().setW(constantTrack(w))
+        builder().setH(constantTrack(h))
+        if (rotation != 0.0) builder().setRotation(constantTrack(rotation))
+        builder().setFill(constantPaintTrack(PaintSpec.Solid(color)))
+        refs.add(NodeRef.Rect(rect.id))
+        builder().endScope()
+    }
+
+    // Heckbert's "nice numbers" tick algorithm — a compact, standard choice of round
+    // tick values covering [lo, hi] with about `target` ticks.
+    private fun niceNum(x: Double, round: Boolean): Double {
+        if (x <= 0.0) return 0.0
+        val exp = floor(log10(x))
+        val f = x / 10.0.pow(exp)
+        val nf = if (round) {
+            when { f < 1.5 -> 1.0; f < 3.0 -> 2.0; f < 7.0 -> 5.0; else -> 10.0 }
+        } else {
+            when { f <= 1.0 -> 1.0; f <= 2.0 -> 2.0; f <= 5.0 -> 5.0; else -> 10.0 }
+        }
+        return nf * 10.0.pow(exp)
+    }
+
+    private fun niceTicks(lo: Double, hi: Double, target: Int = 5): List<Double> {
+        if (!lo.isFinite() || !hi.isFinite() || hi <= lo) return listOf(lo)
+        val step = niceNum(niceNum(hi - lo, false) / (target - 1).coerceAtLeast(1), true)
+        if (step <= 0.0 || !step.isFinite()) return listOf(lo, hi)
+        val start = ceil(lo / step - 1e-9) * step
+        val out = ArrayList<Double>()
+        var v = start
+        var guard = 0
+        while (v <= hi + step * 1e-6 && guard < 10_000) {
+            out.add(round(v / step) * step)
+            v += step
+            guard++
+        }
+        return if (out.isEmpty()) listOf(lo, hi) else out
+    }
+
+    /** Format a tick value with just enough decimals for its step, trailing zeros trimmed. */
+    private fun formatTick(v: Double, step: Double): String {
+        val absStep = abs(step)
+        val decimals = if (absStep <= 0.0 || !absStep.isFinite()) 0
+        else max(0, -floor(log10(absStep)).toInt()).coerceAtMost(4)
+        var s = String.format("%.${decimals}f", v)
+        if (decimals > 0 && '.' in s) s = s.trimEnd('0').trimEnd('.')
+        if (s == "-0") s = "0"
+        return s
+    }
+
+    private fun numeralWidth(text: String, cell: Double): Double =
+        if (text.isEmpty()) 0.0 else text.length * 4.0 * cell - cell
+
+    /** Draw [text] (digits, `-`, `.`) centred at ([cx],[cy]) as a 3×5 dot-matrix of
+     *  rects — RectSL has no text primitive, so numerals are little rect grids. */
+    private fun drawNumeral(text: String, cx: Double, cy: Double, cell: Double, color: Color4, refs: MutableList<NodeRef>) {
+        if (cell <= 0.0 || text.isEmpty()) return
+        val advance = 4.0 * cell
+        val totalW = numeralWidth(text, cell)
+        val dot = cell * 0.9
+        var glyphCx = cx - totalW / 2.0 + 1.5 * cell
+        for (ch in text) {
+            val pattern = PLOT_NUMERAL_GLYPHS[ch] ?: PLOT_NUMERAL_GLYPHS[' ']!!
+            for (row in 0 until 5) {
+                for (col in 0 until 3) {
+                    if (pattern[row][col] == '#') {
+                        plotRect("glyph", glyphCx + (col - 1) * cell, cy + (2 - row) * cell, dot, dot, color, refs)
+                    }
+                }
+            }
+            glyphCx += advance
+        }
+    }
+
+    /** `axes` — x/y axis rules + nice-number ticks + numeric labels (rect numerals in
+     *  the margins) + faint gridlines. Reads the shared domain (defaults to 0..1) and
+     *  the frame margins. Draw it BEFORE the series so the series paint on top. */
+    private fun drawAxes() {
+        val wall = builder().wall
+        val frame = plotFrame()
+        val (x0, x1) = plotXDomain ?: (0.0 to 1.0)
+        val (y0, y1) = plotYDomain ?: (0.0 to 1.0)
+        val refs = ArrayList<NodeRef>()
+        val axisColor = Color4(0.86, 0.87, 0.92)
+        val tickColor = Color4(0.66, 0.67, 0.72)
+        val gridColor = Color4(0.80, 0.82, 0.90, 0.10)
+        val labelColor = Color4(0.80, 0.81, 0.86)
+        val minDim = min(wall.width, wall.height)
+        val rule = minDim * 0.005
+        val tickLen = minDim * 0.018
+        fun mx(v: Double) = frame.left + (v - x0) / (x1 - x0) * frame.width
+        fun my(v: Double) = frame.bottom + (v - y0) / (y1 - y0) * frame.height
+        val xt = niceTicks(x0, x1)
+        val yt = niceTicks(y0, y1)
+        val xStep = if (xt.size >= 2) xt[1] - xt[0] else (x1 - x0)
+        val yStep = if (yt.size >= 2) yt[1] - yt[0] else (y1 - y0)
+        val labelCell = run {
+            val avail = listOf(plotMarginB * wall.height, plotMarginL * wall.width).filter { it > 1e-6 }
+            if (avail.isEmpty()) 0.0 else (avail.min() * 0.12).coerceAtMost(minDim * 0.028)
+        }
+        // faint gridlines first, so series drawn afterwards sit on top of them.
+        xt.forEach { t -> plotRect("grid-v", mx(t), (frame.bottom + frame.top) / 2.0, rule * 0.6, frame.height, gridColor, refs) }
+        yt.forEach { t -> plotRect("grid-h", (frame.left + frame.right) / 2.0, my(t), frame.width, rule * 0.6, gridColor, refs) }
+        // axis rules
+        plotRect("axis-x", (frame.left + frame.right) / 2.0, frame.bottom, frame.width + rule, rule, axisColor, refs)
+        plotRect("axis-y", frame.left, (frame.bottom + frame.top) / 2.0, rule, frame.height + rule, axisColor, refs)
+        // x ticks + labels below the axis
+        xt.forEach { t ->
+            val gx = mx(t)
+            plotRect("tick-x", gx, frame.bottom - tickLen / 2.0, rule, tickLen, tickColor, refs)
+            if (labelCell > 1e-4) {
+                drawNumeral(formatTick(t, xStep), gx, frame.bottom - tickLen - 0.6 * labelCell - 2.5 * labelCell, labelCell, labelColor, refs)
+            }
+        }
+        // y ticks + right-aligned labels left of the axis
+        yt.forEach { t ->
+            val gy = my(t)
+            plotRect("tick-y", frame.left - tickLen / 2.0, gy, tickLen, rule, tickColor, refs)
+            if (labelCell > 1e-4) {
+                val txt = formatTick(t, yStep)
+                val cx = frame.left - tickLen - 0.6 * labelCell - numeralWidth(txt, labelCell) / 2.0
+                drawNumeral(txt, cx, gy, labelCell, labelColor, refs)
+            }
+        }
+        push(VSelection(refs))
+    }
+
+    /** `line`/`plot` — `xdata ydata name -- selection`. Polyline as rotated thin rects
+     *  through the shared domain, coloured along colormap `name` by point order. */
+    private fun lineSeries() {
+        val name = popString()
+        val ydata = popData("line"); val xdata = popData("line")
+        val stops = Colormaps.stops(name)
+        val n = min(xdata.size, ydata.size)
+        if (n < 2) throw RectLangException("line: need at least 2 (x, y) points")
+        val xv = xdata.take(n); val yv = ydata.take(n)
+        val (x0, x1) = resolveXDomain(minMax(xv))
+        val (y0, y1) = resolveYDomain(minMax(yv))
+        val frame = plotFrame()
+        val thickness = min(frame.width, frame.height) * 0.012
+        val refs = ArrayList<NodeRef>()
+        fun mx(v: Double) = frame.left + (v - x0) / (x1 - x0) * frame.width
+        fun my(v: Double) = frame.bottom + (v - y0) / (y1 - y0) * frame.height
+        for (i in 0 until n - 1) {
+            val ax = mx(xv[i]); val ay = my(yv[i]); val bx = mx(xv[i + 1]); val by = my(yv[i + 1])
+            val dx = bx - ax; val dy = by - ay
+            val len = hypot(dx, dy)
+            val ang = atan2(dy, dx)
+            val t = if (n <= 2) 0.5 else i.toDouble() / (n - 2)
+            plotRect("line", (ax + bx) / 2.0, (ay + by) / 2.0, len + thickness, thickness, Colormaps.sampleStops(stops, t), refs, ang)
+        }
+        push(VSelection(refs))
+    }
+
+    /** `area` — `xdata ydata name -- selection`. Column-filled area from the y=0 baseline
+     *  to each sample, honouring the shared domain; colour follows normalized y. */
+    private fun areaSeries() {
+        val name = popString()
+        val ydata = popData("area"); val xdata = popData("area")
+        val stops = Colormaps.stops(name)
+        val n = min(xdata.size, ydata.size)
+        if (n < 1) throw RectLangException("area: empty data")
+        val xv = xdata.take(n); val yv = ydata.take(n)
+        val (x0, x1) = resolveXDomain(minMax(xv))
+        val ext = minMax(yv)
+        val (y0, y1) = resolveYDomain(min(0.0, ext.first) to max(0.0, ext.second))
+        val frame = plotFrame()
+        fun mx(v: Double) = frame.left + (v - x0) / (x1 - x0) * frame.width
+        fun my(v: Double) = frame.bottom + (v - y0) / (y1 - y0) * frame.height
+        val base = my(0.0.coerceIn(min(y0, y1), max(y0, y1)))
+        val slot = frame.width / n
+        val refs = ArrayList<NodeRef>()
+        for (i in 0 until n) {
+            val top = my(yv[i])
+            val h = abs(top - base)
+            val t = if (y1 == y0) 0.5 else ((yv[i] - y0) / (y1 - y0)).coerceIn(0.0, 1.0)
+            plotRect("area", mx(xv[i]), (top + base) / 2.0, slot * 0.96, h, Colormaps.sampleStops(stops, t), refs)
+        }
+        push(VSelection(refs))
+    }
+
+    /** `points` — `xdata ydata name -- selection`. Domain-aware scatter (a shared-domain
+     *  companion to the classic `scatter`); colour follows normalized y. */
+    private fun pointsSeries() {
+        val name = popString()
+        val ydata = popData("points"); val xdata = popData("points")
+        val stops = Colormaps.stops(name)
+        val n = min(xdata.size, ydata.size)
+        val xv = xdata.take(n); val yv = ydata.take(n)
+        val (x0, x1) = resolveXDomain(minMax(xv))
+        val (y0, y1) = resolveYDomain(minMax(yv))
+        val frame = plotFrame()
+        val dot = min(frame.width, frame.height) * 0.028
+        val refs = ArrayList<NodeRef>()
+        fun mx(v: Double) = frame.left + (v - x0) / (x1 - x0) * frame.width
+        fun my(v: Double) = frame.bottom + (v - y0) / (y1 - y0) * frame.height
+        for (i in 0 until n) {
+            val t = if (y1 == y0) 0.5 else ((yv[i] - y0) / (y1 - y0)).coerceIn(0.0, 1.0)
+            plotRect("point", mx(xv[i]), my(yv[i]), dot, dot, Colormaps.sampleStops(stops, t), refs)
+        }
+        push(VSelection(refs))
+    }
+
+    /** `colorbar` — `name -- selection`. A continuous colour ramp for `name` in the right
+     *  margin, with min/mid/max numerals read from the y domain (drawn when there is room). */
+    private fun drawColorbar() {
+        val name = popString()
+        val stops = Colormaps.stops(name)
+        val wall = builder().wall
+        val frame = plotFrame()
+        val minDim = min(wall.width, wall.height)
+        val rightMargin = plotMarginR * wall.width
+        val barW = if (rightMargin > 1e-6) rightMargin * 0.30 else minDim * 0.03
+        val barX = if (rightMargin > 1e-6) frame.right + rightMargin * 0.32 else frame.right - barW
+        val steps = 40
+        val segH = frame.height / steps
+        val refs = ArrayList<NodeRef>()
+        for (i in 0 until steps) {
+            val t = i.toDouble() / (steps - 1)
+            plotRect("cbar", barX, frame.bottom + segH * (i + 0.5), barW, segH * 1.04, Colormaps.sampleStops(stops, t), refs)
+        }
+        val (y0, y1) = plotYDomain ?: (0.0 to 1.0)
+        val labelCell = ((rightMargin - barW) * 0.16).coerceAtMost(minDim * 0.024)
+        if (labelCell > 1e-4) {
+            val yStep = niceTicks(y0, y1).let { if (it.size >= 2) it[1] - it[0] else (y1 - y0) }
+            val labelColor = Color4(0.80, 0.81, 0.86)
+            listOf(0.0 to y0, 0.5 to (y0 + y1) / 2.0, 1.0 to y1).forEach { (frac, v) ->
+                val txt = formatTick(v, yStep)
+                val cx = barX + barW / 2.0 + labelCell + numeralWidth(txt, labelCell) / 2.0
+                drawNumeral(txt, cx, frame.bottom + frac * frame.height, labelCell, labelColor, refs)
+            }
+        }
+        push(VSelection(refs))
+    }
+
+    /** `legend` — `count name -- selection`. A key of `count` discrete colour swatches
+     *  sampling colormap `name`, stacked in the top-right of the plot area. */
+    private fun drawLegend() {
+        val name = popString()
+        val count = popNum().toInt().coerceAtLeast(1)
+        val stops = Colormaps.stops(name)
+        val wall = builder().wall
+        val frame = plotFrame()
+        val minDim = min(wall.width, wall.height)
+        val sw = minDim * 0.05
+        val gap = sw * 0.35
+        val x = frame.right - sw * 0.7
+        val topY = frame.top - sw * 0.7
+        val refs = ArrayList<NodeRef>()
+        for (i in 0 until count) {
+            val t = if (count == 1) 0.5 else i.toDouble() / (count - 1)
+            plotRect("legend", x, topY - i * (sw + gap), sw, sw, Colormaps.sampleStops(stops, t), refs)
         }
         push(VSelection(refs))
     }
@@ -2552,6 +2913,33 @@ sealed interface NodeRef {
     data class Rect(override val id: String) : NodeRef
     data class Group(override val id: String) : NodeRef
 }
+
+/** World-space rectangle of a RectSL plotting area (wall centred at origin, +y up). */
+internal data class PlotFrame(val left: Double, val right: Double, val bottom: Double, val top: Double) {
+    val width: Double get() = right - left
+    val height: Double get() = top - bottom
+}
+
+/**
+ * A 3×5 dot-matrix font for the numerals RectSL's `axes`/`colorbar` tick labels need.
+ * RectSL has no text primitive (everything is a rect), so a label is drawn as a little
+ * grid of rects — this is a pure builder, not a renderer feature. Rows run top→bottom.
+ */
+internal val PLOT_NUMERAL_GLYPHS: Map<Char, List<String>> = mapOf(
+    '0' to listOf("###", "#.#", "#.#", "#.#", "###"),
+    '1' to listOf(".#.", "##.", ".#.", ".#.", "###"),
+    '2' to listOf("###", "..#", "###", "#..", "###"),
+    '3' to listOf("###", "..#", "###", "..#", "###"),
+    '4' to listOf("#.#", "#.#", "###", "..#", "..#"),
+    '5' to listOf("###", "#..", "###", "..#", "###"),
+    '6' to listOf("###", "#..", "###", "#.#", "###"),
+    '7' to listOf("###", "..#", "..#", "..#", "..#"),
+    '8' to listOf("###", "#.#", "###", "#.#", "###"),
+    '9' to listOf("###", "#.#", "###", "..#", "###"),
+    '-' to listOf("...", "...", "###", "...", "..."),
+    '.' to listOf("...", "...", "...", "...", ".#."),
+    ' ' to listOf("...", "...", "...", "...", "...")
+)
 
 private fun NodeRef.toValue(): Value = when (this) {
     is NodeRef.Rect -> VRect(id)
