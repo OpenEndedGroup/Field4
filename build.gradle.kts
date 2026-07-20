@@ -835,6 +835,14 @@ kotlin {
 //                implementation("org.jetbrains.kotlin:kotlin-scripting-jvm:$customKotlinVersion")
                 implementation(files("libs/kotlin-scripting-dependencies-$customKotlinVersion.jar"))
                 implementation(files("libs/kotlin-scripting-dependencies-maven-$customKotlinVersion.jar"))
+
+                // EXPERIMENT: Wither compiler plugin (kyay10/wither) wired into the K2 REPL.
+                // - annotations jar carries io.github.kyay10.wither.with/context (script-visible via
+                //   dependenciesFromClassloader wholeClasspath)
+                // - plugin jar is located on java.class.path at runtime and passed to the REPL
+                //   compiler via -Xplugin (see KotlinInterface2 init)
+                implementation(files("libs/wither-annotations.jar"))
+                implementation(files("libs/wither-plugin.jar"))
                 implementation("org.apache.maven:maven-core:3.8.8")
                 implementation("org.apache.maven.resolver:maven-resolver-api:1.9.22")
                 implementation("org.apache.maven.resolver:maven-resolver-connector-basic:1.9.22")

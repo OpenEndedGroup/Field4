@@ -167,6 +167,22 @@ class KotlinInterface2(
             }
         }
 
+        // EXPERIMENT: locate the Wither compiler-plugin jar on the classpath so we can hand it
+        // to the REPL compiler via -Xplugin. Loading it registers Wither's FIR receiver-injection
+        // + IR extensions into the CompilerConfiguration at createCompilationState time — the same
+        // config that both the compile path and resolveTypesViaFir read registrars back out of.
+        val witherPluginArgs: List<String> =
+            System.getProperty("java.class.path").orEmpty()
+                .split(java.io.File.pathSeparatorChar)
+                .firstOrNull { it.endsWith("wither-plugin.jar") }
+                ?.let { java.io.File(it).absoluteFile }
+                ?.takeIf { it.exists() }
+                ?.let {
+                    lprintln("kotlin", "wither: enabling Wither compiler plugin from ${it.path}")
+                    listOf("-Xplugin=${it.path}")
+                }
+                ?: emptyList<String>().also { lprintln("kotlin", "wither: plugin jar not found on classpath; not enabled") }
+
         compilerConfig = ScriptCompilationConfiguration {
             defaultImports(DependsOn::class, Repository::class, exported::class, rootExported::class, metarootExported::class)
             hostConfiguration.update {
@@ -177,7 +193,7 @@ class KotlinInterface2(
             jvm {
                 jvmTarget.put("24")
                 _languageVersion.put(fieldKotlinLanguageVersion)
-                compilerOptions.put(fieldKotlinJvmCompilerOptions)
+                compilerOptions.put(fieldKotlinJvmCompilerOptions + witherPluginArgs)
 
                 dependenciesFromClassloader(
                     classLoader = classLoader!!, wholeClasspath = true, unpackJarCollections = true
