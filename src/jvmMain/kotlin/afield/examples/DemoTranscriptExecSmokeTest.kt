@@ -77,6 +77,7 @@ object DemoTranscriptExecSmokeTest {
         "recstl_playground",
         "threebox",
         "rectsl_dataviz",
+        "rectsl_plot_axes",
     )
 
     /** Ops that build the box graph without compiling/running any box Kotlin. */
