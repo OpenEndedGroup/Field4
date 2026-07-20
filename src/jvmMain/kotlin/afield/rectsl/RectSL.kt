@@ -2600,7 +2600,7 @@ class RectLangVm(
      *  on the right), applied only when none are set so an explicit `margins` wins. */
     private fun applyDefaultFrame() {
         if (plotMarginL == 0.0 && plotMarginR == 0.0 && plotMarginB == 0.0 && plotMarginT == 0.0) {
-            plotMarginL = 0.12; plotMarginR = 0.10; plotMarginB = 0.12; plotMarginT = 0.06
+            plotMarginL = 0.12; plotMarginR = 0.14; plotMarginB = 0.12; plotMarginT = 0.06
         }
     }
 
@@ -2837,11 +2837,16 @@ class RectLangVm(
             plotRect("cbar", barX, frame.bottom + segH * (i + 0.5), barW, segH * 1.04, Colormaps.sampleStops(stops, t), refs)
         }
         val (y0, y1) = plotYDomain ?: (0.0 to 1.0)
-        val labelCell = ((rightMargin - barW) * 0.16).coerceAtMost(minDim * 0.024)
+        val yStep = niceTicks(y0, y1).let { if (it.size >= 2) it[1] - it[0] else (y1 - y0) }
+        val labels = listOf(0.0 to y0, 0.5 to (y0 + y1) / 2.0, 1.0 to y1)
+        // Auto-size so the widest label fits between the bar and the wall's right edge
+        // (a 3-char "0.5" is much wider than "0"/"1"), rather than clipping it off-wall.
+        val room = wall.width / 2.0 - (barX + barW / 2.0)
+        val widestUnits = labels.maxOf { numeralWidth(formatTick(it.second, yStep), 1.0) }
+        val labelCell = (room / (1.4 + widestUnits)).coerceIn(0.0, minDim * 0.024)
         if (labelCell > 1e-4) {
-            val yStep = niceTicks(y0, y1).let { if (it.size >= 2) it[1] - it[0] else (y1 - y0) }
             val labelColor = Color4(0.80, 0.81, 0.86)
-            listOf(0.0 to y0, 0.5 to (y0 + y1) / 2.0, 1.0 to y1).forEach { (frac, v) ->
+            labels.forEach { (frac, v) ->
                 val txt = formatTick(v, yStep)
                 val cx = barX + barW / 2.0 + labelCell + numeralWidth(txt, labelCell) / 2.0
                 drawNumeral(txt, cx, frame.bottom + frac * frame.height, labelCell, labelColor, refs)
