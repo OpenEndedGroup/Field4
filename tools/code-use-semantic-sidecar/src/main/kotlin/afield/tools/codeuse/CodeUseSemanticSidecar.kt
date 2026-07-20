@@ -139,6 +139,41 @@ data class HealthResult(
     val workspaceRoot: String
 )
 
+/** Stage C: /complete request. The live Field runtime (KI2) supplies the box's REPL context. */
+@Serializable
+data class CompletionRequest(
+    val snippet: String,
+    val cursor: Int,
+    /** The box's inherited preamble (`gatherPreambleUpwards`): `prop<>`/`@exported` decls + imports. */
+    val preamble: String = "",
+    /** The box's own `import` lines (added to the default REPL imports). */
+    val imports: List<String> = emptyList(),
+    /** Implicit receiver types in scope (e.g. `afield.Box`), modelled as `with(...)` scopes. */
+    val implicitReceivers: List<String> = emptyList(),
+    /** Field's binary classpath (jars + build/classes) — `System.getProperty("java.class.path")`. */
+    val classpathRoots: List<String> = emptyList(),
+    val limit: Int = 200,
+)
+
+@Serializable
+data class CompletionCandidate(
+    val text: String,
+    val displayText: String,
+    val tail: String,
+    val icon: String,
+    /** Simple + qualified receiver type for dot members — drives server-side KDoc/AI-doc enrichment. */
+    val receiverType: String = "",
+    val receiverQualifiedName: String = "",
+)
+
+@Serializable
+data class CompletionResponse(
+    val success: Boolean,
+    val backend: String = "k2-aa",
+    val message: String = "",
+    val candidates: List<CompletionCandidate> = emptyList(),
+)
+
 private val json = Json {
     encodeDefaults = true
     ignoreUnknownKeys = true
@@ -154,6 +189,25 @@ fun main(args: Array<String>) {
     }
     server.createContext("/health") { exchange ->
         exchange.respondJson(HealthResult(true, "k2-standalone", config.workspaceRoot.absolutePathString()))
+    }
+    val completionAnalyzer = K2CompletionAnalyzer(config)
+    server.createContext("/complete") { exchange ->
+        if (exchange.requestMethod.uppercase() != "POST") {
+            exchange.respondText(405, "POST required")
+            return@createContext
+        }
+        runCatching {
+            val body = exchange.requestBody.use { it.readBytes().toString(StandardCharsets.UTF_8) }
+            completionAnalyzer.complete(json.decodeFromString<CompletionRequest>(body))
+        }.fold(
+            onSuccess = { exchange.respondJson(it) },
+            onFailure = {
+                exchange.respondJson(
+                    CompletionResponse(false, "k2-aa", "completion failed: ${it.message ?: it.javaClass.name}"),
+                    status = 200,
+                )
+            }
+        )
     }
     server.createContext("/analyze") { exchange ->
         if (exchange.requestMethod.uppercase() != "POST") {
@@ -570,6 +624,140 @@ private class K2SidecarAnalyzer(private val config: SidecarConfig) {
         "afield.stdlib.linalg.*",
         "kotlin.math.*"
     )
+}
+
+/**
+ * Stage C: K2 Analysis-API completion over HTTP. Mirrors the proven spike — a standalone AA session
+ * built from Field's BINARY classpath (so receiver/member/extension scopes resolve) + the ASM symbol
+ * index for binary prefix enumeration + [AaCompleter]. One session is cached per classpath root set for
+ * the process lifetime; analysis over it is serialized (the FIR caches aren't concurrency-safe).
+ */
+private class K2CompletionAnalyzer(private val config: SidecarConfig) {
+    private data class Key(val roots: List<String>)
+    private class Cached(
+        @Suppress("unused") val session: StandaloneAnalysisAPISession, // held to keep the project alive
+        val completer: AaCompleter,
+    ) {
+        val lock = ReentrantLock()
+    }
+
+    private val sessions = ConcurrentHashMap<Key, Cached>()
+    private val building = ConcurrentHashMap.newKeySet<Key>()
+    private val buildPool = Executors.newSingleThreadExecutor { task ->
+        Thread(task, "k2-completion-build").apply { isDaemon = true }
+    }
+
+    // Kotlin default (auto) imports + Field's REPL imports — the packages the ASM index must cover.
+    private val defaultImports = listOf(
+        "kotlin.*", "kotlin.collections.*", "kotlin.sequences.*", "kotlin.text.*",
+        "kotlin.io.*", "kotlin.ranges.*", "kotlin.comparisons.*", "kotlin.math.*",
+        "afield.*", "afield.stdlib.*", "afield.stdlib.linalg.*", "afield.graphics.*",
+        "afield.four.*", "afield.four.util.*", "afield.four.synth.*", "afield.four.modules.*",
+    )
+
+    fun complete(req: CompletionRequest): CompletionResponse {
+        if (req.snippet.isBlank()) return CompletionResponse(true, "k2-aa", "empty snippet")
+        val roots = req.classpathRoots.mapNotNull(::pathIfExists).distinct()
+        if (roots.isEmpty()) return CompletionResponse(false, "k2-aa", "no classpathRoots resolved on disk")
+        // Non-blocking: building the AA session for a classpath takes ~1 min. Rather than stall the
+        // completion request (and every keystroke) while it builds, kick the build off in the background
+        // and return an empty result now — the client (AaCompletionClient) treats empty as "fall back to
+        // K1", so the user gets K1 completions during the ~1-min warmup, then AA takes over transparently.
+        val cached = cachedSession(roots)
+            ?: return CompletionResponse(true, "k2-aa", "session building (warming up; using K1 meanwhile)")
+        val result = cached.lock.withLock {
+            cached.completer.complete(
+                snippet = req.snippet,
+                cursor = req.cursor.coerceIn(0, req.snippet.length),
+                preamble = req.preamble,
+                implicitReceivers = req.implicitReceivers,
+                extraImports = req.imports,
+            )
+        }
+        val candidates = result.candidates.take(req.limit.coerceIn(1, 2000)).map { it.toVariant() }
+        return CompletionResponse(true, "k2-aa", result.note, candidates)
+    }
+
+    /** Return the cached session for [roots], or null if it isn't built yet (build kicked off in the
+     *  background, at most once per classpath). Never blocks the calling request on the ~1-min build. */
+    private fun cachedSession(roots: List<Path>): Cached? {
+        val key = Key(roots.map { it.toString() }.sorted())
+        sessions[key]?.let { return it }
+        if (building.add(key)) {
+            buildPool.submit {
+                val t0 = System.currentTimeMillis()
+                System.err.println("[k2-completion] building AA session for ${roots.size} classpath roots … (serving K1 meanwhile)")
+                try {
+                    val built = build(roots)
+                    if (built != null) {
+                        sessions[key] = built
+                        System.err.println("[k2-completion] AA session ready in ${System.currentTimeMillis() - t0}ms (index: ${built.completer.indexSummary})")
+                    } else {
+                        System.err.println("[k2-completion] AA session build returned null (no context file)")
+                    }
+                } catch (t: Throwable) {
+                    System.err.println("[k2-completion] session build failed: ${t.javaClass.simpleName}: ${t.message}")
+                } finally {
+                    building.remove(key) // allow a later request to retry if the build failed
+                }
+            }
+        }
+        return null
+    }
+
+    private fun build(roots: List<Path>): Cached? {
+        // Never disposed: the session lives for the sidecar process (matches K2SidecarAnalyzer).
+        val disposable = Disposer.newDisposable("k2-completion-session")
+        val ctxDir = java.nio.file.Files.createTempDirectory("cmpl-ctx")
+        java.nio.file.Files.writeString(ctxDir.resolve("Ctx.kt"), "package __ctx__\n")
+        val session = buildStandaloneAnalysisAPISession(disposable, unitTestMode = false) {
+            buildKtModuleProvider {
+                platform = JvmPlatforms.defaultJvmPlatform
+                val sdk = buildKtSdkModule {
+                    platform = JvmPlatforms.defaultJvmPlatform
+                    libraryName = "jdk"
+                    addBinaryRootsFromJdkHome(Paths.get(System.getProperty("java.home")), isJre = false)
+                }
+                val libraries = buildKtLibraryModule {
+                    platform = JvmPlatforms.defaultJvmPlatform
+                    libraryName = "field-classpath"
+                    addRegularDependency(sdk)
+                    addBinaryRoots(roots)
+                }
+                addModule(buildKtSourceModule {
+                    platform = JvmPlatforms.defaultJvmPlatform
+                    moduleName = "cmpl-ctx"
+                    addRegularDependency(sdk)
+                    addRegularDependency(libraries)
+                    addSourceRoots(listOf(ctxDir))
+                })
+            }
+        }
+        val contextFile = session.modulesWithFiles.values.asSequence().flatten()
+            .filterIsInstance<KtFile>().firstOrNull()
+            ?: run { Disposer.dispose(disposable); return null }
+        val importedPackages = defaultImports.map { it.removeSuffix(".*") }.toSet()
+        val index = AaSymbolIndex.buildOrLoad(roots, importedPackages, config.scratchRoot.resolve("completion-index"))
+        return Cached(session, AaCompleter(contextFile, index, defaultImports))
+    }
+
+    /** Map an AA candidate to a `SourceCodeCompletionVariant`-shaped row fieldSuggest can rank+render.
+     *  Members carry the receiver type so the server can attach the member's KDoc / AI-draft docs. */
+    private fun AaCandidate.toVariant(): CompletionCandidate {
+        val type = shortenType(returnType ?: "")
+        val recvQual = if (kind == AaCandidate.Kind.MEMBER || kind == AaCandidate.Kind.EXTENSION)
+            (container ?: "").replace('/', '.').substringBefore('<').removeSuffix("?") else ""
+        val recvSimple = recvQual.substringAfterLast('.')
+        return when {
+            icon == "class" -> CompletionCandidate(name, name, shortenType(container ?: ""), "class")
+            kind == AaCandidate.Kind.PARAM -> CompletionCandidate("$name = ", "$name = ", type, "var")
+            icon == "method" -> CompletionCandidate("$name(", "$name${params ?: "(…)"}", type, "method", recvSimple, recvQual)
+            else -> CompletionCandidate(name, name, type, icon, recvSimple, recvQual)
+        }
+    }
+
+    private fun pathIfExists(raw: String): Path? =
+        runCatching { Paths.get(raw).toAbsolutePath().normalize().takeIf { java.nio.file.Files.exists(it) } }.getOrNull()
 }
 
 private fun com.intellij.openapi.vfs.VirtualFile.toPathOrNull(): Path? =

@@ -534,6 +534,30 @@ class KotlinInterface2(
      * language semantics rather than partial handwritten Analysis API coverage.
      */
     override suspend fun complete(s: String, cursor: Int): CompletionResult {
+        // Stage C: when the AA completion backend is selected, generate candidates out-of-process on the
+        // K2 Analysis API (sidecar /complete), supplying the box's inherited preamble + implicit receivers
+        // so completion resolves against the same REPL context K1 sees. Any failure/timeout/absent-sidecar/
+        // empty result falls through to the compiler-grade K1 delegate — K1 stays the safety net.
+        // Every request logs which backend actually served it (channel "completion") so the source of a
+        // given completion is never a mystery.
+        val box = resolveBoxContext()
+        val boxLabel = box?.let { "'${it.name.ifBlank { "Untitled" }}'(${it.id})" } ?: "none"
+        if (KotlinEngineConfig.activeCompletionBackend == KotlinEngineConfig.CompletionBackend.AA) {
+            val completionPreamble = box?.let { normalizePreambleText(gatherPreambleUpwards(it)) }.orEmpty()
+            val receiverTypes = implicitReceivers.map { it.typeName }
+            val startNs = System.nanoTime()
+            val outcome = withContext(Dispatchers.IO) {
+                AaCompletionClient.complete(s, cursor, completionPreamble, receiverTypes)
+            }
+            val ms = (System.nanoTime() - startNs) / 1_000_000
+            if (outcome.served) {
+                lprintln("info,completion", "completion backend=AA box=$boxLabel ${ms}ms (${outcome.detail})")
+                return outcome.result!!
+            }
+            lprintln("info,completion", "completion backend=K1 box=$boxLabel ${ms}ms (AA→K1: ${outcome.detail})")
+        } else {
+            lprintln("info,completion", "completion backend=K1 box=$boxLabel (backend=k1)")
+        }
         return k1CompletionDelegate().complete(s, cursor)
     }
 

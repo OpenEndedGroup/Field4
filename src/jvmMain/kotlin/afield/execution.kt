@@ -32,6 +32,8 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.nio.file.StandardOpenOption
 import java.time.Instant
+import kotlin.reflect.full.memberProperties
+import kotlin.reflect.jvm.javaField
 import kotlin.script.experimental.api.ResultValue
 import kotlin.script.experimental.api.ScriptDiagnostic
 import kotlin.script.experimental.api.SourceCodeCompletionVariant
@@ -459,7 +461,12 @@ private fun runtimeCompletionDocumentationHtml(
 ): String {
     if (isDotCompletion || candidateName.isBlank()) return ""
     if (!completionIconLooksLikeValue(icon)) return ""
-    val info = box.ki.context.vars[candidateName] ?: return ""
+    val info = box.ki.context.vars[candidateName] ?: run {
+        lprintln("info,completion", "runtime-doc: no live value for '$candidateName' " +
+            "(icon=$icon, ${box.ki.context.vars.size} vars: ${box.ki.context.vars.keys.take(12)}) — has the box been run?")
+        return ""
+    }
+    lprintln("debug,completion", "runtime-doc: rendering live value for '$candidateName' (${info.value?.javaClass?.simpleName})")
     return buildRuntimeVariableSymbolContextHtml(
         box = box,
         info = info,
@@ -467,6 +474,69 @@ private fun runtimeCompletionDocumentationHtml(
             .getOrDefault(info.toString(true)),
         locationLabel = "defined in"
     )
+}
+
+/**
+ * For a dot completion `receiver.member` where `receiver` is a bare box context variable with a live
+ * value and `member` is a plain JVM FIELD, read the field's live value and pretty-print it — so `m.insi|`
+ * shows the actual value of `m.inside` while you type. Only public fields are read (via `Class.fields`):
+ * fields have no side effects, so this is safe; Kotlin property getters / methods are deliberately NOT
+ * read (they could do arbitrary work). Bails (returns "") on chained/call receivers or anything unproven.
+ */
+private fun dotMemberRuntimeValueHtml(box: Box, allCode: String, memberStart: Int, member: String): String {
+    if (member.isBlank() || memberStart <= 0 || memberStart > allCode.length) return ""
+    var i = memberStart - 1
+    if (allCode[i] != '.') return ""
+    i-- // step before the '.'
+    if (i >= 0 && allCode[i] == '?') i-- // safe-dot `?.`
+    val end = i + 1
+    while (i >= 0 && (allCode[i].isLetterOrDigit() || allCode[i] == '_')) i--
+    val recvName = allCode.substring(i + 1, end)
+    // Only a *bare* variable receiver — bail on chains/calls (`foo.m.`, `bar().m.`, `arr[0].m.`).
+    if (recvName.isEmpty() || (i >= 0 && allCode[i] in charArrayOf('.', ')', ']', '"', '\''))) return ""
+    val receiverValue = box.ki.context.vars[recvName]?.value ?: run {
+        lprintln("debug,completion", "runtime-field: receiver '$recvName' has no live value " +
+            "(${box.ki.context.vars.size} vars) — has the box been run?")
+        return ""
+    }
+    val read = readBackingFieldValue(receiverValue, member) ?: return ""
+    val declaration = "$member: ${shortenType(read.second)}"
+    val declHtml = "<code>${escapeNotifyHtml(declaration)}</code>" +
+        " <span style='color:#777;'>on <code>${escapeNotifyHtml(recvName)}</code></span>"
+    val disclosure = renderVariableValueDisclosure(read.first)
+    // Match the `m` rendering: complex values collapse into a <details> disclosure; simple values (Number,
+    // String, …) show inline as a plain value.
+    return if (disclosure.isNotBlank()) {
+        "<div style='display:inline-block; max-width: 620px;'>" +
+            "<details class='afield-symbol-context-disclosure' style='margin-top:2px;'>" +
+            "<summary tabindex='-1' onfocus='this.blur()' style='color:#ddd; cursor:pointer; user-select:none; outline:none; box-shadow:none;'>" +
+            declHtml + "</summary>" + disclosure + "</details></div>"
+    } else {
+        "<div style='display:inline-block; max-width: 620px;'>" +
+            "<div style='color:#ddd; overflow-wrap:anywhere;'>$declHtml</div>" +
+            renderVariablePlainValue(read.first) + "</div>"
+    }
+}
+
+/**
+ * Read a member's value from a live receiver **via its backing field only** — never invoking a getter,
+ * so this is guaranteed side-effect-free. Covers (1) public JVM fields (Java public / Kotlin `@JvmField`)
+ * and (2) Kotlin stored properties whose backing field exists (`javaField != null`). A computed property
+ * (custom `get()` with no backing field) has no `javaField` and is skipped. Returns (value, typeName) or
+ * null when there's nothing safely readable.
+ */
+private fun readBackingFieldValue(receiver: Any, member: String): Pair<Any?, String>? {
+    runCatching { receiver.javaClass.fields.firstOrNull { it.name == member } }.getOrNull()?.let { f ->
+        val v = runCatching { f.get(receiver) }.getOrNull()
+        return v to (f.type.simpleName ?: f.type.name)
+    }
+    val prop = runCatching { receiver::class.memberProperties.firstOrNull { it.name == member } }.getOrNull()
+        ?: return null
+    val backing = runCatching { prop.javaField }.getOrNull() ?: return null // computed getter, no field → skip
+    val value = runCatching { backing.isAccessible = true; backing.get(receiver) }.getOrNull()
+    val type = runCatching { prop.returnType.toString() }.getOrNull()?.takeIf { it.isNotBlank() }
+        ?: (backing.type.simpleName ?: backing.type.name)
+    return value to type
 }
 
 private fun renderDisplayContent(content: Any?): String {
@@ -604,11 +674,17 @@ private fun buildSymbolContextHtml(
         }
     }
 
-    val summary = fallbackDisplay.ifBlank {
+    // No descriptor (K2 scripting jars don't expose one): render the completion's display text plus its
+    // type (the variant's `tail`, e.g. `inside : ModulePointer`). The type is what makes the ambient
+    // badge worth showing; completion already knows it, so surface it here for both K1 and AA candidates.
+    val display = fallbackDisplay.ifBlank {
         fallbackDocumentation.lineSequence().firstOrNull()?.trim().orEmpty()
     }
-    if (summary.isBlank()) return ""
-    return "<span style='color:#ddd;'><code>${escapeNotifyHtml(summary)}</code></span>"
+    if (display.isBlank()) return ""
+    val type = fallbackDocumentation.lineSequence().firstOrNull()?.trim()?.removePrefix(":")?.trim().orEmpty()
+    val typeSuffix = if (type.isNotBlank() && type != display && !display.contains(type))
+        " <span style='color:#888;'>: ${escapeNotifyHtml(type)}</span>" else ""
+    return "<span style='color:#ddd;'><code>${escapeNotifyHtml(display)}</code>$typeSuffix</span>"
 }
 
 private data class SymbolBounds(val start: Int, val end: Int, val text: String)
@@ -2584,6 +2660,16 @@ class KotlinExecution : BoxExecution {
         }
 
         val symbol = bounds.text
+
+        // Member access on a live context variable (`m.inside`): show the field's live value in the same
+        // rich .h disclosure `m` itself gets. Reuses the backing-field-only reader (never invokes a getter).
+        val dotValueHtml = dotMemberRuntimeValueHtml(inside, request.allCode, bounds.start, symbol)
+        if (dotValueHtml.isNotBlank()) {
+            val resp = symbolContextResponse(symbol = symbol, html = dotValueHtml)
+            if (!request.forceRefresh) KotlinSymbolContextCache.put(cacheKey, resp)
+            return resp
+        }
+
         if (request.forceRefresh) {
             val runtimeOnly = fallbackRuntimeSymbolContext(inside, symbol)
             if (runtimeOnly.html.isNotBlank()) {
@@ -2901,7 +2987,14 @@ class KotlinExecution : BoxExecution {
                     candidateName = candidateName,
                     icon = it.icon,
                     isDotCompletion = isDotCompletion
-                )
+                ).ifBlank {
+                    // Dot completion on a live context variable: show the actual value of a plain JVM field.
+                    // Only for value-like candidates (a property/field) — NOT the same-named methods
+                    // (e.g. `x` has a field `x` and methods `x()`/`x(b)`; only the field shows a value).
+                    if (isDotCompletion && completionIconLooksLikeValue(it.icon))
+                        dotMemberRuntimeValueHtml(inside, allCode, c.bounds.start, candidateName)
+                    else ""
+                }
 
                 val rawMetadata = Metadata(
                     icon = it.icon,
@@ -3070,10 +3163,19 @@ class KotlinExecution : BoxExecution {
                         val infixFilterActive = typedToken.isBlank() && infixMatches.size >= 3
                         val bodyMetadata = if (infixFilterActive) infixMatches else enriched
 
+                        // Import ("(import) …") suggestions only make sense when completing a top-level
+                        // name to bring into scope. At a dot/safe-dot position you're selecting a member of
+                        // a known receiver, so they're pure noise — suppress them there.
+                        val isDotCompletion = c.bounds.start > 0 && run {
+                            val charBefore = allCode.getOrNull(c.bounds.start - 1)
+                            charBefore == '.' || (charBefore == '?' && c.bounds.start > 1 && allCode[c.bounds.start - 2] == '.')
+                        }
+                        val importHelp = if (isDotCompletion) emptyList() else importHelpFor(c)
+
                         val completions = Completion(
                             boundsStart = boundsStart,
                             boundsEnd = boundsEnd,
-                            metadata = ((synthetic?.metadata ?: emptyList()) + fieldSnippets + bodyMetadata + importHelpFor(c))
+                            metadata = ((synthetic?.metadata ?: emptyList()) + fieldSnippets + bodyMetadata + importHelp)
                                 .map(KotlinCompletionSupport::withCategoryDocumentationHeader)
                                 // Front-load the type-matching operands after an infix function so they
                                 // lead the list even for clients that lean on server order. Stable, so
