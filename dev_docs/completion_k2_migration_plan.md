@@ -17,6 +17,11 @@ Related memory: `completion-regression-coverage.md`, `wither-plugin-in-ki2.md`.
 Reference source tree: `~/temp/kotlin` is `2.4.255-SNAPSHOT` — the SAME version as field's embedded
 compiler — and contains the Analysis API source + `KJvmReplCompleter.kt`. Use it to look up any AA API.
 
+> **Now that the cutover is complete, the architecture map is [`completion_aa_sidecar.md`](completion_aa_sidecar.md)** —
+> the end-to-end request path (editor → server → `AaCompletionClient` → sidecar `/complete` → `AaCompleter`),
+> the sidecar process/lifecycle, backend selection + K1 fallback, and the verification tooling, all with
+> `file.kt:line` citations. This document below is the migration *narrative* (why + stage-by-stage log).
+
 ---
 
 ## 1. Why
