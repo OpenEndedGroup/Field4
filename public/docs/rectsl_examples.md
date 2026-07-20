@@ -61,15 +61,15 @@ id: docs.rectsl.animations
 runner: backdoor-box
 graphicsContext: true
 tags: [docs, rectsl, shaders, graphics, video]
-timeoutSec: 600
+timeoutSec: 780
 execution: launch
-waitSec: 560.0
+waitSec: 700.0
 expect:
   allowMissingOutput: true
   image:
     path: /tmp/docs-rectsl-animations-hero.png
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/_animations-hero.png" source-image="/tmp/docs-rectsl-animations-hero.png" wait="560.0" timeout="1800" execution="launch" embed=false graphics-context=true name="rectsl-animations" hidden=true fabricate-scene="rectsl-animations"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/_animations-hero.png" source-image="/tmp/docs-rectsl-animations-hero.png" wait="700.0" timeout="1800" execution="launch" embed=false graphics-context=true name="rectsl-animations" hidden=true fabricate-scene="rectsl-animations"}
 ```
 
 Each example shows its source first, then the render. The source is the whole
@@ -219,6 +219,171 @@ material shimmer '(
 ```
 
 <video src="../assets/rectsl/rectsl-spiral-shards.mp4" poster="../assets/rectsl/rectsl-spiral-shards.png"
+       autoplay loop muted playsinline
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
+### Facing the way you travel
+
+RectSL tracks are pure functions of time, so a rect's *heading* — the direction it
+is moving — can be recovered from its own x/y tracks by finite difference, with no
+simulation. `face-travel` sets rotation to that heading; because the darts are drawn
+elongated along their local +x axis, they read as arrowheads that always point where
+they are going. The single dart carves a curved path and its orientation curves with
+it; the ring pulses in and out and uses `face-travel-at` to bank each pip a quarter
+turn off its radial travel, so the swarm reads as a spinning pinwheel.
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+wall 12 12 abstract
+duration 6
+fps 30
+
+"dart" rect
+  1.1 0.26 wh
+  0xffcc33 solid fill
+  '( 0=-5  3=0  6=5 ) x
+  '( 0=-4  1.5=3  3=-3  4.5=3  6=-4 ) y
+  face-travel
+;
+
+"pip" rect
+  0.7 0.24 wh
+  0x66ccff solid fill
+  16 '(
+    '( 0=0.6  3=5.4  6=0.6 )  f 6.28318 * cos  value*  x
+    '( 0=0.6  3=5.4  6=0.6 )  f 6.28318 * sin  value*  y
+    1.5708 face-travel-at
+    0.3 1 f mix alpha
+  ) array
+;
+```
+
+<video src="../assets/rectsl/rectsl-auto-orient.mp4" poster="../assets/rectsl/rectsl-auto-orient.png"
+       autoplay loop muted playsinline
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
+### Spawning and despawning — life windows
+
+The scene has a fixed set of rects, but each one need not exist for the whole clip.
+`appear` and `vanish` hard-gate an object's visibility on and off at fixed times; the
+beacon below blinks into existence at `t=1` and is gone by `t=4`. `live birth life`
+is the emitter primitive: it plays a template's animation *from* its birth (local time
+0 becomes `birth`) and shows it only for `life` seconds. Authored once in local time,
+the bullet becomes a staggered stream — copy `i` is fired `0.18 s` after the last, each
+crossing the wall in its own lane.
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+wall 16 9 abstract
+duration 6
+fps 30
+
+"beacon" rect
+  0 3 xy
+  0.6 square
+  0xff2266 solid fill
+  1 appear
+  4 vanish
+;
+
+"bullet" rect
+  0.42 square
+  0xffcc33 solid fill
+  '( 0=-8  2.5=8 ) x
+  24 '(
+    -3 f 6 * + y
+    i 0.18 *  2.5  live
+  ) array
+;
+```
+
+<video src="../assets/rectsl/rectsl-emitter-stream.mp4" poster="../assets/rectsl/rectsl-emitter-stream.png"
+       autoplay loop muted playsinline
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
+### Splitting — one shell becomes a spray
+
+`split count t '( … )` is the set piece: at time `t` the template vanishes and `count`
+shards are born exactly where it was — the split point is read straight off the
+template's own tracks, so nothing needs to be positioned by hand. Each shard's flight
+is authored around the origin in split-relative local time; the shell below rises to
+the centre, bursts into a fourteen-way ring at `t=2.5`, and every shard flies outward
+and `face-travel`s so it points down its own trajectory.
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+wall 12 12 abstract
+duration 6
+fps 30
+
+"shell" rect
+  0.5 square
+  0xffee88 solid fill
+  '( 0=-5  2.5=0 ) y
+  14 2.5 '(
+    0.7 0.22 wh
+    0xff5522 solid fill
+    '( 0=0  3.5=6 )  f 6.28318 * cos  value*
+    '( 0=0  3.5=6 )  f 6.28318 * sin  value*
+    translate
+    face-travel
+  ) split
+;
+```
+
+<video src="../assets/rectsl/rectsl-shell-split.mp4" poster="../assets/rectsl/rectsl-shell-split.png"
+       autoplay loop muted playsinline
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
+### More array generators — arc, spiral, sunflower
+
+Beyond `radial`'s full circle, three placement generators cover the common
+bullet-hell layouts. `arc` fans a fixed count across a partial sweep — a seven-way
+aimed spread here. `spiral` ramps radius while the angle winds through whole turns.
+`phyllotaxis` (a.k.a. `sunflower`) uses the golden angle for the densest even packing.
+All three take the same `[template] … quote` shape as `radial` and return a selection,
+so `group-selected` gathers each into a panel that is then translated apart and spun —
+one `rot` on the group orbits the whole layout.
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+wall 18 7 abstract
+duration 8
+fps 30
+
+"a" rect
+  0.8 0.22 wh
+  0xff8844 solid fill
+  7 2.6 4.71238 1.6 '(
+    4.71238  f 1.6 *  +  rot
+  ) arc
+  "arcG" group-selected  -5.6 0 xy  '( 0=0  8=1.6 ) rot
+;
+
+"b" rect
+  0.3 square
+  0x44ccff solid fill
+  56 0.4 2.7 3 '(
+    0.25 1 f mix alpha
+  ) spiral
+  "spiralG" group-selected  0 0 xy  '( 0=0  8=6.28318 ) rot
+;
+
+"c" rect
+  0.22 square
+  0xffffff solid fill
+  120 0.3 '(
+    "turbo" f cmap solid fill
+  ) sunflower
+  "seedG" group-selected  5.6 0 xy  '( 0=0  8=-3.14159 ) rot
+;
+```
+
+<video src="../assets/rectsl/rectsl-array-mandala.mp4" poster="../assets/rectsl/rectsl-array-mandala.png"
        autoplay loop muted playsinline
        style="width:100%;max-width:640px;border-radius:8px;">
 </video>

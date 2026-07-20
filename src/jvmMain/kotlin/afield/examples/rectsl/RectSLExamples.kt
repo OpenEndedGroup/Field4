@@ -115,9 +115,169 @@ object RectSLExamples {
             }
         }
 
+        checkFaceTravelHeading()
+        checkLifeWindows()
+        checkSplit()
+        checkArrayGenerators()
         checkGalleryWorkspace()
         checkCheatsheetCoverage()
         println("rectsl examples passed")
+    }
+
+    /**
+     * `face-travel` must set rotation to the heading of the object's own x/y tracks.
+     * A dart travelling the +x/+y diagonal has a constant heading of atan2(1,1)=pi/4,
+     * an unambiguous oracle for the finite-difference [HeadingTrack]. `face-travel-at`
+     * adds a fixed offset, checked here as pi/4 + pi/2.
+     */
+    private fun checkFaceTravelHeading() {
+        fun rotationAtMid(word: String): Double {
+            val src = """
+                #rectsl
+                wall 10 10 abstract
+                duration 4
+                fps 30
+                "dart" rect
+                  1 0.3 wh
+                  0xffffff solid fill
+                  '( 0=-5  4=5 ) x
+                  '( 0=-5  4=5 ) y
+                  $word
+                ;
+            """.trimIndent()
+            val r = RectAnimationOracle.compile(src)
+            check(r.ok && r.programOrNull != null) { "$word failed:\n" + r.diagnostics.joinToString("\n") }
+            return r.programOrNull!!.sample(2.0).rects.first().rotation
+        }
+        val quarter = Math.PI / 4.0
+        val plain = rotationAtMid("face-travel")
+        check(Math.abs(plain - quarter) < 1e-3) { "face-travel heading wrong: got $plain expected $quarter" }
+        val offset = rotationAtMid("1.5707963 face-travel-at")
+        check(Math.abs(offset - (quarter + Math.PI / 2.0)) < 1e-3) {
+            "face-travel-at heading wrong: got $offset expected ${quarter + Math.PI / 2.0}"
+        }
+        println("rectsl face-travel heading check: face-travel=$plain, face-travel-at=$offset")
+    }
+
+    /**
+     * `appear`/`vanish` hard-gate alpha at fixed times; `live birth life` additionally
+     * shifts the object's tracks so local time 0 is its birth. Checked with exact 0/1
+     * alpha at window edges and the trajectory's start value landing at the birth time.
+     */
+    private fun checkLifeWindows() {
+        val src = """
+            #rectsl
+            wall 10 10 abstract
+            duration 6
+            fps 30
+            "beacon" rect
+              0 0 xy
+              1 square
+              0xffffff solid fill
+              1 appear
+              4 vanish
+            ;
+            "mover" rect
+              1 square
+              0xffffff solid fill
+              '( 0=-4  2=4 ) x
+              2 2 live
+            ;
+        """.trimIndent()
+        val r = RectAnimationOracle.compile(src)
+        check(r.ok && r.programOrNull != null) { "life windows failed:\n" + r.diagnostics.joinToString("\n") }
+        val p = r.programOrNull!!
+        fun rect(t: Double, id: String) = p.sample(t).rects.first { it.id == id }
+        check(rect(0.5, "beacon").alpha == 0.0) { "beacon should be invisible before appear" }
+        check(rect(2.0, "beacon").alpha == 1.0) { "beacon should be visible inside window" }
+        check(rect(4.5, "beacon").alpha == 0.0) { "beacon should be invisible after vanish" }
+        check(rect(1.0, "mover").alpha == 0.0) { "mover should be invisible before birth" }
+        check(rect(2.0, "mover").alpha == 1.0) { "mover should be visible at birth" }
+        val bornX = rect(2.0, "mover").center.x
+        check(Math.abs(bornX - (-4.0)) < 1e-9) { "mover trajectory should start (-4) at its birth t=2, got $bornX" }
+        check(rect(4.5, "mover").alpha == 0.0) { "mover should be invisible after death" }
+        println("rectsl life-window check: beacon+mover gating OK (born x=$bornX)")
+    }
+
+    /**
+     * `split` must (a) vanish the template at the split time, (b) birth `count` shards
+     * exactly at the template's split-point position, and (c) let each shard's authored
+     * flight carry it outward from there. The shell rises to (0,0) by t=2, so all shards
+     * start at the origin and later fly out to a nonzero radius.
+     */
+    private fun checkSplit() {
+        val src = """
+            #rectsl
+            wall 10 10 abstract
+            duration 6
+            fps 30
+            "shell" rect
+              0.5 square
+              0xffffff solid fill
+              '( 0=-4  2=0 ) y
+              4 2 '(
+                '( 0=0  2=5 )  f 6.28318 * cos  value*
+                '( 0=0  2=5 )  f 6.28318 * sin  value*
+                translate
+              ) split
+            ;
+        """.trimIndent()
+        val r = RectAnimationOracle.compile(src)
+        check(r.ok && r.programOrNull != null) { "split failed:\n" + r.diagnostics.joinToString("\n") }
+        val p = r.programOrNull!!
+        fun shards(t: Double) = p.sample(t).rects.filter { it.id != "shell" }
+        fun shell(t: Double) = p.sample(t).rects.first { it.id == "shell" }
+        check(shell(1.0).alpha == 1.0) { "shell should be alive before the split" }
+        val before = shards(1.0)
+        check(before.size == 4) { "expected 4 shards, got ${before.size}" }
+        check(before.all { it.alpha == 0.0 }) { "shards must be invisible before the split" }
+        check(shell(2.0).alpha == 0.0) { "shell must vanish at the split" }
+        val atSplit = shards(2.0)
+        check(atSplit.all { it.alpha == 1.0 }) { "shards must be visible at the split" }
+        check(atSplit.all { Math.hypot(it.center.x, it.center.y) < 1e-9 }) { "shards must start at the split point" }
+        check(shards(4.0).all { Math.hypot(it.center.x, it.center.y) > 1.0 }) { "shards should fly outward after the split" }
+        println("rectsl split check: shell -> 4 shards born at split point, flying outward")
+    }
+
+    /**
+     * `arc`, `spiral`, and `phyllotaxis` place copies at known polar positions. Checked
+     * against closed-form expectations: an arc across [0, pi] hits (2,0)/(0,2)/(-2,0);
+     * a one-turn spiral lands its endpoints on +x at radii 1 and 3; the sunflower's
+     * radii follow scale·√i = 0, 1, √2.
+     */
+    private fun checkArrayGenerators() {
+        fun header(body: String) = """
+            #rectsl
+            wall 12 12 abstract
+            duration 4
+            fps 30
+            "t" rect
+              0.5 square
+              0xffffff solid fill
+              $body
+            ;
+        """.trimIndent()
+        fun rectsOf(src: String) = run {
+            val r = RectAnimationOracle.compile(src)
+            check(r.ok && r.programOrNull != null) { "generator failed:\n" + r.diagnostics.joinToString("\n") }
+            r.programOrNull!!.sample(0.0).rects
+        }
+        fun near(a: Double, b: Double) = Math.abs(a - b) < 1e-6
+
+        val arc = rectsOf(header("3 2 0 3.141592653589793 '( ) arc"))
+        check(arc.size == 3) { "arc expected 3 copies, got ${arc.size}" }
+        check(arc.any { near(it.center.x, 2.0) && near(it.center.y, 0.0) }) { "arc missing (2,0)" }
+        check(arc.any { near(it.center.x, 0.0) && near(it.center.y, 2.0) }) { "arc missing (0,2)" }
+        check(arc.any { near(it.center.x, -2.0) && near(it.center.y, 0.0) }) { "arc missing (-2,0)" }
+
+        val spiral = rectsOf(header("2 1 3 1 '( ) spiral")).map { Math.hypot(it.center.x, it.center.y) }.sorted()
+        check(near(spiral[0], 1.0) && near(spiral[1], 3.0)) { "spiral radii wrong: $spiral" }
+
+        val phyllo = rectsOf(header("3 1 '( ) sunflower")).map { Math.hypot(it.center.x, it.center.y) }.sorted()
+        check(near(phyllo[0], 0.0) && near(phyllo[1], 1.0) && near(phyllo[2], Math.sqrt(2.0))) {
+            "phyllotaxis radii wrong: $phyllo"
+        }
+        println("rectsl array-generator check: arc/spiral/phyllotaxis placement OK")
     }
 
     /**
@@ -265,7 +425,7 @@ object RectSLExamples {
         listOf("<", "lt"), listOf("<=", "lte"), listOf(">", "gt"), listOf(">=", "gte"),
         listOf("=", "eq"), listOf("!=", "<>", "neq"), listOf("ease-smoothstep", "smooth"),
         listOf("colormap", "cmap"), listOf("heat", "heatmap"),
-        listOf("line", "plot"),
+        listOf("line", "plot"), listOf("phyllotaxis", "sunflower"),
     )
     private val CANONICAL: Map<String, String> =
         ALIAS_GROUPS.flatMap { g -> g.map { it to g.first() } }.toMap()
