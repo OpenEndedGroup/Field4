@@ -15,18 +15,27 @@ import afield.thisSessionInfo
 import afield.ImportMetadata
 import afield.ImportMetadataNested
 import afield.ImportNotebook
+import afield.ExportNotebook
+import afield.ExportNotebookResult
 import afield.doResync
 import afield.nestInto
 import afield.notify
+import afield.payload
 import afield.logger.lprintln
 import afield.python.isPythonRoot
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.put
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -137,6 +146,27 @@ fun importing() {
             lprintln("error,import", "Failed to import notebook: ${e.message}")
             e.printStackTrace()
             notify("Failed to import notebook: ${e.message}", "error")
+            Handled.yes
+        }
+    })
+
+    handlers["export-ipynb"] = mutableSetOf({ message, reply ->
+        try {
+            val request = Json.decodeFromJsonElement<ExportNotebook>(message.payload!!)
+            val info = thisSessionInfo.get()
+            val pythonRoot = info.boxes[request.uid]
+            if (pythonRoot == null || pythonRoot.isPythonRoot != true) {
+                notify("Select a python-root box to export as a notebook", "error")
+                return@mutableSetOf Handled.yes
+            }
+            val notebookJson = exportNotebookCells(pythonRoot, info)
+            val fileName = notebookExportName(pythonRoot, info)
+            reply(Message("export-ipynb").payload(ExportNotebookResult(notebookJson, fileName)))
+            Handled.yes
+        } catch (e: Exception) {
+            lprintln("error,import", "Failed to export notebook: ${e.message}")
+            e.printStackTrace()
+            notify("Failed to export notebook: ${e.message}", "error")
             Handled.yes
         }
     })
@@ -333,3 +363,127 @@ private fun cellHeight(source: String, padding: Double, maxHeight: Double): Doub
 /** Notebook filename without directory or the `.ipynb` extension, e.g. `analysis`. */
 private fun displayNotebookName(fileName: String): String =
     fileName.substringAfterLast('/').substringAfterLast('\\').removeSuffix(".ipynb").ifBlank { "notebook" }
+
+// --- Jupyter notebook (.ipynb) export ---------------------------------------
+//
+// The inverse of importNotebookCells: given a python-root box, reconstruct the
+// vertical column it heads and serialize it back out as a valid nbformat-4
+// notebook. Code cells are the python root's children that carry `code`; markdown
+// cells are the `notes` boxes the importer laid out (indented) within the root's
+// column band. Cells are emitted in document order (top-to-bottom by frame.y), so
+// import -> export -> import round-trips faithfully.
+
+private val NOTEBOOK_EXPORT_JSON = Json { prettyPrint = true }
+
+/**
+ * Serialize the python-root column headed by [pythonRoot] as an nbformat-4 notebook
+ * JSON string. Inverse of [importNotebookCells]. Pure (no client sync); safe to call
+ * from tests without live sessions.
+ */
+fun exportNotebookCells(
+    pythonRoot: Box,
+    info: SessionInformation = thisSessionInfo.get(),
+): String {
+    require(pythonRoot.isPythonRoot == true) { "exportNotebookCells requires a python-root box" }
+
+    // Code cells: direct children of the python root that carry a non-blank `code` body.
+    val codeCells = pythonRoot.children.filter { child ->
+        (child.getPropertyRaw("code") as? String)?.isNotBlank() == true
+    }
+    val codeSet = codeCells.toHashSet()
+
+    // Markdown cells: prose boxes the importer laid out in the column band — ordinary
+    // document boxes (NOT python children) with `notes`, sitting below the root header
+    // and horizontally centred within the root's [x, x+w] span (the importer indents
+    // them within that span; see NOTEBOOK_MARKDOWN_INDENT).
+    val bandLeft = pythonRoot.frame.x
+    val bandRight = pythonRoot.frame.x + pythonRoot.frame.w
+    val headerBottom = pythonRoot.frame.y
+    val markdownCells = info.boxes.values.filter { b ->
+        b !== pythonRoot &&
+            b !in codeSet &&
+            pythonRoot !in b.parents &&
+            (b.getPropertyRaw("notes") as? String)?.isNotBlank() == true &&
+            b.frame.y > headerBottom &&
+            (b.frame.x + b.frame.w / 2.0) in bandLeft..bandRight
+    }
+
+    // Merge and order by document position (top-to-bottom), the layout order the
+    // importer implies.
+    val ordered: List<Pair<Box, Boolean>> =
+        (codeCells.map { it to true } + markdownCells.map { it to false })
+            .sortedBy { it.first.frame.y }
+
+    val cellsJson = ordered.map { (b, isCode) ->
+        if (isCode) {
+            codeCellJson((b.getPropertyRaw("code") as? String) ?: "")
+        } else {
+            markdownCellJson((b.getPropertyRaw("notes") as? String) ?: "")
+        }
+    }
+
+    val notebook = buildJsonObject {
+        put("cells", buildJsonArray { cellsJson.forEach { add(it) } })
+        put(
+            "metadata",
+            buildJsonObject {
+                put(
+                    "kernelspec",
+                    buildJsonObject {
+                        put("display_name", "Python 3")
+                        put("language", "python")
+                        put("name", "python3")
+                    },
+                )
+                put(
+                    "language_info",
+                    buildJsonObject { put("name", "python") },
+                )
+            },
+        )
+        put("nbformat", 4)
+        put("nbformat_minor", 5)
+    }
+    return NOTEBOOK_EXPORT_JSON.encodeToString(JsonElement.serializer(), notebook)
+}
+
+/** nbformat-4 `code` cell: null execution count, empty outputs, source as line array. */
+private fun codeCellJson(source: String): JsonObject = buildJsonObject {
+    put("cell_type", "code")
+    put("execution_count", JsonNull)
+    put("metadata", buildJsonObject {})
+    put("outputs", buildJsonArray {})
+    put("source", sourceLines(source))
+}
+
+/** nbformat-4 `markdown` cell: source as line array. */
+private fun markdownCellJson(source: String): JsonObject = buildJsonObject {
+    put("cell_type", "markdown")
+    put("metadata", buildJsonObject {})
+    put("source", sourceLines(source))
+}
+
+/**
+ * Split [text] into the nbformat `source` line-array convention: each line keeps its
+ * trailing `\n` except the last. The importer's `joinToString("")` is the exact
+ * inverse, so text round-trips byte-for-byte. Empty text -> empty array.
+ */
+private fun sourceLines(text: String): JsonArray {
+    if (text.isEmpty()) return buildJsonArray {}
+    val parts = text.split("\n")
+    return buildJsonArray {
+        parts.forEachIndexed { index, line ->
+            add(JsonPrimitive(if (index < parts.size - 1) line + "\n" else line))
+        }
+    }
+}
+
+/** Suggested export filename (no extension) — the python-root's name, else the document. */
+private fun notebookExportName(pythonRoot: Box, info: SessionInformation): String {
+    val fromRoot = pythonRoot.name
+        .takeIf { it.isNotBlank() && it != PYTHON_ROOT_BOX_NAME }
+        ?.replace(Regex("[^A-Za-z0-9_-]"), "-")?.trim('-')
+    if (!fromRoot.isNullOrBlank()) return fromRoot
+    return info.filename.substringAfterLast('/').substringAfterLast('\\')
+        .removeSuffix(".field").ifBlank { "notebook" }
+}
