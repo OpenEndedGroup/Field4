@@ -49,5 +49,63 @@ path.
 
 ---
 
-## Execution log
-(filled in below as work proceeds)
+## Execution log — DONE
+
+Status: **done** (a complete, verified plotting layer; further polish possible).
+
+### Files changed
+- `src/jvmMain/kotlin/afield/rectsl/RectSL.kt` — the plotting layer. New VM state
+  (`plotXDomain`/`plotYDomain` + four margins, all default null/0) and words
+  `margins`, `frame`, `domain`, `xdomain`, `ydomain`, `axes`, `line`/`plot`,
+  `area`, `points`, `colorbar`, `legend`; helpers `plotFrame`, domain resolvers,
+  `niceNum`/`niceTicks` (Heckbert), `formatTick`, `drawNumeral`, `plotRect`; and a
+  file-scope `PlotFrame` + `PLOT_NUMERAL_GLYPHS` 3×5 rect font. Classic
+  `bars`/`heat`/`scatter` are untouched.
+- `src/jvmMain/kotlin/afield/examples/rectsl/RectSLDataVizProof.kt` — new
+  `plot-axes` pixel-proof program (domain/frame/axes + overlaid area/line/points
+  + colorbar/legend); rasterizer bumped 512→900px for legible numerals.
+- `public/docs/rectsl_cheatsheet.md` — new "Plotting layer" subsection (table +
+  illustrative block).
+- `public/docs/rectsl_examples.md` — two worked `data-lang=rectsl` examples (shared
+  figure + manual-axes variant); intro cross-links the plotting layer.
+- `src/jvmMain/kotlin/afield/examples/rectsl/RectSLExamples.kt` — `line`/`plot`
+  alias in the cheatsheet-coverage guard.
+- `dev_docs/agents/transcripts/rectsl_plot_axes.yaml` — loadable demo.
+- `src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt` — registered
+  the transcript in COMPILE_ONLY.
+
+### Verification (what I actually observed)
+- `./gradlew -q compileKotlinJvm` — green.
+- `rectsl.examples.smoke` — PASS; stdout: **"rectsl cheatsheet coverage: all 221
+  operators demonstrated"** (my 12 new operators covered by the new worked
+  examples; guard genuinely ran).
+- `rectsl.dataviz.proof` — PASS; **I read the rendered `plot-axes.png`** (900px,
+  via `RECTSL_PROOF_DIR`). Confirmed by eye: left y-axis with `0 0.2 0.4 0.6 0.8 1`
+  rect-numeral labels, bottom x-axis `0 2 4 6 8 10`, faint gridlines, a viridis
+  filled `area` (sine), a plasma `line` (cos dipping to 0 near x≈5.7), turbo
+  `points`, a viridis `colorbar` labelled `0/0.5/1`, and a 5-swatch turbo `legend`.
+  Not black/garbled — the figure is correct. (First render clipped the colorbar's
+  `0.5`; fixed by auto-sizing colorbar labels + wider default right margin, re-ran,
+  re-read the PNG — now clean.)
+- **Demo replay:** `examples.demo-transcript.exec` — PASS. The `rectsl_plot_axes`
+  transcript's TWO box bodies were compiled through the REAL K2 pipeline (eval
+  skipped for graphics demos, per the harness); the figure box's generated GLSL
+  compiled to SPIR-V; run ended `DemoTranscriptExecSmokeTest ok`. The RectSL
+  program body itself (byte-identical to the transcript's `rectsl` string) was
+  additionally driven through the real render path (compile→sample→raster) in the
+  pixel proof and eyeballed. I did NOT launch a live on-screen GPU window (headless
+  nightly) — that is the COMPILE_ONLY path this harness exists for.
+
+### Risks & unknowns
+- No text primitive in RectSL: labels are numerals only (digits/`-`/`.`). Axis
+  titles / series names are out of scope and would need a real text feature — I did
+  not invent one.
+- Not run on a live GPU window; only the CPU raster + compile paths are exercised
+  (same limitation as the existing `rectsl_dataviz` demo).
+- Auto label sizing is heuristic; very long domains or tiny walls could still crowd
+  labels (they shrink/skip rather than overflow).
+
+### Recommendation
+**Merge.** Additive, compat-preserving (classic chart words untouched; all guards
+green), and verified to the pixels + replayed. Natural follow-ups: gridline/tick
+styling words, a stroked (outline) line option, and a rect letter-font for titles.
