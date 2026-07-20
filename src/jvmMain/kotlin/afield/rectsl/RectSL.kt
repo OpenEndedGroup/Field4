@@ -695,6 +695,49 @@ data class TimeWarpTrack(
     override fun sample(t: Double): Double = source.sample(warp(t))
 }
 
+/**
+ * A hard visibility window — 1.0 while `lo <= t < hi`, else 0.0. Multiplied into an
+ * object's alpha, it makes the object pop into and out of existence at fixed times
+ * (bullet spawn/despawn). `lo`/`hi` default to ±infinity for one-sided gates.
+ */
+data class GateTrack(
+    val lo: Double = Double.NEGATIVE_INFINITY,
+    val hi: Double = Double.POSITIVE_INFINITY
+) : Track<Double> {
+    override val kind: TrackValueKind = TrackValueKind.Double
+    override fun sample(t: Double): Double = if (t >= lo && t < hi) 1.0 else 0.0
+}
+
+/**
+ * Rotation derived from a pair of position tracks: the heading (direction of
+ * travel) of the point (x(t), y(t)). Because RectSL tracks are pure closed-form
+ * functions of time, the velocity is recovered by central finite difference — no
+ * simulation state — so a rect can auto-orient to its own trajectory. `offset`
+ * corrects for how the rect's art is drawn (0 = local +x points along travel).
+ *
+ * At a velocity zero-crossing the heading is undefined; rather than pop, we widen
+ * the sampling window a few times looking for real motion, and fall back to the
+ * bare offset only if the point is genuinely stationary across the whole window.
+ */
+data class HeadingTrack(
+    val x: Track<Double>,
+    val y: Track<Double>,
+    val eps: Double = 1.0 / 240.0,
+    val offset: Double = 0.0
+) : Track<Double> {
+    override val kind: TrackValueKind = TrackValueKind.Double
+    override fun sample(t: Double): Double {
+        var h = eps
+        repeat(6) {
+            val dx = x.sample(t + h) - x.sample(t - h)
+            val dy = y.sample(t + h) - y.sample(t - h)
+            if (hypot(dx, dy) > 1e-9) return atan2(dy, dx) + offset
+            h *= 4.0
+        }
+        return offset
+    }
+}
+
 fun constantTrack(x: Double): Track<Double> = ConstantTrack(x, TrackValueKind.Double)
 fun constantPaintTrack(x: PaintSpec): Track<PaintSpec> = ConstantTrack(x, TrackValueKind.Paint)
 
@@ -1926,6 +1969,8 @@ class RectLangVm(
         }
         word("rot") { vm -> vm.builder().setRotation(vm.popScalarTrackOrConstant("rot")) }
         word("rotate") { vm -> vm.builder().addRotation(vm.popScalarTrackOrConstant("rotate")) }
+        word("face-travel") { vm -> vm.builder().faceTravel(0.0) }
+        word("face-travel-at") { vm -> vm.builder().faceTravel(vm.popNum()) }
         word("scale") { vm ->
             val s = vm.popScalarTrackOrConstant("scale")
             vm.builder().setScaleX(s)
@@ -1939,6 +1984,13 @@ class RectLangVm(
         }
         word("alpha") { vm -> vm.builder().setAlpha(vm.popScalarTrackOrConstant("alpha")) }
         word("opacity*") { vm -> vm.builder().multiplyAlpha(vm.popScalarTrackOrConstant("opacity*")) }
+        word("appear") { vm -> vm.builder().gateVisibility(vm.popNum(), Double.POSITIVE_INFINITY) }
+        word("vanish") { vm -> vm.builder().gateVisibility(Double.NEGATIVE_INFINITY, vm.popNum()) }
+        word("live") { vm ->
+            val life = vm.popNum()
+            val birth = vm.popNum()
+            vm.builder().live(birth, life)
+        }
         word("x-track") { vm -> vm.push(VTrack(vm.builder().scalarTrack("x"))) }
         word("y-track") { vm -> vm.push(VTrack(vm.builder().scalarTrack("y"))) }
         word("w-track") { vm -> vm.push(VTrack(vm.builder().scalarTrack("w"))) }
@@ -2299,6 +2351,28 @@ class RectLangVm(
             }
             vm.push(VSelection(refs))
         }
+        word("arc") { vm ->
+            val mods = vm.popQuote()
+            val sweep = vm.popNum()
+            val start = vm.popNum()
+            val radius = vm.popNum()
+            vm.placePolarArray("arc", mods) { ordinal, count ->
+                val frac = if (count <= 1) 0.0 else ordinal.toDouble() / (count - 1).toDouble()
+                (start + sweep * frac) to radius
+            }
+        }
+        word("spiral") { vm ->
+            val mods = vm.popQuote()
+            val turns = vm.popNum()
+            val radius1 = vm.popNum()
+            val radius0 = vm.popNum()
+            vm.placePolarArray("spiral", mods) { ordinal, count ->
+                val frac = if (count <= 1) 0.0 else ordinal.toDouble() / (count - 1).toDouble()
+                (frac * turns * PI * 2.0) to (radius0 + (radius1 - radius0) * frac)
+            }
+        }
+        word("phyllotaxis") { vm -> vm.phyllotaxis() }
+        word("sunflower") { vm -> vm.phyllotaxis() }
         word("grid") { vm ->
             val cell = vm.popQuote()
             val rows = vm.popNum().toInt().coerceAtLeast(0)
@@ -2314,6 +2388,29 @@ class RectLangVm(
                 }
             }
             vm.push(VSelection(created))
+        }
+        word("split") { vm ->
+            val mods = vm.popQuote()
+            val atTime = vm.popNum()
+            val count = vm.popNum().toInt().coerceAtLeast(0)
+            val parent = vm.popTemplateRef("split")
+            val b = vm.builder()
+            // Seed shards from the still-pristine parent (before it is gated to death),
+            // baking the parent's split-point position via build-time track sampling.
+            val point = b.positionAt(parent, atTime)
+            val shards = (0 until count).map { b.cloneShardAtOrigin(parent) }
+            b.withActive(parent) { b.gateVisibility(Double.NEGATIVE_INFINITY, atTime) }
+            val dur = b.duration
+            shards.forEachIndexed { ordinal, shard ->
+                // Author each shard's flight around the origin, in split-relative local time…
+                vm.withSelected(shard) { vm.withLoop(ordinal, count, ordinal) { vm.evalBlock(mods.tokens) } }
+                // …then translate onto the split point and fire it at the split time.
+                b.withActive(shard) {
+                    b.translate(constantTrack(point.x), constantTrack(point.y))
+                    b.live(atTime, dur - atTime)
+                }
+            }
+            vm.push(VSelection(shards))
         }
         word("polar") { vm ->
             val radius = vm.popNum()
@@ -2526,6 +2623,41 @@ class RectLangVm(
         word("points") { vm -> vm.pointsSeries() }
         word("colorbar") { vm -> vm.drawColorbar() }
         word("legend") { vm -> vm.drawLegend() }
+    }
+
+    /**
+     * Shared engine for the polar array generators (`arc`, `spiral`, `phyllotaxis`):
+     * pop `count` and the template, instantiate the copies, and for each place it at a
+     * per-ordinal `(angle, radius)` before running the per-copy `mods` with array context.
+     * `radial` predates this and keeps its own inline copy for byte-stability.
+     */
+    private fun placePolarArray(word: String, mods: VQuote, placement: (ordinal: Int, count: Int) -> Pair<Double, Double>) {
+        val count = popNum().toInt().coerceAtLeast(0)
+        if (count == 0) {
+            push(VSelection(emptyList()))
+            return
+        }
+        val template = popTemplateRef(word)
+        val refs = builder().instantiateArray(template, count)
+        refs.forEachIndexed { ordinal, ref ->
+            withSelected(ref) {
+                withLoop(ordinal, count, ordinal) {
+                    val (angle, radius) = placement(ordinal, count)
+                    builder().setPolar(angle, radius)
+                    evalBlock(mods.tokens)
+                }
+            }
+        }
+        push(VSelection(refs))
+    }
+
+    /** `[template] count scale quote` → golden-angle sunflower: angle = i·137.5°, radius = scale·√i. */
+    private fun phyllotaxis() {
+        val mods = popQuote()
+        val scale = popNum()
+        placePolarArray("phyllotaxis", mods) { ordinal, _ ->
+            (ordinal * 2.399963229728653) to (scale * sqrt(ordinal.toDouble()))
+        }
     }
 
     /** Grid heatmap: `data cols rows name heat` → row-major cells (row 0 at top). */
@@ -3284,6 +3416,28 @@ class SceneBuilder {
         }
     }
 
+    /** Set rotation to the heading of the active object's own x/y tracks (+offset). */
+    fun faceTravel(offset: Double) {
+        when (val t = target()) {
+            is RectDraft -> t.rotation = HeadingTrack(t.x, t.y, offset = offset)
+            is GroupDraft -> t.rotation = HeadingTrack(t.x, t.y, offset = offset)
+        }
+    }
+
+    /** Gate the active object's alpha so it is only visible while `lo <= t < hi`. */
+    fun gateVisibility(lo: Double, hi: Double) = multiplyAlpha(GateTrack(lo, hi))
+
+    /**
+     * The emitter primitive: play the active object's animation from its `birth`
+     * (local time 0 becomes `birth`, like `delay-all-time`) and make it visible only
+     * during `[birth, birth + life]`. Authoring a trajectory in local time and firing
+     * it at `birth` is how one template becomes a staggered stream of bullets.
+     */
+    fun live(birth: Double, life: Double) {
+        mapActiveScalarTracks { TimeWarpTrack(it) { u -> u - birth } }
+        multiplyAlpha(GateTrack(birth, birth + life))
+    }
+
     fun setScaleX(track: Track<Double>) {
         when (val t = target()) {
             is RectDraft -> t.scaleX = track
@@ -3442,6 +3596,29 @@ class SceneBuilder {
                 }
             }
         }
+    }
+
+    /** Sample a node's own position tracks at time `t` (the split point for `split`). */
+    fun positionAt(ref: NodeRef, t: Double): Vec2d = when (val n = requireNode(ref.id)) {
+        is RectDraft -> Vec2d(n.x.sample(t), n.y.sample(t))
+        is GroupDraft -> Vec2d(n.x.sample(t), n.y.sample(t))
+    }
+
+    /**
+     * Clone `parent` (deep for groups) and move the clone's origin to (0, 0) so a shard's
+     * flight can be authored around the origin, then translated onto the split point. Every
+     * other channel (size, fill, scale, rotation) is inherited from the parent.
+     */
+    fun cloneShardAtOrigin(parent: NodeRef): NodeRef {
+        val ref = when (requireNode(parent.id)) {
+            is GroupDraft -> cloneNodeDeepRef(parent)
+            is RectDraft -> cloneNodeRef(parent)
+        }
+        when (val n = requireNode(ref.id)) {
+            is RectDraft -> { n.x = constantTrack(0.0); n.y = constantTrack(0.0) }
+            is GroupDraft -> { n.x = constantTrack(0.0); n.y = constantTrack(0.0) }
+        }
+        return ref
     }
 
     /** Place the active object on a circle of the given radius at the given angle (radians). */

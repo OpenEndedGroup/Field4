@@ -99,10 +99,15 @@ RectSL is a small stack language with scene side effects. Numbers, strings, colo
 | `square` | `size --` | Sets width and height together. |
 | `rot`, `rotation` | `scalar --` | Rotation in radians. |
 | `rotate` | `scalar --` | Adds rotation to the active object/selection. |
+| `face-travel` | `--` | Auto-orient: sets rotation to the heading of the object's own x/y tracks (local +x points along travel). |
+| `face-travel-at` | `offset --` | Like `face-travel`, but adds a fixed angle offset (correct for how the art is drawn). |
 | `scale` | `scalar --` | Uniform scale. |
 | `scale-xy` | `sx sy --` | Nonuniform scale. |
 | `alpha` | `scalar --` | Opacity. |
 | `opacity*` | `factor --` | Multiplies opacity. |
+| `appear` | `t --` | Hard-gate visibility on: invisible before `t`, unchanged from `t`. |
+| `vanish` | `t --` | Hard-gate visibility off: unchanged before `t`, invisible from `t`. |
+| `live` | `birth life --` | Emitter primitive: play the object's animation from `birth` (local time 0 = `birth`) and show it only during `[birth, birth+life]`. |
 | `z` | `scalar --` | Per-rect depth metadata. |
 | `layer` | `number|string|track --` | Draw layer. Higher layers render later. |
 | `front`, `back` | `--` | Move active object/selection within its layer. |
@@ -219,7 +224,11 @@ Array primitives *reproduce a subexpression with modification* — the Fischinge
 | --- | --- | --- |
 | `array` | `[template] count quote -- selection` | Reproduce a template object `count` times, running `quote` on each copy with array context. Element 0 is the template itself; the rest are fresh clones (deep for groups). Template is the active object, or a rect/group taken from the stack. Pushes the selection of all copies. |
 | `radial` | `[template] count radius quote -- selection` | Like `array`, but each copy is first placed on a circle of `radius` at angle `ordinal/count · tau`, then `quote` runs. |
+| `arc` | `[template] count radius start sweep quote -- selection` | Aimed spread: places `count` copies on an arc of `radius`, from angle `start` across `sweep` radians (endpoints inclusive), then runs `quote`. |
+| `spiral` | `[template] count r0 r1 turns quote -- selection` | Places `count` copies on a spiral: radius ramps `r0`→`r1` while the angle sweeps `turns · tau`. |
+| `phyllotaxis`, `sunflower` | `[template] count scale quote -- selection` | Golden-angle sunflower: copy `i` at angle `i · 137.5°` and radius `scale · √i`. |
 | `grid` | `cols rows quote -- selection` | Runs `quote` `cols·rows` times to build fresh cells, with grid context available. Close each cell with `;` like `repeat`. Pushes the selection of created objects. |
+| `split` | `[template] count t quote -- selection` | At time `t` the template vanishes and `count` shards are born at its split-point position (sampled from its tracks). Each shard's flight is authored by `quote` around the origin in split-relative local time (array context available), then placed at the split point. Pushes the shard selection. |
 | `polar` | `angle radius --` | Place the active object on a circle: `x = radius·cos angle`, `y = radius·sin angle`. |
 | `f` | `-- number` | Normalized fraction `ordinal/(n-1)` in `[0, 1]`; `0` for a single element. Pairs with `mix`. |
 | `f0` | `-- number` | Cyclic fraction `ordinal/n` in `[0, 1)`; handy for rings (`f0 tau *`). |
