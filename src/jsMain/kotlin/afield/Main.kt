@@ -4333,7 +4333,11 @@ private fun metadataDropOptions(
     },
 )
 
-/** .ipynb options: python-cell import (current), open as a new document, or file-proxy fallbacks. */
+/**
+ * .ipynb options: python-cell import (the sensible default) plus file-proxy fallbacks.
+ * A notebook has no meaning as a standalone Field document, so there is deliberately no
+ * "open as a new document" action here (unlike metadata.edn, which *is* a document).
+ */
 private fun notebookDropOptions(
     dropped: DroppedFileProxy,
     notebookJson: String,
@@ -4343,9 +4347,6 @@ private fun notebookDropOptions(
     DropMenuOption("Import as Python cells") {
         send(Message("import-ipynb").payload(ImportNotebook(dropped.fileName, notebookJson, x, y)))
         notify("Importing notebook ${dropped.fileName}...", "import")
-    },
-    DropMenuOption("Open as new document in a new tab") {
-        openImportInNewTab("ipynb", dropped.fileName, notebookJson)
     },
     DropMenuOption("Copy path to clipboard") { copyDroppedPathToClipboard(dropped) },
     DropMenuOption("Create absolute proxy box") { createAbsoluteProxyForDrop(dropped, x, y) },
