@@ -285,6 +285,10 @@ box.setPropertyRaw("foo", 10, False)
 
 Works as you'd expect. We remain ever-so-slightly sketched out by Python's threading model's interaction with ours, in particular its obvious incompatibilities with Kotlin's coroutines - so there may still be bugs here.
 
+### Notebook interop (`.ipynb`)
+
+Because we'd like Field to be an alternative to Jupyter, the notebook loop goes both ways. **Drag a `.ipynb` onto the canvas** and choose *Import as Python cells*: a fresh "python root" box is created, each code cell becomes a Python cell wired under it, and each markdown/raw cell becomes a `notes` box indented alongside the code so the prose reads inline. **To go the other way**, select the python-root box and run *Export notebook (.ipynb)* from the command palette (or send the `export-ipynb` RPC with the box's uid): Field walks the column top-to-bottom and writes a valid nbformat-4 notebook — Python cells back out as `code` cells, `notes` boxes back out as `markdown` cells. Round-tripping (import → edit → export → re-import) preserves cell count, types, and source text.
+
 ## Clojure
 
 Clojure is another wonderful JVM language that we have a lot of respect for:
