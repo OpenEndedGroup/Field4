@@ -896,6 +896,22 @@ data class ImportNotebook(
     val y: Double = 0.0,
 )
 
+/**
+ * Request to export a python-root box column back out to a Jupyter notebook
+ * (`.ipynb`). [uid] identifies the python-root box (see [ImportNotebook] for the
+ * inverse). The backend replies with an [ExportNotebookResult].
+ */
+@Serializable
+data class ExportNotebook(val uid: String)
+
+/**
+ * Reply to an [ExportNotebook] request: [notebookJson] is a valid nbformat-4
+ * notebook, [fileName] a suggested download name (no directory, may lack the
+ * `.ipynb` suffix — the client appends it).
+ */
+@Serializable
+data class ExportNotebookResult(val notebookJson: String, val fileName: String = "")
+
 @Serializable
 data class Set_rect(val uid: String, val property: String, val value: Rect)
 
