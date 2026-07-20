@@ -167,6 +167,22 @@ class KotlinInterface2(
             }
         }
 
+        // EXPERIMENT: locate the Wither compiler-plugin jar on the classpath so we can hand it
+        // to the REPL compiler via -Xplugin. Loading it registers Wither's FIR receiver-injection
+        // + IR extensions into the CompilerConfiguration at createCompilationState time — the same
+        // config that both the compile path and resolveTypesViaFir read registrars back out of.
+        val witherPluginArgs: List<String> =
+            System.getProperty("java.class.path").orEmpty()
+                .split(java.io.File.pathSeparatorChar)
+                .firstOrNull { it.endsWith("wither-plugin.jar") }
+                ?.let { java.io.File(it).absoluteFile }
+                ?.takeIf { it.exists() }
+                ?.let {
+                    lprintln("kotlin", "wither: enabling Wither compiler plugin from ${it.path}")
+                    listOf("-Xplugin=${it.path}")
+                }
+                ?: emptyList<String>().also { lprintln("kotlin", "wither: plugin jar not found on classpath; not enabled") }
+
         compilerConfig = ScriptCompilationConfiguration {
             defaultImports(DependsOn::class, Repository::class, exported::class, rootExported::class, metarootExported::class)
             hostConfiguration.update {
@@ -177,7 +193,7 @@ class KotlinInterface2(
             jvm {
                 jvmTarget.put("24")
                 _languageVersion.put(fieldKotlinLanguageVersion)
-                compilerOptions.put(fieldKotlinJvmCompilerOptions)
+                compilerOptions.put(fieldKotlinJvmCompilerOptions + witherPluginArgs)
 
                 dependenciesFromClassloader(
                     classLoader = classLoader!!, wholeClasspath = true, unpackJarCollections = true
@@ -534,6 +550,30 @@ class KotlinInterface2(
      * language semantics rather than partial handwritten Analysis API coverage.
      */
     override suspend fun complete(s: String, cursor: Int): CompletionResult {
+        // Stage C: when the AA completion backend is selected, generate candidates out-of-process on the
+        // K2 Analysis API (sidecar /complete), supplying the box's inherited preamble + implicit receivers
+        // so completion resolves against the same REPL context K1 sees. Any failure/timeout/absent-sidecar/
+        // empty result falls through to the compiler-grade K1 delegate — K1 stays the safety net.
+        // Every request logs which backend actually served it (channel "completion") so the source of a
+        // given completion is never a mystery.
+        val box = resolveBoxContext()
+        val boxLabel = box?.let { "'${it.name.ifBlank { "Untitled" }}'(${it.id})" } ?: "none"
+        if (KotlinEngineConfig.activeCompletionBackend == KotlinEngineConfig.CompletionBackend.AA) {
+            val completionPreamble = box?.let { normalizePreambleText(gatherPreambleUpwards(it)) }.orEmpty()
+            val receiverTypes = implicitReceivers.map { it.typeName }
+            val startNs = System.nanoTime()
+            val outcome = withContext(Dispatchers.IO) {
+                AaCompletionClient.complete(s, cursor, completionPreamble, receiverTypes)
+            }
+            val ms = (System.nanoTime() - startNs) / 1_000_000
+            if (outcome.served) {
+                lprintln("info,completion", "completion backend=AA box=$boxLabel ${ms}ms (${outcome.detail})")
+                return outcome.result!!
+            }
+            lprintln("info,completion", "completion backend=K1 box=$boxLabel ${ms}ms (AA→K1: ${outcome.detail})")
+        } else {
+            lprintln("info,completion", "completion backend=K1 box=$boxLabel (backend=k1)")
+        }
         return k1CompletionDelegate().complete(s, cursor)
     }
 

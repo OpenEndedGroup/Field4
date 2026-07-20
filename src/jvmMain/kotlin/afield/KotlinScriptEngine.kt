@@ -687,6 +687,20 @@ object KotlinEngineConfig {
         else -> Backend.K1
     }
 
+    /** Completion candidate-generation backend, independent of the execution [activeBackend]. AA is the
+     *  out-of-process K2 Analysis-API sidecar (`AaCompletionClient` → `/complete`) and is the DEFAULT
+     *  (Stage D cutover): it matches-or-beats K1 recall, passes all anti-goals, and adds named-arg
+     *  completion. It only engages when a sidecar URL is configured
+     *  (`afield.completion.sidecarUrl` / `AFIELD_CODE_USE_SEMANTIC_SIDECAR_URL`); otherwise, and on any
+     *  timeout / error / empty result, it falls through to the compiler-grade K1 delegate, so AA is
+     *  never worse than K1. Force the legacy path with `-Dafield.kotlin.completion=k1`. */
+    enum class CompletionBackend { K1, AA }
+
+    var activeCompletionBackend: CompletionBackend = when (System.getProperty("afield.kotlin.completion", "aa").lowercase()) {
+        "k1" -> CompletionBackend.K1
+        else -> CompletionBackend.AA
+    }
+
     /**
      * When true (default), compilation runs on a background dispatcher so the Runloop
      * frame loop is not blocked while the Kotlin compiler works.
