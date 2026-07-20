@@ -70,6 +70,13 @@ fun applyRuntimeToggle(
         } else {
             root.children.forEach { child ->
                 if (runtimeClass.isInstance(child.ke)) {
+                    // A box stays in this language while it still has a language-root
+                    // parent (e.g. a notebook cell that is a child of BOTH the document
+                    // root and a python-root). Only revert boxes with no language-root
+                    // parent left — this makes the toggle order-independent and means the
+                    // language-root parent, not exclusive parenting, is what confers the
+                    // language.
+                    if (child.parents.any { isRoot(it) == true }) return@forEach
                     onDetach(child)
                     child.ke = KotlinExecution()
                     child.customization = languageLabelCustomization(null)
