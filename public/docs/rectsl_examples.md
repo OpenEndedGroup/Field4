@@ -425,6 +425,8 @@ Dense data is an explicit target for RectSL. Three pieces compose it: a **colorm
 (`bars`, `heat`/`heatmap`, `scatter`) fold both into ready-made rects. Because a chart
 returns an ordinary `Selection`, everything else in the language — `each`, tracks,
 `stagger-time`, `group` — still applies, so a static chart animates with one more line.
+For a *plotted figure* — a shared domain with axes, ticks, numeric labels, and legends so
+several series overlay in one coordinate system — see the plotting layer below.
 
 ### Colormap legend
 
@@ -509,6 +511,55 @@ fps 30
   dup data-len drop
   dup 2 data-at drop
   "coolwarm" bars
+```
+
+### A plotted figure: shared domain, axes, overlaid series, legends
+
+The chart idioms above each fill the wall and normalize by their own extent — great for
+a quick idiom, but two series can't share a coordinate system. The **plotting layer** adds
+that. Set an explicit `domain` (or let the first series adopt its own extent), reserve a
+`frame` of margins, then draw `axes` — x/y rules, "nice-number" ticks, numeric tick labels,
+and faint gridlines. Because there is no text primitive in RectSL, the labels are numerals
+drawn as a 3×5 grid of rects (numbers only). The domain-aware series `area`, `line` (alias
+`plot`), and `points` all map through the one shared domain, so they overlay honestly; a
+`colorbar` and a discrete-swatch `legend` finish the figure:
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+wall 16 10 abstract
+duration 3
+fps 30
+
+# shared coordinate frame: explicit domain + auto margins, then axes underneath
+0 10  0 1  domain
+frame
+axes
+
+# three series overlaid in the ONE shared domain
+0 10 40 linspace  dup '( 0.7 * sin 1 + 2 / ) data-map   "viridis" area
+0 10 40 linspace  dup '( 0.55 * cos 1 + 2 / ) data-map  "plasma"  line
+0 10 12 linspace  dup '( 0.9 * sin 1 + 2 / ) data-map   "turbo"   points
+
+# a colour-bar legend (numeric labels) and a discrete swatch key
+"viridis" colorbar
+5 "turbo" legend
+```
+
+You can set the axes by hand instead of `frame`/`domain` — `xdomain`/`ydomain` set one axis
+each, and `margins` reserves the frame explicitly (left/right/bottom/top as wall fractions).
+`plot` is an alias for `line`:
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+wall 14 8 abstract
+duration 2
+fps 30
+
+0 6 xdomain
+0 1 ydomain
+0.12 0.06 0.14 0.06 margins
+axes
+0 6 30 linspace  dup '( sin 1 + 2 / ) data-map  "turbo" plot
 ```
 
 ## Rendered gallery — more examples

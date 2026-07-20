@@ -1,0 +1,115 @@
+name: rectsl_plot_axes
+description: >
+  Loadable demo of the RectSL plotting layer. Drops in a Window + Renderer and one
+  #rectsl program that draws a full plotted figure: a shared coordinate domain
+  (`domain` + `frame`) with `axes` (x/y rules, nice-number ticks, numeric tick
+  labels drawn as rect numerals, faint gridlines) and THREE series overlaid in the
+  one domain — an `area`, a `line`, and `points` — plus a `colorbar` and a discrete
+  swatch `legend`. This is the "shared axes/domain/legend" swing on top of last
+  night's bars/heat/scatter family. Edit the `rectsl` string and re-run the box to
+  change it live. Replay this file into a fresh Field with the agent backdoor
+  (field_run_transcript) to see the whole figure on screen with no other setup.
+operations:
+  # 1. renderer box — owns the on-screen Window + Renderer and pumps the loop.
+  - create:
+      box: plot_renderer
+      name: window + renderer
+      frame: { x: -640.0, y: -360.0, w: 240.0, h: 90.0 }
+      properties:
+        code: |
+          import afield.four.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+
+          Options.enableHDR = false
+
+          once.renderer {
+              window = Window("RectSL — plotting layer")
+              Renderer(window)
+          }
+
+          println("plot renderer ready")
+          start(renderer::run)
+  # 2. figure box — compiles the snippet and draws it live. This is the box you hack on.
+  - create:
+      box: plot_figure
+      name: rectsl plot + axes
+      frame: { x: -300.0, y: -220.0, w: 300.0, h: 260.0 }
+      properties:
+        code: |
+          // RectSL plotting-layer demo.
+          //
+          // The #rectsl program sets ONE shared domain (`domain` + `frame`), draws
+          // `axes` (rules, nice-number ticks, numeric rect-numeral labels, gridlines),
+          // then overlays three series in that domain (`area`, `line`, `points`) and
+          // finishes with a `colorbar` and a discrete swatch `legend`. Edit `rectsl`
+          // and re-run to change it live. See rectsl_cheatsheet.md ("Plotting layer")
+          // / rectsl_examples.md ("A plotted figure").
+          import afield.rectsl.RectAnimationOracle
+          import afield.rectsl.rectMaterialShaderCode
+          import afield.rectsl.writeFrameToMesh
+          import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
+
+          val rectsl = """
+          #rectsl
+          wall 16 10 abstract
+          duration 3
+          fps 30
+
+          # shared coordinate frame: explicit domain + auto margins, then axes underneath
+          0 10  0 1  domain
+          frame
+          axes
+
+          # three series overlaid in the ONE shared domain
+          0 10 40 linspace  dup '( 0.7 * sin 1 + 2 / ) data-map   "viridis" area
+          0 10 40 linspace  dup '( 0.55 * cos 1 + 2 / ) data-map  "plasma"  line
+          0 10 12 linspace  dup '( 0.9 * sin 1 + 2 / ) data-map   "turbo"   points
+
+          # a colour-bar legend (numeric labels) and a discrete swatch key
+          "viridis" colorbar
+          5 "turbo" legend
+          """
+
+          val program = RectAnimationOracle.compile(rectsl).program!!
+          val shader  = rectMaterialShaderCode(program)
+
+          // Seed this box's shader-source properties before `moduleHere {}` runs; the
+          // `//%-` fragment break makes this fragment execute first (see the playground
+          // transcript for the why).
+          once.vertex { RECT_ANIMATION_VERTEX_SHADER }
+          once.fragment { shader.exampleFragmentShader!! }
+
+          //%-
+
+          val module = moduleHere {
+              blend = true
+              depthTest = false
+              primitiveType = triangles
+          }
+          val m = Mesh()
+          module += "scene" to m
+          renderer += "rectsl-plot-axes" to module
+
+          val ww = program.wall.width.toFloat()
+          val wh = program.wall.height.toFloat()
+          m.push["worldToClip"] = afield.stdlib.linalg.Matrix4f().ortho(-ww / 2f, ww / 2f, -wh / 2f, wh / 2f, -1f, 1f)
+          m.push["wallWidth"] = ww
+          m.push["wallHeight"] = wh
+
+          val duration = program.duration.toDouble()
+          var t = 0.0
+          loop {
+              m.push["time"] = t.toFloat()
+              program.writeFrameToMesh(t % duration, m)
+              t += 1.0 / 60.0
+              true
+          }
+  # 3. wire the figure under the renderer so it inherits Window/Renderer.
+  - connect: { parent: plot_renderer, child: plot_figure }
+  # 4. launch the renderer first (it owns the loop), then the figure.
+  - launch: { box: plot_renderer, property: code, strand: renderer }
+  - await: { wait: pending }
+  - launch: { box: plot_figure, property: code }
+  - await: { wait: pending }

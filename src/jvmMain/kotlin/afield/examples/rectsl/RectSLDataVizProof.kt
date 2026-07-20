@@ -54,7 +54,30 @@ object RectSLDataVizProof {
         "scatter-plot" to 2.0,
         "data-inspect" to 1.0,
         "dataviz-demo" to 3.0,
+        "plot-axes" to 1.0,
     )
+
+    /** The plotting-layer demo (kept identical to the transcript rectsl_plot_axes.yaml). */
+    val PLOT_SOURCE: String = """
+        #rectsl
+        wall 16 10 abstract
+        duration 3
+        fps 30
+
+        # shared coordinate frame: explicit domain + auto margins, then axes underneath
+        0 10  0 1  domain
+        frame
+        axes
+
+        # three series overlaid in the ONE shared domain
+        0 10 40 linspace  dup '( 0.7 * sin 1 + 2 / ) data-map   "viridis" area
+        0 10 40 linspace  dup '( 0.55 * cos 1 + 2 / ) data-map  "plasma"  line
+        0 10 12 linspace  dup '( 0.9 * sin 1 + 2 / ) data-map   "turbo"   points
+
+        # a colour-bar legend (numeric labels) and a discrete swatch key
+        "viridis" colorbar
+        5 "turbo" legend
+    """.trimIndent()
 
     /** The loadable-demo program (kept identical to dev_docs/agents/transcripts/rectsl_dataviz.yaml). */
     val DEMO_SOURCE: String = """
@@ -123,6 +146,7 @@ object RectSLDataVizProof {
               "coolwarm" bars
         """.trimIndent()
         "dataviz-demo" -> DEMO_SOURCE
+        "plot-axes" -> PLOT_SOURCE
         else -> error("unknown program $name")
     }
 
@@ -210,7 +234,7 @@ object RectSLDataVizProof {
     // ── CPU rasterizer for a sampled scene ────────────────────────────────────────
     private fun renderProgram(program: SceneProgram, time: Double): BufferedImage {
         val aspect = program.wall.width / program.wall.height
-        val longSide = 512
+        val longSide = 900
         val (w, h) = if (aspect >= 1.0) longSide to (longSide / aspect).roundToInt()
         else (longSide * aspect).roundToInt() to longSide
         val img = BufferedImage(w.coerceAtLeast(2), h.coerceAtLeast(2), BufferedImage.TYPE_INT_RGB)
