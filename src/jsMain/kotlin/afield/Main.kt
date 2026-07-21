@@ -4537,6 +4537,77 @@ private fun applyUserTheme(theme: UserTheme) {
     window.asDynamic().fieldUserThemePath = theme.path
 }
 
+// ── Canvas history capture ───────────────────────────────────────────────────
+// Canvas (electron-window) history screenshots used to be captured only inside history.html, which
+// runs in an on-demand iframe — so they silently stopped whenever the History panel was closed
+// (the case since the 2026-06 in-editor-history refactor). We now capture from the always-loaded
+// editor, driven by the "history-changed" message on the editor's own WebSocket, so it fires on
+// every save regardless of the panel. Electron-only: needs window.fieldElectron.captureHistoryScreenshot
+// to grab the window pixels (a plain browser can't). Throttled like history.html was (1.2s settle,
+// 10s min interval).
+private const val CANVAS_CAPTURE_IDLE_MS = 1200
+private const val CANVAS_CAPTURE_MIN_INTERVAL_MS = 10000
+private var canvasCaptureInFlight = false
+private var canvasCapturePending: Int? = null
+private var canvasCaptureTimer: Int? = null
+private var canvasCaptureLastAt = 0.0
+
+private fun fieldElectronCaptureApi(): dynamic {
+    val fe = window.asDynamic().fieldElectron
+    return if (fe != null && jsTypeOf(fe.captureHistoryScreenshot) == "function") fe else null
+}
+
+private fun scheduleCanvasHistoryCapture(versionIndex: Int) {
+    canvasCapturePending = versionIndex
+    if (canvasCaptureInFlight || canvasCaptureTimer != null) return
+    val elapsed = Date().getTime() - canvasCaptureLastAt
+    val wait = maxOf(CANVAS_CAPTURE_IDLE_MS.toDouble(), CANVAS_CAPTURE_MIN_INTERVAL_MS - elapsed)
+    canvasCaptureTimer = window.setTimeout({
+        canvasCaptureTimer = null
+        val v = canvasCapturePending ?: -1
+        canvasCapturePending = null
+        captureCanvasHistoryNow(v)
+    }, wait.toInt())
+}
+
+private fun captureCanvasHistoryNow(versionIndex: Int) {
+    val api = fieldElectronCaptureApi() ?: return
+    if (canvasCaptureInFlight) {
+        scheduleCanvasHistoryCapture(versionIndex)
+        return
+    }
+    canvasCaptureInFlight = true
+    canvasCaptureLastAt = Date().getTime()
+    val finish = {
+        canvasCaptureInFlight = false
+        val v = canvasCapturePending
+        canvasCapturePending = null
+        if (v != null) scheduleCanvasHistoryCapture(v)
+    }
+    api.captureHistoryScreenshot().then({ shot: dynamic ->
+        val dataUrl = shot?.dataUrl as? String
+        if (!dataUrl.isNullOrEmpty()) {
+            send(
+                Message("store-history-screenshot").payload(
+                    HistoryScreenshotStoreRequest(
+                        channel = "electron-window",
+                        dataUrl = dataUrl,
+                        versionIndex = versionIndex,
+                        width = (shot.width as? Number)?.toInt() ?: 0,
+                        height = (shot.height as? Number)?.toInt() ?: 0
+                    )
+                )
+            )
+        }
+        finish()
+        Unit
+    }, { err: dynamic ->
+        console.warn("canvas history capture failed", err)
+        finish()
+        Unit
+    })
+}
+
 @OptIn(DelicateCoroutinesApi::class)
 suspend fun main() {
     launchNumber++
@@ -5212,6 +5283,21 @@ suspend fun main() {
     }
 
     window.asDynamic().fieldBackdoorUiReady = true
+
+    // Canvas history capture: on every save the server broadcasts "history-changed" to this
+    // editor's WebSocket; grab the Electron window and store it under channel "electron-window".
+    // Only in Electron (fieldElectron present). The flag tells history.html to skip its own
+    // now-redundant trigger so the panel being open doesn't double-capture.
+    if (fieldElectronCaptureApi() != null) {
+        window.asDynamic().__canvasHistoryCaptureActive = true
+        handlers.put("history-changed") { message, _ ->
+            val versionIndex = message.payload
+                ?.let { Json.decodeFromJsonElement<HistoryChanged>(it) }
+                ?.versionIndex ?: -1
+            scheduleCanvasHistoryCapture(versionIndex)
+            Handled.yes
+        }
+    }
 
     handlers.put("set-output") { message, _ ->
         val set = Json.decodeFromJsonElement<Set_output>(message.payload!!)

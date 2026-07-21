@@ -3168,6 +3168,9 @@ class Server {
                             // document the user clicks right after the list appears).
                             val codeUseSummary = CodeUseTelemetryService.summarySnapshot()
                             val semanticSettings = SemanticRetrievalService.settingsStatusSnapshot()
+                            val startingPointEntries = withContext(workspaceSearchDispatcher) {
+                                startingPoints()
+                            }
                             call.respond(
                                 WelcomeDocsResponse(
                                     docs,
@@ -3175,6 +3178,7 @@ class Server {
                                     defaultDocument,
                                     allTags,
                                     runningDocuments,
+                                    startingPointEntries,
                                     currentWorkspace,
                                     defaultWorkspace,
                                     currentAiSettingsStatus(),
@@ -3865,6 +3869,27 @@ class Server {
                             }
                         }
 
+                        // Copy a bundled starting point (materialized agent transcript) into the
+                        // user's workspace under a fresh name and return it, so the welcome screen
+                        // can "open" a read-only example scene without mutating the bundle.
+                        post("/api/starting-points/open") {
+                            try {
+                                val name = call.request.queryParameters["name"].orEmpty()
+                                    .ifBlank { call.receive<StartingPointOpenRequest>().name }
+                                val response = withContext(workspaceSearchDispatcher) {
+                                    openStartingPointIntoWorkspace(home, name)
+                                }
+                                recordRecentDocument(response.filename)
+                                broadcastWelcomeEvent("starting-point-opened")
+                                call.respond(response)
+                            } catch (e: IllegalArgumentException) {
+                                call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    mapOf("error" to (e.message ?: "invalid starting-point request"))
+                                )
+                            }
+                        }
+
                         post("/api/reveal-document") {
                             try {
                                 val request = call.receive<RevealDocumentRequest>()
@@ -3973,18 +3998,37 @@ class Server {
                             val response = try {
                                 withContext(workspaceSearchDispatcher) {
                                     val requestJob = coroutineContext.job
-                                    searchWorkspace(
+                                    val cancellationCheck: () -> Unit = {
+                                        if (!requestJob.isActive) throw CancellationException("workspace search cancelled")
+                                        if (workspaceSearchGeneration.get() != searchGeneration) {
+                                            throw CancellationException("workspace search superseded")
+                                        }
+                                    }
+                                    val workspaceHits = searchWorkspace(
                                         base = home,
                                         rawQuery = query,
                                         maxDocuments = maxDocuments,
                                         maxMatchesPerDocument = maxMatchesPerDocument,
                                         maxScanMillis = maxScanMillis,
-                                        cancellationCheck = {
-                                            if (!requestJob.isActive) throw CancellationException("workspace search cancelled")
-                                            if (workspaceSearchGeneration.get() != searchGeneration) {
-                                                throw CancellationException("workspace search superseded")
-                                            }
-                                        }
+                                        cancellationCheck = cancellationCheck
+                                    )
+                                    // Also surface the bundled starting points (materialized agent
+                                    // transcripts) so a search finds ready-to-open example scenes,
+                                    // even though they live outside the user's workspace. Tagged
+                                    // kind="starting-point" so the client can open them via copy.
+                                    val startingHits = searchStartingPoints(
+                                        rawQuery = query,
+                                        maxDocuments = maxDocuments,
+                                        maxMatchesPerDocument = maxMatchesPerDocument,
+                                        maxScanMillis = maxScanMillis,
+                                        cancellationCheck = cancellationCheck
+                                    )
+                                    if (startingHits.documents.isEmpty()) workspaceHits
+                                    else workspaceHits.copy(
+                                        documents = workspaceHits.documents + startingHits.documents,
+                                        totalDocuments = workspaceHits.totalDocuments + startingHits.totalDocuments,
+                                        totalMatches = workspaceHits.totalMatches + startingHits.totalMatches,
+                                        truncated = workspaceHits.truncated || startingHits.truncated
                                     )
                                 }
                             } catch (e: CancellationException) {
