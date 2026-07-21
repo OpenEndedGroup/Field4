@@ -99,7 +99,7 @@ val signalPalette: List<String> = listOf("#7ad9ff", "#ff9e4a", "#8fff9a", "#ffe0
  *
  * - [x]: shared x values for every series (e.g. frequency in Hz); defaults to the sample index.
  * - [marks]: vertical dashed reference lines, `"label" to xPosition` (e.g. a spectral centroid or
- *   rolloff), spanning the full y-range.
+ *   rolloff, or a regime boundary), spanning the full y-range, drawn in [markColor].
  * - [normalize]: min-max each series into `[0,1]` — use when the signals live on very different
  *   scales (e.g. a centroid in Hz alongside an RMS in `[0,1]`) and you only care about their shape.
  *
@@ -114,6 +114,7 @@ fun Box.showSignals(
     xTitle: String? = null,
     yTitle: String? = null,
     marks: List<Pair<String, Number>> = emptyList(),
+    markColor: String = "#ffe066",
     normalize: Boolean = false,
 ): Plot {
     fun shape(values: List<Number>): List<Number> {
@@ -144,7 +145,7 @@ fun Box.showSignals(
                     this.x.set(listOf(mx, mx))
                     this.y.set(listOf(ymin, ymax))
                     line.width = 1.2
-                    line.color("#ffe066")
+                    line.color(markColor)
                     line.dash = Dash.dash
                 }
             }

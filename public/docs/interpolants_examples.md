@@ -4,8 +4,9 @@ Some values are supposed to *move*: a control that eases to a target instead of
 snapping, a whole parameter state morphing from one saved look to another, a
 relationship between two signals drifting as they play. This page collects the
 tools for those cases and does the one thing that makes them legible — it draws
-the motion as an `FLine` (or, for correlations, a live Plotly trace). Three
-families, one idea: a value you can *see* moving is a value you can reason about.
+the motion: a `showSignals` plot when the value is a signal over time, an `FLine`
+when the shape is spatial. Three families, one idea: a value you can *see* moving
+is a value you can reason about.
 For recovering a hidden value from noisy measurements, see
 [State estimation](state_estimation_examples.md).
 
@@ -15,53 +16,63 @@ An interpolant is a value that chases a target over a controlled number of
 evaluations rather than jumping. `smoothTo(...)` is the workhorse — opacity,
 brightness, a filter cutoff, a camera move, a gesture-derived control. The single
 knob that shapes the approach is `steps`: fewer steps arrive sooner and sharper,
-more steps settle later and softer. Drawing a *family* of them makes that shaping
-obvious at a glance:
+more steps settle later and softer. The honest way to feel that is to give three
+interpolants a target that keeps *moving* — a set-point that jumps every 60
+evaluations — and re-aim each one from wherever it currently sits (`startAt`) the
+moment the target changes. Now `steps` reads as responsiveness: the snappy one
+locks on almost immediately, the glacial one is still leaning into the last jump
+when the next one arrives.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/interpolants_examples/smooth_family.png" wait="1.0" capture="box" open-outputs="true" name="interpolants-family"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/interpolants_examples/smooth_family.png" wait="1.5" capture="box" open-outputs="true" name="interpolants-family"}
 :::static
-import afield.graphics.FLine
 import afield.stdlib.NeedsStartingValue
 
-val stepCounts = listOf(40, 90, 150, 220)
-val samples = 240
+val n = 300
+// A target that jumps to a new set-point every 60 evaluations — the value to chase.
+val setPoints = floatArrayOf(0.20f, 0.90f, 0.35f, 0.78f, 0.15f)
+fun targetAt(i: Int) = setPoints[(i / 60).coerceAtMost(setPoints.size - 1)]
 
-fun trace(steps: Int, c: Vec4): FLine {
-    val interp = smoothTo<Float>(steps = steps) { 1.0f }
-    (interp as NeedsStartingValue<Float>).startAt(0.0f)
-    return fline {
-        for (i in 0 until samples) {
-            val v = interp()
-            val x = 60.0 + i.toDouble() / (samples - 1).toDouble() * 960.0
-            val y = 560.0 - v * 460.0
-            if (i == 0) moveTo(x, y) else lineTo(x, y)
-        }
-        color = c
-        thickness = 2.4
+var goal = setPoints[0]
+fun chaser(steps: Int) = smoothTo<Float>(steps = steps) { goal }
+    .also { (it as NeedsStartingValue<Float>).startAt(goal) }
+
+val snappy  = chaser(20)   // locks on fast
+val medium  = chaser(60)   // arrives about when the next jump lands
+val glacial = chaser(160)  // always leaning toward the last set-point
+
+val tgt = FloatArray(n); val a = FloatArray(n); val b = FloatArray(n); val c = FloatArray(n)
+var prev = goal
+for (i in 0 until n) {
+    goal = targetAt(i)
+    if (goal != prev) {
+        // Retarget: re-aim each interpolant from its current value toward the new set-point.
+        (snappy  as NeedsStartingValue<Float>).startAt(a[i - 1])
+        (medium  as NeedsStartingValue<Float>).startAt(b[i - 1])
+        (glacial as NeedsStartingValue<Float>).startAt(c[i - 1])
+        prev = goal
     }
+    tgt[i] = goal
+    a[i] = snappy(); b[i] = medium(); c[i] = glacial()
 }
 
-val palette = listOf(
-    vec(0.55, 0.92, 1.0, 0.95),
-    vec(0.55, 1.0, 0.75, 0.90),
-    vec(1.0, 0.85, 0.40, 0.90),
-    vec(1.0, 0.60, 0.40, 0.90)
+showSignals(
+    "target" to tgt.toList(),
+    "steps = 20 (snappy)" to a.toList(),
+    "steps = 60" to b.toList(),
+    "steps = 160 (glacial)" to c.toList(),
+    channel = "main",
+    title = "smoothTo re-aiming at a moving target — steps sets the responsiveness",
+    xTitle = "evaluation",
 )
-val curves = stepCounts.mapIndexed { i, s -> trace(s, palette[i]) }
-
-val target = fline { moveTo(60, 100); lineTo(1020, 100); color = vec(1,1,1,0.22); thickness = 1.0 }
-val base   = fline { moveTo(60, 560); lineTo(1020, 560); color = vec(1,1,1,0.16); thickness = 1.0 }
-
-lines(listOf(base, target) + curves, channel = "interpolants-family", w = 1080.0, h = 640.0, fitToSize = true)
 ```
 
-Each curve chases the same target (the faint upper guide) from the same start
-(the lower guide). Blue is the shortest ramp and orange the longest; every one
-climbs decisively and then flattens onto the target rather than crossing it. Read
-top to bottom, `steps` is a legibility control: pick the ramp whose settling time
-matches the gesture.
+The cyan step line is the target; the three curves re-aim at each jump. `steps = 20`
+snaps onto every set-point and holds; `steps = 60` arrives just as the next jump
+lands; `steps = 160` rounds every corner and never quite catches up before the
+target moves again. That is the whole design decision in one picture: pick the ramp
+whose settling time matches the gesture.
 
-![Four smoothTo interpolants with different step counts fanning up to a target](assets/interpolants_examples/smooth_family.png)
+![Three smoothTo interpolants with different step counts re-aiming at a jumping target](assets/interpolants_examples/smooth_family.png)
 
 ### Diff: retime interpolation by duration
 
@@ -251,41 +262,50 @@ statistic that sounds more certain than it is. Two signals can clearly belong
 together without a straight-line relationship; a rolling metric is the way to
 watch that dependence drift over time:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/correlations_examples/rolling_dependence.png" wait="1.0" capture="box" open-outputs="true"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/correlations_examples/rolling_dependence.png" wait="1.5" capture="box" open-outputs="true"}
 :::static
-import afield.darkMode
-import space.kscience.plotly.*
+val rollingD = RollingDistanceCorrelation(windowSize = 60)
+val rollingXi = RollingXiCorrelation(windowSize = 60)
 
-val rollingD = RollingDistanceCorrelation(windowSize = 84)
-val rollingXi = RollingXiCorrelation(windowSize = 84)
-
-val t = (0 until 420).toList()
-val xs = t.map { it / 420.0 * 2.0 - 1.0 }
-val ys = t.map { i -> xs[i] * xs[i] + sin(i / 420.0 * PI * 8.0) * 0.08 + (-0.04 + random() * 0.08) }
-val dcor = t.map { rollingD.push(xs[it], ys[it]) ?: 0.0 }
-val xi = t.map { rollingXi.push(xs[it], ys[it]) ?: 0.0 }
-
-display(Plotly.plot {
-    trace { name = "x (source)"; x.set(t); y.set(xs); line.width = 0.6 }
-    trace { name = "y (source)"; x.set(t); y.set(ys); line.width = 0.6 }
-    trace { name = "rolling dcor"; x.set(t); y.set(dcor); line.width = 2.4 }
-    trace { name = "rolling xi"; x.set(t); y.set(xi); line.width = 2.4 }
-    layout {
-        title = "Two rolling dependence metrics and the x, y they watch"
-        xaxis { title = "sample" }
+// A partner signal whose relationship to the driver changes in thirds: first it tracks x
+// (linear), then it becomes independent noise, then it is a nonlinear function of x.
+val n = 420
+val xs = DoubleArray(n) { sin(it / n.toDouble() * 2.0 * PI * 3.0) }
+val ys = DoubleArray(n) { i ->
+    when {
+        i < 140 -> xs[i] + (-0.05 + random() * 0.10)                    // linear dependence
+        i < 280 -> -0.9 + random() * 1.8                               // independent noise
+        else    -> 2.0 * xs[i] * xs[i] - 1.0 + (-0.05 + random() * 0.10) // nonlinear dependence
     }
-}.darkMode())
+}
+val dcor = DoubleArray(n) { rollingD.push(xs[it], ys[it]) ?: 0.0 }
+val xi   = DoubleArray(n) { rollingXi.push(xs[it], ys[it]) ?: 0.0 }
+
+showSignals(
+    "x (driver)" to xs.toList(),
+    "y (partner)" to ys.toList(),
+    "rolling dcor" to dcor.toList(),
+    "rolling xi" to xi.toList(),
+    title = "Dependence coming in and out: linear → noise → nonlinear",
+    xTitle = "sample",
+    marks = listOf("noise" to 140, "nonlinear" to 280),
+    markColor = "#9aa4b2",
+)
 ```
 
-The two source signals `xs`/`ys` — the noisy parabola — are drawn alongside the
-metrics computed from them, so you can see what each rolling window is actually
-looking at. The same stream feeds `RollingDistanceCorrelation` and
-`RollingXiCorrelation`, and the window stays fixed across the run.
+Both source signals are drawn alongside the metrics computed from them, so you can
+see what each rolling window is actually looking at. In the first third `y` tracks
+`x`; in the second it is independent noise; in the third it is a nonlinear function
+of `x` (`y = 2x² − 1`). Both `RollingDistanceCorrelation` and `RollingXiCorrelation`
+climb on the two *dependent* stretches and collapse across the noise band — the
+dependence visibly comes and goes (the grey guides mark the regime changes), which
+a single summary number would smear into one lukewarm value.
 
-![Rolling distance-correlation and xi traces on one nonlinear stream](assets/correlations_examples/rolling_dependence.png)
+![Rolling distance-correlation and xi traces rising and falling across three dependence regimes](assets/correlations_examples/rolling_dependence.png)
 
-The two traces track the same evolving dependency without coinciding. Use this
-kind of sanity check before trusting a rolling metric on sensor streams, musical
+The two metrics rise and fall together without coinciding, and both recover on the
+*nonlinear* third where a straight-line correlation would not. Use this kind of
+sanity check before trusting a rolling metric on sensor streams, musical
 features, or exploratory data. When you instead want a fast comparison of several
 metrics on one *fixed* dataset — which one notices the shape, which punishes you
 for asking a linear question of a nonlinear cloud — plot the cloud they run on,
