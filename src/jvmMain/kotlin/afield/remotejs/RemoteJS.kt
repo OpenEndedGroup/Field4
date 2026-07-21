@@ -168,14 +168,18 @@ fun executeRemoteJS(
 ): Boolean = runBlocking {
 
     var s = _s
+    val astaDiagnostics = mutableListOf<Diagnostic>()
     if (doASTA) {
         s = Asta().parseAndReconstruct(s) {
-            diagnosticsTo(it)
+            // Nashorn's parser is useful for recovering a source location, but the
+            // target browser is the authority on whether modern Javascript is valid.
+            // Hold these diagnostics until the browser also reports a SyntaxError;
+            // eagerly emitting them produces two error zones for one typo.
+            astaDiagnostics.add(it)
         }
     }
 
     val u = UUID.randomUUID().toString()
-    if (handleTo != null) returnHandlers[u] = handleTo
 
     val q = JSONObject()
     q.put("code", s)
@@ -193,13 +197,44 @@ fun executeRemoteJS(
     if (timeEnd != null) q.put("timeEnd", timeEnd)
 
     knownOpenRemoteClients.entries.removeIf { it.value.outgoing.isClosedForSend }
+    remoteClientCapabilities.keys.retainAll(knownOpenRemoteClients.keys)
 
-    knownOpenRemoteClients.forEach {
-        if (filterSession(it.key, it.value))
-            it.value.send(q.toString())
+    val recipients = knownOpenRemoteClients.entries.filter { filterSession(it.key, it.value) }
+    if (recipients.isEmpty()) {
+        // With no browser there will be no authoritative response. Preserve the old
+        // behavior of showing the local parser diagnostic instead of failing silently.
+        astaDiagnostics.forEach(diagnosticsTo)
+        return@runBlocking false
     }
 
-    knownOpenRemoteClients.size > 0
+    if (handleTo != null) {
+        returnHandlers[u] = { response ->
+            preferAstaLocationForBrowserSyntaxError(response, astaDiagnostics)
+            handleTo(response)
+        }
+    }
+
+    recipients.forEach {
+        it.value.send(q.toString())
+    }
+
+    true
+}
+
+/**
+ * A browser SyntaxError from eval often has no sourceURL location. ASTA has already
+ * parsed the identical source and normally has the precise line/column, so enrich the
+ * one browser response rather than emitting a second, competing error beforehand.
+ */
+internal fun preferAstaLocationForBrowserSyntaxError(response: JSONObject, diagnostics: List<Diagnostic>) {
+    val payload = response.optJSONObject("payload") ?: return
+    if (payload.optString("kind") != "ERROR" || payload.optString("name") != "SyntaxError") return
+    val diagnostic = diagnostics.firstOrNull() ?: return
+
+    payload.put("message", diagnostic.message)
+    payload.put("line", diagnostic.lineNumber.toInt())
+    payload.put("column", diagnostic.columnNumber.toInt())
+    payload.put("locationSource", "asta")
 }
 
 fun executeFragment(b: Box, code: String, lineOffset: Int = 0, onComplete: (() -> Unit)? = null) {

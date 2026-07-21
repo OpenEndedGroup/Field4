@@ -2578,7 +2578,7 @@ async def dispatch_command(
         timeout = command_timeout(args.timeout, client.default_timeout)
         await ensure_playwright_attached(client, timeout=timeout, reason=f"command:editor-open:{args.uid}")
         data = await client.open_editor(
-            uid=args.uid,
+            uid=client.resolve_box_token(args.uid),
             property_name=args.property,
             open_outputs=args.open_outputs,
             padding=args.padding,
@@ -2600,7 +2600,7 @@ async def dispatch_command(
         timeout = command_timeout(args.timeout, client.default_timeout)
         data = await client.screenshot_window(
             path=args.path,
-            uid=args.uid,
+            uid=client.resolve_box_token(args.uid) if args.uid else None,
             property_name=args.property,
             show_editor=args.with_editor,
             editor_only=False,

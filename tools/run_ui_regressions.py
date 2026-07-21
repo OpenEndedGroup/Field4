@@ -256,7 +256,7 @@ if (status) {
     whiteSpace: "pre"
   });
   document.body.appendChild(evidence);
-  remoteFrame.remove();
+  remoteFrame.style.display = "none";
 }
 return {
   ok: remoteDocument?.documentElement?.dataset?.fieldRemoteSelfTest === "pass" &&
@@ -270,6 +270,24 @@ return {
   executionCount,
   executionValue,
   checks: report?.results || []
+};
+"""
+
+REMOTE_AR_SINGLE_ERROR_JS = """\
+const deadline = Date.now() + 5000;
+let errors = [];
+while (Date.now() < deadline) {
+  errors = Array.from(document.querySelectorAll(".execution_output.error"));
+  if (errors.length) break;
+  await new Promise((resolve) => setTimeout(resolve, 50));
+}
+const messages = errors.map((element) => (element.textContent || "").trim());
+document.getElementById("remote-ar-regression-frame")?.remove();
+return {
+  ok: errors.length === 1 && /<<internal>>:1:/.test(messages[0] || ""),
+  reason: `expected one line-1 syntax error, found ${errors.length}: ${messages.join(" | ")}`,
+  count: errors.length,
+  messages
 };
 """
 
@@ -2555,6 +2573,7 @@ def prepare_generated_files() -> dict[str, Path]:
         "focus_keyboard_enter_assert_js": write_generated_file("focus-keyboard-enter-assert.js", FOCUS_KEYBOARD_ENTER_ASSERT_JS),
         "remote_ar_navigate_js": write_generated_file("remote-ar-navigate.js", REMOTE_AR_NAVIGATE_JS),
         "remote_ar_assert_js": write_generated_file("remote-ar-assert.js", REMOTE_AR_ASSERT_JS),
+        "remote_ar_single_error_js": write_generated_file("remote-ar-single-error.js", REMOTE_AR_SINGLE_ERROR_JS),
     }
 
 
@@ -2641,12 +2660,16 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 shell_join(["raw-send", "insert-template", json.dumps({"command": "insert", "value": ["remote"]})]),
                 "sleep 0.5",
                 "snapshot",
+                shell_join(["editor-open", "hello world", "--property", "code"]),
                 shell_join(["page-eval", "--body", "--file", str(files["remote_ar_navigate_js"]), "--timeout", pw_timeout]),
                 "sleep 2.0",
                 shell_join(["run", "hello world", "--value", "document.documentElement.dataset.remoteExecution = 6 * 7; print(6 * 7)", "--timeout", timeout_text]),
                 shell_join(["page-eval", "--body", "--file", str(files["remote_ar_assert_js"]), "--timeout", pw_timeout]),
+                shell_join(["run", "hello world", "--value", "clearAFr ame()", "--timeout", timeout_text]),
+                "sleep 0.5",
+                shell_join(["page-eval", "--body", "--file", str(files["remote_ar_single_error_js"]), "--timeout", pw_timeout]),
             ],
-            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--uid", "hello world", "--with-editor", "--no-pan", "--timeout", pw_timeout]),
         ),
         UiRegression(
             id="toast-restack",
