@@ -36,7 +36,8 @@ activity while the process runs. Updates arrive through the same
 The dashboard button starts an in-place run. For a preview that writes no
 source or cache files, run:
 
-```bash
+```diffstatic {data-lang=bash}
+:::static
 ./gradlew polishCompletionDocsDryRun
 ```
 

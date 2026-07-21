@@ -2,6 +2,7 @@ package afield
 
 import afield.ai.KotlinDefinitionRecord
 import afield.ai.KotlinSourceIndex
+import afield.logger.PinnedConsole
 import afield.logger.lprintln
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -325,6 +326,15 @@ object CodeUseTelemetryService {
     private val droppedAnalysisJobs = AtomicLong(0)
     private val analyzerCompletedJobs = AtomicLong(0)
     private val catchupQueuedJobs = AtomicLong(0)
+
+    // --- background catch-up progress, surfaced as a single pinned console row (see reportCatchupProgress) ---
+    private const val CATCHUP_CHANNEL = "catchup"
+    private const val CATCHUP_REPORT_MIN_NANOS = 500_000_000L // coalesce the pinned row to ≤ 2 repaints/sec
+    private val catchupTotal = AtomicLong(0)     // snippets enqueued for catch-up this run
+    private val catchupDone = AtomicLong(0)      // catch-up snippets the analyzer has finished
+    @Volatile private var catchupActive = false  // a catch-up pass is in flight (its row is pinned)
+    @Volatile private var lastCatchupReportNanos = 0L
+
     private val analysisRateLock = Any()
     private val analysisCompletionTimestamps = ArrayDeque<Long>()
     private val started = AtomicLong(0)
@@ -2006,29 +2016,38 @@ object CodeUseTelemetryService {
         source: String,
         sourceName: String,
         createdAtEpochMs: Long,
-        mode: String = ""
-    ) {
+        mode: String = "",
+        catchup: Boolean = false
+    ): Boolean {
         refreshQuietMode()
-        if (quietMode) return
-        if (!isSignalBearingSource(source, mode)) return
+        if (quietMode) return false
+        if (!isSignalBearingSource(source, mode)) return false
         val job = CodeUseAnalysisJob(
             snippetId = snippetId,
             source = source.take(MAX_SOURCE_CHARS),
             sourceName = sourceName,
-            createdAtEpochMs = createdAtEpochMs
+            createdAtEpochMs = createdAtEpochMs,
+            catchup = catchup
         )
-        if (!analysisQueue.offer(job)) {
-            droppedAnalysisJobs.incrementAndGet()
-        }
+        if (analysisQueue.offer(job)) return true
+        droppedAnalysisJobs.incrementAndGet()
+        return false
     }
 
     private fun analysisLoop() {
         Thread.currentThread().priority = Thread.MIN_PRIORITY
         while (true) {
-            val first = analysisQueue.poll(1, TimeUnit.SECONDS) ?: continue
+            val first = analysisQueue.poll(1, TimeUnit.SECONDS)
+            if (first == null) {
+                // Idle tick: refresh the pinned catch-up row so it stays alive (and visibly *stalled*
+                // if the analyzer is blocked) instead of silently expiring after 20s.
+                if (catchupActive) reportCatchupProgress()
+                continue
+            }
             refreshQuietMode()
             if (quietMode) {
                 analysisQueue.clear()
+                cancelCatchupReport()
                 continue
             }
             val latestBySnippet = LinkedHashMap<String, CodeUseAnalysisJob>()
@@ -2036,15 +2055,73 @@ object CodeUseTelemetryService {
             var drained = 0
             while (drained < 128) {
                 val next = analysisQueue.poll() ?: break
-                latestBySnippet[next.snippetId] = next
+                // Keep the newest job, but never lose a catch-up snippet's flag to a coinciding live edit —
+                // otherwise catchupDone would fall one short of catchupTotal and wedge the progress row.
+                val merged = if (latestBySnippet[next.snippetId]?.catchup == true) next.copy(catchup = true) else next
+                latestBySnippet[next.snippetId] = merged
                 drained++
             }
             latestBySnippet.values.forEach { job ->
                 runCatching { analyzeAndStore(job) }
                     .onFailure { lprintln("warning,code-use", "code-use analyzer skipped ${job.snippetId}: ${it.message ?: it.javaClass.name}") }
                 recordAnalysisJobCompleted()
+                if (job.catchup) catchupDone.incrementAndGet()
             }
+            reportCatchupProgress()
         }
+    }
+
+    /**
+     * Repaint the single pinned "semantic catch-up" row (channel [CATCHUP_CHANNEL], pinned at the top of
+     * the console by [enqueueRecentSidecarCatchup]). No-op unless a catch-up pass is active; coalesced to
+     * [CATCHUP_REPORT_MIN_NANOS] so a fast-draining queue doesn't flood repaints. When the backlog empties
+     * it hands off to [finishCatchupReport]. The row shows done/total, live queue depth, throughput, and a
+     * rough ETA — so a flat count is an at-a-glance signal that the sidecar analyzer is wedged.
+     */
+    private fun reportCatchupProgress(force: Boolean = false) {
+        if (!catchupActive) return
+        val total = catchupTotal.get()
+        if (total <= 0L) return
+        val done = catchupDone.get().coerceAtMost(total)
+        if (done >= total) {
+            finishCatchupReport()
+            return
+        }
+        val nowNanos = System.nanoTime()
+        if (!force && nowNanos - lastCatchupReportNanos < CATCHUP_REPORT_MIN_NANOS) return
+        lastCatchupReportNanos = nowNanos
+        val pct = done * 100L / total
+        val rate = analyzerJobsPerMinute()
+        val eta = if (rate > 0.0) {
+            val remainingSec = ((total - done).toDouble() / (rate / 60.0)).toLong()
+            " · ~${formatCatchupEta(remainingSec)} left"
+        } else ""
+        lprintln(
+            "info,$CATCHUP_CHANNEL",
+            "semantic catch-up $done/$total ($pct%) · ${analysisQueue.size} queued · ${"%.0f".format(rate)}/min$eta"
+        )
+    }
+
+    /** Close out a finished catch-up pass: log a scrolling summary line and drop the pinned row. */
+    private fun finishCatchupReport() {
+        if (!catchupActive) return
+        catchupActive = false
+        val total = catchupTotal.get()
+        lprintln("info,code-use", "semantic sidecar catch-up complete · $total snippet(s) analyzed")
+        runCatching { PinnedConsole.unpin(CATCHUP_CHANNEL) }
+    }
+
+    /** Abandon the pinned catch-up row without a completion summary (e.g. quiet mode cleared the queue). */
+    private fun cancelCatchupReport() {
+        if (!catchupActive) return
+        catchupActive = false
+        runCatching { PinnedConsole.unpin(CATCHUP_CHANNEL) }
+    }
+
+    private fun formatCatchupEta(seconds: Long): String = when {
+        seconds < 60L -> "${seconds}s"
+        seconds < 3600L -> "${seconds / 60L}m ${seconds % 60L}s"
+        else -> "${seconds / 3600L}h ${(seconds % 3600L) / 60L}m"
     }
 
     private fun analyzeAndStore(job: CodeUseAnalysisJob) {
@@ -2748,20 +2825,27 @@ object CodeUseTelemetryService {
             ps.setLong(1, since)
             ps.executeQuery().use { rs ->
                 while (rs.next()) {
-                    enqueueAnalysis(
+                    val enqueued = enqueueAnalysis(
                         snippetId = rs.getString("id").orEmpty(),
                         source = rs.getString("text").orEmpty(),
                         sourceName = rs.getString("source_name").orEmpty(),
                         createdAtEpochMs = rs.getLong("created_at"),
-                        mode = rs.getString("mode").orEmpty()
+                        mode = rs.getString("mode").orEmpty(),
+                        catchup = true
                     )
-                    queued++
+                    if (enqueued) queued++
                 }
             }
         }
         if (queued > 0) {
             catchupQueuedJobs.addAndGet(queued.toLong())
+            // Pin a live progress row at the top of the console so the catch-up pass reports itself
+            // instead of going quiet after this one line (see reportCatchupProgress / analysisLoop).
+            catchupTotal.addAndGet(queued.toLong())
+            catchupActive = true
+            runCatching { PinnedConsole.pin(CATCHUP_CHANNEL, heatmap = false) }
             lprintln("info,code-use", "queued $queued recent snippet(s) for semantic sidecar catch-up analysis")
+            reportCatchupProgress(force = true)
         }
     }
 
@@ -3027,7 +3111,8 @@ object CodeUseTelemetryService {
         val snippetId: String,
         val source: String,
         val sourceName: String,
-        val createdAtEpochMs: Long
+        val createdAtEpochMs: Long,
+        val catchup: Boolean = false
     )
 
     private data class CodeUseCandidate(

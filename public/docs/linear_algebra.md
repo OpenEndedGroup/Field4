@@ -6,7 +6,8 @@ run like live code: reorder a vector's components by name, do arithmetic with th
 usual `+ - * /`, copy a vector with one field changed, rescale it to a length —
 all as *expressions*, without reaching for ceremony.
 
-```kotlin
+```diffstatic {data-lang=kotlin}
+:::static
 val position = vec(1, 2, 3)
 position.x += 1f          // now (2, 2, 3)
 position { normalize() }  // a unit copy; position itself is untouched
@@ -33,7 +34,8 @@ For the exhaustive, machine-generated member list of every type, see the
 code can mix integer, double, and float literals without decorating everything
 with `f`. The number of arguments selects the arity.
 
-```kotlin
+```diffstatic {data-lang=kotlin}
+:::static
 val a = vec(2, 1)                 // Vector2f
 val v = vec(1, 2, 3)              // Vector3f
 val p = vec(0.25, 0.5, 1.0, 2.0)  // Vector4f
@@ -42,7 +44,8 @@ val p = vec(0.25, 0.5, 1.0, 2.0)  // Vector4f
 When the expected type is already known, Kotlin collection literals are an even
 terser option:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
+:::static
 val origin: Vec2 = [0, 0]
 val up: Vec3 = [0, 1, 0]
 val white: Vec4 = [1, 1, 1, 1]
@@ -52,7 +55,8 @@ The examples below use `vec(...)` because it also establishes the type when ther
 is no declaration annotation. In a Field box the linalg imports arrive with the
 standard preamble, so you rarely type them yourself; a plain Kotlin file wants:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
+:::static
 import afield.stdlib.*        // vec, swizzles, invoke / %= / len
 import afield.stdlib.linalg.* // + - * / and the matrix/quaternion types
 ```
@@ -65,7 +69,8 @@ numbers can stand for a point or a displacement, and the operation reveals which
 you mean — subtracting two points gives the arrow between them; adding an arrow
 to a point moves it.
 
-```kotlin
+```diffstatic {data-lang=kotlin}
+:::static
 val from = vec(2, 1, 0)
 val to   = vec(7, 4, 0)
 to - from            // vec3(5, 3, 0) — the displacement between two points
@@ -199,7 +204,8 @@ frames.
 length to one. Because normalizing mutates, reach for `v { normalize() }` when you
 want a fresh unit copy:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
+:::static
 val velocity = vec(6, 8, 0)
 velocity.length()          // 10.0
 velocity { normalize() }   // vec3(0.6, 0.8, 0) — same direction, unit length
@@ -210,7 +216,8 @@ The zero vector has no direction, so normalizing it produces non-finite
 components — guard it when zero is possible. Use the squared forms for
 comparisons; they skip the square root while preserving ordering:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
+:::static
 if (velocity.lengthSquared() > 1e-12f) velocity.normalize()
 if (candidate.distanceSquared(mouse) < 20f * 20f) { /* within 20 units */ }
 ```
@@ -221,7 +228,8 @@ The dot product multiplies matching components and adds them. For unit vectors i
 is the cosine of the angle between them — `1` same way, `0` perpendicular, `-1`
 opposed:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
+:::static
 val forward = vec(0, 0, -1)
 forward.dot(vec(0, 0, -1))  //  1.0  — identical direction
 forward.dot(vec(1, 0, 0))   //  0.0  — perpendicular
@@ -231,7 +239,8 @@ vec(1, 2, 3).dot(vec(4, 5, 6)) // 32.0 — 1·4 + 2·5 + 3·6
 A classic lighting term asks how much a surface normal agrees with the direction
 toward a light, clamped so a light behind the surface contributes nothing:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
+:::static
 val brightness = normal.dot(directionToLight).coerceAtLeast(0f)
 ```
 
@@ -241,14 +250,16 @@ The 3D cross product (`a x b`, or `a.cross(b)`) returns an arrow perpendicular t
 both inputs, following the right-hand rule. Its length before normalizing is the
 area of the parallelogram the inputs span, so parallel inputs give zero:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
+:::static
 vec(1, 0, 0) x vec(0, 1, 0)   // vec3(0, 0, 1)  — right-hand rule
 vec(0, 1, 0) x vec(1, 0, 0)   // vec3(0, 0, -1) — order flips the sign
 ```
 
 That is the standard way to find a triangle's surface normal:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
+:::static
 val normal = ((b - a) x (c - a)) { normalize() }
 ```
 
@@ -257,7 +268,8 @@ val normal = ((b - a) x (c - a)) { normalize() }
 `lerp` traces a straight line from one vector to another — `t = 0` is the start,
 `t = 1` the end, values outside extrapolate:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
+:::static
 val start = vec(0, 0, 0)
 val end   = vec(100, 40, 0)
 start.lerp(end, 0.5f, vec(0, 0, 0))  // vec3(50, 20, 0) — halfway
@@ -266,7 +278,8 @@ start.lerp(end, 0.5f, vec(0, 0, 0))  // vec3(50, 20, 0) — halfway
 For the repeated “position plus direction times amount” pattern, `fma` expresses
 the whole step without a temporary vector:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
+:::static
 position.fma(deltaSeconds, velocity)  // position += velocity * deltaSeconds
 ```
 
@@ -274,7 +287,8 @@ Operations either mutate the receiver or write into an explicit destination.
 Mutating methods return the receiver; destination methods return the destination,
 so both chain naturally:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
+:::static
 val normal = vec(0, 0, 0)
 edgeA.cross(edgeB, normal)  // no result allocation; returns normal
 normal.normalize()
@@ -422,7 +436,8 @@ Heap vectors and matrices are right for persistent box properties, saved state,
 and almost all code where allocation is not a bottleneck. When a hot loop creates
 many short-lived values, `frameScratch` gives them one shared lifetime:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
+:::static
 frameScratch {
     val a = vec(1, 2, 3)
     val b = vec(4, 5, 6)
@@ -454,7 +469,8 @@ The library ships closest-point, barycentric, containment, AABB/sphere overlap,
 and common segment/ray intersection helpers. Their destination arguments follow
 the same no-result-allocation convention as the vectors:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
+:::static
 val closest = vec(0, 0, 0)
 closestPointOnTriangle(point, a, b, c, closest)
 

@@ -2593,7 +2593,7 @@ private fun installWebGLBackground(host: HTMLElement) {
                     float falloff = 450.0 * u_dpr;
                     vec2 edgeDistance = min(frag, u_resolution - frag);
                     vec2 edgeProximity = 1.0 - clamp(edgeDistance / falloff, 0.0, 1.0);
-                    float shade = min(length(edgeProximity), 1.0) * 0.25;
+                    float shade = min(length(edgeProximity), 1.0) * 0.28;
 
                     vec3 centerColor = vec3(24.0 / 255.0);
                     vec3 edgeColor = vec3(2.0 / 255.0);

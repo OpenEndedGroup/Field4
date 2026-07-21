@@ -3,7 +3,6 @@
 package afield.stdlib
 
 import kotlin.math.*
-import kotlin.math.cos
 import kotlin.random.Random
 
 typealias Matrix = Array<DoubleArray>
@@ -810,14 +809,4 @@ private fun logGaussianLikelihood(residual: DoubleArray, covariance: Matrix): Do
     require(det > 0.0) { "Covariance determinant must be positive" }
 
     return -0.5 * (d * ln(2.0 * PI) + ln(det) + mahalanobis)
-}
-
-private fun Random.nextGaussian(): Double {
-    var u1 = nextDouble()
-    while (u1 <= Double.MIN_VALUE) {
-        u1 = nextDouble()
-    }
-
-    val u2 = nextDouble()
-    return sqrt(-2.0 * ln(u1)) * cos(2.0 * PI * u2)
 }

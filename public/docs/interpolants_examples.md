@@ -252,50 +252,34 @@ watch that dependence drift over time:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/correlations_examples/rolling_dependence.png" wait="1.0" capture="box" open-outputs="true"}
 :::static
-import afield.graphics.FLine
+import afield.darkMode
+import space.kscience.plotly.*
 
 val rollingD = RollingDistanceCorrelation(windowSize = 84)
 val rollingXi = RollingXiCorrelation(windowSize = 84)
 
-val dVals = mutableListOf<Float>()
-val xiVals = mutableListOf<Float>()
+val t = (0 until 420).toList()
+val xs = t.map { it / 420.0 * 2.0 - 1.0 }
+val ys = t.map { i -> xs[i] * xs[i] + sin(i / 420.0 * PI * 8.0) * 0.08 + (-0.04 + random() * 0.08) }
+val dcor = t.map { rollingD.push(xs[it], ys[it]) ?: 0.0 }
+val xi = t.map { rollingXi.push(xs[it], ys[it]) ?: 0.0 }
 
-for (i in 0 until 420) {
-    val t = i / 420.0
-    val x = t * 2.0 - 1.0
-    val y = x * x + sin(t * PI * 8.0) * 0.08 + (-0.04 + random() * 0.08)
-    dVals += (rollingD.push(x, y) ?: 0.0).toFloat()
-    xiVals += (rollingXi.push(x, y) ?: 0.0).toFloat()
-}
-
-fun line(values: List<Float>, y0: Double, amp: Double, c: Vec4): FLine = fline {
-    val n = values.size.coerceAtLeast(2)
-    values.forEachIndexed { i, v ->
-        val x = 50.0 + i.toDouble() / (n - 1).toDouble() * 980.0
-        val y = y0 - v * amp
-        if (i == 0) moveTo(x, y) else lineTo(x, y)
+display(Plotly.plot {
+    trace { name = "x (source)"; x.set(t); y.set(xs); line.width = 0.6 }
+    trace { name = "y (source)"; x.set(t); y.set(ys); line.width = 0.6 }
+    trace { name = "rolling dcor"; x.set(t); y.set(dcor); line.width = 2.4 }
+    trace { name = "rolling xi"; x.set(t); y.set(xi); line.width = 2.4 }
+    layout {
+        title = "Two rolling dependence metrics and the x, y they watch"
+        xaxis { title = "sample" }
     }
-    color = c
-    thickness = 2.3
-}
-
-val guide = fline { moveTo(50, 500); lineTo(1030, 500); color = vec(1,1,1,0.2); thickness = 1.1 }
-
-lines(
-    listOf(
-        guide,
-        line(dVals, 500.0, 330.0, vec(0.56, 0.92, 1.0, 0.95)),
-        line(xiVals, 500.0, 330.0, vec(1.0, 0.74, 0.35, 0.9))
-    ),
-    channel = "correlations-rolling",
-    w = 1080.0,
-    h = 640.0,
-    fitToSize = true
-)
+}.darkMode())
 ```
 
-The same nonlinear stream feeds `RollingDistanceCorrelation` and
-`RollingXiCorrelation`; the window stays fixed and both traces share a baseline.
+The two source signals `xs`/`ys` — the noisy parabola — are drawn alongside the
+metrics computed from them, so you can see what each rolling window is actually
+looking at. The same stream feeds `RollingDistanceCorrelation` and
+`RollingXiCorrelation`, and the window stays fixed across the run.
 
 ![Rolling distance-correlation and xi traces on one nonlinear stream](assets/correlations_examples/rolling_dependence.png)
 
@@ -303,44 +287,36 @@ The two traces track the same evolving dependency without coinciding. Use this
 kind of sanity check before trusting a rolling metric on sensor streams, musical
 features, or exploratory data. When you instead want a fast comparison of several
 metrics on one *fixed* dataset — which one notices the shape, which punishes you
-for asking a linear question of a nonlinear cloud — draw them as bars:
+for asking a linear question of a nonlinear cloud — plot the cloud they run on,
+then the metrics as bars:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/correlations_examples/metric_profile.png" wait="1.0" capture="box" open-outputs="true"}
 :::static
-import afield.graphics.FLine
+import afield.darkMode
+import space.kscience.plotly.*
+import space.kscience.plotly.models.ScatterMode
 
 val n = 320
-val x = DoubleArray(n) { i -> i.toDouble() / (n - 1).toDouble() * 2.0 - 1.0 }
-val y = DoubleArray(n) { i -> x[i] * x[i] + (-0.05 + random() * 0.10) }
+val xs = DoubleArray(n) { it / (n - 1.0) * 2.0 - 1.0 }
+val ys = DoubleArray(n) { xs[it] * xs[it] + (-0.05 + random() * 0.10) }
 
-val metrics = listOf(
-    "pearson" to StatsDependence.pearson(x, y),
-    "spearman" to StatsDependence.spearman(x, y),
-    "kendall" to StatsDependence.kendallTauB(x, y),
-    "xi" to StatsDependence.xi(x, y),
-    "dcor" to StatsDependence.distanceCorrelation(x, y)
+val metrics = mapOf(
+    "pearson" to StatsDependence.pearson(xs, ys),
+    "spearman" to StatsDependence.spearman(xs, ys),
+    "kendall" to StatsDependence.kendallTauB(xs, ys),
+    "xi" to StatsDependence.xi(xs, ys),
+    "dcor" to StatsDependence.distanceCorrelation(xs, ys)
 )
 
-val bars = metrics.mapIndexed { i, (_, v) ->
-    val vv = v.coerceIn(-1.0, 1.0)
-    val x0 = 120.0 + i * 170.0
-    val x1 = x0 + 110.0
-    val y0 = 520.0
-    val y1 = 520.0 - vv * 340.0
-    fline {
-        moveTo(x0, y0)
-        lineTo(x1, y0)
-        lineTo(x1, y1)
-        lineTo(x0, y1)
-        close()
-        filled = true
-        stroked = true
-        color = if (vv >= 0.0) vec(0.56, 0.94, 1.0, 0.6) else vec(1.0, 0.54, 0.46, 0.6)
-        thickness = 1.4
-    }
-}
+display("source", Plotly.plot {
+    scatter { mode = ScatterMode.markers; x.set(xs); y.set(ys); marker { size = 4 } }
+    layout { title = "The source cloud: y = x² + noise"; xaxis { title = "x" }; yaxis { title = "y" } }
+}.darkMode())
 
-lines(bars, channel = "correlations-bars", w = 1080.0, h = 640.0, fitToSize = true)
+display("metrics", Plotly.plot {
+    bar { x.set(metrics.keys.toList()); y.set(metrics.values.toList()) }
+    layout { title = "…and five dependence metrics on it"; yaxis { title = "correlation" } }
+}.darkMode())
 ```
 
 ![Five dependence metrics on one nonlinear dataset, drawn as bars](assets/correlations_examples/metric_profile.png)
@@ -365,18 +341,10 @@ the motion then corrects from the scalar measurement.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/pf_examples/ukf_mackey_glass.png" wait="1.0" capture="box" open-outputs="true" padding="20"}
 :::static
 import afield.darkMode
-import kotlin.random.Random
 import space.kscience.plotly.*
 
 fun diag(vararg values: Double): Matrix =
     Array(values.size) { r -> DoubleArray(values.size) { c -> if (r == c) values[r] else 0.0 } }
-
-fun Random.gaussian(): Double {
-    var u1 = nextDouble()
-    while (u1 <= Double.MIN_VALUE) u1 = nextDouble()
-    val u2 = nextDouble()
-    return sqrt(-2.0 * ln(u1)) * cos(2.0 * PI * u2)
-}
 
 fun mackeyGlassStep(state: DoubleArray, beta: Double = 0.28): DoubleArray {
     val x = state[0].coerceIn(0.02, 3.0)
@@ -386,7 +354,6 @@ fun mackeyGlassStep(state: DoubleArray, beta: Double = 0.28): DoubleArray {
     return doubleArrayOf(next, x, state[1])
 }
 
-val rng = Random(12)
 val ukf = UnscentedKalmanFilter(
     initialState = doubleArrayOf(1.00, 0.96, 0.92),
     initialCovariance = diag(0.08, 0.08, 0.08),
@@ -401,9 +368,9 @@ var truth = doubleArrayOf(1.12, 1.05, 0.98)
 repeat(360) { i ->
     val forcing = 0.020 * sin(i * 0.045)
     truth = mackeyGlassStep(truth, beta = 0.20 + forcing)
-    truth[0] = (truth[0] + 0.003 * rng.gaussian()).coerceIn(0.02, 3.0)
+    truth[0] = (truth[0] + 0.003 * randomGaussian()).coerceIn(0.02, 3.0)
 
-    val measurement = truth[0] + 0.006 * rng.gaussian()
+    val measurement = truth[0] + 0.006 * randomGaussian()
 
     ukf.predict(processNoise = diag(0.004, 0.004, 0.004)) { state ->
         mackeyGlassStep(state, beta = 0.20)
@@ -482,13 +449,6 @@ data class ParticleSnapshot(
 fun diag(vararg values: Double): Matrix =
     Array(values.size) { r -> DoubleArray(values.size) { c -> if (r == c) values[r] else 0.0 } }
 
-fun Random.gaussian(): Double {
-    var u1 = nextDouble()
-    while (u1 <= Double.MIN_VALUE) u1 = nextDouble()
-    val u2 = nextDouble()
-    return sqrt(-2.0 * ln(u1)) * cos(2.0 * PI * u2)
-}
-
 fun mackeyGlassStep(state: DoubleArray, beta: Double): DoubleArray {
     val x = state[0].coerceIn(0.02, 3.0)
     val delayed = state[2].coerceIn(0.02, 3.0)
@@ -504,9 +464,9 @@ val particles = (0 until particleCount).map { i ->
     UKFParticle(
         ukf = UnscentedKalmanFilter(
             initialState = doubleArrayOf(
-                0.80 + 0.18 * rng.gaussian(),
-                0.80 + 0.18 * rng.gaussian(),
-                0.80 + 0.18 * rng.gaussian()
+                0.80 + 0.18 * rng.nextGaussian(),
+                0.80 + 0.18 * rng.nextGaussian(),
+                0.80 + 0.18 * rng.nextGaussian()
             ),
             initialCovariance = diag(0.35, 0.35, 0.35),
             options = UKFOptions(alpha = 0.55)
@@ -552,8 +512,8 @@ repeat(3200) { i ->
     val actualBeta = baseBeta + 0.006 * sin(i * 0.037)
 
     truth = mackeyGlassStep(truth, actualBeta)
-    truth[0] = (truth[0] + 0.006 * rng.gaussian()).coerceIn(0.00, 3.0)
-    val measurement = truth[0] + 0.006 * rng.gaussian()
+    truth[0] = (truth[0] + 0.006 * rng.nextGaussian()).coerceIn(0.00, 3.0)
+    val measurement = truth[0] + 0.006 * rng.nextGaussian()
 
     pf.predict(
         processNoise = { diag(0.003, 0.003, 0.003) },
@@ -565,7 +525,7 @@ repeat(3200) { i ->
             val beta = if (rng.nextDouble() < broadProposalRate) {
                 0.05 + 0.85 * rng.nextDouble()
             } else {
-                hypothesis.beta + 0.0002 * rng.gaussian()
+                hypothesis.beta + 0.0002 * rng.nextGaussian()
             }
             hypothesis.copy(beta = beta.coerceIn(0.0, 1.0))
         }
@@ -588,7 +548,7 @@ repeat(3200) { i ->
         val centerBeta = betaEstimate()
         pf.roughenHypotheses(rng) { hypothesis, random ->
             val contracted = centerBeta + 0.82 * (hypothesis.beta - centerBeta)
-            hypothesis.copy(beta = (contracted + 0.0007 * random.gaussian()).coerceIn(0.0, 1.0))
+            hypothesis.copy(beta = (contracted + 0.0007 * random.nextGaussian()).coerceIn(0.0, 1.0))
         }
     }
 

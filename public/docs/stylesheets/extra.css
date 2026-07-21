@@ -268,8 +268,41 @@ code {
     background: transparent !important;
     color: var(--mono-text-faint);
 }
+
+/* ── pygments line-numbered code blocks (.highlighttable) ────
+   Render like the diff-player skin, NOT like a data table: the .highlight
+   container owns the border/background; the table itself is chromeless with
+   tight, EQUAL vertical padding on both cells so line numbers align with code. */
+.md-typeset .highlighttable {
+    margin: 0;
+    border: 0;
+    background: transparent;
+    width: 100%;
+    display: table;
+}
+.md-typeset .highlighttable tbody { display: table-row-group; }
+.md-typeset .highlighttable tr { display: table-row; }
+.md-typeset .highlighttable td {
+    display: table-cell;
+    border: 0;
+    padding: 0.7em 0;
+    vertical-align: top;
+    background: transparent;
+}
+.md-typeset .highlighttable td.linenos {
+    width: 1%;
+    padding-left: 0.9em;
+    padding-right: 0.9em;
+    white-space: nowrap;
+    user-select: none;
+    -webkit-user-select: none;
+}
+.md-typeset .highlighttable td.code { padding-right: 0.9em; }
+.md-typeset .highlighttable td.linenos > div,
+.md-typeset .highlighttable td.code > div,
 .md-typeset .highlighttable pre {
-    margin-left: 0;
+    margin: 0;
+    padding: 0;
 }
 
 /* ── diff code-block offset (shared with code-diff-player) ──── */
@@ -325,13 +358,13 @@ code {
     background: transparent;
 }
 
-.md-typeset table {
+.md-typeset table:not(.highlighttable) {
     border: 1px solid var(--mono-border);
     background: var(--mono-panel);
 }
 
-.md-typeset table th,
-.md-typeset table td {
+.md-typeset table:not(.highlighttable) th,
+.md-typeset table:not(.highlighttable) td {
     border-bottom: 1px solid var(--mono-border);
 }
 

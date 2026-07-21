@@ -3770,7 +3770,8 @@ Prose is easy to distrust, so here is an actual run — no GPU, no window, just 
 
 The setup is deliberately adversarial in two independent ways at once. The **target** is a half-amplitude sine, `sin(frequency = 1.0, amplitude = 0.5)`. The **seed** is a full-amplitude *cosine*, `cos(frequency = 1.0, amplitude = 1.0)` — the wrong op *and* the wrong amplitude. To reach the target a run must both transmute the operator (via `substituteOp`, staying inside the oscillator family) and dial in the numeric leaves (via `jitter`/`nudge`), with `prune` trimming structure for parsimony. Everything runs under a fixed `rngSeed = 3`.
 
-```kotlin
+```diffstatic {data-lang=kotlin}
+:::static
 val target = sin(frequency = 1.0, amplitude = 0.5)
 val seed = cos(frequency = 1.0, amplitude = 1.0)
 val run = evolve(

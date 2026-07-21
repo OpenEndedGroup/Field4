@@ -63,6 +63,23 @@ fun random(): Double {
     return currentStdlibRandom().nextDouble()
 }
 
+fun randomGaussian(): Double {
+    return currentStdlibRandom().nextGaussian()
+}
+
+/**
+ * Standard-normal (Box-Muller) sample from any [kotlin.random.Random]. The Kotlin
+ * stdlib `Random` has no `nextGaussian()` of its own (unlike `java.util.Random`),
+ * so this fills the gap for code that carries its own seeded generator.
+ */
+fun KotlinRandom.nextGaussian(): Double {
+    var u1 = nextDouble()
+    while (u1 <= Double.MIN_VALUE) u1 = nextDouble()
+    val u2 = nextDouble()
+    return kotlin.math.sqrt(-2.0 * kotlin.math.ln(u1)) *
+        kotlin.math.cos(2.0 * kotlin.math.PI * u2)
+}
+
 fun setRandomSeed(seed: Long? = null): Long {
     val chosenSeed = seed ?: KotlinRandom.Default.nextLong()
     val box = Box.context.get()

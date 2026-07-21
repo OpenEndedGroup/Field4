@@ -27,7 +27,8 @@ For the full reference (every flag, the intent matrix, and the internals) see
 
 One command builds the site, re-running example captures according to a *mode*:
 
-```bash
+```diffstatic {data-lang=bash}
+:::static
 FIELD_DOCS_RUNNER_MODE=incremental FIELD_DOCS_RUNNER_PORT=9477 \
   uv run --project . --group docs python tools/build_zensical_docs.py
 ```
@@ -53,7 +54,8 @@ Handy flags for `tools/build_zensical_docs.py`:
 The built site lands in `public/field4/`. Preview it the way Field's own docs
 iframe loads it:
 
-```bash
+```diffstatic {data-lang=bash}
+:::static
 cd public && python3 -m http.server 8000
 # then open http://localhost:8000/field4/
 ```
@@ -73,7 +75,8 @@ cd public && python3 -m http.server 8000
 The runner prints per-capture progress as it goes, so a slow build is
 distinguishable from a hung one:
 
-```
+```diffstatic {data-lang=text}
+:::static
 Field docs runner [12] capturing fline_examples.md -> arcs_arcto.png
 Field docs runner … still capturing fline_examples.md -> arcs_arcto.png (8s)
 ```
@@ -86,7 +89,8 @@ set `FIELD_DOCS_LOG_LEVEL=WARNING` to quiet it or `=DEBUG` for more.
 To *watch* the capture browser — e.g. a capture that stalls or renders wrong —
 run the build with `AFIELD_PLAYWRIGHT_VISIBLE=true`:
 
-```bash
+```diffstatic {data-lang=bash}
+:::static
 AFIELD_PLAYWRIGHT_VISIBLE=true FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 \
   uv run --project . --group docs python tools/build_zensical_docs.py --page fline_examples
 ```
@@ -101,7 +105,8 @@ capture are under `.field-backdoor/logs/`.
 **Smoke catalog** — exercises the annotated `FIELD_TEST` examples through the
 backdoor:
 
-```bash
+```diffstatic {data-lang=bash}
+:::static
 uv run --project . --group backdoor python tools/run_field_tests.py --refresh-catalog
 ```
 
@@ -114,7 +119,8 @@ pass `--timeout` to this runner.
 **Browser UI regressions** — drives Playwright-backed UI workflows and keeps
 screenshots:
 
-```bash
+```diffstatic {data-lang=bash}
+:::static
 uv run --project . --group backdoor python tools/run_ui_regressions.py --port 9490 --timeout 45
 ```
 
