@@ -272,7 +272,8 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 features().fragmentStoresAndAtomics(true)
                 features().vertexPipelineStoresAndAtomics(true)
                 features().shaderInt64(true)
-                features().geometryShader(true)
+                // Guard: geometryShader is unsupported on Apple Silicon / MoltenVK.
+                features().geometryShader(physicalDevice.vkPhysicalDeviceFeatures.geometryShader())
                 features().robustBufferAccess(Options.robustness)
                 features().pipelineStatisticsQuery(enablePipelineStatisticsQuery)
             }

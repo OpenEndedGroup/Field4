@@ -176,7 +176,7 @@ with(Functions) {
     val fittedLine = asLine(run.fitted, vec(0.97, 0.45, 0.18, 1.0), 2.2)  // orange, thin, on top
 
     lines(guides + targetLine + fittedLine, channel = "fit-graph", w = 980.0, h = 440.0, fitToSize = false)
-    display("notes", "<div style='padding:10px'><b>fit to target</b> &mdash; target (cyan) vs gradient-fitted (orange), RMSE ${"%.4f".format(run.finalRmse)}</div>")
+    display("notes", "<div style='padding:10px'><b>fit to target</b> &mdash; target (cyan) vs gradient-fitted (orange), RMSE ${"%.4f".format(run.finalError)}</div>")
     run
 }
 ```
