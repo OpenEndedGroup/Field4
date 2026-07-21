@@ -5,6 +5,7 @@ import afield.stdlib.Vec3
 import kotlinx.html.*
 import kotlinx.html.stream.createHTML
 import space.kscience.plotly.*
+import space.kscience.plotly.models.Dash
 import space.kscience.plotly.models.LegendOrientation
 import space.kscience.plotly.models.ScatterMode
 import space.kscience.plotly.models.SizeMode
@@ -83,6 +84,79 @@ fun violin(vararg data: List<Number>): Plot {
             }
         }
     }.darkMode()
+}
+
+/** Cyan/orange-led dark-mode palette for signal traces (leads cyan, then orange). */
+val signalPalette: List<String> = listOf("#7ad9ff", "#ff9e4a", "#8fff9a", "#ffe066", "#c58cff", "#ff7a9e")
+
+/**
+ * Put one or more named signals on the screen as a dark-mode Plotly line plot, and return the [Plot].
+ *
+ * The terse "these signals, on screen, now" helper: pass `"label" to values` pairs and it traces
+ * them against a shared x (sample index by default, or [x]), applies the [signalPalette] and the
+ * repo dark theme, and displays into [channel]. This collapses the usual
+ * `Plotly.plot { trace {...}; trace {...} }.darkMode(); display(plot)` boilerplate to one call.
+ *
+ * - [x]: shared x values for every series (e.g. frequency in Hz); defaults to the sample index.
+ * - [marks]: vertical dashed reference lines, `"label" to xPosition` (e.g. a spectral centroid or
+ *   rolloff), spanning the full y-range.
+ * - [normalize]: min-max each series into `[0,1]` — use when the signals live on very different
+ *   scales (e.g. a centroid in Hz alongside an RMS in `[0,1]`) and you only care about their shape.
+ *
+ * The plot is already displayed on return; the [Plot] is returned only for further tweaking (do not
+ * `display` it again).
+ */
+fun Box.showSignals(
+    vararg series: Pair<String, List<Number>>,
+    x: List<Number>? = null,
+    channel: String = "output",
+    title: String? = null,
+    xTitle: String? = null,
+    yTitle: String? = null,
+    marks: List<Pair<String, Number>> = emptyList(),
+    normalize: Boolean = false,
+): Plot {
+    fun shape(values: List<Number>): List<Number> {
+        if (!normalize) return values
+        val ds = values.map { it.toDouble() }
+        val lo = ds.minOrNull() ?: 0.0
+        val hi = ds.maxOrNull() ?: 1.0
+        val span = (hi - lo).takeIf { it > 1e-12 } ?: 1.0
+        return ds.map { (it - lo) / span }
+    }
+    val plot = Plotly.plot {
+        series.forEachIndexed { i, (label, values) ->
+            trace {
+                name = label
+                this.x.set(x ?: values.indices.toList())
+                this.y.set(shape(values))
+                line.width = 1.4
+                line.color(signalPalette[i % signalPalette.size])
+            }
+        }
+        if (marks.isNotEmpty()) {
+            val allY = series.flatMap { shape(it.second).map { n -> n.toDouble() } }
+            val ymin = allY.minOrNull() ?: 0.0
+            val ymax = allY.maxOrNull() ?: 1.0
+            marks.forEach { (label, mx) ->
+                trace {
+                    name = label
+                    this.x.set(listOf(mx, mx))
+                    this.y.set(listOf(ymin, ymax))
+                    line.width = 1.2
+                    line.color("#ffe066")
+                    line.dash = Dash.dash
+                }
+            }
+        }
+        layout {
+            title?.let { this.title = it }
+            xaxis { xTitle?.let { this.title = it } }
+            yaxis { yTitle?.let { this.title = it } }
+        }
+    }.darkMode()
+    display(channel, plot)
+    return plot
 }
 
 fun Plot.darkMode(): Plot {

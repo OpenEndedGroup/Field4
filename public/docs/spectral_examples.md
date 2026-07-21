@@ -37,40 +37,30 @@ val signal = DoubleArray(n) { i ->
 
 val spec = fft(signal, WindowType.HANN, sampleRate)
 val mag = spec.magnitudeOneSided()   // bins 0 .. N/2
-val freqs = spec.frequencies()
+val freqs = spec.frequencies()       // bin -> Hz
 val centroid = spec.centroid()       // magnitude-weighted mean frequency, Hz
 val rolloff = spec.rolloff(0.85)     // freq below which 85% of the energy sits
 val peak = spec.peakFrequency()      // dominant component, Hz
 
-// Draw the magnitude curve as an SVG polyline across 0 Hz -> Nyquist.
-val w = 640.0; val h = 240.0; val pad = 28.0
-val nyq = sampleRate / 2.0
-val maxMag = (mag.maxOrNull() ?: 1.0).coerceAtLeast(1e-9)
-fun px(freq: Double) = pad + (freq / nyq).coerceIn(0.0, 1.0) * (w - 2 * pad)
-fun py(m: Double) = (h - pad) - (m / maxMag).coerceIn(0.0, 1.0) * (h - 2 * pad)
-
-val poly = StringBuilder()
-for (i in mag.indices) poly.append("${"%.1f".format(px(freqs[i]))},${"%.1f".format(py(mag[i].toDouble()))} ")
-val cx = px(centroid); val rx = px(rolloff)
-val svg = "<svg xmlns='http://www.w3.org/2000/svg' width='${w.toInt()}' height='${h.toInt()}' " +
-    "style='background:#0a0e14;border-radius:6px'>" +
-    "<polyline points='$poly' fill='none' stroke='#7ad9ff' stroke-width='1.4'/>" +
-    "<line x1='$cx' y1='$pad' x2='$cx' y2='${h - pad}' stroke='#ffe066' stroke-width='1.6'/>" +
-    "<line x1='$rx' y1='$pad' x2='$rx' y2='${h - pad}' stroke='#ff9e4a' stroke-width='1.2' stroke-dasharray='4 3'/>" +
-    "<text x='${cx + 4}' y='${pad + 12}' fill='#ffe066' font-family='sans-serif' font-size='11'>centroid ${"%.0f".format(centroid)} Hz</text>" +
-    "<text x='${rx + 4}' y='${pad + 28}' fill='#ff9e4a' font-family='sans-serif' font-size='11'>85% rolloff ${"%.0f".format(rolloff)} Hz</text>" +
-    "<text x='$pad' y='${h - 8}' fill='#8aa' font-family='sans-serif' font-size='11'>0 Hz</text>" +
-    "<text x='${w - pad - 44}' y='${h - 8}' fill='#8aa' font-family='sans-serif' font-size='11'>${nyq.toInt()} Hz</text>" +
-    "</svg>"
-
+// One call puts the magnitude curve on screen against real Hz, with the centroid and 85% rolloff
+// marked as dashed reference lines. showSignals(...) applies the dark theme + cyan/orange palette.
+showSignals(
+    "magnitude" to mag.toList(),
+    x = freqs.toList(),
+    channel = "main",
+    xTitle = "frequency (Hz)", yTitle = "magnitude",
+    marks = listOf(
+        "centroid ${"%.0f".format(centroid)} Hz" to centroid,
+        "85% rolloff ${"%.0f".format(rolloff)} Hz" to rolloff,
+    ),
+)
 println("peak=${"%.0f".format(peak)}Hz centroid=${"%.0f".format(centroid)}Hz rolloff=${"%.0f".format(rolloff)}Hz bins=${mag.size}")
-display("main", "<div style=\"padding:10px\">$svg</div>")
 ```
 
 ![](assets/spectral_examples/one_spectrum.png)
 
-The one-sided magnitude curve carries a solid line at the spectral centroid, a dashed line at the
-85% rolloff, and the tone/chirp structure laid out across 0 Hz → Nyquist.
+The one-sided magnitude curve carries dashed reference lines at the spectral centroid and the 85%
+rolloff, with the tone/chirp structure laid out across 0 Hz → Nyquist.
 
 ## A spectrogram of a chirp
 
@@ -106,13 +96,18 @@ val maxMag = spec.maxMagnitude().coerceAtLeast(1e-9)
 val centroid = spec.centroidTrace()                // Hz per frame
 val nyquist = sampleRate / 2.0
 
-// viridis-ish colormap (dark blue -> teal -> green -> yellow), returns ARGB.
-fun viridis(v: Double): Int {
+// Cyan -> orange colormap (dark -> cyan mids -> orange peaks), returns ARGB.
+fun cyanOrange(v: Double): Int {
     val x = v.coerceIn(0.0, 1.0)
-    val r = (0.28 + x * (0.99 - 0.28) * (0.3 + 0.7 * x)).coerceIn(0.0, 1.0)
-    val g = (x * 0.98).coerceIn(0.0, 1.0)
-    val b = (0.33 + 0.6 * sin(PI * x) - 0.2 * x).coerceIn(0.0, 1.0)
-    return (0xFF shl 24) or ((r * 255).toInt() shl 16) or ((g * 255).toInt() shl 8) or (b * 255).toInt()
+    // piecewise lerp: near-black -> cyan (0..0.5), cyan -> orange (0.5..1)
+    val (r, g, b) = if (x < 0.5) {
+        val t = x / 0.5
+        Triple(10 + t * (60 - 10), 14 + t * (190 - 14), 20 + t * (230 - 20))
+    } else {
+        val t = (x - 0.5) / 0.5
+        Triple(60 + t * (255 - 60), 190 + t * (150 - 190), 230 + t * (50 - 230))
+    }
+    return (0xFF shl 24) or (r.toInt() shl 16) or (g.toInt() shl 8) or b.toInt()
 }
 
 val w = 900; val h = 420
@@ -122,14 +117,14 @@ for (xp in 0 until w) {
     for (yp in 0 until h) {                          // y flipped: low frequency at the bottom
         val bin = ((h - 1 - yp).toLong() * (spec.numBins - 1) / (h - 1)).toInt()
         val db = 20.0 * log10((mags[frame][bin] / maxMag).coerceAtLeast(1e-4))
-        px[xp + yp * w] = viridis((db + 80.0) / 80.0)
+        px[xp + yp * w] = cyanOrange((db + 80.0) / 80.0)
     }
 }
 // overlay the spectral-centroid trace as a bright line.
 for (f in 0 until spec.numFrames) {
     val xp = (f.toDouble() / (spec.numFrames - 1).coerceAtLeast(1) * (w - 1)).toInt()
     val yp = (h - 1 - (centroid[f] / nyquist).coerceIn(0.0, 1.0) * (h - 1)).toInt()
-    for (dy in -1..1) { val yy = yp + dy; if (yy in 0 until h) px[xp + yy * w] = (0xFF shl 24) or 0xFFF078 }
+    for (dy in -1..1) { val yy = yp + dy; if (yy in 0 until h) px[xp + yy * w] = (0xFF shl 24) or 0xFFFFFF }
 }
 
 val b64 = Base64.getEncoder().encodeToString(PngEncoder.encode(px, w, h))
@@ -141,7 +136,7 @@ display("main", "<img src='data:image/png;base64,$b64' style='width:100%;max-wid
 
 The diagonal ridge is the chirp, the two flat lines are the 700 Hz and 1800 Hz tones, and the thin
 trace is the centroid climbing with the sweep. Everything is drawn by the code above — the STFT, the
-viridis mapping (log-scaled to dB for a useful dynamic range), and the centroid overlay.
+cyan→orange mapping (log-scaled to dB for a useful dynamic range), and the centroid overlay.
 
 ## Mel bands — a perceptual, log-frequency view
 
@@ -177,12 +172,17 @@ val mel = Array(spec.numFrames) { Mel.filterBank(spec.magnitude(it), sampleRate,
 var maxMel = 1e-9
 for (row in mel) for (v in row) if (v > maxMel) maxMel = v
 
-fun viridis(v: Double): Int {
+// Cyan -> orange colormap (dark -> cyan mids -> orange peaks), returns ARGB.
+fun cyanOrange(v: Double): Int {
     val x = v.coerceIn(0.0, 1.0)
-    val r = (0.28 + x * (0.99 - 0.28) * (0.3 + 0.7 * x)).coerceIn(0.0, 1.0)
-    val g = (x * 0.98).coerceIn(0.0, 1.0)
-    val b = (0.33 + 0.6 * sin(PI * x) - 0.2 * x).coerceIn(0.0, 1.0)
-    return (0xFF shl 24) or ((r * 255).toInt() shl 16) or ((g * 255).toInt() shl 8) or (b * 255).toInt()
+    val (r, g, b) = if (x < 0.5) {
+        val t = x / 0.5
+        Triple(10 + t * (60 - 10), 14 + t * (190 - 14), 20 + t * (230 - 20))
+    } else {
+        val t = (x - 0.5) / 0.5
+        Triple(60 + t * (255 - 60), 190 + t * (150 - 190), 230 + t * (50 - 230))
+    }
+    return (0xFF shl 24) or (r.toInt() shl 16) or (g.toInt() shl 8) or b.toInt()
 }
 
 val w = 900; val h = 360
@@ -192,7 +192,7 @@ for (xp in 0 until w) {
     for (yp in 0 until h) {                          // y flipped: low mel band at the bottom
         val band = ((h - 1 - yp).toLong() * (numBands - 1) / (h - 1)).toInt()
         val db = 20.0 * log10((mel[frame][band] / maxMel).coerceAtLeast(1e-4))
-        px[xp + yp * w] = viridis((db + 80.0) / 80.0)
+        px[xp + yp * w] = cyanOrange((db + 80.0) / 80.0)
     }
 }
 
@@ -235,29 +235,16 @@ for (i in 0 until n) {
     rTrace[i] = level(stream[i])        // rolling RMS
 }
 
-// Draw the three traces stacked, each normalised into its own band.
-val w = 720.0; val h = 300.0; val pad = 26.0
-fun norm(v: Float, lo: Float, hi: Float) = ((v - lo) / (hi - lo).coerceAtLeast(1e-6f)).coerceIn(0f, 1f)
-fun trace(vals: FloatArray, lo: Float, hi: Float, y0: Double, band: Double, color: String, label: String): String {
-    val sb = StringBuilder()
-    for (i in vals.indices) {
-        val x = pad + i.toDouble() / (vals.size - 1) * (w - 2 * pad)
-        val y = y0 - norm(vals[i], lo, hi) * band
-        sb.append("${"%.1f".format(x)},${"%.1f".format(y)} ")
-    }
-    return "<polyline points='$sb' fill='none' stroke='$color' stroke-width='1.3'/>" +
-        "<text x='$pad' y='${y0 - band - 4}' fill='$color' font-family='sans-serif' font-size='11'>$label</text>"
-}
-
-val cMax = cTrace.maxOrNull() ?: 1f; val fMax = fTrace.maxOrNull() ?: 1f; val rMax = rTrace.maxOrNull() ?: 1f
-val svg = "<svg xmlns='http://www.w3.org/2000/svg' width='${w.toInt()}' height='${h.toInt()}' style='background:#0a0e14;border-radius:6px'>" +
-    trace(cTrace, 0f, cMax, 100.0, 74.0, "#7ad9ff", "spectral centroid (Hz)") +
-    trace(fTrace, 0f, fMax, 195.0, 74.0, "#ff9e4a", "spectral flux (onset novelty)") +
-    trace(rTrace, 0f, rMax, 290.0, 74.0, "#8fff9a", "rolling RMS (level)") +
-    "</svg>"
-
-println("centroid ${"%.0f".format(cTrace[3000])} -> ${"%.0f".format(cTrace[n - 200])} Hz, flux peak ${"%.3f".format(fMax)}")
-display("main", "<div style=\"padding:10px\">$svg</div>")
+// The three features live on very different scales (Hz vs flux vs a 0..1 level), so normalize each
+// to compare their shape. One call stacks all three; dark theme + cyan/orange palette applied.
+showSignals(
+    "spectral centroid (Hz)" to cTrace.toList(),
+    "spectral flux (onset novelty)" to fTrace.toList(),
+    "rolling RMS (level)" to rTrace.toList(),
+    channel = "main",
+    xTitle = "sample", normalize = true,
+)
+println("centroid ${"%.0f".format(cTrace[3000])} -> ${"%.0f".format(cTrace[n - 200])} Hz, flux peak ${"%.3f".format(fTrace.maxOrNull() ?: 0f)}")
 ```
 
 ![](assets/spectral_examples/streaming_features.png)
