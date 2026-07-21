@@ -14,9 +14,9 @@ var positions = buffer {
     hosted()
 }.buffer
 
-m.ref = {
+m.ref = { 
     positions
-}
+} 
 
 m.set(4, 4) {
     pos.put(0,0,0, 1,0,0, 1,1,0, 0,1,0)
@@ -29,7 +29,7 @@ m.set(4, 4) {
 renderer += "boo2" to module
 
 loop {
-    positions.mapAndWrite {
+    positions.mapAndWrite { 
         put(vec(0,0.25))
         put(vec(0.33,0.5))
         put(vec(0.66,1))

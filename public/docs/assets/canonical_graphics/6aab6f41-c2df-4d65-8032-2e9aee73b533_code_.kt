@@ -1,4 +1,4 @@
-import afield.stdlib.linalg.Rectanglef
+import org.joml.primitives.Rectanglef
 var positions = buffer {
     size = splatNum.vec4s
     addressable()
@@ -59,7 +59,7 @@ m.z = 1
 //renderer += "distanceCompute" to module
 renderer.computeList.others += "distanceCompute" to target { cmd, index ->  }
 
-renderer.computeList.others += "distanceCompute" to target { cmd, index ->
+renderer.computeList.others += "distanceCompute" to target { cmd, index -> 
     module.render(cmd, Rectanglef())
 }
 
@@ -69,9 +69,11 @@ if (false) {
     }
 
 
-    dists.mapAndRead_ints {
+    dists.mapAndRead_ints { 
         for(n in 0 until 10) {
             System.out.println(get(n)-1317050000)
         }
     }
 }
+
+

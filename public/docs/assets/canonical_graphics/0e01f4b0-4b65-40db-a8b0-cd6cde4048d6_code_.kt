@@ -1,4 +1,4 @@
-var (module, meshes) =
+var (module, meshes) = 
     gltfModelHere("/Users/marc/temp/glTF-Sample-Models/2.0/Box/glTF/Box.gltf")
 
 var m = Mesh()
@@ -22,3 +22,4 @@ loop {
     module.VertexData.proj = camera.p()
     frame()
 }
+

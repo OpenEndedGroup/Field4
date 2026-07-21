@@ -223,9 +223,38 @@ runBlocking {
 
 Use per-slide chat when comments should stay attached to a specific step instead of floating beside the whole guide.
 
-If the guide chat server is not running, the slideshow still renders. The discussion pane cannot load or post messages.
+If the guide chat server is not running, the slideshow still renders and
+`withChat()` still produces the UI shell — only message load and post requests
+fail. Chat is deliberately optional; the slideshow system does not depend on it.
 
-The chat server setup and storage details live in [guide_chat.md](guide_chat.md).
+### Setting up the chat server
+
+Chat is the one guide feature that needs a companion service. It has four parts: a
+Flask service (`server/guide_chat_server.py`) that persists messages as JSON, a
+JVM bridge (`src/jvmMain/kotlin/afield/server/chat.kt`), the collapsible chat UI in
+`src/jsMain/kotlin/afield/Main.kt`, and the metadata `SlideShow.kt` passes from the
+guide runtime. The browser only ever talks to Field's normal RPC transport — Field
+proxies HTTP to Flask and broadcasts successful posts back to clients, so the
+browser never connects to Flask's Socket.IO endpoint directly.
+
+Install the dependencies and start the service alongside Field:
+
+```diffstatic {data-lang=bash}
+cd server
+pip install -r requirements.txt
+python3 guide_chat_server.py   # then ./gradlew runJvm in another shell
+```
+
+It reads three optional environment variables: `CHAT_SERVER_PORT` (default
+`5002`), `CHAT_SERVER_DEBUG` (default `true`), and `CHAT_SERVER_URL` (the URL
+Field's JVM server uses, default `http://localhost:5002`).
+
+The frontend reads a username from the URL query string —
+`?file=myguide&username=student1` — and posts as `anonymous` without it. Messages
+are stored under `chat_data/` in per-slideshow, per-slide JSON files
+(`chat_data/slideshow_box123_.../slide_0.json`), each an array of
+`{username, message, timestamp}` records. A deeper quickstart lives in
+`dev_docs/GUIDE_CHAT_QUICKSTART.md`.
 
 ## Annotations and code callouts
 

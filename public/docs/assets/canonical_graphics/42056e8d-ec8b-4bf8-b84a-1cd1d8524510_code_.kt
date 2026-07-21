@@ -14,7 +14,7 @@ pc.a.x=0.3f
 pc.otherDeclarations = "layout(offset=${pc.nextFreeOffset(16)}) uint foo;"
 
 // then there's an exection break here
-//%-
+//%- 
 var module = moduleHere {
     primitiveType = triangle_strip
 }

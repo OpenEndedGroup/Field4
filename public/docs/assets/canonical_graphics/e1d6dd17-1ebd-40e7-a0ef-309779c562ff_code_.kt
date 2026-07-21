@@ -10,17 +10,17 @@ module += "mainMesh" to m
 renderer += "boo" to module
 
 val camera = Camera()
-m.p = camera.p
-m.m = camera.m
+m.p = camera.p 
+m.m = camera.m 
 
 var kc = KeyCamera(camera=camera)
 val n = 100
 m.set(4*n, 2*n) {
     n {
-        val z = it+0.0
+        val z = it+0.0 
 
-        pos.add(0,0,0+z,
-                1.0,0.1,z,
+        pos.add(0,0,0+z, 
+                1.0,0.1,z, 
                 1,1,z,
             0,1,z)
 

@@ -1,6 +1,6 @@
 var m = Mesh()
 var module = moduleHere(parameters {
-    ssboSizer = { ssbo ->
+    ssboSizer = { ssbo -> 
         print("sizing ${ssbo}")
         256
     }
@@ -14,7 +14,7 @@ camera.at = vec(-10,2,0)
 
 var tick = 0.0
 
-module.InputBuffer.mapAndWrite {
+module.InputBuffer.mapAndWrite { 
     for(n in 0 until 20) {
         this.put(0f)
         this.put(n.toFloat()/9)

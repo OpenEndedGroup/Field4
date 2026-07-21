@@ -335,8 +335,8 @@ code {
     border-bottom: 1px solid var(--mono-border);
 }
 
-.md-typeset .md-typeset__scrollwrap:has(table td code),
-.md-typeset .md-typeset__table:has(table td code) {
+.md-typeset .md-typeset__scrollwrap:has(table:not(.highlighttable) td code),
+.md-typeset .md-typeset__table:has(table:not(.highlighttable) td code) {
     display: block;
     margin: 0.4rem 0 1rem 1.35rem;
     padding: 0;
@@ -344,7 +344,7 @@ code {
     background: transparent !important;
 }
 
-.md-typeset table:has(td code),
+.md-typeset table:not(.highlighttable):has(td code),
 .md-typeset table:not([class]):has(td code) {
     display: block;
     width: 100%;
@@ -356,16 +356,16 @@ code {
     box-shadow: none !important;
 }
 
-.md-typeset table:has(td code) thead {
+.md-typeset table:not(.highlighttable):has(td code) thead {
     display: none;
 }
 
-.md-typeset table:has(td code) tbody {
+.md-typeset table:not(.highlighttable):has(td code) tbody {
     display: grid;
     gap: 0;
 }
 
-.md-typeset table:has(td code) tr {
+.md-typeset table:not(.highlighttable):has(td code) tr {
     position: relative;
     display: grid;
     grid-template-columns: minmax(0, 1fr) max-content;
@@ -379,7 +379,7 @@ code {
     background: transparent;
 }
 
-.md-typeset table:has(td code) tr::after {
+.md-typeset table:not(.highlighttable):has(td code) tr::after {
     content: "";
     grid-column: 1 / -1;
     grid-row: 1;
@@ -388,18 +388,18 @@ code {
     border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-.md-typeset table:has(td code) tr:has(td:nth-child(2):last-child) {
+.md-typeset table:not(.highlighttable):has(td code) tr:has(td:nth-child(2):last-child) {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
         "term"
         "body";
 }
 
-.md-typeset table:has(td code) tbody tr:nth-child(even) {
+.md-typeset table:not(.highlighttable):has(td code) tbody tr:nth-child(even) {
     background: transparent;
 }
 
-.md-typeset table:has(td code) td {
+.md-typeset table:not(.highlighttable):has(td code) td {
     display: block;
     padding: 0 !important;
     border: 0 !important;
@@ -409,12 +409,12 @@ code {
     line-height: 1.46;
 }
 
-.md-typeset table:has(td code) th {
+.md-typeset table:not(.highlighttable):has(td code) th {
     padding: 0 !important;
     border: 0 !important;
 }
 
-.md-typeset table:has(td code) td:first-child {
+.md-typeset table:not(.highlighttable):has(td code) td:first-child {
     grid-area: term;
     align-self: baseline;
     padding-left: 0.42rem !important;
@@ -424,7 +424,7 @@ code {
     line-height: 1.2;
 }
 
-.md-typeset table:has(td code) td:nth-child(2) {
+.md-typeset table:not(.highlighttable):has(td code) td:nth-child(2) {
     grid-area: meta;
     justify-self: end;
     align-self: start;
@@ -435,13 +435,13 @@ code {
     text-align: right;
 }
 
-.md-typeset table:has(td code) td:nth-child(3) {
+.md-typeset table:not(.highlighttable):has(td code) td:nth-child(3) {
     grid-area: body;
     max-width: 44rem;
     padding-left: 0.42rem !important;
 }
 
-.md-typeset table:has(td code) tr:has(td:nth-child(2):last-child) td:nth-child(2) {
+.md-typeset table:not(.highlighttable):has(td code) tr:has(td:nth-child(2):last-child) td:nth-child(2) {
     grid-area: body;
     justify-self: stretch;
     max-width: 44rem;
@@ -452,8 +452,8 @@ code {
     text-align: left;
 }
 
-.md-typeset table:has(td code) td code,
-.md-typeset table:has(td code) th code {
+.md-typeset table:not(.highlighttable):has(td code) td code,
+.md-typeset table:not(.highlighttable):has(td code) th code {
     display: inline;
     box-sizing: border-box;
     margin: 0;
@@ -471,8 +471,8 @@ code {
     -webkit-box-decoration-break: clone;
 }
 
-.md-typeset table:has(td code) td:first-child code,
-.md-typeset table:has(td code) th:first-child code {
+.md-typeset table:not(.highlighttable):has(td code) td:first-child code,
+.md-typeset table:not(.highlighttable):has(td code) th:first-child code {
     padding: 0;
     background: transparent;
     color: #adf;
@@ -480,12 +480,12 @@ code {
     font-weight: 700;
 }
 
-.md-typeset table:has(td code) td:nth-child(2) code {
+.md-typeset table:not(.highlighttable):has(td code) td:nth-child(2) code {
     color: #adf;
 }
 
 @media screen and (min-width: 76.234375em) {
-    .md-grid:has(.md-typeset table td code) {
+    .md-grid:has(.md-typeset table:not(.highlighttable) td code) {
         max-width: 64rem;
     }
 }

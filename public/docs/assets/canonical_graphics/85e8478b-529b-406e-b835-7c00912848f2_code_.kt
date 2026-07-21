@@ -5,7 +5,7 @@ var module = moduleHere()
 module += "mainMesh" to m
 renderer += module
 
-val camera = afield.four.util.Camera()
+val camera = Camera()
 camera.at = vec(-10,2,0)
 
 var tick = 0.0

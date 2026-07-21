@@ -1,4 +1,4 @@
-/** this is a little example that draws a triangle (using more conventional vertex attributes and adds a keyboard controlled camera
+/** this is a little example that draws a triangle (using more conventional vertex attributes and adds a keyboard controlled camera 
 
 as usual we need a shader module and a mesh for the module:
 */
@@ -29,8 +29,8 @@ renderer += module
 
 */
 val camera = Camera()
-m.p =  camera.p
-m.m =  camera.m
+m.p =  camera.p  
+m.m =  camera.m 
 
 /**
 here's our triangle, written using vertex attributes. `3` vertices and `1` triangle
@@ -44,3 +44,4 @@ m.set(3, 1) {
 
 // and here's our handy keyboard control over the camera.
 var kc = KeyCamera(camera=camera)
+

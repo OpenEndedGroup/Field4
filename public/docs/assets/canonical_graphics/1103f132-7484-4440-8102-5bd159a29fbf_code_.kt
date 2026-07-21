@@ -3,7 +3,7 @@ shaderTemplate["col"] = mapOf("fixedColor" to Resolver { "vec4(1,0.75,0,1)" } )
 
 
 // then there's an exection break here
-//%-
+//%- 
 var module = moduleHere {
     primitiveType = triangle_strip
 }

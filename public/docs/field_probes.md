@@ -31,7 +31,15 @@ the one quantity that is otherwise invisible — each particle's **speed**.
 
 ---
 
-## The particle system
+## 1. `fieldProbe` — the CPU read-back probe
+
+`fieldProbe` is the one you reach for while developing. It samples values on the
+GPU, pulls a representative slice back to the CPU, and renders a live
+**histogram + summary card**. The card is the "splendid-looking" object in the
+video below: signed, delta-coloured metric chips over an SVG histogram. First,
+the running example it instruments.
+
+### The particle system we instrument
 
 The compute shader reads each particle from one `buffer_reference` buffer,
 rotates and mixes its position by a slowly-advancing angle (`something`, driven
@@ -133,16 +141,8 @@ compute box, updating every frame as the simulation runs:
 // galaxy above animates. Same transcript: threebox.yaml.
 ```
 
-Everything below is about the two ways to look at those speeds.
-
----
-
-## 1. `fieldProbe` — the CPU read-back probe
-
-`fieldProbe` is the one you reach for while developing. It samples values on the
-GPU, pulls a representative slice back to the CPU, and renders a live
-**histogram + summary card**. The card is the "splendid-looking" object in the
-video above: signed, delta-coloured metric chips over an SVG histogram.
+Those per-step speeds are what the rest of this section records and displays;
+the GPU-only sibling probe in §2 reads the same simulation a different way.
 
 ### GLSL side
 

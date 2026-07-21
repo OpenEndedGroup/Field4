@@ -1825,47 +1825,58 @@ fun FLine.byNoisingParameterized(amplitudeFunc: ParameterFunction, seed: Long = 
 fun FLine.byScalingParameterized(scaleFunc: ParameterFunction, center: Vec2 = vec(0f, 0f), samples: Int = 100): FLine
 ```
 
-This example uses a sine wave to vary the offset distance, and a distance-based parameter to add noise that ramps up as you get farther from a “quiet point”.
+This example varies a *scale factor* along the same base curve, about a fixed centre. A `SineParameter` makes the curve breathe in and out as you travel it, and a `DistanceParameter` makes it swell the farther a point sits from a chosen “quiet point”. (`byOffsettingParameterized` and `byNoisingParameterized` vary an offset or a jitter along the curve normal the same way; scaling is shown here because it reads cleanly in a single still.)
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/parameterized_operations_vary_along_the_curve.png" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/parameterized_operations_vary_along_the_curve.png" wait="1.0" capture="box" open-outputs="true" embed=true name="fline-parameterized"}
 :::static
+import afield.graphics.SineParameter
+import afield.graphics.DistanceParameter
+import afield.graphics.byScalingParameterized
 
+// A multi-segment base curve. byScalingParameterized samples along the whole
+// path and scales each sample about a fixed centre by a per-position factor.
 val base = fline {
-    moveTo(60, 180)
-    cubicTo(120, 20, 260, 280, 360, 120)
+    moveTo(60, 300)
+    cubicTo(180, 40, 300, 40, 420, 300)
+    cubicTo(520, 470, 660, 470, 760, 220)
 }
+val centre = vec(410f, 260f)
 
 val clean = base.copy().apply {
     thickness = 4.0
     color = vec(1.0, 1.0, 1.0, 0.35)
 }
 
-val wobble = base.byOffsettingParameterized(
-    distanceFunc = SineParameter(amplitude = 22f, frequency = 2.0f, phase = 0f, offset = 0f),
-    samples = 160
+// Scale oscillates along the path (0.72 .. 1.28): the curve breathes in and out.
+val breathing = base.byScalingParameterized(
+    scaleFunc = SineParameter(amplitude = 0.28f, frequency = 3.0f, phase = 0f, offset = 1.0f),
+    center = centre,
+    samples = 220
 ).apply {
     thickness = 3.0
-    color = vec(0.7, 0.9, 1.0, 0.85)
+    color = vec(0.7, 0.9, 1.0, 0.9)
 }
 
-val quietPoint = vec(110, 70, 0)
-val amp = DistanceParameter(point = quietPoint, minValue = 0f, maxValue = 14f, maxDistance = 260f)
-val noisy = base.byNoisingParameterized(amplitudeFunc = amp, seed = 9L, samples = 160).apply {
+// Scale grows with distance from a quiet point (0.9 near it .. 1.5 far away):
+// the curve hugs the base near the point and swells away from it.
+val quietPoint = vec(120, 120, 0)
+val swell = DistanceParameter(point = quietPoint, minValue = 0.9f, maxValue = 1.5f, maxDistance = 620f)
+val flared = base.byScalingParameterized(scaleFunc = swell, center = centre, samples = 220).apply {
     thickness = 4.5
-    color = vec(1.0, 0.6, 0.2, 0.85)
+    color = vec(1.0, 0.6, 0.2, 0.9)
 }
 
 val qp = fline {
     moveTo(quietPoint.x, quietPoint.y)
     lineTo(quietPoint.x + 0.001, quietPoint.y + 0.001)
     pointed = true
-    pointSize = 4.5
+    pointSize = 6.0
     stroked = false
     filled = true
     color = vec(0.4, 1.0, 0.6, 1.0)
 }
 
-lines(listOf(clean, wobble, noisy, qp), w = 420.0, h = 260.0, fitToSize = true)
+lines(listOf(clean, breathing, flared, qp), w = 900.0, h = 520.0, fitToSize = true)
 ```
 
 ### Curve combination utilities

@@ -1,4 +1,4 @@
-prop<LoadedTexture>(bbc) = LoadedTexture("public/docs/assets/afield_four_graphics/docs-checker-texture.png")
+prop<LoadedTexture>(bbc) = LoadedTexture("/Users/marc/Desktop/bbc.jpg")
 bbc.transferNow()
 
 var module = moduleHere {}
@@ -9,15 +9,15 @@ module += "mainMesh" to m
 renderer += "boo" to module
 
 val camera = Camera()
-m.p = camera.p
-m.m = camera.m
+m.p = camera.p 
+m.m = camera.m 
 
 var kc = KeyCamera(camera=camera)
 m.set(4, 2) {
-    val z = 0.0
+    val z = 0.0 
 
-    pos.add(0,0,0+z,
-            1.0,0.1,z,
+    pos.add(0,0,0+z, 
+            1.0,0.1,z, 
             1,1,z,
             0,1,z)
 

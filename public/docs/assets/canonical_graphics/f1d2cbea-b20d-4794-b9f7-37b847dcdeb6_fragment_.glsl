@@ -12,7 +12,7 @@ void main()
     //uFragColor.x = 0.0;
    // uFragColor.w += 0.2;
     //uFragColor.xy = vUV;
-
+    
     uFragColor = vec4(vUV.xxx, 1);
-
+    
 }
