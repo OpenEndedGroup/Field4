@@ -1770,6 +1770,25 @@ object ValueVisualizer {
     private fun formatByteArray(arr: ByteArray): String {
         if (arr.isEmpty()) return "<span style='color: #888;'>[empty bytes]</span>"
 
+        // Encoded raster? Render it inline so `display(PngEncoder.encode(px, w, h))` (and any
+        // PNG/JPEG/GIF bytes) shows the picture instead of a hex dump.
+        imageMimeType(arr)?.let { mime ->
+            val b64 = java.util.Base64.getEncoder().encodeToString(arr)
+            // Absolute max-width (not 100%): the box output panel is shrink-wrap, so a percentage
+            // width collapses the image; an absolute cap lets the panel size to the picture while
+            // still scaling down on narrow pages (the docs theme re-caps at the column width).
+            return "<img src='data:$mime;base64,$b64' " +
+                "style='max-width:900px;height:auto;border-radius:6px;display:block' " +
+                "alt='${arr.size}-byte $mime image'/>"
+        }
+
+        // Encoded audio? Render a player so `display(WavFloatArrayWriter.encodeMono16(sig, sr))` plays.
+        if (isWav(arr)) {
+            val b64 = java.util.Base64.getEncoder().encodeToString(arr)
+            return "<audio controls src='data:audio/wav;base64,$b64' " +
+                "style='width:420px;max-width:100%;display:block'></audio>"
+        }
+
         return buildString {
             append("<span style='color: #c8f;'>bytes[</span>")
             val preview = arr.take(8)
@@ -1790,6 +1809,24 @@ object ValueVisualizer {
             append(formatSizeSuffix(arr.size))
         }
     }
+
+    /** Detect a common image container by magic header, so encoded rasters `display` as pictures. */
+    private fun imageMimeType(a: ByteArray): String? = when {
+        a.size >= 8 && a[0] == 0x89.toByte() && a[1] == 0x50.toByte() &&
+            a[2] == 0x4E.toByte() && a[3] == 0x47.toByte() -> "image/png"
+        a.size >= 3 && a[0] == 0xFF.toByte() && a[1] == 0xD8.toByte() && a[2] == 0xFF.toByte() -> "image/jpeg"
+        a.size >= 6 && a[0] == 'G'.code.toByte() && a[1] == 'I'.code.toByte() &&
+            a[2] == 'F'.code.toByte() && a[3] == '8'.code.toByte() -> "image/gif"
+        else -> null
+    }
+
+    /** RIFF/WAVE container by magic header, so encoded audio `display`s as a player. */
+    private fun isWav(a: ByteArray): Boolean =
+        a.size >= 12 &&
+            a[0] == 'R'.code.toByte() && a[1] == 'I'.code.toByte() &&
+            a[2] == 'F'.code.toByte() && a[3] == 'F'.code.toByte() &&
+            a[8] == 'W'.code.toByte() && a[9] == 'A'.code.toByte() &&
+            a[10] == 'V'.code.toByte() && a[11] == 'E'.code.toByte()
 
     private fun formatIntArray(arr: IntArray): String {
         if (arr.isEmpty()) return "<span style='color: #888;'>[empty ints]</span>"

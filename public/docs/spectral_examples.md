@@ -73,7 +73,6 @@ with `afield.util.PngEncoder` (no AWT) and shown as a data-URI image in the box'
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/spectrogram.png" wait="2.5" capture="box" open-outputs="true" padding="20"}
 :::static
 import afield.util.PngEncoder
-import java.util.Base64
 
 // --- signal: a rising linear chirp (300 -> 3000 Hz) plus two steady tones (700, 1800 Hz) ---
 val sampleRate = 8000.0
@@ -110,14 +109,24 @@ fun cyanOrange(v: Double): Int {
     return (0xFF shl 24) or (r.toInt() shl 16) or (g.toInt() shl 8) or b.toInt()
 }
 
-val w = 900; val h = 420
+val nf = spec.numFrames; val nb = spec.numBins
+fun db(f: Int, b: Int) = 20.0 * log10((mags[f][b] / maxMag).coerceAtLeast(1e-4))
+// bilinear-sample the frame x bin grid so the magnified heatmap is smooth, not blocky.
+fun sample(fx: Double, fy: Double): Double {
+    val x0 = fx.toInt(); val x1 = (x0 + 1).coerceAtMost(nf - 1)
+    val y0 = fy.toInt(); val y1 = (y0 + 1).coerceAtMost(nb - 1)
+    val tx = fx - x0; val ty = fy - y0
+    return (db(x0, y0) * (1 - tx) + db(x1, y0) * tx) * (1 - ty) +
+        (db(x0, y1) * (1 - tx) + db(x1, y1) * tx) * ty
+}
+
+val w = 1800; val h = 840
 val px = IntArray(w * h)
 for (xp in 0 until w) {
-    val frame = (xp.toLong() * (spec.numFrames - 1) / (w - 1).coerceAtLeast(1)).toInt()
+    val fx = xp.toDouble() / (w - 1) * (nf - 1)
     for (yp in 0 until h) {                          // y flipped: low frequency at the bottom
-        val bin = ((h - 1 - yp).toLong() * (spec.numBins - 1) / (h - 1)).toInt()
-        val db = 20.0 * log10((mags[frame][bin] / maxMag).coerceAtLeast(1e-4))
-        px[xp + yp * w] = cyanOrange((db + 80.0) / 80.0)
+        val fy = (h - 1 - yp).toDouble() / (h - 1) * (nb - 1)
+        px[xp + yp * w] = cyanOrange((sample(fx, fy) + 80.0) / 80.0)
     }
 }
 // overlay the spectral-centroid trace as a bright line.
@@ -127,9 +136,8 @@ for (f in 0 until spec.numFrames) {
     for (dy in -1..1) { val yy = yp + dy; if (yy in 0 until h) px[xp + yy * w] = (0xFF shl 24) or 0xFFFFFF }
 }
 
-val b64 = Base64.getEncoder().encodeToString(PngEncoder.encode(px, w, h))
 println("frames=${spec.numFrames} bins=${spec.numBins} centroid ${"%.0f".format(centroid.first())} -> ${"%.0f".format(centroid.last())} Hz")
-display("main", "<img src='data:image/png;base64,$b64' style='width:100%;max-width:900px;border-radius:6px;display:block'/>")
+display("main", PngEncoder.encode(px, w, h))   // display renders PNG bytes as an image
 ```
 
 ![](assets/spectral_examples/spectrogram.png)
@@ -149,7 +157,6 @@ the log warping.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/mel_spectrogram.png" wait="2.5" capture="box" open-outputs="true" padding="20"}
 :::static
 import afield.util.PngEncoder
-import java.util.Base64
 
 // --- signal: two crossing chirps, one rising (200 -> 3200 Hz) and one falling (3200 -> 200 Hz) ---
 val sampleRate = 8000.0
@@ -185,20 +192,29 @@ fun cyanOrange(v: Double): Int {
     return (0xFF shl 24) or (r.toInt() shl 16) or (g.toInt() shl 8) or b.toInt()
 }
 
-val w = 900; val h = 360
+val nf = spec.numFrames
+fun db(f: Int, b: Int) = 20.0 * log10((mel[f][b] / maxMel).coerceAtLeast(1e-4))
+// bilinear-sample the frame x band grid so the magnified heatmap is smooth, not blocky.
+fun sample(fx: Double, fy: Double): Double {
+    val x0 = fx.toInt(); val x1 = (x0 + 1).coerceAtMost(nf - 1)
+    val y0 = fy.toInt(); val y1 = (y0 + 1).coerceAtMost(numBands - 1)
+    val tx = fx - x0; val ty = fy - y0
+    return (db(x0, y0) * (1 - tx) + db(x1, y0) * tx) * (1 - ty) +
+        (db(x0, y1) * (1 - tx) + db(x1, y1) * tx) * ty
+}
+
+val w = 1800; val h = 720
 val px = IntArray(w * h)
 for (xp in 0 until w) {
-    val frame = (xp.toLong() * (spec.numFrames - 1) / (w - 1).coerceAtLeast(1)).toInt()
+    val fx = xp.toDouble() / (w - 1) * (nf - 1)
     for (yp in 0 until h) {                          // y flipped: low mel band at the bottom
-        val band = ((h - 1 - yp).toLong() * (numBands - 1) / (h - 1)).toInt()
-        val db = 20.0 * log10((mel[frame][band] / maxMel).coerceAtLeast(1e-4))
-        px[xp + yp * w] = cyanOrange((db + 80.0) / 80.0)
+        val fy = (h - 1 - yp).toDouble() / (h - 1) * (numBands - 1)
+        px[xp + yp * w] = cyanOrange((sample(fx, fy) + 80.0) / 80.0)
     }
 }
 
-val b64 = Base64.getEncoder().encodeToString(PngEncoder.encode(px, w, h))
 println("frames=${spec.numFrames} bands=$numBands")
-display("main", "<img src='data:image/png;base64,$b64' style='width:100%;max-width:900px;border-radius:6px;display:block'/>")
+display("main", PngEncoder.encode(px, w, h))   // display renders PNG bytes as an image
 ```
 
 ![](assets/spectral_examples/mel_spectrogram.png)
@@ -219,7 +235,6 @@ sensible smoothing coefficient per frequency.
 import afield.four.audio.resonate
 import afield.four.audio.resonatorAlphaHeuristics
 import afield.util.PngEncoder
-import java.util.Base64
 
 // --- same rising chirp (300 -> 3000 Hz) + two tones (700, 1800 Hz), as a Float signal ---
 val sampleRate = 8000f
@@ -267,20 +282,28 @@ fun cyanOrange(v: Double): Int {
     return (0xFF shl 24) or (r.toInt() shl 16) or (g.toInt() shl 8) or b.toInt()
 }
 
-val w = 900; val h = 360
+fun db(s: Int, kk: Int) = 20.0 * log10((ampAt(s, kk).toDouble() / maxA).coerceAtLeast(1e-4))
+// bilinear-sample the slice x resonator grid so the magnified heatmap is smooth, not blocky.
+fun sample(fx: Double, fy: Double): Double {
+    val x0 = fx.toInt(); val x1 = (x0 + 1).coerceAtMost(slices - 1)
+    val y0 = fy.toInt(); val y1 = (y0 + 1).coerceAtMost(numRes - 1)
+    val tx = fx - x0; val ty = fy - y0
+    return (db(x0, y0) * (1 - tx) + db(x1, y0) * tx) * (1 - ty) +
+        (db(x0, y1) * (1 - tx) + db(x1, y1) * tx) * ty
+}
+
+val w = 1800; val h = 720
 val px = IntArray(w * h)
 for (xp in 0 until w) {
-    val s = (xp.toLong() * (slices - 1) / (w - 1).coerceAtLeast(1)).toInt()
+    val fx = xp.toDouble() / (w - 1) * (slices - 1)
     for (yp in 0 until h) {                          // y flipped: low resonator (low Hz) at the bottom
-        val kk = ((h - 1 - yp).toLong() * (numRes - 1) / (h - 1)).toInt()
-        val db = 20.0 * log10((ampAt(s, kk).toDouble() / maxA).coerceAtLeast(1e-4))
-        px[xp + yp * w] = cyanOrange((db + 80.0) / 80.0)
+        val fy = (h - 1 - yp).toDouble() / (h - 1) * (numRes - 1)
+        px[xp + yp * w] = cyanOrange((sample(fx, fy) + 80.0) / 80.0)
     }
 }
 
-val b64 = Base64.getEncoder().encodeToString(PngEncoder.encode(px, w, h))
 println("resonators=$numRes slices=$slices freq ${freqs.first().toInt()} -> ${freqs.last().toInt()} Hz")
-display("main", "<img src='data:image/png;base64,$b64' style='width:100%;max-width:900px;border-radius:6px;display:block'/>")
+display("main", PngEncoder.encode(px, w, h))   // display renders PNG bytes as an image
 ```
 
 ![](assets/spectral_examples/resonator_bank.png)

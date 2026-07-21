@@ -16,6 +16,17 @@ object WavFloatArrayWriter {
     fun writeMono16(file: File, samples: FloatArray, sampleRate: Int, normalizePeak: Float? = null) {
         require(sampleRate > 0) { "sampleRate must be > 0" }
         file.parentFile?.mkdirs()
+        file.writeBytes(encodeMono16(samples, sampleRate, normalizePeak))
+    }
+
+    /**
+     * Encodes mono 16-bit PCM WAV from normalized floats and returns the complete `.wav` bytes.
+     *
+     * Handy for `display(...)`: the value visualizer renders a WAV byte array as an inline audio
+     * player, so `display(WavFloatArrayWriter.encodeMono16(signal, 8000))` plays a signal in a box.
+     */
+    fun encodeMono16(samples: FloatArray, sampleRate: Int, normalizePeak: Float? = null): ByteArray {
+        require(sampleRate > 0) { "sampleRate must be > 0" }
 
         val working = samples.copyOf()
         if (normalizePeak != null) normalizeInPlace(working, normalizePeak)
@@ -45,7 +56,7 @@ object WavFloatArrayWriter {
             buffer.putShort(intSample.toShort())
         }
 
-        file.writeBytes(buffer.array())
+        return buffer.array()
     }
 
     private fun ByteBuffer.putAscii(value: String) {
