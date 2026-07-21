@@ -43,13 +43,13 @@ class FunctionFitTest {
 
         assertTrue(run.improved, "fit should end below its initial RMSE")
         assertTrue(
-            run.finalRmse < run.initialRmse * 0.1,
-            "final RMSE ${run.finalRmse} should be << initial ${run.initialRmse}"
+            run.finalError < run.initialError * 0.1,
+            "final RMSE ${run.finalError} should be << initial ${run.initialError}"
         )
         // Loss trajectory is recorded start-inclusive.
         assertEquals(run.iterations + 1, run.losses.size)
-        assertEquals(run.initialRmse, run.losses.first(), 0.0)
-        assertEquals(run.finalRmse, run.losses.last(), 0.0)
+        assertEquals(run.initialError, run.losses.first(), 0.0)
+        assertEquals(run.finalError, run.losses.last(), 0.0)
         // Overall descent (allow non-strict wobble from finite differences).
         assertTrue(run.losses.last() < run.losses.first())
     }
@@ -60,8 +60,8 @@ class FunctionFitTest {
         val seed = sin(1.2, amplitude = 1.0, offset = 0.0) + cos(1.7, amplitude = 1.0)
         val run = fitGradient(target, seed, domain = domain, iterations = 400, lr = 0.04)
         assertTrue(
-            run.finalRmse < run.initialRmse * 0.25,
-            "two-oscillator fit: final ${run.finalRmse} vs initial ${run.initialRmse}"
+            run.finalError < run.initialError * 0.25,
+            "two-oscillator fit: final ${run.finalError} vs initial ${run.initialError}"
         )
     }
 
@@ -87,8 +87,8 @@ class FunctionFitTest {
         // cannot cross the frequency barriers and settles well above the global optimum (~0.005).
         val run = fitGradient(hardTarget(), hardSeed(), domain = domain, iterations = 3000, lr = 0.05)
         assertTrue(
-            run.finalRmse > 0.1,
-            "single-shot gradient is expected to stall here; got ${run.finalRmse} (if this " +
+            run.finalError > 0.1,
+            "single-shot gradient is expected to stall here; got ${run.finalError} (if this " +
                 "dropped, the loss landscape or defaults changed — revisit the story)"
         )
     }
@@ -103,15 +103,15 @@ class FunctionFitTest {
         assertEquals(Functions.Domain.DEFAULT, best.config.domain)
 
         assertTrue(
-            best.finalRmse < 0.05,
-            "fitBest should reach the global basin (< 0.05); got ${best.finalRmse}"
+            best.finalError < 0.05,
+            "fitBest should reach the global basin (< 0.05); got ${best.finalError}"
         )
         assertTrue(
-            best.finalRmse < single.finalRmse * 0.5,
-            "fitBest ${best.finalRmse} should be far better than single-shot ${single.finalRmse}"
+            best.finalError < single.finalError * 0.5,
+            "fitBest ${best.finalError} should be far better than single-shot ${single.finalError}"
         )
         // Never worse than a plain fit: restart 0 is the un-jittered anchor.
-        assertTrue(best.finalRmse <= single.finalRmse + 1e-9)
+        assertTrue(best.finalError <= single.finalError + 1e-9)
     }
 
     @Test
@@ -162,8 +162,8 @@ class FunctionFitTest {
         )
         // The gradient polish must not worsen what evolve found.
         assertTrue(
-            hybrid.finalRmse <= hybrid.evolvedRmse + 1e-9,
-            "polish ${hybrid.finalRmse} must not exceed evolved ${hybrid.evolvedRmse}"
+            hybrid.finalError <= hybrid.evolvedError + 1e-9,
+            "polish ${hybrid.finalError} must not exceed evolved ${hybrid.evolvedError}"
         )
     }
 
@@ -215,7 +215,7 @@ class FunctionFitTest {
 
         g.color = Color.WHITE
         g.drawString("target (cyan)  seed (grey)  fitted (orange)", pad, 18)
-        g.drawString("initial RMSE=%.4f  final RMSE=%.4f".format(run.initialRmse, run.finalRmse), pad, h - 6)
+        g.drawString("initial RMSE=%.4f  final RMSE=%.4f".format(run.initialError, run.finalError), pad, h - 6)
         g.dispose()
 
         val out = File(System.getProperty("fnfit.png.dir", "."), "fn_fit_montage.png")

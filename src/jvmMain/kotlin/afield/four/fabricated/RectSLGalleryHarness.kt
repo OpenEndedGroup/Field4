@@ -179,7 +179,7 @@ object RectSLGalleryHarness {
             val target = gaussian(0.30, 0.11) + gaussian(0.72, 0.13) * 0.80
             val seed = gaussian(0.45, 0.20) + gaussian(0.60, 0.20) * 0.50
             val run = fitBest(target, seed, restarts = 12)
-            lprintln("info,doc", "rectsl fit-to-target RMSE ${"%.4f".format(run.initialRmse)} -> ${"%.4f".format(run.finalRmse)}")
+            lprintln("info,doc", "rectsl fit-to-target RMSE ${"%.4f".format(run.initialError)} -> ${"%.4f".format(run.finalError)}")
             Triple(target, seed, run.fitted)
         }
         val program = compileForRender(

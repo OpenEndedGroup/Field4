@@ -72,20 +72,17 @@ fun Functions.Fn.applyParameters(theta: DoubleArray): Functions.Fn {
 
 /**
  * An RMSE loss (lower is better) of a candidate against [target] over an even grid across
- * [domain], reusing [matchFitness]'s NaN-safe grid semantics verbatim by negating it.
+ * [domain]. Kept as a named convenience; equivalent to `FnMetric.rmse.lossAgainst(...)`, which
+ * is the general seam the fitters now use for any [FnMetric].
  *
- * Returns `+∞` when no grid point is jointly finite (matching [matchFitness]'s
- * `NEGATIVE_INFINITY`), so a degenerate candidate is maximally penalised rather than
- * silently scoring zero.
+ * Returns `+∞` when no grid point is jointly finite, so a degenerate candidate is maximally
+ * penalised rather than silently scoring zero.
  */
 fun rmseLossAgainst(
     target: Functions.Fn,
     domain: Functions.Domain = Functions.Domain.DEFAULT,
     samples: Int = 128
-): (Functions.Fn) -> Double {
-    val fitness = matchFitness(target, domain, samples, complexityWeight = 0.0)
-    return { candidate -> -fitness(candidate) }
-}
+): (Functions.Fn) -> Double = FnMetric.rmse.lossAgainst(target, domain, samples)
 
 /**
  * A [Functions.Domain] is a `ClosedRange<Double>`, so the fitters accept either a bare range
@@ -97,7 +94,7 @@ fun rmseLossAgainst(
 private fun ClosedRange<Double>.asFnDomain(): Functions.Domain =
     this as? Functions.Domain ?: Functions.Domain(start, endInclusive)
 
-/** One descent step's record: the loss (RMSE) after applying the step. */
+/** One descent step's record: the loss (the metric distance) after applying the step. */
 data class FnFitStep(
     val iteration: Int,
     val loss: Double
@@ -120,8 +117,12 @@ data class FnFitConfig(
 /**
  * Result and provenance of a [fitGradient] run, mirroring the shape of [FnEvolveRun].
  *
- * [losses] is the full RMSE trajectory including the starting point, so
- * `losses.first() == initialRmse` and `losses.last() == finalRmse`.
+ * [losses] is the full error trajectory including the starting point, so
+ * `losses.first() == initialError` and `losses.last() == finalError`.
+ *
+ * [initialError] / [finalError] are the distance under the fit's [FnMetric] (RMSE by default)
+ * at the start and end. The name is metric-neutral on purpose — a custom metric need not be
+ * a root-mean-square, so "error" reads truthfully whatever objective the fit descended.
  */
 data class FnFitRun(
     val fitted: Functions.Fn,
@@ -129,14 +130,14 @@ data class FnFitRun(
     val initialParameters: DoubleArray,
     val steps: List<FnFitStep>,
     val losses: List<Double>,
-    val initialRmse: Double,
-    val finalRmse: Double,
+    val initialError: Double,
+    val finalError: Double,
     val iterations: Int,
     val evaluations: Int,
     val config: FnFitConfig
 ) {
     /** True when the fit ended strictly closer to the target than it started. */
-    val improved: Boolean get() = finalRmse < initialRmse
+    val improved: Boolean get() = finalError < initialError
 
     // DoubleArray needs value-based equality/hash to behave in collections and asserts.
     override fun equals(other: Any?): Boolean {
@@ -146,8 +147,8 @@ data class FnFitRun(
             initialParameters.contentEquals(other.initialParameters) &&
             steps == other.steps &&
             losses == other.losses &&
-            initialRmse == other.initialRmse &&
-            finalRmse == other.finalRmse &&
+            initialError == other.initialError &&
+            finalError == other.finalError &&
             iterations == other.iterations &&
             evaluations == other.evaluations &&
             config == other.config
@@ -157,7 +158,7 @@ data class FnFitRun(
         var result = parameters.contentHashCode()
         result = 31 * result + initialParameters.contentHashCode()
         result = 31 * result + losses.hashCode()
-        result = 31 * result + finalRmse.hashCode()
+        result = 31 * result + finalError.hashCode()
         return result
     }
 }
@@ -211,6 +212,9 @@ private fun finiteDifferenceGradient(
  * @param iterations number of Adam steps (>= 0).
  * @param lr Adam learning rate.
  * @param fdStep base relative step for the finite-difference gradient.
+ * @param metric the distance the descent minimises (lower is better). Defaults to [FnMetric.rmse],
+ *        which reproduces the historic root-mean-square objective exactly; pass e.g.
+ *        [FnMetric.huber] or [FnMetric.lp] to reshape the loss landscape.
  * @param initJitter if > 0, θ is perturbed by `±initJitter*(1+|θ|)` before descent using
  *        [rngSeed] — a deterministic warm-shake for escaping a flat start.
  * @return an [FnFitRun] with the fitted graph and the full loss trajectory.
@@ -226,6 +230,7 @@ fun fitGradient(
     epsilon: Double = 1e-8,
     fdStep: Double = 1e-4,
     samples: Int = 128,
+    metric: FnMetric = FnMetric.rmse,
     rngSeed: Long = 0L,
     initJitter: Double = 0.0,
     onIteration: ((iteration: Int, total: Int) -> Unit)? = null
@@ -238,7 +243,7 @@ fun fitGradient(
     val config = FnFitConfig(
         iterations, lr, beta1, beta2, epsilon, fdStep, samples, dom, rngSeed, initJitter
     )
-    val loss = rmseLossAgainst(target, dom, samples)
+    val loss = metric.lossAgainst(target, dom, samples)
     val lossOfTheta: (DoubleArray) -> Double = { theta -> loss(seed.applyParameters(theta)) }
 
     val rng = Random(rngSeed)
@@ -300,8 +305,8 @@ fun fitGradient(
         initialParameters = initialTheta,
         steps = steps,
         losses = losses,
-        initialRmse = startLoss,
-        finalRmse = finalLoss,
+        initialError = startLoss,
+        finalError = finalLoss,
         iterations = iterations,
         evaluations = evaluations,
         config = config
@@ -326,6 +331,9 @@ fun fitGradient(
  *
  * @param domain sampling range for the loss. When omitted, use [target]'s domain if it is finite;
  *        otherwise use the bounded unit domain [Functions.Domain.DEFAULT].
+ * @param metric the distance minimised and compared across restarts (lower is better).
+ *        Defaults to [FnMetric.rmse]; the restart story above holds for any metric whose
+ *        landscape is multimodal in frequency/phase.
  */
 fun fitBest(
     target: Functions.Fn,
@@ -339,6 +347,7 @@ fun fitBest(
     epsilon: Double = 1e-8,
     fdStep: Double = 1e-4,
     samples: Int = 128,
+    metric: FnMetric = FnMetric.rmse,
     restartJitter: Double = 0.6,
     rngSeed: Long = 0L
 ): FnFitRun {
@@ -360,11 +369,12 @@ fun fitBest(
                 epsilon = epsilon,
                 fdStep = fdStep,
                 samples = samples,
+                metric = metric,
                 rngSeed = rngSeed + k,
                 initJitter = jitter,
                 onIteration = { _, _ -> } // suppress inner bars; the outer one tracks restarts
             )
-            if (best == null || run.finalRmse < best.finalRmse) best = run
+            if (best == null || run.finalError < best.finalError) best = run
             reporter.update((k + 1).toLong(), restarts.toLong())
         }
     } finally {
@@ -382,9 +392,9 @@ data class FnHybridRun(
     val best: Functions.Fn get() = fitRun.fitted
 
     /** RMSE at the very start (seed), after evolve, and after the gradient polish. */
-    val seedRmse: Double get() = -evolveRun.initialScore
-    val evolvedRmse: Double get() = fitRun.initialRmse
-    val finalRmse: Double get() = fitRun.finalRmse
+    val seedError: Double get() = -evolveRun.initialScore
+    val evolvedError: Double get() = fitRun.initialError
+    val finalError: Double get() = fitRun.finalError
 }
 
 /**
@@ -410,11 +420,12 @@ fun fitHybrid(
     fdStep: Double = 1e-4,
     samples: Int = 128,
     complexityWeight: Double = 0.0,
+    metric: FnMetric = FnMetric.rmse,
     rngSeed: Long = 0L,
     mutations: List<Pair<String, FnMutation>> = FnMutations.defaults()
 ): FnHybridRun {
     val dom = domain.asFnDomain()
-    val fitness = matchFitness(target, dom, samples, complexityWeight)
+    val fitness = matchFitness(target, dom, samples, complexityWeight, metric)
     val evolveRun = evolve(
         seed = seed,
         iterations = evolveIterations,
@@ -434,6 +445,7 @@ fun fitHybrid(
         epsilon = epsilon,
         fdStep = fdStep,
         samples = samples,
+        metric = metric,
         rngSeed = rngSeed + 1
     )
     return FnHybridRun(evolveRun, fitRun)

@@ -726,9 +726,9 @@ object ValueVisualizer {
         append("<div>")
         append("<span style='color: #cc8;'>FnFitRun</span> ")
         append("<span style='color: #aaa;'>RMSE </span>")
-        append("<span style='color: #8cf;'>${fmt(run.initialRmse)}</span>")
+        append("<span style='color: #8cf;'>${fmt(run.initialError)}</span>")
         append("<span style='color: $arrowColour;'> $arrow </span>")
-        append("<span style='color: #8f8;'>${fmt(run.finalRmse)}</span>")
+        append("<span style='color: #8f8;'>${fmt(run.finalError)}</span>")
         append(
             "<span style='color: #888;'>  ${run.iterations} steps · ${run.evaluations} evals · " +
                 "${run.parameters.size} params</span>"

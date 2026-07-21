@@ -171,33 +171,31 @@ fun evolve(
 /**
  * A ready-made fitness: how closely a candidate matches [target] on a shared time-base,
  * minus an optional complexity penalty from [graphMetrics]. Higher is better.
+ *
+ * The closeness term is `-metric.distance(...)`; [metric] defaults to [FnMetric.rmse], so an
+ * omitted argument is the historic root-mean-square objective bit-for-bit (including the
+ * `NEGATIVE_INFINITY` a candidate with no jointly-finite sample earns). Pass another [FnMetric]
+ * to search — via [evolve] or [fitHybrid] — under a different notion of "close".
  */
 fun matchFitness(
     target: Functions.Fn,
     domain: Functions.Domain = Functions.Domain.DEFAULT,
     samples: Int = 128,
-    complexityWeight: Double = 0.0
+    complexityWeight: Double = 0.0,
+    metric: FnMetric = FnMetric.rmse
 ): (Functions.Fn) -> Double {
     val count = samples.coerceIn(2, 8192)
     val xs = DoubleArray(count) { index -> domain.min + domain.length * index / (count - 1).toDouble() }
     val targetY = DoubleArray(count) { index -> target.evalSafe(xs[index], outside = Double.NaN) }
     return { candidate ->
-        var sumSq = 0.0
-        var valid = 0
-        for (index in xs.indices) {
-            val a = candidate.evalSafe(xs[index], outside = Double.NaN)
-            val b = targetY[index]
-            if (a.isFinite() && b.isFinite()) {
-                val d = a - b
-                sumSq += d * d
-                valid++
-            }
-        }
-        if (valid == 0) {
+        val candidateY = DoubleArray(count) { index -> candidate.evalSafe(xs[index], outside = Double.NaN) }
+        val distance = metric.distance(xs, targetY, candidateY)
+        // A non-finite distance means nothing was comparable (or the metric was degenerate):
+        // treat it as maximally unfit, matching the old valid==0 → NEGATIVE_INFINITY branch.
+        if (!distance.isFinite()) {
             Double.NEGATIVE_INFINITY
         } else {
-            val rmse = kotlin.math.sqrt(sumSq / valid)
-            -rmse - complexityWeight * candidate.graphMetrics().cost
+            -distance - complexityWeight * candidate.graphMetrics().cost
         }
     }
 }
