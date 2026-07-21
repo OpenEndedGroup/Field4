@@ -1,6 +1,7 @@
 package afield
 
 //import org.jetbrains.kotlin.scripting.ide_services.compiler.KJvmReplCompilerWithIdeServices
+import afield.logger.formatMillis
 import afield.logger.lblock
 import afield.logger.lprintln
 import afield.macros.ContainingFunction
@@ -223,7 +224,7 @@ class KotlinInterface(
                 r = compiler.compile(code, compilerConfig)
             }
         }
-        lprintln("info,kotlin,compile", "TIME<" + (ns / 1_000_000.0) + "ms> = compile")
+        lprintln("info,kotlin,compile", "compile=${formatMillis(ns)}")
         if (r is ResultWithDiagnostics.Failure) {
             context.debugScripts.discard(snapshot)
         }
@@ -254,7 +255,7 @@ class KotlinInterface(
                 }
                 if (updateContext) contextUpdater.update()
             }
-            lprintln("info,kotlin,evaluate", "TIME<" + (ns / 1_000_000.0) + "ms> = evaluate")
+            lprintln("info,kotlin,evaluate", "evaluate=${formatMillis(ns)}")
             r
         }
     }
@@ -281,7 +282,7 @@ class KotlinInterface(
                 }
                 if (updateContext) contextUpdater.update()
             }
-            lprintln("info,kotlin,evaluate", "TIME<" + (ns / 1_000_000.0) + "ms> = evaluate")
+            lprintln("info,kotlin,evaluate", "evaluate=${formatMillis(ns)}")
             r
         }
     }

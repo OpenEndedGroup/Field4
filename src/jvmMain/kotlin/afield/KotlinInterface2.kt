@@ -1,6 +1,7 @@
 package afield
 
 import afield.ai.KotlinSourceIndex
+import afield.logger.formatMillis
 import afield.logger.lblock
 import afield.logger.lprintln
 import afield.macros.ContainingFunction
@@ -373,7 +374,7 @@ class KotlinInterface2(
                     r = ResultWithDiagnostics.Failure(compilerExceptionDiagnostic(t))
                 }
             }
-            lprintln("info,kotlin,compile", "TIME<" + (ns / 1_000_000.0) + "ms> = compile")
+            lprintln("info,kotlin,compile", "compile=${formatMillis(ns)}")
             if (r is ResultWithDiagnostics.Failure) {
                 context.debugScripts.discard(snapshot)
             }
@@ -423,7 +424,7 @@ class KotlinInterface2(
                 }
                 if (updateContext) contextUpdater.update()
             }
-            lprintln("info,kotlin,evaluate", "TIME<" + (ns / 1_000_000.0) + "ms> = evaluate")
+            lprintln("info,kotlin,evaluate", "evaluate=${formatMillis(ns)}")
             val success = r is ResultWithDiagnostics.Success && r.value.get().result !is ResultValue.Error
             CodeUseTelemetryService.recordEvaluationResult(
                 snippetId = codeUseSnippetIds[e] ?: CodeUseTelemetryService.newSnippetKey(),
@@ -477,7 +478,7 @@ class KotlinInterface2(
                 }
                 if (updateContext) contextUpdater.update()
             }
-            lprintln("info,kotlin,evaluate", "TIME<" + (ns / 1_000_000.0) + "ms> = evaluate")
+            lprintln("info,kotlin,evaluate", "evaluate=${formatMillis(ns)}")
             val boxContext = (implicits.firstOrNull { it is Box } as? Box) ?: associatedBox as? Box
             val success = r is ResultWithDiagnostics.Success && r.value.get().result !is ResultValue.Error
             CodeUseTelemetryService.recordEvaluationResult(

@@ -27,6 +27,26 @@ fun lprint(channel: String, message: Any?) {
     isNL = false
 }
 
+/**
+ * Format a nanosecond duration as a compact, human-readable value **with its unit** for
+ * pinned-console stat lines: more significant digits for sub-millisecond values, plain integers
+ * once past 100ms, and a rollover to decimal seconds past 1s (so a slow `compile=1.63s` reads
+ * cleanly rather than `compile=1629ms`). The trailing unit (`ms`/`s`) is part of the returned
+ * string and satisfies the [afield.logger] heatmap token grammar (`key=value unit`), so callers
+ * emit `"compile=${formatMillis(ns)}"` with no unit of their own.
+ */
+fun formatMillis(nanos: Long): String {
+    val ms = nanos / 1_000_000.0
+    return when {
+        ms >= 10_000.0 -> "%.1fs".format(ms / 1000.0)
+        ms >= 1_000.0 -> "%.2fs".format(ms / 1000.0)
+        ms >= 100.0 -> "%.0fms".format(ms)
+        ms >= 10.0 -> "%.1fms".format(ms)
+        ms >= 1.0 -> "%.2fms".format(ms)
+        else -> "%.3fms".format(ms)
+    }
+}
+
 var indent by threadLocal {
     ""
 }
