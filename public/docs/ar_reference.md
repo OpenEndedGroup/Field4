@@ -1,18 +1,134 @@
-# Legacy RemoteJS AR reference
+# RemoteJS and WebXR
 
-This page formerly documented a JavaScript/A-Frame remote-AR extension from an
-earlier Field workflow. The functions it described—such as `stage`,
-`mapDirectory`, `loadFBX`, `addVideoPlane`, and `getCurrentCamera`—are not part of
-the tracked Field·4 runtime in this checkout, so the old API reference has been
-retired rather than presented as current behavior.
+Field's browser graphics head lives at:
 
-For supported Field·4 paths, use:
+```text
+https://FIELD_HOST:9092/extensions/remote_ar/index.html
+```
 
-- [Apple Vision Pro](vision.md) for the current native vision client status.
-- [Mobile controllers](mobile_controllers.md) for browser-based remote controls.
-- [afield.four graphics](afield_four_graphics.md) for the direct Vulkan renderer.
-- [FLine examples](fline_examples.md) for the current Kotlin `FLine` API.
+It connects back to the Field server over WebSocket and executes Javascript boxes in the browser. The same page has three modes:
 
-If a separately installed extension restores the historical RemoteJS API, its
-documentation must travel with that extension and identify its own version and
-server requirements.
+- Android and desktop browsers use the browser's native WebXR implementation.
+- The Endrun iOS app injects its ARKit-backed WebXR compatibility layer before this page loads.
+- A browser without an immersive XR session still runs the Three.js scene, RemoteJS execution, completion, and tests in flat mode.
+
+Variant Launch is no longer involved. There is no external key, hosted scene, or platform-specific page.
+
+## Start a RemoteJS document
+
+1. Start Field and open a document.
+2. Create a box that will be the language root. Run **Set Main Language: Javascript** on that box.
+3. Connect Javascript boxes as children of that root.
+4. Open the remote head URL on the target device. Use Field's HTTPS URL on a phone or headset because immersive WebXR requires a secure context.
+5. Run or launch a Javascript child box in Field.
+
+The older `isRemoteJSRoot` property is still recognized when opening historical documents. New documents should use the normal main-language action; it persists `mainLanguage = remotejs` and labels child boxes as Javascript.
+
+The checked-in `remote` and `advanced_remote` templates contain examples of FLine geometry, assets, animation, and interaction.
+
+## FLine graphics
+
+`FLine` is a small path representation backed by Three.js `BufferGeometry`. Assigning an FLine into `stage` creates or updates its stroke, fill, and/or point geometry.
+
+```javascript
+var triangle = new FLine()
+triangle.moveTo(0, 0, -1)
+triangle.lineTo(0.25, 0, -1)
+triangle.lineTo(0, 0.25, -1)
+triangle.lineTo(0, 0, -1)
+triangle.color = vec(0.9, 0.9, 1.0, 1.0)
+triangle.filled = true
+
+stage.triangle = triangle
+```
+
+Paths support numeric coordinates or Three.js vectors, `moveTo`, `lineTo`, `cubicTo`, per-vertex `uv` and `vcolor`, transforms, strokes, triangulated fills, and points. Reassign the same `stage` property after changing the path to update its buffers. Delete the property to remove the geometry:
+
+```javascript
+delete stage.triangle
+```
+
+Useful scene helpers include `vec`, `rotate`, `rotate3`, `scale`, `translate`, `findByName`, `findBySearchingFor`, `getCurrentCamera`, `addPlane`, `addBox`, `addImagePlane`, `addVideoPlane`, `loadGLTF`, `loadPointCloudPLY`, and `mapDirectory`.
+
+glTF is the preferred animated asset format. `loadFBX` now fails with an explicit conversion suggestion because an FBX loader is not part of the vendored runtime.
+
+## Animation
+
+`launch` schedules a function on the same A-Frame tick that renders the Three.js/WebXR scene:
+
+```javascript
+launch(function () {
+    triangle = triangle + vec(0.001, 0, 0)
+    stage.triangle = triangle
+}, "move-triangle", false)
+```
+
+The optional third argument controls one-shot behavior. `false` keeps the function in the runloop. `over(seconds, name, callback)` supplies a value from 0 to 1 over a duration. Field's stop action removes tasks launched by that box. Animation mixers for loaded glTF assets advance on this same scene tick; there is no second `requestAnimationFrame` loop.
+
+## Pointer and XR interaction
+
+Global callbacks receive pointer/touch events after a Three.js raycast:
+
+```javascript
+mouseDown.place = function (event) {
+    print(event.hit)
+}
+```
+
+An FLine can also own callbacks. They run only when the ray intersects that line's stroke, fill, or points:
+
+```javascript
+triangle.mouseDown.select = function (event) {
+    print(event.intersection.point)
+}
+```
+
+The per-line callback maps are `mouseDown`, `mouseUp`, `mouseMove`, and `dblClick`. The event includes `coordinates`, `ray`, and `intersects`; when WebXR hit testing has a result it also includes `hit` and `xrHit`.
+
+For XR-specific work:
+
+```javascript
+var removeHitListener = onXRHit(function (hit) {
+    // hit.position is a THREE.Vector3 in local-floor space
+})
+
+var removeSelectListener = onXRSelect(function (selection) {
+    print(selection.hit)
+})
+
+var latest = xrHit()
+```
+
+The head requests `local-floor`, `viewer`, and `hit-test` through standard WebXR. Android browsers provide these directly. Endrun supplies the same `navigator.xr` surface from ARKit on iOS.
+
+## Completion and errors
+
+Completion is generated in the connected head from live globals, sandbox variables, prototypes, Three.js, and the documented helper functions. It does not evaluate arbitrary function calls while completing a member expression.
+
+Every execution carries a stable `box_NAME|UUID` source name. Runtime failures and callback failures are returned to the originating Field box with the browser's message, stack, filename, line, and column. Printed values can arrive before terminal `OK`; the return channel remains open for those values and closes on the terminal response.
+
+## Testing the head
+
+Append `?selftest=1&debug=1` to the head URL. The small status panel shows the connection, dependency versions, WebXR platform, and self-test result. Automation can read:
+
+```javascript
+window.__fieldRemoteHead.snapshot()
+await window.__fieldRemoteHead.selfTest()
+```
+
+The self-test checks the vendored A-Frame/Three pairing, scene setup, sandbox storage, runtime completion, source-mapped errors, FLine stroke/cubic geometry, hit callback surfaces, glTF loader, and a complete task lifecycle driven by A-Frame's frame loop. The browser regression additionally creates a real RemoteJS language root in Field, runs a child box through the WebSocket, observes `42` in the head, and captures the status panel:
+
+```bash
+uv run --project . --group backdoor python tools/run_ui_regressions.py \
+  --id remote-ar-head --port 9490 --timeout 45
+```
+
+The test is a desktop check of the full transport and rendering head. Camera permission, native Android WebXR session entry, and Endrun/ARKit session entry still require their physical devices.
+
+## Vendored runtime
+
+The head loads local copies of A-Frame 1.8.0, its matching `super-three` 0.184.0, and Tone.js 15.1.22 from `extensions/remote_ar/vendor/`. Licenses, package metadata, archive checksums, and refresh instructions live beside them. To reproduce the vendor tree:
+
+```bash
+python3 tools/vendor_remote_ar_runtime.py
+```

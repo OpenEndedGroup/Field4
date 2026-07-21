@@ -1,4 +1,15 @@
-var disc = new THREE.TextureLoader().load( '/remote_ar/assets/circle.png' );
+var disc = new THREE.TextureLoader().load('assets/circle.png');
+
+var markAttributeUpdated = function (attribute, count) {
+        attribute.needsUpdate = true
+        if (typeof attribute.clearUpdateRanges === "function" && typeof attribute.addUpdateRange === "function") {
+                attribute.clearUpdateRanges()
+                attribute.addUpdateRange(0, count)
+        }
+        else {
+                attribute.updateRange = {offset: 0, count: count}
+        }
+}
 
 var newGeometry = function (numVertex, numElements, elementDim, oldMaterial, name) {
 
@@ -6,7 +17,7 @@ var newGeometry = function (numVertex, numElements, elementDim, oldMaterial, nam
 
         var geometry = new THREE.BufferGeometry();
         if (elementDim > 0)
-                geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(numElements * elementDim), elementDim));
+                geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(numElements * elementDim), 1));
         geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(numVertex * 3), 3));
         geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(numVertex * 4), 4));
         geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(numVertex * 2), 2));
@@ -36,11 +47,11 @@ var newGeometry = function (numVertex, numElements, elementDim, oldMaterial, nam
         material.name = name + "_material"
 
         if (elementDim == 3)
-                mesh = new THREE.Mesh(geometry, material);
+                var mesh = new THREE.Mesh(geometry, material);
         else if (elementDim == 2)
-                mesh = new THREE.LineSegments(geometry, material);
+                var mesh = new THREE.LineSegments(geometry, material);
         else if (elementDim == 0)
-                mesh = new THREE.Points(geometry, material);
+                var mesh = new THREE.Points(geometry, material);
 
         // mesh.frustumCulled = false
 
@@ -105,17 +116,18 @@ var updateBuffer = function (rawdata, data, name, typeCode, dim, elementDim, dat
 
         if (typeCode === 'x') {
                 var a = new Image()
-                a.src = URL.createObjectURL(new Blob([rawdata.slice(dataOffset)]))
+                var objectURL = URL.createObjectURL(new Blob([rawdata.slice(dataOffset)]))
+                a.onload = function () { URL.revokeObjectURL(objectURL) }
+                a.src = objectURL
                 var tex = new THREE.Texture(a)
                 thatImageBuffer = tex
-                URL.revokeObjectURL(a.src)
 
                 console.log(" upgrading material ")
                 var material = new THREE.MeshBasicMaterial({
                         map: tex,
                         side: THREE.DoubleSide,
                         blending: THREE.AdditiveBlending,
-                        vertexColors: THREE.VertexColors,
+                        vertexColors: true,
                         transparent: true,
                         depthTest: false
                 })
@@ -131,13 +143,13 @@ var updateBuffer = function (rawdata, data, name, typeCode, dim, elementDim, dat
 
         }
 
-        geometry = geometryForName(name, dim, elementDim)
+        var geometry = geometryForName(name, dim, elementDim)
 
         if (typeCode === 'V') {
                 // console.log("vertex")
                 geometry.attributes["position"].array.set(new Float32Array(rawdata, dataOffset))
                 geometry.attributes["position"].needsUpdate = true;
-                geometry.attributes["position"].updateRange = { offset: 0, count: dim * 3 }
+                markAttributeUpdated(geometry.attributes["position"], dim * 3)
 
                 if (name.endsWith("_p"))
                         geometry.setDrawRange(0, dim)
@@ -145,24 +157,24 @@ var updateBuffer = function (rawdata, data, name, typeCode, dim, elementDim, dat
         } else if (typeCode === 'T') {
                 geometry.attributes["uv"].array.set(new Float32Array(rawdata, dataOffset))
                 geometry.attributes["uv"].needsUpdate = true;
-                geometry.attributes["uv"].updateRange = { offset: 0, count: dim * 2 }
+                markAttributeUpdated(geometry.attributes["uv"], dim * 2)
         }
         else if (typeCode === 'C') {
                 geometry.attributes["color"].array.set(new Float32Array(rawdata, dataOffset))
                 geometry.attributes["color"].needsUpdate = true;
-                geometry.attributes["color"].updateRange = { offset: 0, count: dim * 4 }
+                markAttributeUpdated(geometry.attributes["color"], dim * 4)
         }
         else if (typeCode === 'E' && (elementDim > 0)) {
                 var te = new Uint32Array(rawdata, dataOffset)
                 // console.log(" checking element size " + te.length + " " + (geometry.index.count) + " " + (geometry.index.itemSize) + " " + geometry.index.array.length)
                 if (geometry.index.array.length < te.length) {
                         // console.log(" had to rebuild elements " + geometry.index.count + " * " + geometry.index.itemSize + " < " + te.length)
-                        geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(te.length * 2), elementDim));
+                        geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(te.length * 2), 1));
                 }
                 geometry.index.array.set(te)
                 geometry.index.count = te.length
                 geometry.index.needsUpdate = true;
-                geometry.index.updateRange = { offset: 0, count: te.length }
+                markAttributeUpdated(geometry.index, te.length)
                 geometry.setDrawRange(0, te.length)
         }
 
@@ -234,19 +246,15 @@ __superglobal.over = over
 var labelEvent = (e, doIntersection=false) => {
         var ray = new THREE.Raycaster()
         ray.setFromCamera(e.coordinates, CAMERA)
-        ray.linePrecision = 0.001
+        ray.params.Line.threshold = 0.001
+        ray.params.Points.threshold = 0.01
         e.ray = ray.ray
 
         e.hit = undefined
 
-        if (window.FRAME) {
-                hit = FRAME.hitTestNoAnchor(e.coordinates.x / 2 + 0.5, -e.coordinates.y / 2 + 0.5)
-                if (hit) {
-                        e.hit = new THREE.Vector3(hit[0].modelMatrix[12], hit[0].modelMatrix[13], hit[0].modelMatrix[14])
-                }
-                else {
-                        e.hit = undefined
-                }
+        if (window.FieldRemoteXR && window.FieldRemoteXR.state.latestHit) {
+                e.hit = window.FieldRemoteXR.state.latestHit.position.clone()
+                e.xrHit = window.FieldRemoteXR.state.latestHit
         }
 
         if (doIntersection)
@@ -255,10 +263,21 @@ var labelEvent = (e, doIntersection=false) => {
                 ray.near = 0.00001
 
                 e.intersects = ray.intersectObjects( SCENE.children, true);
-                console.log("/ intersection ", e.intersects, ray, SCENE.children, CAMERA)
                 window.RAY = ray
         }
 
+}
+
+var dispatchFLineIntersections = (event, callbackName) => {
+        if (!event.intersects) return
+        var delivered = new Set()
+        for (var intersection of event.intersects) {
+                var source = intersection.object && intersection.object._fieldSource
+                if (!source || delivered.has(source)) continue
+                delivered.add(source)
+                event.intersection = intersection
+                if (source[callbackName]) dispatchTo(event, source[callbackName], "FLine " + callbackName)
+        }
 }
 
 var addTouchCallbacks = (target, gate) => {
@@ -266,65 +285,61 @@ var addTouchCallbacks = (target, gate) => {
                 if (gate && !gate(e)) return
                 console.log("up", e)
                 // e.stopImmediatePropagation()
-                x = 2 * (e.clientX / e.target.clientWidth) - 1;
-                y = -2 * (e.clientY / e.target.clientHeight) + 1;
+                var x = 2 * (e.clientX / e.target.clientWidth) - 1;
+                var y = -2 * (e.clientY / e.target.clientHeight) + 1;
                 e.coordinates = new THREE.Vector2(x, y)
-                labelEvent(e, false)
+                labelEvent(e, true)
+                dispatchFLineIntersections(e, "mouseUp")
                 dispatchTo(e, mouseUp, "mouseUp");
 
         });
         target.addEventListener('mousedown', (e) => {
                 if (gate && !gate(e)) return
                 // e.stopImmediatePropagation()
-                x = 2 * (e.clientX / e.target.clientWidth) - 1;
-                y = -2 * (e.clientY / e.target.clientHeight) + 1;
+                var x = 2 * (e.clientX / e.target.clientWidth) - 1;
+                var y = -2 * (e.clientY / e.target.clientHeight) + 1;
                 e.coordinates = new THREE.Vector2(x, y)
                 labelEvent(e, true)
 
-                for(var ee of e.intersects)
-                {
-                        if (ee.object._fieldSource)
-                        {
-                                if (ee.object._fieldSource.mouseDown)
-                                {
-                                        dispatchTo(e, ee.object._fieldSource.mouseDown, "FLine mouseDown");
-                                }
-                        }
-                }
+                dispatchFLineIntersections(e, "mouseDown")
 
                 dispatchTo(e, mouseDown, "mouseDown");
         });
         target.addEventListener('dblclick', (e) => {
                 if (gate && !gate(e)) return
                 // e.stopImmediatePropagation()
-                x = 2 * (e.clientX / e.target.clientWidth) - 1;
-                y = -2 * (e.clientY / e.target.clientHeight) + 1;
+                var x = 2 * (e.clientX / e.target.clientWidth) - 1;
+                var y = -2 * (e.clientY / e.target.clientHeight) + 1;
                 e.coordinates = new THREE.Vector2(x, y)
-                labelEvent(e, false)
+                labelEvent(e, true)
+                dispatchFLineIntersections(e, "dblClick")
                 dispatchTo(e, dblClick, "dblClick");
         });
 
         target.addEventListener('mousemove', (e) => {
                 if (gate && !gate(e)) return
                 // e.stopImmediatePropagation()
-                x = 2 * (e.clientX / e.target.clientWidth) - 1;
-                y = -2 * (e.clientY / e.target.clientHeight) + 1;
+                var x = 2 * (e.clientX / e.target.clientWidth) - 1;
+                var y = -2 * (e.clientY / e.target.clientHeight) + 1;
                 e.coordinates = new THREE.Vector2(x, y)
-                labelEvent(e)
+                labelEvent(e, true)
+                dispatchFLineIntersections(e, "mouseMove")
                 dispatchTo(e, mouseMove, "mouseMove");
         });
 
         target.addEventListener('touchend', (e) => {
                 if (gate && !gate(e)) return
                 // e.stopImmediatePropagation()
-                if (e.touches && e.touches[0]) {
-                        e.clientX = e.touches[0].clientX
-                        e.clientY = e.touches[0].clientY
+                var endingTouch = (e.changedTouches && e.changedTouches[0]) || (e.touches && e.touches[0])
+                if (endingTouch) {
+                        e.clientX = endingTouch.clientX
+                        e.clientY = endingTouch.clientY
                 }
-                x = 2 * (e.clientX / e.target.clientWidth) - 1;
-                y = -2 * (e.clientY / e.target.clientHeight) + 1;
+                var x = 2 * (e.clientX / e.target.clientWidth) - 1;
+                var y = -2 * (e.clientY / e.target.clientHeight) + 1;
                 e.coordinates = new THREE.Vector2(x, y)
-                labelEvent(e)
+                labelEvent(e, true)
+                dispatchFLineIntersections(e, "mouseUp")
                 dispatchTo(e, mouseUp, "mouseUp")
         });
 
@@ -346,10 +361,11 @@ var addTouchCallbacks = (target, gate) => {
                                 e.clientX = e.touches[0].clientX
                                 e.clientY = e.touches[0].clientY
                         }
-                        x = 2 * (e.clientX / e.target.clientWidth) - 1;
-                        y = -2 * (e.clientY / e.target.clientHeight) + 1;
+                        var x = 2 * (e.clientX / e.target.clientWidth) - 1;
+                        var y = -2 * (e.clientY / e.target.clientHeight) + 1;
                         e.coordinates = new THREE.Vector2(x, y)
-                        labelEvent(e, false)
+                        labelEvent(e, true)
+                        dispatchFLineIntersections(e, "dblClick")
                         dispatchTo(e, dblClick, "dblClick")
                         return
                 }
@@ -359,21 +375,12 @@ var addTouchCallbacks = (target, gate) => {
                         e.clientX = e.touches[0].clientX
                         e.clientY = e.touches[0].clientY
                 }
-                x = 2 * (e.clientX / e.target.clientWidth) - 1;
-                y = -2 * (e.clientY / e.target.clientHeight) + 1;
+                var x = 2 * (e.clientX / e.target.clientWidth) - 1;
+                var y = -2 * (e.clientY / e.target.clientHeight) + 1;
                 e.coordinates = new THREE.Vector2(x, y)
                 labelEvent(e, true)
 
-                for(var ee of e.intersects)
-                {
-                        if (ee.object._fieldSource)
-                        {
-                                if (ee.object._fieldSource.mouseDown)
-                                {
-                                        dispatchTo(e, ee.object._fieldSource.mouseDown, "FLine mouseDown");
-                                }
-                        }
-                }
+                dispatchFLineIntersections(e, "mouseDown")
 
                 dispatchTo(e, mouseDown, "mouseDown")
 
@@ -385,10 +392,11 @@ var addTouchCallbacks = (target, gate) => {
                         e.clientX = e.touches[0].clientX
                         e.clientY = e.touches[0].clientY
                 }
-                x = 2 * (e.clientX / e.target.clientWidth) - 1;
-                y = -2 * (e.clientY / e.target.clientHeight) + 1;
+                var x = 2 * (e.clientX / e.target.clientWidth) - 1;
+                var y = -2 * (e.clientY / e.target.clientHeight) + 1;
                 e.coordinates = new THREE.Vector2(x, y)
-                labelEvent(e)
+                labelEvent(e, true)
+                dispatchFLineIntersections(e, "mouseMove")
                 dispatchTo(e, mouseMove, "mouseMove")
         });
 }

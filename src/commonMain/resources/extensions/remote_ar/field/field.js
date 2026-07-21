@@ -1,397 +1,359 @@
-console.log(" **Field is booting up** ");
+console.log("Field RemoteJS is booting");
 
 var _field = {};
-var frame = 0
-var lastUpdatedAt = -1
-var thatImageBuffer
-var SCENE
-var CAMERA
-var _r
-var globlSourceCache
-var FIELD
-var globalCodeName
+var frame = 0;
+var thatImageBuffer;
+var SCENE;
+var CAMERA;
+var _r;
+var globlSourceCache = {};
+var FIELD;
+var globalCodeName = "unknown";
 
-__beginService()
+__beginService();
 
-_field.log = function (s) {
-        _field.send("log", s);
-};
+(function (global) {
+    "use strict";
 
-_field.error = function (s) {
-        _field.send("error", encodeURIComponent(s));
-};
+    const outgoing = [];
+    const MAX_QUEUED_MESSAGES = 256;
+    let reconnectAttempt = 0;
+    let reconnectTimer = null;
+    let manuallyClosed = false;
 
-_field.evalRequestWS = function (id, onupdate) {
+    function remoteHead() {
+        return global.__fieldRemoteHead || null;
+    }
 
-        if (true) return;
-        
-        _field.id = id;
+    function setConnectionState(state, detail) {
+        const head = remoteHead();
+        if (head && typeof head.setConnectionState === "function") {
+            head.setConnectionState(state, detail || {});
+        }
+    }
 
-        _field.pathname = new URL(document.URL).hostname
-        var alternative = getQueryVariable("field")
-        if (alternative)
-                _field.pathname = alternative;
-
-        FIELD = _field.pathname
-
-        let port = ""
-        if (document.location.port)
-                port = ":" + document.location.port
-
-        if (document.location.protocol == "http:")
-                _field.socket = new WebSocket("ws://" + _field.pathname + port+"/ws");
-        else
-                _field.socket = new WebSocket("wss://" + _field.pathname + port+"/ws");
-
-        _field.socket.binaryType = "arraybuffer";
-
-        _field.send = function (address, obj) {
-                var t = JSON.stringify({
-                        address: address,
-                        payload: obj,
-                        from: _field.id
-                })
-                // console.log("SEND ", obj)
-                _field.socket.send(t)
-        };
-
-        _field.socket.onopen = function (e) {
-                _field.isOpen = true
-                console.log(" sending initialize")
-                _field.send("initialize", id)
-        };
-
-        print = (x) => {
-
-                safe = function(n)
-                {
-                        if (n && n.length && n.length>120000) return "[... "+(""+n).substring(0, 500)+" +"+(n.length)+" characters long ...]";
-                        else if (typeof(n)=='undefined') return n;
-                        else return "<json>"+n;
-                }
-
-                safe2 = function(n)
-                {
-                        if (n && n.length && n.length>400) return "[... <i>+"+(""+n).substring(0, 390)+" +"+(n.length)+"</i> ...]";
-                        else if (typeof(n)=='undefined') return n;
-                        else return "<json>"+n;
-                }
-
-
-                if (typeof __sandbox__ !== 'undefined' && __sandbox__.__returnTo) {
-                        _field.send(__sandbox__.__returnTo, {
-                                message: safe(betterPretty(x, 2, "JSON", false)),
-                                kind: "SUCCESS"
-                        })
-                } else {
-                        _field.send(_field.globalReturnTo, {
-                                message: safe(betterPretty(x, 2, "JSON", false)),
-                                kind: "SUCCESS"
-                        })
-                }
+    function socketURL() {
+        const page = new URL(global.location.href);
+        const override = page.searchParams.get("field");
+        if (!override) {
+            page.protocol = page.protocol === "https:" ? "wss:" : "ws:";
+            page.pathname = "/ws";
+            page.search = "";
+            page.hash = "";
+            return page.toString();
         }
 
-        console.log(" -- setting up logging support ")
-        __superglobal.print = print
-        __superglobal.log = print
-
-        window.print = print
-        window.log = print
-
-        _field.socket.onmessage = function (e) {
-
-                // this needs to be per geometry not globally and not per channel
-                // if (lastUpdatedAt == frame)
-                //     return
-
-                // lastUpdatedAt = frame
-
-                if (ArrayBuffer.prototype.isPrototypeOf(e.data)) {
-                        _field.arraybuffer = e.data
-                        // console.log(e.data)
-                        var d = new DataView(e.data)
-                        // console.log("-> d= ")
-                        // console.log(d)
-                        if (d.byteLength < 64) return
-                        var dim = d.getUint32(0, true)
-                        var typeCode = String.fromCharCode(d.getUint16(4, true))
-                        var nameLen = d.getUint8(6, true)
-                        var elementDim = d.getUint32(7, true)
-
-                        // console.log(d)
-                        // console.log(dim)
-                        // console.log(elementDim)
-                        // console.log(typeCode)
-                        // console.log(nameLen)
-
-                        var name = ""
-                        for (var q = 0; q < nameLen; q++) {
-                                name += String.fromCharCode(d.getUint16(11 + q * 2, true))
-                        }
-
-                        // console.log(" channel is :")
-                        // console.log(name)
-
-                        updateBuffer(e.data, d, name, typeCode, dim, elementDim, 128)
-                } else {
-                        let edata = JSON.parse(e.data)
-                        _field.globalReturnTo = edata.returnTo
-                        _field.__var0 = edata.__var0
-                        _r = undefined
-                        __superglobal._r = undefined // this means that writes to _r go into window.
-                        __superglobal._field = _field
-
-                        var code = edata.code + "\n//# sourceURL=" + edata.codeName + "\n";
-                        let sourceCache = {};
-                        sourceCache[edata.codeName] = edata.codeName
-                        globlSourceCache = sourceCache
-                        if (edata.codeName &&  edata.codeName.indexOf("|")!=-1) {
-                                context = edata.codeName.split("|")[1]
-                        }
-                        //console.log(context)
-
-
-                        if (!code) return
-
-                        globalCodeName = edata.codeName
-
-                        // console.log("CODE", code, edata.noSandbox, e.data)
-                        // try {
-                        var ret
-                        if (edata.noSandbox)
-                                ret = window.eval(code);
-                        else {
-                                if (!edata.code) return
-
-                                if (edata.code.trim().split("\n").length < 2) {
-                                        // console.log(" single line run")
-                                        ret = runInSandbox(context, code);
-                                } else {
-                                        console.log(" multi-line generator run", edata.code.trim().split("\n").length, edata.code.trim())
-
-                                        ret = runInSandbox_generator(context, code);
-                                        if (ret) {
-                                                var gen = ret()
-                                                var v = gen.next()
-                                                ret = v.value
-                                                if (!v.done) {
-                                                        console.log(" generator is go ")
-
-                                                        var task = new Task(edata.codeName, function () {
-                                                                return "SKIP"
-                                                        }, gen.next.bind(gen), function () {
-                                                        }, function () {
-                                                                _field.send(edata.returnTo, {
-                                                                        message: "OK",
-                                                                        kind: "RUN-STOP",
-                                                                        altName: ""
-                                                                })
-                                                        }, function (e) {
-                                                                StackTrace.fromError(e, {sourceCache: sourceCache}).then(stack => {
-
-                                                                        // altFileName = filename
-                                                                        altLineNumber = stack[0].lineNumber || -1
-
-                                                                        for (var s of stack) {
-                                                                                if (s.fileName && s.fileName.startsWith("box")) {
-                                                                                        console.log(" possible box filename output :", s.fileName, s.lineNumber)
-                                                                                        // altFileName = s.fileName
-                                                                                        altLineNumber = s.lineNumber
-                                                                                        break;
-                                                                                }
-                                                                        }
-
-                                                                        _field.send(edata.returnTo, {
-                                                                                message: e.message,
-                                                                                line: (altLineNumber || -1),
-                                                                                kind: "ERROR"
-                                                                        })
-                                                                        console.log(stack)
-                                                                })
-                                                        })
-                                                        if (typeof (edata.timeStart) != 'undefined')
-                                                                task.configureTimeRemapping(edata.timeStart, edata.timeEnd)
-
-                                                        _field.send(edata.returnTo, {
-                                                                message: "OK",
-                                                                kind: "RUN-START",
-                                                                altName: ""
-                                                        })
-                                                }
-                                        }
-
-                                }
-                        }
-
-                        if (ret)
-                            // _field.send(edata.returnTo, { message: safe(pretty(ret, 2, "PRINT", true) ), kind: "SUCCESS" })
-                                _field.send(edata.returnTo, {
-                                        message: /*safe*/"<json>" + (betterPretty(ret, 2, "JSON", false)),
-                                        kind: "SUCCESS"
-                                })
-                        else
-                                _field.send(edata.returnTo, {message: "OK", kind: "SUCCESS"})
-
-
-                        if (typeof (_r) != 'undefined' && edata.launchable) {
-                                if (_r.length == 3) {
-                                        var task = new Task(edata.codeName, _r[0], _r[1], _r[2], function () {
-                                                    _field.send(edata.returnTo, {
-                                                            message: "OK",
-                                                            kind: "RUN-STOP",
-                                                            altName: ""
-                                                    })
-                                            }, function (e) {
-                                                    StackTrace.fromError(e, {sourceCache: sourceCache}).then(stack => {
-                                                            // altFileName = filename
-                                                            altLineNumber = stack[0].lineNumber || -1
-
-                                                            for (var s of stack) {
-                                                                    if (s.fileName && s.fileName.startsWith("box")) {
-                                                                            console.log(" possible box filename output :", s.fileName, s.lineNumber)
-                                                                            // altFileName = s.fileName
-                                                                            altLineNumber = s.lineNumber
-                                                                            break;
-                                                                    }
-                                                            }
-
-                                                            _field.send(edata.returnTo, {
-                                                                    message: e.message,
-                                                                    line: (altLineNumber || -1),
-                                                                    kind: "ERROR"
-                                                            })
-                                                            console.log(stack)
-                                                    })
-                                            }
-                                        )
-                                        if (typeof (edata.timeStart) != 'undefined')
-                                                task.configureTimeRemapping(edata.timeStart, edata.timeEnd)
-                                } else {
-                                        var task = launch(_r, "", false)
-                                        if (typeof (edata.timeStart) != 'undefined')
-                                                task.configureTimeRemapping(edata.timeStart, edata.timeEnd)
-
-                                }
-
-                                _field.send(edata.returnTo, {message: "OK", kind: "RUN-START", altName: ""})
-
-                        }
-                        if (onupdate) onupdate()
-                        // }
-                        // catch (e) {
-                        // 	if (e.name && e.name=="SyntaxError") throw e // syntax errors have no line number for eval
-
-                        // 	StackTrace.fromError(e, { sourceCache: sourceCache }).then(stack => {
-                        // 		_field.send(edata.returnTo, { message: e.message, line: stack[0].lineNumber, kind: "ERROR" })
-                        // 		console.log(stack)
-                        // 	})
-                        // }
-                }
-
-                // _field.send("alive", id)
-        };
-
-        _field.socket.onclose = function (e) {
-                console.log("closed ?", e)
-                // _messageBus.publish("status", "<span class='error'>Disconnected from Field</span>");
-                document.title = "Field / DISCONNECTED (reload the page?)";
-                _field.isOpen = false
-
-                // start it up again ?
-                setTimeout(() => {
-                        console.log(" trying to reconnect on close")
-                        if (!_field.isOpen)
-                                _field.evalRequestWS(_field.id)
-                }, 1000)
-        };
-
-        _field.socket.onerror = function (e) {
-                // _messageBus.publish("status", "<span class='error'>Disconnected from Field</span>");
-                document.title = "Field / DISCONNECTED (reload the page?)";
-                _field.isOpen = false
-
-
-                // // start it up again
-                // setTimeout(() => {
-                //     console.log(" trying to reconnect on error")
-                //     if (!_field.isOpen)
-                //         _field.evalRequestWS(_field.id)
-                // }, 1000)
+        let value = override.trim();
+        if (!/^[a-z]+:\/\//i.test(value)) {
+            value = (page.protocol === "https:" ? "wss://" : "ws://") + value;
         }
-};
+        const target = new URL(value);
+        if (target.protocol === "http:") target.protocol = "ws:";
+        if (target.protocol === "https:") target.protocol = "wss:";
+        if (target.protocol !== "ws:" && target.protocol !== "wss:") {
+            throw new Error("The ?field= address must use http(s) or ws(s)");
+        }
+        target.pathname = target.pathname === "/" ? "/ws" : target.pathname;
+        target.search = "";
+        target.hash = "";
+        return target.toString();
+    }
 
-var betterPretty = (a, b, c, d) => {
+    function flushOutgoing() {
+        while (_field.socket && _field.socket.readyState === WebSocket.OPEN && outgoing.length) {
+            _field.socket.send(outgoing.shift());
+        }
+    }
 
-        if (typeof (a) == "undefined") return "(undefined)";
+    _field.send = function (address, payload) {
+        const encoded = JSON.stringify({address, payload, from: _field.id});
+        if (_field.socket && _field.socket.readyState === WebSocket.OPEN) {
+            _field.socket.send(encoded);
+            return true;
+        }
+        if (outgoing.length >= MAX_QUEUED_MESSAGES) outgoing.shift();
+        outgoing.push(encoded);
+        return false;
+    };
+
+    _field.log = function (value) {
+        _field.send("log", value);
+    };
+
+    _field.error = function (value) {
+        _field.send("error", String(value));
+    };
+
+    function safe(value, maxLength) {
+        if (typeof value === "undefined") return value;
+        const string = String(value);
+        if (string.length <= maxLength) return "<json>" + string;
+        return "[... " + string.substring(0, Math.min(500, maxLength)) + " +" + string.length + " characters long ...]";
+    }
+
+    function installPrinting() {
+        const print = function (value) {
+            const returnTo = global.__sandbox__ && global.__sandbox__.__returnTo
+                ? global.__sandbox__.__returnTo
+                : _field.globalReturnTo;
+            _field.send(returnTo, {
+                message: safe(betterPretty(value, 2, "JSON", false), 120000),
+                kind: "SUCCESS"
+            });
+        };
+        __superglobal.print = print;
+        __superglobal.log = print;
+        global.print = print;
+        global.log = print;
+    }
+
+    function sendExecutionError(error, envelope) {
+        const detail = FieldRemoteErrors.describe(error, {
+            codeName: envelope.codeName,
+            fallbackLine: envelope.lineOffset || -1
+        });
+        _field.send(envelope.returnTo, Object.assign({kind: "ERROR"}, detail));
+        const head = remoteHead();
+        if (head && typeof head.recordExecution === "function") head.recordExecution("error", envelope, detail);
+        console.error("RemoteJS execution failed", detail, error);
+    }
+
+    function taskForGenerator(generator, envelope) {
+        return new Task(
+            envelope.codeName,
+            function () { return "SKIP"; },
+            generator.next.bind(generator),
+            function () {},
+            function () {
+                _field.send(envelope.returnTo, {message: "OK", kind: "RUN-STOP", altName: ""});
+            },
+            function (error) { sendExecutionError(error, envelope); }
+        );
+    }
+
+    function configureTaskTime(task, envelope) {
+        if (task && typeof envelope.timeStart !== "undefined") {
+            task.configureTimeRemapping(envelope.timeStart, envelope.timeEnd);
+        }
+    }
+
+    async function executeEnvelope(envelope) {
+        if (!envelope || typeof envelope.code !== "string" || !envelope.code.trim()) return;
+
+        _field.globalReturnTo = envelope.returnTo;
+        _field.__var0 = envelope.__var0;
+        _r = undefined;
+        __superglobal._r = undefined;
+        __superglobal._field = _field;
+
+        globalCodeName = envelope.codeName || "remotejs";
+        global.globalCodeName = globalCodeName;
+        const code = envelope.code + "\n//# sourceURL=" + globalCodeName + "\n";
+        globlSourceCache = {[globalCodeName]: envelope.code};
+        const context = globalCodeName.indexOf("|") === -1 ? "root" : globalCodeName.split("|").pop();
+        let result;
+
         try {
-                if (a.description) return a.description()
-        } catch (e) {
-                console.error(" error in tostring for ", a)
-                console.error(e)
-                console.error(" falling through ")
+            if (envelope.noSandbox) {
+                result = global.eval(code);
+            } else if (envelope.code.trim().split("\n").length < 2) {
+                result = runInSandbox(context, code);
+            } else {
+                const factory = runInSandbox_generator(context, code);
+                if (factory) {
+                    const generator = factory();
+                    const first = generator.next();
+                    result = first.value;
+                    if (!first.done) {
+                        const task = taskForGenerator(generator, envelope);
+                        configureTaskTime(task, envelope);
+                        _field.send(envelope.returnTo, {message: "OK", kind: "RUN-START", altName: ""});
+                    }
+                }
+            }
+
+            if (result && typeof result.then === "function") result = await result;
+            if (typeof result === "undefined") {
+                _field.send(envelope.returnTo, {message: "OK", kind: "SUCCESS"});
+            } else {
+                _field.send(envelope.returnTo, {
+                    message: "<json>" + betterPretty(result, 2, "JSON", false),
+                    kind: "SUCCESS"
+                });
+            }
+
+            if (typeof _r !== "undefined" && envelope.launchable) {
+                let task;
+                if (Array.isArray(_r) && _r.length === 3) {
+                    task = new Task(
+                        envelope.codeName,
+                        _r[0],
+                        _r[1],
+                        _r[2],
+                        function () {
+                            _field.send(envelope.returnTo, {message: "OK", kind: "RUN-STOP", altName: ""});
+                        },
+                        function (error) { sendExecutionError(error, envelope); }
+                    );
+                } else {
+                    task = launch(_r, "", false);
+                }
+                configureTaskTime(task, envelope);
+                _field.send(envelope.returnTo, {message: "OK", kind: "RUN-START", altName: ""});
+            }
+
+            const head = remoteHead();
+            if (head && typeof head.recordExecution === "function") head.recordExecution("success", envelope, result);
+            return result;
+        } catch (error) {
+            sendExecutionError(error, envelope);
+            return undefined;
+        }
+    }
+
+    function updateBinaryGeometry(buffer) {
+        const view = new DataView(buffer);
+        if (view.byteLength < 128) return;
+        const dim = view.getUint32(0, true);
+        const typeCode = String.fromCharCode(view.getUint16(4, true));
+        const nameLength = view.getUint8(6, true);
+        const elementDim = view.getUint32(7, true);
+        let name = "";
+        for (let index = 0; index < nameLength; index += 1) {
+            name += String.fromCharCode(view.getUint16(11 + index * 2, true));
+        }
+        updateBuffer(buffer, view, name, typeCode, dim, elementDim, 128);
+    }
+
+    function scheduleReconnect(id, onupdate) {
+        if (manuallyClosed || reconnectTimer) return;
+        const delay = Math.min(10000, 500 * Math.pow(2, reconnectAttempt++));
+        setConnectionState("reconnecting", {delay});
+        reconnectTimer = setTimeout(function () {
+            reconnectTimer = null;
+            _field.evalRequestWS(id, onupdate);
+        }, delay);
+    }
+
+    _field.evalRequestWS = function (id, onupdate) {
+        _field.id = id;
+        manuallyClosed = false;
+
+        let url;
+        try {
+            url = socketURL();
+        } catch (error) {
+            setConnectionState("error", FieldRemoteErrors.describe(error));
+            throw error;
         }
 
-        return pretty(a, b, c, d).replace(/circular reference to \[object Object\]/g, "'[circular reference]'")
-}
-
-
-window.onerror = (message, filename, lineno, colno, e) => {
-        console.log(" global error handler called ")
-        console.log(message, filename, lineno, colno, e)
-
-        console.log(e);
-
-        // if (e && e.__proto__.name === "SyntaxError") {
-        // 	_field.send(_field.globalReturnTo, { message: message, line: lineno, kind: "ERROR" })
-        // }
-        // else
-        if (e)
-                StackTrace.fromError(e, {sourceCache: globlSourceCache}).then(stack => {
-
-                        altFileName = filename
-                        // altLineNumber = stack[0].lineNumber || -1
-                        altLineNumber = lineno
-
-                        for (var s of stack) {
-                                console.log(s.fileName)
-                                if (s.fileName && s.fileName.startsWith("box")) {
-                                        console.log(" possible box filename output :", s.fileName, s.lineNumber)
-                                        altFileName = s.fileName
-                                        altLineNumber = s.lineNumber
-                                        break;
-                                }
-                        }
-
-                        _field.send(_field.globalReturnTo, {
-                                message: e.message,
-                                line: (altLineNumber || -1),
-                                kind: "ERROR"
-                        })
-
-                        console.log(stack)
-                })
-        else {
-                console.log(" no actual error object")
-                _field.send(_field.globalReturnTo, {message: message, line: lineno, kind: "ERROR"})
+        if (_field.socket && (_field.socket.readyState === WebSocket.OPEN || _field.socket.readyState === WebSocket.CONNECTING)) {
+            return _field.socket;
         }
-        if (e) {
-                console.log(" about to send field error " + e.message + " on line :" + e.stack)
-                // _field.error(e.message + " on line:" + e.stack);
+
+        FIELD = new URL(url).host;
+        setConnectionState("connecting", {url});
+        const socket = new WebSocket(url);
+        _field.socket = socket;
+        socket.binaryType = "arraybuffer";
+
+        socket.onopen = function () {
+            reconnectAttempt = 0;
+            _field.isOpen = true;
+            setConnectionState("connected", {url});
+            _field.send("initialize", {
+                id,
+                protocol: 2,
+                userAgent: navigator.userAgent,
+                aframe: global.AFRAME && global.AFRAME.version,
+                three: global.THREE && global.THREE.REVISION,
+                webxr: !!navigator.xr,
+                nativeARKit: !!global.ARKitBridge
+            });
+            flushOutgoing();
+        };
+
+        socket.onmessage = async function (event) {
+            if (event.data instanceof ArrayBuffer) {
+                try {
+                    updateBinaryGeometry(event.data);
+                } catch (error) {
+                    console.error("RemoteJS binary geometry update failed", error);
+                }
+                return;
+            }
+
+            let envelope;
+            try {
+                envelope = JSON.parse(event.data);
+            } catch (error) {
+                console.error("RemoteJS received malformed JSON", error, event.data);
+                return;
+            }
+            await executeEnvelope(envelope);
+            if (onupdate) onupdate(envelope);
+        };
+
+        socket.onclose = function (event) {
+            if (socket !== _field.socket) return;
+            _field.isOpen = false;
+            document.title = "Field Remote / disconnected";
+            setConnectionState("disconnected", {code: event.code, reason: event.reason});
+            scheduleReconnect(id, onupdate);
+        };
+
+        socket.onerror = function () {
+            _field.isOpen = false;
+            setConnectionState("error", {url});
+        };
+
+        return socket;
+    };
+
+    _field.disconnect = function () {
+        manuallyClosed = true;
+        if (reconnectTimer) clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+        if (_field.socket) _field.socket.close(1000, "Remote head closed");
+    };
+
+    _field.executeEnvelopeForTest = executeEnvelope;
+    installPrinting();
+})(window);
+
+var betterPretty = function (value, indent, type, showFunctions) {
+    if (typeof value === "undefined") return "(undefined)";
+    try {
+        if (value && typeof value.description === "function") return value.description();
+    } catch (error) {
+        console.warn("RemoteJS description() failed", error);
+    }
+    try {
+        return pretty(value, indent, type, showFunctions).replace(/circular reference to \[object Object\]/g, "'[circular reference]'");
+    } catch (error) {
+        try {
+            return JSON.stringify(value);
+        } catch (_) {
+            return String(value);
         }
+    }
 };
 
+window.addEventListener("error", function (event) {
+    if (!_field || typeof _field.send !== "function") return;
+    const detail = FieldRemoteErrors.describe(event.error || event.message, {
+        codeName: event.filename || globalCodeName,
+        fallbackLine: event.lineno
+    });
+    _field.send("(handler error)", Object.assign({kind: "ERROR"}, detail));
+});
+
+window.addEventListener("unhandledrejection", function (event) {
+    if (!_field || typeof _field.send !== "function") return;
+    const detail = FieldRemoteErrors.describe(event.reason, {codeName: globalCodeName});
+    _field.send("(handler error)", Object.assign({kind: "ERROR"}, detail));
+});
 
 function getQueryVariable(variable) {
-        var query = window.location.search.substring(1);
-        var vars = query.split('&');
-        for (var i = 0; i < vars.length; i++) {
-                var pair = vars[i].split('=');
-                if (decodeURIComponent(pair[0]) == variable) {
-                        return decodeURIComponent(pair[1]);
-                }
-        }
-        console.log('Query variable %s not found', variable);
+    return new URL(window.location.href).searchParams.get(variable) || undefined;
 }
-
-
-

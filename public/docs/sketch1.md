@@ -1,11 +1,5 @@
-# Legacy Sketch 1 handout
+# Sketch 1: RemoteJS
 
-This URL is retained for old course links. The original page submitted A-Frame
-HTML to an external service and depended on a mobile AR application that is not
-part of this repository. It is not a supported Field·4 setup guide.
+This old course URL now points at the maintained Field·4 RemoteJS path. Variant Launch and submitted A-Frame pages are no longer part of the setup.
 
-Start with the current [Installation](installation.md) and
-[Survival Guide](survivalGuide.md), then choose either
-[afield.four graphics](afield_four_graphics.md) or the
-[Apple Vision Pro work-in-progress](vision.md) for current spatial-rendering
-work.
+Use [RemoteJS and WebXR](ar_reference.md) to make a Javascript language root, connect example boxes, open the vendored head on a browser or Endrun, and run the first FLine sketch.

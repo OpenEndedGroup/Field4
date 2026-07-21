@@ -1,5 +1,5 @@
 
-__tasks = {}
+var __tasks = {}
 
 var _timeNow = 0
 var _timeAt = 0
@@ -74,7 +74,14 @@ class Task {
 
             window.__sandbox_id__ = this.__sandbox_id__
             window.__sandbox__ = this.__sandbox__
-            var next = this.beginning()
+            var next
+            try {
+                next = this.beginning()
+            } catch (error) {
+                this.reportErrorTo(error)
+                this.state = 2
+                return
+            }
 
             if (next == "SKIP") {
                 this.run()
@@ -119,7 +126,7 @@ class Task {
                         this.middle.push(q)
                         return
                     }
-                    if (next.done) {
+                    if (next && next.done) {
                         // generator, at the end
                         return
                     }
@@ -166,8 +173,12 @@ class Task {
 
             window.__sandbox_id__ = this.__sandbox_id__
             window.__sandbox__ = this.__sandbox__
-            this.end()
-            this.done()
+            try {
+                this.end()
+                this.done()
+            } catch (error) {
+                this.reportErrorTo(error)
+            }
 
         }
 
@@ -185,28 +196,28 @@ var currentTask = undefined
 __service = function () {
     for (var o of Object.keys(__tasks)) {
         currentTask = __tasks[o]
-        __tasks[o].run()
+        if (currentTask) currentTask.run()
     }
     currentTask = undefined
 }
 
 
 
-__beginService = function (tick) {
-    var s = function () {
-        try{
-            var session = AFRAME.scenes[0].renderer.xr.getSession()
-            session.requestAnimationFrame(s)
+var __serviceDriver = "raf"
+var __serviceStarted = false
 
-            __superglobal.session = session
-        }
-        catch {
-            // console.log(" -- exception thrown in raf trick")
-            requestAnimationFrame(s)
-        }
-        __service()
+__setServiceDriver = function (driver) {
+    __serviceDriver = driver || "raf"
+}
+
+__beginService = function () {
+    if (__serviceStarted) return
+    __serviceStarted = true
+    var s = function () {
+        requestAnimationFrame(s)
+        if (__serviceDriver === "raf") __service()
     }
-    s()
+    requestAnimationFrame(s)
 }
 
 var over = (time, name, callback) => {
@@ -236,23 +247,9 @@ var launch = (_r, name = "unnamed", oneShotByDefault = true) => {
     var task = new Task(cn, function () { return "SKIP" }, _r, function () { }, function () {
         _field.send(rt, { message: "OK", kind: "RUN-STOP", altName:name })
     }, function (e) {
-        StackTrace.fromError(e, { sourceCache: globlSourceCache }).then(stack => {
-
-            // altFileName = filename
-            altLineNumber = stack[0].lineNumber || -1
-
-            for (var s of stack) {
-                if (s.fileName && s.fileName.startsWith("box")) {
-                    console.log(" possible box filename output :", s.fileName, s.lineNumber)
-                    // altFileName = s.fileName
-                    altLineNumber = s.lineNumber
-                    break;
-                }
-            }
-
-            _field.send(rt, { message: e.message, line: (altLineNumber || -1), kind: "ERROR", altName:cn })
-            console.log(stack)
-        })
+        var detail = FieldRemoteErrors.describe(e, {codeName: cn})
+        _field.send(rt, Object.assign({kind: "ERROR", altName: cn}, detail))
+        console.error(e)
     }, oneShotByDefault)
 
     _field.send(rt, { message: "OK", kind: "RUN-START", altName:name })

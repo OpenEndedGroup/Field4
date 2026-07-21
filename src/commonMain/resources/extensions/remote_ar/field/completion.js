@@ -1,218 +1,114 @@
-ternServer = new tern.Server({defs:[__ecmascript,__browser]})
+(function (global) {
+    "use strict";
 
-ternCompleteMe = function(at, filetext)
-{
-    var ret = []
-    
-    ternServer.request({query:{type:"completions", includeKeywords:true, types:true, docs:true, file:"#0", end:at},files:[{type:"full", name:"here", text:filetext}]}, function(e, r){
-        try{
-            console.log(e)
-            console.log(r)
-            for(var ii of r.completions)
-            {
-                console.log(ii.type)
-                ret.push(completionFor(ii.name, ii.name.substr(r.end-r.start, ii.name.length-(r.end-r.start)), ""+ii.type))
+    const KEYWORDS = [
+        "async", "await", "break", "case", "catch", "class", "const", "continue", "debugger",
+        "default", "delete", "do", "else", "export", "extends", "false", "finally", "for", "from",
+        "function", "get", "if", "import", "in", "instanceof", "let", "new", "null", "of", "return",
+        "set", "static", "super", "switch", "this", "throw", "true", "try", "typeof", "undefined",
+        "var", "void", "while", "with", "yield"
+    ];
+
+    function propertyNames(value) {
+        const names = new Set();
+        let cursor = value;
+        let depth = 0;
+        while (cursor != null && depth < 8) {
+            try {
+                Object.getOwnPropertyNames(cursor).forEach((name) => names.add(name));
+                cursor = Object.getPrototypeOf(cursor);
+            } catch (_) {
+                break;
             }
+            depth += 1;
         }
-        catch(error)
-        {
-            console.log("--tern failed--")        
-        }
-    })
-    
-    return ret
-}
+        return Array.from(names);
+    }
 
-expressionAt = function(at, filetext)
-{
-    var cx = new tern.Context()
-    
-    return tern.withContext(cx, function(){
-        var p = tern.parse(filetext)
-        tern.analyze(p)
-        var n = tern.findExpressionAround(p, at, at)
-        if (n && n.node) return [n.node.start, n.node.end]
-        else return null
-    })
-}
-
-completeMe = function(at, filetext, allowExecution)
-{
-    var r = []
-
-    if (allowExecution)
-    {
-        var theExpression = expressionAt(at, filetext)
-        if (theExpression!=null)
-        {
-
-            var text = filetext.substr(theExpression[0], 1+theExpression[1]-theExpression[0])
-            console.log("the text "+text)
-
-            if (text.indexOf(".")!=-1)
-            {
-                predot = text.substr(0, text.lastIndexOf("."))
-                postdot = text.substr(text.lastIndexOf("."))
-                if (postdot.startsWith(".") && postdot.length>1) postdot = postdot.substr(1)
-                try {
-                    console.log("first completion "+predot+" ||| "+postdot)
-                    var r1 = _completeMe(predot.trim(), postdot.trim())
-                    console.log(r1)
-                    r = r.concat(r1)
-                } catch (error) {                
-                    console.log(error)
-                }
-            }
-            else
-            {
-                try {
-                    var r1 = _completeMe(text.trim(), "")
-                    r = r.concat(r1)
-                } catch (error) {                
-                    console.log(error)
-                }
-            }
+    function valueAt(root, key) {
+        try {
+            return root == null ? undefined : root[key];
+        } catch (_) {
+            return undefined;
         }
     }
 
-    console.log("INTROSPECTION contributes:")
-    console.log(r)
-    
-    if (r.length==0)
-    try {
-        
-        var r2 = ternCompleteMe(at, filetext)
-        console.log("TERN contributes:")
-        console.log(r2);
-        if (r2)
-            r = r.concat(r2);
-    } catch (error) {
-        console.log("--tern failed--")        
+    function rootValue(name) {
+        const sandbox = global.__sandbox__;
+        let value = valueAt(sandbox, name);
+        if (typeof value !== "undefined") return value;
+        value = valueAt(global.__superglobal, name);
+        if (typeof value !== "undefined") return value;
+        return valueAt(global, name);
     }
 
-    console.log(" returning final completions", r)
-
-    return r
-}
-
-docProviders = (className, name, value) => undefined
-
-_completeMe = function(predot, postdot)
-{
-    var ret = []
-    console.log(" completeme "+predot+" "+postdot)
-    
-    if (postdot.startsWith(".")) postdot = postdot.substring(1)
-    
-    if (postdot=="") {
-        for(var o in __sandbox__)
-        {
-            if ((""+o).startsWith(predot))
-            {
-                ret.push(completionFor(""+o, (""+o).substr(predot.length), __sandbox__[o], false, docProviders(name, ""+o,  __sandbox__[o])))
-            }            
-        }        
-        for(var o in __superglobal)
-        {
-            if ((""+o).startsWith(predot))
-            {
-                ret.push(completionFor(""+o, (""+o).substr(predot.length), __superglobal[o], false, docProviders(name, ""+o,  __superglobal[o])))
-            }            
-        }        
-    }
-    //else 
-    {
-        // var inside = window.eval.call(window, predot)
-
-        var inside = compileCode(predot)(undefined)
-
-        var name;
-
-        if (inside==null || typeof(inside)=='undefined') return ret
-
-        if (inside && inside.constructor)
-            name = inside.constructor.name;
-
-        var done = new Set()
-
-        console.log("live completion on "+inside+" / "+postdot)
-        for(var o in inside)
-        {
-            console.log("key :"+o)
-            if ((""+o).startsWith(postdot))
-            {
-                done.add(o)
-                ret.push(completionFor(""+o, (""+o).substr(postdot.length), inside[o], false, docProviders(name, ""+o, inside)))
-            }            
-        } 
-
-        for(var o of Object.getOwnPropertyNames(Object.getPrototypeOf(inside)))
-        {
-            if (done.has(o)) continue
-            if ((""+o).startsWith(postdot))
-            {
-                try{
-                    ret.push(completionFor(""+o, (""+o).substr(postdot.length), inside[o], false, docProviders(name, ""+o, inside)))
-                }
-                catch(e)
-                {}
-            }            
-
+    function resolvePath(path) {
+        if (!/^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\[(?:\d+|"[^"]*"|'[^']*')\])*$/.test(path)) {
+            return undefined;
         }
-        
-        
+        const tokens = [];
+        path.replace(/^[A-Za-z_$][\w$]*|\.([A-Za-z_$][\w$]*)|\[(\d+)\]|\["([^"]*)"\]|\['([^']*)'\]/g,
+            (match, dotted, numeric, doubleQuoted, singleQuoted) => {
+                tokens.push(dotted || numeric || doubleQuoted || singleQuoted || match);
+                return match;
+            });
+        let value = rootValue(tokens.shift());
+        for (const token of tokens) value = valueAt(value, token);
+        return value;
     }
 
-    console.log(" done ", ret)
+    function describe(value) {
+        if (value == null) return String(value);
+        if (typeof value === "function") {
+            const source = Function.prototype.toString.call(value);
+            const firstLine = source.split("\n", 1)[0].replace(/\s*\{\s*$/, "");
+            return value.__doc__ || firstLine.substring(0, 240);
+        }
+        if (value && typeof value.__doc__ === "string") return value.__doc__;
+        if (value && value.constructor && value.constructor.name) return value.constructor.name;
+        return typeof value;
+    }
 
-    return ret
-}
+    function completionFor(name, prefix, owner) {
+        const value = valueAt(owner, name);
+        return {
+            title: name,
+            add: name.substring(prefix.length),
+            from: describe(value),
+            doc: 0,
+            extraDoc: value && value.__doc__ ? String(value.__doc__) : ""
+        };
+    }
 
-safe = function(n)
-{
-    if (n && n.length && n.length>120000) return "[... "+(""+n).substring(0, 500)+" +"+(n.length)+" characters long ...]";
-    else if (typeof(n)=='undefined') return n;
-    else return "<json>"+n;
-}
+    function globalCompletions(prefix) {
+        const owners = [global.__sandbox__, global.__superglobal, global];
+        const names = new Set(KEYWORDS);
+        owners.forEach((owner) => propertyNames(owner).forEach((name) => names.add(name)));
+        return Array.from(names)
+            .filter((name) => name.startsWith(prefix))
+            .sort()
+            .map((name) => {
+                const owner = owners.find((candidate) => typeof valueAt(candidate, name) !== "undefined");
+                return completionFor(name, prefix, owner || {});
+            });
+    }
 
-safe2 = function(n)
-{
-    if (n && n.length && n.length>400) return "[... <i>+"+(""+n).substring(0, 390)+" +"+(n.length)+"</i> ...]";
-    else if (typeof(n)=='undefined') return n;
-    else return "<json>"+n;
-}
+    function completeMe(at, filetext) {
+        const before = String(filetext || "").slice(0, Math.max(0, at));
+        const member = before.match(/([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\[(?:\d+|"[^"]*"|'[^']*')\])*)\.([A-Za-z_$][\w$]*)?$/);
+        if (member) {
+            const owner = resolvePath(member[1]);
+            const prefix = member[2] || "";
+            if (owner == null) return [];
+            return propertyNames(owner)
+                .filter((name) => name.startsWith(prefix))
+                .sort()
+                .map((name) => completionFor(name, prefix, owner));
+        }
+        const identifier = before.match(/([A-Za-z_$][\w$]*)$/);
+        return globalCompletions(identifier ? identifier[1] : "");
+    }
 
-function isPrimitive(arg) {
-    var type = typeof arg;
-    return arg == null || (type != "object" && type != "function");
-}
-
-myPretty = function(obj, indent, type, showFunctions)
-{
-    if (obj==null || typeof(obj) == 'undefined')
-        return "<span class='type'>[unset]</span>"
-        
-    var h = ""
-    if (typeof(obj) != 'undefined' && obj!=null)
-        if (obj.__prototype__)
-            h = ""+obj.__prototype__+" "
-
-
-    return "<span class='type'>"+h+"</span>" + (isPrimitive(obj) ? (""+obj) : pretty(obj, indent, type, showFunctions));
-}
-
-completionFor = function(fullString, remains, obj, isDoc, extraDoc)
-{
-    var f = myPretty(obj, 2, "JSON", false)
-
-    if (f=="[object Function]") f = ""
-
-    f = "<span class='doc'>"+f+"</span>"
-    if (typeof(obj)=='undefined') 
-        f = ""
-
-    console.log(" about to finalize compltion ", safe2(f))
-
-    return {title:fullString, add:remains, from:safe2(f), 
-    doc:(isDoc || 0), extraDoc:(extraDoc || "")}
-}
+    global.completeMe = completeMe;
+    global.FieldRemoteCompletion = {completeMe, propertyNames, resolvePath};
+})(window);

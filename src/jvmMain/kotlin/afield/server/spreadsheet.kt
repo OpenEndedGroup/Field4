@@ -17,6 +17,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.json.JSONObject
 import kotlin.script.experimental.api.ResultValue
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -2452,7 +2453,11 @@ fun installSpreadsheetSupport() {
         }
     }
 
-    rawHandlers.getOrPut(SPREADSHEET_CHANNEL) { mutableSetOf() }.add { text ->
+    rawHandlers.getOrPut(SPREADSHEET_CHANNEL) { mutableSetOf() }.add spreadsheet@{ text ->
+        val envelope = runCatching { JSONObject(text) }.getOrNull()
+        if (envelope == null || (!envelope.has("op") && envelope.optString("channel") != SPREADSHEET_CHANNEL)) {
+            return@spreadsheet Handled.no
+        }
         val ws = thisSession.get()
         val info = thisSessionInfo.get()
         val reqSnippet = text.take(120)

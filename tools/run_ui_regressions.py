@@ -199,6 +199,80 @@ operations:
       millis: 3000
 """
 
+REMOTE_AR_NAVIGATE_JS = """\
+let frame = document.getElementById("remote-ar-regression-frame");
+if (!frame) {
+  frame = document.createElement("iframe");
+  frame.id = "remote-ar-regression-frame";
+  frame.title = "Remote AR regression head";
+  Object.assign(frame.style, {
+    position: "fixed",
+    inset: "0",
+    width: "100vw",
+    height: "100vh",
+    border: "0",
+    zIndex: "2147483647",
+    background: "#000"
+  });
+  document.body.appendChild(frame);
+}
+const destination = `${location.origin}/extensions/remote_ar/index.html?selftest=1&debug=1`;
+await new Promise((resolve) => {
+  frame.addEventListener("load", resolve, {once: true});
+  frame.src = destination;
+});
+return {ok: true, destination, readyState: frame.contentDocument?.readyState || null};
+"""
+
+REMOTE_AR_ASSERT_JS = """\
+const remoteFrame = document.getElementById("remote-ar-regression-frame");
+const remoteDocument = remoteFrame?.contentDocument;
+const status = remoteDocument?.getElementById("field-remote-status");
+const deadline = Date.now() + 15000;
+while (!status?.dataset?.selfTestReport && Date.now() < deadline) {
+  await new Promise((resolve) => setTimeout(resolve, 100));
+}
+const report = status?.dataset?.selfTestReport ? JSON.parse(status.dataset.selfTestReport) : null;
+const executionCount = Number(status?.dataset?.executionCount || 0);
+const executionValue = remoteDocument?.documentElement?.dataset?.remoteExecution || null;
+const failedChecks = (report?.results || []).filter((item) => !item.ok).map((item) => item.name);
+remoteDocument?.querySelector("a-scene")?.pause?.();
+const canvas = remoteDocument?.querySelector("canvas");
+if (canvas) canvas.style.display = "none";
+if (status) {
+  const evidence = document.adoptNode(status);
+  evidence.id = "remote-ar-regression-evidence";
+  Object.assign(evidence.style, {
+    display: "block",
+    position: "fixed",
+    top: "24px",
+    left: "24px",
+    zIndex: "2147483647",
+    padding: "14px 16px",
+    border: "1px solid #fff",
+    background: "#000",
+    color: "#fff",
+    font: "14px/1.5 Iosevka, monospace",
+    whiteSpace: "pre"
+  });
+  document.body.appendChild(evidence);
+  remoteFrame.remove();
+}
+return {
+  ok: remoteDocument?.documentElement?.dataset?.fieldRemoteSelfTest === "pass" &&
+    report?.ok === true &&
+    executionCount >= 1 &&
+    executionValue === "42",
+  reason: failedChecks.length ? `failed head checks: ${failedChecks.join(", ")}` :
+    `selfTest=${remoteDocument?.documentElement?.dataset?.fieldRemoteSelfTest || "missing"}, executionCount=${executionCount}, executionValue=${executionValue}`,
+  aframe: report?.snapshot?.aframe || null,
+  three: report?.snapshot?.three || null,
+  executionCount,
+  executionValue,
+  checks: report?.results || []
+};
+"""
+
 MACRO_TRANSCRIPT_PANEL_BATCH_MACRO = """\
 name: ui-regression-panel-batch
 description: Browser regression fixture for macro launch batch completion.
@@ -2479,6 +2553,8 @@ def prepare_generated_files() -> dict[str, Path]:
         "focus_keyboard_escape_assert_js": write_generated_file("focus-keyboard-escape-assert.js", FOCUS_KEYBOARD_ESCAPE_ASSERT_JS),
         "focus_keyboard_enter_setup_js": write_generated_file("focus-keyboard-enter-setup.js", FOCUS_KEYBOARD_ENTER_SETUP_JS),
         "focus_keyboard_enter_assert_js": write_generated_file("focus-keyboard-enter-assert.js", FOCUS_KEYBOARD_ENTER_ASSERT_JS),
+        "remote_ar_navigate_js": write_generated_file("remote-ar-navigate.js", REMOTE_AR_NAVIGATE_JS),
+        "remote_ar_assert_js": write_generated_file("remote-ar-assert.js", REMOTE_AR_ASSERT_JS),
     }
 
 
@@ -2557,6 +2633,21 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 shell_join(["page-eval", "--body", "--file", str(files["output_area_basics_js"]), "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--uid", "@last", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="remote-ar-head",
+            description="The vendored RemoteJS head boots, connects, self-tests, and executes a Field Javascript box end to end.",
+            commands=[
+                "new-box --name RemoteARHeadRoot --alias remote_root",
+                "set @remote_root mainLanguage remotejs",
+                "new-box --name RemoteARHeadCode --alias remote_code --x 160",
+                "connect @remote_root @remote_code",
+                shell_join(["page-eval", "--body", "--file", str(files["remote_ar_navigate_js"]), "--timeout", pw_timeout]),
+                "sleep 2.0",
+                shell_join(["run", "@remote_code", "--value", "document.documentElement.dataset.remoteExecution = 6 * 7; print(6 * 7)", "--timeout", timeout_text]),
+                shell_join(["page-eval", "--body", "--file", str(files["remote_ar_assert_js"]), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
         ),
         UiRegression(
             id="toast-restack",

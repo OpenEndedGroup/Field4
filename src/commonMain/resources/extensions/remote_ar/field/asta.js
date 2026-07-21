@@ -1,7 +1,6 @@
 
 promote2 = (x) => {
-    if (x.length == 3) return new THREE.Vector2(x[0], x[1])
-    if (x.length == 2) return new THREE.Vector2(x[0], x[1])
+    if (Array.isArray(x) && x.length >= 2) return new THREE.Vector2(x[0], x[1])
 
     if (x.isVector2) return x
     if (x.isVector3) return x
@@ -10,8 +9,8 @@ promote2 = (x) => {
 }
 
 promote3 = (x, z = 0) => {
-    if (x.length == 3) return new THREE.Vector3(x[0], x[1], x[2])
-    if (x.length == 2) return new THREE.Vector3(x[0], x[1], 0)
+    if (Array.isArray(x) && x.length == 3) return new THREE.Vector3(x[0], x[1], x[2])
+    if (Array.isArray(x) && x.length == 2) return new THREE.Vector3(x[0], x[1], z)
     if (x.isVector2) return new THREE.Vector3(x.x, x.y, z)
     if (x.isVector3) return x
     if (x.isVector4) return x
@@ -19,13 +18,13 @@ promote3 = (x, z = 0) => {
 }
 
 canPromote3 = (x, z = 0) => {
-    return (x.isVector2 || x.isVector3 || x.isVector4 || x.length == 3 || x.length == 2)
+    return !!x && (x.isVector2 || x.isVector3 || x.isVector4 || (Array.isArray(x) && (x.length == 3 || x.length == 2)))
 }
 
 
 promote4 = (x, z = 0, w = 1) => {
-    if (x.isVector2) return new THREE.Vector3(x.x, x.y, z, w)
-    if (x.isVector3) return new THREE.Vector3(x.x, x.y, x.z, w)
+    if (x.isVector2) return new THREE.Vector4(x.x, x.y, z, w)
+    if (x.isVector3) return new THREE.Vector4(x.x, x.y, x.z, w)
     if (x.isVector4) return x
     throw Error("can't convert " + x + " to a Vector4")
 }

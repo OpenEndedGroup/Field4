@@ -285,7 +285,7 @@ var scale = function (x, y, z, w) {
     if (arguments.length == 0) return new THREE.Matrix4()
     if (arguments.length == 1) return new THREE.Matrix4().makeScale(x, x, x)
     if (arguments.length == 2) return new THREE.Matrix4().makeScale(x, y, 1)
-    if (arguments.length == 3) return new THREE.Matrix4().makeScale(x, x, x)
+    if (arguments.length == 3) return new THREE.Matrix4().makeScale(x, y, z)
     if (arguments.length == 4) return new THREE.Matrix4().makeTranslation(y, z, w).multiply(new THREE.Matrix4().makeScale(x, x, x).multiply(new THREE.Matrix4().makeTranslation(-y, -z, -w)))
     throw new Error("can't make a scale given this (" + arguments.length + ") number of arguments")
 }
@@ -330,12 +330,16 @@ class FLine {
         this.colors = []
 
         this.bSegments = null
+        this.bSegmentsNodeCount = -1
         this.numM = 0
         this.stroked = true
         this.filled = false
         this.isFLine = true
         this.uid = THREE.MathUtils.generateUUID()
         this.mouseDown = new Proxy(new Map(), idempotencyHandler(function (n, is, was) { }));
+        this.mouseUp = new Proxy(new Map(), idempotencyHandler(function (n, is, was) { }));
+        this.mouseMove = new Proxy(new Map(), idempotencyHandler(function (n, is, was) { }));
+        this.dblClick = new Proxy(new Map(), idempotencyHandler(function (n, is, was) { }));
     }
 
     moveTo(x, y, z = 0) {
@@ -343,7 +347,7 @@ class FLine {
         if (typeof (y) != 'undefined')
             this.nodes.push(['m', c(x), c(y), c(z)])
         else
-            this.nodes.push(['m', c(x.x), c(x.y), c(x.z)])
+            this.nodes.push(['m', c(x.x), c(x.y), c(x.z == null ? 0 : x.z)])
 
         this.uvs.push([0, 0])
         this.colors.push([0,0,0,-1])
@@ -356,7 +360,7 @@ class FLine {
         if (typeof (y) != 'undefined')
             this.nodes.push(['l', c(x), c(y), c(z)])
         else
-            this.nodes.push(['l', c(x.x), c(x.y), c(x.z) || 0])
+            this.nodes.push(['l', c(x.x), c(x.y), c(x.z == null ? 0 : x.z)])
         this.uvs.push([0, 0])
         this.colors.push([0,0,0,-1])
         return this
@@ -375,15 +379,16 @@ class FLine {
         this.colors[this.colors.length-1][1] = g
         this.colors[this.colors.length-1][2] = b
         this.colors[this.colors.length-1][3] = a
+        return this
     }
 
     cubicTo() {
         if (this.nodes.length == 0) return this.moveTo(...arguments)
         if (arguments.length == 3)
             this.nodes.push(['c',
-                c(arguments[0].x), c(arguments[0].y), c(arguments[0].z) || 0,
-                c(arguments[1].x), c(arguments[1].y), c(arguments[1].z) || 0,
-                c(arguments[2].x), c(arguments[2].y), c(arguments[2].z) || 0])
+                c(arguments[0].x), c(arguments[0].y), c(arguments[0].z == null ? 0 : arguments[0].z),
+                c(arguments[1].x), c(arguments[1].y), c(arguments[1].z == null ? 0 : arguments[1].z),
+                c(arguments[2].x), c(arguments[2].y), c(arguments[2].z == null ? 0 : arguments[2].z)])
         else if (arguments.length == 6)
             this.nodes.push(['c',
                 c(arguments[0]), c(arguments[1]), 0,
@@ -402,25 +407,26 @@ class FLine {
     }
 
     buildSegments() {
-        if (this.bSegments = null || this.bSegments.length != this.nodes.length) {
+        if (this.bSegments == null || this.bSegmentsNodeCount != this.nodes.length) {
             this.bSegments = []
+            this.bSegmentsNodeCount = this.nodes.length
             this.at = null
             for (var i = 0; i < this.nodes.length; i++) {
                 if (this.nodes[i][0] == 'l') {
                     var X = this.nodes[i][1]
                     var Y = this.nodes[i][2]
                     var Z = this.nodes[i][3]
-                    this.bSegments.push(new Bezier(
-                        at[0],
-                        at[1],
-                        at[2],
-                        at[0] + (X - at[0]) / 3,
-                        at[1] + (Y - at[1]) / 3,
-                        at[2] + (Z - at[2]) / 3,
-                        at[0] + 2 * (X - at[0]) / 3,
-                        at[1] + 2 * (Y - at[1]) / 3,
-                        at[2] + 2 * (Z - at[2]) / 3,
-                        X, Y, Z))
+                    this.bSegments.push(new THREE.CubicBezierCurve3(
+                        new THREE.Vector3(this.at[0], this.at[1], this.at[2]),
+                        new THREE.Vector3(
+                            this.at[0] + (X - this.at[0]) / 3,
+                            this.at[1] + (Y - this.at[1]) / 3,
+                            this.at[2] + (Z - this.at[2]) / 3),
+                        new THREE.Vector3(
+                            this.at[0] + 2 * (X - this.at[0]) / 3,
+                            this.at[1] + 2 * (Y - this.at[1]) / 3,
+                            this.at[2] + 2 * (Z - this.at[2]) / 3),
+                        new THREE.Vector3(X, Y, Z)))
                     this.at = [this.nodes[i][1], this.nodes[i][2], this.nodes[i][3]]
                 }
                 else
@@ -428,19 +434,11 @@ class FLine {
                         var X = this.nodes[i][1]
                         var Y = this.nodes[i][2]
                         var Z = this.nodes[i][3]
-                        this.bSegments.push(new Bezier(
-                            at[0],
-                            at[1],
-                            at[2],
-                            this.nodes[i][1],
-                            this.nodes[i][2],
-                            this.nodes[i][3],
-                            this.nodes[i][4],
-                            this.nodes[i][5],
-                            this.nodes[i][6],
-                            this.nodes[i][7],
-                            this.nodes[i][8],
-                            this.nodes[i][9]))
+                        this.bSegments.push(new THREE.CubicBezierCurve3(
+                            new THREE.Vector3(this.at[0], this.at[1], this.at[2]),
+                            new THREE.Vector3(this.nodes[i][1], this.nodes[i][2], this.nodes[i][3]),
+                            new THREE.Vector3(this.nodes[i][4], this.nodes[i][5], this.nodes[i][6]),
+                            new THREE.Vector3(this.nodes[i][7], this.nodes[i][8], this.nodes[i][9])))
 
                         this.at = [this.nodes[i][7], this.nodes[i][8], this.nodes[i][9]]
                     }
@@ -485,6 +483,9 @@ class FLine {
         f.uvs = this.uvs.map(x => x)
         f.colors = this.colors.map(x => x)
         f.mouseDown = this.mouseDown
+        f.mouseUp = this.mouseUp
+        f.mouseMove = this.mouseMove
+        f.dblClick = this.dblClick
         return f
     }
 
@@ -500,7 +501,7 @@ class FLine {
     }
 
     __RPLUS__(v) {
-        return __PLUS__(v)
+        return this.__PLUS__(v)
     }
 
     __MINUS__(v) {
@@ -509,7 +510,7 @@ class FLine {
             return this.byTransforming((x, y, z) => [x - vv.x, y - vv.y, z - vv.z])
         }
         else if (v.isMatrix4) {
-            var vv = new THREE.Matrix4().getInverse(v)
+            var vv = new THREE.Matrix4().copy(v).invert()
             return this.byTransforming((x, y, z) => new THREE.Vector3(x, y, z).applyMatrix4(vv))
         }
         else throw new Error(" can't subract " + v + " and FLine")
@@ -521,7 +522,7 @@ class FLine {
             return this.byTransforming((x, y, z) => [-x + vv.x, -y + vv.y, -z + vv.z])
         }
         else if (v.isMatrix4) {
-            var vv = new THREE.Matrix4().getInverse(v)
+            var vv = new THREE.Matrix4().copy(v).invert()
             return this.byTransforming((x, y, z) => new THREE.Vector3(x, y, z).applyMatrix4(vv))
         }
         else throw new Error(" can't subtract " + v + " and FLine")
@@ -542,7 +543,7 @@ class FLine {
     }
 
     __RMULTIPLY__(v) {
-        return __MULTIPLY__(v)
+        return this.__MULTIPLY__(v)
     }
 
     __DIVIDE__(v) {
@@ -551,10 +552,10 @@ class FLine {
 
         if (canPromote3(v)) {
             var vv = promote3(v, 1)
-            return this.byTransforming((x, y, z) => [vv.x / x, vv.y / x, vv.z / x])
+            return this.byTransforming((x, y, z) => [x / vv.x, y / vv.y, z / vv.z])
         }
         else if (v.isMatrix4) {
-            var vv = new THREE.Matrix4().getInverse(v)
+            var vv = new THREE.Matrix4().copy(v).invert()
             return this.byTransforming((x, y, z) => new THREE.Vector3(x, y, z).applyMatrix4(vv))
         }
         else throw new Error(" can't divide " + v + " and FLine")
@@ -569,7 +570,7 @@ class FLine {
             return this.byTransforming((x, y, z) => [vv.x / x, vv.y / y, vv.z / z])
         }
         else if (v.isMatrix4) {
-            var vv = new THREE.Matrix4().getInverse(v)
+            var vv = new THREE.Matrix4().copy(v).invert()
             return this.byTransforming((x, y, z) => new THREE.Vector3(x, y, z).applyMatrix4(vv))
         }
         else throw new Error(" can't divide " + v + " and FLine")
@@ -654,27 +655,27 @@ class FLine {
     cubicSegment(x, y, z, cx1, cy1, cz1, cx2, cy2, cz2, tx, ty, tz, into, lu, lv, u, v, into_uv, lr, lg, lb, la, r, g, b, a, into_color) {
         var num = 30
         for (var i = 0; i < num; i++) {
-            var a = (i + 1) / num
-            var uu = lu+(u-lu)*a
-            var vv = lv+(v-lv)*a
+            var alpha = (i + 1) / num
+            var uu = lu+(u-lu)*alpha
+            var vv = lv+(v-lv)*alpha
 
-            var rr = lr+(r-lr)*a
-            var gg = lg+(g-lg)*a
-            var bb = lb+(b-lb)*a
-            var aa = la+(a-la)*a
+            var rr = lr+(r-lr)*alpha
+            var gg = lg+(g-lg)*alpha
+            var bb = lb+(b-lb)*alpha
+            var aa = la+(a-la)*alpha
 
-            var oma = 1 - a
+            var oma = 1 - alpha
             var oma2 = oma * oma
             var oma3 = oma * oma2
-            var a2 = a * a
-            var a3 = a * a2
+            var a2 = alpha * alpha
+            var a3 = alpha * a2
 
-            var ax = x * oma3 + cx1 * oma2 * a + cx2 * oma * a2 + tx * a3
-            var ay = y * oma3 + cy1 * oma2 * a + cy2 * oma * a2 + ty * a3
-            var az = z * oma3 + cz1 * oma2 * a + cz2 * oma * a2 + tz * a3
+            var ax = x * oma3 + 3 * cx1 * oma2 * alpha + 3 * cx2 * oma * a2 + tx * a3
+            var ay = y * oma3 + 3 * cy1 * oma2 * alpha + 3 * cy2 * oma * a2 + ty * a3
+            var az = z * oma3 + 3 * cz1 * oma2 * alpha + 3 * cz2 * oma * a2 + tz * a3
             into.push(ax, ay, az)
             into_uv.push(uu,vv)
-            into_color.push(r,g,b,a)
+            into_color.push(rr,gg,bb,aa)
         }
     }
 
@@ -687,7 +688,7 @@ class FLine {
             if (typeof (c.w) != 'undefined') {
                 return c
             }
-            return vec(c.x, c.y, c.z, c.w)
+            return vec(c.x, c.y, c.z, 1)
         }
         else {
             if (c.length == 4)
@@ -757,7 +758,7 @@ class FLine {
         this.stroke._fieldSource = this
 
         if (typeof (this.strokeOpacity) != 'undefined') {
-            this.stroke.material.opacity = this.opacity
+            this.stroke.material.opacity = this.strokeOpacity
         }
         else if (typeof (this.opacity) != 'undefined') {
             this.stroke.material.opacity = this.opacity
@@ -806,9 +807,10 @@ class FLine {
             }
         }
         this.points = updateBuffer(ab, null, name + "_p", 'C', flat.length / 3, 0, 0)
+        this.points._fieldSource = this
 
-        if (typeof (this.fillOpacity) != 'undefined') {
-            this.points.material.opacity = this.opacity
+        if (typeof (this.pointOpacity) != 'undefined') {
+            this.points.material.opacity = this.pointOpacity
         }
         else if (typeof (this.opacity) != 'undefined') {
             this.points.material.opacity = this.opacity
@@ -885,7 +887,7 @@ class FLine {
         this.fill._fieldSource = this
 
         if (typeof (this.fillOpacity) != 'undefined') {
-            this.fill.material.opacity = this.opacity
+            this.fill.material.opacity = this.fillOpacity
         }
         else if (typeof (this.opacity) != 'undefined') {
             this.fill.material.opacity = this.opacity
@@ -905,10 +907,11 @@ __superglobal.Tess2 = Tess2
 var intersectLine = (origin, direction) => {
 	var meshes = []
 	SCENE.traverse( x=> {
-		if (x.isMesh)
+		if ((x.isMesh || x.isLine || x.isPoints) && x.visible)
 			meshes.push(x)
 	})
     var ray = new THREE.Raycaster(origin, direction, 0.0001, 1000)
-    ray.linePrecision = 0.001
+    ray.params.Line.threshold = 0.001
+    ray.params.Points.threshold = 0.01
     return ray.intersectObjects( meshes, false);
 }

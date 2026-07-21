@@ -56,43 +56,12 @@ __superglobal._t = _t
 __superglobal.__tasks = __tasks
 
 function handleCallbackError(error) {
-        console.log(" exception thrown in '" + name + "' event handler")
-        console.dir(error)
-
-        var sentError = false
-        StackTrace.fromError(error, {}).then(stack => {
-                if (!sentError) {
-                        return
-                }
-                for (var s of stack) {
-                        if (s.fileName && s.fileName.startsWith("box")) {
-                                console.log("(handler error)", {
-                                        message: error.message,
-                                        line: s.lineNumber,
-                                        kind: "ERROR",
-                                        filename: s.fileName
-                                })
-                                _field.send("(handler error)", {
-                                        message: error.message,
-                                        line: s.lineNumber,
-                                        kind: "ERROR",
-                                        filename: s.fileName
-                                })
-                                sendError = true
-                        }
-                }
-
-                console.dir(stack)
+        console.error("RemoteJS event handler failed", error)
+        var detail = FieldRemoteErrors.describe(error, {
+                codeName: window.globalCodeName,
+                fallbackLine: -1
         })
-
-        if (!sentError) {
-                _field.send("(handler error)", {
-                        message: error.message,
-                        line: 0,
-                        kind: "ERROR",
-                        filename: "unknown"
-                })
-        }
+        _field.send("(handler error)", Object.assign({kind: "ERROR"}, detail))
 }
 var dispatchTo = function (event, map, name) {
         var deletme = []
@@ -313,6 +282,5 @@ box = {}
 compileCode("var banana=Math.random()")(box)
 box
 */
-
 
 

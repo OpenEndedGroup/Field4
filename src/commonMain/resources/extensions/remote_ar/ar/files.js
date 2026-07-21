@@ -5,24 +5,12 @@ const sandboxTarget = {}
 const sandboxProxy = new Proxy(sandboxTarget, { has, get, set })
 
 var mixer = null
-var updateMixer = () => {
-    requestAnimationFrame(updateMixer)
-
-    if (mixer == null && window.SCENE) {
-        console.log("auto made mixer")
-        mixer = new THREE.AnimationMixer(SCENE)
-    }
-    if (mixer != null)
-        mixer.update(0.02)
-}
-
-updateMixer()
 
 var mapDirectory = (dirname, to) => {
     _field.send("files.map", { mapFrom: to, mapTo: dirname })
 }
 
-mapDirectory.__doc__ = 'The `mapDirectory` function exposes some part of your desktop computer (the machine running Field) to devices connected to our webserver. For example `mapDirectory("/Users/marc/Desktop", "/assets")`.'
+mapDirectory.__doc__ = 'The `mapDirectory` function exposes a directory on the Field computer through the current Field server. For example `mapDirectory("/path/to/assets", "/assets")`.'
 
 __superglobal.mapDirectory = mapDirectory
 
@@ -52,8 +40,6 @@ var addVideoPlane = (url, name, size = 1) => {
     video.load(); // must call after setting/changing source
 
     var texture = new THREE.VideoTexture(video)
-    texture.format = THREE.RGBFormat;
-
     texture.minFilter = THREE.LinearFilter;
     texture.magFilter = THREE.LinearFilter;
     texture.generateMipmaps = false;
@@ -78,7 +64,6 @@ __superglobal.addVideoPlane = addVideoPlane
 
 var addImagePlane = (url, name, size = 1) => {
     var texture = new THREE.TextureLoader().load(url)
-    texture.format = THREE.RGBFormat;
     texture.minFilter = THREE.LinearFilter;
     texture.magFilter = THREE.LinearFilter;
     texture.generateMipmaps = false;
@@ -142,6 +127,9 @@ __superglobal.addBox = addBox
 
 
 var loadFBX = (url, name, callback) => {
+    if (typeof THREE.FBXLoader !== "function") {
+        throw new Error("loadFBX is not included in the vendored remote head; convert the asset to glTF and use loadGLTF(url, name, callback)")
+    }
     var loader = new THREE.FBXLoader();
 
     let loaded = {}
@@ -237,20 +225,7 @@ var loadFBX = (url, name, callback) => {
                 callback(loaded)
             }
             catch (error) {
-                console.error("error in callback")
-                console.error(error)
-
-                StackTrace.fromError(error, {}).then(stack => {
-
-                    for (var s of stack) {
-                        if (s.fileName && s.fileName.startsWith("box")) {
-                            console.log("(handler error)", { message: error.message, line: s.lineNumber, kind: "ERROR", filename: s.fileName })
-                            _field.send("(handler error)", { message: error.message, line: s.lineNumber, kind: "ERROR", filename: s.fileName })
-                        }
-                    }
-
-                    console.dir(stack)
-                })
+                handleCallbackError(error)
             }
         }
 
@@ -356,25 +331,12 @@ loadPointCloudPLY = (url, name, callback) => {
             callback(loaded)
         }
         catch (error) {
-            console.error("error in callback")
-            console.error(error)
-
-            StackTrace.fromError(error, {}).then(stack => {
-
-                for (var s of stack) {
-                    if (s.fileName && s.fileName.startsWith("box")) {
-                        console.log("(handler error)", { message: error.message, line: s.lineNumber, kind: "ERROR", filename: s.fileName })
-                        _field.send("(handler error)", { message: error.message, line: s.lineNumber, kind: "ERROR", filename: s.fileName })
-                    }
-                }
-
-                console.dir(stack)
-            })
+            handleCallbackError(error)
         }
     }, (progress) => {
         console.log(progress)
     }, (error) => {
-        console.log(progress)
+        console.error("PLY load failed", error)
     })
 
 
@@ -488,9 +450,8 @@ loadGLTF = (url, name, callback) => {
         },
         // called when loading has errors
         function (error) {
-
-            console.log('An error happened');
-            console.log(error)
+            console.error("glTF load failed", url, error)
+            handleCallbackError(error)
 
         }
     );

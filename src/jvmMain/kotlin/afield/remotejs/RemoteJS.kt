@@ -17,9 +17,11 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.openjdk.nashorn.api.tree.Diagnostic
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 
-val knownOpenRemoteClients = mutableMapOf<String, WebSocketSession>()
-val returnHandlers = mutableMapOf<String, (JSONObject) -> Boolean>()
+val knownOpenRemoteClients = ConcurrentHashMap<String, WebSocketSession>()
+val remoteClientCapabilities = ConcurrentHashMap<String, JSONObject>()
+val returnHandlers = ConcurrentHashMap<String, (JSONObject) -> Boolean>()
 
 var Box.isRemoteJSRoot by Delegation<Boolean?>()
 var Box.code_language by Delegation<String>()
@@ -46,8 +48,15 @@ fun install() {
         val o = JSONObject(text)
         if (o.has("address") && o.getString("address") == "initialize") {
             lprintln("info,remotejs", "initializing connection: $text")
-            knownOpenRemoteClients[o.getString("payload")!!] = thisSession.get()
+            val payload = o.get("payload")
+            val id = when (payload) {
+                is JSONObject -> payload.optString("id", o.optString("from", UUID.randomUUID().toString()))
+                else -> payload.toString()
+            }
+            knownOpenRemoteClients[id] = thisSession.get()
+            if (payload is JSONObject) remoteClientCapabilities[id] = payload
             knownOpenRemoteClients.entries.removeIf { it.value.outgoing.isClosedForSend }
+            remoteClientCapabilities.keys.retainAll(knownOpenRemoteClients.keys)
             notify("Connected to ${knownOpenRemoteClients.size} browsers", "remotejs")
         } else if (o.has("address") && returnHandlers.keys.contains(o.getString("address"))) {
             val callAgain = returnHandlers[o.getString("address")]!!(o)
@@ -103,9 +112,9 @@ fun install() {
                     notify("Event handler got an error '${message}'", "remotejs_error")
                 lastBoxExec?.error(message, "code", v.getInt("line"))
             } else {
-                val uid = fn.split("|")[1]
+                val uid = fn.substringAfter("|", "")
                 val box =
-                    sessions.values.firstNotNullOfOrNull { it.boxes.values.firstNotNullOfOrNull { if (it.id == uid) it else null } }
+                    sessions.values.firstNotNullOfOrNull { session -> session.boxes.values.firstNotNullOfOrNull { if (it.id == uid) it else null } }
 
                 val message = v.getString("message")
                 if (box == null) {
@@ -148,6 +157,7 @@ fun executeRemoteJS(
     filename: String = "unknown",
     launchable: Boolean = false,
     requiresSandbox: Boolean = false,
+    lineOffset: Int = 0,
     timeStart: Double? = null,
     timeEnd: Double? = null,
     doASTA: Boolean = true,
@@ -172,6 +182,7 @@ fun executeRemoteJS(
     q.put("returnTo", u)
     q.put("codeName", filename)
     q.put("launchable", launchable)
+    q.put("lineOffset", lineOffset)
     if (__var0 != null)
         q.put("__var0", __var0)
 
@@ -191,16 +202,17 @@ fun executeRemoteJS(
     knownOpenRemoteClients.size > 0
 }
 
-fun executeFragment(b: Box, code: String, lineOffset: Int = 0) {
+fun executeFragment(b: Box, code: String, lineOffset: Int = 0, onComplete: (() -> Unit)? = null) {
 
     lastBoxExec = b
     var c = code
     for (n in 0 until lineOffset) c = "\n" + c
 
-    executeRemoteJS(
+    val sent = executeRemoteJS(
         c,
         filename = target(b),
         launchable = false,
+        lineOffset = lineOffset,
         doASTA = true,
         requiresSandbox = true,
         diagnosticsTo = {
@@ -211,7 +223,7 @@ fun executeFragment(b: Box, code: String, lineOffset: Int = 0) {
 
         val p = it.getJSONObject("payload")
         val kind = p.getString("kind")
-        val message = p.getString("message")
+        val message = p.optString("message", "")
         val line = if (p.has("line")) p.getInt("line") else lineOffset
 
         when (kind) {
@@ -224,9 +236,11 @@ fun executeFragment(b: Box, code: String, lineOffset: Int = 0) {
             else -> b.output.proxy(message, true, line)
         }
 
-
-        true
+        val terminal = kind == "ERROR" || (kind == "SUCCESS" && message.trim() == "OK")
+        if (terminal) onComplete?.invoke()
+        !terminal
     }
+    if (!sent) onComplete?.invoke()
 }
 
 fun launchAll(b: Box, code: String, lineOffset: Int = 0) {
@@ -237,7 +251,7 @@ fun launchAll(b: Box, code: String, lineOffset: Int = 0) {
 
 
     // TODO, error handler!! if asta throws
-    executeRemoteJS(c, filename = target(b), launchable = true, doASTA = true, requiresSandbox = true, diagnosticsTo = {
+    executeRemoteJS(c, filename = target(b), launchable = true, doASTA = true, requiresSandbox = true, lineOffset = lineOffset, diagnosticsTo = {
         b.output.errorProxy(it.message, "code", it.lineNumber.toInt())
     }) {
         lprintln("info,remotejs", "remote code launch got a json object through its return channel")
@@ -265,12 +279,13 @@ fun launchAll(b: Box, code: String, lineOffset: Int = 0) {
 
             else -> b.output.proxy(message, true, line)
         }
-        true
+        kind != "ERROR" && kind != "RUN-STOP"
     }
 }
 
 fun target(box: Box): String {
-    return "box_" + box.name + "|" + box.id
+    val safeName = box.name.replace(Regex("[^A-Za-z0-9_.-]+"), "_")
+    return "box_${safeName}|${box.id}"
 }
 
 fun stop(b: Box) {
@@ -327,9 +342,7 @@ fun complete(inside: Box, file: String, position: Int, success: (Completion) -> 
 
     knownOpenRemoteClients.entries.removeIf { it.value.outgoing.isClosedForSend }
 
-    knownOpenRemoteClients.forEach {
-        it.value.send(q.toString())
-    }
+    knownOpenRemoteClients.entries.firstOrNull()?.value?.send(q.toString())
 }
 
 
@@ -339,6 +352,8 @@ class RemoteJSExectution : BoxExecution {
 
     override fun executeFragment(inside: Box, execute: Execute, reply: (Message) -> Unit) {
         configureOutputProxies(inside, reply)
+        val watermark = ++inside.fragmentGeneration
+        send(Message("is-running").payload(IsRunning(execute.uid, true, watermark, "__fragment__")))
 
         if (knownOpenRemoteClients.isEmpty())
             notify("Warning! no connected remote clients", "remotejs")
@@ -346,16 +361,21 @@ class RemoteJSExectution : BoxExecution {
             notify("executing remote JS fragment in ${knownOpenRemoteClients.size} browser(s)", "remotejs")
 
         try {
-            afield.remotejs.executeFragment(inside, execute.code, execute.line)
+            afield.remotejs.executeFragment(inside, execute.code, execute.line) {
+                send(Message("is-running").payload(IsRunning(execute.uid, false, watermark, "__fragment__")))
+            }
         } catch (e: Exception) {
             lprintln("error,remotejs", "exception thrown in remotejs (parser?)")
             lprintln("error,remotejs", e.stackTraceToString())
             notify("Syntax Error in your Javascript", "remotejs")
+            send(Message("is-running").payload(IsRunning(execute.uid, false, watermark, "__fragment__")))
         }
     }
 
     override fun executeAll(inside: Box, execute: Execute, reply: (Message) -> Unit) {
         configureOutputProxies(inside, reply)
+        val watermark = ++inside.fragmentGeneration
+        send(Message("is-running").payload(IsRunning(execute.uid, true, watermark, "__fragment__")))
 
         if (knownOpenRemoteClients.isEmpty())
             notify("Warning! no connected remote clients", "remotejs")
@@ -363,11 +383,14 @@ class RemoteJSExectution : BoxExecution {
             notify("executing remote JS in ${knownOpenRemoteClients.size} browser(s)", "remotejs")
 
         try {
-            afield.remotejs.executeFragment(inside, execute.code, execute.line)
+            afield.remotejs.executeFragment(inside, execute.code, execute.line) {
+                send(Message("is-running").payload(IsRunning(execute.uid, false, watermark, "__fragment__")))
+            }
         } catch (e: Exception) {
             lprintln("error,remotejs", "exception thrown in remotejs (parser?)")
             lprintln("error,remotejs", e.stackTraceToString())
             notify("Syntax Error in your Javascript", "remotejs")
+            send(Message("is-running").payload(IsRunning(execute.uid, false, watermark, "__fragment__")))
         }
 
     }
@@ -415,10 +438,17 @@ class RemoteJSExectution : BoxExecution {
     }
 
     override fun complete(inside: Box, completionRequest: CompletionRequest, reply: (Message) -> Unit) {
-        if (knownOpenRemoteClients.isEmpty())
+        if (knownOpenRemoteClients.isEmpty()) {
             notify("Warning! no connected remote clients", "remotejs")
+            reply(Message("complete").payload(Completion(
+                boundsStart = completionRequest.position,
+                boundsEnd = completionRequest.position,
+                metadata = emptyList()
+            )))
+            return
+        }
 
-        complete(inside, inside.code, completionRequest.position) {
+        complete(inside, completionRequest.allCode, completionRequest.position) {
             lprintln("info,remotejs", it)
             reply(Message("complete").payload(it))
         }

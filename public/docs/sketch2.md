@@ -1,12 +1,5 @@
-# Legacy Sketch 2 handout
+# Sketch 2: WebXR interaction
 
-This URL is retained for old course links. The former instructions described a
-RemoteJS/Variant Launch workflow on port 9091. Field·4 now defaults to HTTPS on
-port 9092, and the historical remote-AR extension is not part of the tracked
-runtime in this checkout. Following the old steps would not reproduce the page
-they described.
+The historical port-9091 and Variant Launch instructions have been retired. Field now serves one RemoteJS head from its normal HTTPS server and uses native WebXR on Android or the Endrun WebXR bridge on iOS.
 
-Use the current [Installation](installation.md), [Mobile controllers](mobile_controllers.md),
-and [Apple Vision Pro](vision.md) pages instead. The checked-in
-`templates/field.sketch2_examples.edn` is historical example data, not evidence
-that the old browser transport or third-party service is installed.
+Continue with [RemoteJS and WebXR](ar_reference.md), especially the animation, hit-testing, and XR callback sections. The checked-in `remote` and `advanced_remote` templates remain the example documents.
