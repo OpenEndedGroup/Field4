@@ -123,3 +123,5 @@ The stream gets a handful of deliberate disturbances, and both detectors report 
 ![](assets/timeseries_examples/distribution_events.png)
 
 The raw motion remains visible, and each detector shows which departures became events. That is useful for onset detection, anomaly marking, interaction thresholds, and any signal that needs a little memory before it speaks. For inline diagnostics of similar live values, continue with [Visualizers](visualizers.md).
+
+These filters all work in the time domain. When the question is which *frequencies* a signal is made of — brightness, timbre, a chirp's trajectory — cross over to the frequency-domain companion: [Spectral examples](spectral_examples.md) (FFT, STFT / spectrograms, and streaming spectral features that compose with the same `then` chain).
