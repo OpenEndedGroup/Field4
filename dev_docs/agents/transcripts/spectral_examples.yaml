@@ -1,0 +1,122 @@
+name: spectral_examples
+description: >
+  Loadable demo of the stdlib frequency-domain spectral family (afield.stdlib/spectral.kt).
+  Builds one pure-compute box that synthesises a rising linear chirp plus two steady tones,
+  runs a Hann-windowed FFT (fft(...) -> Spectrum), and draws the one-sided magnitude spectrum
+  as an inline SVG with the spectral centroid and 85% rolloff marked and the peak/centroid
+  frequencies labelled. No Window or Renderer: it executes headless and paints into the box's
+  output display. Replay this file into a fresh Field with the agent backdoor
+  (field_run_transcript) to see the spectrum on screen, then edit the signal or swap the
+  window (WindowType.HANN / HAMMING / BLACKMAN) and re-run to change it live.
+  See public/docs/spectral_examples.md.
+operations:
+  - create:
+      box: spectral_spectrum
+      name: spectrum of a chirp + tones
+      frame: { x: 80.0, y: 80.0, w: 680.0, h: 300.0 }
+      properties:
+        code: |
+          // Frequency-domain demo — synthesise a chirp + two tones, FFT it, draw the spectrum.
+          // Everything here is afield.stdlib.spectral: fft(...) -> Spectrum, WindowType, features.
+          val sampleRate = 8000.0
+          val n = 2048
+          val f0 = 300.0
+          val f1 = 3000.0
+          val dur = n / sampleRate
+          val k = (f1 - f0) / dur
+          val signal = DoubleArray(n) { i ->
+              val t = i / sampleRate
+              // Rising linear chirp (phase-integrated so instantaneous freq sweeps cleanly) + tones.
+              0.9 * sin(2.0 * PI * (f0 * t + 0.5 * k * t * t)) +
+                  0.4 * sin(2.0 * PI * 700.0 * t) +
+                  0.3 * sin(2.0 * PI * 1800.0 * t)
+          }
+
+          val spec = fft(signal, WindowType.HANN, sampleRate)
+          val mag = spec.magnitudeOneSided()
+          val freqs = spec.frequencies()
+          val centroid = spec.centroid()
+          val rolloff = spec.rolloff(0.85)
+          val peak = spec.peakFrequency()
+
+          val w = 640.0
+          val h = 240.0
+          val pad = 28.0
+          val nyq = sampleRate / 2.0
+          val maxMag = (mag.maxOrNull() ?: 1.0).coerceAtLeast(1e-9)
+          fun px(freq: Double) = pad + (freq / nyq).coerceIn(0.0, 1.0) * (w - 2 * pad)
+          fun py(m: Double) = (h - pad) - (m / maxMag).coerceIn(0.0, 1.0) * (h - 2 * pad)
+
+          val poly = StringBuilder()
+          for (i in mag.indices) poly.append("${"%.1f".format(px(freqs[i]))},${"%.1f".format(py(mag[i].toDouble()))} ")
+
+          val cx = px(centroid)
+          val rx = px(rolloff)
+          val svg = "<svg xmlns='http://www.w3.org/2000/svg' width='${w.toInt()}' height='${h.toInt()}' " +
+              "style='background:#0a0e14;border-radius:6px'>" +
+              "<polyline points='$poly' fill='none' stroke='#7ad9ff' stroke-width='1.4'/>" +
+              "<line x1='$cx' y1='$pad' x2='$cx' y2='${h - pad}' stroke='#ffe066' stroke-width='1.6'/>" +
+              "<line x1='$rx' y1='$pad' x2='$rx' y2='${h - pad}' stroke='#ff9e4a' stroke-width='1.2' stroke-dasharray='4 3'/>" +
+              "<text x='${cx + 4}' y='${pad + 12}' fill='#ffe066' font-family='sans-serif' font-size='11'>centroid ${"%.0f".format(centroid)} Hz</text>" +
+              "<text x='${rx + 4}' y='${pad + 28}' fill='#ff9e4a' font-family='sans-serif' font-size='11'>85% rolloff ${"%.0f".format(rolloff)} Hz</text>" +
+              "<text x='$pad' y='${h - 8}' fill='#8aa' font-family='sans-serif' font-size='11'>0 Hz</text>" +
+              "<text x='${w - pad - 44}' y='${h - 8}' fill='#8aa' font-family='sans-serif' font-size='11'>${nyq.toInt()} Hz</text>" +
+              "</svg>"
+
+          println("peak=${"%.0f".format(peak)}Hz centroid=${"%.0f".format(centroid)}Hz rolloff=${"%.0f".format(rolloff)}Hz bins=${mag.size}")
+          display("main", "<div style=\"padding:10px\">$svg</div>")
+  - execute:
+      box: spectral_spectrum
+      property: code
+      type: fragment
+      code: |
+        val sampleRate = 8000.0
+        val n = 2048
+        val f0 = 300.0
+        val f1 = 3000.0
+        val dur = n / sampleRate
+        val k = (f1 - f0) / dur
+        val signal = DoubleArray(n) { i ->
+            val t = i / sampleRate
+            0.9 * sin(2.0 * PI * (f0 * t + 0.5 * k * t * t)) +
+                0.4 * sin(2.0 * PI * 700.0 * t) +
+                0.3 * sin(2.0 * PI * 1800.0 * t)
+        }
+
+        val spec = fft(signal, WindowType.HANN, sampleRate)
+        val mag = spec.magnitudeOneSided()
+        val freqs = spec.frequencies()
+        val centroid = spec.centroid()
+        val rolloff = spec.rolloff(0.85)
+        val peak = spec.peakFrequency()
+
+        val w = 640.0
+        val h = 240.0
+        val pad = 28.0
+        val nyq = sampleRate / 2.0
+        val maxMag = (mag.maxOrNull() ?: 1.0).coerceAtLeast(1e-9)
+        fun px(freq: Double) = pad + (freq / nyq).coerceIn(0.0, 1.0) * (w - 2 * pad)
+        fun py(m: Double) = (h - pad) - (m / maxMag).coerceIn(0.0, 1.0) * (h - 2 * pad)
+
+        val poly = StringBuilder()
+        for (i in mag.indices) poly.append("${"%.1f".format(px(freqs[i]))},${"%.1f".format(py(mag[i].toDouble()))} ")
+
+        val cx = px(centroid)
+        val rx = px(rolloff)
+        val svg = "<svg xmlns='http://www.w3.org/2000/svg' width='${w.toInt()}' height='${h.toInt()}' " +
+            "style='background:#0a0e14;border-radius:6px'>" +
+            "<polyline points='$poly' fill='none' stroke='#7ad9ff' stroke-width='1.4'/>" +
+            "<line x1='$cx' y1='$pad' x2='$cx' y2='${h - pad}' stroke='#ffe066' stroke-width='1.6'/>" +
+            "<line x1='$rx' y1='$pad' x2='$rx' y2='${h - pad}' stroke='#ff9e4a' stroke-width='1.2' stroke-dasharray='4 3'/>" +
+            "<text x='${cx + 4}' y='${pad + 12}' fill='#ffe066' font-family='sans-serif' font-size='11'>centroid ${"%.0f".format(centroid)} Hz</text>" +
+            "<text x='${rx + 4}' y='${pad + 28}' fill='#ff9e4a' font-family='sans-serif' font-size='11'>85% rolloff ${"%.0f".format(rolloff)} Hz</text>" +
+            "<text x='$pad' y='${h - 8}' fill='#8aa' font-family='sans-serif' font-size='11'>0 Hz</text>" +
+            "<text x='${w - pad - 44}' y='${h - 8}' fill='#8aa' font-family='sans-serif' font-size='11'>${nyq.toInt()} Hz</text>" +
+            "</svg>"
+
+        println("peak=${"%.0f".format(peak)}Hz centroid=${"%.0f".format(centroid)}Hz rolloff=${"%.0f".format(rolloff)}Hz bins=${mag.size}")
+        display("main", "<div style=\"padding:10px\">$svg</div>")
+  - await:
+      wait: pending
+  - wait:
+      millis: 300
