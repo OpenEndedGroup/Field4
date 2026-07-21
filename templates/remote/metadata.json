@@ -72,7 +72,15 @@
             },
             "preamble": {
                 "first": "String",
-                "second": "import afield.remotejs.isRemoteJSRoot\nisRemoteJSRoot = true"
+                "second": ""
+            },
+            "mainLanguage": {
+                "first": "String",
+                "second": "remotejs"
+            },
+            "isRemoteJSRoot": {
+                "first": "Boolean",
+                "second": true
             },
             "children": {
                 "first": "Set",

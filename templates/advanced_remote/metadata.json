@@ -797,7 +797,7 @@
             },
             "name": {
                 "first": "String",
-                "second": "remote_js (run me once)"
+                "second": "remote_js"
             },
             "code": {
                 "first": "__file__",
@@ -805,7 +805,11 @@
             },
             "preamble": {
                 "first": "String",
-                "second": "import afield.remotejs.isRemoteJSRoot\nisRemoteJSRoot = true"
+                "second": ""
+            },
+            "mainLanguage": {
+                "first": "String",
+                "second": "remotejs"
             },
             "vertex": {
                 "first": "__file__",
