@@ -1,7 +1,7 @@
 name: spectral_examples
 description: >
   Loadable demo of the stdlib frequency-domain spectral family (afield.stdlib/spectral.kt).
-  Builds four pure-compute boxes that mirror public/docs/spectral_examples.md exactly:
+  Builds five pure-compute boxes that mirror public/docs/spectral_examples.md exactly:
     1. one spectrum  — a rising chirp + two tones, Hann-windowed fft(...) -> Spectrum, put on screen
        with the terse showSignals(...) helper (afield.visualization/plotly.kt): a magnitude curve vs
        real Hz with the spectral centroid and 85% rolloff as dashed reference lines.
@@ -9,7 +9,9 @@ description: >
        IntArray encoded with afield.util.PngEncoder — no AWT) with the centroid trace overlaid.
     3. mel spectrogram — two crossing chirps (one rising, one falling) collapsed per frame with
        Mel.filterBank(...), drawn as a PngEncoder cyan->orange heatmap tracing an X.
-    4. streaming features — SpectralCentroidFilter / SpectralFluxFilter / RmsFilter in a `then`
+    4. resonator bank — the chirp + tones run through a log-spaced complex resonator filterbank
+       (afield.four.audio.resonate) instead of an FFT, drawn as a PngEncoder cyan->orange heatmap.
+    5. streaming features — SpectralCentroidFilter / SpectralFluxFilter / RmsFilter in a `then`
        chain over a synthesised chirp+onset stream, the three (normalized) traces via showSignals(...).
   No Window or Renderer: every box executes headless and paints into its own output display via
   showSignals(...) / display(...). Replay this file into a fresh Field with the agent backdoor
@@ -169,9 +171,76 @@ operations:
           println("frames=${spec.numFrames} bands=$numBands")
           display("main", "<img src='data:image/png;base64,$b64' style='width:100%;max-width:900px;border-radius:6px;display:block'/>")
   - create:
+      box: spectral_resonator
+      name: resonator bank (no transform)
+      frame: { x: 80.0, y: 1180.0, w: 960.0, h: 320.0 }
+      properties:
+        code: |
+          import afield.four.audio.resonate
+          import afield.four.audio.resonatorAlphaHeuristics
+          import afield.util.PngEncoder
+          import java.util.Base64
+
+          val sampleRate = 8000f
+          val n = 24000
+          val f0 = 300.0; val f1 = 3000.0
+          val durS = n / sampleRate.toDouble()
+          val k = (f1 - f0) / durS
+          val signal = FloatArray(n) { i ->
+              val t = i / sampleRate.toDouble()
+              (0.9 * sin(2.0 * PI * (f0 * t + 0.5 * k * t * t)) +
+                  0.35 * sin(2.0 * PI * 700.0 * t) +
+                  0.30 * sin(2.0 * PI * 1800.0 * t)).toFloat()
+          }
+
+          val numRes = 96
+          val minHz = 120.0; val maxHz = 3900.0
+          val freqs = FloatArray(numRes) { i ->
+              kotlin.math.exp(ln(minHz) + (ln(maxHz) - ln(minHz)) * i / (numRes - 1)).toFloat()
+          }
+          val alphas = resonatorAlphaHeuristics(freqs, sampleRate)
+          val hop = 256
+
+          val flat = resonate(signal, sampleRate, freqs, alphas, betas = alphas, hopLength = hop)
+          val slices = flat.size / (2 * numRes)
+          fun ampAt(s: Int, kk: Int): Float {
+              val base = s * 2 * numRes
+              val re = flat[base + kk]; val im = flat[base + numRes + kk]
+              return kotlin.math.sqrt(re * re + im * im)
+          }
+          var maxA = 1e-9f
+          for (s in 0 until slices) for (kk in 0 until numRes) { val a = ampAt(s, kk); if (a > maxA) maxA = a }
+
+          fun cyanOrange(v: Double): Int {
+              val x = v.coerceIn(0.0, 1.0)
+              val (r, g, b) = if (x < 0.5) {
+                  val t = x / 0.5
+                  Triple(10 + t * (60 - 10), 14 + t * (190 - 14), 20 + t * (230 - 20))
+              } else {
+                  val t = (x - 0.5) / 0.5
+                  Triple(60 + t * (255 - 60), 190 + t * (150 - 190), 230 + t * (50 - 230))
+              }
+              return (0xFF shl 24) or (r.toInt() shl 16) or (g.toInt() shl 8) or b.toInt()
+          }
+
+          val w = 900; val h = 360
+          val px = IntArray(w * h)
+          for (xp in 0 until w) {
+              val s = (xp.toLong() * (slices - 1) / (w - 1).coerceAtLeast(1)).toInt()
+              for (yp in 0 until h) {
+                  val kk = ((h - 1 - yp).toLong() * (numRes - 1) / (h - 1)).toInt()
+                  val db = 20.0 * log10((ampAt(s, kk).toDouble() / maxA).coerceAtLeast(1e-4))
+                  px[xp + yp * w] = cyanOrange((db + 80.0) / 80.0)
+              }
+          }
+
+          val b64 = Base64.getEncoder().encodeToString(PngEncoder.encode(px, w, h))
+          println("resonators=$numRes slices=$slices freq ${freqs.first().toInt()} -> ${freqs.last().toInt()} Hz")
+          display("main", "<img src='data:image/png;base64,$b64' style='width:100%;max-width:900px;border-radius:6px;display:block'/>")
+  - create:
       box: spectral_streaming
       name: streaming spectral features
-      frame: { x: 80.0, y: 1180.0, w: 780.0, h: 340.0 }
+      frame: { x: 80.0, y: 1540.0, w: 780.0, h: 340.0 }
       properties:
         code: |
           val sampleRate = 8000f
@@ -207,6 +276,7 @@ operations:
   - execute: { box: spectral_one_spectrum, property: code }
   - execute: { box: spectral_spectrogram, property: code }
   - execute: { box: spectral_mel, property: code }
+  - execute: { box: spectral_resonator, property: code }
   - execute: { box: spectral_streaming, property: code }
   - await:
       wait: pending

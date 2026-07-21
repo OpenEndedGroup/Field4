@@ -4,8 +4,8 @@ The [timeseries toolkit](timeseries_examples.md) works in the time domain: it sm
 flags a stream sample by sample. Sometimes the question is not *what is the signal doing now* but
 *what is it made of* — which frequencies carry the energy, how bright the timbre is, where a chirp
 is heading. That is the frequency domain, and `afield.stdlib` now has a self-contained family for
-it: a pure-Kotlin FFT, analysis windows, a `Spectrum`, a `Spectrogram` (STFT), and the classic
-spectral features.
+it: a pure-Kotlin FFT, analysis windows, a `Spectrum`, a `Spectrogram` (STFT), the classic
+spectral features, and a resonator filterbank that analyses frequency without a transform at all.
 
 Nothing here needs an external DSP library or a GPU. The FFT is an iterative Cooley–Tukey radix-2
 core with a Bluestein (chirp-z) fallback, so **any** length transforms exactly, not just powers of
@@ -203,6 +203,94 @@ display("main", "<img src='data:image/png;base64,$b64' style='width:100%;max-wid
 
 ![](assets/spectral_examples/mel_spectrogram.png)
 
+## A resonator bank — frequency analysis without a transform
+
+An FFT frames the signal and asks *all* frequencies at once, on a fixed linear grid set by the
+transform size. A **resonator bank** turns that around: run the signal through a set of complex
+one-pole resonators, each tuned to a frequency *you* pick, and each resonator's running magnitude is
+the energy near its frequency. There is no window and no frame blocking — it is a per-sample IIR
+filterbank, so it streams — and because you choose the frequencies you can space them
+logarithmically (like the ear) and give each its own time constant. `resonate(...)` runs a fixed
+bank offline and hands back the per-hop complex output; `resonatorAlphaHeuristics(...)` picks a
+sensible smoothing coefficient per frequency.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/resonator_bank.png" wait="2.5" capture="box" open-outputs="true" padding="20"}
+:::static
+import afield.four.audio.resonate
+import afield.four.audio.resonatorAlphaHeuristics
+import afield.util.PngEncoder
+import java.util.Base64
+
+// --- same rising chirp (300 -> 3000 Hz) + two tones (700, 1800 Hz), as a Float signal ---
+val sampleRate = 8000f
+val n = 24000
+val f0 = 300.0; val f1 = 3000.0
+val durS = n / sampleRate.toDouble()
+val k = (f1 - f0) / durS
+val signal = FloatArray(n) { i ->
+    val t = i / sampleRate.toDouble()
+    (0.9 * sin(2.0 * PI * (f0 * t + 0.5 * k * t * t)) +
+        0.35 * sin(2.0 * PI * 700.0 * t) +
+        0.30 * sin(2.0 * PI * 1800.0 * t)).toFloat()
+}
+
+// --- a bank of complex resonators, log-spaced from 120 Hz to 3900 Hz ---
+val numRes = 96
+val minHz = 120.0; val maxHz = 3900.0
+val freqs = FloatArray(numRes) { i ->
+    kotlin.math.exp(ln(minHz) + (ln(maxHz) - ln(minHz)) * i / (numRes - 1)).toFloat()
+}
+val alphas = resonatorAlphaHeuristics(freqs, sampleRate)  // per-frequency smoothing / time constant
+val hop = 256
+
+// resonate returns, per hop slice: numRes real parts then numRes imag parts.
+val flat = resonate(signal, sampleRate, freqs, alphas, betas = alphas, hopLength = hop)
+val slices = flat.size / (2 * numRes)
+fun ampAt(s: Int, kk: Int): Float {
+    val base = s * 2 * numRes
+    val re = flat[base + kk]; val im = flat[base + numRes + kk]
+    return kotlin.math.sqrt(re * re + im * im)
+}
+var maxA = 1e-9f
+for (s in 0 until slices) for (kk in 0 until numRes) { val a = ampAt(s, kk); if (a > maxA) maxA = a }
+
+// Cyan -> orange colormap (dark -> cyan mids -> orange peaks), returns ARGB.
+fun cyanOrange(v: Double): Int {
+    val x = v.coerceIn(0.0, 1.0)
+    val (r, g, b) = if (x < 0.5) {
+        val t = x / 0.5
+        Triple(10 + t * (60 - 10), 14 + t * (190 - 14), 20 + t * (230 - 20))
+    } else {
+        val t = (x - 0.5) / 0.5
+        Triple(60 + t * (255 - 60), 190 + t * (150 - 190), 230 + t * (50 - 230))
+    }
+    return (0xFF shl 24) or (r.toInt() shl 16) or (g.toInt() shl 8) or b.toInt()
+}
+
+val w = 900; val h = 360
+val px = IntArray(w * h)
+for (xp in 0 until w) {
+    val s = (xp.toLong() * (slices - 1) / (w - 1).coerceAtLeast(1)).toInt()
+    for (yp in 0 until h) {                          // y flipped: low resonator (low Hz) at the bottom
+        val kk = ((h - 1 - yp).toLong() * (numRes - 1) / (h - 1)).toInt()
+        val db = 20.0 * log10((ampAt(s, kk).toDouble() / maxA).coerceAtLeast(1e-4))
+        px[xp + yp * w] = cyanOrange((db + 80.0) / 80.0)
+    }
+}
+
+val b64 = Base64.getEncoder().encodeToString(PngEncoder.encode(px, w, h))
+println("resonators=$numRes slices=$slices freq ${freqs.first().toInt()} -> ${freqs.last().toInt()} Hz")
+display("main", "<img src='data:image/png;base64,$b64' style='width:100%;max-width:900px;border-radius:6px;display:block'/>")
+```
+
+![](assets/spectral_examples/resonator_bank.png)
+
+Same chirp ridge and two tone lines as the STFT view, but now on a **log-frequency** axis (the tones
+sit closer together up top) and with each band carrying its own time constant instead of one shared
+window. Because the bank is recursive and per-sample it also runs live as a streaming analyzer, and
+its cousin `TrackingResonatorBank` lets each resonator *drift* onto the nearest partial and follow it
+— a resynthesis-grade analysis the fixed FFT grid can't do.
+
 ## Streaming features that compose with the filter chain
 
 The spectral features also come as `FloatFilter`s, so they slot straight into the same `then`
@@ -266,6 +354,10 @@ other per-sample filter in the toolkit.
 - **Features** — `SpectralFeatures.centroid / spread / rolloff / flux / flatness / rms / energy`.
 - **Mel** — `Mel.hzToMel`, `Mel.melToHz`, and a triangular `Mel.filterBank(...)` for perceptual /
   log-frequency band energies.
+- **Resonator bank** (`afield.four.audio`) — `resonate(...)` / `ResonatorBank` for a fixed complex
+  filterbank at frequencies you choose, `trackingResonate(...)` / `TrackingResonatorBank` for
+  resonators that lock onto and follow moving partials, with `resonatorAlphaHeuristics(...)` for
+  per-frequency time constants.
 
 ## Replay the demo
 
