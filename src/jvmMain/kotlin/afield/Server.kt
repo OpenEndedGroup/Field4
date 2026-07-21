@@ -3171,6 +3171,9 @@ class Server {
                             val startingPointEntries = withContext(workspaceSearchDispatcher) {
                                 startingPoints()
                             }
+                            val templateEntries = withContext(workspaceSearchDispatcher) {
+                                templateStartingPoints()
+                            }
                             call.respond(
                                 WelcomeDocsResponse(
                                     docs,
@@ -3179,6 +3182,7 @@ class Server {
                                     allTags,
                                     runningDocuments,
                                     startingPointEntries,
+                                    templateEntries,
                                     currentWorkspace,
                                     defaultWorkspace,
                                     currentAiSettingsStatus(),
@@ -4023,12 +4027,26 @@ class Server {
                                         maxScanMillis = maxScanMillis,
                                         cancellationCheck = cancellationCheck
                                     )
-                                    if (startingHits.documents.isEmpty()) workspaceHits
+                                    // Same treatment for the bundled document templates, tagged
+                                    // kind="template" so the client opens them via the shared copy
+                                    // route and groups them under "Templates".
+                                    val templateHits = searchTemplateStartingPoints(
+                                        rawQuery = query,
+                                        maxDocuments = maxDocuments,
+                                        maxMatchesPerDocument = maxMatchesPerDocument,
+                                        maxScanMillis = maxScanMillis,
+                                        cancellationCheck = cancellationCheck
+                                    )
+                                    val bundledDocuments = startingHits.documents + templateHits.documents
+                                    if (bundledDocuments.isEmpty()) workspaceHits
                                     else workspaceHits.copy(
-                                        documents = workspaceHits.documents + startingHits.documents,
-                                        totalDocuments = workspaceHits.totalDocuments + startingHits.totalDocuments,
-                                        totalMatches = workspaceHits.totalMatches + startingHits.totalMatches,
-                                        truncated = workspaceHits.truncated || startingHits.truncated
+                                        documents = workspaceHits.documents + bundledDocuments,
+                                        totalDocuments = workspaceHits.totalDocuments +
+                                            startingHits.totalDocuments + templateHits.totalDocuments,
+                                        totalMatches = workspaceHits.totalMatches +
+                                            startingHits.totalMatches + templateHits.totalMatches,
+                                        truncated = workspaceHits.truncated ||
+                                            startingHits.truncated || templateHits.truncated
                                     )
                                 }
                             } catch (e: CancellationException) {

@@ -2258,6 +2258,8 @@
         runningDocuments: [],
         startingPoints: [],
         startingPointsOpen: false,
+        templates: [],
+        templatesOpen: false,
         searchQuery: "",
         searchResults: [],
         searchTruncated: false,
@@ -4368,6 +4370,26 @@
         `;
     }
 
+    // Collapsible disclosure for the bundled document templates (kind="template"), rendered as its
+    // own group beneath the starting points. Template cards reuse the starting-point card + open
+    // handler (both open by copy-into-workspace), so only the grouping differs. Returns "" when none.
+    function templatesSectionHtml() {
+        const points = Array.isArray(state.templates) ? state.templates : [];
+        if (!points.length) return "";
+        const cards = points.map((doc) => startingPointCardHtml(doc, "")).join("");
+        const open = state.templatesOpen ? " open" : "";
+        return `
+            <details class="starting-points-section" data-section="templates"${open}>
+                <summary class="starting-points-summary">
+                    <span class="starting-points-title">Templates</span>
+                    <span class="starting-points-count">${points.length}</span>
+                </summary>
+                <div class="starting-points-hint">Reusable scaffolds — open one to get an editable copy in your workspace.</div>
+                ${cards}
+            </details>
+        `;
+    }
+
     function renderRecentDocuments() {
         const listNode = document.getElementById("recent-list");
         const countNode = document.getElementById("doc-count");
@@ -4436,7 +4458,7 @@
     function renderStartingPointsDock() {
         const dock = document.getElementById("starting-points-dock");
         if (!dock) return;
-        dock.innerHTML = startingPointsSectionHtml();
+        dock.innerHTML = startingPointsSectionHtml() + templatesSectionHtml();
         installDocumentListHandlers(dock);
     }
 
@@ -4497,7 +4519,7 @@
                     </div>
                 `;
             }
-            const isStartingPoint = doc.kind === "starting-point";
+            const isStartingPoint = doc.kind === "starting-point" || doc.kind === "template";
             const activeClass = doc.filename === state.lastOpened ? "active" : "";
             const when = formatDuration(doc.lastModifiedAgoMs);
             const boxes = doc.numBoxes === 1 ? "1 box" : `${doc.numBoxes} boxes`;
@@ -4671,6 +4693,7 @@
             state.projects = Array.isArray(payload.projects) ? payload.projects : [];
             state.runningDocuments = Array.isArray(payload.runningDocuments) ? payload.runningDocuments : [];
             state.startingPoints = Array.isArray(payload.startingPoints) ? payload.startingPoints : [];
+            state.templates = Array.isArray(payload.templates) ? payload.templates : [];
             state.lastOpened = payload.lastOpened || "welcome";
             state.defaultDocument = payload.defaultDocument || state.lastOpened || "welcome";
             state.allTags = Array.isArray(payload.allTags) ? payload.allTags : [];
@@ -4703,6 +4726,7 @@
             state.projects = [];
             state.runningDocuments = [];
             state.startingPoints = [];
+            state.templates = [];
             state.completionDocPolish = {
                 ...(state.completionDocPolish || {}),
                 cache: {
@@ -5861,7 +5885,8 @@
 
         listNode.querySelectorAll("details.starting-points-section").forEach((details) => {
             details.addEventListener("toggle", () => {
-                state.startingPointsOpen = details.open;
+                if (details.dataset.section === "templates") state.templatesOpen = details.open;
+                else state.startingPointsOpen = details.open;
             });
         });
 

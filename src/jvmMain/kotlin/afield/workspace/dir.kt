@@ -267,6 +267,7 @@ data class WelcomeDocsResponse(
     val allTags: List<String> = emptyList(),
     val runningDocuments: List<RunningDocumentEntry> = emptyList(),
     val startingPoints: List<WelcomeEntry> = emptyList(),
+    val templates: List<WelcomeEntry> = emptyList(),
     val currentWorkspace: String = "",
     val defaultWorkspace: String = "",
     val aiSettings: AiSettingsStatus = AiSettingsStatus(),
@@ -848,6 +849,10 @@ fun welcomeDir(base: String, recents: List<String>): List<WelcomeEntry> {
  * [afield.examples.AgentTranscriptMaterializer]). One document folder per transcript. */
 private const val STARTING_POINTS_REL = "public/docs/assets/agent_transcripts"
 
+/** Repo-relative location of the bundled document templates (`remote`, `note`, …) that are also
+ * offered on the welcome screen as a distinct "Templates" group of starting points. */
+private const val TEMPLATES_REL = "templates"
+
 /**
  * Locate the bundled "starting points" workspace — the materialized agent transcripts. These are
  * curated, CI-verified example documents that ship with Field (not in the user's workspace), so the
@@ -877,6 +882,57 @@ fun startingPoints(): List<WelcomeEntry> {
     return welcomeDirCandidates(dir.absolutePath, emptyList())
         .mapNotNull { summarizeWelcomeCandidate(it, now, savingContext) }
         .map { it.copy(kind = "starting-point") }
+}
+
+/**
+ * Locate the bundled document-template directory (`templates/`), whose self-contained document
+ * subfolders (each carrying a `metadata.edn`/`metadata.json`) are surfaced on the welcome screen as
+ * a distinct "Templates" group of starting points. Resolution mirrors [startingPointsDir]:
+ * `-Dafield.templates.dir` override, else the repo-relative dir walked up from the working dir.
+ * Returns null when not found (e.g. a packaged build without the bundled templates).
+ */
+fun templatesStartingPointsDir(): File? {
+    System.getProperty("afield.templates.dir")?.takeIf { it.isNotBlank() }?.let {
+        return File(it).takeIf { d -> d.isDirectory }
+    }
+    var dir: File? = File(System.getProperty("user.dir")).absoluteFile
+    while (dir != null) {
+        val candidate = File(dir, TEMPLATES_REL)
+        if (candidate.isDirectory) return candidate
+        dir = dir.parentFile
+    }
+    return null
+}
+
+/** Welcome cards for the bundled document templates, tagged `kind = "template"`. Empty when none. */
+fun templateStartingPoints(): List<WelcomeEntry> {
+    val dir = templatesStartingPointsDir() ?: return emptyList()
+    val now = System.currentTimeMillis()
+    val savingContext = SavingContext()
+    return welcomeDirCandidates(dir.absolutePath, emptyList())
+        .mapNotNull { summarizeWelcomeCandidate(it, now, savingContext) }
+        .map { it.copy(kind = "template") }
+}
+
+/** Text-search the bundled document templates, tagging every result `kind = "template"`. */
+fun searchTemplateStartingPoints(
+    rawQuery: String,
+    maxDocuments: Int = 50,
+    maxMatchesPerDocument: Int = 5,
+    maxScanMillis: Long = 3_000L,
+    cancellationCheck: () -> Unit = {}
+): WorkspaceSearchResponse {
+    val dir = templatesStartingPointsDir()
+        ?: return WorkspaceSearchResponse(rawQuery.trim(), emptyList(), 0, 0, false)
+    val response = searchWorkspace(
+        base = dir.absolutePath,
+        rawQuery = rawQuery,
+        maxDocuments = maxDocuments,
+        maxMatchesPerDocument = maxMatchesPerDocument,
+        maxScanMillis = maxScanMillis,
+        cancellationCheck = cancellationCheck
+    )
+    return response.copy(documents = response.documents.map { it.copy(kind = "template") })
 }
 
 /** Text-search the bundled starting points, tagging every result `kind = "starting-point"`. */
@@ -1472,13 +1528,17 @@ fun updateDocumentTags(base: String, filename: String, tags: List<String>): Docu
  */
 fun openStartingPointIntoWorkspace(base: String, name: String): DuplicateDocumentResponse {
     val cleanName = validateWorkspaceDocumentName(name)
-    val root = startingPointsDir() ?: throw IllegalArgumentException("no starting points are available")
-    val sourceDir = File(root, cleanName).canonicalFile
-    require(sourceDir.toPath().startsWith(root.canonicalFile.toPath())) { "starting point is outside the bundle" }
-    require(sourceDir.isDirectory) { "starting point not found" }
-    require(File(sourceDir, SavingContext.METADATA_EDN).isFile || File(sourceDir, SavingContext.METADATA_JSON).isFile) {
-        "starting point has no metadata"
-    }
+    // A starting point can live in either bundled root: the materialized agent transcripts or the
+    // document templates. Search both (transcripts first) for a matching, in-bounds document dir.
+    val roots = listOfNotNull(startingPointsDir(), templatesStartingPointsDir())
+    if (roots.isEmpty()) throw IllegalArgumentException("no starting points are available")
+    val sourceDir = roots.asSequence()
+        .map { root -> root to File(root, cleanName).canonicalFile }
+        .firstOrNull { (root, dir) ->
+            dir.toPath().startsWith(root.canonicalFile.toPath()) && dir.isDirectory &&
+                (File(dir, SavingContext.METADATA_EDN).isFile || File(dir, SavingContext.METADATA_JSON).isFile)
+        }?.second
+        ?: throw IllegalArgumentException("starting point not found")
 
     // Pick a workspace name that does not collide (name, name-2, name-3, …).
     val baseDir = File(base).canonicalFile
@@ -1494,11 +1554,11 @@ fun openStartingPointIntoWorkspace(base: String, name: String): DuplicateDocumen
 
     try {
         sourceDir.walkTopDown()
-            .onEnter { dir -> dir == sourceDir || (dir.name != "backups" && dir.name != ".git") }
+            .onEnter { dir -> dir == sourceDir || dir.name !in STARTING_POINT_COPY_SKIP_DIRS }
             .forEach { source ->
                 if (source == sourceDir) return@forEach
-                if (source.isDirectory && (source.name == "backups" || source.name == ".git")) return@forEach
-                if (source.name == "versions.edn") return@forEach
+                if (source.isDirectory && source.name in STARTING_POINT_COPY_SKIP_DIRS) return@forEach
+                if (source.name == "versions.edn" || source.name == ".DS_Store") return@forEach
                 val relative = source.relativeTo(sourceDir)
                 val dest = File(targetDir, relative.path)
                 if (source.isDirectory) dest.mkdirs()
@@ -1522,6 +1582,13 @@ fun openStartingPointIntoWorkspace(base: String, name: String): DuplicateDocumen
         tags = summary.tags
     )
 }
+
+/**
+ * Directories never copied when opening a bundled starting point (or template) into the workspace:
+ * version-history/backup scaffolding and VCS metadata. `backup` (singular) matters for the bundled
+ * templates — `templates/remote/backup/` holds hundreds of history files that must not be cloned.
+ */
+private val STARTING_POINT_COPY_SKIP_DIRS = setOf("backups", "backup", ".git")
 
 fun duplicateWorkspaceDocument(base: String, sourceFilename: String, newFilename: String): DuplicateDocumentResponse {
     val cleanSource = validateWorkspaceDocumentName(sourceFilename)
