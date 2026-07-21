@@ -1822,6 +1822,15 @@ body {
     background: #fff;
 }
 
+/* Field-authored (dark-theme) Plotly plots render straight into the output DOM, so
+   inherit Field's own typeface on every text node — titles, ticks, legend, hover.
+   plotly.js lays out via getBBox() on the live element, so the CSS font is the one it
+   measures with (no tick-label clipping). !important overrides plotly's inline font. */
+.js-plotly-plot text,
+.plotly-graph-div text {
+    font-family: var(--field-font) !important;
+}
+
 .output_annotation {
     position: absolute;
     top: 10px;
