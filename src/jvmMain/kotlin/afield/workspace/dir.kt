@@ -36,7 +36,11 @@ data class WelcomeEntry(
     val tags: List<String> = emptyList(),
     val runningSessionCount: Int = 0,
     val runningExecutionCount: Int = 0,
-    val kind: String = "document"
+    val kind: String = "document",
+    // Relative paths (under the document dir) to the newest history screenshot for each surface,
+    // served via /history-screenshot?file=<filename>&path=<...>. Empty when the document has none.
+    val canvasThumbnail: String = "",
+    val fourThumbnail: String = ""
 )
 
 @Serializable
@@ -262,6 +266,7 @@ data class WelcomeDocsResponse(
     val defaultDocument: String,
     val allTags: List<String> = emptyList(),
     val runningDocuments: List<RunningDocumentEntry> = emptyList(),
+    val startingPoints: List<WelcomeEntry> = emptyList(),
     val currentWorkspace: String = "",
     val defaultWorkspace: String = "",
     val aiSettings: AiSettingsStatus = AiSettingsStatus(),
@@ -484,6 +489,11 @@ data class DuplicateDocumentResponse(
     val numBoxes: Int,
     val sizeBytes: Long,
     val tags: List<String> = emptyList()
+)
+
+@Serializable
+data class StartingPointOpenRequest(
+    val name: String
 )
 
 @Serializable
@@ -767,6 +777,37 @@ fun welcomeDirCandidates(base: String, recents: List<String>): List<WelcomeDirCa
     )
 }
 
+private val welcomeScreenshotNamePattern =
+    Regex("""^v(\d+)_(\d+)\.(png|jpg|jpeg)$""", RegexOption.IGNORE_CASE)
+
+/**
+ * Newest history screenshot for the channels matching [channelMatches], as a path relative to the
+ * document directory (e.g. `history_screenshots/electron-window/v01984_....jpg`). Chosen by version
+ * index then timestamp from the filename, so it is a cheap name-only scan with no per-file `stat`.
+ * The `/history-screenshot` route validates the file contents when it is actually served.
+ */
+private fun latestWelcomeScreenshot(docDir: File, channelMatches: (String) -> Boolean): String {
+    val root = File(docDir, "history_screenshots")
+    val channelDirs = root.listFiles { file -> file.isDirectory && channelMatches(file.name) }
+        ?.takeIf { it.isNotEmpty() } ?: return ""
+    var best: File? = null
+    var bestVersion = -1L
+    var bestTimestamp = -1L
+    channelDirs.forEach { channelDir ->
+        channelDir.listFiles()?.forEach { file ->
+            val match = welcomeScreenshotNamePattern.matchEntire(file.name) ?: return@forEach
+            val version = match.groupValues[1].toLongOrNull() ?: return@forEach
+            val timestamp = match.groupValues[2].toLongOrNull() ?: 0L
+            if (version > bestVersion || (version == bestVersion && timestamp > bestTimestamp)) {
+                best = file
+                bestVersion = version
+                bestTimestamp = timestamp
+            }
+        }
+    }
+    return best?.relativeTo(docDir)?.path?.replace(File.separatorChar, '/') ?: ""
+}
+
 /**
  * Expensive per-document step: parse (or reuse a cached parse of) the document metadata to obtain
  * its box count and tags. Returns null if the document can't be read.
@@ -784,7 +825,11 @@ fun summarizeWelcomeCandidate(
             sizeBytes = candidate.sizeBytes,
             lastModifiedEpochMs = candidate.lastModifiedEpochMs,
             lastModifiedAgoMs = now - candidate.lastModifiedEpochMs,
-            tags = summary.tags
+            tags = summary.tags,
+            canvasThumbnail = latestWelcomeScreenshot(candidate.dir) { it == "electron-window" },
+            fourThumbnail = latestWelcomeScreenshot(candidate.dir) {
+                it == "four-window" || it.startsWith("four-window-")
+            }
         )
     } catch (e: Exception) {
         lprintln("warning,welcome", "Skipping ${candidate.filename}: ${e.message}")
@@ -797,6 +842,62 @@ fun welcomeDir(base: String, recents: List<String>): List<WelcomeEntry> {
     val savingContext = SavingContext()
     return welcomeDirCandidates(base, recents)
         .mapNotNull { summarizeWelcomeCandidate(it, now, savingContext) }
+}
+
+/** Repo-relative location of the materialized agent-transcript starting points (see
+ * [afield.examples.AgentTranscriptMaterializer]). One document folder per transcript. */
+private const val STARTING_POINTS_REL = "public/docs/assets/agent_transcripts"
+
+/**
+ * Locate the bundled "starting points" workspace — the materialized agent transcripts. These are
+ * curated, CI-verified example documents that ship with Field (not in the user's workspace), so the
+ * welcome screen and its search can offer them as ready-to-open scenes. Resolution:
+ * `-Dafield.startingPoints.dir` override, else the repo-relative dir walked up from the working dir.
+ * Returns null when not found (e.g. a packaged build without the docs assets) — callers degrade to
+ * simply not offering starting points.
+ */
+fun startingPointsDir(): File? {
+    System.getProperty("afield.startingPoints.dir")?.takeIf { it.isNotBlank() }?.let {
+        return File(it).takeIf { d -> d.isDirectory }
+    }
+    var dir: File? = File(System.getProperty("user.dir")).absoluteFile
+    while (dir != null) {
+        val candidate = File(dir, STARTING_POINTS_REL)
+        if (candidate.isDirectory) return candidate
+        dir = dir.parentFile
+    }
+    return null
+}
+
+/** Welcome cards for the bundled starting points, tagged `kind = "starting-point"`. Empty when none. */
+fun startingPoints(): List<WelcomeEntry> {
+    val dir = startingPointsDir() ?: return emptyList()
+    val now = System.currentTimeMillis()
+    val savingContext = SavingContext()
+    return welcomeDirCandidates(dir.absolutePath, emptyList())
+        .mapNotNull { summarizeWelcomeCandidate(it, now, savingContext) }
+        .map { it.copy(kind = "starting-point") }
+}
+
+/** Text-search the bundled starting points, tagging every result `kind = "starting-point"`. */
+fun searchStartingPoints(
+    rawQuery: String,
+    maxDocuments: Int = 50,
+    maxMatchesPerDocument: Int = 5,
+    maxScanMillis: Long = 3_000L,
+    cancellationCheck: () -> Unit = {}
+): WorkspaceSearchResponse {
+    val dir = startingPointsDir()
+        ?: return WorkspaceSearchResponse(rawQuery.trim(), emptyList(), 0, 0, false)
+    val response = searchWorkspace(
+        base = dir.absolutePath,
+        rawQuery = rawQuery,
+        maxDocuments = maxDocuments,
+        maxMatchesPerDocument = maxMatchesPerDocument,
+        maxScanMillis = maxScanMillis,
+        cancellationCheck = cancellationCheck
+    )
+    return response.copy(documents = response.documents.map { it.copy(kind = "starting-point") })
 }
 
 fun projectsDir(base: String): File {
@@ -1361,6 +1462,65 @@ fun updateDocumentTags(base: String, filename: String, tags: List<String>): Docu
     val updatedMetadata = replaceTagsInMetadata(existingMetadata, normalizedTags)
     val changed = SavingContext().updateRootMetadata(documentDir.absolutePath, updatedMetadata)
     return DocumentTagsUpdateResponse(cleanName, normalizedTags, changed)
+}
+
+/**
+ * Copy a bundled starting point (a materialized agent transcript, see [startingPointsDir]) into the
+ * user's workspace under a fresh, non-colliding name and return it, so the welcome screen can offer
+ * "open" on a read-only bundled scene without ever mutating the bundle. Reuses the same recursive
+ * copy [duplicateWorkspaceDocument] uses (skipping `backups`/`.git`/`versions.edn`).
+ */
+fun openStartingPointIntoWorkspace(base: String, name: String): DuplicateDocumentResponse {
+    val cleanName = validateWorkspaceDocumentName(name)
+    val root = startingPointsDir() ?: throw IllegalArgumentException("no starting points are available")
+    val sourceDir = File(root, cleanName).canonicalFile
+    require(sourceDir.toPath().startsWith(root.canonicalFile.toPath())) { "starting point is outside the bundle" }
+    require(sourceDir.isDirectory) { "starting point not found" }
+    require(File(sourceDir, SavingContext.METADATA_EDN).isFile || File(sourceDir, SavingContext.METADATA_JSON).isFile) {
+        "starting point has no metadata"
+    }
+
+    // Pick a workspace name that does not collide (name, name-2, name-3, …).
+    val baseDir = File(base).canonicalFile
+    var target = cleanName
+    var suffix = 2
+    while (File(baseDir, target).exists()) {
+        target = "$cleanName-$suffix"
+        suffix++
+    }
+    val targetDir = File(baseDir, target).canonicalFile
+    require(targetDir.toPath().startsWith(baseDir.toPath())) { "target is outside workspace" }
+    require(targetDir.mkdirs()) { "could not create workspace copy" }
+
+    try {
+        sourceDir.walkTopDown()
+            .onEnter { dir -> dir == sourceDir || (dir.name != "backups" && dir.name != ".git") }
+            .forEach { source ->
+                if (source == sourceDir) return@forEach
+                if (source.isDirectory && (source.name == "backups" || source.name == ".git")) return@forEach
+                if (source.name == "versions.edn") return@forEach
+                val relative = source.relativeTo(sourceDir)
+                val dest = File(targetDir, relative.path)
+                if (source.isDirectory) dest.mkdirs()
+                else { dest.parentFile?.mkdirs(); source.copyTo(dest, overwrite = false) }
+            }
+    } catch (e: Exception) {
+        targetDir.deleteRecursively()
+        throw e
+    }
+
+    val metadataFile = when {
+        File(targetDir, SavingContext.METADATA_EDN).isFile -> File(targetDir, SavingContext.METADATA_EDN)
+        File(targetDir, SavingContext.METADATA_JSON).isFile -> File(targetDir, SavingContext.METADATA_JSON)
+        else -> throw IllegalStateException("workspace copy was created without metadata")
+    }
+    val summary = readWorkspaceDocumentSummary(SavingContext(), targetDir, metadataFile)
+    return DuplicateDocumentResponse(
+        filename = target,
+        numBoxes = summary.numBoxes,
+        sizeBytes = metadataFile.length(),
+        tags = summary.tags
+    )
 }
 
 fun duplicateWorkspaceDocument(base: String, sourceFilename: String, newFilename: String): DuplicateDocumentResponse {

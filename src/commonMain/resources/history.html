@@ -1422,6 +1422,13 @@
 
             function scheduleElectronHistoryScreenshot(versionIndex = -1) {
                 if (disposed) return;
+                // The always-loaded editor top frame now captures canvas history on every save
+                // (see setupCanvasHistoryCapture in bootstrapMonaco.js). When it's active, skip the
+                // panel's own trigger so we don't double-capture while History is open.
+                try {
+                    if (window.parent && window.parent !== window && window.parent.__canvasHistoryCaptureActive) return;
+                    if (window.__canvasHistoryCaptureActive) return;
+                } catch (_) {}
                 electronScreenshotPendingVersion = versionIndex;
                 if (electronScreenshotInFlight || electronScreenshotTimer != null) {
                     return;

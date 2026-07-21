@@ -1093,11 +1093,30 @@
 
         .list-panel {
             padding: 10px;
-            display: grid;
-            grid-template-rows: auto auto minmax(0, 1fr);
+            display: flex;
+            flex-direction: column;
             gap: 8px;
             min-height: 0;
             overflow: hidden;
+        }
+
+        /* The scrolling document list takes the flexible middle; the starting-points dock is pinned
+           beneath it at the bottom of the left column. Flex (not grid rows) so it stays correct even
+           though .list-header is display:none and doesn't occupy a row. */
+        #recent-list {
+            flex: 1 1 auto;
+        }
+
+        /* Pinned to the bottom of the left column, outside the scrolling list. Collapsed by default;
+           when opened, its own content scrolls (max-height) rather than shoving the list. */
+        #starting-points-dock:empty {
+            display: none;
+        }
+
+        #starting-points-dock {
+            flex: 0 0 auto;
+            overflow: auto;
+            max-height: 42vh;
         }
 
         .running-panel {
@@ -1178,6 +1197,62 @@
             color: var(--field-text);
         }
 
+        .starting-points-section {
+            padding-top: 6px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .starting-points-summary {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 8px 4px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: var(--field-text-soft);
+            list-style: none;
+            user-select: none;
+        }
+
+        .starting-points-summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .starting-points-summary::before {
+            content: "▸";
+            font-size: 10px;
+            line-height: 1;
+            transition: transform 0.12s ease;
+            color: var(--field-text-soft);
+        }
+
+        details.starting-points-section[open] .starting-points-summary::before {
+            transform: rotate(90deg);
+        }
+
+        .starting-points-summary:hover {
+            color: var(--field-text);
+        }
+
+        .starting-points-count {
+            font-weight: 500;
+            letter-spacing: 0;
+            padding: 1px 7px;
+            border-radius: 999px;
+            background: rgba(120, 170, 255, 0.14);
+            border: 1px solid rgba(120, 170, 255, 0.35);
+            color: var(--field-text);
+        }
+
+        .starting-points-hint {
+            font-size: 12px;
+            color: var(--field-text-soft);
+            padding: 0 4px 8px 4px;
+        }
+
         .list-header {
             display: none;
             justify-content: space-between;
@@ -1208,6 +1283,105 @@
             cursor: pointer;
             text-align: left;
             border-bottom: 1px solid black;
+            position: relative;
+        }
+
+        /* History-screenshot thumbnails live in the LEFT GUTTER, outside the list panel — one row
+           each, canvas (electron-window) capture nearest the panel and the afield.four renderer
+           capture one thumbnail over (further left), in two fixed columns so they line up across
+           rows. To reach the gutter without breaking the vertical scroll, the scroll container is
+           extended left (negative margin + matching padding) so the gutter is inside its scroll
+           viewport, and the panel is un-clipped so they render in the margin. Only enabled when the
+           viewport is wide enough to have gutter room; below that they're hidden (nowhere to put
+           them without overlapping the text or running off-screen). */
+        .doc-thumbs {
+            display: none;
+        }
+
+        @media (min-width: 1400px) {
+            .list-panel {
+                overflow: visible;
+            }
+
+            #recent-list {
+                /* Extend the scroll container's left edge out to the viewport-left content edge so
+                   the whole left gutter is inside the scroll viewport (and scrolls with the rows).
+                   50vw - 561px ≈ the distance from a row's content-left to x=0 at rootWidth 1180, so
+                   the box lands at the viewport edge at every width ≥ the 1400px gate below. */
+                margin-left: calc(561px - 50vw);
+                padding-left: calc(50vw - 561px);
+                /* Paired with overflow-y:auto this computes to overflow-x:hidden, clipping at the
+                   padding box — which now spans the whole gutter, so the thumbnails aren't cut. */
+                overflow-x: clip;
+            }
+
+            /* Two thumbnail columns in the gutter: col 1 the afield.four render, col 2 the canvas
+               capture nearest the panel. Right-anchored so the canvas column sits 5px left of the
+               list's black border (20px = 15px panel border+padding + 5px gap); the container is
+               auto-width and grows leftward as the thumbnails scale. It carries the same 1px black
+               bottom border as the list rows so the gutter separators line up with them. */
+            .doc-thumbs {
+                position: absolute;
+                left: auto;
+                right: calc(100% + 20px);
+                top: 0;
+                /* -1px so this container's black bottom border lands on the row's own 1px black
+                   border-bottom (which sits below the padding box), keeping the gutter separators
+                   flush with the document-row separators. */
+                bottom: -1px;
+                width: auto;
+                display: grid;
+                grid-template-columns: auto auto;
+                /* Pin the single row track to the container height. Without this the implicit row
+                   is `auto` and a thumbnail's `height: 100%` can resolve against the aspect-ratio's
+                   max-content height (→ max-height) instead of the row height, blowing thumbnails up
+                   in short list rows so they overlap their neighbours. */
+                grid-template-rows: minmax(0, 1fr);
+                gap: 5px;
+                align-items: center;
+                /* Hard guard: never let a thumbnail bleed past the row height into an adjacent row,
+                   whatever a given engine does with the percentage-height/aspect-ratio interaction. */
+                overflow: hidden;
+                border-bottom: 1px solid black;
+                z-index: 0;
+                pointer-events: none;
+                opacity: 0.9;
+            }
+
+            .doc-entry:hover .doc-thumbs {
+                opacity: 1;
+            }
+
+            /* Thumbnails scale with the row height (so they grow in the tall search-result rows)
+               while preserving a landscape aspect ratio — width follows height via aspect-ratio.
+               The max-height is derived from the available gutter so two side-by-side always fit
+               (each ≤ (gutter − gap − inset)/2 wide → height = width/1.6), capped at 120px on very
+               wide screens. In short list rows height:100% keeps them small. Empty placeholders
+               (missing capture) share the rule so the columns still line up across rows. */
+            .doc-thumb {
+                height: 100%;
+                max-height: min(120px, calc((25vw - 300px) / 1.6));
+                width: auto;
+                aspect-ratio: 16 / 10;
+                object-fit: cover;
+                border-radius: 3px;
+                display: block;
+            }
+
+            img.doc-thumb {
+                box-sizing: border-box;
+                border: 1px solid rgba(72, 201, 255, 0.3);
+            }
+
+            .doc-thumb-empty {
+                background: none;
+            }
+        }
+
+        .doc-body,
+        .doc-side {
+            position: relative;
+            z-index: 1;
         }
 
         .doc-entry {
@@ -1739,6 +1913,7 @@
                     <span id="doc-count">0</span>
                 </div>
                 <div id="recent-list"></div>
+                <div id="starting-points-dock"></div>
             </section>
         </div>
 
@@ -2077,6 +2252,8 @@
         documents: [],
         projects: [],
         runningDocuments: [],
+        startingPoints: [],
+        startingPointsOpen: false,
         searchQuery: "",
         searchResults: [],
         searchTruncated: false,
@@ -3392,6 +3569,25 @@
         return `/index.html?${new URLSearchParams({ file: name }).toString()}`;
     }
 
+    // Starting points are bundled, read-only example scenes (materialized agent transcripts) that
+    // live outside the workspace. "Opening" one copies it into the workspace under a fresh name,
+    // then opens that copy — so the bundle is never mutated and the user gets an editable scene.
+    async function openStartingPoint(name) {
+        if (!name) return;
+        try {
+            const params = new URLSearchParams({ name });
+            const response = await fetch(`/api/starting-points/open?${params.toString()}`, {
+                method: "POST",
+                cache: "no-store"
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const payload = await response.json();
+            if (payload && payload.filename) openDocument(payload.filename);
+        } catch (error) {
+            console.error("Failed to open starting point", name, error);
+        }
+    }
+
     function revealDocumentLabel() {
         const platform = String(navigator.userAgentData?.platform || navigator.platform || "").toLowerCase();
         if (platform.includes("mac")) return "Reveal in Finder";
@@ -3540,6 +3736,35 @@
 
     function tagsForDoc(doc) {
         return Array.isArray(doc.tags) ? doc.tags : [];
+    }
+
+    function historyThumbUrl(filename, path) {
+        return `/history-screenshot?file=${encodeURIComponent(filename)}&path=${encodeURIComponent(path)}`;
+    }
+
+    // Renders the left-gutter thumbnail layer for a document row: two fixed columns so captures
+    // line up across rows — column 1 is the afield.four renderer (further from the panel), column 2
+    // is the canvas/electron-window capture (nearest the panel). A missing capture leaves an empty
+    // cell so the columns still align. Search-result rows can be missing the thumbnail fields, so
+    // we fall back to the canonical document entry in state.documents.
+    function renderDocThumbs(doc) {
+        let canvas = doc.canvasThumbnail || "";
+        let four = doc.fourThumbnail || "";
+        if (!canvas && !four) {
+            const canonical = state.documents.find((d) => d.filename === doc.filename);
+            if (canonical) {
+                canvas = canonical.canvasThumbnail || "";
+                four = canonical.fourThumbnail || "";
+            }
+        }
+        if (!canvas && !four) return "";
+        const fourCell = four
+            ? `<img class="doc-thumb doc-thumb-four" loading="lazy" alt="" src="${escapeHtml(historyThumbUrl(doc.filename, four))}">`
+            : `<span class="doc-thumb doc-thumb-empty"></span>`;
+        const canvasCell = canvas
+            ? `<img class="doc-thumb doc-thumb-canvas" loading="lazy" alt="" src="${escapeHtml(historyThumbUrl(doc.filename, canvas))}">`
+            : `<span class="doc-thumb doc-thumb-empty"></span>`;
+        return `<div class="doc-thumbs" aria-hidden="true">${fourCell}${canvasCell}</div>`;
     }
 
     function projectDocuments(project) {
@@ -4098,6 +4323,47 @@
         });
     }
 
+    // A card for a bundled starting point (materialized agent transcript). Uses data-starting-point
+    // so the list handler opens it by copy-into-workspace rather than treating it as a workspace doc.
+    function startingPointCardHtml(doc, query) {
+        const when = formatDuration(doc.lastModifiedAgoMs);
+        const boxes = doc.numBoxes === 1 ? "1 box" : `${doc.numBoxes} boxes`;
+        const meta = `${boxes} · ${when}`;
+        const title = query ? highlightQuery(doc.filename, query) : escapeHtml(doc.filename);
+        return `
+            <div role="button" tabindex="0" class="doc-entry starting-point-entry" data-starting-point="${escapeHtml(doc.filename)}">
+                <div class="doc-body">
+                    <div class="doc-title">
+                        <span class="doc-name">${title}</span>
+                    </div>
+                </div>
+                <div class="doc-side">
+                    <span class="doc-meta">${escapeHtml(meta)}</span>
+                </div>
+            </div>
+        `;
+    }
+
+    // Collapsible disclosure for the bundled starting points, tucked beneath the workspace documents
+    // at the bottom of the main list. Collapsed by default; native <details> toggle. Returns "" when
+    // none ship with this build (e.g. a packaged build without the docs assets).
+    function startingPointsSectionHtml() {
+        const points = Array.isArray(state.startingPoints) ? state.startingPoints : [];
+        if (!points.length) return "";
+        const cards = points.map((doc) => startingPointCardHtml(doc, "")).join("");
+        const open = state.startingPointsOpen ? " open" : "";
+        return `
+            <details class="starting-points-section"${open}>
+                <summary class="starting-points-summary">
+                    <span class="starting-points-title">Starting points</span>
+                    <span class="starting-points-count">${points.length}</span>
+                </summary>
+                <div class="starting-points-hint">Curated example scenes — open one to get an editable copy in your workspace.</div>
+                ${cards}
+            </details>
+        `;
+    }
+
     function renderRecentDocuments() {
         const listNode = document.getElementById("recent-list");
         const countNode = document.getElementById("doc-count");
@@ -4143,6 +4409,7 @@
             const meta = `${boxes} · ${formatBytes(doc.sizeBytes)} · ${when}`;
             return `
                 <div role="button" tabindex="0" class="doc-entry ${activeClass}" data-doc="${escapeHtml(doc.filename)}">
+                    ${renderDocThumbs(doc)}
                     <div class="doc-body">
                         <div class="doc-title">
                             <span class="doc-name">${escapeHtml(doc.filename)}</span>
@@ -4158,6 +4425,15 @@
         }).join("");
 
         installDocumentListHandlers(listNode);
+    }
+
+    // Render the pinned starting-points disclosure into its own dock at the bottom of the left
+    // column (a grid row outside the scrolling list), so it is always reachable without scrolling.
+    function renderStartingPointsDock() {
+        const dock = document.getElementById("starting-points-dock");
+        if (!dock) return;
+        dock.innerHTML = startingPointsSectionHtml();
+        installDocumentListHandlers(dock);
     }
 
     function renderSearchResults() {
@@ -4217,6 +4493,7 @@
                     </div>
                 `;
             }
+            const isStartingPoint = doc.kind === "starting-point";
             const activeClass = doc.filename === state.lastOpened ? "active" : "";
             const when = formatDuration(doc.lastModifiedAgoMs);
             const boxes = doc.numBoxes === 1 ? "1 box" : `${doc.numBoxes} boxes`;
@@ -4238,8 +4515,23 @@
                 `;
             }).join("");
 
+            if (isStartingPoint) {
+                return `
+                    <div role="button" tabindex="0" class="doc-entry starting-point-entry" data-starting-point="${escapeHtml(doc.filename)}">
+                        <div class="doc-body">
+                            <div class="doc-title">
+                                <span class="doc-name">${highlightQuery(doc.filename, query)}</span>                            </div>
+                            <div class="search-match-list">${matchHtml}</div>
+                        </div>
+                        <div class="doc-side">
+                            <span class="doc-meta">${escapeHtml(meta)}</span>
+                        </div>
+                    </div>
+                `;
+            }
             return `
                 <div role="button" tabindex="0" class="doc-entry ${activeClass}" data-doc="${escapeHtml(doc.filename)}">
+                    ${renderDocThumbs(doc)}
                     <div class="doc-body">
                         <div class="doc-title">
                             <span class="doc-name">${highlightQuery(doc.filename, query)}</span>
@@ -4271,6 +4563,7 @@
 
     function renderList() {
         renderRunningDocuments();
+        renderStartingPointsDock();
         if (state.searchQuery.trim()) {
             renderSearchResults();
         } else {
@@ -4373,6 +4666,7 @@
             state.documents = Array.isArray(payload.documents) ? payload.documents : [];
             state.projects = Array.isArray(payload.projects) ? payload.projects : [];
             state.runningDocuments = Array.isArray(payload.runningDocuments) ? payload.runningDocuments : [];
+            state.startingPoints = Array.isArray(payload.startingPoints) ? payload.startingPoints : [];
             state.lastOpened = payload.lastOpened || "welcome";
             state.defaultDocument = payload.defaultDocument || state.lastOpened || "welcome";
             state.allTags = Array.isArray(payload.allTags) ? payload.allTags : [];
@@ -4404,6 +4698,7 @@
             state.documents = [];
             state.projects = [];
             state.runningDocuments = [];
+            state.startingPoints = [];
             state.completionDocPolish = {
                 ...(state.completionDocPolish || {}),
                 cache: {
@@ -5560,8 +5855,28 @@
             });
         });
 
+        listNode.querySelectorAll("details.starting-points-section").forEach((details) => {
+            details.addEventListener("toggle", () => {
+                state.startingPointsOpen = details.open;
+            });
+        });
+
+        listNode.querySelectorAll(".starting-point-entry").forEach((entry) => {
+            const name = entry.getAttribute("data-starting-point");
+            entry.addEventListener("click", () => {
+                closeContextMenu();
+                if (name) openStartingPoint(name);
+            });
+            entry.addEventListener("keydown", (event) => {
+                if (event.key !== "Enter") return;
+                event.preventDefault();
+                if (name) openStartingPoint(name);
+            });
+        });
+
         listNode.querySelectorAll(".doc-entry").forEach((entry) => {
             if (entry.classList.contains("project-entry")) return;
+            if (entry.classList.contains("starting-point-entry")) return;
             entry.addEventListener("click", (event) => {
                 if (event.target.closest(".tag-control")) return;
                 closeContextMenu();
