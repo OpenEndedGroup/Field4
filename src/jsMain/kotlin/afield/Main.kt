@@ -93,6 +93,8 @@ external object Provisional {
 object LoadingTracker {
     private var expectedBoxes = -1   // -1 = server hasn't told us yet
     private val arrivedBoxIds = mutableSetOf<String>()
+    private val previewedBoxIds = mutableSetOf<String>()
+    private val createdBoxIds = mutableSetOf<String>()
     private val onlineBoxIds = mutableSetOf<String>()
     private var timeoutHandle: Int? = null
     private var finished = false
@@ -101,6 +103,32 @@ object LoadingTracker {
     private var sawBackendStatus = false
     private var statusText = "loading document"
     private var progressElement: HTMLElement? = null
+    private val startedAt = window.performance.now()
+
+    private fun diagnosticSnapshot(reason: String): dynamic = json(
+        "reason" to reason,
+        "elapsedMs" to (window.performance.now() - startedAt).roundToInt(),
+        "expectedBoxes" to expectedBoxes,
+        "previewedBoxes" to previewedBoxIds.size,
+        "createdBoxes" to createdBoxIds.size,
+        "arrivedBoxes" to arrivedBoxIds.size,
+        "onlineBoxes" to onlineBoxIds.size,
+        "backendCompleted" to backendCompleted,
+        "backendLoading" to backendLoading,
+        "sawBackendStatus" to sawBackendStatus,
+        "finished" to finished,
+        "statusText" to statusText,
+        "previewedBoxSample" to previewedBoxIds.take(24).toTypedArray(),
+        "createdBoxSample" to createdBoxIds.take(24).toTypedArray(),
+        "onlineBoxSample" to onlineBoxIds.take(24).toTypedArray()
+    )
+
+    private fun publishDiagnostic(reason: String, details: dynamic = null) {
+        val snapshot = diagnosticSnapshot(reason)
+        snapshot.details = details
+        window.asDynamic().fieldLoadingDiagnosticState = snapshot
+        fieldDiagnostic("document-loading", snapshot)
+    }
 
     /**
      * The server tells us how many non-tombstoned boxes to expect.
@@ -109,6 +137,7 @@ object LoadingTracker {
     fun setExpectedCount(count: Int) {
         if (finished) return
         expectedBoxes = count
+        publishDiagnostic("expected-count", json("count" to count))
         if (isComplete()) {
             finish()
         } else {
@@ -119,7 +148,15 @@ object LoadingTracker {
 
     fun boxFramesPreviewed(uids: List<String>) {
         if (finished) return
+        previewedBoxIds.addAll(uids)
         arrivedBoxIds.addAll(uids)
+        publishDiagnostic(
+            "frames-previewed",
+            json(
+                "count" to uids.size,
+                "uids" to uids.take(50).toTypedArray()
+            )
+        )
         if (isComplete()) {
             finish()
         } else {
@@ -134,6 +171,7 @@ object LoadingTracker {
      */
     fun start() {
         if (finished) return
+        publishDiagnostic("watchdog-started")
         resetTimeout()
     }
 
@@ -148,6 +186,16 @@ object LoadingTracker {
             status.phase.isNotBlank() -> status.phase.replace("-", " ")
             else -> "loading document"
         }
+        publishDiagnostic(
+            "backend-status",
+            json(
+                "phase" to status.phase,
+                "message" to status.message,
+                "count" to status.count,
+                "completed" to status.completed,
+                "terminal" to status.terminal
+            )
+        )
         if (isComplete()) {
             finish()
         } else {
@@ -159,7 +207,9 @@ object LoadingTracker {
     /** A new box arrived from the server (set-rect). */
     fun boxAdded(uid: String) {
         if (finished) return
+        createdBoxIds.add(uid)
         arrivedBoxIds.add(uid)
+        publishDiagnostic("box-created", json("uid" to uid))
         updateNotification()
         resetTimeout()
     }
@@ -169,6 +219,7 @@ object LoadingTracker {
         if (finished) return
         arrivedBoxIds.add(uid)
         onlineBoxIds.add(uid)
+        publishDiagnostic("box-online", json("uid" to uid))
         if (isComplete()) {
             finish()
         } else {
@@ -231,30 +282,36 @@ object LoadingTracker {
     private fun handleIdleTimeout() {
         if (finished) return
         if (isComplete()) {
+            publishDiagnostic("watchdog-complete")
             finish()
             return
         }
         if (backendLoading) {
+            publishDiagnostic("watchdog-backend-still-loading")
             updateNotification()
             resetTimeout()
             return
         }
         if (expectedBoxes > 0 && arrivedBoxIds.size < expectedBoxes) {
+            publishDiagnostic("watchdog-missing-box-frames")
             updateNotification()
             resetTimeout()
             return
         }
         if (!sawBackendStatus && expectedBoxes < 0 && arrivedBoxIds.isEmpty()) {
+            publishDiagnostic("watchdog-no-backend-messages")
             updateNotification()
             resetTimeout()
             return
         }
+        publishDiagnostic("watchdog-fallback-finish")
         finish()
     }
 
     private fun finish() {
         if (finished) return
         finished = true
+        publishDiagnostic("finished")
         timeoutHandle?.let { kotlinx.browser.window.clearTimeout(it) }
         timeoutHandle = null
         progressElement?.let { element ->
@@ -4692,6 +4749,15 @@ suspend fun main() {
 
     handlers.put("message-batch") { message, reply ->
         val batch = Json.decodeFromJsonElement<MessageBatch>(message.payload!!)
+        if (!LoadingTracker.isFinished()) {
+            fieldDiagnostic(
+                "ws-message-batch",
+                json(
+                    "count" to batch.messages.size,
+                    "names" to batch.messages.take(100).map { it.name }.toTypedArray()
+                )
+            )
+        }
         val deferred = mutableListOf<Message>()
         batch.messages.forEach { child ->
             if (batchedMessageDrain.shouldDefer(child)) {

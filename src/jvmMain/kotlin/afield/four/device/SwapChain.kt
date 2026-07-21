@@ -373,7 +373,21 @@ class SwapChain(
                 "Failed to get surface present modes"
             )
             val supported = (0 until count[0]).map { modes[it] }.toSet()
-            val preferred = if (vsync) {
+            val preferred = if (Options.enableVR) {
+                // When VR is active the desktop window is only a mirror; it must NOT gate the
+                // shared render loop, because openXRHmdTarget.renderFrame() (and its xrWaitFrame
+                // pacing) runs at the tail of the same single-threaded loop as the desktop present.
+                // A vsync-locked (FIFO) desktop present caps the whole loop at the monitor refresh
+                // (e.g. 60Hz), starving the headset below its native rate (e.g. 90Hz). On Windows
+                // MAILBOX is already used and hides this; on Linux the FIFO default exposes it.
+                // Prefer a non-blocking present mode so xrWaitFrame becomes the pacing authority.
+                listOf(
+                    KHRSurface.VK_PRESENT_MODE_MAILBOX_KHR,
+                    KHRSurface.VK_PRESENT_MODE_IMMEDIATE_KHR,
+                    KHRSurface.VK_PRESENT_MODE_FIFO_RELAXED_KHR,
+                    KHRSurface.VK_PRESENT_MODE_FIFO_KHR
+                )
+            } else if (vsync) {
                 when {
                     Options.isWindows -> listOf(
                         KHRSurface.VK_PRESENT_MODE_MAILBOX_KHR,
@@ -396,6 +410,19 @@ class SwapChain(
             val selected = preferred.firstOrNull { it in supported } ?: KHRSurface.VK_PRESENT_MODE_FIFO_KHR
             if (selected !in supported) {
                 lprintln("warning,graphics", "Surface did not report FIFO present mode; using Vulkan-required FIFO fallback")
+            }
+            if (Options.enableVR) {
+                val name = when (selected) {
+                    KHRSurface.VK_PRESENT_MODE_MAILBOX_KHR -> "MAILBOX"
+                    KHRSurface.VK_PRESENT_MODE_IMMEDIATE_KHR -> "IMMEDIATE"
+                    KHRSurface.VK_PRESENT_MODE_FIFO_RELAXED_KHR -> "FIFO_RELAXED"
+                    KHRSurface.VK_PRESENT_MODE_FIFO_KHR -> "FIFO"
+                    else -> selected.toString()
+                }
+                lprintln("info,graphics", "VR active: desktop mirror present mode = $name (non-blocking preferred so xrWaitFrame paces the headset)")
+                if (selected == KHRSurface.VK_PRESENT_MODE_FIFO_KHR) {
+                    lprintln("warning,graphics", "VR active but only FIFO present available; desktop mirror vsync may cap headset to monitor refresh")
+                }
             }
             selected
         }

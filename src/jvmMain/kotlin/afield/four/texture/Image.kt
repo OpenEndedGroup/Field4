@@ -193,11 +193,20 @@ class Image(private val device: Device, val imageData: ImageData) {
     @Volatile
     private var layoutByCommandBuffer = java.util.concurrent.ConcurrentHashMap<Long, Int>()
 
+    // Vulkan image layout is global to the image subresource, not to a command buffer. Keep the
+    // most recently recorded transition as well so consumers recording on another command buffer
+    // (notably OpenXR) can transition from the producer's actual layout.
+    @Volatile
+    private var lastKnownLayout: Int? = null
+
     fun setLayoutFor(commandBufferHandle: Long, layout: Int) {
         layoutByCommandBuffer[commandBufferHandle] = layout
+        lastKnownLayout = layout
     }
 
     fun getLayoutFor(commandBufferHandle: Long): Int? = layoutByCommandBuffer[commandBufferHandle]
+
+    fun getLastKnownLayout(): Int? = lastKnownLayout
 
     /**
      * Export the IOSurfaceRef backing this image's MTLTexture (MoltenVK, VK_EXT_metal_objects).

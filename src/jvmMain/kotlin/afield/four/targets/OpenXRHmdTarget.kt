@@ -787,18 +787,27 @@ class OpenXRHmdTarget(
 
                 // Enumerate images
                 val imageCountBuf = stack.callocInt(1)
-                xrEnumerateSwapchainImages(swapchain, imageCountBuf, null)
+                val imageCountRes = xrEnumerateSwapchainImages(swapchain, imageCountBuf, null)
+                check(imageCountRes == XR_SUCCESS) {
+                    "xrEnumerateSwapchainImages(count) failed: $imageCountRes"
+                }
                 val imageCount = imageCountBuf[0]
+                check(imageCount > 0) { "OpenXR swapchain returned no Vulkan images" }
 
                 val swapchainImages = XrSwapchainImageVulkan2KHR.calloc(imageCount, stack)
                 for (j in 0 until imageCount) {
-                    swapchainImages[j].type(KHRVulkanEnable2.XR_TYPE_SWAPCHAIN_IMAGE_VULKAN2_KHR)
+                    // Like the Vulkan2 graphics binding/requirements structs, LWJGL's Vulkan2
+                    // wrapper is an alias but SteamVR expects the original KHR structure type.
+                    swapchainImages[j].type(KHRVulkanEnable.XR_TYPE_SWAPCHAIN_IMAGE_VULKAN_KHR)
                 }
-                xrEnumerateSwapchainImages(
+                val imageRes = xrEnumerateSwapchainImages(
                     swapchain,
                     imageCountBuf,
                     XrSwapchainImageBaseHeader.create(swapchainImages)
                 )
+                check(imageRes == XR_SUCCESS) {
+                    "xrEnumerateSwapchainImages(images) failed: $imageRes"
+                }
 
                 val images = LongArray(imageCount) { swapchainImages[it].image() }
 
@@ -1832,16 +1841,34 @@ class OpenXRHmdTarget(
                     .baseArrayLayer(0)
                     .layerCount(1)
 
-                // Assume the source is in SHADER_READ_ONLY_OPTIMAL (RenderToTexture default).
+                // The source may be a sampled RTT (SHADER_READ_ONLY_OPTIMAL) or a storage/render
+                // image (commonly GENERAL). Preserve the producer's tracked layout rather than
+                // assuming every HasImageView came from the default RTT path.
+                val srcOldLayout = srcUnderlying?.getLastKnownLayout()
+                    ?: VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                val (srcStage, srcAccess) = when (srcOldLayout) {
+                    VK_IMAGE_LAYOUT_GENERAL ->
+                        VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT to
+                                (VK_ACCESS_2_MEMORY_READ_BIT or VK_ACCESS_2_MEMORY_WRITE_BIT)
+                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL ->
+                        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT to
+                                VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
+                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL ->
+                        VK_PIPELINE_STAGE_2_TRANSFER_BIT to VK_ACCESS_2_TRANSFER_WRITE_BIT
+                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL ->
+                        VK_PIPELINE_STAGE_2_TRANSFER_BIT to VK_ACCESS_2_TRANSFER_READ_BIT
+                    else ->
+                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT to VK_ACCESS_2_SHADER_READ_BIT
+                }
                 if (srcUnderlying != null)
                     image_layout_transition(
                         cmd.vkCommandBuffer,
                         srcUnderlying,
-                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                        srcStage,
                         VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                        VK_ACCESS_2_SHADER_READ_BIT,
+                        srcAccess,
                         VK_ACCESS_2_TRANSFER_READ_BIT,
-                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                        srcOldLayout,
                         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                         srcRange
                     )
@@ -1849,11 +1876,11 @@ class OpenXRHmdTarget(
                     image_layout_transition(
                         cmd.vkCommandBuffer,
                         srcImage,
-                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                        srcStage,
                         VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                        VK_ACCESS_2_SHADER_READ_BIT,
+                        srcAccess,
                         VK_ACCESS_2_TRANSFER_READ_BIT,
-                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                        srcOldLayout,
                         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                         srcRange
                     )
@@ -1928,17 +1955,33 @@ class OpenXRHmdTarget(
                     sc.colorSeen[imageIndex] = true
                 }
 
-                // Restore the source for sampling (e.g. window mirror draw).
+                val (restoreStage, restoreAccess) = when (srcOldLayout) {
+                    VK_IMAGE_LAYOUT_GENERAL ->
+                        VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT to
+                                (VK_ACCESS_2_MEMORY_READ_BIT or VK_ACCESS_2_MEMORY_WRITE_BIT)
+                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL ->
+                        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT to
+                                VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT
+                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL ->
+                        VK_PIPELINE_STAGE_2_TRANSFER_BIT to VK_ACCESS_2_TRANSFER_WRITE_BIT
+                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL ->
+                        VK_PIPELINE_STAGE_2_TRANSFER_BIT to VK_ACCESS_2_TRANSFER_READ_BIT
+                    else ->
+                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT to VK_ACCESS_2_SHADER_READ_BIT
+                }
+
+                // Restore the producer's layout (e.g. GENERAL for a storage image, shader-read for
+                // a conventional RTT) so subsequent in-app monitoring uses the expected layout.
                 if (srcUnderlying != null) {
                     image_layout_transition(
                         cmd.vkCommandBuffer,
                         srcUnderlying,
                         VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                        restoreStage,
                         VK_ACCESS_2_TRANSFER_READ_BIT,
-                        VK_ACCESS_2_SHADER_READ_BIT,
+                        restoreAccess,
                         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                        srcOldLayout,
                         srcRange
                     )
                 } else {
@@ -1946,11 +1989,11 @@ class OpenXRHmdTarget(
                         cmd.vkCommandBuffer,
                         srcImage,
                         VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                        restoreStage,
                         VK_ACCESS_2_TRANSFER_READ_BIT,
-                        VK_ACCESS_2_SHADER_READ_BIT,
+                        restoreAccess,
                         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                        srcOldLayout,
                         srcRange
                     )
                 }
@@ -2006,7 +2049,7 @@ class OpenXRHmdTarget(
                     // Depth transition
                     val depthAtt = sc.depthAttachments[imageIndex]
                     val depthRange = VkImageSubresourceRange.calloc(stack)
-                        .aspectMask(VK_IMAGE_ASPECT_DEPTH_BIT or VK_IMAGE_ASPECT_STENCIL_BIT)
+                        .aspectMask(Options.depthAspectMask(depthAtt.image.format))
                         .baseMipLevel(0)
                         .levelCount(1)
                         .baseArrayLayer(0)

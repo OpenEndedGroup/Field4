@@ -1325,7 +1325,11 @@ class KotlinExecution : BoxExecution {
                     }
 
                     // 2) setup blocks (preamble/introduction/attic) on the main thread.
-                    withContext(Runloop.runLoop.main) { runLaunchSetupBlocks(box) }
+                    val setupSucceeded = withContext(Runloop.runLoop.main) { runLaunchSetupBlocks(box) }
+                    if (!setupSucceeded) {
+                        hasError = true
+                        break
+                    }
 
                     // 3) compile this fragment.
                     val snippet = box.ki.withSourceProperty(request.exec.property) {
@@ -1408,10 +1412,10 @@ class KotlinExecution : BoxExecution {
             return "\n".repeat(leadingLines) + exec.code.trimEnd()
         }
 
-        private suspend fun runLaunchSetupBlocks(box: Box) {
-            runSetupBlock(box, "preamble") { c, e, x -> checkPreambleAndExecute(box, c, e, x) }
-            runSetupBlock(box, "introduction") { c, e, x -> checkIntroductionAndExecute(box, c, e, x) }
-            runSetupBlock(box, "attic") { c, e, x -> checkAtticAndExecute(box, c, e, x) }
+        private suspend fun runLaunchSetupBlocks(box: Box): Boolean {
+            if (!runSetupBlock(box, "preamble") { c, e, x -> checkPreambleAndExecute(box, c, e, x) }) return false
+            if (!runSetupBlock(box, "introduction") { c, e, x -> checkIntroductionAndExecute(box, c, e, x) }) return false
+            return runSetupBlock(box, "attic") { c, e, x -> checkAtticAndExecute(box, c, e, x) }
         }
 
         /**
@@ -1428,23 +1432,28 @@ class KotlinExecution : BoxExecution {
                 onEvalError: (List<ScriptDiagnostic>) -> Unit,
                 onEvalException: (Throwable) -> Unit
             ) -> Unit
-        ) {
+        ): Boolean {
             val key = "${box.id}#$block"
+            var failed = false
             PinnedConsole.clearError(key)
             run(
                 { diagnostics ->
+                    failed = true
                     diagnostics.forEach { lprintln("warning,macros", "setup compile: ${it.message} ${it.location}") }
                     pinSetupError(box, key, block, diagnostics)
                 },
                 { diagnostics ->
+                    failed = true
                     diagnostics.forEach { lprintln("warning,macros", "setup eval: ${it.message}") }
                     pinSetupError(box, key, block, diagnostics)
                 },
                 { throwable ->
+                    failed = true
                     lprintln("error,macros", "setup exception: ${throwable.message}")
                     pinSetupException(box, key, block, throwable)
                 }
             )
+            return !failed
         }
 
         private fun clearPendingLaunch(request: BatchLaunchRequest) {
@@ -2265,7 +2274,54 @@ class KotlinExecution : BoxExecution {
                             originSession = originSession
                         )
 
-                    }, implicits = listOf(box), runSetupBlocks = runSetupBlocks)
+                    },
+                        implicits = listOf(box),
+                        runSetupBlocks = runSetupBlocks,
+                        onSetupCompileError = { block, diagnostics ->
+                            hasError = true
+                            val key = "${box.id}#$block"
+                            pinSetupError(box, key, block, diagnostics)
+                            diagnostics.firstOrNull {
+                                it.severity.ordinal >= ScriptDiagnostic.Severity.ERROR.ordinal
+                            }?.let { diagnostic ->
+                                dispatchExecutionOutput(
+                                    box,
+                                    reply,
+                                    Output(
+                                        uid = box.id,
+                                        line = diagnostic.location?.start?.line ?: 0,
+                                        startColumn = diagnostic.location?.start?.col ?: -1,
+                                        kind = "error",
+                                        property = block,
+                                        html = diagnostic.message,
+                                        frame = Runloop.runLoop.frame.toInt()
+                                    ),
+                                    originSession = originSession
+                                )
+                            }
+                        },
+                        onSetupEvalError = { block, diagnostics ->
+                            hasError = true
+                            pinSetupError(box, "${box.id}#$block", block, diagnostics)
+                        },
+                        onSetupEvalException = { block, throwable ->
+                            hasError = true
+                            pinSetupException(box, "${box.id}#$block", block, throwable)
+                            dispatchExecutionOutput(
+                                box,
+                                reply,
+                                Output(
+                                    uid = box.id,
+                                    line = 0,
+                                    kind = "error",
+                                    property = block,
+                                    html = escapeForHtml(throwable.message ?: throwable.javaClass.name),
+                                    frame = Runloop.runLoop.frame.toInt()
+                                ),
+                                originSession = originSession
+                            )
+                        }
+                    )
                 }
 
                 if (!hasError) {

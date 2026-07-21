@@ -15,7 +15,10 @@ suspend fun standardExecutionPractice(
     onEvalError: (List<ScriptDiagnostic>) -> Unit = { lprintln("error,macros", "onEvalError default handler $it") },
     onEvalException: (Throwable) -> Unit = { lprintln("error,macros", "onEvalException default handler $it"); throw it },
     implicits: List<Any> = emptyList(),
-    runSetupBlocks: Boolean = true
+    runSetupBlocks: Boolean = true,
+    onSetupCompileError: (String, List<ScriptDiagnostic>) -> Unit = { _, diagnostics -> onCompileError(diagnostics) },
+    onSetupEvalError: (String, List<ScriptDiagnostic>) -> Unit = { _, diagnostics -> onEvalError(diagnostics) },
+    onSetupEvalException: (String, Throwable) -> Unit = { _, throwable -> onEvalException(throwable) }
 ): List<ResultValue?> {
 
     var lines = s.lines()
@@ -45,21 +48,42 @@ suspend fun standardExecutionPractice(
         }.joinToString("\n")
 
         if (runSetupBlocks) {
-            // Use isolated error handlers for setup blocks (preamble/introduction/attic)
-            // so that setup errors don't suppress the main code's return value display.
-            // Setup errors are logged but don't propagate to the caller's hasError flag.
-            val setupCompileError: (List<ScriptDiagnostic>) -> Unit = { diagnostics ->
-                diagnostics.forEach { lprintln("warning,macros", "setup compile: ${it.message} ${it.location}") }
+            var setupFailed = false
+
+            suspend fun runSetupBlock(
+                name: String,
+                execute: suspend (
+                    (List<ScriptDiagnostic>) -> Unit,
+                    (List<ScriptDiagnostic>) -> Unit,
+                    (Throwable) -> Unit
+                ) -> Unit
+            ) {
+                execute(
+                    { diagnostics ->
+                        setupFailed = true
+                        diagnostics.forEach { lprintln("warning,macros", "$name compile: ${it.message} ${it.location}") }
+                        onSetupCompileError(name, diagnostics)
+                    },
+                    { diagnostics ->
+                        setupFailed = true
+                        diagnostics.forEach { lprintln("warning,macros", "$name eval: ${it.message}") }
+                        onSetupEvalError(name, diagnostics)
+                    },
+                    { throwable ->
+                        setupFailed = true
+                        lprintln("error,macros", "$name exception: ${throwable.message}")
+                        onSetupEvalException(name, throwable)
+                    }
+                )
             }
-            val setupEvalError: (List<ScriptDiagnostic>) -> Unit = { diagnostics ->
-                diagnostics.forEach { lprintln("warning,macros", "setup eval: ${it.message}") }
-            }
-            val setupEvalException: (Throwable) -> Unit = { throwable ->
-                lprintln("error,macros", "setup exception: ${throwable.message}")
-            }
-            checkPreambleAndExecute(implicits[0] as Box, setupCompileError, setupEvalError, setupEvalException)
-            checkIntroductionAndExecute(implicits[0] as Box, setupCompileError, setupEvalError, setupEvalException)
-            checkAtticAndExecute(implicits[0] as Box, setupCompileError, setupEvalError, setupEvalException)
+
+            val box = implicits[0] as Box
+            runSetupBlock("preamble") { c, e, x -> checkPreambleAndExecute(box, c, e, x) }
+            if (setupFailed) return result
+            runSetupBlock("introduction") { c, e, x -> checkIntroductionAndExecute(box, c, e, x) }
+            if (setupFailed) return result
+            runSetupBlock("attic") { c, e, x -> checkAtticAndExecute(box, c, e, x) }
+            if (setupFailed) return result
         }
         val ret = ki.exec(code3, onCompileError, onEvalError, onEvalException, implicits)
         at = it
@@ -132,8 +156,6 @@ suspend fun checkPreambleAndExecute(
     var now = normalizePreambleText(gatherPreambleUpwards(inside))
 
 
-    inside.setPropertyRaw("_preamble", now)
-
     val extra: MutableMap<String, String> = now.preambleSegments().prefixAwareMap()
     was.forEach {
         if (extra.containsKey(it.key)) {
@@ -147,13 +169,19 @@ suspend fun checkPreambleAndExecute(
 
     val extraLines = extra.values.joinToString(separator = "\n")
     if (extraLines.trim().isNotEmpty()) {
+        var failed = false
         println(" preamble, extra lines are ${extraLines}, executing")
         inside.ki.withSourceProperty("preamble") {
             inside.ki.exec(
-                extraLines, onCompileError, onEvalError, onEvalException, implicits = listOf(inside)
+                extraLines,
+                { failed = true; onCompileError(it) },
+                { failed = true; onEvalError(it) },
+                { failed = true; onEvalException(it) },
+                implicits = listOf(inside)
             )
         }
         println(" finished ")
+        if (failed) return
     }
 
     // remove duplicate lines in the order that they arrive
@@ -175,14 +203,19 @@ suspend fun checkIntroductionAndExecute(
 
     // Execute all of introduction if and only if any of it has changed
     if (current.trim().isNotEmpty() && current != was) {
+        var failed = false
         println(" introduction has changed, executing all of it")
         inside.ki.withSourceProperty("introduction") {
             inside.ki.exec(
-                current, onCompileError, onEvalError, onEvalException, implicits = listOf(inside)
+                current,
+                { failed = true; onCompileError(it) },
+                { failed = true; onEvalError(it) },
+                { failed = true; onEvalException(it) },
+                implicits = listOf(inside)
             )
         }
         println(" finished introduction ")
-        inside.setPropertyRaw("_introduction", current)
+        if (!failed) inside.setPropertyRaw("_introduction", current)
     }
 }
 
@@ -203,14 +236,21 @@ suspend fun checkAtticAndExecute(
             "empty=$isEmpty, same=$isSame, currentLen=${currentTrimmed.length}, wasLen=${was?.trim()?.length ?: -1}")
 
     if (!isEmpty && !isSame) {
+        var failed = false
         lprintln("info,attic", "attic changed for '${inside.name}' — executing all of it (${currentTrimmed.lines().size} lines)")
         inside.ki.withSourceProperty("attic") {
             inside.ki.exec(
-                current, onCompileError, onEvalError, onEvalException, implicits = listOf(inside)
+                current,
+                { failed = true; onCompileError(it) },
+                { failed = true; onEvalError(it) },
+                { failed = true; onEvalException(it) },
+                implicits = listOf(inside)
             )
         }
-        inside.setPropertyRaw("_attic", current)
-        lprintln("info,attic", "attic execution complete for '${inside.name}', _attic cache updated")
+        if (!failed) {
+            inside.setPropertyRaw("_attic", current)
+            lprintln("info,attic", "attic execution complete for '${inside.name}', _attic cache updated")
+        }
     } else if (isEmpty) {
         lprintln("info,attic", "attic is empty for '${inside.name}' — skipping")
     } else {
