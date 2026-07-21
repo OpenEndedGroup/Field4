@@ -100,7 +100,7 @@ object RectSLWorkout {
             """.trimIndent()
         )
         require(!typo.ok) { "Unknown word 'arra' should not compile" }
-        require(typo.diagnostics.single() == "Unknown word: arra (did you mean 'array'?)") {
+        require(typo.diagnostics.single() == "Unknown word: arra (did you mean 'area' or 'array'?)") {
             "expected an unknown-word suggestion, got: ${typo.diagnostics}"
         }
         val npe = runCatching { typo.program }.exceptionOrNull()

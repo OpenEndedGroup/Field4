@@ -122,6 +122,14 @@ object AgentTranscriptMaterializer {
                 System.err.println("[error] $msg")
                 t.printStackTrace(System.err)
             } finally {
+                // Dispose KI engines before clearing the session to clean up K2 ForkJoinPool threads.
+                // OperationTranscript.runMacro triggers Box.ki lazy init even for structural-only ops,
+                // leaving thread pools alive if not explicitly disposed.
+                thisSessionInfo.get()?.boxes?.values?.forEach { box ->
+                    if (box.id != "root" && box.id != METAROOT_ID) {
+                        box.disposeKi()
+                    }
+                }
                 thisSessionInfo.remove()
             }
         }
