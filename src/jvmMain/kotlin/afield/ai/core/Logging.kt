@@ -69,7 +69,8 @@ object LogDispatcher {
  * Channels suppressed from the console — both the plain [StdoutLog] and the interactive
  * PinnedConsole honor this. Muted events still reach every *other* sink (e.g. the LogStream web
  * widget), so nothing is lost; they're just too chatty for the terminal. Default mutes the
- * box-resync spam (`info,boxes`). Override with `-Dafield.log.mute=...` or `AFIELD_LOG_MUTE=...`
+ * chatty background channels (`info,boxes`, `info,persist`, `info,ai.boxnames`, `debug,boxes`).
+ * Override with `-Dafield.log.mute=...` or `AFIELD_LOG_MUTE=...`
  * (semicolon-separated exact channel strings); set to a blank/empty value to mute nothing.
  */
 object ConsoleMute {
@@ -78,7 +79,7 @@ object ConsoleMute {
         if (raw != null) {
             raw.split(';').map { it.trim() }.filter { it.isNotEmpty() }.toSet()
         } else {
-            setOf("info,boxes")
+            setOf("info,boxes", "info,persist", "info,ai.boxnames", "debug,boxes")
         }
     }
 
