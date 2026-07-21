@@ -1444,6 +1444,10 @@
             gap: 10px;
             align-items: center;
             justify-content: flex-end;
+            /* Top-align in the row so tags + meta sit by the title. Without this the grid's
+               align-items:center floats them down to the vertical middle of tall search-result
+               rows, colliding with the match snippets. */
+            align-self: start;
             min-width: 0;
             max-width: min(72vw, 900px);
         }
