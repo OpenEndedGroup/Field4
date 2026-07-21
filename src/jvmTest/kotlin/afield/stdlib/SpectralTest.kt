@@ -207,8 +207,10 @@ class SpectralTest {
     }
 
     // ---------------------------------------------------------------------------------------------
-    // Visual proof — render a spectrogram heatmap + centroid trace of a chirp+tone signal to a PNG
-    // in the worktree root. This is the eyeballed capture referenced by the docs / worklog.
+    // Visual/structure proof — render a spectrogram heatmap + centroid trace of a chirp+tone signal
+    // to a PNG in the worktree root and assert it contains real structure (not a flat frame). These
+    // are correctness tests only; the public docs (spectral_examples.md) render their own live
+    // in-Field captures via afield.util.PngEncoder, so the PNGs written here are not shipped.
     // ---------------------------------------------------------------------------------------------
 
     @Test
