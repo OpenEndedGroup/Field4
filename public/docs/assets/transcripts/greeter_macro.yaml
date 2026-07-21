@@ -1,0 +1,15 @@
+name: greeter
+description: >
+  Setup for the automating_field macro-palette docs capture: creates and runs the
+  page's own "greeter" example so it exists as a document macro named "greeter",
+  which then shows up in the command palette. Run before the capture=ui drive op.
+operations:
+  - create:
+      box: hello_box
+      name: hello sketch
+      frame: { x: 60.0, y: 60.0, w: 240.0, h: 130.0 }
+      properties:
+        code: |
+          println("hello from a transcript")
+  - launch: { box: hello_box, property: code }
+  - await: { wait: pending }

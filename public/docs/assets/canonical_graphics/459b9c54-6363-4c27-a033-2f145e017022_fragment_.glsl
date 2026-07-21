@@ -8,4 +8,4 @@ void main()
 {
     vec4 c = texture(bbc, ftc.yx);
     uFragColor = vec4(c.rgb, 1.0);
-}
+} 

@@ -8,8 +8,8 @@ layout(std430, buffer_reference) buffer vertexData
 
 
 layout(push_constant) uniform matrices {
-    mat4 p;
-    mat4 m;
+    mat4 p; 
+    mat4 m; 
     vertexData vertexData;
 } pc;
 

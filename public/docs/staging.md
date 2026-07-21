@@ -60,30 +60,38 @@ At the end of a build, the runner prints a compact summary with regenerated capt
 
 Reusable transcript examples live under `dev_docs/agents/transcripts/`. The most important graphics one is `graphics_renderer_launch.yaml`; it builds and launches the renderer parent that native graphics docs attach their examples to. The public result is modest but important: when a page shows a rendered triangle, buffer example, material test, or ray-traced image, that image was produced by Field during the docs build rather than pasted in by hand.
 
-## Field systems
+## Controlling and automating Field
 
 - [Mobile Controllers](mobile_controllers.md) turns `/controllers` into a phone-sized remote for live controls, outputs, AI4 chat, Open Anything selection, and Monaco editing.
+- [Automating Field](automating_field.md) covers macros, the operation-transcript format, and the MCP bridge that let a script (or an agent) drive Field the same way a person does.
+- [Agent Transcript Gallery](agent_transcripts.md) collects agent-built documents as reproducible starting points, each materialized from a recorded transcript.
+
+## Field systems
+
+- [Apple Vision Pro (WiP)](vision.md) is the in-progress native visionOS front end: the projection model of docks, islands, and tethers, and a stereo dock as the day-one feature.
 - [Fabricate Renderer](fabricate_renderer.md) covers the `StandardRenderer` bundle, scene graph, render planning, frame graph, post stack, glTF import, material response, shadows, and ambient occlusion.
-- [afield.four Graphics](afield_four_graphics.md) exercises the lower-level renderer path using the transcript-driven renderer parent described above.
 - [Ray Tracing Examples](ray_tracing_examples.md) uses the same graphics-context capture route for Vulkan ray tracing examples.
-- [Interactive Guides](interactive_guides.md) shows how boxes can teach a document: slide notes, selections, callbacks, templated values, chat, and callout lines.
-- [Guide Chat](guide_chat.md) covers the optional chat service used by slideshow steps.
+- [afield.four Graphics](afield_four_graphics.md) exercises the lower-level renderer path using the transcript-driven renderer parent described above.
+- [Field Probes](field_probes.md) instruments live shaders: the CPU read-back `fieldProbe` and the GPU-resident `fieldStats`, both demonstrated on one compute-shader particle system.
+- [Interactive Guides](interactive_guides.md) shows how boxes can teach a document: slide notes, selections, callbacks, templated values, per-slide chat (and its optional chat server), and callout lines.
 
 ## Small languages
 
+- [FieldML Examples](fieldml_examples.md) covers Field's small ML-flavoured expression language.
 - [Forth Examples](forth_examples.md) covers Field's small stack language, its output helpers, and its bridge into JVM objects.
+- [StackSL Cheatsheet](stacksl_cheatsheet.md) and [StackSL Examples](stacksl_examples.md) document the concatenative stack language and its worked drawings.
+- [Language Extensions](language_extensions.md) explains how these small languages plug into the editor — highlighting, flow, and completion.
+- [RectSL Cheatsheet](rectsl_cheatsheet.md) and [RectSL Examples](rectsl_examples.md) cover the rectangle-stack drawing language, from its operator vocabulary to animated worked examples.
 - [Nano Examples](nano_examples.md) covers the tiny assembly-like machine and its RAM/register visualizers.
 
 ## Drawing from data
 
 - [Functions Examples](functions_examples.md) turns `Functions` stacks into graphs and parametric FLines.
-- [Interpolants Examples](interpolants_examples.md) draws smoothing behavior.
+- [Functions Domains](functions_domains.md) covers the domain/interval algebra that governs how an `Fn` is constructed and sampled.
+- [Values Over Time](interpolants_examples.md) draws interpolants, `KeyframeScope` parameter/code morphs, rolling correlations, and Kalman/particle-filter estimation — all as FLines or live plots.
 - [Timeseries Examples](timeseries_examples.md) keeps raw signals next to filtered and event-detected signals.
-- [Stats Examples](stats_examples.md) keeps summaries attached to distributions and point streams.
 - [Colors Examples](colors_examples.md) compares color helpers on actual geometry.
-- [Correlations Examples](correlations_examples.md) plots dependence measures instead of treating them as numbers in isolation.
-- [Smile Neighbors Examples](smile_neighbors_examples.md) draws exact, approximate, and radius-based neighborhood queries.
-- [Graph Connectivity Examples](graph_connectivity_examples.md) draws geometric graph families, 3D graph viewers, and pathing overlays.
+- [Neighbors & Graphs Examples](graph_connectivity_examples.md) draws nearest-neighbor queries, geometric graph families, 3D graph viewers, and pathing overlays on one point cloud.
 
 ## Networks and dynamics
 

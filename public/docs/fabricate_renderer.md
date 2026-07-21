@@ -612,6 +612,8 @@ expect:
         marginGt: 6
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-toy-car-gltf.png" source-image="/tmp/docs-fabricate-toy-car-native.png" wait="30.0" timeout="240" execution="launch" embed=true graphics-context=true name="fabricate-toy-car-gltf" hidden=true fabricate-scene="toy-car-gltf"}
+// Scene + camera live in StandardRendererDocsHarness.renderToyCarGltf.
+// Camera lowered to a flatter, near-roofline vantage to match the three.js reference.
 ```
 
 You can still override material classification on import:

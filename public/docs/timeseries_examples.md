@@ -67,7 +67,7 @@ The drawing stays consistent and the signal chain makes the difference. A small 
 
 ![](assets/timeseries_examples/filter_chains.png)
 
-Now the tradeoffs are visible. The raw line still contains everything, the smoothed line becomes legible, and the lower shifted trace isolates a narrower component that might matter musically or physically. For statistical summaries of similar streams, see [Stats examples](stats_examples.md).
+Now the tradeoffs are visible. The raw line still contains everything, the smoothed line becomes legible, and the lower shifted trace isolates a narrower component that might matter musically or physically.
 
 ## Distribution-aware event flags
 

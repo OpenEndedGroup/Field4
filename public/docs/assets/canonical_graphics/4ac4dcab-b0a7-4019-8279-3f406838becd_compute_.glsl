@@ -1,6 +1,6 @@
 #version 460
 
-#define WORKGROUP_SIZE 256
+#define WORKGROUP_SIZE 256 
 #define RADIX_SORT_BINS 256
 
 layout (local_size_x = WORKGROUP_SIZE) in;

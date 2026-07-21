@@ -9,16 +9,16 @@ var sourceBuffer = buffer {
     dest()
 }.buffer
 
-sourceBuffer.write {
+sourceBuffer.write { 
     200 {
         putInt(2000-it)
     }
 }
 
-renderer.renderList.others["sort"] = Target { command, index ->
+renderer.renderList.others["sort"] = Target { command, index -> 
     sorter.sort(command, sourceBuffer, 200)
 }
 
-sourceBuffer.read_ints {
+sourceBuffer.read_ints {  
     _print(this.get(0))
 }

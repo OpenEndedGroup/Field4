@@ -1,4 +1,4 @@
-prop<ComputeModulePointer>(module)
+prop<ComputeModulePointer>(module) 
 
 
 module = computeModuleHere(parameters {
@@ -11,3 +11,4 @@ m.y = 1
 m.z = 1
 module += "mainInvocation" to m
 //renderer += "runCompute_sort1" to module // TODO, these should all be attached to a nice thing
+

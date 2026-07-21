@@ -47,10 +47,11 @@ void main() {
     uint idx = gl_GlobalInvocationID.x;
     vec3 D = pc.splatPositions.positions[idx].xyz - pc.cameraPosition.xyz;
     float d = dot(D, D);
-
+    
     if (idx<pc.splatNum) {
         pc.splatDistances.distance[idx] = encodeMinMaxFp32(-d);
         pc.splatIndices.index[idx] = idx;
         atomicAdd(pc.indirect.instanceCount, 1);
     }
 }
+

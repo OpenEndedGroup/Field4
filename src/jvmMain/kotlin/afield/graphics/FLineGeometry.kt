@@ -3653,6 +3653,23 @@ class SineParameter(
 }
 
 /**
+ * Returns the unit-length 2D normal at the cursor's current position, or null when the
+ * normal is undefined there. `normal2()` returns the raw perpendicular of the tangent, whose
+ * magnitude tracks the local tangent length (which for a cubic varies wildly and at a
+ * segment join / endpoint / cusp can collapse to ~zero or be non-finite). Offsetting a point
+ * by that raw vector lets a long or steep segment fling the sample far from the curve, or to
+ * NaN/Inf, which is what produces the degenerate "star" under fitToSize. Normalising here
+ * keeps offsets in world units and lets callers reject degenerate samples cleanly.
+ */
+private fun FLinesAndJavaShapes.Cursor.unitNormal2(): Vec2? {
+    val n = normal2() ?: return null
+    if (!n.x.isFinite() || !n.y.isFinite()) return null
+    val len = n.length()
+    if (!len.isFinite() || len < 1e-6f) return null
+    return Vec2(n.x / len, n.y / len)
+}
+
+/**
  * Apply a parameterized offset to a curve.
  * The offset distance varies along the curve according to the parameter function.
  */
@@ -3668,17 +3685,21 @@ fun FLine.byOffsettingParameterized(
         cursor.setT(t * (this.nodes.size - 1))
 
         val pos = cursor.position()
-        val normal = cursor.normal2()
+        val normal = cursor.unitNormal2()
         val distance = distanceFunc.evaluate(t, pos)
 
-        if (normal != null) {
+        // Skip samples with a degenerate normal or a non-finite distance so we never emit a
+        // NaN/Inf or wildly-out-of-range point.
+        if (normal != null && distance.isFinite()) {
             val offsetPos = vec(
                 pos.x + normal.x * distance,
                 pos.y + normal.y * distance,
                 pos.z
             )
 
-            if (i == 0) {
+            // Decide moveTo/lineTo by what has actually been emitted: the first sample can be
+            // skipped, in which case the first surviving point must still start the path.
+            if (result.nodes.isEmpty()) {
                 result.moveTo(offsetPos)
             } else {
                 result.lineTo(offsetPos)
@@ -3707,25 +3728,29 @@ fun FLine.byNoisingParameterized(
         cursor.setT(t * (this.nodes.size - 1))
 
         val pos = cursor.position()
-        val normal = cursor.normal2()
+        val normal = cursor.unitNormal2()
         val amplitude = amplitudeFunc.evaluate(t, pos)
 
-        // Generate Gaussian noise
-        val u1 = random.nextFloat()
+        // Generate Gaussian noise (Box-Muller). random.nextFloat() can return exactly 0,
+        // which makes ln(u1) = -Inf and r = Inf; clamp u1 away from 0 and cap the resulting
+        // magnitude so a near-zero draw can't fling the point to infinity.
+        val u1 = random.nextFloat().coerceIn(1e-7f, 1f)
         val u2 = random.nextFloat()
-        val r = sqrt(-2.0 * ln(u1.toDouble())).toFloat()
+        val r = sqrt(-2.0 * ln(u1.toDouble())).toFloat().coerceAtMost(4.0f)
         val theta = 2.0 * PI * u2
 
         val noise = r * cos(theta).toFloat() * amplitude
 
-        val noisedPoint = if (normal != null) {
+        // Only displace along a valid unit normal with finite noise; otherwise keep the point
+        // on the source curve rather than emitting a degenerate outlier.
+        val noisedPoint = if (normal != null && noise.isFinite()) {
             val normalVec = Vec3(normal.x, normal.y, 0f)
             Vec3(pos).add(normalVec.mul(noise, Vec3()))
         } else {
             Vec3(pos)
         }
 
-        if (i == 0) {
+        if (result.nodes.isEmpty()) {
             result.moveTo(noisedPoint)
         } else {
             result.lineTo(noisedPoint)

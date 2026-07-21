@@ -6,6 +6,6 @@ layout(location = 0) in vec4 fcol;
 void main()
 {
     loadRegs();
-
+    
     uFragColor = vec4(a());
 }

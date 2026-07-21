@@ -1,9 +1,9 @@
 var numVec4 = 2560
 
 var module = computeModuleHere(parameters {
-    ssboSizer = { ubo ->
+    ssboSizer = { ubo -> 
         numVec4 * 4 * 4
-    }
+    }   
 })
 
 var m = ComputeMesh()
@@ -40,8 +40,8 @@ frames {
             for(n in 0 until 2)
                 s+=this.get(n).toString()+" "
             _print(s)
-        }
+        }   
 
         frame()
-    }
+    }    
 }

@@ -12,7 +12,7 @@ layout(set=0, binding = 0) uniform sampler2D otherView;
 
 void main()
 {
-
+    
     vec2 tc = gl_FragCoord.xy / 1024.0;
     vec4 c = texture(otherView, tc.xy + vec2(0.001));
 

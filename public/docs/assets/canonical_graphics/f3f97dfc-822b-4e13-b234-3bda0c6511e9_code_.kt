@@ -1,5 +1,5 @@
 var module = moduleHere(parameters {
-    ssboResolver = {
+    ssboResolver = { 
         if (it.name=="InputBuffer")
             buffer.source!!
         else

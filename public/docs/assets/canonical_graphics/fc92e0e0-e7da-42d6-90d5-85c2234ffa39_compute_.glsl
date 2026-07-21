@@ -19,7 +19,7 @@ layout(set=0, binding = 2) buffer VertexData {
 void main() {
     uint idx = gl_GlobalInvocationID.x;
     float timeStep = 0.01;
-
+    
     dat[idx].xy = dat[idx].zw * timeStep;
     float l = length(dat[idx].zw);
     float targetLength = sin(dat[idx].w*8+dat[idx].x*40-dat[idx].y*21);

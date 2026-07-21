@@ -100,7 +100,7 @@ void main() {
         uint keyIndex = partitionStart + (PARTITION_DIVISION * gl_SubgroupSize) * subgroupIndex + i * gl_SubgroupSize + threadIndex;
         uint key = keyIndex < elementCount ? keysInReference.keys[keyIndex] : 0xffffffff;
         localKeys[i] = key;
-
+        
         localValues[i] = keyIndex < elementCount ? valuesInReference.values[keyIndex] : 0;
 
         uint radix = bitfieldExtract(key, pass * 8, 8);

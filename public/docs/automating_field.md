@@ -48,6 +48,17 @@ Because the transcript is just data, a macro is legible: you can open one, see w
 does, change a name or a value, and run your version. Field records what you do as you
 work, so you can turn a sequence you just performed into a macro and replay it elsewhere.
 
+The **Macro Recorder** panel is where that recording happens: press **Start** and work as
+normal — each operation you perform is appended to the transcript — then **Save** the
+sequence as a named macro at document, project, or workspace scope. Saved macros are
+listed along the bottom and **Run** replays them; **Promote** moves one to a wider scope.
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".macro-recorder-panel" screenshot="assets/automating_field/macro-panel.png" transcript="assets/transcripts/greeter_macro.yaml" alt="Field's Macro Recorder panel listing recorded operations" padding="8" wait="0" timeout="90" embed=true hidden=true name="macro-panel"}
+ui.eval("window.macroTranscriptPanel()")
+ui.waitForSelector(".macro-recorder-panel", 8000.0)
+ui.pause(1800)
+```
+
 ## Driving Field from a script or agent
 
 The backdoor (`tools/field_backdoor.py` in the Field repository) attaches to a running

@@ -602,8 +602,10 @@ object StandardRendererDocsHarness {
             // Keep the same side-on direction as the comparison view, but leave enough distance
             // for the normalized 4.45-unit model. The old eye point sat inside ToyCar after the
             // Field-matrix TRS decomposition was corrected.
-            bundle.scene.camera.at.set(1.8375f, 1.01f, -2.4375f)
-            bundle.scene.camera.target.set(0f, 0.32f, 0f)
+            // Camera lowered to match the Don McCurdy / three.js reference framing:
+            // a flatter, slightly-below-roofline vantage rather than looking down on the car.
+            bundle.scene.camera.at.set(1.8375f, 0.82f, -2.4375f)
+            bundle.scene.camera.target.set(0f, 0.26f, 0f)
             bundle.scene.lightDirection.set(Vector3f(-0.36f, -0.58f, 0.72f).normalize())
             bundle.scene.lightIntensity = 2.45f
             bundle.scene.ambientColor.set(0.055f, 0.055f, 0.06f)

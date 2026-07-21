@@ -1,4 +1,4 @@
-import afield.stdlib.linalg.Rectanglef
+import org.joml.primitives.Rectanglef
 val maxElementCount = splatNum*2
 
 val RADIX = 256
@@ -31,10 +31,10 @@ upsweep += "m" to mUpsweep
 spine += "m" to mSpine
 downsweep += "m" to mDownsweep
 
-renderer.computeList.others += "radixSort" to target { cmd, index ->
+renderer.computeList.others += "radixSort" to target { cmd, index -> 
 }
 
-renderer.computeList.others += "radixSort" to target { cmd, index ->
+renderer.computeList.others += "radixSort" to target { cmd, index -> 
     for(pass in 0 until 4) { // 4!
         //_print("render ${pass}")
         val three = listOf(mUpsweep, mSpine, mDownsweep)
@@ -73,7 +73,7 @@ renderer.computeList.others += "radixSort" to target { cmd, index ->
             tempStorage.zero(cmd)
             transferMemoryBarrier(cmd, tempStorage)
         }
-
+        
         // System.out.println(" -- pass $pass ------")
         mUpsweep.x = partitionCount
         upsweep.render(cmd, Rectanglef())
@@ -91,12 +91,12 @@ renderer.computeList.others += "radixSort" to target { cmd, index ->
     // hostReadBarrier(cmd,splatDistances)
 }
 
-
+ 
 if (false) {
     val cameraPosition = vec(0,0,0)
-    splatIndices.mapAndRead_ints {
+    splatIndices.mapAndRead_ints {  
         val ind = this
-        splatDistances.mapAndRead_ints {
+        splatDistances.mapAndRead_ints {  
             val dist = this
             for(n in 0 until 1000) {
                 val N = ind.get(n)
@@ -106,3 +106,6 @@ if (false) {
         }
     }
 }
+
+
+

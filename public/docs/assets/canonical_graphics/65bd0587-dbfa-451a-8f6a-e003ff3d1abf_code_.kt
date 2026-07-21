@@ -26,9 +26,9 @@ This gets us everything we need to start rendering things. In particular, we get
 
 //<hr>
 
-// Now we need a place to put our data
-var vertexData = defaultBuffer {
-    perFrame = true
+// Now we need a place to put our data 
+var vertexData = defaultBuffer { 
+    perFrame = true 
     size = 3.vec4s
 }.buffer
 
@@ -40,7 +40,7 @@ var vertexData = defaultBuffer {
 
 // now we connect this buffer to the mesh
 // `.vertexData` gets magically defined for us with the coorect type, because Field has read our vertex shader
-m.vertexData = { vertexData }
+m.vertexData = { vertexData } 
 
 // You'll note that we have not have written any data to any of the buffers buffer at this point, but this is ok, because we don't size the mesh until later. Or we could write in here before.
 
@@ -69,7 +69,7 @@ loop {
 
     // it's important that we tell the mesh how many "vertices we want to draw", but, other than that turning into triangles, what that means is entirely up to our vertex shader
     m.resize(num)
-
+    
     // loop forever:
     true
 }
@@ -79,3 +79,5 @@ loop {
 // ultimately, we get something that looks like this:
 
 // [[render_clip]]
+
+

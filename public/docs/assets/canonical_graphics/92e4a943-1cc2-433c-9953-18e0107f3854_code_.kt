@@ -4,20 +4,20 @@ bbc.transferNow()
 var module = moduleHere {}
 var m = Mesh()
 
-
 module += "mainMesh" to m
 renderer += "boo" to module
 
+// just trying to see if the history thing is working?
 val camera = Camera()
-m.p = camera.p
-m.m = camera.m
+m.p = camera.p 
+m.m = camera.m 
 
 var kc = KeyCamera(camera=camera)
 m.set(4, 2) {
-    val z = 0.0
+    val z = 0.0 
 
-    pos.add(0,0,0+z,
-            1.0,0.1,z,
+pos.add(0,0,0+z, 
+            1.0,0.1,z, 
             1,1,z,
             0,1,z)
 
@@ -29,3 +29,4 @@ m.set(4, 2) {
     tri.add(0,1,2)
     tri.add(0,2,3)
 }
+

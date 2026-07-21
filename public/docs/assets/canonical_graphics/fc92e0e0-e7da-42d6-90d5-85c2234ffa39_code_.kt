@@ -54,8 +54,8 @@ frames {
             for(n in 0 until 2)
                 s+=this.get(100+n).toString()+" "
             _print(s)
-        }
+        }   
 
         frame()
-    }
+    }    
 }

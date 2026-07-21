@@ -130,7 +130,7 @@ Here the pulse train is the raw material. A slower sine bends it, a blur softens
 
 ![](assets/functions_examples/pulse_stack_window.png)
 
-The three traces separate cleanly: one jagged, one softened, one quantized into holds. That side-by-side picture helps when shaping sequencer data, stepped motion, triggers, or control-rate material. For statistical views of similar time-varying data, see [Timeseries examples](timeseries_examples.md) and [Stats examples](stats_examples.md).
+The three traces separate cleanly: one jagged, one softened, one quantized into holds. That side-by-side picture helps when shaping sequencer data, stepped motion, triggers, or control-rate material. For statistical views of similar time-varying data, see [Timeseries examples](timeseries_examples.md).
 
 ## 1D stack: fit a graph to a target (differentiable)
 
@@ -2715,7 +2715,8 @@ val b = sin(5, domain = 0..1)
 **Creative**
 
 ```diffstatic {data-lang=kotlin}
-val a = Functions.Domain.centered(0.5, 0.42).intersect(0.0..1.0)
+val a = Functions.Domain.centered(0.5, 0.42).intersect(domain(0.0..1.0))
+// → Domain(0.08..0.92)
 ```
 
 #### containsInclusive / contains
@@ -2727,13 +2728,13 @@ Containment checks ask whether an x value lies inside a domain.
 This should report that `0.2` lies inside the domain.
 
 ```diffstatic {data-lang=kotlin}
-val inside = d.containsInclusive(0.2)
+val inside = d.containsInclusive(0.2)   // → true
 ```
 
 **Creative**
 
 ```diffstatic {data-lang=kotlin}
-val mask = if (d.contains(0.77)) one() else zero()
+val mask = if (d.contains(0.77)) one() else zero()   // 0.77 is inside → one()
 ```
 
 #### expand / shrink
@@ -2745,13 +2746,13 @@ Expansion and shrinking grow or contract a domain around its endpoints.
 This should widen the domain by `0.1` on both sides.
 
 ```diffstatic {data-lang=kotlin}
-val wide = d.expand(0.1)
+val wide = d.expand(0.1)          // → Domain(-0.1..1.1)
 ```
 
 **Creative**
 
 ```diffstatic {data-lang=kotlin}
-val band = d.expand(0.2).shrink(0.05)
+val band = d.expand(0.2).shrink(0.05)   // → Domain(-0.15..1.15)
 ```
 
 #### shift / scale
@@ -2763,13 +2764,13 @@ Domain shifts and scales move or zoom intervals without sampling an `Fn`.
 This should shift the whole domain forward by `0.15`.
 
 ```diffstatic {data-lang=kotlin}
-val moved = d.shift(0.15)
+val moved = d.shift(0.15)         // → Domain(0.15..1.15)
 ```
 
 **Creative**
 
 ```diffstatic {data-lang=kotlin}
-val zoom = d.scale(0.5, about = d.center).shift(0.1)
+val zoom = d.scale(0.5, about = d.center).shift(0.1)   // → Domain(0.35..0.85)
 ```
 
 #### lerp / alphaOf
@@ -2781,12 +2782,13 @@ Interpolation helpers convert between normalized alpha and concrete x positions.
 This should return the point one-quarter of the way across the domain.
 
 ```diffstatic {data-lang=kotlin}
-val x = d.lerp(0.25)
+val x = d.lerp(0.25)              // → 0.25 (a quarter across 0..1)
 ```
 
 **Creative**
 
 ```diffstatic {data-lang=kotlin}
+// alphaOf(0.42) → 0.42; smoothStep eases that alpha before sampling
 val warpedAlpha = smoothStep(0.0, 1.0).eval(domain(0.0..1.0).alphaOf(0.42))
 ```
 
@@ -2799,13 +2801,13 @@ Domain edge helpers keep x values inside an interval by clamping, wrapping, or r
 This should clamp an outside value back to the domain's upper edge.
 
 ```diffstatic {data-lang=kotlin}
-val x = d.clamp(1.2)
+val x = d.clamp(1.2)              // → 1.0 (pulled back to the upper edge)
 ```
 
 **Creative**
 
 ```diffstatic {data-lang=kotlin}
-val pingPong = d.reflect(2.7)
+val pingPong = d.reflect(2.7)     // → 0.7 (folded back into 0..1)
 ```
 
 #### intersect / union
@@ -2817,13 +2819,13 @@ Domain set operations find overlap or coverage across intervals.
 This should compute the overlapping interval between `d` and `0.2..0.7`.
 
 ```diffstatic {data-lang=kotlin}
-val i = d.intersect(0.2..0.7)
+val i = d.intersect(domain(0.2..0.7))   // → Domain(0.2..0.7)
 ```
 
 **Creative**
 
 ```diffstatic {data-lang=kotlin}
-val merged = d.union(-0.3..0.3).intersect(-0.1..0.9)
+val merged = d.union(domain(-0.3..0.3)).intersect(domain(-0.1..0.9))   // → Domain(-0.1..0.9)
 ```
 
 

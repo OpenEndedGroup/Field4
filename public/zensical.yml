@@ -21,17 +21,14 @@ nav:
   - How Box Code Runs: box_code_pipeline.md
   - Building & Testing: building_and_testing.md
   - Reference:
-    - Linear Algebra:
-      - Guide: linear_algebra.md
-      - Generated Vector API: linear_algebra_api.md
-      - Vector & Matrix Algebra: vector_algebra.md
+    - Linear Algebra: linear_algebra.md
     - FLine Examples: fline_examples.md
     - Visualizers & Controls: visualizers.md
-    - Reading Your Values: reading_your_values.md
     - Staging area:
       - Staging Overview: staging.md
       - Mobile Controllers: mobile_controllers.md
       - Automating Field: automating_field.md
+      - Agent Transcript Gallery: agent_transcripts.md
       - Field Systems:
         - Apple Vision Pro (WiP): vision.md
         - Fabricate Renderer: fabricate_renderer.md
@@ -39,7 +36,6 @@ nav:
         - afield.four Graphics: afield_four_graphics.md
         - Field Probes: field_probes.md
         - Interactive Guides: interactive_guides.md
-        - Guide Chat: guide_chat.md
       - Small Languages:
         - FieldML Examples: fieldml_examples.md
         - Forth Examples: forth_examples.md
@@ -52,14 +48,10 @@ nav:
       - Drawing From Data:
         - Functions Examples: functions_examples.md
         - Functions Domains: functions_domains.md
-        - Interpolants Examples: interpolants_examples.md
+        - Values Over Time (Interpolants, Keyframes & Estimation): interpolants_examples.md
         - Timeseries Examples: timeseries_examples.md
-        - Particle Filter Examples: pf_examples.md
-        - Stats Examples: stats_examples.md
         - Colors Examples: colors_examples.md
-        - Correlations Examples: correlations_examples.md
-        - Smile Neighbors Examples: smile_neighbors_examples.md
-        - Graph Connectivity Examples: graph_connectivity_examples.md
+        - Neighbors & Graphs Examples: graph_connectivity_examples.md
       - Networks and Dynamics:
         - Sorting Networks Examples: sorting_networks_examples.md
         - Interaction Nets Examples: interaction_nets_examples.md
