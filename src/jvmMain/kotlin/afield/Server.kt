@@ -4488,23 +4488,22 @@ class Server {
                                 call.respond(HttpStatusCode.NotFound, "index.html not found")
                             }
                         }
-                        // Cache static assets so page reloads don't re-fetch them.
-                        // Without this they're served with no Cache-Control, so every
-                        // load re-downloads them -- and the docs capture browser reloads
-                        // the page for each screenshot, so it was re-fetching the multi-MB
-                        // afield.mjs + fonts on every capture.
+                        // Interactive Field sessions are development sessions: explicitly
+                        // forbid browser caching so a reload always sees rebuilt JS and
+                        // edited source resources. Merely omitting Cache-Control for
+                        // Electron still permits heuristic caching in Chromium.
                         //
-                        // But we deliberately do NOT cache for the Electron desktop app
-                        // (the real-user entry point): it loads the page once per tab, so
-                        // caching gains it nothing, and a stale disk cache would serve an
-                        // old afield.mjs after a dev rebuild (Ktor emits no Last-Modified/
-                        // ETag, so there's no revalidation to save us). Electron is
-                        // identifiable by its User-Agent; everything else (the Playwright
-                        // capture browser, plain browsers) gets the cache. Assets are
-                        // immutable for a server run, so a plain max-age is safe there.
+                        // The headless docs/capture browser is the one exception. It reloads
+                        // Field for every capture, while assets are immutable for that
+                        // runner-owned server, so caching avoids repeatedly transferring the
+                        // multi-MB bundle and fonts during a single capture run.
                         val assetCache: StaticContentConfig<File>.() -> Unit = {
                             modify { file, call ->
-                                if ("Electron" in call.request.headers[HttpHeaders.UserAgent].orEmpty()) return@modify
+                                val userAgent = call.request.headers[HttpHeaders.UserAgent].orEmpty()
+                                if ("HeadlessChrome" !in userAgent) {
+                                    call.response.headers.append(HttpHeaders.CacheControl, "no-store")
+                                    return@modify
+                                }
                                 val seconds = when (file.extension.lowercase()) {
                                     "mjs", "js", "css", "wasm", "map" -> 3600
                                     "woff2", "woff", "ttf", "otf", "eot" -> 604800

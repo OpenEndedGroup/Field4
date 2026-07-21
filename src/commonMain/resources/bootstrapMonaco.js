@@ -134,6 +134,9 @@ const attachDisclosureToggle = (editor, node) => {
         }
         details.addEventListener("toggle", () => {
                 syncSymbolContextPolling(editor)
+                if (typeof editor._afieldScheduleBottomOverlayFade === "function") {
+                        editor._afieldScheduleBottomOverlayFade()
+                }
         })
 }
 
@@ -149,6 +152,9 @@ const setEditorContextBadge = (editor, payload = null) => {
                 node.style.pointerEvents = "none"
                 editor._afieldSymbolContextMeta = null
                 stopSymbolContextPolling(editor)
+                if (typeof editor._afieldScheduleBottomOverlayFade === "function") {
+                        editor._afieldScheduleBottomOverlayFade()
+                }
                 return
         }
 
@@ -167,6 +173,9 @@ const setEditorContextBadge = (editor, payload = null) => {
         editor._afieldSymbolContextMeta = payload
         attachDisclosureToggle(editor, node)
         syncSymbolContextPolling(editor)
+        if (typeof editor._afieldScheduleBottomOverlayFade === "function") {
+                editor._afieldScheduleBottomOverlayFade()
+        }
 }
 
 window.setEditorContextBadge = setEditorContextBadge
@@ -534,92 +543,42 @@ const queueSymbolContextRequest = (request) => {
         dispatchSymbolContextRequest(request)
 }
 
-const EDITOR_BOTTOM_OVERLAY_FADE_LINES = 2
+const cursorLineIntersectsOverlay = (editor, overlay) => {
+        if (!editor || !overlay) return false
+        if (overlay.classList.contains("hoverlay-left") && overlay.innerHTML.trim().length === 0) return false
 
-const rectsIntersect = (a, b) => {
-        return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top
-}
+        const style = window.getComputedStyle(overlay)
+        if (style.display === "none" || style.visibility === "hidden") return false
 
-const visibleRelativeRect = (element, rootRect) => {
-        if (!element) return null
-        const style = window.getComputedStyle(element)
-        if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0") return null
-        const rect = element.getBoundingClientRect()
-        if (rect.width <= 0 || rect.height <= 0) return null
-        return {
-                left: rect.left - rootRect.left,
-                right: rect.right - rootRect.left,
-                top: rect.top - rootRect.top,
-                bottom: rect.bottom - rootRect.top,
-        }
-}
+        const position = editor.getPosition && editor.getPosition()
+        const visible = position && editor.getScrolledVisiblePosition && editor.getScrolledVisiblePosition(position)
+        if (!visible || !Number.isFinite(Number(visible.top))) return false
 
-const overlayLayoutRect = (element) => {
-        if (!element) return null
-        if (element.classList.contains("hoverlay-left") && element.innerHTML.trim().length === 0) return null
-        if (element.offsetWidth <= 0 || element.offsetHeight <= 0) return null
-        return {
-                left: element.offsetLeft,
-                right: element.offsetLeft + element.offsetWidth,
-                top: element.offsetTop,
-                bottom: element.offsetTop + element.offsetHeight,
-        }
-}
+        const rootRect = editor._domElement.getBoundingClientRect()
+        const overlayRect = overlay.getBoundingClientRect()
+        if (overlayRect.width <= 0 || overlayRect.height <= 0) return false
 
-const editorBottomOverlayCoversContent = (editor) => {
-        const dom = editor && editor._domElement
-        if (!dom) return false
-
-        const overlayRects = [dom.querySelector(".hoverlay"), dom.querySelector(".hoverlay-left")]
-                .map(overlayLayoutRect)
-                .filter(Boolean)
-        if (overlayRects.length === 0) return false
-
-        const rootRect = dom.getBoundingClientRect()
-        const coveredContent = dom.querySelectorAll(".execution_output, .view-zones > div, .margin-view-zones > div")
-        for (const element of coveredContent) {
-                const contentRect = visibleRelativeRect(element, rootRect)
-                if (!contentRect) continue
-                if (overlayRects.some((overlayRect) => rectsIntersect(overlayRect, contentRect))) return true
-        }
-        return false
+        const lineTop = rootRect.top + Number(visible.top)
+        const visibleHeight = Number(visible.height)
+        const lineHeight = Number.isFinite(visibleHeight) && visibleHeight > 0 ? visibleHeight : 18
+        const lineBottom = lineTop + lineHeight
+        return lineTop < overlayRect.bottom && lineBottom > overlayRect.top
 }
 
 const updateEditorBottomOverlayFade = (editor) => {
         if (!editor || !editor._domElement) return
 
         const dom = editor._domElement
-        const position = editor.getPosition && editor.getPosition()
-        const visible = position && editor.getScrolledVisiblePosition && editor.getScrolledVisiblePosition(position)
-        const layoutInfo = editor.getLayoutInfo && editor.getLayoutInfo()
-        const editorHeight = (layoutInfo && Number(layoutInfo.height)) || dom.clientHeight || 0
-
-        if (!position || !visible || !Number.isFinite(Number(visible.top)) || editorHeight <= 0) {
-                dom.classList.remove("afield-cursor-near-bottom")
-                return
-        }
-
-        const visibleTop = Number(visible.top)
-        const visibleHeight = Number(visible.height)
-        let lineHeight = Number.isFinite(visibleHeight) && visibleHeight > 0 ? visibleHeight : 0
-        if (lineHeight <= 0 && typeof editor.getOption === "function") {
-                try {
-                        const monacoApi = window.globalMonaco || window.monaco
-                        const lineHeightOption = monacoApi && monacoApi.editor && monacoApi.editor.EditorOption
-                                ? monacoApi.editor.EditorOption.lineHeight
-                                : null
-                        const optionHeight = lineHeightOption != null ? Number(editor.getOption(lineHeightOption)) : 0
-                        if (Number.isFinite(optionHeight) && optionHeight > 0) lineHeight = optionHeight
-                } catch (_) {
-                }
-        }
-        if (lineHeight <= 0) lineHeight = 18
-
-        const cursorBottom = visibleTop + lineHeight
-        const fadeThreshold = editorHeight - (lineHeight * EDITOR_BOTTOM_OVERLAY_FADE_LINES) - 2
-        const nearBottom = cursorBottom >= fadeThreshold && cursorBottom <= editorHeight + lineHeight
-        const overlayCoversContent = editorBottomOverlayCoversContent(editor)
-        dom.classList.toggle("afield-cursor-near-bottom", nearBottom || overlayCoversContent)
+        const leftOverlay = dom.querySelector(".hoverlay-left")
+        const rightOverlay = dom.querySelector(".hoverlay")
+        dom.classList.toggle(
+                "afield-cursor-under-context-badge",
+                cursorLineIntersectsOverlay(editor, leftOverlay),
+        )
+        dom.classList.toggle(
+                "afield-cursor-under-right-overlay",
+                cursorLineIntersectsOverlay(editor, rightOverlay),
+        )
 }
 
 const installEditorBottomOverlayFade = (editor) => {
@@ -635,12 +594,22 @@ const installEditorBottomOverlayFade = (editor) => {
                         updateEditorBottomOverlayFade(editor)
                 })
         }
+        editor._afieldScheduleBottomOverlayFade = schedule
 
         if (typeof editor.onDidChangeCursorPosition === "function") editor.onDidChangeCursorPosition(schedule)
         if (typeof editor.onDidScrollChange === "function") editor.onDidScrollChange(schedule)
         if (typeof editor.onDidChangeModelContent === "function") editor.onDidChangeModelContent(schedule)
         if (typeof editor.onDidLayoutChange === "function") editor.onDidLayoutChange(schedule)
         if (typeof editor.onDidChangeModel === "function") editor.onDidChangeModel(schedule)
+        if (typeof ResizeObserver === "function") {
+                const observer = new ResizeObserver(schedule)
+                const leftOverlay = editor._domElement && editor._domElement.querySelector(".hoverlay-left")
+                if (leftOverlay) observer.observe(leftOverlay)
+                editor._afieldBottomOverlayResizeObserver = observer
+                if (typeof editor.onDidDispose === "function") {
+                        editor.onDidDispose(() => observer.disconnect())
+                }
+        }
         schedule()
 }
 
