@@ -122,4 +122,4 @@ The stream gets a handful of deliberate disturbances, and both detectors report 
 
 ![](assets/timeseries_examples/distribution_events.png)
 
-The raw motion remains visible, and each detector shows which departures became events. That is useful for onset detection, anomaly marking, interaction thresholds, and any signal that needs a little memory before it speaks. For inline diagnostics of similar live values, continue with [Visualizers](visualizers.md).
+The raw motion remains visible, and each detector shows which departures became events. That is useful for onset detection, anomaly marking, interaction thresholds, and any signal that needs a little memory before it speaks. For inline diagnostics of similar live values, continue with [Visualizers](visualizers.md). When the value you care about is *hidden* behind the noise rather than merely buried in it — a state you can only measure indirectly — reach for [State estimation](state_estimation_examples.md).
