@@ -7,7 +7,6 @@ import afield.four.util.vkCheck
 import afield.logger.lprint
 import afield.logger.lprintln
 import org.lwjgl.system.MemoryStack
-import org.lwjgl.system.MemoryUtil.memGetAddress
 import org.lwjgl.system.MemoryUtil.memPutAddress
 import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.EXTCalibratedTimestamps.VK_TIME_DOMAIN_CLOCK_MONOTONIC_EXT
@@ -15,7 +14,6 @@ import org.lwjgl.vulkan.EXTCalibratedTimestamps.VK_TIME_DOMAIN_DEVICE_EXT
 import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VK11
 import org.lwjgl.vulkan.VK11.vkGetPhysicalDeviceProperties2
-import org.lwjgl.vulkan.VK12.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES
 
 class Device(val physicalDevice: PhysicalDevice, private val instance: Instance) {
     data class RayTracingLimits(
@@ -73,19 +71,25 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
             enableMeshShading =
                 OS == OSType.WINDOWS && hasExt(EXTMeshShader.VK_EXT_MESH_SHADER_EXTENSION_NAME)
 
-            // VK_EXT_present_timing: gated hard off on macOS/MoltenVK.  Probe the feature
-            // struct to confirm the driver actually supports basic presentTiming.
-            val hasPresentTimingExt = OS != OSType.MACOS &&
-                hasExt(EXTPresentTiming.VK_EXT_PRESENT_TIMING_EXTENSION_NAME)
-            usesPresentTiming = if (hasPresentTimingExt) {
+            // VK_EXT_present_timing has a strict dependency bundle. Enabling the extension
+            // without every member is invalid even if presentTiming itself is supported.
+            val hasPresentTimingBundle = OS != OSType.MACOS &&
+                hasExt(EXTPresentTiming.VK_EXT_PRESENT_TIMING_EXTENSION_NAME) &&
+                hasExt(KHRPresentId2.VK_KHR_PRESENT_ID_2_EXTENSION_NAME) &&
+                hasExt(KHRCalibratedTimestamps.VK_KHR_CALIBRATED_TIMESTAMPS_EXTENSION_NAME) &&
+                KHRGetSurfaceCapabilities2.VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME in instance.enabledExtensions
+            usesPresentTiming = if (hasPresentTimingBundle) {
                 val ptFeatures = VkPhysicalDevicePresentTimingFeaturesEXT.calloc(stack)
                     .`sType$Default`()
+                val presentId2Features = VkPhysicalDevicePresentId2FeaturesKHR.calloc(stack)
+                    .`sType$Default`()
+                ptFeatures.pNext(presentId2Features.address())
                 val probe = VkPhysicalDeviceFeatures2.calloc(stack).apply {
                     sType(VK12.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2)
                     pNext(ptFeatures.address())
                 }
                 VK11.vkGetPhysicalDeviceFeatures2(physicalDevice.vkPhysicalDevice, probe)
-                ptFeatures.presentTiming()
+                ptFeatures.presentTiming() && presentId2Features.presentId2()
             } else false
 
             val profilingEnabled = Options.profiling
@@ -153,6 +157,13 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
             supportsRayQuery = enableRayTracing && rayFeatureProbe.query
             rayTracingLimits = if (enableRayTracing) queryRayTracingLimits(stack) else null
 
+            // SteamVR's Linux XR_KHR_vulkan_enable2 implementation appends a
+            // VkPhysicalDeviceTimelineSemaphoreFeatures while creating the device. Vulkan forbids
+            // that promoted struct alongside VkPhysicalDeviceVulkan12Features, so the Linux XR
+            // path enables the other promoted features individually below.
+            val useSplitVulkan12Features =
+                OS == OSType.LINUX && Options.enableVR && Instance.hasOpenXRBootstrap()
+
             // Build extension list defensively.
             val extNames = ArrayList<String>(12).apply {
                 add(KHRSwapchain.VK_KHR_SWAPCHAIN_EXTENSION_NAME) // not optional
@@ -168,6 +179,16 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 }
 
                 addIfSupported(KHR16bitStorage.VK_KHR_16BIT_STORAGE_EXTENSION_NAME)
+
+                // shaderOutputLayer/shaderOutputViewportIndex normally come from
+                // VkPhysicalDeviceVulkan12Features. The split Linux XR feature chain cannot carry
+                // that aggregate struct, so expose the equivalent pre-promotion capability.
+                if (useSplitVulkan12Features) {
+                    check(hasExt(EXTShaderViewportIndexLayer.VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME)) {
+                        "Linux OpenXR requires ${EXTShaderViewportIndexLayer.VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME}"
+                    }
+                    add(EXTShaderViewportIndexLayer.VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME)
+                }
 
                 if (enableMeshShading) {
                     add(EXTMeshShader.VK_EXT_MESH_SHADER_EXTENSION_NAME)
@@ -209,6 +230,8 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 // Explicitly excluded from macOS/MoltenVK where the extension is absent/broken.
                 if (usesPresentTiming) {
                     add(EXTPresentTiming.VK_EXT_PRESENT_TIMING_EXTENSION_NAME)
+                    add(KHRPresentId2.VK_KHR_PRESENT_ID_2_EXTENSION_NAME)
+                    add(KHRCalibratedTimestamps.VK_KHR_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)
                 }
 
                 if (Options.profiling) {
@@ -249,6 +272,7 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 features().fragmentStoresAndAtomics(true)
                 features().vertexPipelineStoresAndAtomics(true)
                 features().shaderInt64(true)
+                features().geometryShader(true)
                 features().robustBufferAccess(Options.robustness)
                 features().pipelineStatisticsQuery(enablePipelineStatisticsQuery)
             }
@@ -311,10 +335,37 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 .sType(org.lwjgl.vulkan.EXTExtendedDynamicState.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT)
                 .extendedDynamicState(true)
 
-            // Link pNext chain: features2 -> v11 -> v12 -> v13
             features.pNext(features11.address())
-            features11.pNext(features12.address())
-            features12.pNext(features13.address())
+            var featureTail = features11.address()
+            if (useSplitVulkan12Features) {
+                val shaderFloat16 = VkPhysicalDeviceShaderFloat16Int8Features.calloc(stack)
+                    .`sType$Default`()
+                    .shaderFloat16(true)
+                memPutAddress(featureTail + VkBaseOutStructure.PNEXT, shaderFloat16.address())
+                featureTail = shaderFloat16.address()
+
+                val bufferDeviceAddress = VkPhysicalDeviceBufferDeviceAddressFeatures.calloc(stack)
+                    .`sType$Default`()
+                    .bufferDeviceAddress(true)
+                memPutAddress(featureTail + VkBaseOutStructure.PNEXT, bufferDeviceAddress.address())
+                featureTail = bufferDeviceAddress.address()
+
+                val descriptorIndexing = VkPhysicalDeviceDescriptorIndexingFeatures.calloc(stack)
+                    .`sType$Default`()
+                    .runtimeDescriptorArray(true)
+                    .descriptorBindingPartiallyBound(true)
+                    .descriptorBindingVariableDescriptorCount(true)
+                    .shaderSampledImageArrayNonUniformIndexing(true)
+                    .shaderStorageImageArrayNonUniformIndexing(true)
+                    .shaderUniformBufferArrayNonUniformIndexing(true)
+                    .shaderStorageBufferArrayNonUniformIndexing(true)
+                memPutAddress(featureTail + VkBaseOutStructure.PNEXT, descriptorIndexing.address())
+                featureTail = descriptorIndexing.address()
+            } else {
+                memPutAddress(featureTail + VkBaseOutStructure.PNEXT, features12.address())
+                featureTail = features12.address()
+            }
+            memPutAddress(featureTail + VkBaseOutStructure.PNEXT, features13.address())
             var tail = features13.address()
 
             if (supportsExtendedDynamicState) {
@@ -373,6 +424,11 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                     .`sType$Default`()
                     .presentTiming(true)
                 memPutAddress(tail + VkBaseOutStructure.PNEXT, presentTiming.address()); tail = presentTiming.address()
+
+                val presentId2 = VkPhysicalDevicePresentId2FeaturesKHR.calloc(stack)
+                    .`sType$Default`()
+                    .presentId2(true)
+                memPutAddress(tail + VkBaseOutStructure.PNEXT, presentId2.address()); tail = presentId2.address()
             }
 
             if (enableRayTracing) {
@@ -412,25 +468,6 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                     .hostQueryReset(true)
                 memPutAddress(tail + VkBaseOutStructure.PNEXT, hostReset.address()); tail = hostReset.address()
             }
-
-            // Strip any VkPhysicalDeviceTimelineSemaphoreFeatures if a loader/runtime appended one; spec forbids
-            // having both VkPhysicalDeviceVulkan12Features and VkPhysicalDeviceTimelineSemaphoreFeatures.
-            fun stripTimelineFeature(headAddr: Long) {
-                var prevAddr = headAddr
-                var nextAddr = memGetAddress(prevAddr + VkBaseOutStructure.PNEXT)
-                while (nextAddr != 0L) {
-                    val nxt = VkBaseOutStructure.create(nextAddr)
-                    if (nxt.sType() == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES) {
-                        val after = memGetAddress(nextAddr + VkBaseOutStructure.PNEXT)
-                        memPutAddress(prevAddr + VkBaseOutStructure.PNEXT, after)
-                        break
-                    }
-                    prevAddr = nextAddr
-                    nextAddr = memGetAddress(prevAddr + VkBaseOutStructure.PNEXT)
-                }
-            }
-
-            stripTimelineFeature(features.address())
 
             // Enable all queue families.
             val qProps = physicalDevice.vkQueueFamilyProps

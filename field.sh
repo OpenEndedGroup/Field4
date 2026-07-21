@@ -152,6 +152,12 @@ run_field() {
     PORT="${PORT:-9092}"; export PORT
     export AFIELD_PORT_FALLBACK_COUNT="${AFIELD_PORT_FALLBACK_COUNT:-1}"
 
+    # Snapshot the terminal's exact settings BEFORE the JVM (Mordant) flips it into raw/alt mode, so on
+    # exit we can put back precisely what the user had — not a forced canonical default. `stty -g` emits
+    # a machine-readable dump that `stty <dump>` restores verbatim; that's strictly better than `stty
+    # sane`, which resets erase/kill/flow-control/etc. to hard-coded values the user may not use.
+    SAVED_STTY="$(stty -g </dev/tty 2>/dev/null || true)"
+
     JAVA_BIN="$(cat build/field-launch/java)"
     # Backend in the background but still attached to THIS terminal — including stdin, so terminal-size
     # detection (Mordant runs `stty`, which reads stdin) sees the real rows/cols and the scroll region
@@ -170,7 +176,11 @@ run_field() {
     # harmless no-op.
     restore_terminal() {
         [ -t 1 ] || return 0
-        stty sane </dev/tty 2>/dev/null                         # undo raw mode if scrollback was on
+        if [ -n "$SAVED_STTY" ]; then
+            stty "$SAVED_STTY" </dev/tty 2>/dev/null            # put back the exact pre-launch settings
+        else
+            stty sane </dev/tty 2>/dev/null                     # fallback: no snapshot -> canonical reset
+        fi
         printf '\033[?1000l\033[?1006l\033[r\033[?1049l' 2>/dev/null # mouse off, drop region, leave alt
     }
     trap 'restore_terminal' EXIT

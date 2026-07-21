@@ -2271,6 +2271,27 @@
     const WELCOME_EVENT_RECONNECT_MS = 1500;
     const RECENT_WORKSPACES_KEY = "field4.recentWorkspaces";
 
+    function fieldDiagnostic(event, details = {}) {
+        const payload = {
+            page: "welcome",
+            href: window.location.href,
+            readyState: document.readyState,
+            visibilityState: document.visibilityState,
+            ...details
+        };
+        try {
+            if (typeof window.fieldElectron?.diagnostic === "function") {
+                window.fieldElectron.diagnostic(event, payload);
+            } else {
+                console.info("[field,diagnostic]", event, payload);
+            }
+        } catch (error) {
+            console.warn("[field,diagnostic] failed", event, error);
+        }
+    }
+
+    fieldDiagnostic("welcome-page-initialized");
+
     function escapeHtml(text) {
         return String(text)
             .replace(/&/g, "&amp;")
@@ -3323,6 +3344,31 @@
     }
 
     function openDocument(name, options = {}) {
+        const searchResult = state.searchResults.find((doc) => doc.filename === name);
+        const workspaceDocument = state.documents.find((doc) => doc.filename === name);
+        const documentSummary = searchResult || workspaceDocument || null;
+        fieldDiagnostic("welcome-document-open-requested", {
+            name,
+            options: {
+                hasUrl: !!options.url,
+                hasSessionKey: !!options.sessionKey,
+                scratch: !!options.scratch
+            },
+            searchQuery: state.searchQuery,
+            searchRequestSerial,
+            resultSource: searchResult ? "search" : (workspaceDocument ? "workspace-list" : "unknown"),
+            documentSummary: documentSummary ? {
+                filename: documentSummary.filename,
+                numBoxes: documentSummary.numBoxes,
+                sizeBytes: documentSummary.sizeBytes,
+                lastModifiedAgoMs: documentSummary.lastModifiedAgoMs,
+                matchSources: Array.from(new Set(
+                    (Array.isArray(documentSummary.matches) ? documentSummary.matches : [])
+                        .map((match) => match.source || "text")
+                ))
+            } : null,
+            semanticState: state.searchSemantic
+        });
         searchRequestSerial += 1;
         if (searchController) {
             searchController.abort();
@@ -4463,6 +4509,14 @@
         }
 
         const requestSerial = ++searchRequestSerial;
+        const searchStartedAt = performance.now();
+        fieldDiagnostic("welcome-search-started", {
+            query,
+            requestSerial,
+            semanticEnabled: !!state.semanticSearch?.config?.enabled,
+            semanticIndexExists: !!state.semanticSearch?.status?.indexExists,
+            semanticRebuildRunning: !!state.semanticSearch?.rebuild?.running
+        });
         searchController = new AbortController();
         const statusNode = document.getElementById("recent-search-status");
         statusNode.textContent = "searching…";
@@ -4489,11 +4543,34 @@
             state.searchResults = mergeWelcomeSemanticSearch(textResults, semanticPayload);
             state.searchTruncated = !!payload.truncated;
             state.searchSemantic = semanticPayload.state;
+            fieldDiagnostic("welcome-search-completed", {
+                query,
+                requestSerial,
+                elapsedMs: Math.round(performance.now() - searchStartedAt),
+                textResultCount: textResults.length,
+                mergedResultCount: state.searchResults.length,
+                resultNames: state.searchResults.slice(0, 50).map((doc) => doc.filename),
+                truncated: state.searchTruncated,
+                semanticState: state.searchSemantic
+            });
             renderList();
         } catch (error) {
-            if (error?.name === "AbortError") return;
+            if (error?.name === "AbortError") {
+                fieldDiagnostic("welcome-search-aborted", {
+                    query,
+                    requestSerial,
+                    elapsedMs: Math.round(performance.now() - searchStartedAt)
+                });
+                return;
+            }
             if (requestSerial !== searchRequestSerial) return;
             console.error("Workspace search failed", error);
+            fieldDiagnostic("welcome-search-failed", {
+                query,
+                requestSerial,
+                elapsedMs: Math.round(performance.now() - searchStartedAt),
+                error: String(error?.stack || error)
+            });
             state.searchResults = [];
             state.searchTruncated = false;
             state.searchSemantic = {

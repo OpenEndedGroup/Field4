@@ -23,11 +23,15 @@ import java.nio.ByteBuffer
 import java.nio.IntBuffer
 import java.nio.charset.CodingErrorAction
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.atomic.AtomicBoolean
 
 class Instance(validate: Boolean) {
 
     var vkInstance: VkInstance
         private set
+
+    /** Vulkan instance extensions actually enabled at creation time. */
+    val enabledExtensions: Set<String>
 
     private var debugUtilsCreateInfo: VkDebugUtilsMessengerCreateInfoEXT? = null
     private var vkDebugHandle: Long = 0
@@ -87,10 +91,16 @@ class Instance(validate: Boolean) {
                 if (supportsValidation && hasLayerSettings) add("VK_EXT_layer_settings")
                 if (usePortability && PORTABILITY_EXTENSION !in this) add(PORTABILITY_EXTENSION) // VK_KHR_portability_enumeration
                 if (Options.enableVR) addAll(getOpenXRRequiredInstanceExts())
+                // Required instance-side dependency of VK_EXT_present_timing. Device decides
+                // whether the complete device-side dependency bundle is available.
+                if (KHRGetSurfaceCapabilities2.VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME in supportedExts) {
+                    add(KHRGetSurfaceCapabilities2.VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME)
+                }
                 // VK_EXT_swapchain_colorspace enables HDR surface format enumeration (scRGB, HDR10, etc.)
                 if (Options.enableHDR && SWAPCHAIN_COLORSPACE_EXTENSION in supportedExts) add(SWAPCHAIN_COLORSPACE_EXTENSION)
             }
             val dedupedExtNames = extNames.distinct()
+            enabledExtensions = dedupedExtNames.toSet()
 
             val requiredExtensions = stack.mallocPointer(dedupedExtNames.size).apply {
                 dedupedExtNames.forEach { put(stack.ASCII(it)) }
@@ -251,10 +261,12 @@ class Instance(validate: Boolean) {
         )
 
         var globalAsyncDebugHandler: ((String) -> Unit)? = null
+        private val reportedSteamVrBlankEyeValidationNoise = AtomicBoolean(false)
 
         private val openXRVulkanExtensions = listOf(
-            KHRVulkanEnable.XR_KHR_VULKAN_ENABLE_EXTENSION_NAME,
             KHRVulkanEnable2.XR_KHR_VULKAN_ENABLE2_EXTENSION_NAME
+        ) + if (OS == OSType.LINUX) emptyList() else listOf(
+            KHRVulkanEnable.XR_KHR_VULKAN_ENABLE_EXTENSION_NAME
         )
 
         private val openXRValidationLayerCandidates = listOf(
@@ -264,12 +276,16 @@ class Instance(validate: Boolean) {
 
         fun getOpenXRRequiredInstanceExts(): List<String> {
             if (!Options.enableVR) return emptyList()
+            // XR_KHR_vulkan_enable2 lets the runtime amend VkInstanceCreateInfo itself.
+            // Do not mix in the legacy XR_KHR_vulkan_enable extension-query path on Linux.
+            if (OS == OSType.LINUX) return emptyList()
             ensureOpenXRExtensions()
             return xrCachedInstanceExts
         }
 
         fun getOpenXRRequiredDeviceExts(@Suppress("unused_parameter") physicalDeviceAddr: Long): List<String> {
             if (!Options.enableVR) return emptyList()
+            if (OS == OSType.LINUX) return emptyList()
             ensureOpenXRExtensions()
             return xrCachedDeviceExts
         }
@@ -316,16 +332,23 @@ class Instance(validate: Boolean) {
                     val systemId = pSys[0]
 
                     val gfxReq = XrGraphicsRequirementsVulkan2KHR.calloc(stack)
-                        .type(KHRVulkanEnable2.XR_TYPE_GRAPHICS_REQUIREMENTS_VULKAN2_KHR)
-                    xrGetVulkanGraphicsRequirements2KHR(xrInstance, systemId, gfxReq)
+                        // LWJGL exposes Vulkan2 as an alias struct, but its Vulkan2 type constant
+                        // is not the alias value accepted by current OpenXR validation/runtime.
+                        .type(KHRVulkanEnable.XR_TYPE_GRAPHICS_REQUIREMENTS_VULKAN_KHR)
+                    val gfxReqRes = xrGetVulkanGraphicsRequirements2KHR(xrInstance, systemId, gfxReq)
+                    check(gfxReqRes == XR10.XR_SUCCESS) {
+                        "xrGetVulkanGraphicsRequirements2KHR failed: $gfxReqRes"
+                    }
 
                     val physInfo = XrVulkanGraphicsDeviceGetInfoKHR.calloc(stack)
-                    // Populate cached extension lists using this instance/system.
-                    xrCachedInstanceExts = queryExts(stack) { cap, buf ->
-                        org.lwjgl.openxr.KHRVulkanEnable.xrGetVulkanInstanceExtensionsKHR(xrInstance, systemId, cap, buf)
-                    }
-                    xrCachedDeviceExts = queryExts(stack) { cap, buf ->
-                        org.lwjgl.openxr.KHRVulkanEnable.xrGetVulkanDeviceExtensionsKHR(xrInstance, systemId, cap, buf)
+                    if (OS != OSType.LINUX) {
+                        // Legacy compatibility path retained for the existing Windows setup.
+                        xrCachedInstanceExts = queryExts(stack) { cap, buf ->
+                            org.lwjgl.openxr.KHRVulkanEnable.xrGetVulkanInstanceExtensionsKHR(xrInstance, systemId, cap, buf)
+                        }
+                        xrCachedDeviceExts = queryExts(stack) { cap, buf ->
+                            org.lwjgl.openxr.KHRVulkanEnable.xrGetVulkanDeviceExtensionsKHR(xrInstance, systemId, cap, buf)
+                        }
                     }
 
                     xrInitialized = true
@@ -624,8 +647,11 @@ class Instance(validate: Boolean) {
 
                     // Per spec: must be called before creating VkDevice for this system.
                     val gfxReq = XrGraphicsRequirementsVulkan2KHR.calloc(stack)
-                        .type(KHRVulkanEnable2.XR_TYPE_GRAPHICS_REQUIREMENTS_VULKAN2_KHR)
-                    xrGetVulkanGraphicsRequirements2KHR(xrInstance, systemId, gfxReq)
+                        .type(KHRVulkanEnable.XR_TYPE_GRAPHICS_REQUIREMENTS_VULKAN_KHR)
+                    val gfxReqRes = xrGetVulkanGraphicsRequirements2KHR(xrInstance, systemId, gfxReq)
+                    check(gfxReqRes == XR10.XR_SUCCESS) {
+                        "xrGetVulkanGraphicsRequirements2KHR failed: $gfxReqRes"
+                    }
 
                     lprintln(
                         "info,openxr",
@@ -708,10 +734,29 @@ class Instance(validate: Boolean) {
                             EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT or
                             EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT
                 )
-                .pfnUserCallback { severity: Int, _: Int, pCallbackData: Long, _: Long ->
+                .pfnUserCallback callback@{ severity: Int, _: Int, pCallbackData: Long, _: Long ->
                     val cb = VkDebugUtilsMessengerCallbackDataEXT.create(pCallbackData)
 
                     val msg = cb.pMessageString() ?: ""
+                    // SteamVR records internal commands against an image it names
+                    // "BlankEyeBuffer" with inconsistent transfer/source layout tracking. This is
+                    // a long-standing runtime validation defect which also reproduces in minimal
+                    // OpenXR Vulkan applications. Keep validation enabled for Field objects, but
+                    // suppress only this runtime-owned, object-specific flood.
+                    val isSteamVrBlankEyeNoise =
+                        OS == OSType.LINUX && Options.enableVR &&
+                                msg.contains("BlankEyeBuffer") &&
+                                msg.contains("VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL") &&
+                                msg.contains("current layout")
+                    if (isSteamVrBlankEyeNoise) {
+                        if (reportedSteamVrBlankEyeValidationNoise.compareAndSet(false, true)) {
+                            lprintln(
+                                "info,openxr",
+                                "Suppressing known SteamVR BlankEyeBuffer Vulkan validation noise"
+                            )
+                        }
+                        return@callback VK10.VK_FALSE
+                    }
                     val idName = cb.pMessageIdNameString() ?: ""
                     val isPrintf = idName.contains("DEBUG-PRINTF") ||
                             msg.contains("DEBUG-PRINTF") ||  // some layers put it only in the text

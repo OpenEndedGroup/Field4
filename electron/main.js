@@ -38,6 +38,85 @@ const LOG_GPU_STATUS =
     String(process.env.FIELD_ELECTRON_LOG_GPU || "").toLowerCase(),
   );
 
+const DIAGNOSTIC_LOG_RETENTION = 20;
+const diagnosticStartedAt = Date.now();
+let diagnosticLogPath = null;
+let diagnosticLogStream = null;
+
+function diagnosticError(error) {
+  if (!error) return null;
+  return {
+    name: error.name || "Error",
+    message: error.message || String(error),
+    stack: error.stack || null,
+  };
+}
+
+function initializeDiagnosticLog() {
+  try {
+    const directory = path.join(app.getPath("userData"), "diagnostics");
+    fs.mkdirSync(directory, { recursive: true });
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    diagnosticLogPath = path.join(
+      directory,
+      `field4-desktop-${stamp}-${process.pid}.jsonl`,
+    );
+    fs.writeFileSync(diagnosticLogPath, "", "utf8");
+    diagnosticLogStream = fs.createWriteStream(diagnosticLogPath, {
+      flags: "a",
+      encoding: "utf8",
+    });
+    diagnosticLogStream.on("error", (error) => {
+      console.warn("[electron,diagnostic] diagnostic stream failed", error);
+      diagnosticLogStream = null;
+    });
+
+    const oldLogs = fs
+      .readdirSync(directory)
+      .filter(
+        (name) => name.startsWith("field4-desktop-") && name.endsWith(".jsonl"),
+      )
+      .map((name) => ({ name, path: path.join(directory, name) }))
+      .sort((a, b) => b.name.localeCompare(a.name));
+    oldLogs.slice(DIAGNOSTIC_LOG_RETENTION).forEach((entry) => {
+      try {
+        fs.unlinkSync(entry.path);
+      } catch (_) {
+        // Diagnostics must never interfere with startup.
+      }
+    });
+
+    console.log(`[electron,diagnostic] writing ${diagnosticLogPath}`);
+    diagnosticLog("desktop-start", {
+      argv: process.argv.slice(1),
+      platform: process.platform,
+      electron: process.versions.electron,
+      chrome: process.versions.chrome,
+      node: process.versions.node,
+    });
+  } catch (error) {
+    diagnosticLogPath = null;
+    diagnosticLogStream = null;
+    console.warn("[electron,diagnostic] diagnostics disabled", error);
+  }
+}
+
+function diagnosticLog(event, details = {}) {
+  if (!diagnosticLogStream) return;
+  const record = {
+    timestamp: new Date().toISOString(),
+    elapsedMs: Date.now() - diagnosticStartedAt,
+    pid: process.pid,
+    event,
+    details,
+  };
+  try {
+    diagnosticLogStream.write(`${JSON.stringify(record)}\n`);
+  } catch (error) {
+    console.warn("[electron,diagnostic] could not queue diagnostic record", error);
+  }
+}
+
 app.setName(APP_NAME);
 if (process.platform === "win32") {
   app.setAppUserModelId(APP_USER_MODEL_ID);
@@ -633,6 +712,11 @@ function createMainWindow() {
     trafficLightPosition:
       process.platform === "darwin" ? { x: 16, y: 14 } : undefined,
   });
+  diagnosticLog("window-created", {
+    windowId: win.id,
+    initialUrl,
+    bounds: windowBounds,
+  });
 
   if (process.platform !== "darwin") {
     win.removeMenu();
@@ -776,6 +860,13 @@ function createMainWindow() {
     }
 
     activeTabId = next.id;
+    diagnosticLog("tab-activated", {
+      windowId: win.id,
+      previousTabId: previous?.id || null,
+      tabId: next.id,
+      webContentsId: next.view.webContents.id,
+      url: next.view.webContents.getURL() || next.url,
+    });
 
     try {
       win.contentView.removeChildView(next.view);
@@ -799,6 +890,12 @@ function createMainWindow() {
     const index = tabs.findIndex((tab) => tab.id === tabId);
     if (index === -1) return;
     const tab = tabs[index];
+    diagnosticLog("tab-close-requested", {
+      windowId: win.id,
+      tabId: tab.id,
+      webContentsId: tab.view.webContents.id,
+      url: tab.view.webContents.getURL() || tab.url,
+    });
 
     if (tabs.length === 1) {
       if (!isWelcomeUrl(tab.url)) {
@@ -840,8 +937,22 @@ function createMainWindow() {
     { activate = true, baseUrl = initialUrl } = {},
   ) => {
     const normalizedUrl = normalizeUrl(targetUrl, baseUrl);
+    diagnosticLog("tab-open-requested", {
+      windowId: win.id,
+      targetUrl: String(targetUrl || ""),
+      baseUrl,
+      normalizedUrl,
+      activate,
+      activeTabId,
+    });
     const existing = existingTabForDocument(normalizedUrl);
     if (existing) {
+      diagnosticLog("tab-open-reused", {
+        windowId: win.id,
+        tabId: existing.id,
+        webContentsId: existing.view.webContents.id,
+        normalizedUrl,
+      });
       activateTab(existing.id);
       return existing;
     }
@@ -859,6 +970,12 @@ function createMainWindow() {
         },
       }),
     };
+    diagnosticLog("tab-created", {
+      windowId: win.id,
+      tabId: tab.id,
+      webContentsId: tab.view.webContents.id,
+      normalizedUrl,
+    });
     setViewBackground(tab.view, colorForUrl(normalizedUrl));
     installPageBackgroundGuard(tab);
     installPageShortcuts(tab.view.webContents);
@@ -874,6 +991,13 @@ function createMainWindow() {
     };
 
     tab.view.webContents.setWindowOpenHandler(({ url }) => {
+      diagnosticLog("tab-window-open", {
+        windowId: win.id,
+        tabId: tab.id,
+        webContentsId: tab.view.webContents.id,
+        currentUrl: tab.view.webContents.getURL() || tab.url,
+        targetUrl: url,
+      });
       openTab(url, { activate: true, baseUrl: tab.url });
       return { action: "deny" };
     });
@@ -883,28 +1007,158 @@ function createMainWindow() {
       const target = normalizeUrl(url, currentUrl || initialUrl);
       const existing = existingTabForDocument(target, tab.id);
       if (existing) {
+        diagnosticLog("tab-will-navigate", {
+          windowId: win.id,
+          tabId: tab.id,
+          webContentsId: tab.view.webContents.id,
+          currentUrl,
+          targetUrl: target,
+          decision: "activate-existing-tab",
+          existingTabId: existing.id,
+        });
         event.preventDefault();
         activateTab(existing.id);
         return;
       }
       if (isWelcomeUrl(currentUrl) && !isWelcomeUrl(target)) {
+        diagnosticLog("tab-will-navigate", {
+          windowId: win.id,
+          tabId: tab.id,
+          webContentsId: tab.view.webContents.id,
+          currentUrl,
+          targetUrl: target,
+          decision: "open-new-tab",
+        });
         event.preventDefault();
         openTab(target, { activate: true, baseUrl: currentUrl || initialUrl });
         return;
       }
+      diagnosticLog("tab-will-navigate", {
+        windowId: win.id,
+        tabId: tab.id,
+        webContentsId: tab.view.webContents.id,
+        currentUrl,
+        targetUrl: target,
+        decision: "allow",
+      });
       setViewBackground(tab.view, colorForUrl(target));
     });
 
-    tab.view.webContents.on("did-navigate", (_event, url) => updateTitle(url));
-    tab.view.webContents.on("did-navigate-in-page", (_event, url) =>
-      updateTitle(url),
-    );
+    const tabDetails = (details = {}) => ({
+      windowId: win.id,
+      tabId: tab.id,
+      webContentsId: tab.view.webContents.id,
+      active: tab.id === activeTabId,
+      url: tab.view.webContents.getURL() || tab.url,
+      ...details,
+    });
+
+    tab.view.webContents.on("did-start-loading", () => {
+      diagnosticLog("tab-did-start-loading", tabDetails());
+    });
+    tab.view.webContents.on("did-start-navigation", (details) => {
+      diagnosticLog(
+        "tab-did-start-navigation",
+        tabDetails({
+          targetUrl: details.url,
+          isMainFrame: details.isMainFrame,
+          isSameDocument: details.isSameDocument,
+        }),
+      );
+    });
+    tab.view.webContents.on("did-redirect-navigation", (details) => {
+      diagnosticLog(
+        "tab-did-redirect-navigation",
+        tabDetails({
+          targetUrl: details.url,
+          isMainFrame: details.isMainFrame,
+          isSameDocument: details.isSameDocument,
+        }),
+      );
+    });
+
+    tab.view.webContents.on("did-navigate", (_event, url) => {
+      diagnosticLog("tab-did-navigate", tabDetails({ targetUrl: url }));
+      updateTitle(url);
+    });
+    tab.view.webContents.on("did-navigate-in-page", (_event, url) => {
+      diagnosticLog("tab-did-navigate-in-page", tabDetails({ targetUrl: url }));
+      updateTitle(url);
+    });
+    tab.view.webContents.on("dom-ready", () => {
+      diagnosticLog("tab-dom-ready", tabDetails());
+    });
     tab.view.webContents.on("did-finish-load", () => {
+      diagnosticLog("tab-did-finish-load", tabDetails());
       updateTitle();
       if (tab.id === activeTabId) {
         maybeOpenDevTools(tab);
       }
     });
+    tab.view.webContents.on("did-stop-loading", () => {
+      diagnosticLog("tab-did-stop-loading", tabDetails());
+    });
+    tab.view.webContents.on(
+      "did-fail-load",
+      (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+        diagnosticLog(
+          "tab-did-fail-load",
+          tabDetails({
+            errorCode,
+            errorDescription,
+            validatedURL,
+            isMainFrame,
+          }),
+        );
+      },
+    );
+    tab.view.webContents.on("preload-error", (_event, preloadPath, error) => {
+      diagnosticLog(
+        "tab-preload-error",
+        tabDetails({ preloadPath, error: diagnosticError(error) }),
+      );
+    });
+    tab.view.webContents.on("unresponsive", () => {
+      diagnosticLog("tab-unresponsive", tabDetails());
+      tab.view.webContents
+        .getProcessMemoryInfo()
+        .then((memory) =>
+          diagnosticLog("tab-unresponsive-memory", tabDetails({ memory })),
+        )
+        .catch((error) =>
+          diagnosticLog(
+            "tab-unresponsive-memory-error",
+            tabDetails({ error: diagnosticError(error) }),
+          ),
+        );
+    });
+    tab.view.webContents.on("responsive", () => {
+      diagnosticLog("tab-responsive", tabDetails());
+    });
+    tab.view.webContents.on("render-process-gone", (_event, details) => {
+      diagnosticLog("tab-render-process-gone", tabDetails({ ...details }));
+    });
+    tab.view.webContents.on(
+      "console-message",
+      (details, level, message, line, sourceId) => {
+        const item = details?.message
+          ? {
+              level: details.level,
+              message: details.message,
+              line: details.lineNumber,
+              sourceId: details.sourceId,
+            }
+          : { level, message, line, sourceId };
+        if (
+          item.level === "warning" ||
+          item.level === "error" ||
+          item.level === 2 ||
+          item.level === 3
+        ) {
+          diagnosticLog("tab-console-message", tabDetails(item));
+        }
+      },
+    );
 
     tabs.push(tab);
     if (activate) {
@@ -912,9 +1166,31 @@ function createMainWindow() {
     } else {
       sendTabState();
     }
-    tab.view.webContents.loadURL(normalizedUrl);
+    diagnosticLog("tab-load-url-called", tabDetails({ targetUrl: normalizedUrl }));
+    tab.view.webContents.loadURL(normalizedUrl).then(
+      () => diagnosticLog("tab-load-url-resolved", tabDetails()),
+      (error) =>
+        diagnosticLog(
+          "tab-load-url-rejected",
+          tabDetails({ error: diagnosticError(error) }),
+        ),
+    );
     return tab;
   };
+
+  const onRendererDiagnostic = (event, payload) => {
+    const tab = tabs.find((candidate) => candidate.view.webContents === event.sender);
+    if (!tab) return;
+    diagnosticLog("renderer-diagnostic", {
+      windowId: win.id,
+      tabId: tab.id,
+      webContentsId: event.sender.id,
+      active: tab.id === activeTabId,
+      url: event.sender.getURL() || tab.url,
+      payload,
+    });
+  };
+  ipcMain.on("field4-renderer-diagnostic", onRendererDiagnostic);
 
   const onlyFromStrip =
     (handler) =>
@@ -1014,6 +1290,7 @@ function createMainWindow() {
   win.on("leave-full-screen", leaveFullScreen);
 
   win.on("closed", () => {
+    diagnosticLog("window-closed", { windowId: win.id });
     ipcMain.removeListener("field4-tabs-ready", onTabsReady);
     ipcMain.removeListener("field4-tabs-activate", onTabActivate);
     ipcMain.removeListener("field4-tabs-close", onTabClose);
@@ -1021,6 +1298,7 @@ function createMainWindow() {
     ipcMain.removeListener("field4-tabs-reveal", onRevealTabs);
     ipcMain.removeListener("field4-tabs-hide", onHideTabs);
     ipcMain.removeHandler("field4-history-capture-window");
+    ipcMain.removeListener("field4-renderer-diagnostic", onRendererDiagnostic);
   });
 
   openTab(initialUrl, { activate: true });
@@ -1043,6 +1321,7 @@ async function logGpuStatus(label) {
 }
 
 app.whenReady().then(() => {
+  initializeDiagnosticLog();
   if (LOG_GPU_STATUS) {
     logChromiumGpuSwitches();
   }
@@ -1061,5 +1340,11 @@ app.on("activate", () => {
 });
 
 app.on("window-all-closed", () => {
+  diagnosticLog("desktop-window-all-closed");
   app.quit();
+});
+
+app.on("before-quit", () => {
+  diagnosticLog("desktop-before-quit");
+  diagnosticLogStream?.end();
 });
