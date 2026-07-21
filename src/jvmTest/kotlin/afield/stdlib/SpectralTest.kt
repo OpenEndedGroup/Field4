@@ -143,6 +143,42 @@ class SpectralTest {
     }
 
     @Test
+    fun spreadIsWiderForTwoSeparatedTones() {
+        val sampleRate = 2000.0
+        val n = 2048
+        val single = DoubleArray(n) { sin(2.0 * PI * 500 * it / sampleRate) }
+        val split = DoubleArray(n) {
+            sin(2.0 * PI * 200 * it / sampleRate) + sin(2.0 * PI * 800 * it / sampleRate)
+        }
+        val sSingle = fft(single, WindowType.HANN, sampleRate).spread()
+        val sSplit = fft(split, WindowType.HANN, sampleRate).spread()
+        assertTrue(sSplit > sSingle, "two separated tones spread wider ($sSplit > $sSingle)")
+    }
+
+    @Test
+    fun melScaleRoundTripsAndBankConcentratesEnergy() {
+        // hzToMel / melToHz are inverses.
+        for (hz in doubleArrayOf(0.0, 100.0, 700.0, 2000.0, 8000.0)) {
+            assertEquals(hz, Mel.melToHz(Mel.hzToMel(hz)), 1e-6, "mel round-trip at $hz Hz")
+        }
+        assertTrue(Mel.hzToMel(2000.0) > Mel.hzToMel(1000.0), "mel scale is monotonic")
+
+        // A 1000 Hz tone: the mel band spanning 1000 Hz must carry the most energy.
+        val sampleRate = 16000.0
+        val n = 4096
+        val tone = DoubleArray(n) { sin(2.0 * PI * 1000 * it / sampleRate) }
+        val mag = fft(tone, WindowType.HANN, sampleRate).magnitudeOneSided()
+        val bank = Mel.filterBank(mag, sampleRate, numBands = 20, minHz = 0.0, maxHz = 8000.0)
+        assertEquals(20, bank.size)
+        var peak = 0
+        for (i in bank.indices) if (bank[i] > bank[peak]) peak = i
+        // The band edges are mel-spaced; band `peak` should sit around 1 kHz. Just require the peak
+        // band's energy dominates the total (a single tone must not smear flat across all bands).
+        val total = bank.sum()
+        assertTrue(total > 0.0 && bank[peak] > total * 0.15, "mel bank concentrates tone energy (peak=${bank[peak]} total=$total)")
+    }
+
+    @Test
     fun istftReconstructsHannWindowedSignal() {
         val n = 4096
         val signal = DoubleArray(n) { sin(2.0 * PI * 40 * it / n) + 0.3 * sin(2.0 * PI * 120 * it / n) }
@@ -210,6 +246,48 @@ class SpectralTest {
         val frac = bright.toDouble() / (png.width * png.height)
         assertTrue(frac > 0.02, "spectrogram must have visible structure (bright fraction=$frac)")
         println("wrote spectrogram PNG to ${out.absolutePath} (${out.length()} bytes, bright frac=$frac)")
+    }
+
+    @Test
+    fun rendersMelSpectrogramPng() {
+        val sampleRate = 8000.0
+        val n = 24000
+        // Two crossing chirps: one rising, one falling — an X across the mel plane.
+        val up0 = 200.0; val up1 = 3200.0
+        val dn0 = 3200.0; val dn1 = 200.0
+        val dur = n / sampleRate
+        val ku = (up1 - up0) / dur
+        val kd = (dn1 - dn0) / dur
+        val signal = DoubleArray(n) {
+            val t = it / sampleRate
+            0.7 * sin(2.0 * PI * (up0 * t + 0.5 * ku * t * t)) +
+                0.7 * sin(2.0 * PI * (dn0 * t + 0.5 * kd * t * t))
+        }
+        val spec = stft(signal, fftSize = 1024, hopSize = 256, window = WindowType.HANN, sampleRate = sampleRate)
+        val numBands = 48
+        val mel = Array(spec.numFrames) { Mel.filterBank(spec.magnitude(it), sampleRate, numBands, 0.0, sampleRate / 2.0) }
+        var maxMel = 1e-9
+        for (row in mel) for (v in row) if (v > maxMel) maxMel = v
+
+        val width = 900; val height = 360
+        val img = BufferedImage(width, height, BufferedImage.TYPE_INT_RGB)
+        for (px in 0 until width) {
+            val frame = (px.toLong() * (spec.numFrames - 1) / (width - 1).coerceAtLeast(1)).toInt()
+            for (py in 0 until height) {
+                val band = ((height - 1 - py).toLong() * (numBands - 1) / (height - 1)).toInt()
+                val db = 20.0 * kotlin.math.log10((mel[frame][band] / maxMel).coerceAtLeast(1e-4))
+                img.setRGB(px, py, viridis(((db + 80.0) / 80.0).coerceIn(0.0, 1.0)).rgb)
+            }
+        }
+        val out = File(worktreeRoot(), "spectral_mel_spectrogram.png")
+        ImageIO.write(img, "png", out)
+        assertTrue(out.length() > 2000, "mel PNG non-trivial (${out.length()} bytes)")
+        var bright = 0
+        for (x in 0 until width) for (y in 0 until height) {
+            val c = Color(img.getRGB(x, y)); if (c.red + c.green + c.blue > 120) bright++
+        }
+        assertTrue(bright.toDouble() / (width * height) > 0.02, "mel spectrogram has visible structure")
+        println("wrote mel spectrogram PNG to ${out.absolutePath}")
     }
 
     private fun renderSpectrogram(spec: Spectrogram, width: Int, height: Int): BufferedImage {

@@ -62,6 +62,20 @@ a chirp + two tones and paints the magnitude heatmap (viridis, log-scaled) with 
 overlaid — the diagonal ridge is the chirp, the two flat lines are the 700 Hz and 1800 Hz tones,
 and the thin trace is the centroid climbing with the sweep.
 
+## Mel bands — a perceptual, log-frequency view
+
+Linear frequency bins spend most of their resolution where the ear spends least of its attention.
+The **mel scale** warps frequency logarithmically; `Mel.filterBank(...)` collapses a magnitude
+spectrum into a handful of triangular mel bands. Applied per STFT frame it gives a mel-spectrogram —
+here, two crossing chirps (one rising, one falling) tracing an X, curved by the log warping.
+
+```kotlin
+val spec = stft(signal, fftSize = 1024, hopSize = 256, window = WindowType.HANN, sampleRate = 8000.0)
+val mel = Array(spec.numFrames) { Mel.filterBank(spec.magnitude(it), 8000.0, numBands = 48) }
+```
+
+![](assets/spectral_examples/mel_spectrogram.png)
+
 ## Streaming features that compose with the filter chain
 
 The spectral features also come as `FloatFilter`s, so they slot straight into the same `then`
