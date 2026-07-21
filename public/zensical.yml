@@ -48,8 +48,9 @@ nav:
       - Drawing From Data:
         - Functions Examples: functions_examples.md
         - Functions Domains: functions_domains.md
-        - Values Over Time (Interpolants, Keyframes & Estimation): interpolants_examples.md
+        - Values Over Time (Interpolants & Keyframes): interpolants_examples.md
         - Timeseries Examples: timeseries_examples.md
+        - State Estimation Examples: state_estimation_examples.md
         - Colors Examples: colors_examples.md
         - Neighbors & Graphs Examples: graph_connectivity_examples.md
       - Networks and Dynamics:
