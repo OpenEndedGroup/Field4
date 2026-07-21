@@ -280,123 +280,109 @@ var dispatchFLineIntersections = (event, callbackName) => {
         }
 }
 
+var touchCallbackTargets = new WeakSet()
+
+var clientPositionForEvent = (event) => {
+        var touch = (event.touches && event.touches[0]) ||
+                (event.changedTouches && event.changedTouches[0])
+        return {
+                x: touch ? touch.clientX : event.clientX,
+                y: touch ? touch.clientY : event.clientY
+        }
+}
+
+var dispatchInputEvent = (event, target, callbacks, callbackName) => {
+        var position = clientPositionForEvent(event)
+        var bounds = target.getBoundingClientRect()
+        var width = bounds.width || target.clientWidth
+        var height = bounds.height || target.clientHeight
+        if (!width || !height || !Number.isFinite(position.x) || !Number.isFinite(position.y)) return
+
+        var x = 2 * ((position.x - bounds.left) / width) - 1
+        var y = -2 * ((position.y - bounds.top) / height) + 1
+        event.coordinates = new THREE.Vector2(x, y)
+        labelEvent(event, true)
+        dispatchFLineIntersections(event, callbackName)
+        dispatchTo(event, callbacks, callbackName)
+}
+
+// A-Frame's canvas receives ordinary browser input, while WebXR DOM Overlay sends
+// pointer events to its overlay element. Install the same Field callback surface on
+// both; this guard also makes head initialization safe to repeat.
 var addTouchCallbacks = (target, gate) => {
-        target.addEventListener('mouseup', (e) => {
-                if (gate && !gate(e)) return
-                console.log("up", e)
-                // e.stopImmediatePropagation()
-                var x = 2 * (e.clientX / e.target.clientWidth) - 1;
-                var y = -2 * (e.clientY / e.target.clientHeight) + 1;
-                e.coordinates = new THREE.Vector2(x, y)
-                labelEvent(e, true)
-                dispatchFLineIntersections(e, "mouseUp")
-                dispatchTo(e, mouseUp, "mouseUp");
+        if (!target) throw new Error("Cannot install Field input callbacks without a target")
+        if (touchCallbackTargets.has(target)) return target
+        touchCallbackTargets.add(target)
+        target.dataset.fieldRemoteInput = "true"
 
-        });
-        target.addEventListener('mousedown', (e) => {
-                if (gate && !gate(e)) return
-                // e.stopImmediatePropagation()
-                var x = 2 * (e.clientX / e.target.clientWidth) - 1;
-                var y = -2 * (e.clientY / e.target.clientHeight) + 1;
-                e.coordinates = new THREE.Vector2(x, y)
-                labelEvent(e, true)
+        var deliver = (event, callbacks, callbackName) => {
+                if (gate && !gate(event)) return
+                dispatchInputEvent(event, target, callbacks, callbackName)
+        }
 
-                dispatchFLineIntersections(e, "mouseDown")
+        if (window.PointerEvent) {
+                var lastNonMouseDown = null
+                var suppressNativeDoubleClickUntil = 0
 
-                dispatchTo(e, mouseDown, "mouseDown");
-        });
-        target.addEventListener('dblclick', (e) => {
-                if (gate && !gate(e)) return
-                // e.stopImmediatePropagation()
-                var x = 2 * (e.clientX / e.target.clientWidth) - 1;
-                var y = -2 * (e.clientY / e.target.clientHeight) + 1;
-                e.coordinates = new THREE.Vector2(x, y)
-                labelEvent(e, true)
-                dispatchFLineIntersections(e, "dblClick")
-                dispatchTo(e, dblClick, "dblClick");
-        });
-
-        target.addEventListener('mousemove', (e) => {
-                if (gate && !gate(e)) return
-                // e.stopImmediatePropagation()
-                var x = 2 * (e.clientX / e.target.clientWidth) - 1;
-                var y = -2 * (e.clientY / e.target.clientHeight) + 1;
-                e.coordinates = new THREE.Vector2(x, y)
-                labelEvent(e, true)
-                dispatchFLineIntersections(e, "mouseMove")
-                dispatchTo(e, mouseMove, "mouseMove");
-        });
-
-        target.addEventListener('touchend', (e) => {
-                if (gate && !gate(e)) return
-                // e.stopImmediatePropagation()
-                var endingTouch = (e.changedTouches && e.changedTouches[0]) || (e.touches && e.touches[0])
-                if (endingTouch) {
-                        e.clientX = endingTouch.clientX
-                        e.clientY = endingTouch.clientY
-                }
-                var x = 2 * (e.clientX / e.target.clientWidth) - 1;
-                var y = -2 * (e.clientY / e.target.clientHeight) + 1;
-                e.coordinates = new THREE.Vector2(x, y)
-                labelEvent(e, true)
-                dispatchFLineIntersections(e, "mouseUp")
-                dispatchTo(e, mouseUp, "mouseUp")
-        });
-
-
-        let tapedTwice = false;
-
-
-        target.addEventListener('touchstart', (e) => {
-                if (gate && !gate(e)) return
-
-                if(!tapedTwice) {
-                        tapedTwice = true;
-                        setTimeout( function() { tapedTwice = false; }, 300 );
-                }
-                else
-                {
-                        // e.stopImmediatePropagation()
-                        if (e.touches && e.touches[0]) {
-                                e.clientX = e.touches[0].clientX
-                                e.clientY = e.touches[0].clientY
+                target.addEventListener('pointerup', (event) => {
+                        deliver(event, mouseUp, "mouseUp")
+                })
+                target.addEventListener('pointerdown', (event) => {
+                        if (gate && !gate(event)) return
+                        if (event.pointerType !== "mouse") {
+                                var now = performance.now()
+                                if (lastNonMouseDown !== null && now - lastNonMouseDown < 300) {
+                                        lastNonMouseDown = null
+                                        suppressNativeDoubleClickUntil = now + 500
+                                        dispatchInputEvent(event, target, dblClick, "dblClick")
+                                        return
+                                }
+                                lastNonMouseDown = now
                         }
-                        var x = 2 * (e.clientX / e.target.clientWidth) - 1;
-                        var y = -2 * (e.clientY / e.target.clientHeight) + 1;
-                        e.coordinates = new THREE.Vector2(x, y)
-                        labelEvent(e, true)
-                        dispatchFLineIntersections(e, "dblClick")
-                        dispatchTo(e, dblClick, "dblClick")
+                        dispatchInputEvent(event, target, mouseDown, "mouseDown")
+                })
+                target.addEventListener('pointermove', (event) => {
+                        deliver(event, mouseMove, "mouseMove")
+                })
+                target.addEventListener('dblclick', (event) => {
+                        if (performance.now() < suppressNativeDoubleClickUntil) return
+                        deliver(event, dblClick, "dblClick")
+                })
+                return target
+        }
+
+        // Pointer Events cover current Android browsers and WKWebView. Keep this
+        // compatibility path for older embedded browsers.
+        target.addEventListener('mouseup', (event) => {
+                deliver(event, mouseUp, "mouseUp")
+        })
+        target.addEventListener('mousedown', (event) => {
+                deliver(event, mouseDown, "mouseDown")
+        })
+        target.addEventListener('mousemove', (event) => {
+                deliver(event, mouseMove, "mouseMove")
+        })
+        target.addEventListener('dblclick', (event) => {
+                deliver(event, dblClick, "dblClick")
+        })
+
+        var tappedOnce = false
+        target.addEventListener('touchstart', (event) => {
+                if (gate && !gate(event)) return
+                if (tappedOnce) {
+                        tappedOnce = false
+                        dispatchInputEvent(event, target, dblClick, "dblClick")
                         return
                 }
-
-                // e.stopImmediatePropagation()
-                if (e.touches && e.touches[0]) {
-                        e.clientX = e.touches[0].clientX
-                        e.clientY = e.touches[0].clientY
-                }
-                var x = 2 * (e.clientX / e.target.clientWidth) - 1;
-                var y = -2 * (e.clientY / e.target.clientHeight) + 1;
-                e.coordinates = new THREE.Vector2(x, y)
-                labelEvent(e, true)
-
-                dispatchFLineIntersections(e, "mouseDown")
-
-                dispatchTo(e, mouseDown, "mouseDown")
-
-        });
-        target.addEventListener('touchmove', (e) => {
-                if (gate && !gate(e)) return
-                // e.stopImmediatePropagation()
-                if (e.touches && e.touches[0]) {
-                        e.clientX = e.touches[0].clientX
-                        e.clientY = e.touches[0].clientY
-                }
-                var x = 2 * (e.clientX / e.target.clientWidth) - 1;
-                var y = -2 * (e.clientY / e.target.clientHeight) + 1;
-                e.coordinates = new THREE.Vector2(x, y)
-                labelEvent(e, true)
-                dispatchFLineIntersections(e, "mouseMove")
-                dispatchTo(e, mouseMove, "mouseMove")
-        });
+                tappedOnce = true
+                setTimeout(function () { tappedOnce = false }, 300)
+                dispatchInputEvent(event, target, mouseDown, "mouseDown")
+        })
+        target.addEventListener('touchmove', (event) => {
+                deliver(event, mouseMove, "mouseMove")
+        })
+        target.addEventListener('touchend', (event) => {
+                deliver(event, mouseUp, "mouseUp")
+        })
+        return target
 }

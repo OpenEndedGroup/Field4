@@ -108,7 +108,10 @@
         scene.addEventListener("loaded", function () {
             scene.object3D.traverse((object) => { object.frustumCulled = false; });
             enterScene(scene.object3D, scene.camera, function () {}, function () {});
-            addTouchCallbacks(document.getElementById("touch-overlay"), () => true);
+            const canvas = scene.canvas || scene.querySelector("canvas");
+            const overlay = document.getElementById("touch-overlay");
+            addTouchCallbacks(canvas, () => true);
+            addTouchCallbacks(overlay, () => true);
             _field.evalRequestWS(uuid(), function () {});
             __fieldRemoteHead.markReady();
         }, {once: true});

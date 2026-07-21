@@ -236,10 +236,19 @@ const report = status?.dataset?.selfTestReport ? JSON.parse(status.dataset.selfT
 const executionCount = Number(status?.dataset?.executionCount || 0);
 const executionValue = remoteDocument?.documentElement?.dataset?.remoteExecution || null;
 const failedChecks = (report?.results || []).filter((item) => !item.ok).map((item) => item.name);
+const line = remoteFrame?.contentWindow?.stage?.f;
+const lineNodes = line?.nodes?.length || 0;
+const lineDrawRange = line?.stroke?.geometry?.drawRange?.count || 0;
+const inputSurface = remoteDocument?.elementFromPoint(
+  (remoteFrame?.clientWidth || 0) / 2,
+  (remoteFrame?.clientHeight || 0) / 2
+);
+const inputSurfaceBound = inputSurface?.dataset?.fieldRemoteInput === "true";
 remoteDocument?.querySelector("a-scene")?.pause?.();
 const canvas = remoteDocument?.querySelector("canvas");
 if (canvas) canvas.style.display = "none";
 if (status) {
+  status.textContent += `\npointer input ${lineNodes >= 2 && lineDrawRange > 0 ? "pass" : "fail"} / ${lineNodes} nodes`;
   const evidence = document.adoptNode(status);
   evidence.id = "remote-ar-regression-evidence";
   Object.assign(evidence.style, {
@@ -262,13 +271,20 @@ return {
   ok: remoteDocument?.documentElement?.dataset?.fieldRemoteSelfTest === "pass" &&
     report?.ok === true &&
     executionCount >= 1 &&
-    executionValue === "42",
+    executionValue === "42" &&
+    inputSurfaceBound &&
+    lineNodes >= 2 &&
+    lineDrawRange > 0,
   reason: failedChecks.length ? `failed head checks: ${failedChecks.join(", ")}` :
-    `selfTest=${remoteDocument?.documentElement?.dataset?.fieldRemoteSelfTest || "missing"}, executionCount=${executionCount}, executionValue=${executionValue}`,
+    `selfTest=${remoteDocument?.documentElement?.dataset?.fieldRemoteSelfTest || "missing"}, executionCount=${executionCount}, executionValue=${executionValue}, inputSurface=${inputSurface?.tagName || "missing"}, inputSurfaceBound=${inputSurfaceBound}, lineNodes=${lineNodes}, lineDrawRange=${lineDrawRange}`,
   aframe: report?.snapshot?.aframe || null,
   three: report?.snapshot?.three || null,
   executionCount,
   executionValue,
+  inputSurface: inputSurface?.tagName || null,
+  inputSurfaceBound,
+  lineNodes,
+  lineDrawRange,
   checks: report?.results || []
 };
 """
@@ -2655,16 +2671,19 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
         ),
         UiRegression(
             id="remote-ar-head",
-            description="The bundled RemoteJS template assigns a real Javascript runtime, then the vendored head boots, connects, self-tests, and executes its hello-world box end to end.",
+            description="The bundled RemoteJS template assigns a real Javascript runtime, then the vendored head boots, connects, self-tests, executes Javascript, and turns real iframe pointer movement into FLine geometry.",
             commands=[
                 shell_join(["raw-send", "insert-template", json.dumps({"command": "insert", "value": ["remote"]})]),
                 "sleep 0.5",
                 "snapshot",
-                shell_join(["editor-open", "hello world", "--property", "code"]),
                 shell_join(["page-eval", "--body", "--file", str(files["remote_ar_navigate_js"]), "--timeout", pw_timeout]),
                 "sleep 2.0",
                 shell_join(["run", "hello world", "--value", "document.documentElement.dataset.remoteExecution = 6 * 7; print(6 * 7)", "--timeout", timeout_text]),
+                shell_join(["run", "A line in space", "--timeout", timeout_text]),
+                "drag-box @last --dx 120 --dy 40 --steps 8",
+                "sleep 0.25",
                 shell_join(["page-eval", "--body", "--file", str(files["remote_ar_assert_js"]), "--timeout", pw_timeout]),
+                shell_join(["editor-open", "hello world", "--property", "code"]),
                 shell_join(["run", "hello world", "--value", "clearAFr ame()", "--timeout", timeout_text]),
                 "sleep 0.5",
                 shell_join(["page-eval", "--body", "--file", str(files["remote_ar_single_error_js"]), "--timeout", pw_timeout]),
