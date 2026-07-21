@@ -1,0 +1,342 @@
+name: spin_glass
+description: >
+  Self-contained 2D Edwards-Anderson spin glass, Vulkan-compute accelerated.
+  One transcript builds a five-box native graphics system on a blank canvas:
+  a renderer box (owns Window + Renderer, pumps the loop), a "metropolis update"
+  compute box (checkerboard / red-black Monte Carlo over Ising spins with random
+  +/-J or Gaussian bonds, cosine simulated annealing, in-place buffer_reference
+  buffers published as props), a "measure" compute box (probes vec2(spin, energy)
+  for every site with {% include "fieldProbe" %} so the stats card's x-mean is the
+  magnetization and the y-mean is the energy per spin), and a "lattice view" draw
+  box (a fullscreen triangle whose fragment shader reads the shared spins buffer
+  and colours each cell). Requires a GPU/Vulkan window (like threebox.yaml).
+  Demonstrates: cross-box property publish/read down a renderer -> update ->
+  measure -> view chain; a red-black compute update split into two dispatches per
+  frame with a computeMemoryBarrier task between them; and per-frame simulation
+  state advanced from a leading computeTask "tick". The transcript produces no
+  image artifact itself — capture its native window with a follow-on
+  `native-screenshot <path>` backdoor command (run with --with-playwright).
+operations:
+  # 1. renderer box: owns the Window + Renderer and pumps the loop.
+  - create:
+      box: sg_renderer
+      name: renderer
+      frame: { x: 40.0, y: 40.0, w: 170.0, h: 90.0 }
+      properties:
+        code: |
+          import afield.four.util.Options
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          Options.profiling = false
+          once.renderer {
+              window = Window("Spin Glass - 2D Edwards-Anderson")
+              Renderer(window)
+          }
+          println("renderer ready")
+          start(renderer::run)
+  # 2. metropolis update box: the Monte Carlo engine.
+  #    NOTE the push-constant BLOCK name (PushC) must differ from the instance name (pc).
+  - create:
+      box: sg_update
+      name: metropolis update
+      frame: { x: 240.0, y: 40.0, w: 200.0, h: 120.0 }
+      properties:
+        compute: |
+          #version 450
+          #extension GL_EXT_buffer_reference : require
+          layout(local_size_x = 64) in;
+
+          layout(std430, buffer_reference) buffer Spins { float s[]; };
+          layout(std430, buffer_reference) buffer Bonds { float j[]; };
+
+          layout(push_constant) uniform PushC {
+              Spins spins;
+              Bonds jRight;
+              Bonds jDown;
+              uint L;
+              uint color;
+              uint seed;
+              uint mode;
+              float temperature;
+              float field;
+          } pc;
+
+          uint hash(uint x){ x ^= x >> 16; x *= 0x7feb352du; x ^= x >> 15; x *= 0x846ca68bu; x ^= x >> 16; return x; }
+          float rnd(uint v){ return float(hash(v)) * (1.0 / 4294967296.0); }
+
+          void main() {
+              uint L = pc.L;
+              uint N = L * L;
+              uint idx = gl_GlobalInvocationID.x;
+              if (idx >= N) return;
+              uint x = idx % L;
+              uint y = idx / L;
+              // red-black: this dispatch only touches one colour of the checkerboard,
+              // so no two updated spins are ever nearest neighbours in a single pass.
+              if (((x + y) & 1u) != pc.color) return;
+
+              uint xl = (x + L - 1u) % L;
+              uint xr = (x + 1u) % L;
+              uint yu = (y + L - 1u) % L;
+              uint yd = (y + 1u) % L;
+
+              float s  = pc.spins.s[idx];
+              float sl = pc.spins.s[y * L + xl];
+              float sr = pc.spins.s[y * L + xr];
+              float su = pc.spins.s[yu * L + x];
+              float sd = pc.spins.s[yd * L + x];
+
+              // jRight[i] is the bond i--(+x); the left bond is the left neighbour's jRight.
+              // jDown[i]  is the bond i--(+y); the up   bond is the up   neighbour's jDown.
+              float jl = pc.jRight.j[y * L + xl];
+              float jr = pc.jRight.j[idx];
+              float ju = pc.jDown.j[yu * L + x];
+              float jd = pc.jDown.j[idx];
+
+              float localField = jl * sl + jr * sr + ju * su + jd * sd + pc.field;
+              float T = max(pc.temperature, 1e-4);
+              float u = rnd(idx * 2654435761u + pc.seed * 40503u + pc.color * 19349663u);
+
+              float ns = s;
+              if (pc.mode == 0u) {
+                  // Metropolis
+                  float dE = 2.0 * s * localField;
+                  if (dE <= 0.0 || u < exp(-dE / T)) ns = -s;
+              } else {
+                  // heat-bath
+                  float pPlus = 1.0 / (1.0 + exp(-2.0 * localField / T));
+                  ns = (u < pPlus) ? 1.0 : -1.0;
+              }
+              pc.spins.s[idx] = ns;
+          }
+        code: |
+          import afield.four.modules.computeMemoryBarrier
+          import afield.four.modules.computeTask
+
+          val L = 128
+          val N = L * L
+          val groups = (N + 63) / 64
+
+          // simulation parameters, published so the measure + view boxes can read them
+          prop<Int>(sgL) = L
+          prop<Double>(sgTemperature) = 3.0
+          prop<Double>(sgField) = 0.0
+          prop<Int>(sgMode) = 0        // 0 = Metropolis, 1 = heat-bath
+          prop<Int>(sgModel) = 0       // 0 = +/-J bimodal, 1 = Gaussian bonds
+          prop<Int>(sgSweeps) = 0
+          prop<Boolean>(sgAnneal) = true
+
+          val Thi = 3.0
+          val Tlo = 0.04
+          val period = 6000
+          val model = sgModel
+
+          // in-place lattice state (single, persistent copy — not per-frame)
+          var spins = defaultBuffer { size = N.floats }.buffer
+          var jRight = defaultBuffer { size = N.floats }.buffer
+          var jDown = defaultBuffer { size = N.floats }.buffer
+
+          val rng = java.util.Random(20260720L)
+          // NOTE: a named local `fun` that reads a prop captures the script's implicit Box
+          // receiver and fails K2 codegen; inline the coupling draw instead.
+          spins.write { for (i in 0 until N) put(if (rng.nextBoolean()) 1f else -1f) }
+          jRight.write { for (i in 0 until N) put(if (model == 1) rng.nextGaussian().toFloat() else if (rng.nextBoolean()) 1f else -1f) }
+          jDown.write { for (i in 0 until N) put(if (model == 1) rng.nextGaussian().toFloat() else if (rng.nextBoolean()) 1f else -1f) }
+
+          prop<FrameBufferGroup>(sgSpins) = spins
+          prop<FrameBufferGroup>(sgJRight) = jRight
+          prop<FrameBufferGroup>(sgJDown) = jDown
+
+          var sweep = 0
+          var seed = 1
+          var T = Thi
+
+          var module = computeModuleHere {}
+          // ComputeMesh.inside is lateinit — add the mesh to the module BEFORE setting x/y/z or push lambdas.
+          val even = ComputeMesh()
+          val odd = ComputeMesh()
+
+          // "tick" runs first each frame: advance the sweep counter + anneal schedule once.
+          module += "tick" to computeTask { _, _, _ ->
+              sweep += 1
+              seed += 1
+              sgSweeps = sweep
+              if (sgAnneal) {
+                  val phase = (sweep % period).toDouble() / period.toDouble()
+                  T = Tlo + 0.5 * (Thi - Tlo) * (1.0 + Math.cos(2.0 * Math.PI * phase))
+                  sgTemperature = T
+              } else {
+                  T = sgTemperature
+              }
+          }
+          module += "even" to even
+          module += "barrierE" to computeTask { _, cmd, _ -> computeMemoryBarrier(cmd) }
+          module += "odd" to odd
+          module += "barrierO" to computeTask { _, cmd, _ -> computeMemoryBarrier(cmd) }
+          renderer += "spinGlassUpdate" to module
+
+          for (m in listOf(even, odd)) {
+              m.x = groups; m.y = 1; m.z = 1
+              m.spins = { spins }
+              m.jRight = { jRight }
+              m.jDown = { jDown }
+              m.L = { L.toUInt() }        // uint push members need UInt-returning lambdas
+              m.mode = { sgMode.toUInt() }
+              m.field = { sgField.toFloat() }
+              m.temperature = { T.toFloat() }
+          }
+          even.color = { 0u }
+          odd.color = { 1u }
+          even.seed = { seed.toUInt() }
+          odd.seed = { (seed + 100003).toUInt() }
+
+          println("update launched L=" + L + " N=" + N + " groups=" + groups)
+  # 3. measure box: probe (spin, energy) for every site -> field-probe stats card.
+  - create:
+      box: sg_measure
+      name: measure (energy / magnetization)
+      frame: { x: 470.0, y: 40.0, w: 220.0, h: 140.0 }
+      properties:
+        compute: |
+          #version 450
+          #extension GL_EXT_buffer_reference : require
+          layout(local_size_x = 64) in;
+
+          layout(std430, buffer_reference) buffer Spins { float s[]; };
+          layout(std430, buffer_reference) buffer Bonds { float j[]; };
+
+          layout(push_constant) uniform PushC {
+              Spins spins;
+              Bonds jRight;
+              Bonds jDown;
+              uint L;
+              float field;
+          } pc;
+
+          {% include "fieldProbe" %}
+
+          void main() {
+              uint L = pc.L;
+              uint N = L * L;
+              uint idx = gl_GlobalInvocationID.x;
+              if (idx >= N) return;
+              uint x = idx % L;
+              uint y = idx / L;
+              uint xr = (x + 1u) % L;
+              uint yd = (y + 1u) % L;
+              float s  = pc.spins.s[idx];
+              float sr = pc.spins.s[y * L + xr];
+              float sd = pc.spins.s[yd * L + x];
+              // count each bond once (right + down), so sum over sites is the total energy
+              float e = -(pc.jRight.j[idx] * s * sr + pc.jDown.j[idx] * s * sd) - pc.field * s;
+              fieldProbe(vec2(s, e));
+          }
+        code: |
+          import afield.four.modules.computeMemoryBarrier
+          import afield.four.modules.computeTask
+
+          val L = sgL
+          val N = L * L
+          val groups = (N + 63) / 64
+
+          // call fieldProbeHere BEFORE computeModuleHere so attachFieldProbe wires the SSBO.
+          // samples >= N keeps every site each frame, so the reported means are exact.
+          fieldProbeHere(samples = if (N < 262144) N else 262144).display("stats")
+          displayOpen("stats")
+
+          var module = computeModuleHere {}
+          val m = ComputeMesh()
+          // leading barrier: make the update box's spin writes visible to this read.
+          module += "sync" to computeTask { _, cmd, _ -> computeMemoryBarrier(cmd) }
+          module += "measure" to m
+          renderer += "spinGlassMeasure" to module
+
+          m.x = groups; m.y = 1; m.z = 1
+          m.spins = { sgSpins }
+          m.jRight = { sgJRight }
+          m.jDown = { sgJDown }
+          m.L = { sgL.toUInt() }
+          m.field = { sgField.toFloat() }
+          println("measure launched N=" + N)
+  # 4. lattice view box: fullscreen triangle, fragment reads the shared spins buffer.
+  - create:
+      box: sg_draw
+      name: lattice view
+      frame: { x: 720.0, y: 40.0, w: 220.0, h: 140.0 }
+      properties:
+        vertex: |
+          #version 450
+          layout(location = 0) out vec2 uv;
+          vec2 verts[3] = vec2[3](vec2(-1.0, -1.0), vec2(3.0, -1.0), vec2(-1.0, 3.0));
+          void main() {
+              vec2 p = verts[gl_VertexIndex];
+              uv = 0.5 * (p + vec2(1.0));
+              gl_Position = vec4(p, 0.0, 1.0);
+          }
+        fragment: |
+          #version 450
+          #extension GL_EXT_buffer_reference : require
+          layout(location = 0) in vec2 uv;
+          layout(location = 0) out vec4 outColor;
+
+          layout(std430, buffer_reference) buffer Spins { float s[]; };
+          layout(std430, buffer_reference) buffer Bonds { float j[]; };
+
+          layout(push_constant) uniform DrawPC {
+              Spins spins;
+              Bonds jRight;
+              Bonds jDown;
+              uint L;
+              float aspect;
+              uint showFrustration;
+          } pc;
+
+          void main() {
+              uint L = pc.L;
+              vec2 p = uv;
+              // keep the lattice square regardless of window aspect
+              if (pc.aspect >= 1.0) { p.x = (uv.x - 0.5) * pc.aspect + 0.5; }
+              else { p.y = (uv.y - 0.5) / pc.aspect + 0.5; }
+              if (p.x < 0.0 || p.x > 1.0 || p.y < 0.0 || p.y > 1.0) { outColor = vec4(0.05, 0.05, 0.07, 1.0); return; }
+              uint x = min(uint(p.x * float(L)), L - 1u);
+              uint y = min(uint((1.0 - p.y) * float(L)), L - 1u);
+              uint idx = y * L + x;
+              float s = pc.spins.s[idx];
+              vec3 up = vec3(0.98, 0.60, 0.16);
+              vec3 dn = vec3(0.14, 0.44, 0.82);
+              vec3 col = (s > 0.0) ? up : dn;
+              if (pc.showFrustration == 1u) {
+                  uint xr = (x + 1u) % L; uint yd = (y + 1u) % L;
+                  float plaq = pc.jRight.j[idx] * pc.jDown.j[y * L + xr] * pc.jRight.j[yd * L + x] * pc.jDown.j[idx];
+                  if (plaq < 0.0) col = mix(col, vec3(1.0, 0.08, 0.08), 0.30);
+              }
+              outColor = vec4(col, 1.0);
+          }
+        code: |
+          var module = moduleHere { primitiveType = triangles }
+          var m = Mesh()
+          module += "grid" to m
+          renderer += "spinGlassDraw" to module
+
+          m.spins = { sgSpins }
+          m.jRight = { sgJRight }
+          m.jDown = { sgJDown }
+          m.L = { sgL.toUInt() }
+          m.aspect = { window.width / window.height.toFloat() }
+          m.showFrustration = { 0u }     // set to { 1u } and re-run to overlay frustrated plaquettes
+          m.set(3, 0) {}
+          println("draw launched")
+  # topology: each box is chained beneath the previous one so the shared lattice
+  # buffers (published as props by sg_update) propagate down to measure + view.
+  - connect: { parent: sg_renderer, child: sg_update }
+  - connect: { parent: sg_update, child: sg_measure }
+  - connect: { parent: sg_measure, child: sg_draw }
+  - launch: { box: sg_renderer, property: code, strand: renderer }  # renderer first — it owns the loop
+  - await: {}
+  - launch: { box: sg_update, property: code }
+  - await: {}
+  - launch: { box: sg_measure, property: code }
+  - await: {}
+  - launch: { box: sg_draw, property: code }
+  - await: {}

@@ -84,6 +84,7 @@ For renderer boxes, keep `start(renderer::run)` as the final expression of the l
 - `linalg_thumbnails_demo.yaml`: four blank-canvas boxes that evaluate a `vec2`, `vec3`, `mat3`, and `mat4`; on execute each box's output shows the terse text head plus the inline SVG thumbnail `ValueVisualizer` draws (auto-scaled arrow for vectors, isometric for `vec3`, diverging heatmap grid for matrices).
 - `recstl_playground.yaml`: a one-stop, drag-in **RectSL playground**. Builds a "window + renderer" parent box and a child "recstl" box connected beneath it; the child compiles a `#rectsl` snippet, draws it live in the on-screen window, and publishes a `controlGroup("transport")` in its output area — `play`/`loop` checkboxes, a `speed` slider, and a `time` scrub slider. Edit the `rectsl` string and re-run the child to change it live; check `play` to loop it, or scrub `time` while paused to freeze on a frame. Requires a GPU/Vulkan window (like `threebox.yaml`); capture its window with a follow-on `native-screenshot <path>` (`--with-playwright`). Because it starts with `name:`/`operations:`, dropping the file onto a Field document is recognized as a transcript and run (write-then-run) — this is the intended "drag in to get started" path.
 - `threebox.yaml`: self-contained capstone. One transcript builds a three-box particle system on a blank canvas — a renderer box (owns `Window` + `Renderer`, pumps the loop), a compute box (simulates particles into a `buffer_reference` buffer and probes speed via `{% include "fieldProbe" %}`, publishing the buffer as `prop<FrameBufferGroup>(outputPositions)`), and a draw box (reads `outputPositions` and renders). Requires a GPU/Vulkan window. Demonstrates cross-box property publish/read and the `await` barrier between the three launches; the transcript itself produces no image artifact (no screenshot step) — capture its native window with a follow-on `native-screenshot <path>` backdoor command (`--with-playwright`).
+- `spin_glass.yaml`: a five-box **2D Edwards-Anderson spin glass**, Vulkan-compute accelerated, on a blank canvas — a renderer box, a "metropolis update" compute box (checkerboard / red-black Monte Carlo over Ising spins with random `+/-J` or Gaussian bonds and cosine simulated annealing, updating in-place `buffer_reference` buffers it publishes as props), a "measure" compute box (probes `vec2(spin, energy)` for every site via `{% include "fieldProbe" %}`, so the stats card's x-mean is the magnetization and its y-mean the energy per spin), and a "lattice view" draw box (a fullscreen triangle whose fragment shader reads the shared spins buffer and colours each cell). Requires a GPU/Vulkan window. Demonstrates a red-black compute update split into two dispatches per frame with a `computeMemoryBarrier` task between them, per-frame simulation state advanced from a leading `computeTask` "tick", and a `renderer -> update -> measure -> view` publish/read chain. Produces no image artifact itself — capture its native window with a follow-on `native-screenshot <path>` backdoor command (`--with-playwright`).
 
 ## Verified in CI — the executing harness
 
@@ -120,6 +121,28 @@ The harness classifies each transcript into exactly one bucket:
 `EXECUTE` or `COMPILE_ONLY` in `DemoTranscriptExecSmokeTest.kt`. An unclassified transcript fails the
 test on purpose. Choose EXECUTE when the boxes are pure compute and safe to run to completion
 headless; choose COMPILE-ONLY when a box constructs a `Window`/`Renderer` or launches a render loop.
+
+## Starting points and the docs gallery
+
+Each transcript here is also **materialized into an openable Field document** so it can surface as a
+"Starting point" on the welcome screen (and its search) and in the public
+[Agent transcript gallery](../../../public/docs/agent_transcripts.md). The materializer
+(`src/jvmMain/kotlin/afield/examples/AgentTranscriptMaterializer.kt`) builds each transcript's box
+graph with the structural ops only (no `launch`/`execute`, so no GPU) and saves a pristine document
+into `public/docs/assets/agent_transcripts/<name>/`. Transcripts stay the single source of truth —
+**never add a `save` op to a transcript** to make this happen; the materializer performs the save out
+of band, and its output is deterministic (an async-injected empty `preamble` is stripped, and the
+per-launch `history_metrics.edn` is dropped) so the committed bundle does not churn.
+
+The materialized documents are committed. Regenerate them after changing a transcript:
+
+```bash
+uv run --project . --group backdoor python tools/field_backdoor.py --json \
+  --command 'run-jvm-main afield.examples.AgentTranscriptMaterializer --arg '"$PWD"'/public/docs/assets/agent_transcripts'
+```
+
+The FIELD_TEST `examples.agent-transcripts.materialize` re-materializes to a temp dir and **fails if
+the committed bundle is out of date**, so a transcript edit without a regenerate is caught in CI.
 
 ## Growth Rules
 
