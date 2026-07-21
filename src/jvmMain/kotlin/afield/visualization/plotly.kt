@@ -86,11 +86,13 @@ fun violin(vararg data: List<Number>): Plot {
 }
 
 fun Plot.darkMode(): Plot {
+    val hasTitle = !this.layout.title.isNullOrEmpty()
     layout {
         title {
             x = 0.05
             font {
                 color("#f2f5fa")
+                size = 15
             }
         }
         legend {
@@ -109,6 +111,7 @@ fun Plot.darkMode(): Plot {
             color("#aaaaaa")
             tickangle = 20.0
             zerolinewidth = 3
+            automargin = true
         }
         yaxis {
             gridcolor("#283442")
@@ -117,17 +120,17 @@ fun Plot.darkMode(): Plot {
             color("#aaaaaa")
             tickangle = 20.0
             zerolinewidth = 3
+            automargin = true
         }
-    }
-
-    if (this.layout.title?.isEmpty() != false) {
-        layout {
-            margin {
-                t = 30
-                l = 30
-                b = 30
-                r = 30
-            }
+        // Data-first margins: Plotly reserves ~100px up top for a title by default.
+        // Give the title only a slim band (or almost none when untitled) so the plot
+        // area gets the space. Axis `automargin` above still grows the left/bottom
+        // gutters as needed, so tick labels and axis titles never clip.
+        margin {
+            t = if (hasTitle) 46 else 22
+            b = 34
+            l = 44
+            r = 24
         }
     }
     return this
