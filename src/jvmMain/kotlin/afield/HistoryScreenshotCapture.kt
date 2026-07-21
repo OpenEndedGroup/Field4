@@ -113,7 +113,19 @@ object HistoryScreenshotCapture {
         )
         var unsupportedCount = 0
         var oversizedCount = 0
+        var foreignCount = 0
+        // Only capture windows that belong to the document being saved. Windows are process-global,
+        // so without this a save of document A would snapshot document B's renderer window (or a
+        // leaked/stale window) into A's history — the root of the four-window / four-window-1 /
+        // four-window-2 channel fragmentation. When we can't resolve the document's own windows
+        // (e.g. its renderer isn't held as a box property), fall back to all open windows so we
+        // never regress capture for documents that don't follow the convention.
+        val ownedWindows = documentOwnedWindows(documentPath)
         val windows = openWindowsSnapshot().mapNotNull { window ->
+            if (ownedWindows.isNotEmpty() && window !in ownedWindows) {
+                foreignCount++
+                return@mapNotNull null
+            }
             val renderer = window.associatedRenderer
             if (renderer == null || !renderer.supportsDirectWindowCapture(window)) {
                 unsupportedCount++
@@ -135,7 +147,7 @@ object HistoryScreenshotCapture {
             SaveReloadLog.logTiming(
                 "history-four-screenshot-capture",
                 totalStartedAt,
-                "doc=$documentPath versionIndex=$versionIndex windows=0 unsupported=$unsupportedCount oversized=$oversizedCount maxPixels=$maxPixels windowsMs=$windowsMs"
+                "doc=$documentPath versionIndex=$versionIndex windows=0 owned=${ownedWindows.size} foreign=$foreignCount unsupported=$unsupportedCount oversized=$oversizedCount maxPixels=$maxPixels windowsMs=$windowsMs"
             )
             return
         }
@@ -213,8 +225,31 @@ object HistoryScreenshotCapture {
         SaveReloadLog.logTiming(
             "history-four-screenshot-capture",
             totalStartedAt,
-            "doc=$documentPath versionIndex=$versionIndex windows=${windows.size} unsupported=$unsupportedCount oversized=$oversizedCount maxPixels=$maxPixels windowsMs=$windowsMs"
+            "doc=$documentPath versionIndex=$versionIndex windows=${windows.size} owned=${ownedWindows.size} foreign=$foreignCount unsupported=$unsupportedCount oversized=$oversizedCount maxPixels=$maxPixels windowsMs=$windowsMs"
         )
+    }
+
+    // The set of afield.four windows owned by [documentPath], discovered by scanning that
+    // document's boxes for Renderer-typed property values (renderers are held as box properties;
+    // see agent_backdoor's getPropertyRaw("renderer")) and collecting their windows. Naming-
+    // agnostic — matches any property that holds a Renderer, not just "renderer". Returns empty
+    // when the document or its renderers can't be resolved, which the caller treats as "capture
+    // all open windows" (prior behavior).
+    private fun documentOwnedWindows(documentPath: String): Set<afield.four.util.Window> {
+        val sessionInfo = documents.values.firstOrNull {
+            it.filename == documentPath ||
+                    it.documentName == documentPath ||
+                    java.io.File(it.filename).name == documentPath
+        } ?: return emptySet()
+        val windows = LinkedHashSet<afield.four.util.Window>()
+        runCatching {
+            sessionInfo.boxes.values.toList().forEach { box ->
+                box.properties.values.toList().forEach { value ->
+                    if (value is afield.four.Renderer) windows += value.windows
+                }
+            }
+        }
+        return windows
     }
 
     private fun fourWindowScreenshotsEnabled(): Boolean {
