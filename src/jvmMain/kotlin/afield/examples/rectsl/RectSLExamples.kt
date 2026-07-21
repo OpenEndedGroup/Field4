@@ -148,7 +148,7 @@ object RectSLExamples {
             """.trimIndent()
             val r = RectAnimationOracle.compile(src)
             check(r.ok && r.programOrNull != null) { "$word failed:\n" + r.diagnostics.joinToString("\n") }
-            return r.programOrNull!!.sample(2.0).rects.first().rotation
+            return r.program.sample(2.0).rects.first().rotation
         }
         val quarter = Math.PI / 4.0
         val plain = rotationAtMid("face-travel")
@@ -187,7 +187,7 @@ object RectSLExamples {
         """.trimIndent()
         val r = RectAnimationOracle.compile(src)
         check(r.ok && r.programOrNull != null) { "life windows failed:\n" + r.diagnostics.joinToString("\n") }
-        val p = r.programOrNull!!
+        val p = r.program
         fun rect(t: Double, id: String) = p.sample(t).rects.first { it.id == id }
         check(rect(0.5, "beacon").alpha == 0.0) { "beacon should be invisible before appear" }
         check(rect(2.0, "beacon").alpha == 1.0) { "beacon should be visible inside window" }
@@ -225,7 +225,7 @@ object RectSLExamples {
         """.trimIndent()
         val r = RectAnimationOracle.compile(src)
         check(r.ok && r.programOrNull != null) { "split failed:\n" + r.diagnostics.joinToString("\n") }
-        val p = r.programOrNull!!
+        val p = r.program
         fun shards(t: Double) = p.sample(t).rects.filter { it.id != "shell" }
         fun shell(t: Double) = p.sample(t).rects.first { it.id == "shell" }
         check(shell(1.0).alpha == 1.0) { "shell should be alive before the split" }
@@ -266,7 +266,7 @@ object RectSLExamples {
         """.trimIndent()
         val r = RectAnimationOracle.compile(src)
         check(r.ok && r.programOrNull != null) { "recursive split failed:\n" + r.diagnostics.joinToString("\n") }
-        val p = r.programOrNull!!
+        val p = r.program
         fun near(a: Double, b: Double) = Math.abs(a - b) < 1e-9
         fun visibleNonSeed(t: Double) = p.sample(t).rects.filter { it.id != "seed" && it.alpha > 0.5 }
         check(p.sample(1.0).rects.size == 3) { "recursive split should make seed + shard + grand = 3 rects" }
@@ -302,7 +302,7 @@ object RectSLExamples {
         fun rectsOf(src: String) = run {
             val r = RectAnimationOracle.compile(src)
             check(r.ok && r.programOrNull != null) { "generator failed:\n" + r.diagnostics.joinToString("\n") }
-            r.programOrNull!!.sample(0.0).rects
+            r.program.sample(0.0).rects
         }
         fun near(a: Double, b: Double) = Math.abs(a - b) < 1e-6
 
