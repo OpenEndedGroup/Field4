@@ -278,6 +278,50 @@ fun executeFragment(b: Box, code: String, lineOffset: Int = 0, onComplete: (() -
     if (!sent) onComplete?.invoke()
 }
 
+/**
+ * SPIKE — compile a Kotlin snippet to JS and ship it to the head, reusing the JS transport.
+ *
+ * This is the Kotlin analogue of [executeFragment]: it runs [KotlinToJsCompiler] first, reports any
+ * compile diagnostics onto the box (so errors surface locally, at the Kotlin source line, before the
+ * browser ever sees the code), then hands the produced module to [executeRemoteJS] with
+ * `doASTA = false` — the compiled JS is already valid and needs no operator rewriting. Returns true
+ * if a module was produced and sent.
+ */
+fun compileAndSendKotlin(b: Box, kotlinSource: String, launchable: Boolean = false): Boolean {
+    lastBoxExec = b
+    val result = KotlinToJsCompiler.compile(kotlinSource, moduleName = "box_${b.id.take(8)}")
+
+    result.diagnostics.filter { it.severity == "error" }.forEach {
+        b.output.errorProxy(it.message, "code", it.line)
+    }
+    val js = result.js
+    if (!result.success || js == null) {
+        if (result.diagnostics.none { it.severity == "error" })
+            b.output.errorProxy("Kotlin->JS compile failed:\n${result.rawLog.takeLast(600)}", "code", 0)
+        return false
+    }
+
+    return executeRemoteJS(
+        js,
+        filename = target(b),
+        launchable = launchable,
+        requiresSandbox = false,
+        doASTA = false,
+        diagnosticsTo = { b.output.errorProxy(it.message, "code", it.lineNumber.toInt()) },
+    ) {
+        val p = it.getJSONObject("payload")
+        val kind = p.getString("kind")
+        val message = p.optString("message", "")
+        val line = if (p.has("line")) p.getInt("line") else 0
+        when (kind) {
+            "ERROR" -> b.output.errorProxy(message, "code", line)
+            "SUCCESS" -> if (message.trim() != "OK") b.output.proxy(message.replace("<json>", ""), true, line)
+            else -> b.output.proxy(message, true, line)
+        }
+        kind != "ERROR" && kind != "RUN-STOP"
+    }
+}
+
 fun launchAll(b: Box, code: String, lineOffset: Int = 0) {
     lastBoxExec = b
 
