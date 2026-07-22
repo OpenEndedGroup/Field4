@@ -1,6 +1,5 @@
 package afield
 
-import afield.rectsl.Colormaps
 import java.io.File
 import kotlin.math.exp
 import kotlin.math.sin

@@ -1,7 +1,5 @@
 package afield
 
-import afield.rectsl.Color4
-import afield.rectsl.Colormaps
 import afield.util.PngEncoder
 import kotlin.math.log10
 import kotlin.math.max
