@@ -45,11 +45,18 @@ object KotlinToJsSpikeTest {
         val ok = KotlinToJsCompiler.compile(good, moduleName = "spike_ok")
         require(ok.success && ok.js != null) { "expected a successful compile, log:\n${ok.rawLog.takeLast(1200)}" }
         require(ok.diagnostics.none { it.severity == "error" }) { "unexpected errors: ${ok.diagnostics}" }
+        // The default path is in-process; if it silently fell back to a subprocess the env clash is
+        // back and we want to know.
+        require(ok.mode == KotlinToJsCompiler.Mode.IN_PROCESS) {
+            "expected in-process compile, got ${ok.mode}; log:\n${ok.rawLog.takeLast(1200)}"
+        }
         val js = ok.js!!
         require(js.isNotBlank() && js.contains("field-kotlinjs")) { "produced JS missing the literal" }
         // plain module self-invokes main and is eval-able
         require(js.contains("mainWrapper()") || js.contains("main(")) { "plain module does not invoke main" }
-        println("compiled ${good.length} chars of Kotlin -> ${js.length} chars of JS")
+        // DCE must tree-shake the stdlib out: a trivial program is a few KB, not ~600 KB.
+        require(js.length < 50_000) { "DCE did not shrink output (got ${js.length} chars) — is -Xir-dce set?" }
+        println("compiled ${good.length} chars of Kotlin -> ${js.length} chars of JS (mode=${ok.mode}, DCE'd)")
 
         // --- 2. broken snippet: structured diagnostic at the right line ---
         val bad = """
