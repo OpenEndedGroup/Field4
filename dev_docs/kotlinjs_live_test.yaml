@@ -67,9 +67,10 @@ operations:
   - connect: {parent: kjs_root, child: kjs_vec}
   - connect: {parent: kjs_root, child: kjs_math}
   # Runtime assignment (Kotlin -> KotlinJsExecution) happens on the topology watcher's
-  # next tick, so settle briefly before running or the box races and compiles as JVM Kotlin
-  # (symptom: "Modifier 'external' is not applicable to 'property'").
-  - wait: {millis: 400}
+  # next tick (a ~5ms poll on the runloop), so settle a couple of frames before running or
+  # the box races and compiles as JVM Kotlin ("Modifier 'external' is not applicable to
+  # 'property'"). NB: the key is `frames` — `numberOfRunloopFrames` is silently ignored.
+  - wait: {frames: 2}
   - await: {wait: pending}
   - execute: {box: kjs_vec, property: code}
   - execute: {box: kjs_math, property: code}
