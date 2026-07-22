@@ -11,6 +11,9 @@
 # What this proves: a box under a mainLanguage=kotlinjs root has its Kotlin compiled to JS
 # in-process (PLAIN_DCE, ~5KB, tree-shaken) and shipped to the head — native operator
 # overloading (no ASTA), real types, kotlin.math + collections, compile errors at the source line.
+#
+# Box code needs NO `fun main()` wrapper: top-level statements are auto-wrapped, and
+# import/package/@file:/external declarations are hoisted to file scope automatically.
 
 operations:
   # 1. A root box that makes its children "Kotlin -> head".
@@ -29,16 +32,15 @@ operations:
       frame: {x: 60, y: 200, w: 360, h: 220}
       properties:
         code: |
+          // No `fun main()` needed — top-level statements are auto-wrapped.
           external val console: dynamic
           data class V(val x: Double, val y: Double) {
               operator fun plus(o: V) = V(x + o.x, y + o.y)
               operator fun times(k: Double) = V(x * k, y * k)
           }
-          fun main() {
-              val a = V(1.0, 2.0) + V(10.0, 20.0)   // real operator+, compiled to JS
-              val b = a * 0.5
-              console.log("vectors: a=" + a + " b=" + b)
-          }
+          val a = V(1.0, 2.0) + V(10.0, 20.0)   // real operator+, compiled to JS
+          val b = a * 0.5
+          console.log("vectors: a=" + a + " b=" + b)
 
   # 3. stdlib (kotlin.math + collections + sequences) surviving DCE.
   - create:
@@ -56,12 +58,10 @@ operations:
               val a = 2.0 * kotlin.math.PI * i / n
               P(kotlin.math.cos(a) * r, kotlin.math.sin(a) * r)
           }
-          fun main() {
-              val pts = ring(32, 10.0)
-              val centroid = pts.reduce { u, v -> u + v }
-              val perimeter = pts.zipWithNext { u, v -> (u + P(-v.x, -v.y)).len() }.sum()
-              console.log("ring: n=" + pts.size + " sum=(" + centroid.x + "," + centroid.y + ") perimeter=" + perimeter)
-          }
+          val pts = ring(32, 10.0)
+          val centroid = pts.reduce { u, v -> u + v }
+          val perimeter = pts.zipWithNext { u, v -> (u + P(-v.x, -v.y)).len() }.sum()
+          console.log("ring: n=" + pts.size + " sum=(" + centroid.x + "," + centroid.y + ") perimeter=" + perimeter)
 
   # 4. Parent the Kotlin boxes under the kotlinjs root, let the runtime toggle settle, then run.
   - connect: {parent: kjs_root, child: kjs_vec}
