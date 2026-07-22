@@ -67,13 +67,12 @@ rolloff, with the tone/chirp structure laid out across 0 Hz → Nyquist.
 A single spectrum is one slice. An STFT frames the signal, windows each frame, hops forward, and
 transforms — giving you a spectrogram: a time × frequency heatmap. The rising chirp becomes a
 diagonal ridge, the steady tones stay as horizontal lines, and the per-frame **spectral centroid**
-draws a bright trace climbing with the chirp. The heatmap is a plain `IntArray` of pixels encoded
-with `afield.util.PngEncoder` (no AWT) and shown as a data-URI image in the box's output.
+draws a bright trace climbing with the chirp. `Box.showHeatmap(...)` does the drawing: it maps the
+`[frame][bin]` matrix through a colormap, bilinear-upsamples it, flips the y-axis, and shows the
+image in the box's output — no AWT, no hand-rolled pixel loop.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/spectrogram.png" wait="2.5" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.util.PngEncoder
-
 // --- signal: a rising linear chirp (300 -> 3000 Hz) plus two steady tones (700, 1800 Hz) ---
 val sampleRate = 8000.0
 val n = 24000                    // 3 s
@@ -95,56 +94,28 @@ val maxMag = spec.maxMagnitude().coerceAtLeast(1e-9)
 val centroid = spec.centroidTrace()                // Hz per frame
 val nyquist = sampleRate / 2.0
 
-// Cyan -> orange colormap (dark -> cyan mids -> orange peaks), returns ARGB.
-fun cyanOrange(v: Double): Int {
-    val x = v.coerceIn(0.0, 1.0)
-    // piecewise lerp: near-black -> cyan (0..0.5), cyan -> orange (0.5..1)
-    val (r, g, b) = if (x < 0.5) {
-        val t = x / 0.5
-        Triple(10 + t * (60 - 10), 14 + t * (190 - 14), 20 + t * (230 - 20))
-    } else {
-        val t = (x - 0.5) / 0.5
-        Triple(60 + t * (255 - 60), 190 + t * (150 - 190), 230 + t * (50 - 230))
-    }
-    return (0xFF shl 24) or (r.toInt() shl 16) or (g.toInt() shl 8) or b.toInt()
+// dB relative to the peak (a useful dynamic range), as a [frame][bin] matrix.
+val dB = Array(spec.numFrames) { f ->
+    DoubleArray(spec.numBins) { b -> 20.0 * log10((mags[f][b] / maxMag).coerceAtLeast(1e-4)) }
 }
-
-val nf = spec.numFrames; val nb = spec.numBins
-fun db(f: Int, b: Int) = 20.0 * log10((mags[f][b] / maxMag).coerceAtLeast(1e-4))
-// bilinear-sample the frame x bin grid so the magnified heatmap is smooth, not blocky.
-fun sample(fx: Double, fy: Double): Double {
-    val x0 = fx.toInt(); val x1 = (x0 + 1).coerceAtMost(nf - 1)
-    val y0 = fy.toInt(); val y1 = (y0 + 1).coerceAtMost(nb - 1)
-    val tx = fx - x0; val ty = fy - y0
-    return (db(x0, y0) * (1 - tx) + db(x1, y0) * tx) * (1 - ty) +
-        (db(x0, y1) * (1 - tx) + db(x1, y1) * tx) * ty
-}
-
-val w = 1800; val h = 840
-val px = IntArray(w * h)
-for (xp in 0 until w) {
-    val fx = xp.toDouble() / (w - 1) * (nf - 1)
-    for (yp in 0 until h) {                          // y flipped: low frequency at the bottom
-        val fy = (h - 1 - yp).toDouble() / (h - 1) * (nb - 1)
-        px[xp + yp * w] = cyanOrange((sample(fx, fy) + 80.0) / 80.0)
-    }
-}
-// overlay the spectral-centroid trace as a bright line.
-for (f in 0 until spec.numFrames) {
-    val xp = (f.toDouble() / (spec.numFrames - 1).coerceAtLeast(1) * (w - 1)).toInt()
-    val yp = (h - 1 - (centroid[f] / nyquist).coerceIn(0.0, 1.0) * (h - 1)).toInt()
-    for (dy in -1..1) { val yy = yp + dy; if (yy in 0 until h) px[xp + yy * w] = (0xFF shl 24) or 0xFFFFFF }
+// The spectral centroid as a normalized (x, y) overlay: x = time fraction, y = fraction of Nyquist.
+val trace = centroid.indices.map { f ->
+    (f.toDouble() / (spec.numFrames - 1).coerceAtLeast(1)) to (centroid[f] / nyquist).coerceIn(0.0, 1.0)
 }
 
 println("frames=${spec.numFrames} bins=${spec.numBins} centroid ${"%.0f".format(centroid.first())} -> ${"%.0f".format(centroid.last())} Hz")
-display("main", PngEncoder.encode(px, w, h))   // display renders PNG bytes as an image
+// One showHeatmap call: transpose [frame][bin] to time × frequency, low frequency at the bottom
+// (flipY), the house cyan→orange ramp over a [-80, 0] dB range, with the centroid as a bright overlay.
+showHeatmap(dB, colormap = "cyanorange", width = 1800, height = 840, vmin = -80.0, vmax = 0.0,
+    transpose = true, flipY = true, overlay = trace, overlayThickness = 3)
 ```
 
 ![](assets/spectral_examples/spectrogram.png)
 
 The diagonal ridge is the chirp, the two flat lines are the 700 Hz and 1800 Hz tones, and the thin
-trace is the centroid climbing with the sweep. Everything is drawn by the code above — the STFT, the
-cyan→orange mapping (log-scaled to dB for a useful dynamic range), and the centroid overlay.
+trace is the centroid climbing with the sweep. The STFT produces the `[frame][bin]` magnitudes; one
+`showHeatmap` call renders them (cyan→orange over a `[-80, 0]` dB range) and draws the centroid
+`overlay`.
 
 ## Mel bands — a perceptual, log-frequency view
 
@@ -156,8 +127,6 @@ the log warping.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/mel_spectrogram.png" wait="2.5" capture="box" open-outputs="true" padding="20"}
 :::static
-import afield.util.PngEncoder
-
 // --- signal: two crossing chirps, one rising (200 -> 3200 Hz) and one falling (3200 -> 200 Hz) ---
 val sampleRate = 8000.0
 val n = 24000
@@ -179,42 +148,15 @@ val mel = Array(spec.numFrames) { Mel.filterBank(spec.magnitude(it), sampleRate,
 var maxMel = 1e-9
 for (row in mel) for (v in row) if (v > maxMel) maxMel = v
 
-// Cyan -> orange colormap (dark -> cyan mids -> orange peaks), returns ARGB.
-fun cyanOrange(v: Double): Int {
-    val x = v.coerceIn(0.0, 1.0)
-    val (r, g, b) = if (x < 0.5) {
-        val t = x / 0.5
-        Triple(10 + t * (60 - 10), 14 + t * (190 - 14), 20 + t * (230 - 20))
-    } else {
-        val t = (x - 0.5) / 0.5
-        Triple(60 + t * (255 - 60), 190 + t * (150 - 190), 230 + t * (50 - 230))
-    }
-    return (0xFF shl 24) or (r.toInt() shl 16) or (g.toInt() shl 8) or b.toInt()
-}
-
-val nf = spec.numFrames
-fun db(f: Int, b: Int) = 20.0 * log10((mel[f][b] / maxMel).coerceAtLeast(1e-4))
-// bilinear-sample the frame x band grid so the magnified heatmap is smooth, not blocky.
-fun sample(fx: Double, fy: Double): Double {
-    val x0 = fx.toInt(); val x1 = (x0 + 1).coerceAtMost(nf - 1)
-    val y0 = fy.toInt(); val y1 = (y0 + 1).coerceAtMost(numBands - 1)
-    val tx = fx - x0; val ty = fy - y0
-    return (db(x0, y0) * (1 - tx) + db(x1, y0) * tx) * (1 - ty) +
-        (db(x0, y1) * (1 - tx) + db(x1, y1) * tx) * ty
-}
-
-val w = 1800; val h = 720
-val px = IntArray(w * h)
-for (xp in 0 until w) {
-    val fx = xp.toDouble() / (w - 1) * (nf - 1)
-    for (yp in 0 until h) {                          // y flipped: low mel band at the bottom
-        val fy = (h - 1 - yp).toDouble() / (h - 1) * (numBands - 1)
-        px[xp + yp * w] = cyanOrange((sample(fx, fy) + 80.0) / 80.0)
-    }
+// dB relative to the peak, as a [frame][band] matrix.
+val dB = Array(spec.numFrames) { f ->
+    DoubleArray(numBands) { b -> 20.0 * log10((mel[f][b] / maxMel).coerceAtLeast(1e-4)) }
 }
 
 println("frames=${spec.numFrames} bands=$numBands")
-display("main", PngEncoder.encode(px, w, h))   // display renders PNG bytes as an image
+// transpose [frame][band] to time × mel-band, low band at the bottom.
+showHeatmap(dB, colormap = "cyanorange", width = 1800, height = 720, vmin = -80.0, vmax = 0.0,
+    transpose = true, flipY = true)
 ```
 
 ![](assets/spectral_examples/mel_spectrogram.png)
@@ -234,7 +176,6 @@ sensible smoothing coefficient per frequency.
 :::static
 import afield.four.audio.resonate
 import afield.four.audio.resonatorAlphaHeuristics
-import afield.util.PngEncoder
 
 // --- same rising chirp (300 -> 3000 Hz) + two tones (700, 1800 Hz), as a Float signal ---
 val sampleRate = 8000f
@@ -269,41 +210,15 @@ fun ampAt(s: Int, kk: Int): Float {
 var maxA = 1e-9f
 for (s in 0 until slices) for (kk in 0 until numRes) { val a = ampAt(s, kk); if (a > maxA) maxA = a }
 
-// Cyan -> orange colormap (dark -> cyan mids -> orange peaks), returns ARGB.
-fun cyanOrange(v: Double): Int {
-    val x = v.coerceIn(0.0, 1.0)
-    val (r, g, b) = if (x < 0.5) {
-        val t = x / 0.5
-        Triple(10 + t * (60 - 10), 14 + t * (190 - 14), 20 + t * (230 - 20))
-    } else {
-        val t = (x - 0.5) / 0.5
-        Triple(60 + t * (255 - 60), 190 + t * (150 - 190), 230 + t * (50 - 230))
-    }
-    return (0xFF shl 24) or (r.toInt() shl 16) or (g.toInt() shl 8) or b.toInt()
-}
-
-fun db(s: Int, kk: Int) = 20.0 * log10((ampAt(s, kk).toDouble() / maxA).coerceAtLeast(1e-4))
-// bilinear-sample the slice x resonator grid so the magnified heatmap is smooth, not blocky.
-fun sample(fx: Double, fy: Double): Double {
-    val x0 = fx.toInt(); val x1 = (x0 + 1).coerceAtMost(slices - 1)
-    val y0 = fy.toInt(); val y1 = (y0 + 1).coerceAtMost(numRes - 1)
-    val tx = fx - x0; val ty = fy - y0
-    return (db(x0, y0) * (1 - tx) + db(x1, y0) * tx) * (1 - ty) +
-        (db(x0, y1) * (1 - tx) + db(x1, y1) * tx) * ty
-}
-
-val w = 1800; val h = 720
-val px = IntArray(w * h)
-for (xp in 0 until w) {
-    val fx = xp.toDouble() / (w - 1) * (slices - 1)
-    for (yp in 0 until h) {                          // y flipped: low resonator (low Hz) at the bottom
-        val fy = (h - 1 - yp).toDouble() / (h - 1) * (numRes - 1)
-        px[xp + yp * w] = cyanOrange((sample(fx, fy) + 80.0) / 80.0)
-    }
+// dB relative to the peak, as a [slice][resonator] matrix.
+val dB = Array(slices) { s ->
+    DoubleArray(numRes) { kk -> 20.0 * log10((ampAt(s, kk).toDouble() / maxA).coerceAtLeast(1e-4)) }
 }
 
 println("resonators=$numRes slices=$slices freq ${freqs.first().toInt()} -> ${freqs.last().toInt()} Hz")
-display("main", PngEncoder.encode(px, w, h))   // display renders PNG bytes as an image
+// transpose [slice][resonator] to time × resonator, low (low-Hz) resonator at the bottom.
+showHeatmap(dB, colormap = "cyanorange", width = 1800, height = 720, vmin = -80.0, vmax = 0.0,
+    transpose = true, flipY = true)
 ```
 
 ![](assets/spectral_examples/resonator_bank.png)
