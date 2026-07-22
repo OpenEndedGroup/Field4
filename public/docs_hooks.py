@@ -211,8 +211,16 @@ class RunnerState:
         )
         self._shared_field_process: subprocess.Popen[str] | None = None
         self._shared_field_started_by_runner = False
+        self._shared_field_started_at: float | None = None
+        self._shared_field_jvm_pid: int | None = None
         self._closed = False
         self.failures: list[str] = []
+        # Captures that failed but had a committed asset already on disk to fall back
+        # to (HTML still references a real, previously-captured image) vs. failures
+        # with no asset at all (the HTML will carry a broken reference). Tracked
+        # separately so continue-on-error runs report the difference honestly.
+        self.fallback_failures: list[str] = []
+        self.broken_failures: list[str] = []
         validate_scenes_against_harness(self.repo_root)
         self.runner_source_digest = compute_runner_source_digest(self.repo_root)
         self.cache, self.cache_metadata = self._load_cache()
@@ -237,6 +245,7 @@ class RunnerState:
         self._session_box_count = 0
         self._session_failures = 0
         self.session_captures = 0
+        self._captures_since_server_restart = 0
         LOG.info("Field docs runner mode: %s", self.runner_mode)
         LOG.info("Field docs runner continue on error: %s", self.continue_on_error)
         if self.session_enabled:
@@ -248,7 +257,165 @@ class RunnerState:
     def handle_capture_error(self, *, page_path: Path, output_path: Path, error: Exception) -> None:
         message = f"{page_path.name} -> {output_path}: {error}"
         self.failures.append(message)
-        LOG.warning("Field docs runner skipping failed asset: %s", message)
+        # A committed asset already on disk means the generated HTML still points at a
+        # real, previously-captured image -- degraded (stale) but not broken. No asset
+        # at all means the HTML will carry a broken reference: a louder problem.
+        if output_path.exists():
+            self.fallback_failures.append(message)
+            LOG.warning(
+                "Field docs runner capture FAILED, falling back to committed asset on disk: %s",
+                message,
+            )
+        else:
+            self.broken_failures.append(message)
+            LOG.error(
+                "Field docs runner capture FAILED with NO asset on disk (HTML will have a "
+                "broken reference): %s",
+                message,
+            )
+
+    def diagnose_capture_failure(self, *, page_path: Path, output_path: Path) -> str:
+        """Capture BOTH sides of the WebSocket after a capture failed.
+
+        A backdoor error like "no close frame received or sent" only reports the
+        *client* side of a dropped socket -- it means the connection was severed with
+        no WebSocket close handshake, i.e. the Field JVM almost certainly died. The
+        real cause lives on the server. This gathers, correlates, and PERSISTS both
+        ends so an unattended CI run leaves a full post-mortem behind rather than an
+        opaque one-liner:
+
+          - whether the shared Field process is still alive (or its exit code),
+          - the Field server (JVM stdout+stderr) log tail,
+          - any JVM crash dumps (hs_err_pid*/replay_pid*) written during THIS server's
+            lifetime, matched to the JVM PID when possible,
+          - the newest backdoor client session log's error/exception events.
+
+        Returns a concise summary (with the path to the full saved report) suitable for
+        embedding in the raised RuntimeError / failure message.
+        """
+        sections: list[str] = []
+
+        # --- server process liveness ---
+        process = self._shared_field_process
+        if process is None:
+            sections.append("Field server process: not tracked (no runner-owned server handle).")
+        elif process.poll() is None:
+            sections.append(f"Field server process: still alive (pid {process.pid}, jvm pid {self._shared_field_jvm_pid}).")
+        else:
+            sections.append(
+                f"Field server process: EXITED with code {process.returncode} "
+                f"(pid {process.pid}, jvm pid {self._shared_field_jvm_pid}) -- the JVM died mid-capture."
+            )
+
+        # --- JVM crash dumps written during this server's lifetime ---
+        crash_reports = self._collect_jvm_crash_dumps()
+        if crash_reports:
+            for path, head in crash_reports:
+                sections.append(f"JVM crash dump {path}:\n{head}")
+        else:
+            sections.append("JVM crash dumps: none found for this server (no hs_err/replay file since start).")
+
+        # --- server-side log (JVM stdout+stderr) ---
+        server_log = tail_text(self.shared_log_path, max_lines=120)
+        if server_log:
+            sections.append(f"Field server log tail ({self.shared_log_path}):\n{server_log}")
+        else:
+            sections.append(f"Field server log: empty or unreadable ({self.shared_log_path}).")
+
+        # --- client-side backdoor log (the other end of the WebSocket) ---
+        client = self._latest_backdoor_client_error()
+        if client is not None:
+            client_path, client_tail = client
+            sections.append(f"Backdoor client log ({client_path}):\n{client_tail}")
+        else:
+            sections.append("Backdoor client log: no recent error/exception events found.")
+
+        full_report = (
+            f"Capture failure diagnosis for {page_path.name} -> {output_path}\n"
+            + "\n\n".join(sections)
+            + "\n"
+        )
+
+        # Persist the full post-mortem so an unattended run leaves evidence behind even
+        # when continue-on-error keeps going and the exception message is truncated.
+        saved_path = self._save_failure_report(output_path=output_path, report=full_report)
+        summary_lines = [f"Both-sides-of-WebSocket diagnosis saved to {saved_path}" if saved_path else full_report]
+        summary_lines.append(sections[0])  # liveness -- the single most telling line
+        if crash_reports:
+            summary_lines.append(f"JVM crash dump present: {crash_reports[0][0]}")
+        return "\n".join(summary_lines)
+
+    def _collect_jvm_crash_dumps(self) -> list[tuple[str, str]]:
+        """Find JVM crash artifacts written since this server started, newest first.
+
+        The JVM writes hs_err_pid<PID>.log (and replay_pid<PID>.log) to its working
+        directory (repo_root) on a fatal native error. We match by PID when known, and
+        otherwise fall back to any such file modified after the server started.
+        """
+        started = self._shared_field_started_at
+        found: list[tuple[float, str, str]] = []
+        try:
+            candidates = list(self.repo_root.glob("hs_err_pid*.log")) + list(self.repo_root.glob("replay_pid*.log"))
+        except OSError:
+            return []
+        for path in candidates:
+            try:
+                mtime = path.stat().st_mtime
+            except OSError:
+                continue
+            pid_match = self._shared_field_jvm_pid is not None and f"pid{self._shared_field_jvm_pid}." in path.name
+            # Accept a dump if it matches this JVM's PID, or was written after the server
+            # started (a small negative slack absorbs clock/mtime granularity).
+            if not pid_match and started is not None and mtime < started - 2.0:
+                continue
+            found.append((mtime, str(path), head_text(path, max_lines=60)))
+        found.sort(key=lambda item: item[0], reverse=True)
+        return [(path, head) for _mtime, path, head in found]
+
+    def _latest_backdoor_client_error(self) -> tuple[str, str] | None:
+        """Return (path, tail) of error/exception events from the newest backdoor log.
+
+        The backdoor client (field_backdoor.py SessionLogger) writes one JSONL file per
+        invocation under .field-backdoor/logs. On a dropped socket it records a
+        `receiver_loop_error` (or websocket_*_error) event with the full client-side
+        traceback -- the other end of the WebSocket.
+        """
+        log_dir = self.repo_root / ".field-backdoor" / "logs"
+        try:
+            logs = sorted(log_dir.glob("*.jsonl"), key=lambda p: p.stat().st_mtime, reverse=True)
+        except OSError:
+            return None
+        started = self._shared_field_started_at
+        for log_path in logs[:4]:  # only the few most-recent invocations
+            try:
+                if started is not None and log_path.stat().st_mtime < started - 2.0:
+                    continue
+            except OSError:
+                continue
+            error_lines: list[str] = []
+            try:
+                with log_path.open("r", encoding="utf-8", errors="replace") as handle:
+                    for raw in handle:
+                        if '"error"' in raw or '"traceback"' in raw or "_error" in raw:
+                            error_lines.append(raw.rstrip("\n"))
+            except OSError:
+                continue
+            if error_lines:
+                return str(log_path), "\n".join(error_lines[-12:])
+        return None
+
+    def _save_failure_report(self, *, output_path: Path, report: str) -> str | None:
+        """Write the full both-sides post-mortem to a per-failure file; best-effort."""
+        try:
+            failures_dir = self.shared_log_path.parent / "docs-runner-failures"
+            failures_dir.mkdir(parents=True, exist_ok=True)
+            safe = re.sub(r"[^A-Za-z0-9._-]+", "_", output_path.name) or "capture"
+            report_path = failures_dir / f"{safe}.log"
+            report_path.write_text(report, encoding="utf-8")
+            return str(report_path)
+        except OSError as exc:
+            LOG.warning("Field docs runner could not save failure report: %s", exc)
+            return None
 
     def _http_health_ok(self, port: int, timeout: float = 1.5) -> bool:
         url = f"https://localhost:{port}/health"
@@ -353,6 +520,8 @@ class RunnerState:
         )
         self._shared_field_process = subprocess.Popen(cmd, **popen_kwargs)
         self._shared_field_started_by_runner = True
+        self._shared_field_started_at = time.time()
+        self._shared_field_jvm_pid = None
         self.server_starts += 1
 
         deadline = time.monotonic() + SERVER_START_DEADLINE_SEC
@@ -364,6 +533,12 @@ class RunnerState:
                 return f"process exited with code {process.returncode}"
             if self._http_health_ok(self.backdoor_port):
                 LOG.info("Field docs runner shared Field server ready on port %s", self.backdoor_port)
+                # The JVM is a child of the gradle wrapper, so its PID differs from
+                # self._shared_field_process.pid. Capture the port listener's PID now,
+                # while it is alive, so a later crash dump (hs_err_pid<PID>.log) can be
+                # matched to this exact server even after the port listener is gone.
+                listeners = self._listener_pids()
+                self._shared_field_jvm_pid = listeners[0] if listeners else None
                 return None
             time.sleep(0.5)
 
@@ -502,6 +677,7 @@ class RunnerState:
             return
         LOG.warning("Field docs runner restarting shared Field server: %s", reason)
         self.server_restarts += 1
+        self._captures_since_server_restart = 0
         # The warm-session daemon holds a WebSocket to this server; it is now stale.
         self._stop_session(reason="shared server restart")
         self._stop_shared_field_server()
@@ -849,6 +1025,19 @@ class RunnerState:
             self.server_restarts,
             elapsed,
         )
+        if self.failures:
+            # Distinguish honestly: fallbacks still render a real (committed) image;
+            # broken failures leave the HTML pointing at a missing asset.
+            LOG.warning(
+                "Field docs runner had %s capture failure(s): %s used a committed fallback, "
+                "%s left NO asset (broken HTML reference). Per-failure diagnoses saved under %s.",
+                len(self.failures),
+                len(self.fallback_failures),
+                len(self.broken_failures),
+                self.shared_log_path.parent / "docs-runner-failures",
+            )
+            for message in self.broken_failures:
+                LOG.error("Field docs runner BROKEN asset (no fallback): %s", message)
 
     def _run_capture_child(
         self,
@@ -1021,10 +1210,11 @@ class RunnerState:
                 completed, page_path=page_path, output_path=video_path, command=command
             )
             if deterministic is not None:
+                diagnosis = self.diagnose_capture_failure(page_path=page_path, output_path=video_path)
                 self._restart_shared_field_server(
                     reason=f"execution error while recording {page_path.name} -> {video_path}"
                 )
-                raise deterministic
+                raise RuntimeError(f"{deterministic}\n\n{diagnosis}")
             if completed.returncode == 0:
                 break
             if attempt < RUNNER_RETRIES:
@@ -1054,16 +1244,18 @@ class RunnerState:
                 command=command,
                 field_log_path=self.shared_log_path,
             )
+            diagnosis = self.diagnose_capture_failure(page_path=page_path, output_path=video_path)
             raise RuntimeError(
                 f"Field docs runner video failed for {page_path.name} -> {video_path}.\n"
-                f"{details}"
+                f"{details}\n\n{diagnosis}"
             )
         execution_error = extract_backdoor_execution_error(completed.stdout)
         if execution_error is not None:
+            diagnosis = self.diagnose_capture_failure(page_path=page_path, output_path=video_path)
             raise RuntimeError(
                 f"Field docs runner execution error for {page_path.name} -> {video_path}.\n"
                 f"Command: {shlex.join(command)}\n"
-                f"{execution_error}"
+                f"{execution_error}\n\n{diagnosis}"
             )
         output_gap = extract_backdoor_output_gap(stdout=completed.stdout, code=code, options=video_options)
         if output_gap is not None:
@@ -1150,8 +1342,9 @@ class RunnerState:
                 completed, page_path=page_path, output_path=primary, command=command
             )
             if deterministic is not None:
+                diagnosis = self.diagnose_capture_failure(page_path=page_path, output_path=primary)
                 self._restart_shared_field_server(reason=f"execution error ui drive {primary}")
-                raise deterministic
+                raise RuntimeError(f"{deterministic}\n\n{diagnosis}")
             if completed.returncode == 0:
                 break
             if attempt < RUNNER_RETRIES:
@@ -1163,15 +1356,17 @@ class RunnerState:
                 self._restart_shared_field_server(reason=f"final failed ui drive attempt for {primary}")
         assert completed is not None
         if completed.returncode != 0:
+            diagnosis = self.diagnose_capture_failure(page_path=page_path, output_path=primary)
             raise RuntimeError(
                 f"Field docs runner ui drive failed for {page_path.name} -> {primary}.\n"
-                f"{format_completed_failure_details(completed, command=command, field_log_path=self.shared_log_path)}"
+                f"{format_completed_failure_details(completed, command=command, field_log_path=self.shared_log_path)}\n\n{diagnosis}"
             )
         execution_error = extract_backdoor_execution_error(completed.stdout)
         if execution_error is not None:
+            diagnosis = self.diagnose_capture_failure(page_path=page_path, output_path=primary)
             raise RuntimeError(
                 f"Field docs runner ui drive execution error for {page_path.name} -> {primary}.\n"
-                f"Command: {shlex.join(command)}\n{execution_error}"
+                f"Command: {shlex.join(command)}\n{execution_error}\n\n{diagnosis}"
             )
         missing = [str(out) for out in outputs if not out.exists()]
         if missing:
@@ -1265,6 +1460,10 @@ class RunnerState:
                     source_image_path.unlink()
                 except FileNotFoundError:
                     pass
+        if not options.graphics_context and self._captures_since_server_restart >= 50:
+            self._restart_shared_field_server(
+                reason=f"periodic restart after {self._captures_since_server_restart} captures"
+            )
         if options.graphics_context:
             self._ensure_runner_owned_field_server(
                 reason=f"graphics-context capture for {page_path.name} -> {screenshot_path}"
@@ -1345,10 +1544,13 @@ class RunnerState:
                 completed, page_path=page_path, output_path=screenshot_path, command=command
             )
             if deterministic is not None:
+                # Diagnose BEFORE restarting: the restart reopens shared_log_path in
+                # "w" mode, erasing the crashed server's log. Capture both ends first.
+                diagnosis = self.diagnose_capture_failure(page_path=page_path, output_path=screenshot_path)
                 self._restart_shared_field_server(
                     reason=f"execution error while capturing {page_path.name} -> {screenshot_path}"
                 )
-                raise deterministic
+                raise RuntimeError(f"{deterministic}\n\n{diagnosis}")
             if completed.returncode == 0:
                 break
             if attempt < RUNNER_RETRIES:
@@ -1378,16 +1580,18 @@ class RunnerState:
                 command=command,
                 field_log_path=self.shared_log_path,
             )
+            diagnosis = self.diagnose_capture_failure(page_path=page_path, output_path=screenshot_path)
             raise RuntimeError(
                 f"Field docs runner failed for {page_path.name} -> {screenshot_path}.\n"
-                f"{details}"
+                f"{details}\n\n{diagnosis}"
             )
         execution_error = extract_backdoor_execution_error(completed.stdout)
         if execution_error is not None:
+            diagnosis = self.diagnose_capture_failure(page_path=page_path, output_path=screenshot_path)
             raise RuntimeError(
                 f"Field docs runner execution error for {page_path.name} -> {screenshot_path}.\n"
                 f"Command: {shlex.join(command)}\n"
-                f"{execution_error}"
+                f"{execution_error}\n\n{diagnosis}"
             )
         output_gap = extract_backdoor_output_gap(stdout=completed.stdout, code=code, options=options)
         if output_gap is not None:
@@ -1418,6 +1622,7 @@ class RunnerState:
         self.cache_metadata[cache_key] = cache_metadata
         self.dirty = True
         self.screenshots_run += 1
+        self._captures_since_server_restart += 1
         self.save()
         if options.graphics_context:
             # Restart to leave a fresh server for the NEXT graphics-context capture --
@@ -2241,6 +2446,16 @@ def tail_text(path: Path, *, max_lines: int) -> str:
     if not lines:
         return ""
     return "\n".join(lines[-max_lines:])
+
+
+def head_text(path: Path, *, max_lines: int) -> str:
+    """First `max_lines` lines of a file (for crash-dump headers). Best-effort."""
+    try:
+        with path.open("r", encoding="utf-8", errors="replace") as handle:
+            lines = [next_line.rstrip("\n") for _, next_line in zip(range(max_lines), handle)]
+    except OSError:
+        return ""
+    return "\n".join(lines)
 
 
 def tail_inline_text(text: str, *, max_lines: int) -> str:

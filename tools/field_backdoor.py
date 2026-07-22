@@ -516,7 +516,17 @@ class FieldBackdoor:
                 async with self.condition:
                     self.condition.notify_all()
         except Exception as exc:
-            self.closed_reason = str(exc)
+            # A bare str(exc) like "no close frame received or sent" loses the fact that
+            # this is an ABNORMAL socket drop (the server severed the connection without a
+            # WebSocket close handshake -- almost always a dead/crashed JVM). Tag the
+            # exception class, and any WebSocket close code/reason, so the docs runner's
+            # both-sides diagnosis can tell a crash apart from a protocol error.
+            detail = f"{type(exc).__name__}: {exc}"
+            for attr in ("code", "rcvd", "sent", "rcvd_then_sent"):
+                value = getattr(exc, attr, None)
+                if value is not None:
+                    detail += f" [{attr}={value}]"
+            self.closed_reason = detail
             self.logger.exception("receiver_loop_error", exc)
             async with self.condition:
                 self.condition.notify_all()
