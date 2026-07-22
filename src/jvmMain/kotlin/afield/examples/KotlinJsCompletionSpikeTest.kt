@@ -67,12 +67,20 @@ object KotlinJsCompletionSpikeTest {
         }
         println("prefix 'FLin' → ${candsB.size} candidates, none are afield's FLine (scope is stdlib-only) ✓")
 
-        // --- known limitation: extensions on stdlib receivers (logged, not asserted) ---
-        val snippetC = "fun main() { val xs = listOf(1,2,3)\n xs.\n}"
-        val candsC = completeWithRetry(snippetC, snippetC.indexOf("xs.") + 3, roots) ?: emptyList()
-        val extensions = candsC.filter { it.startsWith("map") || it.startsWith("filter") || it.startsWith("reduce") }
-        println("stdlib 'xs.' → ${candsC.size} candidates; extension fns present: ${extensions.isNotEmpty()} " +
-            "(known Stage-2 gap: sidecar is member-only)")
+        // --- Stage 2: Kotlin extension functions surface on prefixed dot-completion ---
+        // (bare `xs.` shows members; typing a letter enumerates stdlib extensions via the index.)
+        val snippetC = "fun main() { val xs = listOf(1,2,3)\n xs.m\n}"
+        val candsC = completeWithRetry(snippetC, snippetC.indexOf("xs.m") + 4, roots) ?: emptyList()
+        require(candsC.any { it.startsWith("map") }) {
+            "expected stdlib extension `map` on List after 'xs.m', got: ${candsC.take(20)}"
+        }
+        val snippetD = "fun main() { val s = \"hi\"\n s.up\n}"
+        val candsD = completeWithRetry(snippetD, snippetD.indexOf("s.up") + 4, roots) ?: emptyList()
+        require(candsD.any { it.startsWith("uppercase") }) {
+            "expected stdlib extension `uppercase` on String after 's.up', got: ${candsD.take(20)}"
+        }
+        println("stdlib extensions surface: List 'xs.m' → ${candsC.filter { it.startsWith("map") }.take(4)}; " +
+            "String 's.up' → ${candsD.filter { it.startsWith("upper") }}")
 
         println("KotlinJsCompletionSpikeTest ok")
     }

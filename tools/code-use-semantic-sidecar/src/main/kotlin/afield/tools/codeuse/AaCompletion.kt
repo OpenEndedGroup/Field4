@@ -14,6 +14,7 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaPropertySymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
+import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.api.symbols.findTopLevelCallables
 import org.jetbrains.kotlin.analysis.api.symbols.markers.KaNamedSymbol
 import org.jetbrains.kotlin.metadata.ProtoBuf
@@ -412,24 +413,39 @@ class AaCompleter(
                     AaCandidate(nm, AaCandidate.Kind.MEMBER, runCatching { sig.returnType.toString() }.getOrNull(), typeStr, iconFor(sig.symbol), paramsOf(sig.symbol))
                 }.toList()
 
-                // Applicable extensions: candidate extension callables from scope + implicit receivers
-                // + the binary name index, filtered through the IDE's extension-applicability checker.
+                // Applicable extensions: candidate extension callables from scope + implicit receivers +
+                // the binary name index. Two subtleties this handles:
+                //  - When the cursor is right after `.` (no name typed yet) there is no selector
+                //    KtSimpleNameExpression, so the IDE extension checker can't be built — we anchor scope
+                //    on the qualified expression and rely on the conformance fallback below.
+                //  - The IDE `computeApplicability` checker returns nothing for binary-index extensions in a
+                //    standalone AA session (so kotlin.collections.map on List never surfaced). Fall back to
+                //    a receiver-conformance test: keep the extension if the receiver type is a subtype of the
+                //    extension's receiver-parameter type — exact/generic-aware first, then an ERASED
+                //    classifier check (List<Int> IS-A the `Iterable` classId even though a free `T` makes the
+                //    full type check false). The index enumeration is gated on a non-empty prefix so a bare
+                //    `.` doesn't walk the whole stdlib.
                 val selector = dq.selectorExpression as? KtSimpleNameExpression
-                val extensions: List<AaCandidate> = if (selector != null) {
-                    val checker = createExtensionCandidateChecker(file, selector, recv)
-                    val ctx = file.scopeContext(selector)
-                    val fromPackages = index.callables.asSequence().flatMap { (pkg, names) ->
-                        val fq = FqName(pkg)
-                        names.asSequence().filter { prefix.isEmpty() || it.startsWith(prefix) }
-                            .flatMap { nm -> findTopLevelCallables(fq, Name.identifier(nm)) }
-                    }
-                    val candidates = (ctx.compositeScope().callables(match) + fromPackages +
-                        ctx.implicitReceivers.asSequence().flatMap { r ->
-                            r.type.scope?.getCallableSignatures(match)?.map { it.symbol } ?: emptySequence()
-                        }).filter { it.isExtension }.toList()
-                    candidates.filter { checker.computeApplicability(it) is KaExtensionApplicabilityResult.Applicable }
-                        .mapNotNull { asCandidate(it, AaCandidate.Kind.EXTENSION, typeStr) }
-                } else emptyList()
+                val checker = selector?.let { runCatching { createExtensionCandidateChecker(file, it, recv) }.getOrNull() }
+                val ctx = file.scopeContext(selector ?: dq)
+                val fromPackages = if (prefix.isEmpty()) emptySequence() else index.callables.asSequence().flatMap { (pkg, names) ->
+                    val fq = FqName(pkg)
+                    names.asSequence().filter { it.startsWith(prefix) }
+                        .flatMap { nm -> findTopLevelCallables(fq, Name.identifier(nm)) }
+                }
+                val extCandidates = (ctx.compositeScope().callables(match) + fromPackages +
+                    ctx.implicitReceivers.asSequence().flatMap { r ->
+                        r.type.scope?.getCallableSignatures(match)?.map { it.symbol } ?: emptySequence()
+                    }).filter { it.isExtension }.toList()
+                val extensions = extCandidates.filter { ext ->
+                    if (checker != null && runCatching {
+                            checker.computeApplicability(ext) is KaExtensionApplicabilityResult.Applicable
+                        }.getOrDefault(false)) return@filter true
+                    val rt = ext.receiverParameter?.returnType ?: return@filter false
+                    if (runCatching { type.isSubtypeOf(rt) }.getOrDefault(false)) return@filter true
+                    val cid = (rt as? KaClassType)?.classId ?: return@filter false
+                    runCatching { type.isSubtypeOf(cid) }.getOrDefault(false)
+                }.mapNotNull { asCandidate(it, AaCandidate.Kind.EXTENSION, typeStr) }
 
                 val out = (members + extensions).filterNot { it.isSynthetic }.distinctBy { it.dedupKey }.sortedBy { it.name }
                 AaCompletionResult(out, if (out.isEmpty()) "0 matched; type=$typeStr; members=${members.size}" else "")
