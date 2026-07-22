@@ -123,9 +123,32 @@ Candidate resolutions:
 2. Per-session "growing" stdlib: on an import-resolution miss, rebuild a stdlib superset.
 3. Fall back to PLAIN_DCE (self-contained) for boxes whose imports miss the shared stdlib.
 
+## Live in Field (PLAIN_DCE) — working
+
+A `mainLanguage = "kotlinjs"` runtime is wired and **tested live against a running Field + a
+connected head**:
+
+- `KotlinJs.kt` — `KotlinJsExecution : BoxExecution` + `installKotlinJsMainLanguage` (mirrors the
+  RemoteJS registration). A box flagged `kotlinjs` (or legacy `isKotlinJsRoot`) has its children
+  compiled Kotlin→JS (in-process, PLAIN_DCE) and shipped over the RemoteJS WebSocket transport.
+  Compiles run on a background pool so the runloop never blocks.
+- End-to-end result (real Field server + MCP/backdoor authoring + a protocol-faithful head):
+  - valid box → head received a 4.7 KB module (`noSandbox=true`) → ran → `field-live-kotlinjs: 11,22`
+    (native `operator fun plus`, no ASTA);
+  - broken box → `Initializer type mismatch: expected 'Int', actual 'String'` surfaced on the box,
+    and **nothing** was sent to the head.
+
+Not yet done for kotlinjs boxes: completion (returns empty — the K2 Analysis-API completion is
+JVM-classpath-based; wiring it to the JS surface is a follow-up), and the ESM_SHARED fast path.
+
 ## Path to production (follow-ups, roughly in order)
 
 1. **Shared full-surface stdlib** (the blocker above) — prerequisite for ESM_SHARED shipping.
+   NOTE: not a buildable file — Kotlin/JS emits the stdlib JS usage-scoped per compilation, so
+   independent boxes need a *union / accumulating* stdlib (regenerate on first-use of a new symbol),
+   or the stock stdlib's own `-Xstdlib-compilation` build. The Build Tools API (2.4.20+) is the
+   clean in-process/incremental replacement for the hand-driven `K2JSCompiler().exec` driver, but it
+   does not change this module-model constraint.
 2. **Head-side ESM loading.** The head runs `global.eval(code)`; ESM `import` can't be eval'd. Load
    the box module via dynamic `import()` of a blob URL (or `<script type=module>`), with the import
    specifier rewritten to the absolute URL where the head serves the shared stdlib.
@@ -134,9 +157,7 @@ Candidate resolutions:
 4. **Typed runtime façade.** The real bulk of the work: Kotlin `external` declarations / a DSL over
    the head runtime (THREE, A-Frame, Tone, Field browser JS). Without it, Kotlin buys nothing over
    raw JS. Scoped, incremental work — not a research risk.
-5. **Language registration.** Register a `mainLanguage = "kotlinjs"` runtime (mirror
-   `installRemoteJSMainLanguage` / `applyRuntimeToggle`) so a box routes through
-   `compileAndSendKotlin` from `RemoteJSExectution`.
+5. **Language registration.** ✅ DONE — `mainLanguage = "kotlinjs"` (`KotlinJs.kt`), live-tested.
 6. **Fork-version guard.** A build/CI check that `libs/kotlin-stdlib-js-<v>.klib` matches the
    compiler fork version, so a compiler bump can't silently break JS compiles.
 
