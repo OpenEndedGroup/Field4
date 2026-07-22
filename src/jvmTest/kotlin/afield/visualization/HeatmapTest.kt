@@ -140,6 +140,36 @@ class HeatmapTest {
         }
     }
 
+    /** The house cyan→orange ramp: near-black at 0, cyan at the middle, orange at 1. */
+    @Test
+    fun cyanorangeRampHitsNearBlackCyanOrange() {
+        val lo = Colormaps.sample("cyanorange", 0.0)
+        val mid = Colormaps.sample("cyanorange", 0.5)
+        val hi = Colormaps.sample("cyanorange", 1.0)
+        assertTrue(lo.r < 0.1 && lo.g < 0.1 && lo.b < 0.12, "cyanorange(0) near-black: $lo")
+        assertTrue(mid.b > 0.7 && mid.g > 0.6 && mid.r < 0.4, "cyanorange(0.5) cyan: $mid")
+        assertTrue(hi.r > 0.9 && hi.b < 0.3 && hi.g in 0.4..0.75, "cyanorange(1) orange: $hi")
+        // alias resolves to the same ramp
+        assertEquals(mid, Colormaps.sample("cyan-orange", 0.5))
+    }
+
+    /** An overlay trace paints bright pixels along its path and nowhere far from it. */
+    @Test
+    fun overlayDrawsBrightTraceAlongItsPath() {
+        val m = Array(20) { DoubleArray(20) { 0.0 } } // uniform dark field
+        val overlay = (0..10).map { it / 10.0 to 0.5 } // horizontal line across the vertical middle
+        val img = heatmapImage(
+            m, colormap = "viridis", width = 200, height = 200, normalize = false, vmin = 0.0, vmax = 1.0,
+            overlay = overlay, overlayColor = -0x1, overlayThickness = 3,
+        )
+        fun isWhite(p: Int) = r(p) > 240 && g(p) > 240 && b(p) > 240
+        val midRow = img.height / 2
+        val whiteMid = (0 until img.width).count { isWhite(img.pixels[it + midRow * img.width]) }
+        assertTrue(whiteMid > img.width / 2, "overlay should paint most of the middle row white (got $whiteMid)")
+        val whiteEdge = (0 until img.width).count { isWhite(img.pixels[it + 5 * img.width]) }
+        assertEquals(0, whiteEdge, "no overlay pixels far from the trace")
+    }
+
     // ----------------------------------------------------------------------------------------------
     // Visual proof — render real captures into gitignored build/ so a human can eyeball them.
     // (Not committed; the shipped demo transcript drives the live display() path separately.)
@@ -177,7 +207,22 @@ class HeatmapTest {
         File(outDir, "spectrogram_synthetic.png")
             .writeBytes(heatmapImage(spec, colormap = "magma", width = 900, transpose = true, flipY = true, logScale = true).png())
 
-        for (n in listOf("gaussian_viridis.png", "diverging_coolwarm.png", "spectrogram_synthetic.png")) {
+        // 4. Same spectrogram in the house cyan→orange ramp with a bright centroid overlay — the
+        //    exact combination spectral_examples.md uses. Centroid = magnitude-weighted mean bin/frame.
+        val centroid = (0 until frames).map { f ->
+            var num = 0.0; var den = 0.0
+            for (bin in 0 until bins) { num += bin * spec[f][bin]; den += spec[f][bin] }
+            val cyBin = if (den > 0) num / den else 0.0
+            (f.toDouble() / (frames - 1)) to (cyBin / (bins - 1))
+        }
+        File(outDir, "spectrogram_cyanorange_centroid.png").writeBytes(
+            heatmapImage(
+                spec, colormap = "cyanorange", width = 900, transpose = true, flipY = true, logScale = true,
+                overlay = centroid, overlayThickness = 3,
+            ).png()
+        )
+
+        for (n in listOf("gaussian_viridis.png", "diverging_coolwarm.png", "spectrogram_synthetic.png", "spectrogram_cyanorange_centroid.png")) {
             val f = File(outDir, n)
             assertTrue(f.length() > 2000, "$n must be a non-trivial PNG (${f.length()} bytes)")
         }

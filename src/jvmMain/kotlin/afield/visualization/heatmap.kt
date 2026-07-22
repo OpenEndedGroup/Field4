@@ -35,6 +35,9 @@ fun heatmapImage(
     smooth: Boolean = true,
     flipY: Boolean = true,
     transpose: Boolean = false,
+    overlay: List<Pair<Double, Double>>? = null,
+    overlayColor: Int = -0x1, // opaque white (0xFFFFFFFF)
+    overlayThickness: Int = 2,
 ): RasterImage {
     require(matrix.isNotEmpty() && matrix[0].isNotEmpty()) { "heatmap: matrix must be non-empty" }
     val cols0 = matrix[0].size
@@ -93,6 +96,35 @@ fun heatmapImage(
             px[xp + yp * w] = colorOf(v)
         }
     }
+
+    // Optional bright overlay trace (e.g. a spectral-centroid line over a spectrogram). Points are in
+    // normalized image coords with (0,0) at the bottom-left, (1,1) top-right, drawn as a connected
+    // polyline `overlayThickness` px wide.
+    if (overlay != null && overlay.isNotEmpty()) {
+        val half = (overlayThickness - 1).coerceAtLeast(0) / 2
+        fun stamp(xp: Int, yp: Int) {
+            for (dy in -half..half) for (dx in -half..half) {
+                val xx = xp + dx; val yy = yp + dy
+                if (xx in 0 until w && yy in 0 until h) px[xx + yy * w] = overlayColor
+            }
+        }
+        fun toPx(p: Pair<Double, Double>): Pair<Int, Int> =
+            (p.first.coerceIn(0.0, 1.0) * (w - 1)).roundToInt() to
+                ((1.0 - p.second.coerceIn(0.0, 1.0)) * (h - 1)).roundToInt()
+
+        var (px0, py0) = toPx(overlay[0])
+        stamp(px0, py0)
+        for (i in 1 until overlay.size) {
+            val (px1, py1) = toPx(overlay[i])
+            // DDA line between consecutive points.
+            val steps = max(kotlin.math.abs(px1 - px0), kotlin.math.abs(py1 - py0)).coerceAtLeast(1)
+            for (s in 1..steps) {
+                val f = s.toDouble() / steps
+                stamp((px0 + (px1 - px0) * f).roundToInt(), (py0 + (py1 - py0) * f).roundToInt())
+            }
+            px0 = px1; py0 = py1
+        }
+    }
     return RasterImage(px, w, h)
 }
 
@@ -127,6 +159,10 @@ fun heatmapImage(
  * @param flipY           draw row 0 at the bottom (default) rather than the top.
  * @param transpose       treat [matrix] as `[x][y]` instead of `[row][col]` (e.g. a `[frame][bin]`
  *                        spectrogram → time on x, frequency on y).
+ * @param overlay         optional bright trace drawn over the heatmap (e.g. a spectral-centroid line);
+ *                        points are normalized image coords, `(0,0)` bottom-left, `(1,1)` top-right.
+ * @param overlayColor    ARGB colour of the [overlay] trace (default opaque white).
+ * @param overlayThickness stroke width of the [overlay] trace in pixels.
  */
 fun Box.showHeatmap(
     matrix: Array<DoubleArray>,
@@ -141,8 +177,14 @@ fun Box.showHeatmap(
     smooth: Boolean = true,
     flipY: Boolean = true,
     transpose: Boolean = false,
+    overlay: List<Pair<Double, Double>>? = null,
+    overlayColor: Int = -0x1,
+    overlayThickness: Int = 2,
 ): ByteArray {
-    val png = heatmapImage(matrix, colormap, width, height, normalize, vmin, vmax, logScale, smooth, flipY, transpose).png()
+    val png = heatmapImage(
+        matrix, colormap, width, height, normalize, vmin, vmax, logScale, smooth, flipY, transpose,
+        overlay, overlayColor, overlayThickness,
+    ).png()
     display(channel, png)
     return png
 }
@@ -161,10 +203,16 @@ fun Box.showHeatmap(
     smooth: Boolean = true,
     flipY: Boolean = true,
     transpose: Boolean = false,
+    overlay: List<Pair<Double, Double>>? = null,
+    overlayColor: Int = -0x1,
+    overlayThickness: Int = 2,
 ): ByteArray {
     require(matrix.isNotEmpty()) { "showHeatmap: matrix must be non-empty" }
     val arr = Array(matrix.size) { r -> DoubleArray(matrix[r].size) { c -> matrix[r][c].toDouble() } }
-    return showHeatmap(arr, colormap, channel, width, height, normalize, vmin, vmax, logScale, smooth, flipY, transpose)
+    return showHeatmap(
+        arr, colormap, channel, width, height, normalize, vmin, vmax, logScale, smooth, flipY, transpose,
+        overlay, overlayColor, overlayThickness,
+    )
 }
 
 /**

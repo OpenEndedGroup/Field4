@@ -80,12 +80,17 @@ object Colormaps {
 
     val grayscale: List<Color4> = hex(0x000000, 0xFFFFFF)
 
+    // Field's house cyan→orange ramp (near-black → cyan mids → orange peaks), matching the
+    // showSignals cyan/orange signal palette; the default for the spectral heatmap docs.
+    val cyanorange: List<Color4> = rgb255(10, 14, 20, 60, 190, 230, 255, 150, 50)
+
     private val maps: Map<String, List<Color4>> = linkedMapOf(
         "viridis" to viridis, "magma" to magma, "inferno" to inferno, "plasma" to plasma,
-        "turbo" to turbo, "coolwarm" to coolwarm, "grayscale" to grayscale, "gray" to grayscale, "greys" to grayscale
+        "turbo" to turbo, "coolwarm" to coolwarm, "grayscale" to grayscale, "gray" to grayscale, "greys" to grayscale,
+        "cyanorange" to cyanorange, "cyan-orange" to cyanorange
     )
 
-    val names: List<String> = listOf("viridis", "magma", "inferno", "plasma", "turbo", "coolwarm", "grayscale")
+    val names: List<String> = listOf("viridis", "magma", "inferno", "plasma", "turbo", "coolwarm", "grayscale", "cyanorange")
 
     fun stops(name: String): List<Color4> =
         maps[name.trim().lowercase()]
