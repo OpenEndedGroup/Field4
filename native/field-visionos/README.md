@@ -145,6 +145,82 @@ Four improvements on top of the PoC:
     mode use fan triangulation (convex-correct); whole-FLine tap targets use an AABB (coarse). All
     RealityKit interaction is **device-verify** (the sim is non-interactive for spatial input).
 
+## Live Metal — programmable native graphics
+
+`Field4Vision/LiveMetal/` is a second native head, independent of the RealityKit FLine viewer. It
+keeps the Field UI in its existing WKWebView windows and opens a mixed-immersion Compositor Services
+scene with its own Metal render thread. Press **Live Metal** in the bottom ornament (or launch with
+`FIELD4_LIVE_METAL_AUTOSTART=1`).
+
+The renderer subscribes directly to Field's `/ws` bus on channel `__visionmetal__`; WKWebView is not
+in the graphics or animation path. In a normal Field Kotlin box:
+
+```kotlin
+visionMetal(
+    shader = visionMetalExampleShader,
+    script = visionMetalExampleScript,
+    uniforms = listOf("phase", "amount", "tint")
+).onStatus { println("${it.phase}: ${it.message}") }
+```
+
+This displays the built-in indexed cube. `visionMetal(...)` can instead receive a
+`Collection<VisionMetalVertex>` plus an `IntArray` of triangle indices. Rerunning the box replaces
+the active program. MSL compilation happens off the render thread; a successful pipeline is swapped
+at a frame boundary, while a failed edit leaves the last successful shader visible and reports its
+compiler error to Field.
+
+The native runtime prepends this stable ABI to user MSL:
+
+```metal
+struct FieldVertex {
+    float4 position;
+    float4 normal;
+    float4 color;
+};
+
+struct FieldFrame {
+    float4x4 viewProjection[2];
+    float4x4 modelMatrix;
+    // x=time, y=deltaTime, z=predictedDisplayTime, w=frameIndex
+    float4 timing;
+    float4 user[16];
+};
+
+struct FieldVarying {
+    float4 position [[position]];
+    float3 worldPosition;
+    float3 normal;
+    float4 color;
+};
+```
+
+User source defines `field_vertex` and `field_fragment`. Helpers are available as
+`fieldTime(frame)`, `fieldDeltaTime(frame)`, `fieldPredictedDisplayTime(frame)`, and
+`fieldUniform(frame, index)`. The vertex entry point receives vertices at buffer 0 and `FieldFrame`
+at buffer 1; the fragment entry point receives the same frame at buffer 1. See
+`visionMetalExampleShader` for complete signatures.
+
+The accompanying JavaScript runs in JavaScriptCore on the render executor, not in WKWebView. It may
+install one autonomous callback and update the declared uniform names:
+
+```javascript
+uniform("amount", 0.025)
+uniforms.tint = [0.1, 0.8, 1.0, 0.35]
+
+onFrame((time, dt, predictedDisplayTime) => {
+    uniform("phase", time * 3.0)
+})
+```
+
+Each name maps to one `float4` slot in declaration order. Scalar writes use `.x`; missing components
+are zero. Uniform storage is triple-buffered and copied once per compositor frame. JavaScript source
+and MSL source both receive `field://visionmetal/<uid>` source URLs for useful diagnostics.
+
+The current first slice intentionally has a small surface: one active indexed triangle mesh, one
+pipeline, alpha blending, depth testing, 16 named `float4` uniforms, and one JS `onFrame` callback.
+Textures, compute functions, multiple draw items, interaction and FLine GPU tessellation belong on
+top of this resident runtime; they do not require another architectural bridge.
+
 ## Field host-side dependencies (server must serve these)
 
 These now live alongside the shell in this Field4 repository. To run the shell with all features,
@@ -154,6 +230,8 @@ the Field server build must include:
 - `Server.kt` — `selectionContextSessions` registry + `controller-selection`/`shared-ui-intent` rebroadcast to
   context peers; join on `hello`, leave in the `/ws` finally; `injectInitialFramePreview` skips
   `editorOnly`; HTTPS connector binds `0.0.0.0`.
+- `graphics/VisionMetal.kt` — the replayable `__visionmetal__` program/status channel and the
+  box-facing `visionMetal(...)` API used by the native Compositor Services renderer.
 - `Main.kt` — parse `editorOnly` / `noeditor` / `transparent` / `shaderSelectionContext`;
   `fieldDisplayMode` + body classes; inbound `controller-selection` handler → `applyRemoteSelection`
   (echo-guarded); canvas-side `shared-ui-intent` handling; `shaderSelectionContext` passed in `Hello`.

@@ -15,12 +15,16 @@ struct Field4VisionApp: App {
     // window and both share this one WebSocket subscription via the environment.
     @State private var flineClient = FLineViewerClient()
 
+    // Source, JavaScript and status bridge for the autonomous Compositor Services renderer.
+    @State private var liveMetalClient = LiveMetalClient()
+
     var body: some Scene {
         // Main window: the dock/tab manager.
         WindowGroup {
             ContentView()
                 .environment(rtt)
                 .environment(flineClient)
+                .environment(liveMetalClient)
         }
         .windowResizability(.contentSize)
 
@@ -74,11 +78,19 @@ struct Field4VisionApp: App {
                 .environment(rtt)
         }
         .immersionStyle(selection: .constant(.mixed), in: .mixed)
+
+        // Field's programmable native graphics head. The WKWebView editor remains in the app's
+        // windows while this mixed immersive scene owns a dedicated Metal render loop.
+        ImmersiveSpace(id: Field4VisionApp.liveMetalSpaceID) {
+            LiveMetalImmersiveContent(client: liveMetalClient)
+        }
+        .immersionStyle(selection: .constant(.mixed), in: .mixed)
     }
 
     static let rttSpaceID = "RTTImmersive"
     static let rttWindowID = "RTTWindow"
     static let flineWindowID = "FLineViewer"
+    static let liveMetalSpaceID = "FieldLiveMetal"
 }
 
 /// A free-floating WebDock window (an undocked dock, or a `window.open("_blank")` target). It

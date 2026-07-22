@@ -6,6 +6,8 @@
 	     a bundle resource (that causes "Multiple commands produce Info.plist"). Enables openWindow
 	     to open additional windows (floating editor, undocked docks, window.open). Xcode merges the
 	     generated keys on top of this base. -->
+	<key>NSWorldSensingUsageDescription</key>
+	<string>Field places live-coded Metal geometry in your surroundings.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -11,6 +11,7 @@ struct ContentView: View {
     @Environment(\.openWindow) private var openWindow
     @Environment(RTTStream.self) private var rtt
     @Environment(FLineViewerClient.self) private var flineClient
+    @Environment(LiveMetalClient.self) private var liveMetalClient
     @Environment(\.openImmersiveSpace) private var openImmersiveSpace
     @Environment(\.dismissImmersiveSpace) private var dismissImmersiveSpace
 
@@ -103,8 +104,20 @@ struct ContentView: View {
                             Label(immersiveOpen ? "Exit Immersive" : "Immersive",
                                   systemImage: immersiveOpen ? "arrow.down.right.and.arrow.up.left" : "cube.transparent")
                         }
+                        Button {
+                            Task { await toggleLiveMetal() }
+                        } label: {
+                            Label(liveMetalClient.immersiveRequested ? "Exit Live Metal" : "Live Metal",
+                                  systemImage: liveMetalClient.immersiveRequested ? "xmark.circle" : "cube.transparent.fill")
+                        }
                         if rtt.isRunning {
                             Text(rtt.status)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                        if liveMetalClient.isConnected || liveMetalClient.immersiveRequested {
+                            Text(liveMetalClient.status)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
@@ -132,6 +145,10 @@ struct ContentView: View {
                 flineClient.start()
                 openWindow(id: Field4VisionApp.flineWindowID)
             }
+            if ProcessInfo.processInfo.environment["FIELD4_LIVE_METAL_AUTOSTART"] == "1",
+               !liveMetalClient.immersiveRequested {
+                await toggleLiveMetal()
+            }
         }
     }
 
@@ -149,6 +166,11 @@ struct ContentView: View {
             immersiveOpen = false
             return
         }
+        if liveMetalClient.immersiveRequested {
+            await dismissImmersiveSpace()
+            liveMetalClient.stop()
+            liveMetalClient.clearImmersiveRequest()
+        }
         rtt.acquire(port: rttPort)
         switch await openImmersiveSpace(id: Field4VisionApp.rttSpaceID) {
         case .opened:
@@ -156,6 +178,31 @@ struct ContentView: View {
         default:
             rtt.release()
             immersiveOpen = false
+        }
+    }
+
+    private func toggleLiveMetal() async {
+        if liveMetalClient.immersiveRequested {
+            await dismissImmersiveSpace()
+            liveMetalClient.stop()
+            liveMetalClient.clearImmersiveRequest()
+            return
+        }
+        // visionOS permits one immersive space at a time. Close the RTT theatre cleanly if it owns
+        // that slot; its independent volumetric stream window is unaffected.
+        if immersiveOpen {
+            await dismissImmersiveSpace()
+            rtt.release()
+            immersiveOpen = false
+        }
+        guard liveMetalClient.claimImmersiveRequest() else { return }
+        liveMetalClient.start()
+        switch await openImmersiveSpace(id: Field4VisionApp.liveMetalSpaceID) {
+        case .opened:
+            break
+        default:
+            liveMetalClient.stop()
+            liveMetalClient.clearImmersiveRequest()
         }
     }
 
@@ -190,4 +237,5 @@ struct ContentView: View {
     ContentView()
         .environment(RTTStream())
         .environment(FLineViewerClient())
+        .environment(LiveMetalClient())
 }

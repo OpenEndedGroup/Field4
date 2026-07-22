@@ -69,6 +69,7 @@ object DemoTranscriptExecSmokeTest {
         "hello_display_capture",
         "two_box_context",
         "spectral_examples",
+        "vision_metal_cube",
     )
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */

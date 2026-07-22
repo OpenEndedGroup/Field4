@@ -1,0 +1,26 @@
+name: vision_metal_cube
+description: Publish the animated indexed cube to Field4Vision's autonomous Live Metal renderer.
+operations:
+  - create:
+      box: agent_vision_metal_cube
+      name: Vision Metal Cube
+      frame: { x: 80.0, y: 80.0, w: 280.0, h: 130.0 }
+      properties:
+        code: |
+          import afield.graphics.visionMetal
+          import afield.graphics.visionMetalExampleScript
+          import afield.graphics.visionMetalExampleShader
+
+          visionMetal(
+              shader = visionMetalExampleShader,
+              script = visionMetalExampleScript,
+              uniforms = listOf("phase", "amount", "tint")
+          ).onStatus {
+              println("vision-metal ${it.phase}: ${it.message}")
+          }
+          println("vision-metal cube published")
+  - execute:
+      box: agent_vision_metal_cube
+      property: code
+  - await:
+      wait: pending

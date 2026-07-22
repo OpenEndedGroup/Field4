@@ -190,7 +190,7 @@ final class FLineViewerClient {
 /// (`isTrustedFieldDevHost`) — the WebSocket equivalent of `WebDock`'s trust override. Kept a plain
 /// `NSObject` (not the `@Observable @MainActor` client) so URLSession's off-main delegate callbacks
 /// have a clean, non-isolated home.
-private final class FieldServerTrustDelegate: NSObject, URLSessionDelegate {
+final class FieldServerTrustDelegate: NSObject, URLSessionDelegate {
     func urlSession(_ session: URLSession,
                     didReceive challenge: URLAuthenticationChallenge,
                     completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {

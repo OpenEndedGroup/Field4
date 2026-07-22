@@ -54,6 +54,14 @@ land in the global basin. On execute it plots the target and the fitted curve an
 before→after summary with a loss-trajectory sparkline.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/fn_differentiable_fit_demo/metadata.edn)
 
+## visionOS device scene
+
+**vision_metal_cube** — Publishes an animated indexed cube to Field4Vision's autonomous Live Metal
+renderer. Open **Live Metal** in the visionOS app and execute the box; the program is retained and
+replayed if the native client connects later. Requires a visionOS device or simulator for the native
+image.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/vision_metal_cube/metadata.edn)
+
 ## Graphics scenes
 
 These are self-contained scenes that build their own `Window` + `Renderer` and, when run, open a
