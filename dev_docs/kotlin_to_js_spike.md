@@ -154,9 +154,16 @@ JVM-classpath-based; wiring it to the JS surface is a follow-up), and the ESM_SH
    specifier rewritten to the absolute URL where the head serves the shared stdlib.
 3. **Per-session IC cache wiring.** `compileAndSendKotlin` passes a stable per-session `cacheDir`
    (and a stable per-box `moduleName`) so edits hit the warm ~350ms path.
-4. **Typed runtime façade.** The real bulk of the work: Kotlin `external` declarations / a DSL over
-   the head runtime (THREE, A-Frame, Tone, Field browser JS). Without it, Kotlin buys nothing over
-   raw JS. Scoped, incremental work — not a research risk.
+4. **Typed runtime façades.** Started with the deliberately small visionOS Live Metal surface in
+   `graphics/VisionMetalKotlinJs.kt`. Its one declaration source wraps the head's real `onFrame`,
+   `uniform`, and `print` globals as a typed `VisionMetalFrame`, checked uniform arities, and `log`.
+   It is appended after user source so compile diagnostics retain user line numbers, and it is also
+   suitable as completion preamble input. `visionmetal.kotlinjs-externals` compiles a real snippet
+   and links the generated module against a protocol-faithful host shim. Automatic surface
+   selection and delivery of that compiled module to the native Live Metal JavaScriptCore context
+   are the next integration step; the existing `visionMetal(..., script = ...)` path remains the
+   live native transport today. THREE/FLine, A-Frame, Tone, and broader browser declarations remain
+   scoped follow-ups rather than one giant declaration dump.
 5. **Language registration.** ✅ DONE — `mainLanguage = "kotlinjs"` (`KotlinJs.kt`), live-tested.
 6. **Fork-version guard.** A build/CI check that `libs/kotlin-stdlib-js-<v>.klib` matches the
    compiler fork version, so a compiler bump can't silently break JS compiles.

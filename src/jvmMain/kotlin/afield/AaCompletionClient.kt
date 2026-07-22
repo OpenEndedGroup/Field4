@@ -62,6 +62,15 @@ object AaCompletionClient {
             .map { it.trim() }.filter { it.isNotEmpty() && File(it).exists() }.distinct()
     }
 
+    /**
+     * Just the core `kotlin-stdlib` jar(s) from Field's classpath — the analysis scope for
+     * "stdlib-only" completion (KotlinJS / head boxes, which have no JVM classpath, only the Kotlin
+     * stdlib + their own declarations). Excludes `-jdk7`/`-jdk8` so JVM-only extensions don't leak
+     * into completions for code that runs in a JS head. Empty if none found (caller then skips AA).
+     */
+    fun kotlinStdlibRoots(): List<String> =
+        classpathRoots.filter { Regex("""kotlin-stdlib-\d.*\.jar""").matches(File(it).name) }
+
     private fun endpoint(): URI? {
         // Prefer an explicit completion-sidecar override, else reuse the code-use sidecar URL.
         val base = (System.getProperty("afield.completion.sidecarUrl")?.trim()
@@ -87,9 +96,13 @@ object AaCompletionClient {
         preamble: String,
         implicitReceivers: List<String>,
         timeoutMs: Long = 4000,
+        // Restrict the analysis classpath (e.g. stdlib-only for KotlinJS boxes). Null = Field's full
+        // classpath (the normal rich-completion universe).
+        classpathRootsOverride: List<String>? = null,
     ): Outcome {
         endpoint() ?: return Outcome(null, "no-sidecar-url")
-        if (classpathRoots.isEmpty()) return Outcome(null, "no-classpath")
+        val roots = classpathRootsOverride?.takeIf { it.isNotEmpty() } ?: classpathRoots
+        if (roots.isEmpty()) return Outcome(null, "no-classpath")
         val uri = endpoint()!!
         return runCatching {
             val body = json.encodeToString(
@@ -98,7 +111,7 @@ object AaCompletionClient {
                     cursor = cursor.coerceIn(0, snippet.length),
                     preamble = preamble,
                     implicitReceivers = implicitReceivers,
-                    classpathRoots = classpathRoots,
+                    classpathRoots = roots,
                 )
             )
             val request = HttpRequest.newBuilder(uri)
