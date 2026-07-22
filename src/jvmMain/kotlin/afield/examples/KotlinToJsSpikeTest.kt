@@ -58,6 +58,24 @@ object KotlinToJsSpikeTest {
         require(js.length < 50_000) { "DCE did not shrink output (got ${js.length} chars) — is -Xir-dce set?" }
         println("compiled ${good.length} chars of Kotlin -> ${js.length} chars of JS (mode=${ok.mode}, DCE'd)")
 
+        // --- 1b. implicit main: script-like box code (no `fun main`), external hoisted ---
+        val implicit = """
+            external val console: dynamic
+            data class V(val x: Double, val y: Double) {
+                operator fun plus(o: V) = V(x + o.x, y + o.y)
+            }
+            val a = V(1.0, 2.0) + V(10.0, 20.0)
+            console.log("field-implicit-main:" + a.x + "," + a.y)
+        """.trimIndent()
+        val wrapped = KotlinToJsCompiler.ensureImplicitMain(implicit)
+        require(wrapped.contains("fun main()")) { "no synthesized main:\n$wrapped" }
+        require(Regex("(?m)^external val console").containsMatchIn(wrapped)) { "external not hoisted to file scope:\n$wrapped" }
+        val impl = KotlinToJsCompiler.compile(implicit, moduleName = "spike_implicit")
+        require(impl.success && impl.js != null) { "implicit-main compile failed:\n${impl.rawLog.takeLast(1200)}" }
+        // a pre-existing `fun main` must be left untouched (no double-wrap)
+        require(KotlinToJsCompiler.ensureImplicitMain(good) == good) { "wrapping should be a no-op when fun main is present" }
+        println("implicit-main wrapped ${implicit.length} chars → compiled ${impl.js!!.length} chars JS")
+
         // --- 2. broken snippet: structured diagnostic at the right line ---
         val bad = """
             fun main() {
@@ -83,6 +101,14 @@ object KotlinToJsSpikeTest {
                 require(proc.exitValue() == 0) { "node run failed: $out" }
                 require(out.contains("field-kotlinjs:11,22")) { "unexpected node output: $out" }
                 println("node executed the module -> $out")
+
+                // implicit-main output must run identically
+                tmp.writeText(impl.js!!)
+                val p2 = ProcessBuilder(node, tmp.absolutePath).redirectErrorStream(true).start()
+                val out2 = p2.inputStream.bufferedReader().readText().trim()
+                p2.waitFor()
+                require(p2.exitValue() == 0 && out2.contains("field-implicit-main:11,22")) { "implicit-main node run: $out2" }
+                println("node executed the implicit-main module -> $out2")
             } finally {
                 tmp.delete()
             }

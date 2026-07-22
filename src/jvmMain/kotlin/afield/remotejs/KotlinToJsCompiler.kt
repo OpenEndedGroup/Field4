@@ -89,6 +89,100 @@ object KotlinToJsCompiler {
             .firstOrNull { it.exists() }
     }
 
+    // Top-level lines that must stay at file scope: `import`/`package`/`@file:` (position-required)
+    // and `external` (illegal as a local declaration). Everything else is legal inside `main` as a
+    // local — data classes, functions, `operator fun`, statements (verified against K2/JS).
+    private val HOIST_PREFIX = Regex("""^\s*(import\s|package\s|@file:|(?:public\s+|private\s+|internal\s+|expect\s+|actual\s+)*external\b)""")
+    private val HAS_MAIN = Regex("""(?m)^\s*(?:(?:public|private|internal|suspend|expect|actual|external)\s+)*fun\s+main\s*\(""")
+
+    /**
+     * Let box authors skip the `fun main() { … }` wrapper. If [source] has no top-level `fun main(`,
+     * hoist the file-scope-only lines (imports, package, `@file:` annotations, `external` declarations)
+     * to the top and wrap everything else in a synthesized `fun main()`. Author-written data classes,
+     * functions, `operator fun`s and statements all become locals inside `main`, which K2/JS accepts.
+     *
+     * If a `fun main(` is already present, the source is returned untouched. Brace/string/comment aware
+     * so `external interface X { … }` blocks and braces inside strings/comments don't confuse hoisting.
+     *
+     * Known limits (rare in box code): top-level named `object`, `const val`, and `annotation class`
+     * cannot be locals — write an explicit `fun main()` (which disables wrapping) if you need them.
+     */
+    internal fun ensureImplicitMain(source: String): String {
+        if (HAS_MAIN.containsMatchIn(source)) return source
+        if (source.isBlank()) return source
+
+        val head = StringBuilder()
+        val body = StringBuilder()
+        var depth = 0
+        var inBlockComment = false
+        var inTripleString = false
+        var hoistingBlock = false
+
+        for (line in source.split("\n")) {
+            val atTopLevelStart = depth == 0 && !inBlockComment && !inTripleString
+            val startHoist = !hoistingBlock && atTopLevelStart && HOIST_PREFIX.containsMatchIn(line)
+            val before = depth
+            val scan = scanBraces(line, depth, inBlockComment, inTripleString)
+            depth = scan.depth; inBlockComment = scan.inBlockComment; inTripleString = scan.inTripleString
+
+            when {
+                hoistingBlock -> {
+                    head.append(line).append('\n')
+                    if (depth <= 0) hoistingBlock = false
+                }
+                startHoist -> {
+                    head.append(line).append('\n')
+                    if (depth > before) hoistingBlock = true // multi-line external { … } block
+                }
+                else -> body.append(line).append('\n')
+            }
+        }
+
+        return buildString {
+            if (head.isNotEmpty()) append(head).append('\n')
+            append("fun main() {\n")
+            append(body.toString().trimEnd('\n'))
+            append("\n}\n")
+        }
+    }
+
+    private class BraceScan(val depth: Int, val inBlockComment: Boolean, val inTripleString: Boolean)
+
+    /** Net brace-depth after [line], ignoring braces inside strings, char literals and comments. */
+    private fun scanBraces(line: String, startDepth: Int, startBlockComment: Boolean, startTriple: Boolean): BraceScan {
+        var depth = startDepth
+        var inBlock = startBlockComment
+        var inTriple = startTriple
+        var inString = false      // "..."
+        var inChar = false        // '...'
+        var i = 0
+        while (i < line.length) {
+            val c = line[i]
+            val next = line.getOrNull(i + 1)
+            when {
+                inBlock -> if (c == '*' && next == '/') { inBlock = false; i++ }
+                inTriple -> if (c == '"' && next == '"' && line.getOrNull(i + 2) == '"') { inTriple = false; i += 2 }
+                inString -> when {
+                    c == '\\' -> i++
+                    c == '"' -> inString = false
+                }
+                inChar -> when {
+                    c == '\\' -> i++
+                    c == '\'' -> inChar = false
+                }
+                c == '/' && next == '/' -> return BraceScan(depth, false, false) // line comment: rest ignored
+                c == '/' && next == '*' -> { inBlock = true; i++ }
+                c == '"' && next == '"' && line.getOrNull(i + 2) == '"' -> { inTriple = true; i += 2 }
+                c == '"' -> inString = true
+                c == '\'' -> inChar = true
+                c == '{' -> depth++
+                c == '}' -> depth--
+            }
+            i++
+        }
+        return BraceScan(depth, inBlock, inTriple)
+    }
+
     /**
      * Compile [kotlinSource] to a single plain-module, DCE'd JS string.
      *
@@ -108,11 +202,13 @@ object KotlinToJsCompiler {
         mode: Mode = defaultMode,
         profile: Profile = Profile.PLAIN_DCE,
         cacheDir: File? = null,
+        wrapImplicitMain: Boolean = true,
     ): Result {
         val work = Files.createTempDirectory("field-ktjs").toFile()
         return try {
             val srcDir = File(work, "src").apply { mkdirs() }
-            val src = File(srcDir, "$moduleName.kt").apply { writeText(kotlinSource) }
+            val prepared = if (wrapImplicitMain) ensureImplicitMain(kotlinSource) else kotlinSource
+            val src = File(srcDir, "$moduleName.kt").apply { writeText(prepared) }
             val klibDir = File(work, "klib").apply { mkdirs() }
             val jsDir = File(work, "js").apply { mkdirs() }
             val klib = File(klibDir, "$moduleName.klib")
