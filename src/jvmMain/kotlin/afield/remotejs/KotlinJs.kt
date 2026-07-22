@@ -35,7 +35,10 @@ fun kotlinJsTopologyNeedsUpdating(values: Collection<Box>) {
         isRoot = { it.isKotlinJsRoot == true || it.isMainLanguage("kotlinjs") },
         runtimeClass = KotlinJsExecution::class,
         newExecution = { _ -> KotlinJsExecution() },
-        language = "KotlinJS",
+        // code_language: drives the editor's Monaco highlighter. Lowercase "kotlinjs" matches the
+        // registered Monaco language (kotlinjs.js) across all editor resolution paths (one lowercases
+        // it, others use it raw) — reuses Kotlin highlighting without the JVM-Kotlin providers.
+        language = "kotlinjs",
         customization = "",
         notifyCategory = "kotlinjs",
     )
