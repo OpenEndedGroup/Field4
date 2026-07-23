@@ -31,7 +31,12 @@ object RemoteArKotlinJs {
                 fn("remove", "Object3D") { vararg("objects", "Object3D") }
             }
 
-            cls("Scene") { extends("Object3D") }
+            cls("Scene") {
+                extends("Object3D")
+                // Field replaces three.js's `attach(object)` method with a named-index proxy
+                // (graphics.js): `SCENE.attach[name] = obj`. dynamic for the compiler, indexer for completion.
+                valProp("attach", JsType("dynamic", "AttachProxy"))
+            }
             cls("Camera") { open(); extends("Object3D") }
 
             cls("Vector2") {
@@ -137,6 +142,14 @@ object RemoteArKotlinJs {
                 fn("getHex", "Int")
                 fn("clone", "Color")
             }
+
+            cls("PointLight") {
+                extends("Object3D")
+                ctor { param("color", "Int", "0xffffff"); param("intensity", "Double", "1.0"); param("distance", "Double", "0.0") }
+                valProp("color", "Color")
+                varProp("intensity", "Double")
+                varProp("distance", "Double")
+            }
         }
 
         cls("FLine") {
@@ -163,6 +176,28 @@ object RemoteArKotlinJs {
             operatorFn("set", JsType.of("Unit")) { param("name", "String"); param("value", "Any?") }
         }
 
+        // `SCENE.attach[name] = obj` — Field's named-index proxy (compiler sees `dynamic`).
+        completionCls("AttachProxy") {
+            operatorFn("get", JsType.of("THREE.Object3D?")) { param("name", "String") }
+            operatorFn("set", JsType.of("Unit")) { param("name", "String"); param("value", "Any?") }
+        }
+
+        // Completion shapes for the dynamic result objects the helpers return (compiler sees `dynamic`).
+        completionCls("CameraPose") {
+            valProp("position", "THREE.Vector3"); valProp("forward", "THREE.Vector3"); valProp("up", "THREE.Vector3")
+        }
+        completionCls("PlacedMesh") {
+            valProp("mesh", "THREE.Mesh"); valProp("material", "THREE.Material"); valProp("mouseDown", "Any?")
+        }
+        completionCls("ImagePlane") {
+            valProp("mesh", "THREE.Mesh"); valProp("material", "THREE.Material")
+            valProp("texture", "Any?"); valProp("mouseDown", "Any?")
+        }
+        completionCls("VideoPlane") {
+            valProp("mesh", "THREE.Mesh"); valProp("material", "THREE.Material")
+            valProp("video", "Any?"); valProp("texture", "Any?"); valProp("mouseDown", "Any?")
+        }
+
         externalVal("SCENE", "THREE.Scene")
         externalVal("CAMERA", "THREE.Camera")
         externalVal("stage", JsType("dynamic", "Stage"))
@@ -174,6 +209,28 @@ object RemoteArKotlinJs {
         externalFun("vec", "THREE.Vector3") { param("x", "Double"); param("y", "Double"); param("z", "Double") }
         externalFun("vec", "THREE.Vector4") { param("x", "Double"); param("y", "Double"); param("z", "Double"); param("w", "Double") }
         externalFun("clearAll", "Unit")
+
+        // ---- transforms (fline.js) — each builds a THREE.Matrix4 ----
+        externalFun("rotate", "THREE.Matrix4") { param("angle", "Double") }
+        externalFun("rotate", "THREE.Matrix4") { param("angle", "Double"); param("pivotX", "Double"); param("pivotY", "Double") }
+        externalFun("scale", "THREE.Matrix4") { param("s", "Double") }
+        externalFun("scale", "THREE.Matrix4") { param("x", "Double"); param("y", "Double"); param("z", "Double") }
+        externalFun("translate", "THREE.Matrix4") { param("x", "Double", "0.0"); param("y", "Double", "0.0"); param("z", "Double", "0.0") }
+        externalFun("rotate3", "THREE.Matrix4") { param("axis", "THREE.Vector3"); param("angle", "Double") }
+
+        // ---- scene search + camera pose (fline.js) ----
+        externalFun("findByName", "THREE.Object3D?") { param("name", "String") }
+        externalFun("findBySearchingFor", "THREE.Object3D?") { param("name", "String") }
+        externalFun("findBySearchingPathFor", "THREE.Object3D?") { param("name", "String") }
+        externalFun("getCurrentCamera", JsType("dynamic", "CameraPose"))
+        externalFun("addTextureTo", "Unit") { param("url", "String"); param("target", JsType.DYNAMIC) }
+
+        // ---- object-creation helpers (files.js) — return dynamic result objects (typed for completion) ----
+        externalFun("addBox", JsType("dynamic", "PlacedMesh")) { param("name", "String"); param("size", "Double", "1.0") }
+        externalFun("addPlane", JsType("dynamic", "PlacedMesh")) { param("name", "String"); param("size", "Double", "1.0") }
+        externalFun("addImagePlane", JsType("dynamic", "ImagePlane")) { param("url", "String"); param("name", "String"); param("size", "Double", "1.0") }
+        externalFun("addVideoPlane", JsType("dynamic", "VideoPlane")) { param("url", "String"); param("name", "String"); param("size", "Double", "1.0") }
+        externalFun("addPointLight", "THREE.PointLight") { param("name", "String") }
 
         function("onFrame", ret = JsType.DYNAMIC, compilerBody = "__remoteArLaunch(callback, name, false)") {
             param("name", "String", "\"kotlinjs\"")

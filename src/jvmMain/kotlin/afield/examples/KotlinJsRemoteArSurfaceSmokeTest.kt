@@ -47,6 +47,19 @@ object KotlinJsRemoteArSurfaceSmokeTest {
         }
         require(compiler.contains("external fun vec(")) { "vec must be an installed external global" }
 
+        // transforms / scene / creation helpers are installed globals in the compiler façade.
+        for (n in listOf("rotate", "scale", "translate", "rotate3", "findByName", "getCurrentCamera",
+            "addTextureTo", "addBox", "addPlane", "addImagePlane", "addVideoPlane", "addPointLight")) {
+            require(compiler.contains("external fun $n(")) { "compiler missing installed global `$n`" }
+        }
+        require(compiler.contains("class PointLight")) { "THREE.PointLight missing" }
+        require(compiler.contains("val attach: dynamic")) { "Scene.attach must be `dynamic` for the compiler" }
+        require(completion.contains("val attach: AttachProxy")) { "Scene.attach must be typed for completion" }
+        for (t in listOf("CameraPose", "PlacedMesh", "ImagePlane", "VideoPlane", "AttachProxy")) {
+            require(completion.contains("class $t")) { "completion missing result type $t" }
+            require(!compiler.contains("class $t")) { "$t must be completion-only" }
+        }
+
         // The whole new surface must type-check against the generated compiler declarations.
         val sample = """
             // {{ remoteAR }}
@@ -62,8 +75,26 @@ object KotlinJsRemoteArSurfaceSmokeTest {
             stage.add(line)
             stage["named"] = FLine()
             stage.dynamicNamed = FLine()
+            val box = addBox("crate", 0.5)
+            box.mesh.position.set(1.0, 0.0, 0.0)
+            val plane = addPlane("floor")
+            val pic = addImagePlane("u.png", "pic")
+            val movie = addVideoPlane("v.mp4", "film")
+            val light = addPointLight("key")
+            light.intensity = 2.0
+            light.position.set(0.0, 3.0, 0.0)
+            val mR = rotate(0.5)
+            val mS = scale(2.0)
+            val mT = translate(1.0, 2.0, 3.0)
+            val mA = rotate3(vec(0.0, 1.0, 0.0), 1.57)
+            val found = findByName("crate")
+            found?.position?.set(0.0, 0.0, 0.0)
+            val cam = getCurrentCamera()
+            addTextureTo("t.png", line)
+            SCENE.attach["thing"] = box.mesh
             clearAll()
-            log("surface ok " + col.getHex() + " " + v4.w + " " + flat.x + " " + quat.w + " " + mat)
+            log("surface ok " + col.getHex() + " " + v4.w + " " + flat.x + " " + quat.w + " " + mat +
+                " " + light.intensity + " " + mR + mS + mT + mA + " " + plane + pic + movie + " " + cam)
         """.trimIndent()
 
         val resolved = KotlinJsHeadProfiles.resolve(sample)
@@ -89,6 +120,10 @@ object KotlinJsRemoteArSurfaceSmokeTest {
             val threeCo = complete("THREE.Co") ?: emptyList()
             require(threeCo.any { it.startsWith("Color") }) { "THREE.Co did not complete Color: ${threeCo.take(20)}" }
             println("completion: stage. → ${stageDot.filter { it.startsWith("add") || it.startsWith("remove") }}; THREE.Co → ${threeCo.filter { it.startsWith("Color") }}")
+            // best-effort (call-result completion via param-dropped stubs can be flaky): log, don't assert.
+            val camDot = complete("getCurrentCamera().") ?: emptyList()
+            val boxDot = complete("addBox(\"x\").") ?: emptyList()
+            println("completion(best-effort): getCurrentCamera(). → ${camDot.filter { it.startsWith("position") || it.startsWith("forward") || it.startsWith("up") }}; addBox(). → ${boxDot.filter { it.startsWith("mesh") || it.startsWith("material") }}")
         }
 
         println("KotlinJsRemoteArSurfaceSmokeTest ok")

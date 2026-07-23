@@ -189,6 +189,10 @@ class TypeBuilder(
     fun valProp(name: String, type: String, completionInit: String = "TODO()") {
         props += JsProp(name, JsType.of(type), mutable = false, completionInit)
     }
+    /** Property whose compiler/completion types differ (e.g. `dynamic` proxy ↔ typed indexer). */
+    fun valProp(name: String, type: JsType, completionInit: String = "TODO()") {
+        props += JsProp(name, type, mutable = false, completionInit)
+    }
 
     /** A mutable field that is BOTH a ctor argument and a property — the single call keeps the two
      *  renderings in lockstep (plain ctor param + `var` property in each). */
