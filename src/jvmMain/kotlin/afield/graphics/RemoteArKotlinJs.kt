@@ -94,6 +94,49 @@ object RemoteArKotlinJs {
                 field("geometry", "BufferGeometry")
                 field("material", "Material")
             }
+
+            // ---- core THREE math types (standard three.js) ----
+            cls("Vector4") {
+                field("x", "Double", "0.0"); field("y", "Double", "0.0")
+                field("z", "Double", "0.0"); field("w", "Double", "0.0")
+                fn("set", "Vector4") { param("x", "Double"); param("y", "Double"); param("z", "Double"); param("w", "Double") }
+                fn("clone", "Vector4")
+                fn("add", "Vector4") { param("other", "Vector4") }
+                fn("sub", "Vector4") { param("other", "Vector4") }
+                fn("multiplyScalar", "Vector4") { param("value", "Double") }
+                fn("length", "Double")
+            }
+
+            cls("Quaternion") {
+                field("x", "Double", "0.0"); field("y", "Double", "0.0")
+                field("z", "Double", "0.0"); field("w", "Double", "1.0")
+                fn("set", "Quaternion") { param("x", "Double"); param("y", "Double"); param("z", "Double"); param("w", "Double") }
+                fn("setFromEuler", "Quaternion") { param("euler", "Euler") }
+                fn("setFromAxisAngle", "Quaternion") { param("axis", "Vector3"); param("angle", "Double") }
+                fn("multiply", "Quaternion") { param("other", "Quaternion") }
+                fn("normalize", "Quaternion")
+                fn("clone", "Quaternion")
+            }
+
+            cls("Matrix4") {
+                fn("identity", "Matrix4")
+                fn("clone", "Matrix4")
+                fn("multiply", "Matrix4") { param("other", "Matrix4") }
+                fn("premultiply", "Matrix4") { param("other", "Matrix4") }
+                fn("makeTranslation", "Matrix4") { param("x", "Double"); param("y", "Double"); param("z", "Double") }
+                fn("makeScale", "Matrix4") { param("x", "Double"); param("y", "Double"); param("z", "Double") }
+                fn("makeRotationFromQuaternion", "Matrix4") { param("q", "Quaternion") }
+            }
+
+            cls("Color") {
+                // `new THREE.Color(r, g, b)` — components are 0..1 and mutable.
+                field("r", "Double", "1.0"); field("g", "Double", "1.0"); field("b", "Double", "1.0")
+                fn("set", "Color") { param("value", "Int") }
+                fn("setRGB", "Color") { param("r", "Double"); param("g", "Double"); param("b", "Double") }
+                fn("setHex", "Color") { param("hex", "Int") }
+                fn("getHex", "Int")
+                fn("clone", "Color")
+            }
         }
 
         cls("FLine") {
@@ -108,11 +151,29 @@ object RemoteArKotlinJs {
             fn("vcolor", "FLine") { param("r", "Double"); param("g", "Double"); param("b", "Double"); param("a", "Double") }
         }
 
+        // The runtime `stage` is a dynamic Map proxy (`fline.js`): `stage[name] = fline`,
+        // `stage.name = fline`, `stage.add/remove`. Typing it as `dynamic` for the compiler keeps all
+        // of that permissive; a completion-only `Stage` type gives `stage.add|` / `stage.remove|` and
+        // `stage["…"]` completion without constraining the JS target. (To clear the scene use the free
+        // `clearAll()` — the proxy's Map.clear would bypass scene removal.)
+        completionCls("Stage") {
+            fn("add", "Unit") { param("item", "Any?") }
+            fn("remove", "Boolean") { param("item", "Any?") }
+            operatorFn("get", JsType.of("Any?")) { param("name", "String") }
+            operatorFn("set", JsType.of("Unit")) { param("name", "String"); param("value", "Any?") }
+        }
+
         externalVal("SCENE", "THREE.Scene")
         externalVal("CAMERA", "THREE.Camera")
-        externalVal("stage", JsType.DYNAMIC)
+        externalVal("stage", JsType("dynamic", "Stage"))
         computedVal("scene", "THREE.Scene", compiler = "SCENE")
         computedVal("camera", "THREE.Camera", compiler = "CAMERA")
+
+        // `vec(…)` builds a THREE vector sized by arity (fline.js); `clearAll()` empties the scene.
+        externalFun("vec", "THREE.Vector2") { param("x", "Double"); param("y", "Double") }
+        externalFun("vec", "THREE.Vector3") { param("x", "Double"); param("y", "Double"); param("z", "Double") }
+        externalFun("vec", "THREE.Vector4") { param("x", "Double"); param("y", "Double"); param("z", "Double"); param("w", "Double") }
+        externalFun("clearAll", "Unit")
 
         function("onFrame", ret = JsType.DYNAMIC, compilerBody = "__remoteArLaunch(callback, name, false)") {
             param("name", "String", "\"kotlinjs\"")
@@ -128,6 +189,9 @@ object RemoteArKotlinJs {
         operator("THREE.Vector3", "plus", "THREE.Vector3", "clone().add(other)") { param("other", "THREE.Vector3") }
         operator("THREE.Vector3", "minus", "THREE.Vector3", "clone().sub(other)") { param("other", "THREE.Vector3") }
         operator("THREE.Vector3", "times", "THREE.Vector3", "clone().multiplyScalar(value)") { param("value", "Double") }
+        operator("THREE.Vector4", "plus", "THREE.Vector4", "clone().add(other)") { param("other", "THREE.Vector4") }
+        operator("THREE.Vector4", "minus", "THREE.Vector4", "clone().sub(other)") { param("other", "THREE.Vector4") }
+        operator("THREE.Vector4", "times", "THREE.Vector4", "clone().multiplyScalar(value)") { param("value", "Double") }
 
         rawCompiler(
             """

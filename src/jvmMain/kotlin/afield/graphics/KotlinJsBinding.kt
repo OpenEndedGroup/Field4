@@ -55,6 +55,10 @@ class JsFun(
     val ret: JsType,
     /** Real body for top-level funs / operators; member funs of external classes carry none. */
     val compilerBody: String? = null,
+    /** A top-level installed global (`external fun`, no body) rather than a wrapper with a body. */
+    val external: Boolean = false,
+    /** Member `operator fun` (e.g. a stage `get`/`set` indexer). */
+    val operator: Boolean = false,
 )
 
 class JsTypeDecl(
@@ -66,6 +70,9 @@ class JsTypeDecl(
     val props: List<JsProp>,
     val funs: List<JsFun>,
     val nested: List<JsTypeDecl>,
+    /** Emitted only into the completion mirror — lets a value be `dynamic` for the JS compiler
+     *  (maximally permissive) yet a real type for completion (so its members are suggested). */
+    val completionOnly: Boolean = false,
 )
 
 class JsTopVal(
@@ -120,6 +127,21 @@ class BindingBuilder {
         types += TypeBuilder(name, isObject = false).apply(build).build()
     }
 
+    /** A class emitted ONLY into the completion mirror — used to give a `dynamic` compiler value
+     *  (e.g. the `stage` proxy) real, suggestable members for completion without constraining the
+     *  permissive JS-target type. */
+    fun completionCls(name: String, build: TypeBuilder.() -> Unit) {
+        types += TypeBuilder(name, isObject = false, completionOnly = true).apply(build).build()
+    }
+
+    /** An installed JS global function (`external fun`, no body). */
+    fun externalFun(name: String, ret: JsType = JsType.of("Unit"), build: ParamsBuilder.() -> Unit = {}) {
+        topFuns += JsFun(name, ParamsBuilder().apply(build).params, ret, external = true)
+    }
+
+    fun externalFun(name: String, ret: String, build: ParamsBuilder.() -> Unit = {}) =
+        externalFun(name, JsType.of(ret), build)
+
     fun externalVal(name: String, type: JsType, mutable: Boolean = false) {
         topVals += JsTopVal(name, type, mutable)
     }
@@ -145,7 +167,11 @@ class BindingBuilder {
     fun build() = JsBindingModel(types, topVals, topFuns, extFuns, raw)
 }
 
-class TypeBuilder(private val name: String, private val isObject: Boolean = false) {
+class TypeBuilder(
+    private val name: String,
+    private val isObject: Boolean = false,
+    private val completionOnly: Boolean = false,
+) {
     private var open = false
     private var superType: String? = null
     private val ctor = mutableListOf<JsParam>()
@@ -175,12 +201,17 @@ class TypeBuilder(private val name: String, private val isObject: Boolean = fals
         funs += JsFun(name, ParamsBuilder().apply(build).params, JsType.of(ret))
     }
 
+    /** A member `operator fun` (e.g. `get`/`set` indexers). Param/return types may be [JsType]. */
+    fun operatorFn(name: String, ret: JsType, build: ParamsBuilder.() -> Unit = {}) {
+        funs += JsFun(name, ParamsBuilder().apply(build).params, ret, operator = true)
+    }
+
     /** Nested class inside this object/class. */
     fun cls(name: String, build: TypeBuilder.() -> Unit = {}) {
         nested += TypeBuilder(name).apply(build).build()
     }
 
-    fun build() = JsTypeDecl(name, isObject, open, superType, ctor, props, funs, nested)
+    fun build() = JsTypeDecl(name, isObject, open, superType, ctor, props, funs, nested, completionOnly)
 }
 
 class ParamsBuilder {
@@ -197,7 +228,9 @@ class ParamsBuilder {
 private class JsBindingRenderer(private val external: Boolean) {
     fun render(model: JsBindingModel): String {
         val out = StringBuilder()
-        model.types.forEach { out.append(renderType(it, top = true, indent = "")).append("\n\n") }
+        model.types
+            .filterNot { external && it.completionOnly } // completion-only types never enter the JS target
+            .forEach { out.append(renderType(it, top = true, indent = "")).append("\n\n") }
         model.topVals.forEach { out.append(renderTopVal(it)).append('\n') }
         if (model.topVals.isNotEmpty()) out.append('\n')
         model.topFuns.forEach { out.append(renderTopFun(it)).append('\n') }
@@ -250,7 +283,8 @@ private class JsBindingRenderer(private val external: Boolean) {
     }
 
     private fun renderMemberFun(f: JsFun): String {
-        val sig = "fun ${f.name}(${f.params.joinToString(", ") { renderParam(it) }}): ${typeName(f.ret)}"
+        val op = if (f.operator) "operator " else ""
+        val sig = "${op}fun ${f.name}(${f.params.joinToString(", ") { renderParam(it) }}): ${typeName(f.ret)}"
         return if (external) sig else "$sig = TODO()"
     }
 
@@ -264,13 +298,17 @@ private class JsBindingRenderer(private val external: Boolean) {
     }
 
     private fun renderTopFun(f: JsFun): String {
-        // Top-level funs are real (non-external) in both targets, so params keep real defaults.
         val params = f.params.joinToString(", ") { p ->
-            val def = p.default?.let { " = $it" } ?: ""
+            // installed globals are `external fun` in the compiler → defaults are `definedExternally`.
+            val def = p.default?.let { if (external && f.external) " = definedExternally" else " = $it" } ?: ""
             "${if (p.vararg) "vararg " else ""}${p.name}: ${typeName(p.type)}$def"
         }
         val sig = "fun ${f.name}($params): ${typeName(f.ret)}"
-        return "$sig = ${if (external) f.compilerBody ?: "TODO()" else "TODO()"}"
+        return when {
+            external && f.external -> "external $sig"                    // installed global, no body
+            external -> "$sig = ${f.compilerBody ?: "TODO()"}"           // wrapper with a real body
+            else -> "$sig = TODO()"                                       // completion mirror
+        }
     }
 
     private fun renderExtFun(f: JsExtFun): String {

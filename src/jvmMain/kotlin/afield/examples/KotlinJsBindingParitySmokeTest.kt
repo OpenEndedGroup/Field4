@@ -48,9 +48,13 @@ object KotlinJsBindingParitySmokeTest {
             require(completion.contains(member)) { "completion Mesh missing property `$member`" }
         }
 
-        // dynamic ↔ Any? split is applied.
-        require(compiler.contains("val stage: dynamic")) { "compiler stage must be `dynamic`" }
-        require(completion.contains("val stage: Any?")) { "completion stage must be `Any?`" }
+        // dynamic ↔ Any? split is applied (MeshBasicMaterial's `parameters`), and `stage` uses the
+        // dynamic-with-typed-completion split (permissive `dynamic` for the compiler, typed `Stage`
+        // for completion) — see KotlinJsRemoteArSurfaceSmokeTest for the fuller stage checks.
+        require(compiler.contains("parameters: dynamic")) { "compiler MeshBasicMaterial param must be `dynamic`" }
+        require(completion.contains("parameters: Any?")) { "completion MeshBasicMaterial param must be `Any?`" }
+        require(compiler.contains("external val stage: dynamic")) { "compiler stage must be `dynamic`" }
+        require(completion.contains("val stage: Stage")) { "completion stage must be typed `Stage`" }
 
         // Compiler-only glue must not leak into the completion surface.
         require(compiler.contains("__remoteArLaunch")) { "compiler missing launch glue" }
