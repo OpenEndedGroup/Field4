@@ -62,6 +62,7 @@
             websocketOpen: !!_field.isOpen,
             aframe: global.AFRAME && global.AFRAME.version,
             three: global.THREE && global.THREE.REVISION,
+            tone: global.Tone && global.Tone.version,
             xr: global.FieldRemoteXR ? Object.assign({}, global.FieldRemoteXR.state, {session: !!global.FieldRemoteXR.state.session}) : null,
             sceneChildren: global.SCENE ? global.SCENE.children.length : 0,
             taskCount: Object.keys(global.__tasks || {}).length,
@@ -77,6 +78,7 @@
 
         check("aframe-loaded", !!global.AFRAME, global.AFRAME && global.AFRAME.version);
         check("three-loaded", !!global.THREE, global.THREE && global.THREE.REVISION);
+        check("tone-loaded", !!(global.Tone && global.Tone.version), global.Tone && global.Tone.version);
         check("scene-ready", !!global.SCENE);
 
         const sandboxId = "remote-head-self-test";
