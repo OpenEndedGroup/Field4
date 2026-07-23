@@ -63,10 +63,18 @@ object AgentTranscriptMaterializer {
      * `graphics_renderer_launch` is just that renderer parent with nothing to draw. Both stay in the
      * corpus for agents composing scenes (and in DemoTranscriptExecSmokeTest); they are only excluded
      * from the welcome/gallery starting points.
+     *
+     * `tone_synth_sequence` is a KotlinJS "code in the head" box (`mainLanguage = kotlinjs`, first line
+     * `// {{ tone }}`). This lightweight materialize harness does not install the main-language registry,
+     * so `mainLanguage` is not persisted into the snapshot — the standalone starting point would open as
+     * a plain JVM-Kotlin box and fail to compile the head-only `Tone.*` names. It stays in the corpus and
+     * is replay-verified by DemoTranscriptExecSmokeTest (compiled Kotlin→JS through the real compiler);
+     * it is excluded only from the welcome/gallery starting points.
      */
     private val EXCLUDE = setOf(
         "afield_four_traditional_triangle",
         "graphics_renderer_launch",
+        "tone_synth_sequence",
     )
 
     /** Ops that build the box graph without compiling/running any box Kotlin (mirrors the smoke test). */
