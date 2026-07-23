@@ -186,6 +186,10 @@ class TypeBuilder(
     fun varProp(name: String, type: String, completionInit: String = "TODO()") {
         props += JsProp(name, JsType.of(type), mutable = true, completionInit)
     }
+    /** Mutable property whose compiler/completion types differ (e.g. a `dynamic` ↔ typed value). */
+    fun varProp(name: String, type: JsType, completionInit: String = "TODO()") {
+        props += JsProp(name, type, mutable = true, completionInit)
+    }
     fun valProp(name: String, type: String, completionInit: String = "TODO()") {
         props += JsProp(name, JsType.of(type), mutable = false, completionInit)
     }
@@ -203,6 +207,11 @@ class TypeBuilder(
 
     fun fn(name: String, ret: String = "Unit", build: ParamsBuilder.() -> Unit = {}) {
         funs += JsFun(name, ParamsBuilder().apply(build).params, JsType.of(ret))
+    }
+
+    /** Member fun whose return type differs across façades (e.g. `dynamic` ↔ `Any?`). */
+    fun fn(name: String, ret: JsType, build: ParamsBuilder.() -> Unit = {}) {
+        funs += JsFun(name, ParamsBuilder().apply(build).params, ret)
     }
 
     /** A member `operator fun` (e.g. `get`/`set` indexers). Param/return types may be [JsType]. */

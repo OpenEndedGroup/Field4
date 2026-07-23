@@ -267,6 +267,7 @@ __beginService();
                 userAgent: navigator.userAgent,
                 aframe: global.AFRAME && global.AFRAME.version,
                 three: global.THREE && global.THREE.REVISION,
+                tone: global.Tone && global.Tone.version,
                 webxr: !!navigator.xr,
                 nativeARKit: !!global.ARKitBridge
             });

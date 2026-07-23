@@ -2,6 +2,7 @@ package afield.remotejs
 
 import afield.Box
 import afield.graphics.RemoteArKotlinJs
+import afield.graphics.ToneKotlinJs
 import afield.graphics.VisionMetalKotlinJs
 import afield.graphics.visionMetal
 import afield.graphics.visionMetalConnectedHeadCount
@@ -52,7 +53,7 @@ object KotlinJsHeadProfiles {
         declarations = "",
         completionDeclarations = "",
         aliases = setOf("default", "remotejs"),
-        requireRemoteArCapabilities = false,
+        requiredCapabilities = emptyList(),
     )
 
     val remoteAr: KotlinJsHeadProfile = RemoteProfile(
@@ -60,12 +61,26 @@ object KotlinJsHeadProfiles {
         declarations = RemoteArKotlinJs.declarations,
         completionDeclarations = RemoteArKotlinJs.completionDeclarations,
         aliases = setOf("ar", "remote-ar", "remotear"),
-        requireRemoteArCapabilities = true,
+        requiredCapabilities = listOf("aframe", "three"),
+    )
+
+    /**
+     * Tone.js computer-music head. Tone is installed as the global `Tone` by the RemoteAR head
+     * (`index.html` loads `vendor/tone/…/Tone.js`), so this profile shares that transport but requires
+     * the head to actually report the `tone` capability — a bound-but-absent name would compile then
+     * fail at runtime, so we route `// {{ tone }}` only to a head that has Tone loaded.
+     */
+    val tone: KotlinJsHeadProfile = RemoteProfile(
+        id = ToneKotlinJs.surfaceId,
+        declarations = ToneKotlinJs.declarations,
+        completionDeclarations = ToneKotlinJs.completionDeclarations,
+        aliases = setOf("tonejs", "music"),
+        requiredCapabilities = listOf("tone"),
     )
 
     val visionMetal: KotlinJsHeadProfile = VisionMetalProfile
 
-    val all: List<KotlinJsHeadProfile> = listOf(remote, remoteAr, visionMetal)
+    val all: List<KotlinJsHeadProfile> = listOf(remote, remoteAr, tone, visionMetal)
 
     private val byName: Map<String, KotlinJsHeadProfile> = buildMap {
         all.forEach { profile ->
@@ -132,12 +147,13 @@ private class RemoteProfile(
     declarations: String,
     completionDeclarations: String,
     aliases: Set<String>,
-    private val requireRemoteArCapabilities: Boolean,
+    /** Capability keys the head's `initialize` payload must report non-blank (empty = any head). */
+    private val requiredCapabilities: List<String>,
 ) : KotlinJsHeadProfile(id, declarations, completionDeclarations, aliases) {
     private fun matches(clientId: String): Boolean {
-        if (!requireRemoteArCapabilities) return true
+        if (requiredCapabilities.isEmpty()) return true
         val capabilities = remoteClientCapabilities[clientId] ?: return false
-        return capabilities.optString("aframe").isNotBlank() && capabilities.optString("three").isNotBlank()
+        return requiredCapabilities.all { capabilities.optString(it).isNotBlank() }
     }
 
     override fun connectedHeadCount(): Int = knownOpenRemoteClients.keys.count(::matches)
