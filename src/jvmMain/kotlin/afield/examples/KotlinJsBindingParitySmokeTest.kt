@@ -57,8 +57,8 @@ object KotlinJsBindingParitySmokeTest {
         require(completion.contains("val stage: Stage")) { "completion stage must be typed `Stage`" }
 
         // Compiler-only glue must not leak into the completion surface.
-        require(compiler.contains("__remoteArLaunch")) { "compiler missing launch glue" }
-        require(!completion.contains("__remoteArLaunch")) { "completion must not carry compiler-only glue" }
+        require(compiler.contains("__remoteArLog")) { "compiler missing log glue" }
+        require(!completion.contains("__remoteArLog")) { "completion must not carry compiler-only glue" }
 
         println("compiler=${compiler.length} chars, completion=${completion.length} chars; parity invariants hold")
         println("KotlinJsBindingParitySmokeTest ok")

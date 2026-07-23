@@ -1,6 +1,7 @@
 package afield.remotejs
 
 import afield.Box
+import afield.graphics.RemoteLifecycleKotlinJs
 import afield.graphics.RemoteArKotlinJs
 import afield.graphics.ToneKotlinJs
 import afield.graphics.VisionMetalKotlinJs
@@ -50,16 +51,19 @@ object KotlinJsHeadProfiles {
 
     val remote: KotlinJsHeadProfile = RemoteProfile(
         id = "remote",
-        declarations = "",
-        completionDeclarations = "",
+        declarations = RemoteLifecycleKotlinJs.declarations,
+        completionDeclarations = RemoteLifecycleKotlinJs.completionDeclarations,
         aliases = setOf("default", "remotejs"),
         requiredCapabilities = emptyList(),
     )
 
     val remoteAr: KotlinJsHeadProfile = RemoteProfile(
         id = RemoteArKotlinJs.surfaceId,
-        declarations = RemoteArKotlinJs.declarations,
-        completionDeclarations = RemoteArKotlinJs.completionDeclarations,
+        declarations = joined(RemoteLifecycleKotlinJs.declarations, RemoteArKotlinJs.declarations),
+        completionDeclarations = joined(
+            RemoteLifecycleKotlinJs.completionDeclarations,
+            RemoteArKotlinJs.completionDeclarations,
+        ),
         aliases = setOf("ar", "remote-ar", "remotear"),
         requiredCapabilities = listOf("aframe", "three"),
     )
@@ -72,8 +76,11 @@ object KotlinJsHeadProfiles {
      */
     val tone: KotlinJsHeadProfile = RemoteProfile(
         id = ToneKotlinJs.surfaceId,
-        declarations = ToneKotlinJs.declarations,
-        completionDeclarations = ToneKotlinJs.completionDeclarations,
+        declarations = joined(RemoteLifecycleKotlinJs.declarations, ToneKotlinJs.declarations),
+        completionDeclarations = joined(
+            RemoteLifecycleKotlinJs.completionDeclarations,
+            ToneKotlinJs.completionDeclarations,
+        ),
         aliases = setOf("tonejs", "music"),
         requiredCapabilities = listOf("tone"),
     )
@@ -88,6 +95,9 @@ object KotlinJsHeadProfiles {
             profile.aliases.forEach { put(it.lowercase(), profile) }
         }
     }
+
+    private fun joined(vararg surfaces: String): String =
+        surfaces.filter(String::isNotBlank).joinToString("\n\n")
 
     /**
      * Resolve only the first non-blank line. An absent marker preserves the original RemoteJS
@@ -173,7 +183,13 @@ private class RemoteProfile(
 
     override fun stop(box: Box, selection: KotlinJsHeadSelection) {
         executeRemoteJS(
-            "if (__tasks[\"${target(box)}\"]) __tasks[\"${target(box)}\"].stop()",
+            """
+            if (typeof __fieldStopLifecycle === "function") {
+                __fieldStopLifecycle("${target(box)}")
+            } else if (__tasks["${target(box)}"]) {
+                __tasks["${target(box)}"].stop()
+            }
+            """.trimIndent(),
             filename = target(box),
             launchable = true,
             requiresSandbox = true,

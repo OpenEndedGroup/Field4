@@ -152,10 +152,18 @@ __beginService();
         globlSourceCache = {[globalCodeName]: envelope.code};
         const context = globalCodeName.indexOf("|") === -1 ? "root" : globalCodeName.split("|").pop();
         let result;
+        let lifecycle = null;
 
         try {
             if (envelope.noSandbox) {
+                if (typeof __fieldBeginLifecycle === "function") {
+                    lifecycle = __fieldBeginLifecycle(
+                        envelope,
+                        function (error) { sendExecutionError(error, envelope); }
+                    );
+                }
                 result = global.eval(code);
+                if (typeof __fieldSealLifecycle === "function") __fieldSealLifecycle(lifecycle);
             } else if (envelope.code.trim().split("\n").length < 2) {
                 result = runInSandbox(context, code);
             } else {
@@ -173,6 +181,9 @@ __beginService();
             }
 
             if (result && typeof result.then === "function") result = await result;
+            if (lifecycle && typeof __fieldCommitLifecycle === "function") {
+                __fieldCommitLifecycle(lifecycle);
+            }
             if (typeof result === "undefined") {
                 _field.send(envelope.returnTo, {message: "OK", kind: "SUCCESS"});
             } else {
@@ -206,8 +217,15 @@ __beginService();
             if (head && typeof head.recordExecution === "function") head.recordExecution("success", envelope, result);
             return result;
         } catch (error) {
+            if (lifecycle && typeof __fieldAbortLifecycle === "function") {
+                __fieldAbortLifecycle(lifecycle);
+            }
             sendExecutionError(error, envelope);
             return undefined;
+        } finally {
+            if (lifecycle && typeof __fieldSealLifecycle === "function") {
+                __fieldSealLifecycle(lifecycle);
+            }
         }
     }
 

@@ -215,7 +215,10 @@ object KotlinJsHeadProfilesSmokeTest {
         const CAMERA = new THREE.Camera();
         const stage = {};
         let __remoteFrame = null;
-        function launch(callback, _name, _oneShot) { __remoteFrame = callback; return {stop(){}}; }
+        function __fieldOnStart(callback) { callback(); }
+        function __fieldOnStop(_callback) {}
+        function __fieldOnFrame(callback) { __remoteFrame = () => callback(0, 0, 0, null); }
+        function __fieldKeepAlive() {}
         function log(value) { console.log(value); }
     """.trimIndent()
 

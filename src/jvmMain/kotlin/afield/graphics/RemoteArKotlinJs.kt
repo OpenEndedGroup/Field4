@@ -268,10 +268,6 @@ object RemoteArKotlinJs {
         externalFun("onXRSelect", JsType.CALLBACK) { param("callback", JsType("(hit: dynamic) -> Unit", "(hit: Any?) -> Unit")) }
         externalFun("xrHit", JsType("dynamic", "XRHit"))
 
-        function("onFrame", ret = JsType.DYNAMIC, compilerBody = "__remoteArLaunch(callback, name, false)") {
-            param("name", "String", "\"kotlinjs\"")
-            param("callback", JsType.CALLBACK)
-        }
         function("log", ret = JsType.of("Unit"), compilerBody = "__remoteArLog(value)") {
             param("value", "Any?")
         }
@@ -288,13 +284,6 @@ object RemoteArKotlinJs {
 
         rawCompiler(
             """
-            @kotlin.js.JsName("launch")
-            private external fun __remoteArLaunch(
-                callback: () -> Unit,
-                name: String = definedExternally,
-                oneShotByDefault: Boolean = definedExternally,
-            ): dynamic
-
             @kotlin.js.JsName("log")
             private external fun __remoteArLog(value: Any?)
             """.trimIndent(),

@@ -1,6 +1,159 @@
 
 var __tasks = {}
 
+// -------------------------------------------------------------------------------------------------
+// Kotlin/JS launch lifecycle
+// -------------------------------------------------------------------------------------------------
+
+var __fieldLifecycleCurrent = null
+
+class FieldLifecycleTask {
+    constructor(name, notifyStart, notifyStop, reportErrorTo) {
+        this.name = name
+        this.notifyStart = notifyStart || function () {}
+        this.notifyStop = notifyStop || function () {}
+        this.reportErrorTo = reportErrorTo || function (error) { console.error(error) }
+        this.frameCallbacks = []
+        this.stopCallbacks = []
+        this.started = false
+        this.keepAlive = false
+        this.committed = false
+        this.stopped = false
+        this.frameNumber = 0
+        this.timeStart = performance.now() / 1000
+        this.timeLast = undefined
+    }
+
+    addFrame(callback) {
+        if (typeof callback !== "function" || this.stopped) return
+        this.frameCallbacks.push(callback)
+        this.keepAlive = true
+    }
+
+    addStop(callback) {
+        if (typeof callback !== "function" || this.stopped) return
+        this.stopCallbacks.push(callback)
+        this.keepAlive = true
+    }
+
+    run() {
+        if (this.stopped) return
+        const now = performance.now() / 1000
+        const delta = typeof this.timeLast === "undefined" ? 0 : Math.max(0, now - this.timeLast)
+        const elapsed = Math.max(0, now - this.timeStart)
+        this.timeLast = now
+
+        // Snapshot like Framer's current/next queue swap: callbacks registered by a callback begin
+        // on the next host frame rather than being appended into the frame currently being drained.
+        const callbacks = this.frameCallbacks.slice()
+        try {
+            for (const callback of callbacks) callback(elapsed, delta, this.frameNumber, null)
+            this.frameNumber += 1
+        } catch (error) {
+            this.reportErrorTo(error)
+            this.stopNow(true)
+        }
+    }
+
+    stop() {
+        this.stopNow(true)
+    }
+
+    stopNow(notify) {
+        if (this.stopped) return
+        this.stopped = true
+        if (__tasks[this.name] === this) delete __tasks[this.name]
+
+        // Cleanup is an end phase: every registered callback gets one chance, newest resource first.
+        for (const callback of this.stopCallbacks.slice().reverse()) {
+            try {
+                callback()
+            } catch (error) {
+                this.reportErrorTo(error)
+            }
+        }
+        this.stopCallbacks.length = 0
+        this.frameCallbacks.length = 0
+        if (notify && this.committed) this.notifyStop()
+    }
+}
+
+var __fieldBeginLifecycle = function (envelope, reportErrorTo) {
+    __fieldLifecycleCurrent = null
+    if (!envelope || !envelope.launchable) return null
+
+    const name = envelope.codeName || "remotejs"
+    const previous = __tasks[name]
+    if (previous) {
+        if (typeof previous.stopNow === "function") previous.stopNow(true)
+        else if (typeof previous.stop === "function") previous.stop()
+    }
+
+    const notifyStart = function () {
+        _field.send(envelope.returnTo, {message: "OK", kind: "RUN-START", altName: ""})
+    }
+    const notifyStop = function () {
+        _field.send(envelope.returnTo, {message: "OK", kind: "RUN-STOP", altName: ""})
+    }
+    const lifecycle = new FieldLifecycleTask(name, notifyStart, notifyStop, reportErrorTo)
+    __fieldLifecycleCurrent = lifecycle
+    return lifecycle
+}
+
+var __fieldSealLifecycle = function (lifecycle) {
+    if (__fieldLifecycleCurrent === lifecycle) __fieldLifecycleCurrent = null
+}
+
+var __fieldCommitLifecycle = function (lifecycle) {
+    __fieldSealLifecycle(lifecycle)
+    if (!lifecycle || lifecycle.stopped) return false
+    if (!lifecycle.started && !lifecycle.keepAlive && lifecycle.frameCallbacks.length === 0 && lifecycle.stopCallbacks.length === 0) {
+        return false
+    }
+    lifecycle.committed = true
+    __tasks[lifecycle.name] = lifecycle
+    lifecycle.notifyStart()
+    return true
+}
+
+var __fieldAbortLifecycle = function (lifecycle) {
+    __fieldSealLifecycle(lifecycle)
+    if (lifecycle) lifecycle.stopNow(false)
+}
+
+var __fieldStopLifecycle = function (name) {
+    const task = __tasks[name]
+    if (!task) return false
+    if (typeof task.stopNow === "function") task.stopNow(true)
+    else if (typeof task.stop === "function") task.stop()
+    return true
+}
+
+var __fieldOnStart = function (callback) {
+    const lifecycle = __fieldLifecycleCurrent
+    if (!lifecycle || lifecycle.stopped || typeof callback !== "function") return
+    lifecycle.started = true
+    lifecycle.keepAlive = true
+    callback()
+}
+
+var __fieldOnStop = function (callback) {
+    const lifecycle = __fieldLifecycleCurrent
+    if (!lifecycle) return
+    lifecycle.addStop(callback)
+}
+
+var __fieldOnFrame = function (callback) {
+    const lifecycle = __fieldLifecycleCurrent
+    if (!lifecycle) return
+    lifecycle.addFrame(callback)
+}
+
+var __fieldKeepAlive = function () {
+    const lifecycle = __fieldLifecycleCurrent
+    if (lifecycle) lifecycle.keepAlive = true
+}
+
 var _timeNow = 0
 var _timeAt = 0
 var _isRunning = false
