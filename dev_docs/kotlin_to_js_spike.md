@@ -138,8 +138,57 @@ connected head**:
   - broken box → `Initializer type mismatch: expected 'Int', actual 'String'` surfaced on the box,
     and **nothing** was sent to the head.
 
-Not yet done for kotlinjs boxes: completion (returns empty — the K2 Analysis-API completion is
-JVM-classpath-based; wiring it to the JS surface is a follow-up), and the ESM_SHARED fast path.
+### Editor ergonomics
+
+- **Kotlin syntax highlighting** — `kotlinjs.js` registers a distinct Monaco language `kotlinjs`
+  that reuses Monaco's official Kotlin grammar, so head boxes highlight as Kotlin without attaching
+  the JVM-Kotlin providers/diagnostics that would flag `external` etc. (`code_language = "kotlinjs"`).
+- **Implicit `fun main`** — `KotlinToJsCompiler.ensureImplicitMain`: a box with no top-level
+  `fun main(` gets its file-scope-only lines (`import`/`package`/`@file:`/`external`) hoisted and the
+  rest wrapped in a synthesized `main` (author data classes / `operator fun`s / statements become
+  locals). An explicit `fun main` disables wrapping.
+
+### Completion (Stages 1 + 2 — done)
+
+KotlinJS boxes get K2 Analysis-API completion **scoped to the Kotlin stdlib** (no JVM classpath /
+afield leak), plus the head profile's external declaration surface passed as context, plus the
+box's own declarations (Stage 1). **Stage 2** fixed the sidecar so Kotlin **extension functions**
+surface on prefixed dot-completion (`xs.m` → `map`/`mapNotNull`, `s.up` → `uppercase`) — two fixes in
+`AaCompletion.completeAt`: (a) compute extensions even with no selector (right after `.`), and (b) a
+receiver-conformance fallback (exact then erased-classId `isSubtypeOf`) because the IDE
+applicability checker returns nothing for binary-index extensions in a standalone AA session. Gated
+on a non-empty prefix so bare `.` stays fast. Benefits regular Kotlin completion too — run the
+completion corpus gate before merging that shared-sidecar change.
+
+Remaining: **Stage 2b** — filter JVM-only members (`parallelStream`/`spliterator`/`toArray`) that
+don't exist in a JS head; and the ESM_SHARED fast path.
+
+## Head profiles
+
+The first non-blank source line can select the compiler surface and destination:
+
+```kotlin
+// {{ remoteAR }}
+```
+
+or:
+
+```kotlin
+// {{ visionmetal uniforms=phase,amount,tint }}
+```
+
+`KotlinJsHeadProfiles` resolves the marker once and owns the declaration preamble, connected-head
+count, transport filter, and stop behavior. Fragment and symbol execution inherit the marker from
+the box's full `code` property. Unknown explicit markers fail locally; unmarked source retains the
+legacy behavior of broadcasting self-declared Kotlin/JS to all RemoteJS clients.
+
+`remoteAR` injects the curated THREE/FLine declarations in `RemoteArKotlinJs`, and sends only to
+RemoteJS clients whose initialize payload advertises both A-Frame and THREE. `visionmetal` injects
+`VisionMetalKotlinJs`, compiles the box code to the native script, takes MSL from the box's
+`fragment` property (falling back to `visionMetalExampleShader`), and publishes on the replayable
+`__visionmetal__` channel. Uniform slots use explicit marker order when supplied; otherwise custom
+MSL uses first literal `uniform("name", ...)` occurrence, while the built-in shader starts with its
+stable `phase, amount, tint` order.
 
 ## Path to production (follow-ups, roughly in order)
 
@@ -154,16 +203,11 @@ JVM-classpath-based; wiring it to the JS surface is a follow-up), and the ESM_SH
    specifier rewritten to the absolute URL where the head serves the shared stdlib.
 3. **Per-session IC cache wiring.** `compileAndSendKotlin` passes a stable per-session `cacheDir`
    (and a stable per-box `moduleName`) so edits hit the warm ~350ms path.
-4. **Typed runtime façades.** Started with the deliberately small visionOS Live Metal surface in
-   `graphics/VisionMetalKotlinJs.kt`. Its one declaration source wraps the head's real `onFrame`,
-   `uniform`, and `print` globals as a typed `VisionMetalFrame`, checked uniform arities, and `log`.
-   It is appended after user source so compile diagnostics retain user line numbers, and it is also
-   suitable as completion preamble input. `visionmetal.kotlinjs-externals` compiles a real snippet
-   and links the generated module against a protocol-faithful host shim. Automatic surface
-   selection and delivery of that compiled module to the native Live Metal JavaScriptCore context
-   are the next integration step; the existing `visionMetal(..., script = ...)` path remains the
-   live native transport today. THREE/FLine, A-Frame, Tone, and broader browser declarations remain
-   scoped follow-ups rather than one giant declaration dump.
+4. **Typed runtime façades.** ✅ PROFILE SPINE DONE — `// {{ remoteAR }}` and
+   `// {{ visionmetal }}` select declarations, completion context, transport, and stop semantics.
+   The Live Metal façade covers its complete deliberately-small JS host. The initial RemoteAR
+   façade covers scene objects, vectors, basic meshes, FLine construction, stage, and the frame
+   loop; extending THREE/A-Frame/Tone remains incremental rather than one giant declaration dump.
 5. **Language registration.** ✅ DONE — `mainLanguage = "kotlinjs"` (`KotlinJs.kt`), live-tested.
 6. **Fork-version guard.** A build/CI check that `libs/kotlin-stdlib-js-<v>.klib` matches the
    compiler fork version, so a compiler bump can't silently break JS compiles.
