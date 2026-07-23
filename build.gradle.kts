@@ -1030,6 +1030,20 @@ tasks.register<JavaExec>("runSimdVerletBulkKernelsExample") {
     jvmArgs(vectorizationJvmArgs)
 }
 
+tasks.register<JavaExec>("runImGuiVrPanelDemo") {
+    group = "application"
+    description = "ImGui-as-a-VR-panel demo: Dear ImGui -> RTT -> stereo quad, packed side-by-side, blitted to the desktop window; mouse/controller ray hit-testing. Pass --args=\"capture <out.png>\" for a verification capture."
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
+    })
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.examples.four.ImGuiVrPanelDemo")
+    // -XX:+EnableJVMCI (from vectorizationJvmArgs, inside requiredRunJvmArgs) is experimental on the
+    // default Adoptium toolchain, so it must be unlocked first.
+    jvmArgs("-XX:+UnlockExperimentalVMOptions")
+    jvmArgs(requiredRunJvmArgs())
+}
+
 tasks.named<JavaExec>("runJvm").configure {
     val requiredJvmArgs = requiredRunJvmArgs()
 

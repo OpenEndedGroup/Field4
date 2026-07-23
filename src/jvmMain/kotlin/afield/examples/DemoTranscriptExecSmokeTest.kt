@@ -81,6 +81,7 @@ object DemoTranscriptExecSmokeTest {
         "rectsl_dataviz",
         "rectsl_plot_axes",
         "spin_glass",
+        "imgui_vr_panel",
     )
 
     /** Ops that build the box graph without compiling/running any box Kotlin. */
