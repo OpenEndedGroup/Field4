@@ -55,7 +55,14 @@ object KotlinJsRemoteArSurfaceSmokeTest {
         require(compiler.contains("class PointLight")) { "THREE.PointLight missing" }
         require(compiler.contains("val attach: dynamic")) { "Scene.attach must be `dynamic` for the compiler" }
         require(completion.contains("val attach: AttachProxy")) { "Scene.attach must be typed for completion" }
-        for (t in listOf("CameraPose", "PlacedMesh", "ImagePlane", "VideoPlane", "AttachProxy")) {
+
+        // interaction + XR: pointer registries on FLine (dynamic/typed split) and the XR globals.
+        require(compiler.contains("val mouseDown: dynamic")) { "FLine.mouseDown must be `dynamic` for the compiler" }
+        require(completion.contains("val mouseDown: PointerCallbacks")) { "FLine.mouseDown must be typed for completion" }
+        for (n in listOf("onXRHit", "onXRSelect", "xrHit")) {
+            require(compiler.contains("external fun $n(")) { "compiler missing XR global `$n`" }
+        }
+        for (t in listOf("CameraPose", "PlacedMesh", "ImagePlane", "VideoPlane", "AttachProxy", "PointerCallbacks", "XRHit")) {
             require(completion.contains("class $t")) { "completion missing result type $t" }
             require(!compiler.contains("class $t")) { "$t must be completion-only" }
         }
@@ -92,9 +99,18 @@ object KotlinJsRemoteArSurfaceSmokeTest {
             val cam = getCurrentCamera()
             addTextureTo("t.png", line)
             SCENE.attach["thing"] = box.mesh
+            line.pointed = true
+            line.mouseDown["tap"] = { event -> log("down " + event) }
+            line.dblClick["dbl"] = { _ -> log("dbl") }
+            val curve = FLine().moveTo(0.0, 0.0).cubicTo(0.1, 0.2, 0.3, 0.4, 1.0, 1.0).lineTo(vec(2.0, 2.0))
+            val unsub = onXRHit { hit -> log("hit " + hit) }
+            onXRSelect { _ -> log("select") }
+            val h = xrHit()
+            unsub()
             clearAll()
             log("surface ok " + col.getHex() + " " + v4.w + " " + flat.x + " " + quat.w + " " + mat +
-                " " + light.intensity + " " + mR + mS + mT + mA + " " + plane + pic + movie + " " + cam)
+                " " + light.intensity + " " + mR + mS + mT + mA + " " + plane + pic + movie + " " + cam +
+                " " + curve + h)
         """.trimIndent()
 
         val resolved = KotlinJsHeadProfiles.resolve(sample)
@@ -120,10 +136,17 @@ object KotlinJsRemoteArSurfaceSmokeTest {
             val threeCo = complete("THREE.Co") ?: emptyList()
             require(threeCo.any { it.startsWith("Color") }) { "THREE.Co did not complete Color: ${threeCo.take(20)}" }
             println("completion: stage. → ${stageDot.filter { it.startsWith("add") || it.startsWith("remove") }}; THREE.Co → ${threeCo.filter { it.startsWith("Color") }}")
+            // FLine members (incl. the pointer registries) complete on a fresh FLine receiver.
+            val flineDot = complete("FLine().") ?: emptyList()
+            require(flineDot.any { it.startsWith("mouseDown") } && flineDot.any { it.startsWith("pointed") }) {
+                "FLine(). completion missing mouseDown/pointed: ${flineDot.take(25)}"
+            }
             // best-effort (call-result completion via param-dropped stubs can be flaky): log, don't assert.
             val camDot = complete("getCurrentCamera().") ?: emptyList()
             val boxDot = complete("addBox(\"x\").") ?: emptyList()
-            println("completion(best-effort): getCurrentCamera(). → ${camDot.filter { it.startsWith("position") || it.startsWith("forward") || it.startsWith("up") }}; addBox(). → ${boxDot.filter { it.startsWith("mesh") || it.startsWith("material") }}")
+            val xrDot = complete("xrHit().") ?: emptyList()
+            println("completion: FLine(). → ${flineDot.filter { it.startsWith("mouseDown") || it.startsWith("pointed") || it.startsWith("dblClick") }}")
+            println("completion(best-effort): getCurrentCamera(). → ${camDot.filter { it.startsWith("position") || it.startsWith("forward") || it.startsWith("up") }}; addBox(). → ${boxDot.filter { it.startsWith("mesh") || it.startsWith("material") }}; xrHit(). → ${xrDot.filter { it.startsWith("position") || it.startsWith("matrix") }}")
         }
 
         println("KotlinJsRemoteArSurfaceSmokeTest ok")

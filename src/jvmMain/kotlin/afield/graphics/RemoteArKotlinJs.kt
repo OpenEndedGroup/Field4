@@ -155,13 +155,31 @@ object RemoteArKotlinJs {
         cls("FLine") {
             varProp("stroked", "Boolean", completionInit = "true")
             varProp("filled", "Boolean", completionInit = "false")
+            varProp("pointed", "Boolean", completionInit = "false")
             fn("moveTo", "FLine") { param("x", "Double"); param("y", "Double"); param("z", "Double", "0.0") }
             fn("moveTo", "FLine") { param("point", "THREE.Vector3") }
+            fn("moveTo", "FLine") { param("point", "THREE.Vector2") }
             fn("lineTo", "FLine") { param("x", "Double"); param("y", "Double"); param("z", "Double", "0.0") }
             fn("lineTo", "FLine") { param("point", "THREE.Vector3") }
+            fn("lineTo", "FLine") { param("point", "THREE.Vector2") }
+            // cubicTo: 3 control vectors, 6 numbers (2D), or 9 numbers (3D).
             fn("cubicTo", "FLine") { param("a", "THREE.Vector3"); param("b", "THREE.Vector3"); param("c", "THREE.Vector3") }
+            fn("cubicTo", "FLine") {
+                param("c1x", "Double"); param("c1y", "Double"); param("c2x", "Double"); param("c2y", "Double")
+                param("x", "Double"); param("y", "Double")
+            }
+            fn("cubicTo", "FLine") {
+                param("c1x", "Double"); param("c1y", "Double"); param("c1z", "Double")
+                param("c2x", "Double"); param("c2y", "Double"); param("c2z", "Double")
+                param("x", "Double"); param("y", "Double"); param("z", "Double")
+            }
             fn("uv", "FLine") { param("u", "Double"); param("v", "Double") }
             fn("vcolor", "FLine") { param("r", "Double"); param("g", "Double"); param("b", "Double"); param("a", "Double") }
+            // Pointer-event registries: `fline.mouseDown[name] = { event -> … }` (Proxy-over-Map).
+            valProp("mouseDown", JsType("dynamic", "PointerCallbacks"))
+            valProp("mouseUp", JsType("dynamic", "PointerCallbacks"))
+            valProp("mouseMove", JsType("dynamic", "PointerCallbacks"))
+            valProp("dblClick", JsType("dynamic", "PointerCallbacks"))
         }
 
         // The runtime `stage` is a dynamic Map proxy (`fline.js`): `stage[name] = fline`,
@@ -187,15 +205,28 @@ object RemoteArKotlinJs {
             valProp("position", "THREE.Vector3"); valProp("forward", "THREE.Vector3"); valProp("up", "THREE.Vector3")
         }
         completionCls("PlacedMesh") {
-            valProp("mesh", "THREE.Mesh"); valProp("material", "THREE.Material"); valProp("mouseDown", "Any?")
+            valProp("mesh", "THREE.Mesh"); valProp("material", "THREE.Material"); valProp("mouseDown", "PointerCallbacks")
         }
         completionCls("ImagePlane") {
             valProp("mesh", "THREE.Mesh"); valProp("material", "THREE.Material")
-            valProp("texture", "Any?"); valProp("mouseDown", "Any?")
+            valProp("texture", "Any?"); valProp("mouseDown", "PointerCallbacks")
         }
         completionCls("VideoPlane") {
             valProp("mesh", "THREE.Mesh"); valProp("material", "THREE.Material")
-            valProp("video", "Any?"); valProp("texture", "Any?"); valProp("mouseDown", "Any?")
+            valProp("video", "Any?"); valProp("texture", "Any?"); valProp("mouseDown", "PointerCallbacks")
+        }
+
+        // Pointer-event registry: `target.mouseDown[name] = { event -> … }`. dynamic for the compiler,
+        // a named-index callback registry for completion. The event object is head-dependent (dynamic).
+        completionCls("PointerCallbacks") {
+            operatorFn("set", JsType.of("Unit")) { param("name", "String"); param("callback", JsType.of("(event: Any?) -> Unit")) }
+            operatorFn("get", JsType.of("Any?")) { param("name", "String") }
+        }
+
+        // WebXR hit (position + world matrix), returned by `xrHit()` / passed to onXRHit callbacks.
+        completionCls("XRHit") {
+            valProp("position", "THREE.Vector3")
+            valProp("matrix", "Array<Double>")
         }
 
         externalVal("SCENE", "THREE.Scene")
@@ -231,6 +262,11 @@ object RemoteArKotlinJs {
         externalFun("addImagePlane", JsType("dynamic", "ImagePlane")) { param("url", "String"); param("name", "String"); param("size", "Double", "1.0") }
         externalFun("addVideoPlane", JsType("dynamic", "VideoPlane")) { param("url", "String"); param("name", "String"); param("size", "Double", "1.0") }
         externalFun("addPointLight", "THREE.PointLight") { param("name", "String") }
+
+        // ---- WebXR interaction (webxr.js) — on* return an unsubscribe () -> Unit ----
+        externalFun("onXRHit", JsType.CALLBACK) { param("callback", JsType("(hit: dynamic) -> Unit", "(hit: Any?) -> Unit")) }
+        externalFun("onXRSelect", JsType.CALLBACK) { param("callback", JsType("(hit: dynamic) -> Unit", "(hit: Any?) -> Unit")) }
+        externalFun("xrHit", JsType("dynamic", "XRHit"))
 
         function("onFrame", ret = JsType.DYNAMIC, compilerBody = "__remoteArLaunch(callback, name, false)") {
             param("name", "String", "\"kotlinjs\"")
