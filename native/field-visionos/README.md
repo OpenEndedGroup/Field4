@@ -221,6 +221,33 @@ pipeline, alpha blending, depth testing, 16 named `float4` uniforms, and one JS 
 Textures, compute functions, multiple draw items, interaction and FLine GPU tessellation belong on
 top of this resident runtime; they do not require another architectural bridge.
 
+### Kotlin/JS external surface
+
+`src/jvmMain/kotlin/afield/graphics/VisionMetalKotlinJs.kt` is the typed Kotlin/JS description of
+the JavaScriptCore globals above. It deliberately derives its API from this native host rather than
+pretending that browser, THREE, or DOM globals exist. A Kotlin/JS program using it has this shape:
+
+```kotlin
+// {{ visionmetal uniforms=phase,amount,tint }}
+uniform("amount", 0.025)
+uniform("tint", 0.1, 0.8, 1.0, 0.35)
+onFrame { frame ->
+    uniform("phase", frame.time * 3.0)
+    log("predicted display time = " + frame.predictedDisplayTime)
+}
+```
+
+The first-line marker selects the `visionmetal` head profile. The compiler adds the Kotlin/JS
+externals; completion receives the colocated JVM-analysis-safe mirror of that public surface, and
+execution publishes the compiled plain module through the existing replayable
+`visionmetal/program` channel. MSL comes from the box's `fragment` property, or from
+`visionMetalExampleShader` when the property is empty. The
+optional `uniforms=` list fixes shader slot order; without it, literal uniform writes are inferred
+(the built-in shader retains `phase,amount,tint` first). `remotejs.kotlinjs-head-profiles` verifies
+marker parsing plus compilation and global-name linking for both Live Metal and RemoteAR host
+shims. Device execution remains part of native-head verification; the JVM smoke does not substitute
+for JavaScriptCore, Metal compilation, or compositor presentation on visionOS.
+
 ## Field host-side dependencies (server must serve these)
 
 These now live alongside the shell in this Field4 repository. To run the shell with all features,

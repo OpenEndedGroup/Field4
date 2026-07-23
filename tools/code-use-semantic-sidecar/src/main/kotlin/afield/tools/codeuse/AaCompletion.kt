@@ -287,6 +287,8 @@ class AaCompleter(
      *                          not local-legal), so completion resolves against them (the load-bearing
      *                          invariant in dev_docs/COMPLETION_ENGINE.md). May fail to parse for
      *                          non-declaration preambles; the caller (KI2) falls back to K1 on error.
+     * @param declarations      synthetic declarations that must remain at file scope, such as a
+     *                          Kotlin/JS head's JVM-analysis-safe object/class model.
      * @param implicitReceivers fully-qualified receiver types active in the box (e.g. `afield.Box`).
      *                          Modelled as nested `with(param)` scopes so their members resolve as
      *                          bare names and receiver dot-completion works.
@@ -297,6 +299,7 @@ class AaCompleter(
         snippet: String,
         cursor: Int,
         preamble: String = "",
+        declarations: String = "",
         implicitReceivers: List<String> = emptyList(),
         extraImports: List<String> = emptyList(),
     ): AaCompletionResult {
@@ -312,16 +315,21 @@ class AaCompleter(
         // completion function (name + type preserved, extension receiver / `by` delegate stripped so it's
         // local-legal). This surfaces `prop<>` and `@exported` inherited names — the load-bearing invariant.
         val (preambleImports, localStubs) = splitPreamble(preamble)
+        val (declarationImports, declarationStubs) = splitPreamble(declarations)
 
         val sb = StringBuilder()
-        (defaultImports + extraImports + preambleImports).map { it.removePrefix("import ").trim() }
+        (defaultImports + extraImports + preambleImports + declarationImports).map { it.removePrefix("import ").trim() }
             .filter { it.isNotEmpty() }.distinct().forEach { sb.append("import ").append(it).append('\n') }
         sb.append('\n')
+        declarations.trimIndent().lineSequence()
+            .filterNot { it.trimStart().startsWith("import ") || it.trimStart().startsWith("package ") }
+            .forEach { sb.append(it).append('\n') }
+        if (declarations.isNotBlank()) sb.append('\n')
 
         val recvs = implicitReceivers.filter { it.isNotBlank() }
         val params = recvs.mapIndexed { i, t -> "__r$i: $t" }.joinToString(", ")
         sb.append("fun __c(").append(params).append(") {\n")
-        localStubs.forEach { sb.append("    ").append(it).append('\n') }
+        (localStubs + declarationStubs).forEach { sb.append("    ").append(it).append('\n') }
         recvs.indices.forEach { i -> sb.append("with(__r").append(i).append(") { ") }
         sb.append(before)
         val cursorOffset = sb.length
@@ -355,16 +363,21 @@ class AaCompleter(
         // `(val|var) [Recv.]name [: Type] [by Delegate<Type>() | = … | get() …]`
         val prop = Regex("""^\s*(?:@\w+\s+)*(?:val|var)\s+(?:[\w.]+\.)?(\w+)\s*(?::\s*([\w.<>?,\s]+?)\s*)?(?:\bby\s+[\w.]+\s*<\s*([\w.<>?,\s]+?)\s*>|=|\bget\b|$)""")
         val fn = Regex("""^\s*(?:@\w+\s+)*(?:suspend\s+|inline\s+|operator\s+)*fun\s+(?:<[^>]*>\s+)?(?:[\w.]+\.)?(\w+)\s*\(([^)]*)\)\s*(?::\s*([\w.<>?,\s]+?)\s*)?(?:=|\{|$)""")
-        preamble.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.forEach { line ->
+        preamble.trimIndent().lineSequence().filter { it.isNotBlank() }.forEach { rawLine ->
             runCatching {
+                // Nested members belong to their file-scope class/object declaration. Re-emitting
+                // them as locals pollutes bare-name completion and loses their receiver.
+                if (rawLine.firstOrNull()?.isWhitespace() == true) return@runCatching
+                val line = rawLine.trim()
                 when {
                     line.startsWith("import ") -> imports += line
                     line.startsWith("package ") -> {} // drop
                     line.startsWith("fun ") || line.contains(Regex("""\bfun\s+\w""")) -> {
                         val m = fn.find(line) ?: return@runCatching
                         val name = m.groupValues[1]
+                        val params = m.groupValues[2].trim()
                         val type = m.groupValues[3].trim().ifEmpty { "Any?" }
-                        if (seen.add("fun:$name")) stubs += "fun $name(): $type = TODO()"
+                        if (seen.add("fun:$name:$params:$type")) stubs += "fun $name($params): $type = TODO()"
                     }
                     else -> {
                         val m = prop.find(line) ?: return@runCatching
@@ -447,7 +460,15 @@ class AaCompleter(
                     runCatching { type.isSubtypeOf(cid) }.getOrDefault(false)
                 }.mapNotNull { asCandidate(it, AaCandidate.Kind.EXTENSION, typeStr) }
 
-                val out = (members + extensions).filterNot { it.isSynthetic }.distinctBy { it.dedupKey }.sortedBy { it.name }
+                // Object/companion scopes can expose nested classifiers (`THREE.Vector3`). They are
+                // not callables, so the member-only path used to make namespace-like head APIs blank.
+                val nestedClassifiers = type.scope?.getClassifierSymbols(match).orEmpty().mapNotNull { symbol ->
+                    val name = (symbol as? KaNamedSymbol)?.name?.asString() ?: return@mapNotNull null
+                    AaCandidate(name, AaCandidate.Kind.CLASSIFIER, null, typeStr, "class")
+                }.toList()
+
+                val out = (members + extensions + nestedClassifiers)
+                    .filterNot { it.isSynthetic }.distinctBy { it.dedupKey }.sortedBy { it.name }
                 AaCompletionResult(out, if (out.isEmpty()) "0 matched; type=$typeStr; members=${members.size}" else "")
             } else {
                 val pos = PsiTreeUtil.getParentOfType(leaf, KtElement::class.java) ?: (leaf as? KtElement)
@@ -479,6 +500,10 @@ class AaCompleter(
                 }
                 val fromScopes = ctx.compositeScope(scopeFilter).callables(match)
                     .mapNotNull { asCandidate(it, AaCandidate.Kind.TOP_LEVEL, null) }.toList()
+                val sourceClassifiers = ctx.compositeScope(scopeFilter).classifiers(match).mapNotNull { symbol ->
+                    val name = (symbol as? KaNamedSymbol)?.name?.asString() ?: return@mapNotNull null
+                    AaCandidate(name, AaCandidate.Kind.CLASSIFIER, null, null, "class")
+                }.toList()
                 // At an empty-prefix ARGUMENT position (`f(‸`) the call's parameters are what matters;
                 // dumping every implicit-receiver (e.g. `Box`) member there just buries the params. Skip
                 // them until a prefix is typed. At a name position (blank line) they stay — that's how you
@@ -532,7 +557,7 @@ class AaCompleter(
                     }
                 }
 
-                val out = (namedParams + fromScopes + fromReceivers + topCallables + receiverExtensions + classifiers)
+                val out = (namedParams + fromScopes + sourceClassifiers + fromReceivers + topCallables + receiverExtensions + classifiers)
                     .filterNot { it.isSynthetic }.distinctBy { it.dedupKey }.sortedBy { it.name }
                 AaCompletionResult(out, if (out.isEmpty()) "0 candidates at name position" else "")
             }

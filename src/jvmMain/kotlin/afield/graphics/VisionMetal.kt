@@ -64,6 +64,9 @@ private val knownVisionMetalPrograms = ConcurrentHashMap<String, VisionMetalProg
 private val visionMetalGlobalListeners = CopyOnWriteArraySet<WebSocketSession>()
 @Volatile private var lastVisionMetalProgramUID: String? = null
 
+/** Number of native Live Metal subscribers currently attached to the replayable program channel. */
+fun visionMetalConnectedHeadCount(): Int = visionMetalGlobalListeners.size
+
 /**
  * A durable program resident in the native visionOS Metal renderer. Rerunning a Field box updates
  * this state; the headset compiles new MSL asynchronously and swaps pipelines at a frame boundary.

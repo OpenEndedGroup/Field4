@@ -1,7 +1,17 @@
 package afield.examples
 
 import afield.AaCompletionClient
+import afield.Box
+import afield.Completion
+import afield.CompletionRequest
 import afield.CompletionResult
+import afield.graphics.RemoteArKotlinJs
+import afield.graphics.VisionMetalKotlinJs
+import afield.remotejs.KotlinJsExecution
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromJsonElement
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /*
 FIELD_TEST
@@ -17,7 +27,7 @@ expect:
 */
 
 /**
- * Stage 1 of KotlinJS autocomplete: reuse the K2 Analysis-API completion, scoped to the Kotlin
+ * KotlinJS autocomplete: reuse the K2 Analysis-API completion, scoped to the Kotlin
  * stdlib only (AaCompletionClient.kotlinStdlibRoots). What this asserts (the honest, measured
  * behaviour):
  *
@@ -25,9 +35,9 @@ expect:
  *      This is the high-value case — graphics boxes with custom vector/particle types.
  *   2. The scope is genuinely stdlib-only: an afield symbol (`FLine`) does NOT complete.
  *
- * Known limitation (NOT asserted, logged): the sidecar is a member-only completer — Kotlin
- * extension functions (map/filter/uppercase) do not surface, and stdlib receivers show JVM
- * interface members (some JVM-only, e.g. parallelStream). Fixing that is Stage 2 (see the plan).
+ * The profile assertions also prove that file-scope synthetic declarations participate in analysis:
+ * nested namespace classifiers, constructed external types, their members, and callback parameter
+ * types all complete without adding Field's JVM classes to the KotlinJS classpath.
  *
  * Requires the AA sidecar; SKIPs cleanly if none is reachable.
  */
@@ -82,15 +92,86 @@ object KotlinJsCompletionSpikeTest {
         println("stdlib extensions surface: List 'xs.m' → ${candsC.filter { it.startsWith("map") }.take(4)}; " +
             "String 's.up' → ${candsD.filter { it.startsWith("upper") }}")
 
+        // --- Head declarations: the selected profile contributes a JVM-analysis-safe file model. ---
+        val visionNames = "fun main() {\n  onFr\n}"
+        val visionNameCands = completeWithRetry(
+            visionNames,
+            visionNames.indexOf("onFr") + 4,
+            roots,
+            VisionMetalKotlinJs.completionDeclarations,
+        ) ?: emptyList()
+        require(visionNameCands.any { it.startsWith("onFrame") }) {
+            "expected the visionmetal onFrame façade, got: ${visionNameCands.take(20)}"
+        }
+
+        val visionFrame = "fun main() {\n  onFrame { frame -> frame.pred\n  }\n}"
+        val visionFrameCands = completeWithRetry(
+            visionFrame,
+            visionFrame.indexOf("frame.pred") + "frame.pred".length,
+            roots,
+            VisionMetalKotlinJs.completionDeclarations,
+        ) ?: emptyList()
+        require(visionFrameCands.any { it == "predictedDisplayTime" }) {
+            "expected VisionMetalFrame members in callback completion, got: ${visionFrameCands.take(20)}"
+        }
+
+        val remoteNamespace = "fun main() {\n  THREE.Ve\n}"
+        val remoteNamespaceCands = completeWithRetry(
+            remoteNamespace,
+            remoteNamespace.indexOf("THREE.Ve") + "THREE.Ve".length,
+            roots,
+            RemoteArKotlinJs.completionDeclarations,
+        ) ?: emptyList()
+        require(remoteNamespaceCands.contains("Vector2") && remoteNamespaceCands.contains("Vector3")) {
+            "expected nested THREE vector classifiers, got: ${remoteNamespaceCands.take(20)}"
+        }
+
+        val remoteVector = "fun main() {\n  val v = THREE.Vector3()\n  v.cl\n}"
+        val remoteVectorCands = completeWithRetry(
+            remoteVector,
+            remoteVector.indexOf("v.cl") + 4,
+            roots,
+            RemoteArKotlinJs.completionDeclarations,
+        ) ?: emptyList()
+        require(remoteVectorCands.any { it.startsWith("clone") }) {
+            "expected THREE.Vector3 members, got: ${remoteVectorCands.take(20)}"
+        }
+
+        val remoteLine = "fun main() {\n  FLine().cu\n}"
+        val remoteLineCands = completeWithRetry(
+            remoteLine,
+            remoteLine.indexOf("FLine().cu") + "FLine().cu".length,
+            roots,
+            RemoteArKotlinJs.completionDeclarations,
+        ) ?: emptyList()
+        require(remoteLineCands.any { it.startsWith("cubicTo") }) {
+            "expected FLine members from remoteAR declarations, got: ${remoteLineCands.take(20)}"
+        }
+
+        // Exact BoxExecution integration: marker selection, profile declaration lookup, async AA call,
+        // and Completion payload serialization all participate.
+        val selectedCode = "// {{ remoteAR }}\nval selected = THREE.Vector3()\nselected.cl"
+        val selectedCompletion = completeThroughExecution(selectedCode, selectedCode.length)
+        require(selectedCompletion.metadata.any { it.text.startsWith("clone") }) {
+            "KotlinJsExecution did not apply the remoteAR profile: ${selectedCompletion.metadata.take(20)}"
+        }
+        println("head declarations surface: visionmetal frame + remoteAR THREE/FLine ✓")
+
         println("KotlinJsCompletionSpikeTest ok")
     }
 
     /** Returns candidate texts, or null if the sidecar never answered (unreachable → SKIP). */
-    private fun completeWithRetry(snippet: String, cursor: Int, roots: List<String>): List<String>? {
+    private fun completeWithRetry(
+        snippet: String,
+        cursor: Int,
+        roots: List<String>,
+        declarations: String = "",
+    ): List<String>? {
         var unreachable = true
         repeat(8) {
             val outcome = AaCompletionClient.complete(
                 snippet = snippet, cursor = cursor, preamble = "", implicitReceivers = emptyList(),
+                declarations = declarations,
                 classpathRootsOverride = roots,
             )
             if (!outcome.detail.startsWith("no-sidecar") && !outcome.detail.startsWith("error") &&
@@ -100,5 +181,28 @@ object KotlinJsCompletionSpikeTest {
             Thread.sleep(400)
         }
         return if (unreachable) null else emptyList()
+    }
+
+    private fun completeThroughExecution(code: String, cursor: Int): Completion {
+        val box = Box("kotlinjs-profile-completion").also {
+            it.setPropertyRaw("code", code, doResync = false)
+        }
+        val latch = CountDownLatch(1)
+        var result: Completion? = null
+        KotlinJsExecution().complete(
+            box,
+            CompletionRequest(
+                uid = box.id,
+                line = 1,
+                allCode = code,
+                column = cursor,
+                position = cursor,
+            ),
+        ) { message ->
+            result = Json.decodeFromJsonElement<Completion>(message.payload ?: error("completion reply had no payload"))
+            latch.countDown()
+        }
+        require(latch.await(20, TimeUnit.SECONDS)) { "KotlinJsExecution completion timed out" }
+        return result ?: error("KotlinJsExecution returned no completion")
     }
 }

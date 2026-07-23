@@ -287,9 +287,22 @@ fun executeFragment(b: Box, code: String, lineOffset: Int = 0, onComplete: (() -
  * `doASTA = false` — the compiled JS is already valid and needs no operator rewriting. Returns true
  * if a module was produced and sent.
  */
-fun compileAndSendKotlin(b: Box, kotlinSource: String, launchable: Boolean = false): Boolean {
+fun compileAndSendKotlin(
+    b: Box,
+    kotlinSource: String,
+    launchable: Boolean = false,
+    selectedHead: KotlinJsHeadSelection? = null,
+): Boolean {
     lastBoxExec = b
-    val result = KotlinToJsCompiler.compile(kotlinSource, moduleName = "box_${b.id.take(8)}")
+    val selection = selectedHead ?: KotlinJsHeadProfiles.resolveForBox(b, kotlinSource)
+    val preparedSource = selection.profile.prepareSource(selection.source)
+    val moduleSuffix = selection.profile.id.lowercase().replace(Regex("[^a-z0-9]+"), "_")
+    val result = KotlinToJsCompiler.compile(
+        preparedSource,
+        moduleName = "box_${b.id.take(8)}_$moduleSuffix",
+        // The selected profile wrapped user code before appending file-scope externals.
+        wrapImplicitMain = false,
+    )
 
     result.diagnostics.filter { it.severity == "error" }.forEach {
         b.output.errorProxy(it.message, "code", it.line)
@@ -301,25 +314,7 @@ fun compileAndSendKotlin(b: Box, kotlinSource: String, launchable: Boolean = fal
         return false
     }
 
-    return executeRemoteJS(
-        js,
-        filename = target(b),
-        launchable = launchable,
-        requiresSandbox = false,
-        doASTA = false,
-        diagnosticsTo = { b.output.errorProxy(it.message, "code", it.lineNumber.toInt()) },
-    ) {
-        val p = it.getJSONObject("payload")
-        val kind = p.getString("kind")
-        val message = p.optString("message", "")
-        val line = if (p.has("line")) p.getInt("line") else 0
-        when (kind) {
-            "ERROR" -> b.output.errorProxy(message, "code", line)
-            "SUCCESS" -> if (message.trim() != "OK") b.output.proxy(message.replace("<json>", ""), true, line)
-            else -> b.output.proxy(message, true, line)
-        }
-        kind != "ERROR" && kind != "RUN-STOP"
-    }
+    return selection.profile.send(b, selection, js, launchable)
 }
 
 fun launchAll(b: Box, code: String, lineOffset: Int = 0) {

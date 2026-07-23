@@ -25,6 +25,8 @@ object AaCompletionClient {
         val snippet: String,
         val cursor: Int,
         val preamble: String = "",
+        /** File-scope declarations supplied by a synthetic language/runtime profile. */
+        val declarations: String = "",
         val imports: List<String> = emptyList(),
         val implicitReceivers: List<String> = emptyList(),
         val classpathRoots: List<String> = emptyList(),
@@ -95,6 +97,7 @@ object AaCompletionClient {
         cursor: Int,
         preamble: String,
         implicitReceivers: List<String>,
+        declarations: String = "",
         timeoutMs: Long = 4000,
         // Restrict the analysis classpath (e.g. stdlib-only for KotlinJS boxes). Null = Field's full
         // classpath (the normal rich-completion universe).
@@ -110,6 +113,7 @@ object AaCompletionClient {
                     snippet = snippet,
                     cursor = cursor.coerceIn(0, snippet.length),
                     preamble = preamble,
+                    declarations = declarations,
                     implicitReceivers = implicitReceivers,
                     classpathRoots = roots,
                 )

@@ -31,7 +31,8 @@ execution.kt  KotlinExecution.complete(inside, req, reply)       (execution.kt:2
 KotlinInterface2.complete(s, cursor)                             (KotlinInterface2.kt:552)
    │  backend == AA ?
    ├── AA ──► AaCompletionClient.complete(...)                   (KotlinInterface2.kt:566, AaCompletionClient.kt:84)
-   │            │  HTTP POST /complete  (snippet, cursor, preamble, implicitReceivers, classpathRoots)
+   │            │  HTTP POST /complete  (snippet, cursor, preamble, declarations,
+   │            │                         implicitReceivers, classpathRoots)
    │            ▼
    │          sidecar process  POST /complete                    (CodeUseSemanticSidecar.kt:194)
    │            ▼  K2CompletionAnalyzer.complete()               (CodeUseSemanticSidecar.kt:658)
@@ -125,7 +126,8 @@ dependencies. `complete()` (`:84`):
 - computes the running JVM's binary classpath once from `java.class.path`
   (`classpathRoots`, `:60`) — this includes afield's own compiled output, which the sidecar needs to
   resolve Field's own types.
-- POSTs a `Req { snippet, cursor, preamble, implicitReceivers, classpathRoots, limit=200 }` JSON
+- POSTs a `Req { snippet, cursor, preamble, declarations, implicitReceivers, classpathRoots,
+  limit=200 }` JSON
   (`:95-108`) with a bounded timeout (default 4 s).
 - maps the response to `CompletionResult.Success` (`:133`), mirroring the K1 delegate's `extraInfo`
   (`receiverType`, `receiverQualifiedName`, `:125-130`) so the server's doc-enrichment pipeline attaches
@@ -169,12 +171,17 @@ compilable, **in-memory dangling `KtFile`** and asks the Analysis API what's in 
   top level and (b) every `prop<>`/`@exported`/plain declaration re-emitted as a *local* stub (name +
   type preserved, receiver/delegate stripped) inside the completion function. This is the load-bearing
   invariant that surfaces inherited REPL names — see `COMPLETION_ENGINE.md`.
+- **Synthetic declarations → file scope plus discovery stubs.** Language runtimes such as KotlinJS
+  can supply JVM-analysis-safe type models separately from the inherited REPL preamble. Classes and
+  objects remain at file scope, including nested classifiers such as `THREE.Vector3`; top-level
+  callables/properties are additionally stubbed locally so bare-name discovery remains reliable.
 - **Implicit receivers → `with(...)` scopes.** Each implicit receiver type becomes a `with(__rN) { … }`
   wrapper (`:320-328`) so receiver members resolve as bare names and dot-completion on the receiver works.
 - **Analysis** (`completeAt`, `:381`) runs inside `analyze(file) { … }`:
   - **Dot completion** (`recv.` / safe `recv?.`, `:401`): resolves the receiver's expression type, then
-    lists substituted member callables via `type.scope.getCallableSignatures(...)` plus **applicable
-    extensions** filtered through the IDE's extension-applicability checker (`:417-431`).
+    lists substituted member callables via `type.scope.getCallableSignatures(...)`, nested classifiers
+    via `getClassifierSymbols(...)`, plus **applicable extensions** filtered through the IDE's
+    extension-applicability checker and receiver-conformance fallback.
   - **Name / argument position** (`:436`): scope callables (dropping importing scopes on an empty prefix
     to avoid flooding), implicit-receiver members, index-backed global symbols once a prefix is typed,
     receiver-applicable extension functions, classifiers, and — at an argument position — the enclosing

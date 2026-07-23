@@ -146,6 +146,8 @@ data class CompletionRequest(
     val cursor: Int,
     /** The box's inherited preamble (`gatherPreambleUpwards`): `prop<>`/`@exported` decls + imports. */
     val preamble: String = "",
+    /** Synthetic, JVM-analysis-safe declarations that must remain at file scope. */
+    val declarations: String = "",
     /** The box's own `import` lines (added to the default REPL imports). */
     val imports: List<String> = emptyList(),
     /** Implicit receiver types in scope (e.g. `afield.Box`), modelled as `with(...)` scopes. */
@@ -670,6 +672,7 @@ private class K2CompletionAnalyzer(private val config: SidecarConfig) {
                 snippet = req.snippet,
                 cursor = req.cursor.coerceIn(0, req.snippet.length),
                 preamble = req.preamble,
+                declarations = req.declarations,
                 implicitReceivers = req.implicitReceivers,
                 extraImports = req.imports,
             )

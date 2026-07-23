@@ -48,11 +48,16 @@ The sidecar serves:
 
 - `GET /health`
 - `POST /analyze`
+- `POST /complete`
 
 `POST /analyze` uses the same JSON request/response contract documented in
 `dev_docs/agents/CODE_USE_TELEMETRY.md`. It is intentionally outside the main
 Field Gradle project because the standalone Analysis API pulls an IntelliJ-style
 classpath that should not be mixed into the live-coding runtime.
+
+`POST /complete` is documented in `dev_docs/completion_aa_sidecar.md`. In addition to ordinary
+inherited preamble context, language runtimes may send JVM-analysis-safe file-scope `declarations`
+for synthetic APIs such as Kotlin/JS remote-head externals.
 
 Implementation notes:
 

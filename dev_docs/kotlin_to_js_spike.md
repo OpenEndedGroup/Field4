@@ -151,14 +151,23 @@ connected head**:
 ### Completion (Stages 1 + 2 — done)
 
 KotlinJS boxes get K2 Analysis-API completion **scoped to the Kotlin stdlib** (no JVM classpath /
-afield leak), plus the head profile's external declaration surface passed as context, plus the
-box's own declarations (Stage 1). **Stage 2** fixed the sidecar so Kotlin **extension functions**
+afield leak), plus the selected head profile's declaration model, plus the box's own declarations
+(Stage 1). **Stage 2** fixed the sidecar so Kotlin **extension functions**
 surface on prefixed dot-completion (`xs.m` → `map`/`mapNotNull`, `s.up` → `uppercase`) — two fixes in
 `AaCompletion.completeAt`: (a) compute extensions even with no selector (right after `.`), and (b) a
 receiver-conformance fallback (exact then erased-classId `isSubtypeOf`) because the IDE
 applicability checker returns nothing for binary-index extensions in a standalone AA session. Gated
 on a non-empty prefix so bare `.` stays fast. Benefits regular Kotlin completion too — run the
 completion corpus gate before merging that shared-sidecar change.
+
+**Stage 3** adds a separate file-scope `declarations` field to the completion request. A head keeps
+its real Kotlin/JS externals and a small JVM-analysis-safe mirror together; the latter is parsed as
+file declarations rather than flattened into unrelated locals. The AA sidecar now enumerates
+source classifiers and nested type-scope classifiers, which makes namespace-shaped APIs work:
+`THREE.Ve` offers `Vector2`/`Vector3`, constructed vectors and `FLine` expose members, and
+`onFrame { frame -> frame.pred… }` infers `VisionMetalFrame.predictedDisplayTime`. Public profile
+functions/properties are also reduced to local stubs so bare-name discovery and named parameters
+continue to work.
 
 Remaining: **Stage 2b** — filter JVM-only members (`parallelStream`/`spliterator`/`toArray`) that
 don't exist in a JS head; and the ESM_SHARED fast path.

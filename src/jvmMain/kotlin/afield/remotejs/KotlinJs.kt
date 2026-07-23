@@ -83,8 +83,15 @@ class KotlinJsExecution : BoxExecution {
         runKotlin(inside, execute, launchable = true, code = code, reply = reply)
 
     override fun stop(inside: Box) {
-        if (knownOpenRemoteClients.isEmpty()) notify("Warning! no connected remote clients", "kotlinjs")
-        afield.remotejs.stop(inside)
+        val selection = try {
+            KotlinJsHeadProfiles.resolveForBox(inside, "")
+        } catch (e: IllegalArgumentException) {
+            inside.output.errorProxy(e.message ?: "Invalid Kotlin/JS head marker", "code", 0)
+            return
+        }
+        if (selection.profile.connectedHeadCount() == 0 && selection.profile != KotlinJsHeadProfiles.visionMetal)
+            notify("Warning! no connected ${selection.profile.id} heads", "kotlinjs")
+        selection.profile.stop(inside, selection)
     }
 
     override fun executeSymbol(inside: Box, executeSymbol: ExecuteSymbol, reply: (Message) -> Unit) {
@@ -98,13 +105,21 @@ class KotlinJsExecution : BoxExecution {
     override fun complete(inside: Box, completionRequest: CompletionRequest, reply: (Message) -> Unit) {
         val pos = completionRequest.position
         fun empty() = Completion(boundsStart = pos, boundsEnd = pos, metadata = emptyList())
+        val selection = try {
+            KotlinJsHeadProfiles.resolveForBox(inside, completionRequest.allCode)
+        } catch (e: IllegalArgumentException) {
+            notify(e.message ?: "Invalid Kotlin/JS head marker", "kotlinjs_error")
+            reply(Message("complete").payload(empty()))
+            return
+        }
 
         // Stage 1: reuse the rich K2 Analysis-API completion, but scope the analysis classpath to the
         // Kotlin stdlib only (KotlinJsExecution.kotlinStdlibRoots). The box has no JVM classpath — its
-        // symbol universe is stdlib + its own declarations (present in `allCode`) + keywords, which is
-        // exactly what a stdlib-scoped AA session resolves. `external`/head symbols don't complete yet
-        // (Stage 3 / the typed façade). The sidecar call can take up to its timeout, so run it off the
-        // runloop and reply on completion.
+        // symbol universe is stdlib + its own declarations (present in `allCode`) + the selected head
+        // profile's JVM-analysis-safe declaration model + keywords. Profile declarations stay at file
+        // scope so nested types and member/callback inference work; their public callables are also
+        // represented as local stubs for discoverability. The call can take up to its timeout, so run it
+        // off the runloop and reply on completion.
         val stdlibRoots = AaCompletionClient.kotlinStdlibRoots()
         if (stdlibRoots.isEmpty()) {
             reply(Message("complete").payload(empty()))
@@ -123,6 +138,7 @@ class KotlinJsExecution : BoxExecution {
                         snippet = completionRequest.allCode,
                         cursor = pos,
                         preamble = "",
+                        declarations = selection.profile.completionDeclarations,
                         implicitReceivers = emptyList(),
                         classpathRootsOverride = stdlibRoots,
                     )
@@ -162,14 +178,25 @@ class KotlinJsExecution : BoxExecution {
         val watermark = ++inside.fragmentGeneration
         send(Message("is-running").payload(IsRunning(execute.uid, true, watermark, "__fragment__")))
 
-        if (knownOpenRemoteClients.isEmpty())
-            notify("Warning! no connected remote clients", "kotlinjs")
+        val selection = try {
+            KotlinJsHeadProfiles.resolveForBox(inside, code)
+        } catch (e: IllegalArgumentException) {
+            inside.output.errorProxy(e.message ?: "Invalid Kotlin/JS head marker", "code", 0)
+            send(Message("is-running").payload(IsRunning(execute.uid, false, watermark, "__fragment__")))
+            return
+        }
+        val connected = selection.profile.connectedHeadCount()
+
+        if (connected == 0 && selection.profile != KotlinJsHeadProfiles.visionMetal)
+            notify("Warning! no connected ${selection.profile.id} heads", "kotlinjs")
+        else if (connected == 0)
+            notify("compiling Kotlin → ${selection.profile.id}; program will replay when the head connects", "kotlinjs")
         else
-            notify("compiling Kotlin → JS for ${knownOpenRemoteClients.size} head(s)", "kotlinjs")
+            notify("compiling Kotlin → ${selection.profile.id} for $connected head(s)", "kotlinjs")
 
         kotlinJsCompilePool.submit {
             try {
-                compileAndSendKotlin(inside, code, launchable)
+                compileAndSendKotlin(inside, code, launchable, selection)
             } catch (e: Exception) {
                 lprintln("error,kotlinjs", e.stackTraceToString())
                 notify("Kotlin → JS failed: ${e.message}", "kotlinjs_error")
