@@ -15,6 +15,11 @@ import afield.stdlib.fromViews
 import afield.stdlib.linalg.Matrix4f
 import afield.stdlib.linalg.Vector3f
 import imgui.ImGui
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import imgui.type.ImBoolean
 import imgui.type.ImFloat
 import org.lwjgl.glfw.GLFW
@@ -254,6 +259,47 @@ class ImGuiVrPanelDemo(
         }
     }
 
+    /**
+     * Headless verification capture: aim at the panel centre, render a warm-up of frames, then read
+     * the swapchain back to a PNG with [Renderer.captureWindowToFile] (a Vulkan transfer-source copy —
+     * unlike `screencapture` it needs no Screen-Recording permission and works over SSH/CI). The
+     * captured pixels are the blitted side-by-side packed image and are vertically flipped by that path
+     * (see the KDoc on captureWindowToFile / Window.saveFramebufferToTempFile); un-flip downstream if
+     * you want an upright still.
+     */
+    fun runCaptureGpu(outputPath: String) {
+        GLFW.glfwShowWindow(window.windowHandle)
+        var frame = 0
+        val warmup = 60
+        while (running && !window.shouldClose()) {
+            window.pollEvents()
+            aimControllerAtPanelCentre()
+            renderer.render()
+            frame++
+            if (frame == warmup) {
+                val ctrl = sbs.controllerState()
+                println("CAPTURE-DIAG frame=$frame hitActive=$hitActive hitU=$hitU hitV=$hitV lastHitWorld=$lastHitWorld")
+                println("CAPTURE-SUPPORTS-DIRECT ${renderer.supportsDirectWindowCapture(window)}")
+                val abs = File(outputPath).absoluteFile
+                abs.parentFile?.mkdirs()
+                // captureWindowToFile enqueues onto the render loop and only completes once a later
+                // frame records the transfer, so it must run OFF the render thread while we keep
+                // pumping frames here — running it inline would deadlock.
+                val done = CompletableDeferred<Result<String>>()
+                GlobalScope.launch(Dispatchers.IO) {
+                    done.complete(runCatching { renderer.captureWindowToFile(window, abs.path) })
+                }
+                var pumped = 0
+                while (!done.isCompleted && pumped++ < 300) { window.pollEvents(); renderer.render() }
+                val result = runBlocking { done.await() }
+                result.onSuccess { println(if (abs.exists()) "CAPTURE-OK $it" else "CAPTURE-FAIL not-written $it") }
+                    .onFailure { println("CAPTURE-FAIL ${it.message}") }
+                break
+            }
+            if (frame > warmup + 600) { println("CAPTURE-TIMEOUT"); break }
+        }
+    }
+
     /** Capture the on-screen window rectangle to a PNG via macOS `screencapture -R x,y,w,h`. */
     private fun screencaptureWindow(outputPath: String) {
         val px = IntArray(1); val py = IntArray(1)
@@ -315,6 +361,10 @@ class ImGuiVrPanelDemo(
                 val out = args.getOrNull(1) ?: "build/imgui-vr-panel.png"
                 demo.runCapture(out)
                 println("ImGuiVrPanelDemo capture done")
+            } else if (args.isNotEmpty() && args[0] == "capture-gpu") {
+                val out = args.getOrNull(1) ?: "build/imgui-vr-panel.png"
+                demo.runCaptureGpu(out)
+                println("ImGuiVrPanelDemo capture-gpu done")
             } else {
                 demo.runInteractive()
             }
