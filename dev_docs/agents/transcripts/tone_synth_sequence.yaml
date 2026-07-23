@@ -1,0 +1,44 @@
+name: tone_synth_sequence
+description: >
+  KotlinJS "code in the head": a Tone.js polyphonic synth playing a short arpeggio through a reverb,
+  scheduled on the Transport. First line `// {{ tone }}` selects the Tone computer-music head profile;
+  the body is Kotlin compiled to JavaScript and shipped to a connected RemoteAR head (which installs
+  the global `Tone`). Replay compiles the box Kotlin -> JS through the real KotlinToJsCompiler.
+operations:
+  - create:
+      box: agent_tone_synth_sequence
+      name: Tone Synth Sequence
+      frame: { x: 80.0, y: 80.0, w: 320.0, h: 220.0 }
+      properties:
+        mainLanguage: kotlinjs
+        code: |
+          // {{ tone }}
+          // A tiny chord arpeggio played through a reverb, scheduled on the Transport.
+          // Tone is installed as the global `Tone` in the RemoteAR head; every name below is
+          // bound by afield.graphics.ToneKotlinJs and grounded against the vendored Tone.js.
+          val synth = Tone.PolySynth()
+          val reverb = Tone.Reverb(2.5)
+          reverb.toDestination()
+          synth.connect(reverb)
+          synth.volume.value = -8.0
+
+          val transport = Tone.getTransport()
+          transport.bpm.value = 96.0
+
+          val chord = arrayOf("C4", "E4", "G4", "B4")
+          var step = 0
+          transport.scheduleRepeat({ time ->
+              val note = chord[step % chord.size]
+              synth.triggerAttackRelease(note, "8n", time)
+              step += 1
+          }, "8n")
+
+          // Tone.start() resumes the AudioContext; in a real head this follows a user gesture.
+          Tone.start()
+          transport.start()
+          log("tone: arpeggio scheduled at " + transport.bpm.value + " bpm")
+  - execute:
+      box: agent_tone_synth_sequence
+      property: code
+  - await:
+      wait: pending
