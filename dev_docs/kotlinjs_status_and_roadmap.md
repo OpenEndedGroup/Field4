@@ -2,13 +2,14 @@
 
 Companion to [`kotlin_to_js_spike.md`](kotlin_to_js_spike.md) (the compiler-pipeline spike). This
 doc captures where the **RemoteAR/Kotlin-in-the-head** work stands and the detailed plan for what's
-next. Branch: `spike/kotlin-to-js-remotejs`.
+next. The work developed on `spike/kotlin-to-js-remotejs` is now landed on `main`.
 
 ## Where we got to
 
-A box marked `mainLanguage = "kotlinjs"` (or `// {{ remoteAR }}` / `// {{ visionmetal }}` on the
-first line) is compiled Kotlin → JS in-process (`K2JSCompiler`, PLAIN_DCE, ~5 KB modules) and shipped
-over the existing RemoteJS WebSocket transport to a browser/visionOS head. Working and smoke-guarded:
+A box under a root marked `mainLanguage = "kotlinjs"` (or the legacy KotlinJS root flag) is compiled
+Kotlin → JS in-process (`K2JSCompiler`, PLAIN_DCE, ~5 KB modules) and shipped over the existing
+RemoteJS WebSocket transport. Its first non-blank line can then select the destination and binding
+surface with `// {{ remoteAR }}` or `// {{ visionmetal }}`. Working and smoke-guarded:
 
 - **Compiler pipeline** — source→klib→JS, in-process (subprocess fallback), vendored fork stdlib
   klib. Implicit `fun main` wrapping. Kotlin syntax highlighting (`kotlinjs` Monaco language).
@@ -68,8 +69,9 @@ over the existing RemoteJS WebSocket transport to a browser/visionOS head. Worki
 4. **Completion polish** —
    - Stage 2b: filter JVM-only members (`parallelStream`/`spliterator`/`toArray`) that don't exist in
      a JS head (kotlinjs-scoped, so regular Kotlin completion is unaffected).
-   - Param-preserving preamble stubs in the sidecar so overloaded call-result completion and
-     signature help are exact (today `splitPreamble` drops params and collapses overloads).
+   - Exact overload/signature ranking. `splitPreamble` now preserves parameters and completion
+     de-duplication keeps distinct parameter lists; signature-help presentation and ranking still
+     need a dedicated pass.
 5. **Latency / size** — ESM_SHARED fast path (~343 ms warm, ~5 KB box module) once the union-stdlib
    blocker is solved (see the spike doc); and moving the compile fully in-process with incremental
    caching for the live-edit loop.

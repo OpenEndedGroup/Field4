@@ -60,7 +60,7 @@ data class AaCandidate(
     /** Stable key so true duplicates collapse but distinct overloads don't. Includes [icon] so a
      *  property and a same-named/same-typed method (e.g. Vector3f's `var x: Float` and `fun x(): Float`)
      *  both survive — otherwise the property gets clobbered by the method. */
-    val dedupKey: String get() = "$name|$kind|$icon|$returnType"
+    val dedupKey: String get() = "$name|$kind|$icon|$returnType|$params"
 
     /** Synthetic wrapper artifacts from the completion harness (`__c`, `__r0`, …) must never surface. */
     val isSynthetic: Boolean get() = name.startsWith("__")

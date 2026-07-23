@@ -120,7 +120,7 @@ object KotlinJsRemoteArSurfaceSmokeTest {
         require(result.success && result.js != null) {
             "expanded RemoteAR surface did not compile:\n${result.rawLog.takeLast(2000)}"
         }
-        println("expanded surface compiled: ${prepared.length} chars Kotlin -> ${result.js!!.length} chars JS")
+        println("expanded surface compiled: ${prepared.length} chars Kotlin -> ${result.js.length} chars JS")
 
         // The user's ask: `stage.add|` completes even though `stage` is `dynamic` for the compiler.
         // Skip-tolerant — needs the AA sidecar (feeds `completionDeclarations` as file-scope context).
@@ -141,12 +141,20 @@ object KotlinJsRemoteArSurfaceSmokeTest {
             require(flineDot.any { it.startsWith("mouseDown") } && flineDot.any { it.startsWith("pointed") }) {
                 "FLine(). completion missing mouseDown/pointed: ${flineDot.take(25)}"
             }
-            // best-effort (call-result completion via param-dropped stubs can be flaky): log, don't assert.
             val camDot = complete("getCurrentCamera().") ?: emptyList()
             val boxDot = complete("addBox(\"x\").") ?: emptyList()
             val xrDot = complete("xrHit().") ?: emptyList()
+            require(camDot.any { it.startsWith("position") } && camDot.any { it.startsWith("forward") }) {
+                "getCurrentCamera(). completion missing typed CameraPose members: ${camDot.take(25)}"
+            }
+            require(boxDot.any { it.startsWith("mesh") } && boxDot.any { it.startsWith("material") }) {
+                "addBox(). completion missing typed PlacedMesh members: ${boxDot.take(25)}"
+            }
+            require(xrDot.any { it.startsWith("position") } && xrDot.any { it.startsWith("matrix") }) {
+                "xrHit(). completion missing typed XRHit members: ${xrDot.take(25)}"
+            }
             println("completion: FLine(). → ${flineDot.filter { it.startsWith("mouseDown") || it.startsWith("pointed") || it.startsWith("dblClick") }}")
-            println("completion(best-effort): getCurrentCamera(). → ${camDot.filter { it.startsWith("position") || it.startsWith("forward") || it.startsWith("up") }}; addBox(). → ${boxDot.filter { it.startsWith("mesh") || it.startsWith("material") }}; xrHit(). → ${xrDot.filter { it.startsWith("position") || it.startsWith("matrix") }}")
+            println("completion: getCurrentCamera(). → ${camDot.filter { it.startsWith("position") || it.startsWith("forward") || it.startsWith("up") }}; addBox(). → ${boxDot.filter { it.startsWith("mesh") || it.startsWith("material") }}; xrHit(). → ${xrDot.filter { it.startsWith("position") || it.startsWith("matrix") }}")
         }
 
         println("KotlinJsRemoteArSurfaceSmokeTest ok")
