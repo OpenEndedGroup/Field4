@@ -58,6 +58,22 @@ object KotlinJsHeadProfilesSmokeTest {
         val remote = KotlinJsHeadProfiles.resolve(remoteSource)
         require(remote.profile === KotlinJsHeadProfiles.remoteAr)
 
+        val toneSource = """
+            // {{ tone }}
+            val synth = Tone.PolySynth()
+            val reverb = Tone.Reverb(2.5)
+            reverb.toDestination()
+            synth.connect(reverb)
+            val transport = Tone.getTransport()
+            transport.bpm.value = 120.0
+            transport.scheduleRepeat({ time -> synth.triggerAttackRelease("C4", "8n", time) }, "4n")
+            Tone.start()
+            transport.start()
+            log("tone-runtime " + transport.bpm.value)
+        """.trimIndent()
+        val tone = KotlinJsHeadProfiles.resolve(toneSource)
+        require(tone.profile === KotlinJsHeadProfiles.tone)
+
         val box = Box("head-profile-inheritance")
         box.setPropertyRaw("code", remoteSource, doResync = false)
         val fragment = KotlinJsHeadProfiles.resolveForBox(box, "log(\"fragment\")")
@@ -77,13 +93,15 @@ object KotlinJsHeadProfilesSmokeTest {
 
         val visionJs = compile(vision.profile.prepareSource(vision.source), "profile_vision")
         val remoteJs = compile(remote.profile.prepareSource(remote.source), "profile_remote_ar")
+        val toneJs = compile(tone.profile.prepareSource(tone.source), "profile_tone")
 
         val node = which("node")
         if (node != null) {
             runNode(node, visionHost + "\n" + visionJs + "\n" + visionProbe, "vision-metal-profile-ok")
             runNode(node, remoteArHost + "\n" + remoteJs + "\n" + remoteArProbe, "remote-ar-profile-ok")
+            runNode(node, toneHost + "\n" + toneJs + "\n" + toneProbe, "tone-profile-ok")
         } else {
-            println("node not on PATH; both profile compiles passed, host-link execution skipped")
+            println("node not on PATH; all profile compiles passed, host-link execution skipped")
         }
 
         println("KotlinJsHeadProfilesSmokeTest ok")
@@ -208,6 +226,71 @@ object KotlinJsHeadProfilesSmokeTest {
         __remoteFrame();
         if (Math.abs(SCENE.children[0].rotation.y - 0.25) > 1e-9) throw new Error("frame did not run");
         console.log("remote-ar-profile-ok");
+    """.trimIndent()
+
+    // A mock `Tone` global recording constructor/method invocations, so the compiled Kotlin -> JS is
+    // proven at RUNTIME to call the bound names (not just type-check). Mirrors the shape of the real
+    // Tone.js API for the slice the source exercises.
+    private val toneHost = """
+        const __calls = [];
+        function rec(name) { __calls.push(name); }
+        class Param {
+            constructor(v) { this._v = v || 0; }
+            get value() { return this._v; }
+            set value(x) { this._v = x; }
+            rampTo() { return this; } linearRampTo() { return this; } setValueAtTime() { return this; }
+        }
+        class Node {
+            connect() { rec("connect"); return this; }
+            disconnect() { return this; }
+            toDestination() { rec("toDestination"); return this; }
+            chain() { rec("chain"); return this; }
+            dispose() { return this; } sync() { return this; } unsync() { return this; }
+        }
+        class Instrument extends Node {
+            constructor() { super(); this.volume = new Param(0); this.frequency = new Param(0); this.detune = new Param(0); }
+            triggerAttackRelease() { rec("triggerAttackRelease"); }
+            triggerAttack() { rec("triggerAttack"); }
+            triggerRelease() {} releaseAll() { return this; }
+        }
+        class Transport {
+            constructor() { this.bpm = new Param(120); this.position = "0:0:0"; this.seconds = 0; this.swing = 0; this.loop = false; this.state = "stopped"; }
+            start() { rec("transport.start"); this.state = "started"; return this; }
+            stop() { return this; } pause() { return this; } cancel() { return this; }
+            scheduleRepeat(cb) { rec("scheduleRepeat"); this._cb = cb; return 1; }
+            scheduleOnce() { return 2; } clear() { return this; }
+        }
+        const __transport = new Transport();
+        const Tone = {
+            version: "15.1.22",
+            PolySynth: class extends Instrument {}, Synth: class extends Instrument {}, MonoSynth: class extends Instrument {},
+            Reverb: class extends Node { constructor(d) { super(); this.decay = d; this.wet = new Param(1); } },
+            Oscillator: class extends Node { constructor(f, t) { super(); this.frequency = new Param(f); this.detune = new Param(0); this.type = t; } start() { return this; } stop() { return this; } },
+            Filter: class extends Node { constructor(f, t) { super(); this.frequency = new Param(f); this.Q = new Param(1); this.type = t; } },
+            Gain: class extends Node { constructor(g) { super(); this.gain = new Param(g); } },
+            FeedbackDelay: class extends Node { constructor(d, fb) { super(); this.delayTime = new Param(0); this.feedback = new Param(fb); this.wet = new Param(1); } },
+            Noise: class extends Node { constructor(t) { super(); this.type = t; } start() { return this; } stop() { return this; } },
+            Loop: class { constructor() { rec("Loop"); } start() { return this; } stop() { return this; } dispose() { return this; } },
+            Sequence: class { constructor() { rec("Sequence"); } start() { return this; } stop() { return this; } dispose() { return this; } },
+            now() { return 0; }, immediate() { return 0; },
+            start() { rec("Tone.start"); return Promise.resolve(); }, loaded() { return Promise.resolve(); },
+            getTransport() { return __transport; }, getDestination() { return new Node(); }, getContext() { return {}; },
+            dbToGain(db) { return Math.pow(10, db / 20); }, gainToDb(g) { return 20 * Math.log10(g); },
+            ftom() { return 69; }, mtof() { return 261.6; },
+            Frequency(v) { return v; }, Time(v) { return v; }, Midi(v) { return v; },
+        };
+        function log(value) { console.log(value); }
+    """.trimIndent()
+
+    private val toneProbe = """
+        for (const expected of ["toDestination", "connect", "scheduleRepeat", "Tone.start", "transport.start"]) {
+            if (!__calls.includes(expected)) throw new Error("missing " + expected + " in " + JSON.stringify(__calls));
+        }
+        if (__transport.bpm.value !== 120) throw new Error("bpm not set: " + __transport.bpm.value);
+        if (typeof __transport._cb !== "function") throw new Error("scheduleRepeat callback not registered");
+        __transport._cb(0.5);
+        if (!__calls.includes("triggerAttackRelease")) throw new Error("scheduled callback did not trigger the synth");
+        console.log("tone-profile-ok");
     """.trimIndent()
 
     private fun which(executable: String): String? =

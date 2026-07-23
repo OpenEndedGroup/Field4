@@ -83,6 +83,16 @@ object DemoTranscriptExecSmokeTest {
         "spin_glass",
     )
 
+    /**
+     * KotlinJS "code in the head" demos: the box body is Kotlin compiled to JavaScript for a remote
+     * head, NOT JVM Kotlin — so it is compiled through the REAL [KotlinToJsCompiler] via the head
+     * profile the `// {{ marker }}` selects (the identical path a live box takes), and asserted to
+     * carry no error diagnostics. Faithful replay for markers like `// {{ tone }}` / `// {{ remoteAR }}`.
+     */
+    private val KOTLINJS = setOf(
+        "tone_synth_sequence",
+    )
+
     /** Ops that build the box graph without compiling/running any box Kotlin. */
     private val GRAPH_VERBS = setOf(
         "create", "new-box", "box", "connect", "disconnect", "edit", "set", "set-string", "move", "frame", "set-rect", "wait",
@@ -106,6 +116,7 @@ object DemoTranscriptExecSmokeTest {
                 when (name) {
                     in EXECUTE -> runExecuteDemo(yaml, name, failures)
                     in COMPILE_ONLY -> runCompileOnlyDemo(yaml, name, failures)
+                    in KOTLINJS -> runKotlinJsDemo(yaml, name, failures)
                     else -> {
                         val msg = "$name: UNCLASSIFIED — add to EXECUTE or COMPILE_ONLY in DemoTranscriptExecSmokeTest"
                         failures.add(msg)
@@ -128,7 +139,79 @@ object DemoTranscriptExecSmokeTest {
             exitProcess(1)
         }
         println("DemoTranscriptExecSmokeTest ok — ${yamls.size} demos verified " +
-            "(${EXECUTE.size} executed, ${COMPILE_ONLY.size} compiled)")
+            "(${EXECUTE.size} executed, ${COMPILE_ONLY.size} compiled, ${KOTLINJS.size} kotlinjs)")
+    }
+
+    // ---- KOTLINJS: build the graph, then compile each kotlinjs box body Kotlin -> JS for real ----
+
+    private fun runKotlinJsDemo(yaml: File, name: String, failures: MutableList<String>) {
+        val document = freshSession(name)
+        val ops = loadOps(yaml)
+        val graphOps = ops.filter { (it.keys.firstOrNull()?.lowercase() ?: "") in GRAPH_VERBS }
+
+        val macrosDir = File(document, "macros").also { it.mkdirs() }
+        val filtered = linkedMapOf<String, Any?>("name" to name, "operations" to graphOps)
+        File(macrosDir, "$name.yaml").writeText(Yaml().dump(filtered))
+        val build = OperationTranscript.runMacro(document.absolutePath, name)
+        if (!build.success) println("[kotlinjs] $name graph build note: ${build.message}")
+
+        val boxIds = graphOps.mapNotNull { op ->
+            if ((op.keys.firstOrNull()?.lowercase() ?: "") in setOf("create", "new-box", "box")) {
+                val p = op.values.firstOrNull() as? Map<*, *>
+                (p?.get("box") ?: p?.get("uid") ?: p?.get("id") ?: p?.get("target"))?.toString()
+            } else null
+        }
+
+        println("[kotlinjs] $name (${boxIds.size} box(es)) …")
+        var demoOk = true
+        var compiled = 0
+        for (id in boxIds) {
+            val target = runCatching { box(id, createIfMissing = false) }.getOrNull() ?: continue
+            if (target.getPropertyRaw("_tombstone").isTrue()) continue
+            val code = target.code
+            if (code.isBlank()) continue
+            // Only KotlinJS-head boxes: a `// {{ marker }}` first line, or mainLanguage == kotlinjs.
+            val mainLang = target.getPropertyRaw("mainLanguage", "")?.toString()?.trim().orEmpty()
+            val selection = runCatching { afield.remotejs.KotlinJsHeadProfiles.resolve(code) }.getOrNull()
+            if (selection == null || (!selection.explicit && !mainLang.equals("kotlinjs", ignoreCase = true))) {
+                println("[kotlinjs]   $id: not a kotlinjs-head box — skipped")
+                continue
+            }
+            val prepared = selection.profile.prepareSource(selection.source)
+            val result = afield.remotejs.KotlinToJsCompiler.compile(
+                prepared, moduleName = "demo_${name}_${id.take(8)}", wrapImplicitMain = false,
+            )
+            val errors = result.diagnostics.filter { it.severity == "error" }
+            when {
+                errors.isNotEmpty() -> {
+                    demoOk = false
+                    errors.forEach {
+                        val msg = "$name/$id: ${it.message} (line ${it.line})"
+                        failures.add(msg)
+                        println("[kotlinjs]   $id: FAIL $msg")
+                    }
+                }
+                !result.success || result.js == null -> {
+                    demoOk = false
+                    val msg = "$name/$id: Kotlin->JS compile failed: ${result.rawLog.takeLast(400)}"
+                    failures.add(msg)
+                    println("[kotlinjs]   $id: FAIL $msg")
+                }
+                else -> {
+                    compiled += 1
+                    println("[kotlinjs]   $id: PASS (${selection.profile.id}, ${prepared.length} chars Kotlin -> ${result.js.length} chars JS)")
+                }
+            }
+        }
+        if (demoOk) {
+            if (compiled == 0) {
+                val msg = "$name: no kotlinjs-head box compiled — is the marker / mainLanguage set?"
+                failures.add(msg)
+                println("[kotlinjs] FAIL $msg")
+            } else {
+                println("[kotlinjs] PASS $name")
+            }
+        }
     }
 
     // ---- EXECUTE: run the whole transcript through the real runner and assert no error output ----

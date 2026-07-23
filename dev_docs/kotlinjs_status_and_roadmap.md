@@ -77,6 +77,23 @@ surface with `// {{ remoteAR }}` or `// {{ visionmetal }}`. Working and smoke-gu
    caching for the live-edit loop.
 6. **Tone & broad A-Frame** — as SEPARATE optional profiles / surface modules, not dumped into the
    RemoteAR core. Each is its own `jsBinding { … }` selected by a marker (`// {{ tone }}` etc.).
+   - **Tone: DONE.** `// {{ tone }}` selects the Tone.js computer-music head (`ToneKotlinJs.kt`, its
+     own `jsBinding` → compiler + completion façades). Bound slice: the synth family
+     (`Synth`/`PolySynth`/`MonoSynth`/`AM`/`FM`/`Duo`/`Membrane`/`Metal`/`Pluck`/`NoiseSynth`), sources
+     (`Oscillator`/`Player`/`Noise`), core effects (`Gain`/`Filter`/`Reverb`/`FeedbackDelay`/
+     `PingPongDelay`/`Distortion`/`Chorus`/`Volume`), the `Param` value type, `Transport` scheduling
+     (`scheduleRepeat`/`scheduleOnce`, `bpm`/`position`/`state`), `Loop`/`Sequence`/`Part`, and the
+     top-level helpers (`now`/`start`/`getTransport`/`getDestination`/`dbToGain`/`mtof`/…). Every name
+     is grounded against the vendored bundle (`vendor/tone/15.1.22/Tone.js`, whose 184 exports were
+     enumerated; `amount` is the one plausible name NOT present, so `Distortion` uses dynamic options +
+     the real `distortion` prop). The RemoteAR head installs `Tone` as a global (`index.html` loads it;
+     `index_vr` redirects there); the head now reports a `tone` capability in `initialize` + `snapshot`
+     + a `tone-loaded` self-test, and the `tone` profile routes `// {{ tone }}` only to a head that has
+     it. Verified: `remotejs.kotlinjs-tone-surface` (compile a broad sample through the real compiler),
+     `remotejs.kotlinjs-head-profiles` (compiled Kotlin→JS **executed** under node against a mock `Tone`
+     — proves the emitted JS calls the bound names at runtime), and the `tone_synth_sequence` demo
+     transcript (compiled Kotlin→JS by `examples.demo-transcript.exec`). Audio *playback* needs a real
+     browser head + user gesture and is not headlessly verifiable. Broad A-Frame remains.
 7. **Generate the Vision Metal façade from the binding model too** — fold `VisionMetalKotlinJs` into
    the same `jsBinding` DSL so both profiles share the generator (and gain parity guarantees).
 
