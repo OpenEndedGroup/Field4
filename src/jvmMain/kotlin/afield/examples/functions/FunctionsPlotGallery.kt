@@ -13,6 +13,7 @@ import java.awt.geom.Rectangle2D
 import java.io.File
 import javax.imageio.ImageIO
 import java.awt.image.BufferedImage
+import java.util.concurrent.TimeUnit
 import kotlin.math.abs
 
 /*
@@ -450,6 +451,86 @@ object FunctionsPlotGallery {
                 "final=${"%.4f".format(run.finalError)} maxDev=${"%.4f".format(maxDev)}")
         }
 
+        // Optional: an animated fit-convergence mp4 (best-effort — a missing ffmpeg is not a
+        // failure, it just skips the video). Each frame is the fitted curve after k real Adam
+        // steps; Adam is deterministic in the seed + step count, so re-running to k iterations
+        // reproduces the trajectory exactly (honest per-frame state, no faked interpolation).
+        runCatching { renderFitConvergenceMp4(outDir) }
+            .onFailure { println("fit-convergence mp4 skipped: ${it.message}") }
+
         println("functions plot gallery rendered to ${outDir.absolutePath} (${PLOTS.size} plots)")
+    }
+
+    /** Render `functions-fit-convergence.mp4`: the fitted curve landing on the target over the
+     * descent. Returns the mp4, or null if ffmpeg is unavailable. */
+    fun renderFitConvergenceMp4(outDir: File): File? = with(Functions) {
+        val ffmpeg = resolveFfmpeg() ?: run {
+            println("fit-convergence mp4 skipped: ffmpeg not found")
+            return null
+        }
+        val target = sin(frequency = 2.0, amplitude = 0.8, offset = 0.12)
+        val seed = sin(frequency = 2.0, amplitude = 0.30, offset = -0.15)
+        val dom = Functions.Domain.of(0.0, 1.0)
+        val maxIters = 320
+        val stepPerFrame = 8
+        val framesDir = File(outDir, "fit-frames").apply { deleteRecursively(); mkdirs() }
+        var frame = 0
+        var k = 0
+        while (k <= maxIters) {
+            val run = fitGradient(target = target, seed = seed, iterations = k, lr = 0.05, samples = 160, rngSeed = 0L)
+            val spec = PlotSpec(
+                title = "fitGradient convergence — iteration $k  (error ${"%.4f".format(run.finalError)})",
+                xLabel = "x", yLabel = "f(x)",
+                series = listOf(
+                    sample("target", target, dom, ORANGE, Style.THICK),
+                    sample("fitted @ $k", run.fitted, dom, CYAN, Style.LINE)
+                ),
+                yRange = -1.1 to 1.1
+            )
+            ImageIO.write(render(spec), "png", File(framesDir, "frame_%05d.png".format(frame)))
+            frame++
+            k += stepPerFrame
+        }
+        // Hold the final frame a beat.
+        val last = File(framesDir, "frame_%05d.png".format(frame - 1))
+        repeat(12) { ImageIO.write(ImageIO.read(last), "png", File(framesDir, "frame_%05d.png".format(frame++))) }
+
+        val mp4 = File(outDir, "functions-fit-convergence.mp4")
+        encodeMp4(ffmpeg, framesDir, "frame_%05d.png", 20, mp4)
+        check(mp4.length() > 0L) { "ffmpeg wrote an empty mp4" }
+        println("wrote ${mp4.absolutePath} ($frame frames)")
+        mp4
+    }
+
+    private fun resolveFfmpeg(): String? {
+        val candidates = listOfNotNull(
+            System.getenv("FFMPEG"),
+            "/opt/homebrew/bin/ffmpeg",
+            "/usr/local/bin/ffmpeg",
+            "/usr/bin/ffmpeg"
+        )
+        return candidates.firstOrNull { File(it).canExecute() }
+    }
+
+    private fun encodeMp4(ffmpeg: String, framesDir: File, pattern: String, fps: Int, output: File) {
+        output.delete()
+        val process = ProcessBuilder(
+            ffmpeg, "-y",
+            "-framerate", fps.toString(),
+            "-i", pattern,
+            "-c:v", "libx264",
+            "-pix_fmt", "yuv420p",
+            "-crf", "20",
+            "-movflags", "+faststart",
+            output.absolutePath
+        ).directory(framesDir).redirectErrorStream(true).start()
+        val log = process.inputStream.bufferedReader().readText()
+        if (!process.waitFor(120, TimeUnit.SECONDS)) {
+            process.destroyForcibly()
+            error("ffmpeg timed out encoding ${output.name}")
+        }
+        require(process.exitValue() == 0) {
+            "ffmpeg failed (${process.exitValue()}) for ${output.name}:\n${log.takeLast(600)}"
+        }
     }
 }
