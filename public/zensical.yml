@@ -34,6 +34,7 @@ nav:
         - Fabricate Renderer: fabricate_renderer.md
         - Ray Tracing Examples: ray_tracing_examples.md
         - afield.four Graphics: afield_four_graphics.md
+        - ImGui as a VR Panel: imgui_vr_panel.md
         - Field Probes: field_probes.md
         - Interactive Guides: interactive_guides.md
       - Small Languages:
