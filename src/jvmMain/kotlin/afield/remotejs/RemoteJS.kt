@@ -155,6 +155,7 @@ fun installRemoteJSMainLanguage() {
 fun executeRemoteJS(
     _s: String,
     filename: String = "unknown",
+    lifecycleName: String? = null,
     launchable: Boolean = false,
     requiresSandbox: Boolean = false,
     lineOffset: Int = 0,
@@ -185,6 +186,7 @@ fun executeRemoteJS(
     q.put("code", s)
     q.put("returnTo", u)
     q.put("codeName", filename)
+    lifecycleName?.let { q.put("lifecycleName", it) }
     q.put("launchable", launchable)
     q.put("lineOffset", lineOffset)
     if (__var0 != null)
@@ -292,6 +294,8 @@ fun compileAndSendKotlin(
     kotlinSource: String,
     launchable: Boolean = false,
     selectedHead: KotlinJsHeadSelection? = null,
+    lifecycleName: String = kotlinJsLifecycleName(b, "default"),
+    onResponse: ((KotlinJsHeadResponse) -> Boolean)? = null,
 ): Boolean {
     lastBoxExec = b
     val selection = selectedHead ?: KotlinJsHeadProfiles.resolveForBox(b, kotlinSource)
@@ -314,7 +318,7 @@ fun compileAndSendKotlin(
         return false
     }
 
-    return selection.profile.send(b, selection, js, launchable)
+    return selection.profile.send(b, selection, js, launchable, lifecycleName, onResponse)
 }
 
 fun launchAll(b: Box, code: String, lineOffset: Int = 0) {

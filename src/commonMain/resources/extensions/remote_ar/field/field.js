@@ -185,11 +185,12 @@ __beginService();
                 __fieldCommitLifecycle(lifecycle);
             }
             if (typeof result === "undefined") {
-                _field.send(envelope.returnTo, {message: "OK", kind: "SUCCESS"});
+                _field.send(envelope.returnTo, {message: "OK", kind: "SUCCESS", terminal: true});
             } else {
                 _field.send(envelope.returnTo, {
                     message: "<json>" + betterPretty(result, 2, "JSON", false),
-                    kind: "SUCCESS"
+                    kind: "SUCCESS",
+                    terminal: true
                 });
             }
 

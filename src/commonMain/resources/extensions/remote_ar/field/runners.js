@@ -82,7 +82,7 @@ var __fieldBeginLifecycle = function (envelope, reportErrorTo) {
     __fieldLifecycleCurrent = null
     if (!envelope || !envelope.launchable) return null
 
-    const name = envelope.codeName || "remotejs"
+    const name = envelope.lifecycleName || envelope.codeName || "remotejs"
     const previous = __tasks[name]
     if (previous) {
         if (typeof previous.stopNow === "function") previous.stopNow(true)

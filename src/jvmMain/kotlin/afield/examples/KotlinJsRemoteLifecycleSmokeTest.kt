@@ -75,7 +75,12 @@ object KotlinJsRemoteLifecycleSmokeTest {
             ${runners.readText()}
 
             const compiled = ${JSONObject.quote(result.js)};
-            const envelope = {codeName:"box_lifecycle|uid", returnTo:"return", launchable:false};
+            const envelope = {
+                codeName:"box_lifecycle|uid",
+                lifecycleName:"box_lifecycle|uid::kotlinjs::music",
+                returnTo:"return",
+                launchable:false
+            };
 
             function evaluate(launchable) {
                 envelope.launchable = launchable;
@@ -97,6 +102,9 @@ object KotlinJsRemoteLifecycleSmokeTest {
 
             // Launch: onStart once, then one callback per host frame.
             evaluate(true);
+            if (__tasks[envelope.lifecycleName] == null || __tasks[envelope.codeName] != null) {
+                throw new Error("lifecycle did not use the strand-specific task key");
+            }
             __service();
             __service();
             if (events.join(",") !== "body,body,start,frame:0,frame:1") {
@@ -113,9 +121,9 @@ object KotlinJsRemoteLifecycleSmokeTest {
             if (events[events.length - 1] !== "frame:0") throw new Error("new generation did not restart frame count");
 
             // Stop is immediate/idempotent and no frame runs afterwards.
-            if (!__fieldStopLifecycle(envelope.codeName)) throw new Error("stop did not find lifecycle");
+            if (!__fieldStopLifecycle(envelope.lifecycleName)) throw new Error("stop did not find lifecycle");
             const stopped = events.join(",");
-            __fieldStopLifecycle(envelope.codeName);
+            __fieldStopLifecycle(envelope.lifecycleName);
             __service();
             if (events.join(",") !== stopped) throw new Error("work continued after stop: " + events);
             if (events.filter(x => x === "stop").length !== 2) throw new Error("cleanup count wrong: " + events);

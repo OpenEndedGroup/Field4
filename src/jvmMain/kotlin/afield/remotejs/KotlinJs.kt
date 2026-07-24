@@ -8,6 +8,7 @@ import afield.runtime.applyRuntimeToggle
 import afield.runtime.isMainLanguage
 import afield.runtime.registerMainLanguageRuntime
 import afield.stdlib.*
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
 /**
@@ -72,17 +73,41 @@ fun installKotlinJsMainLanguage() {
 class KotlinJsExecution : BoxExecution {
 
     override val languageName: String = "KotlinJS"
+    private val launches = ConcurrentHashMap<String, KotlinJsLaunchTracker>()
 
     override fun executeFragment(inside: Box, execute: Execute, reply: (Message) -> Unit) =
-        runKotlin(inside, execute, launchable = false, code = execute.code, reply = reply)
+        runKotlin(inside, execute, launchable = false, code = execute.code, strand = "__fragment__", reply = reply)
 
     override fun executeAll(inside: Box, execute: Execute, reply: (Message) -> Unit) =
-        runKotlin(inside, execute, launchable = false, code = execute.code, reply = reply)
+        runKotlin(inside, execute, launchable = false, code = execute.code, strand = "__fragment__", reply = reply)
 
     override fun launchAll(inside: Box, execute: Execute, code: String, strand: String, reply: (Message) -> Unit) =
-        runKotlin(inside, execute, launchable = true, code = code, reply = reply)
+        runKotlin(
+            inside,
+            execute,
+            launchable = true,
+            code = code,
+            strand = strand.ifBlank { "default" },
+            reply = reply,
+        )
 
     override fun stop(inside: Box) {
+        val active = launches.entries.filter { it.value.box === inside }
+        if (active.isNotEmpty()) {
+            active.groupBy { it.value.selection.profile }.forEach { (profile, entries) ->
+                entries.forEach { (key, tracker) ->
+                    launches.remove(key, tracker)
+                    tracker.cancel()
+                }
+                profile.stop(
+                    inside,
+                    entries.first().value.selection,
+                    entries.map { it.value.lifecycleName },
+                )
+            }
+            return
+        }
+
         val selection = try {
             KotlinJsHeadProfiles.resolveForBox(inside, "")
         } catch (e: IllegalArgumentException) {
@@ -91,7 +116,7 @@ class KotlinJsExecution : BoxExecution {
         }
         if (selection.profile.connectedHeadCount() == 0 && selection.profile != KotlinJsHeadProfiles.visionMetal)
             notify("Warning! no connected ${selection.profile.id} heads", "kotlinjs")
-        selection.profile.stop(inside, selection)
+        selection.profile.stop(inside, selection, listOf(kotlinJsLifecycleName(inside, "default")))
     }
 
     override fun executeSymbol(inside: Box, executeSymbol: ExecuteSymbol, reply: (Message) -> Unit) {
@@ -173,16 +198,20 @@ class KotlinJsExecution : BoxExecution {
         }
     }
 
-    private fun runKotlin(inside: Box, execute: Execute, launchable: Boolean, code: String, reply: (Message) -> Unit) {
+    private fun runKotlin(
+        inside: Box,
+        execute: Execute,
+        launchable: Boolean,
+        code: String,
+        strand: String,
+        reply: (Message) -> Unit,
+    ) {
         configureOutputProxies(inside, reply)
-        val watermark = ++inside.fragmentGeneration
-        send(Message("is-running").payload(IsRunning(execute.uid, true, watermark, "__fragment__")))
 
         val selection = try {
             KotlinJsHeadProfiles.resolveForBox(inside, code)
         } catch (e: IllegalArgumentException) {
             inside.output.errorProxy(e.message ?: "Invalid Kotlin/JS head marker", "code", 0)
-            send(Message("is-running").payload(IsRunning(execute.uid, false, watermark, "__fragment__")))
             return
         }
         val connected = selection.profile.connectedHeadCount()
@@ -194,9 +223,74 @@ class KotlinJsExecution : BoxExecution {
         else
             notify("compiling Kotlin → ${selection.profile.id} for $connected head(s)", "kotlinjs")
 
+        if (!launchable) {
+            runFragment(inside, execute, code, selection)
+            return
+        }
+
+        val lifecycleName = kotlinJsLifecycleName(inside, strand)
+        val key = "${inside.id}\u0000$strand"
+        launches.remove(key)?.let { previous ->
+            previous.cancel()
+            previous.selection.profile.stop(inside, previous.selection, listOf(previous.lifecycleName))
+        }
+
+        val generation = synchronized(inside) {
+            val next = (inside.runGeneration[strand] ?: -1) + 1
+            inside.runGeneration[strand] = next
+            inside.currentRunningStates[strand] = RunningState(next, "launch")
+            next
+        }
+        send(Message("is-running").payload(IsRunning(execute.uid, true, generation, strand, "launch")))
+
+        lateinit var tracker: KotlinJsLaunchTracker
+        tracker = KotlinJsLaunchTracker(
+            box = inside,
+            strand = strand,
+            generation = generation,
+            lifecycleName = lifecycleName,
+            selection = selection,
+            notifyStopped = {
+                send(Message("is-running").payload(IsRunning(execute.uid, false, generation, strand, "launch")))
+            },
+            onFinished = { launches.remove(key, tracker) },
+        )
+        launches[key] = tracker
+
         kotlinJsCompilePool.submit {
             try {
-                compileAndSendKotlin(inside, code, launchable, selection)
+                val sent = compileAndSendKotlin(
+                    inside,
+                    code,
+                    launchable = true,
+                    selectedHead = selection,
+                    lifecycleName = lifecycleName,
+                    onResponse = tracker::onResponse,
+                )
+                tracker.deliveryFinished(
+                    sent = sent,
+                    durableWithoutResponse = selection.profile === KotlinJsHeadProfiles.visionMetal,
+                )
+            } catch (e: Exception) {
+                lprintln("error,kotlinjs", e.stackTraceToString())
+                notify("Kotlin → JS failed: ${e.message}", "kotlinjs_error")
+                inside.output.errorProxy(e.message ?: "compile error", "code", 0)
+                tracker.cancel()
+            }
+        }
+    }
+
+    private fun runFragment(
+        inside: Box,
+        execute: Execute,
+        code: String,
+        selection: KotlinJsHeadSelection,
+    ) {
+        val watermark = ++inside.fragmentGeneration
+        send(Message("is-running").payload(IsRunning(execute.uid, true, watermark, "__fragment__")))
+        kotlinJsCompilePool.submit {
+            try {
+                compileAndSendKotlin(inside, code, launchable = false, selectedHead = selection)
             } catch (e: Exception) {
                 lprintln("error,kotlinjs", e.stackTraceToString())
                 notify("Kotlin → JS failed: ${e.message}", "kotlinjs_error")
@@ -205,5 +299,79 @@ class KotlinJsExecution : BoxExecution {
                 send(Message("is-running").payload(IsRunning(execute.uid, false, watermark, "__fragment__")))
             }
         }
+    }
+}
+
+internal class KotlinJsLaunchTracker(
+    val box: Box,
+    private val strand: String,
+    private val generation: Int,
+    val lifecycleName: String,
+    val selection: KotlinJsHeadSelection,
+    private val notifyStopped: () -> Unit,
+    private val onFinished: () -> Unit,
+) {
+    private val expectedHeads = mutableSetOf<String>()
+    private val activeHeads = mutableSetOf<String>()
+    private val terminalHeads = mutableSetOf<String>()
+    private var finished = false
+
+    @Synchronized
+    fun onResponse(response: KotlinJsHeadResponse): Boolean {
+        if (finished || !isCurrent()) return false
+        expectedHeads += response.expectedHeadIds
+        expectedHeads += response.headId
+        when (response.kind) {
+            "RUN-START" -> {
+                activeHeads += response.headId
+                terminalHeads -= response.headId
+            }
+            "RUN-STOP", "ERROR" -> {
+                activeHeads -= response.headId
+                terminalHeads += response.headId
+            }
+            "SUCCESS" -> if (response.terminal && response.headId !in activeHeads) {
+                terminalHeads += response.headId
+            }
+        }
+        if (activeHeads.isEmpty() && expectedHeads.isNotEmpty() && terminalHeads.containsAll(expectedHeads)) {
+            finish()
+        }
+        return !finished
+    }
+
+    @Synchronized
+    fun deliveryFinished(sent: Boolean, durableWithoutResponse: Boolean) {
+        if (finished || !isCurrent()) return
+        if (!sent) {
+            finish()
+        } else if (durableWithoutResponse) {
+            activeHeads += "durable-head"
+        }
+    }
+
+    @Synchronized
+    fun cancel() {
+        if (!finished) finish()
+    }
+
+    private fun isCurrent(): Boolean = synchronized(box) {
+        box.runGeneration[strand] == generation &&
+            box.currentRunningStates[strand]?.watermark == generation
+    }
+
+    private fun finish() {
+        if (finished) return
+        finished = true
+        synchronized(box) {
+            if (box.currentRunningStates[strand]?.watermark == generation) {
+                box.currentRunningStates.remove(strand)
+                notifyStopped()
+            }
+            if (box.runGeneration[strand] == generation) {
+                box.runGeneration[strand] = generation + 1
+            }
+        }
+        onFinished()
     }
 }

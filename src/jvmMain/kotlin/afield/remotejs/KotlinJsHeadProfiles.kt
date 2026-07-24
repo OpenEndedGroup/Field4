@@ -21,8 +21,15 @@ sealed class KotlinJsHeadProfile(
     val optionNames: Set<String> = emptySet(),
 ) {
     abstract fun connectedHeadCount(): Int
-    abstract fun send(box: Box, selection: KotlinJsHeadSelection, javascript: String, launchable: Boolean): Boolean
-    abstract fun stop(box: Box, selection: KotlinJsHeadSelection)
+    abstract fun send(
+        box: Box,
+        selection: KotlinJsHeadSelection,
+        javascript: String,
+        launchable: Boolean,
+        lifecycleName: String,
+        onResponse: ((KotlinJsHeadResponse) -> Boolean)? = null,
+    ): Boolean
+    abstract fun stop(box: Box, selection: KotlinJsHeadSelection, lifecycleNames: Collection<String>)
 
     fun prepareSource(userSource: String): String {
         // Implicit-main wrapping must happen before declarations are appended. External declarations
@@ -31,6 +38,13 @@ sealed class KotlinJsHeadProfile(
         return if (declarations.isBlank()) executable else "$executable\n\n$declarations"
     }
 }
+
+data class KotlinJsHeadResponse(
+    val kind: String,
+    val headId: String,
+    val expectedHeadIds: Set<String>,
+    val terminal: Boolean = false,
+)
 
 data class KotlinJsHeadSelection(
     val profile: KotlinJsHeadProfile,
@@ -168,26 +182,48 @@ private class RemoteProfile(
 
     override fun connectedHeadCount(): Int = knownOpenRemoteClients.keys.count(::matches)
 
-    override fun send(box: Box, selection: KotlinJsHeadSelection, javascript: String, launchable: Boolean): Boolean =
-        executeRemoteJS(
+    override fun send(
+        box: Box,
+        selection: KotlinJsHeadSelection,
+        javascript: String,
+        launchable: Boolean,
+        lifecycleName: String,
+        onResponse: ((KotlinJsHeadResponse) -> Boolean)?,
+    ): Boolean {
+        val expectedHeadIds = knownOpenRemoteClients.keys.filter(::matches).toSet()
+        return executeRemoteJS(
             javascript,
             filename = target(box),
+            lifecycleName = lifecycleName,
             launchable = launchable,
             requiresSandbox = false,
             doASTA = false,
             filterSession = { clientId, _ -> matches(clientId) },
             diagnosticsTo = { box.output.errorProxy(it.message, "code", it.lineNumber.toInt()) },
         ) { response ->
-            reportRemoteResult(box, response)
+            val keepForOutput = reportRemoteResult(box, response)
+            onResponse?.invoke(
+                KotlinJsHeadResponse(
+                    kind = response.getJSONObject("payload").getString("kind"),
+                    headId = response.optString("from", "unknown-head"),
+                    expectedHeadIds = expectedHeadIds,
+                    terminal = response.getJSONObject("payload").optBoolean("terminal", false),
+                ),
+            ) ?: keepForOutput
         }
+    }
 
-    override fun stop(box: Box, selection: KotlinJsHeadSelection) {
+    override fun stop(box: Box, selection: KotlinJsHeadSelection, lifecycleNames: Collection<String>) {
+        val names = lifecycleNames.ifEmpty { listOf(kotlinJsLifecycleName(box, "default")) }
+        val quotedNames = names.joinToString(",") { JSONObject.quote(it) }
         executeRemoteJS(
             """
-            if (typeof __fieldStopLifecycle === "function") {
-                __fieldStopLifecycle("${target(box)}")
-            } else if (__tasks["${target(box)}"]) {
-                __tasks["${target(box)}"].stop()
+            for (const name of [$quotedNames]) {
+                if (typeof __fieldStopLifecycle === "function") {
+                    __fieldStopLifecycle(name)
+                } else if (__tasks[name]) {
+                    __tasks[name].stop()
+                }
             }
             """.trimIndent(),
             filename = target(box),
@@ -211,7 +247,14 @@ private object VisionMetalProfile : KotlinJsHeadProfile(
 
     override fun connectedHeadCount(): Int = visionMetalConnectedHeadCount()
 
-    override fun send(box: Box, selection: KotlinJsHeadSelection, javascript: String, launchable: Boolean): Boolean {
+    override fun send(
+        box: Box,
+        selection: KotlinJsHeadSelection,
+        javascript: String,
+        launchable: Boolean,
+        lifecycleName: String,
+        onResponse: ((KotlinJsHeadResponse) -> Boolean)?,
+    ): Boolean {
         val authoredShader = box.fragment.orEmpty().trim()
         val shader = authoredShader.ifEmpty { visionMetalExampleShader }
         val inferred = inferUniforms(selection.source)
@@ -233,7 +276,7 @@ private object VisionMetalProfile : KotlinJsHeadProfile(
         return true // publication is durable and replays when a native head subscribes later
     }
 
-    override fun stop(box: Box, selection: KotlinJsHeadSelection) {
+    override fun stop(box: Box, selection: KotlinJsHeadSelection, lifecycleNames: Collection<String>) {
         val shader = box.fragment.orEmpty().trim().ifEmpty { visionMetalExampleShader }
         box.visionMetal(shader = shader, script = "", uniforms = emptyList(), name = "kotlinjs")
     }
@@ -244,6 +287,9 @@ private object VisionMetalProfile : KotlinJsHeadProfile(
         .toList()
 }
 
+internal fun kotlinJsLifecycleName(box: Box, strand: String): String =
+    "${target(box)}::kotlinjs::${strand.ifBlank { "default" }}"
+
 private fun reportRemoteResult(box: Box, response: JSONObject): Boolean {
     val payload = response.getJSONObject("payload")
     val kind = payload.getString("kind")
@@ -252,6 +298,7 @@ private fun reportRemoteResult(box: Box, response: JSONObject): Boolean {
     when (kind) {
         "ERROR" -> box.output.errorProxy(message, "code", line)
         "SUCCESS" -> if (message.trim() != "OK") box.output.proxy(message.replace("<json>", ""), true, line)
+        "RUN-START", "RUN-STOP" -> Unit
         else -> box.output.proxy(message, true, line)
     }
     return kind != "ERROR" && kind != "RUN-STOP"
