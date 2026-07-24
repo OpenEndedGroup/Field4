@@ -2524,16 +2524,17 @@ class KotlinInterface2(
                 null
             }
         }
-        // Ambient rules: `rewrite {}` rules declared in an ancestor box apply to this box's code too.
-        // We read each ancestor's source `code` directly (so a rule is ambient the moment it is
-        // *written* in a parent — the parent need not have run). searchUpwards visits this box first
-        // — skip it, since its live rules are already in `s` — then all ancestors, nearest first. The
-        // `"rewrite" in code` pre-filter avoids parsing ancestor code that declares no rules.
+        // Ambient rules: `rewrite {}` rules declared in a box apply to that box's own code AND every
+        // descendant box's code. We read each box's source `code` directly (so a rule is ambient the
+        // moment it is *written* — the box need not have run). searchUpwards visits this box first,
+        // then all ancestors (nearest first). We INCLUDE this box so its own rules also apply to a
+        // *fragment* run from it (where `s` is only the selected snippet and does not itself contain
+        // the rule block). For a full-box run `s` already carries the rule (collected + blanked); the
+        // duplicate is harmless — a rewrite makes its target no longer match, and guards fail closed.
+        // The `"rewrite" in code` pre-filter skips parsing code that declares no rules.
         val ambientRuleSources = mutableListOf<String>()
-        var isSelf = true
         searchUpwards(box, "code") { code ->
-            if (isSelf) isSelf = false
-            else if (code != null && "rewrite" in code) ambientRuleSources += code
+            if (code != null && "rewrite" in code) ambientRuleSources += code
         }
 
         val expansion = PatternRewrite.expand(

@@ -66,6 +66,7 @@ object PatternRewriteSmokeTest {
             testLocalRuleOverridesAmbient()
             testLocalRuleSourcesCaptured()
             testAmbientRuleInheritedByChildBox()
+            testOwnRuleAppliesToFragmentOfSameBox()
             testGensymHygiene()
             testProvideProducesKeyedPreamble()
             testProvideDedupAndDistinctKeys()
@@ -402,6 +403,22 @@ object PatternRewriteSmokeTest {
         val out = expand("rewrite { x: Expr -> from { f(x) }; to { g(x) } }\nf(a)")
         require(out.localRuleSources.size == 1) { "one local rule block expected: ${out.localRuleSources}" }
         require("from { f(x) }" in out.localRuleSources[0]) { "rule source must be verbatim: ${out.localRuleSources}" }
+    }
+
+    /**
+     * A box's OWN rule must apply to a *fragment* run from that box — not only to a whole-box run.
+     * The fragment text doesn't contain the `rewrite {}` block, so the rule has to be picked up from
+     * the box's stored `code`. (Regression: previously the ambient gather skipped the box itself, so
+     * `thisBox.fff(1)` run alone compiled without the coercion the rule inserts.)
+     */
+    private fun testOwnRuleAppliesToFragmentOfSameBox() {
+        val ki = KotlinInterface2(filePrefix = "frag-own-rule")
+        val box = Box("frag-own-rule")
+        val fullCode = "rewrite { x: Expr -> from { fff(x) }; where { !isCallTo(x, \"wrap\") }; to { fff(wrap(x)) } }\nfff(1)"
+        box.setPropertyRaw("code", fullCode, doResync = false)
+        // Run only a fragment that does NOT contain the rewrite block.
+        val fragOut = ki.applyMacros(box, "fff(2)")
+        require("fff(wrap(2))" in fragOut) { "a box's own rule must apply to a fragment run from it: $fragOut" }
     }
 
     /** End-to-end: a rule *written* in a parent box rewrites a child box's code — no parent run needed. */
