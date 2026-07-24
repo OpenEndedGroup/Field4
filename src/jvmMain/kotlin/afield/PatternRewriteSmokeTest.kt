@@ -328,9 +328,11 @@ object PatternRewriteSmokeTest {
 
     /** End-to-end: `unquote {}` runs Kotlin at expansion time; its result is spliced as source. */
     private fun testUnquoteEndToEnd() = runBlocking {
-        val ki = KotlinInterface2(filePrefix = "unquote-e2e")
+        // Faithful box engine: one Box implicit receiver, matching makeKI — so the unquote eval
+        // (which runs with `implicits = listOf(box)`) sees the receiver arity it expects.
+        val ki = KotlinInterface2(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = "unquote-e2e")
         val box = Box("unquote-e2e")
-        withTimeout(120_000) { ki.exec("1 + 1") }   // warm the REPL (a live box is always warmed before edits)
+        withTimeout(120_000) { ki.exec("1 + 1", implicits = listOf(box)) }   // warm the REPL
         // The block produces a quoted string literal so the spliced code is valid Kotlin.
         val src = """
             rewrite { x: Ident ->
