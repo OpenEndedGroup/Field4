@@ -114,6 +114,10 @@ object PatternRewrite {
         val preambleBlocks: List<String>,
         /** Cached-AI requests, deduped by key. */
         val aiRequests: List<AiRequest>,
+        /** Source text of each `rewrite {}` block declared *locally* in [expand]'s `source`. The caller
+         *  persists these so descendant boxes can inherit them as ambient rules (see the `ambientRuleSources`
+         *  parameter of [expand]). */
+        val localRuleSources: List<String> = emptyList(),
     )
 
     private data class Match(
@@ -125,7 +129,12 @@ object PatternRewrite {
         val aiRequest: AiRequest? = null,
     )
 
-    private data class Collected(val rules: List<PatternRule>, val deletions: List<IntRange>)
+    private data class Collected(
+        val rules: List<PatternRule>,
+        val deletions: List<IntRange>,
+        /** Source text of each collected `rewrite {}` block (for ambient-rule persistence). */
+        val ruleSources: List<String>,
+    )
 
     /**
      * Expand every `rewrite {}` rule in [source]. [parse] turns text into a [KtFile] (the caller
@@ -139,13 +148,20 @@ object PatternRewrite {
         parse: (String) -> KtFile,
         maxIterations: Int = 64,
         evalUnquote: ((String) -> String?)? = null,
+        ambientRuleSources: List<String> = emptyList(),
         onDiagnostic: (String) -> Unit = {},
     ): ExpandResult {
         val collected = collect(parse(source), onDiagnostic)
-        if (collected.rules.isEmpty()) return ExpandResult(source, emptyList(), emptyList())
+
+        // Ambient rules inherited from ancestor boxes: collected (so they apply here) but NOT blanked
+        // from — their `rewrite {}` blocks live in the ancestors' source, not this one. Local rules
+        // come first so a box can override an inherited rule (declaration-order, first-match-wins).
+        val ambientRules = ambientRuleSources.flatMap { collect(parse(it), onDiagnostic).rules }
+        val rules = collected.rules + ambientRules
+
+        if (rules.isEmpty()) return ExpandResult(source, emptyList(), emptyList(), collected.ruleSources)
 
         var text = blankOut(source, collected.deletions)
-        val rules = collected.rules
         val gensym = GensymScope()
         val preambleBlocks = mutableListOf<String>()
         val aiRequests = mutableListOf<AiRequest>()
@@ -154,6 +170,7 @@ object PatternRewrite {
             text,
             preambleBlocks.distinct(),
             aiRequests.distinctBy { it.key },
+            collected.ruleSources,
         )
 
         var iteration = 0
@@ -183,6 +200,7 @@ object PatternRewrite {
     private fun collect(file: KtFile, onDiagnostic: (String) -> Unit): Collected {
         val rules = mutableListOf<PatternRule>()
         val deletions = mutableListOf<IntRange>()
+        val ruleSources = mutableListOf<String>()
 
         file.collectDescendantsOfType<KtCallExpression>()
             .filter { it.calleeName() == "rewrite" }
@@ -190,12 +208,13 @@ object PatternRewrite {
             .forEach { call ->
                 val rule = call.toPatternRule(onDiagnostic)
                 if (rule != null) rules += rule
+                ruleSources += call.text
                 // Blank the whole `rewrite {}` call regardless (a malformed one is still erased DSL
                 // that must not reach the compiler).
                 deletions += call.textRange.startOffset until call.textRange.endOffset
             }
 
-        return Collected(rules, deletions)
+        return Collected(rules, deletions, ruleSources)
     }
 
     private fun KtCallExpression.toPatternRule(onDiagnostic: (String) -> Unit): PatternRule? {

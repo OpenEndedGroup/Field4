@@ -58,6 +58,10 @@ object PatternRewriteSmokeTest {
             testVariadicEmptyRun()
             testUnquoteWiringWithFakeEvaluator()
             testUnquoteEndToEnd()
+            testAmbientRuleApplies()
+            testLocalRuleOverridesAmbient()
+            testLocalRuleSourcesCaptured()
+            testAmbientRuleInheritedByChildBox()
             testGensymHygiene()
             testProvideProducesKeyedPreamble()
             testProvideDedupAndDistinctKeys()
@@ -89,6 +93,7 @@ object PatternRewriteSmokeTest {
         val text: String,
         val preambleBlocks: List<String>,
         val aiRequests: List<PatternRewrite.AiRequest>,
+        val localRuleSources: List<String>,
         val diagnostic: String?,
     )
 
@@ -96,10 +101,11 @@ object PatternRewriteSmokeTest {
         src: String,
         maxIterations: Int = 64,
         evalUnquote: ((String) -> String?)? = null,
+        ambientRuleSources: List<String> = emptyList(),
     ): Result {
         var diag: String? = null
-        val out = PatternRewrite.expand(src, ::parse, maxIterations, evalUnquote) { diag = it }
-        return Result(out.text, out.preambleBlocks, out.aiRequests, diag)
+        val out = PatternRewrite.expand(src, ::parse, maxIterations, evalUnquote, ambientRuleSources) { diag = it }
+        return Result(out.text, out.preambleBlocks, out.aiRequests, out.localRuleSources, diag)
     }
 
     private fun require(cond: Boolean, lazyMessage: () -> String) {
@@ -323,6 +329,46 @@ object PatternRewriteSmokeTest {
         val expanded = withTimeout(120_000) { ki.applyMacros(box, src) }
         require("olleh" in expanded) { "unquote must eval x.reversed() at expansion time: $expanded" }
         require("unquote" !in expanded && "rev(" !in expanded) { "the rule + unquote call must be gone: $expanded" }
+    }
+
+    // ---- ambient (inherited) rules --------------------------------------------------------------
+
+    /** A rule supplied as an ambient (ancestor) source applies to code with no local rule. */
+    private fun testAmbientRuleApplies() {
+        val ancestor = "rewrite { x: Expr -> from { boom(x) }; to { BANG(x) } }"
+        val out = expand("boom(a + 1)", ambientRuleSources = listOf(ancestor))
+        require("BANG((a + 1))" in out.text) { "ambient rule should apply (paren-guarded): ${out.text}" }
+    }
+
+    /** A local rule wins over an ambient rule with the same pattern (declaration-order). */
+    private fun testLocalRuleOverridesAmbient() {
+        val ancestor = "rewrite { x: Expr -> from { f(x) }; to { ANCESTOR(x) } }"
+        val local = "rewrite { x: Expr -> from { f(x) }; to { LOCAL(x) } }"
+        val out = expand("$local\nf(a)", ambientRuleSources = listOf(ancestor))
+        require("LOCAL(a)" in out.text) { "local rule should win: ${out.text}" }
+        require("ANCESTOR" !in out.text) { "ambient must not override a local rule: ${out.text}" }
+    }
+
+    /** Local rule blocks are surfaced verbatim for the caller to persist for descendants. */
+    private fun testLocalRuleSourcesCaptured() {
+        val out = expand("rewrite { x: Expr -> from { f(x) }; to { g(x) } }\nf(a)")
+        require(out.localRuleSources.size == 1) { "one local rule block expected: ${out.localRuleSources}" }
+        require("from { f(x) }" in out.localRuleSources[0]) { "rule source must be verbatim: ${out.localRuleSources}" }
+    }
+
+    /** End-to-end: a rule *written* in a parent box rewrites a child box's code — no parent run needed. */
+    private fun testAmbientRuleInheritedByChildBox() = runBlocking {
+        val ki = KotlinInterface2(filePrefix = "ambient-e2e")
+        val parent = Box("ambient-parent")
+        val child = Box("ambient-child")
+        child.parents.add(parent)   // establish the hierarchy edge searchUpwards walks
+
+        // The rule lives in the parent's source `code` (as if typed into the parent box). The parent
+        // is never executed — the child should still inherit the rule from the parent's code.
+        parent.setPropertyRaw("code", "rewrite { x: Expr -> from { boom(x) }; to { BANG(x) } }", doResync = false)
+        val childOut = ki.applyMacros(child, "boom(hello)")
+        require("BANG(hello)" in childOut) { "child must inherit the parent's ambient rule: $childOut" }
+        require("boom(" !in childOut) { "the inherited rule should have rewritten boom(): $childOut" }
     }
 
     /** Names the `to {}` side introduces are gensym'd so they cannot capture a spliced metavar. */
