@@ -59,6 +59,10 @@ class JsFun(
     val external: Boolean = false,
     /** Member `operator fun` (e.g. a stage `get`/`set` indexer). */
     val operator: Boolean = false,
+    /** Rendered into the compiler façade ONLY (never the completion mirror). Used for raw runtime
+     *  members like FLine's `__PLUS__`/`__MINUS__` that a public operator delegates to but that
+     *  should not surface as completion suggestions. */
+    val compilerOnly: Boolean = false,
 )
 
 class JsTypeDecl(
@@ -223,6 +227,15 @@ class TypeBuilder(
         funs += JsFun(name, ParamsBuilder().apply(build).params, ret, operator = true)
     }
 
+    /** A member fun rendered into the COMPILER façade only — a raw runtime method (e.g. FLine's
+     *  `__PLUS__`) that a public operator/extension delegates to, kept out of the completion surface. */
+    fun compilerFn(name: String, ret: JsType, build: ParamsBuilder.() -> Unit = {}) {
+        funs += JsFun(name, ParamsBuilder().apply(build).params, ret, compilerOnly = true)
+    }
+
+    fun compilerFn(name: String, ret: String, build: ParamsBuilder.() -> Unit = {}) =
+        compilerFn(name, JsType.of(ret), build)
+
     /** Nested class inside this object/class. */
     fun cls(name: String, build: TypeBuilder.() -> Unit = {}) {
         nested += TypeBuilder(name).apply(build).build()
@@ -284,7 +297,9 @@ private class JsBindingRenderer(private val external: Boolean) {
 
         val bodyLines = buildList {
             t.props.forEach { add(renderProp(it)) }
-            t.funs.forEach { add(renderMemberFun(it)) }
+            t.funs
+                .filterNot { !external && it.compilerOnly } // compiler-only members never enter completion
+                .forEach { add(renderMemberFun(it)) }
             t.nested.forEach { add(renderType(it, top = false, indent = "").trimEnd()) }
         }
         if (bodyLines.isEmpty()) return sb.toString()
