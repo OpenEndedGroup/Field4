@@ -27,8 +27,35 @@ object RemoteArKotlinJs {
                 valProp("rotation", "Euler")
                 valProp("scale", "Vector3")
                 valProp("children", "Array<Object3D>")
+                // ---- richer standard Object3D surface (three.js Object3D) ----
+                valProp("up", "Vector3")
+                valProp("quaternion", "Quaternion")
+                valProp("matrix", "Matrix4")
+                varProp("visible", "Boolean", completionInit = "true")
+                varProp("castShadow", "Boolean", completionInit = "false")
+                varProp("receiveShadow", "Boolean", completionInit = "false")
+                varProp("renderOrder", "Double", completionInit = "0.0")
+                varProp("frustumCulled", "Boolean", completionInit = "true")
+                varProp("userData", JsType.DYNAMIC)
+                varProp("parent", JsType("dynamic", "Object3D?"))
                 fn("add", "Object3D") { vararg("objects", "Object3D") }
                 fn("remove", "Object3D") { vararg("objects", "Object3D") }
+                fn("lookAt", "Unit") { param("x", "Double"); param("y", "Double"); param("z", "Double") }
+                fn("lookAt", "Unit") { param("target", "Vector3") }
+                fn("applyMatrix4", "Unit") { param("matrix", "Matrix4") }
+                fn("applyQuaternion", "Object3D") { param("q", "Quaternion") }
+                fn("translateX", "Object3D") { param("distance", "Double") }
+                fn("translateY", "Object3D") { param("distance", "Double") }
+                fn("translateZ", "Object3D") { param("distance", "Double") }
+                fn("rotateX", "Object3D") { param("angle", "Double") }
+                fn("rotateY", "Object3D") { param("angle", "Double") }
+                fn("rotateZ", "Object3D") { param("angle", "Double") }
+                fn("rotateOnAxis", "Object3D") { param("axis", "Vector3"); param("angle", "Double") }
+                fn("getObjectByName", "Object3D?") { param("name", "String") }
+                fn("traverse", "Unit") { param("callback", JsType("(o: dynamic) -> Unit", "(o: Object3D) -> Unit")) }
+                fn("updateMatrix", "Unit")
+                fn("updateMatrixWorld", "Unit") { param("force", "Boolean", "false") }
+                fn("clone", "Object3D") { param("recursive", "Boolean", "true") }
             }
 
             cls("Scene") {
@@ -82,16 +109,114 @@ object RemoteArKotlinJs {
                 extends("BufferGeometry")
                 ctor { param("radius", "Double"); param("widthSegments", "Int", "32"); param("heightSegments", "Int", "16") }
             }
+            // ---- richer geometries (super-three r0.184.0; all re-exported on the THREE global) ----
+            cls("PlaneGeometry") {
+                extends("BufferGeometry")
+                ctor {
+                    param("width", "Double", "1.0"); param("height", "Double", "1.0")
+                    param("widthSegments", "Int", "1"); param("heightSegments", "Int", "1")
+                }
+            }
+            cls("CylinderGeometry") {
+                extends("BufferGeometry")
+                ctor {
+                    param("radiusTop", "Double", "1.0"); param("radiusBottom", "Double", "1.0")
+                    param("height", "Double", "1.0"); param("radialSegments", "Int", "32")
+                }
+            }
+            cls("ConeGeometry") {
+                extends("BufferGeometry")
+                ctor { param("radius", "Double", "1.0"); param("height", "Double", "1.0"); param("radialSegments", "Int", "32") }
+            }
+            cls("TorusGeometry") {
+                extends("BufferGeometry")
+                ctor {
+                    param("radius", "Double", "1.0"); param("tube", "Double", "0.4")
+                    param("radialSegments", "Int", "12"); param("tubularSegments", "Int", "48")
+                }
+            }
+            cls("TorusKnotGeometry") {
+                extends("BufferGeometry")
+                ctor {
+                    param("radius", "Double", "1.0"); param("tube", "Double", "0.4")
+                    param("tubularSegments", "Int", "64"); param("radialSegments", "Int", "8")
+                }
+            }
+            cls("CircleGeometry") {
+                extends("BufferGeometry")
+                ctor { param("radius", "Double", "1.0"); param("segments", "Int", "32") }
+            }
+            cls("RingGeometry") {
+                extends("BufferGeometry")
+                ctor { param("innerRadius", "Double", "0.5"); param("outerRadius", "Double", "1.0"); param("thetaSegments", "Int", "32") }
+            }
 
             cls("Material") {
                 open()
                 varProp("transparent", "Boolean", completionInit = "false")
                 varProp("opacity", "Double", completionInit = "1.0")
+                varProp("visible", "Boolean", completionInit = "true")
+                varProp("side", "Int", completionInit = "0")
+                varProp("depthTest", "Boolean", completionInit = "true")
+                varProp("depthWrite", "Boolean", completionInit = "true")
+                varProp("needsUpdate", "Boolean", completionInit = "false")
             }
 
             cls("MeshBasicMaterial") {
                 extends("Material")
                 ctor { param("parameters", JsType.DYNAMIC, "null") }
+                valProp("color", "Color")
+                varProp("map", JsType("dynamic", "Texture?"))
+                varProp("wireframe", "Boolean", completionInit = "false")
+            }
+            // ---- lit materials (three.js; used by addPlane/addBox/loaders — all on the THREE global) ----
+            cls("MeshStandardMaterial") {
+                extends("Material")
+                ctor { param("parameters", JsType.DYNAMIC, "null") }
+                valProp("color", "Color")
+                valProp("emissive", "Color")
+                varProp("roughness", "Double", completionInit = "1.0")
+                varProp("metalness", "Double", completionInit = "0.0")
+                varProp("wireframe", "Boolean", completionInit = "false")
+                varProp("map", JsType("dynamic", "Texture?"))
+            }
+            cls("MeshLambertMaterial") {
+                extends("Material")
+                ctor { param("parameters", JsType.DYNAMIC, "null") }
+                valProp("color", "Color")
+                valProp("emissive", "Color")
+                varProp("wireframe", "Boolean", completionInit = "false")
+                varProp("map", JsType("dynamic", "Texture?"))
+            }
+            cls("MeshPhongMaterial") {
+                extends("Material")
+                ctor { param("parameters", JsType.DYNAMIC, "null") }
+                valProp("color", "Color")
+                valProp("emissive", "Color")
+                valProp("specular", "Color")
+                varProp("shininess", "Double", completionInit = "30.0")
+                varProp("wireframe", "Boolean", completionInit = "false")
+                varProp("map", JsType("dynamic", "Texture?"))
+            }
+            cls("MeshNormalMaterial") {
+                extends("Material")
+                ctor { param("parameters", JsType.DYNAMIC, "null") }
+                varProp("wireframe", "Boolean", completionInit = "false")
+            }
+            cls("PointsMaterial") {
+                extends("Material")
+                ctor { param("parameters", JsType.DYNAMIC, "null") }
+                valProp("color", "Color")
+                varProp("size", "Double", completionInit = "1.0")
+                varProp("sizeAttenuation", "Boolean", completionInit = "true")
+                varProp("vertexColors", "Boolean", completionInit = "false")
+                varProp("map", JsType("dynamic", "Texture?"))
+            }
+            cls("LineBasicMaterial") {
+                extends("Material")
+                ctor { param("parameters", JsType.DYNAMIC, "null") }
+                valProp("color", "Color")
+                varProp("linewidth", "Double", completionInit = "1.0")
             }
             cls("Mesh") {
                 extends("Object3D")
@@ -150,6 +275,67 @@ object RemoteArKotlinJs {
                 varProp("intensity", "Double")
                 varProp("distance", "Double")
             }
+            // ---- more lights (three.js; on the THREE global) ----
+            cls("DirectionalLight") {
+                extends("Object3D")
+                ctor { param("color", "Int", "0xffffff"); param("intensity", "Double", "1.0") }
+                valProp("color", "Color")
+                varProp("intensity", "Double")
+                valProp("target", "Object3D")
+            }
+            cls("AmbientLight") {
+                extends("Object3D")
+                ctor { param("color", "Int", "0xffffff"); param("intensity", "Double", "1.0") }
+                valProp("color", "Color")
+                varProp("intensity", "Double")
+            }
+            cls("HemisphereLight") {
+                extends("Object3D")
+                ctor { param("skyColor", "Int", "0xffffff"); param("groundColor", "Int", "0xffffff"); param("intensity", "Double", "1.0") }
+                valProp("color", "Color")
+                varProp("intensity", "Double")
+            }
+            cls("SpotLight") {
+                extends("Object3D")
+                ctor {
+                    param("color", "Int", "0xffffff"); param("intensity", "Double", "1.0")
+                    param("distance", "Double", "0.0"); param("angle", "Double", "1.047")
+                    param("penumbra", "Double", "0.0")
+                }
+                valProp("color", "Color")
+                varProp("intensity", "Double")
+                varProp("distance", "Double")
+                varProp("angle", "Double")
+                varProp("penumbra", "Double")
+                valProp("target", "Object3D")
+            }
+
+            // ---- scene-graph containers + renderable object types ----
+            cls("Group") { extends("Object3D") }
+            cls("Points") {
+                extends("Object3D")
+                field("geometry", "BufferGeometry")
+                field("material", "Material")
+            }
+            cls("Line") {
+                extends("Object3D")
+                field("geometry", "BufferGeometry")
+                field("material", "Material")
+            }
+
+            // ---- textures (loadTexture / addImagePlane return these) ----
+            cls("Texture") {
+                open()
+                varProp("needsUpdate", "Boolean", completionInit = "false")
+                varProp("wrapS", "Int", completionInit = "1000")
+                varProp("wrapT", "Int", completionInit = "1000")
+                valProp("repeat", "Vector2")
+                valProp("offset", "Vector2")
+                varProp("flipY", "Boolean", completionInit = "true")
+            }
+            cls("TextureLoader") {
+                fn("load", "Texture") { param("url", "String") }
+            }
         }
 
         cls("FLine") {
@@ -175,6 +361,25 @@ object RemoteArKotlinJs {
             }
             fn("uv", "FLine") { param("u", "Double"); param("v", "Double") }
             fn("vcolor", "FLine") { param("r", "Double"); param("g", "Double"); param("b", "Double"); param("a", "Double") }
+            // Public transform: apply a per-point map `(x,y,z) -> [x,y,z]`, returning a new FLine
+            // (fline.js:458). The callback returns a 3-element array of coordinates.
+            fn(
+                "byTransforming", "FLine",
+            ) {
+                param(
+                    "transform",
+                    JsType(
+                        "(x: Double, y: Double, z: Double) -> Array<Double>",
+                        "(x: Double, y: Double, z: Double) -> Array<Double>",
+                    ),
+                )
+            }
+            // Raw runtime transform ops (fline.js:492–578) — compiler-only; the public `+`/`-`/`*`/`/`
+            // operator extensions below delegate to these, so they stay OUT of completion.
+            compilerFn("__PLUS__", "FLine") { param("v", JsType.DYNAMIC) }
+            compilerFn("__MINUS__", "FLine") { param("v", JsType.DYNAMIC) }
+            compilerFn("__MULTIPLY__", "FLine") { param("v", JsType.DYNAMIC) }
+            compilerFn("__DIVIDE__", "FLine") { param("v", JsType.DYNAMIC) }
             // Pointer-event registries: `fline.mouseDown[name] = { event -> … }` (Proxy-over-Map).
             valProp("mouseDown", JsType("dynamic", "PointerCallbacks"))
             valProp("mouseUp", JsType("dynamic", "PointerCallbacks"))
@@ -214,6 +419,38 @@ object RemoteArKotlinJs {
         completionCls("VideoPlane") {
             valProp("mesh", "THREE.Mesh"); valProp("material", "THREE.Material")
             valProp("video", "Any?"); valProp("texture", "Any?"); valProp("mouseDown", "PointerCallbacks")
+        }
+
+        // ---- asset-loader callback payloads (files.js) — the loader hands each `callback` a runtime
+        // object; `dynamic` for the compiler, these typed shapes for completion inside the lambda. The
+        // animation methods (`play`/`stop`/`apply`) drive the auto-created XR AnimationMixer via
+        // `mixer.clipAction(clip)` under the hood (files.js:396+, webxr.js:76). ----
+        completionCls("GltfAsset") {
+            // Array-valued fields are raw JS arrays (the payload is `dynamic` for the compiler, so member
+            // names are emitted verbatim — a JS array's length is `.length`, not Kotlin's `.size`); keep
+            // them `Any?` so completion doesn't suggest a `.size` that resolves to `undefined` at runtime.
+            valProp("meshes", "Any?")                // Array<THREE.Object3D> at runtime (use [i] / .length)
+            valProp("animations", "Any?")            // Array<THREE.AnimationClip> at runtime
+            valProp("scene", "THREE.Object3D")
+            valProp("scenes", "Any?")
+            valProp("cameras", "Any?")
+            valProp("asset", "Any?")
+            fn("play", "Unit")                        // clipAction(clip).play() on every clip
+            fn("stop", "Unit")
+            fn("apply", "Unit") { param("time", "Double") }   // scrub: seek every clip to `time`
+        }
+        completionCls("FbxAsset") {
+            // NB: loadFBX THROWS unless a FBXLoader is vendored in the head (files.js:129); prefer glTF.
+            valProp("animations", "Any?")            // raw JS array at runtime (use [i] / .length)
+            valProp("objects", "Any?")               // raw JS array at runtime (use [i] / .length)
+            fn("play", "Unit") { param("looping", "Boolean", "true") }
+            fn("stop", "Unit")
+            fn("pause", "Unit")
+            fn("currentTime", "Double")
+            fn("apply", "Unit") { param("time", "Double") }
+        }
+        completionCls("PlyAsset") {
+            valProp("mesh", "THREE.Object3D")
         }
 
         // Pointer-event registry: `target.mouseDown[name] = { event -> … }`. dynamic for the compiler,
@@ -263,6 +500,29 @@ object RemoteArKotlinJs {
         externalFun("addVideoPlane", JsType("dynamic", "VideoPlane")) { param("url", "String"); param("name", "String"); param("size", "Double", "1.0") }
         externalFun("addPointLight", "THREE.PointLight") { param("name", "String") }
 
+        // ---- asset & animation loaders (files.js) — async/callback-based; the callback receives a
+        // runtime payload (dynamic for the compiler, typed for completion). The loaded object is also
+        // installed as a head global under `name`. ----
+        externalFun("loadGLTF", "Unit") {
+            param("url", "String"); param("name", "String")
+            param("callback", JsType("(loaded: dynamic) -> Unit", "(loaded: GltfAsset) -> Unit"))
+        }
+        externalFun("loadPointCloudPLY", "Unit") {
+            param("url", "String"); param("name", "String")
+            param("callback", JsType("(loaded: dynamic) -> Unit", "(loaded: PlyAsset) -> Unit"))
+        }
+        // loadFBX THROWS unless the head vendors a FBXLoader (files.js:129) — bound for completeness;
+        // convert assets to glTF and use loadGLTF instead.
+        externalFun("loadFBX", "Unit") {
+            param("url", "String"); param("name", "String")
+            param("callback", JsType("(loaded: dynamic) -> Unit", "(loaded: FbxAsset) -> Unit"))
+        }
+        externalFun("loadJSONScene", "Unit") { param("url", "String"); param("name", "String") }
+        // A THREE.Texture (dynamic for the compiler; typed for completion).
+        externalFun("loadTexture", JsType("dynamic", "THREE.Texture")) { param("url", "String") }
+        // Expose an on-disk directory over the Field server: mapDirectory("/abs/assets", "/assets").
+        externalFun("mapDirectory", "Unit") { param("onDiskPath", "String"); param("servedAs", "String") }
+
         // ---- WebXR interaction (webxr.js) — on* return an unsubscribe () -> Unit ----
         externalFun("onXRHit", JsType.CALLBACK) { param("callback", JsType("(hit: dynamic) -> Unit", "(hit: Any?) -> Unit")) }
         externalFun("onXRSelect", JsType.CALLBACK) { param("callback", JsType("(hit: dynamic) -> Unit", "(hit: Any?) -> Unit")) }
@@ -281,6 +541,22 @@ object RemoteArKotlinJs {
         operator("THREE.Vector4", "plus", "THREE.Vector4", "clone().add(other)") { param("other", "THREE.Vector4") }
         operator("THREE.Vector4", "minus", "THREE.Vector4", "clone().sub(other)") { param("other", "THREE.Vector4") }
         operator("THREE.Vector4", "times", "THREE.Vector4", "clone().multiplyScalar(value)") { param("value", "Double") }
+
+        // ---- FLine transform operators (fline.js:492–578) — `fline + rotate(0.5)`, `fline + vec(1,0,0)`,
+        // `fline * 2.0`, `fline - translate(…)`. Each delegates to the compiler-only raw member above.
+        // Grounded overloads: +/- take a Matrix4 or a promotable vector; */÷ also take a scalar.
+        operator("FLine", "plus", "FLine", "__PLUS__(m)") { param("m", "THREE.Matrix4") }
+        operator("FLine", "plus", "FLine", "__PLUS__(v)") { param("v", "THREE.Vector3") }
+        operator("FLine", "plus", "FLine", "__PLUS__(v)") { param("v", "THREE.Vector2") }
+        operator("FLine", "minus", "FLine", "__MINUS__(m)") { param("m", "THREE.Matrix4") }
+        operator("FLine", "minus", "FLine", "__MINUS__(v)") { param("v", "THREE.Vector3") }
+        operator("FLine", "minus", "FLine", "__MINUS__(v)") { param("v", "THREE.Vector2") }
+        operator("FLine", "times", "FLine", "__MULTIPLY__(m)") { param("m", "THREE.Matrix4") }
+        operator("FLine", "times", "FLine", "__MULTIPLY__(v)") { param("v", "THREE.Vector3") }
+        operator("FLine", "times", "FLine", "__MULTIPLY__(s)") { param("s", "Double") }
+        operator("FLine", "div", "FLine", "__DIVIDE__(m)") { param("m", "THREE.Matrix4") }
+        operator("FLine", "div", "FLine", "__DIVIDE__(v)") { param("v", "THREE.Vector3") }
+        operator("FLine", "div", "FLine", "__DIVIDE__(s)") { param("s", "Double") }
 
         rawCompiler(
             """
