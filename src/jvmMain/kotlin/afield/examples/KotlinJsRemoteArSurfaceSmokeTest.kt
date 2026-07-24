@@ -67,6 +67,39 @@ object KotlinJsRemoteArSurfaceSmokeTest {
             require(!compiler.contains("class $t")) { "$t must be completion-only" }
         }
 
+        // ---- item 1: FLine transform operators. The raw runtime members (__PLUS__ etc.) are
+        // compiler-only; the public `operator fun FLine.plus/minus/times/div` must be in BOTH façades. ----
+        for (raw in listOf("__PLUS__", "__MINUS__", "__MULTIPLY__", "__DIVIDE__")) {
+            require(compiler.contains("fun $raw(")) { "compiler FLine missing raw transform member `$raw`" }
+            require(!completion.contains("$raw")) { "raw transform member `$raw` must be compiler-only (kept out of completion)" }
+        }
+        for (op in listOf("plus", "minus", "times", "div")) {
+            require(compiler.contains("fun FLine.$op(")) { "compiler missing FLine.$op operator" }
+            require(completion.contains("fun FLine.$op(")) { "completion missing FLine.$op operator" }
+        }
+        require(compiler.contains("fun byTransforming(")) { "compiler FLine missing byTransforming" }
+
+        // ---- item 2: loaders are installed globals; their payload types are completion-only. ----
+        for (n in listOf("loadGLTF", "loadPointCloudPLY", "loadFBX", "loadTexture", "loadJSONScene", "mapDirectory")) {
+            require(compiler.contains("external fun $n(")) { "compiler missing installed loader global `$n`" }
+        }
+        for (t in listOf("GltfAsset", "FbxAsset", "PlyAsset")) {
+            require(completion.contains("class $t")) { "completion missing loader payload type $t" }
+            require(!compiler.contains("class $t")) { "$t must be completion-only" }
+        }
+
+        // ---- item 3: richer THREE materials / geometries / lights present in BOTH façades. ----
+        for (t in listOf("MeshStandardMaterial", "MeshLambertMaterial", "MeshPhongMaterial", "PointsMaterial",
+            "LineBasicMaterial", "PlaneGeometry", "CylinderGeometry", "ConeGeometry", "TorusGeometry",
+            "TorusKnotGeometry", "CircleGeometry", "RingGeometry", "DirectionalLight", "AmbientLight",
+            "SpotLight", "HemisphereLight", "Group", "Points", "Line", "Texture", "TextureLoader")) {
+            require(compiler.contains("class $t")) { "compiler missing THREE.$t" }
+            require(completion.contains("class $t")) { "completion missing THREE.$t" }
+        }
+        require(compiler.contains("var visible: Boolean")) { "Object3D.visible missing" }
+        require(compiler.contains("fun lookAt(")) { "Object3D.lookAt missing" }
+        require(compiler.contains("fun applyMatrix4(")) { "Object3D.applyMatrix4 missing" }
+
         // The whole new surface must type-check against the generated compiler declarations.
         val sample = """
             // {{ remoteAR }}
@@ -107,10 +140,64 @@ object KotlinJsRemoteArSurfaceSmokeTest {
             onXRSelect { _ -> log("select") }
             val h = xrHit()
             unsub()
+
+            // item 1 — FLine transform operators (Matrix4 + vector + scalar) and byTransforming.
+            val base = FLine().moveTo(0.0, 0.0).lineTo(1.0, 1.0)
+            val rotated = base + rotate(0.5)
+            val shifted = base + vec(1.0, 0.0, 0.0)
+            val shifted2 = base + vec(1.0, 0.0)
+            val shrunk = base * 0.5
+            val back = rotated - translate(0.0, 1.0, 0.0)
+            val halved = base / 2.0
+            val warped = base.byTransforming { x, y, z -> arrayOf(x * 2.0, y, z) }
+            stage.add(rotated); stage.add(shifted); stage.add(shifted2); stage.add(shrunk)
+            stage.add(back); stage.add(halved); stage.add(warped)
+
+            // item 3 — richer geometries / materials / lights / Object3D props.
+            val std = THREE.MeshStandardMaterial()
+            std.roughness = 0.3; std.metalness = 0.8; std.color.setRGB(0.9, 0.2, 0.1)
+            val torus = THREE.Mesh(THREE.TorusGeometry(1.0, 0.4, 16, 64), std)
+            torus.visible = true
+            torus.castShadow = true
+            torus.lookAt(0.0, 1.0, 0.0)
+            torus.quaternion.setFromEuler(torus.rotation)
+            torus.applyMatrix4(rotate(0.25))
+            torus.rotateY(0.1)
+            val cyl = THREE.Mesh(THREE.CylinderGeometry(0.5, 0.5, 2.0, 24), THREE.MeshLambertMaterial())
+            val group = THREE.Group()
+            group.add(torus, cyl)
+            group.name = "assembly"
+            SCENE.add(group)
+            val sun = THREE.DirectionalLight(0xffffff, 1.5)
+            sun.position.set(3.0, 5.0, 2.0)
+            SCENE.add(sun)
+            SCENE.add(THREE.AmbientLight(0x404040, 0.6))
+            val tex = loadTexture("wood.png")
+            tex.needsUpdate = true
+            std.map = tex
+            val found2 = SCENE.getObjectByName("assembly")
+
+            // item 2 — asset & animation loaders + the mixer-backed play/apply on the payload.
+            mapDirectory("/abs/assets", "/assets")
+            loadGLTF("/assets/robot.glb", "robot") { g ->
+                g.play()
+                g.apply(0.5)
+                g.stop()
+                log("gltf meshes=" + g.meshes + " anims=" + g.animations)
+                g.scene.position.set(0.0, 0.0, -2.0)
+            }
+            loadPointCloudPLY("/assets/scan.ply", "scan") { p ->
+                p.mesh.name = "cloud"
+                SCENE.add(p.mesh)
+            }
+            loadFBX("/assets/legacy.fbx", "legacy") { f -> f.play(true); log("fbx t=" + f.currentTime()) }
+            loadJSONScene("/assets/room.json", "room")
+
             clearAll()
             log("surface ok " + col.getHex() + " " + v4.w + " " + flat.x + " " + quat.w + " " + mat +
                 " " + light.intensity + " " + mR + mS + mT + mA + " " + plane + pic + movie + " " + cam +
-                " " + curve + h)
+                " " + curve + h + " " + shifted2 + " " + shrunk + " " + back + " " + halved + " " + warped +
+                " " + cyl + " " + found2 + " " + tex.flipY)
         """.trimIndent()
 
         val resolved = KotlinJsHeadProfiles.resolve(sample)
