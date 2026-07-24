@@ -33,6 +33,12 @@ surface with `// {{ remoteAR }}` or `// {{ visionmetal }}`. Working and smoke-gu
   - Interaction + XR: FLine `pointed`, Vector2 paths, cubicTo 3-vector/6-/9-number forms, and the
     pointer registries `mouseDown`/`mouseUp`/`mouseMove`/`dblClick` (`fline.mouseDown[name] = { e -> }`);
     `onXRHit`/`onXRSelect` (→ unsubscribe) and `xrHit()` (→ typed `XRHit`).
+  - Motion + assets + richer scene (roadmap items 1/2/3, below): FLine transform operators
+    (`fline + rotate(0.5)`/`+ vec(…)`/`* s`/`/ s`, `byTransforming`); asset/animation loaders
+    (`loadGLTF`/`loadPointCloudPLY`/`loadFBX`/`loadTexture`/`loadJSONScene`/`mapDirectory`) with
+    typed-for-completion callback payloads whose `play()`/`stop()`/`apply(t)` drive the auto
+    AnimationMixer; and a much richer THREE (geometries/materials/lights, `Group`/`Points`/`Line`/
+    `Texture`, and fuller `Object3D` props/methods).
 - **Vision Metal profile** — `// {{ visionmetal }}` compiles to the native head script + MSL shader.
 
 ### The two enabling tricks (worth remembering)
@@ -56,16 +62,40 @@ surface with `// {{ remoteAR }}` or `// {{ visionmetal }}`. Working and smoke-gu
 
 ## What's next (detailed plan, rough priority order)
 
-1. **FLine transform operators** — `fline + rotate(0.5)`, `fline + vec(1,0,0)`, and `-`. The runtime
-   FLine implements `__PLUS__`/`__MINUS__` (Matrix4 + vector promotion) and a public `byTransforming`.
-   Bind `operator fun FLine.plus(THREE.Matrix4)`/`plus(THREE.Vector3)` delegating to a
-   compiler-only `__PLUS__` external member (kept out of completion). Grounded: `fline.js:458–527`.
-2. **Assets & animation** — `loadGLTF`, `loadPointCloudPLY`, `loadTexture`, `loadFBX`, the animation
-   mixer, and shader helpers. Loaders are async/callback-based (`files.js:129+`); type the callback
-   payloads with the dynamic/typed-completion pattern. Confirm each loader is actually installed.
-3. **Richer THREE props** — Object3D `visible`/`up`/`lookAt`/`quaternion`/`applyMatrix4`, more
-   materials (MeshStandard/Lambert/Phong) and geometries (Plane/Cylinder/Torus), Texture. Purely
-   additive, one `field()`/`fn()` each.
+1. **FLine transform operators — DONE.** `fline + rotate(0.5)`, `fline + vec(1,0,0)`, `fline * 2.0`,
+   `fline / 2.0`, and `-`, all type-check and run. The runtime FLine implements `__PLUS__`/`__MINUS__`/
+   `__MULTIPLY__`/`__DIVIDE__` (Matrix4 + vector-promote3; `*`/`/` also accept a scalar) and a public
+   `byTransforming` (`fline.js:492–578`). Those raw members are bound compiler-only (new
+   `TypeBuilder.compilerFn`, filtered out of the completion mirror); the public `operator fun
+   FLine.plus/minus/times/div` extensions (Matrix4 / Vector3 / Vector2 / Double as grounded) delegate to
+   them, and `byTransforming((x,y,z)->Array<Double>)` is exposed. Because a kotlinjs `external` member
+   maps to its verbatim JS name, `line + rotate(0.5)` emits `line.__PLUS__(rotate(0.5))` at runtime.
+2. **Assets & animation — DONE (loaders + mixer; shader helpers deferred).** `loadGLTF`,
+   `loadPointCloudPLY`, `loadFBX`, `loadTexture`, `loadJSONScene`, `mapDirectory` are bound as installed
+   globals (each verified in the `__superglobal.*` export list). Loaders are async/callback-based
+   (`files.js`); the callback payload is `dynamic` for the compiler but a typed shape for completion
+   (`GltfAsset`/`FbxAsset`/`PlyAsset`) so its members complete inside the lambda. The AnimationMixer is
+   module-local and auto-created + auto-`update()`d every XR frame (`webxr.js:76`); user code drives it
+   through the payload's `play()`/`stop()`/`apply(t)` (which call `mixer.clipAction(clip)…`,
+   `files.js:396+`). `loadFBX` THROWS unless the head vendors a FBXLoader — bound + documented; prefer
+   glTF. Array-valued payload fields are kept `Any?` (a `dynamic` receiver emits member names verbatim,
+   and a JS array's length is `.length`, not Kotlin's `.size`). The shader helpers (`newShaderForBox`)
+   remain deferred (box-scoped, reload-callback machinery).
+3. **Richer THREE props — DONE.** Object3D `visible`/`up`/`quaternion`/`castShadow`/`receiveShadow`/
+   `renderOrder`/`userData`/`parent` + `lookAt`/`applyMatrix4`/`applyQuaternion`/`traverse`/
+   `getObjectByName`/`updateMatrix(World)`/`rotate{X,Y,Z}`/`translate{X,Y,Z}`/`clone`; materials
+   MeshStandard/Lambert/Phong/Normal/Points/LineBasic (color/map/wireframe/emissive/roughness/metalness/
+   specular/shininess/size…) atop a richer base `Material` (side/depthTest/depthWrite/needsUpdate);
+   geometries Plane/Cylinder/Cone/Torus/TorusKnot/Circle/Ring; lights Directional/Ambient/Hemisphere/
+   Spot; scene-graph `Group`, renderable `Points`/`Line`, and `Texture`/`TextureLoader`. Grounded against
+   the vendored super-three r0.184.0 (every name confirmed in its re-export block; all reach user code via
+   `__superglobal.THREE`). Verified: `remotejs.kotlinjs-remotear-surface` (broad sample compiled through
+   the real K2->JS compiler), `remotejs.kotlinjs-binding-parity`, and `remotejs.kotlinjs-head-profiles`
+   (compiled Kotlin->JS **executed under node against a mock THREE/head** — proves the emitted JS calls
+   the bound names at runtime, incl. `FLine.__PLUS__`/`__MULTIPLY__`, `TorusGeometry`/`MeshStandardMaterial`
+   /`Group`/`DirectionalLight`, `lookAt`/`rotateY`, `loadTexture`/`mapDirectory`, and a `loadGLTF` callback
+   whose `play()`/`apply()` fire). Demo: `dev_docs/agents/transcripts/remotear_scene_motion.yaml`
+   (replayed through `examples.demo-transcript.exec`).
 4. **Completion polish** —
    - Stage 2b: filter JVM-only members (`parallelStream`/`spliterator`/`toArray`) that don't exist in
      a JS head (kotlinjs-scoped, so regular Kotlin completion is unaffected).

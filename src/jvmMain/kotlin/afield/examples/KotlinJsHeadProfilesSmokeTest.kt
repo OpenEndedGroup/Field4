@@ -53,7 +53,38 @@ object KotlinJsHeadProfilesSmokeTest {
             val mesh = THREE.Mesh(THREE.BoxGeometry(1.0, 1.0, 1.0), THREE.MeshBasicMaterial())
             mesh.position.set(moved.x, moved.y, moved.z)
             scene.add(mesh)
-            stage.profileLine = FLine().moveTo(0.0, 0.0).lineTo(1.0, 1.0)
+            // item 1 — FLine transform operators (Matrix4 + vector + scalar)
+            val line = FLine().moveTo(0.0, 0.0).lineTo(1.0, 1.0)
+            val spun = (line + rotate(0.5)) + vec(1.0, 0.0, 0.0)
+            val scaled = spun * 0.5
+            stage.profileLine = scaled
+            // item 3 — richer THREE materials / geometries / lights / Object3D props
+            val std = THREE.MeshStandardMaterial()
+            std.roughness = 0.4
+            std.metalness = 0.9
+            val torus = THREE.Mesh(THREE.TorusGeometry(1.0, 0.4, 16, 32), std)
+            torus.visible = true
+            torus.castShadow = true
+            torus.lookAt(0.0, 1.0, 0.0)
+            torus.rotateY(0.1)
+            val group = THREE.Group()
+            group.add(torus)
+            group.name = "rig"
+            scene.add(group)
+            scene.add(THREE.DirectionalLight(0xffffff, 1.5))
+            val tex = loadTexture("wood.png")
+            tex.needsUpdate = true
+            std.map = tex
+            val found = scene.getObjectByName("rig")
+            log("found " + found?.name)
+            // item 2 — asset loader callback + the mixer-backed play/apply on the payload
+            mapDirectory("/abs/assets", "/assets")
+            loadGLTF("/assets/robot.glb", "robot") { g ->
+                g.play()
+                g.apply(0.25)
+                g.scene.position.set(0.0, 0.0, -2.0)
+                log("gltf loaded scene=" + g.scene.name)
+            }
             onFrame { mesh.rotation.y += 0.25 }
             log("remoteAR installed")
         """.trimIndent()
@@ -195,10 +226,26 @@ object KotlinJsHeadProfilesSmokeTest {
     """.trimIndent()
 
     private val remoteArHost = """
+        const __calls = [];
+        function rec(name) { __calls.push(name); }
+        // A minimal Matrix4-ish transform value: `rotate`/`translate`/`scale` return one; the FLine
+        // transform operators just record which raw op fired.
+        function mat(kind) { return { isMatrix4: true, kind }; }
         class Object3D {
-            constructor() { this.name = ""; this.position = new Vector3(); this.rotation = {x:0,y:0,z:0}; this.scale = new Vector3(1,1,1); this.children = []; }
+            constructor() {
+                this.name = ""; this.position = new Vector3(); this.rotation = {x:0,y:0,z:0};
+                this.scale = new Vector3(1,1,1); this.children = []; this.up = new Vector3(0,1,0);
+                this.quaternion = {x:0,y:0,z:0,w:1}; this.visible = true; this.castShadow = false;
+                this.receiveShadow = false; this.renderOrder = 0; this.userData = {};
+            }
             add(...objects) { this.children.push(...objects); return this; }
             remove(...objects) { this.children = this.children.filter(x => !objects.includes(x)); return this; }
+            lookAt() { rec("lookAt"); }
+            applyMatrix4() { rec("applyMatrix4"); }
+            rotateX() { return this; } rotateY() { rec("rotateY"); return this; } rotateZ() { return this; }
+            translateX() { return this; } translateY() { return this; } translateZ() { return this; }
+            updateMatrix() {} updateMatrixWorld() {}
+            getObjectByName(name) { if (this.name === name) return this; for (const c of this.children) { const r = c.getObjectByName && c.getObjectByName(name); if (r) return r; } return null; }
         }
         class Vector3 {
             constructor(x=0,y=0,z=0) { this.x=x; this.y=y; this.z=z; }
@@ -210,6 +257,7 @@ object KotlinJsHeadProfilesSmokeTest {
             normalize() { return this; }
             length() { return Math.hypot(this.x,this.y,this.z); }
         }
+        class Color { constructor(r=1,g=1,b=1){ this.r=r; this.g=g; this.b=b; } set(){return this;} setRGB(r,g,b){this.r=r;this.g=g;this.b=b;return this;} setHex(){return this;} getHex(){return 0;} clone(){return new Color(this.r,this.g,this.b);} }
         class FLine {
             constructor() { this.stroked=true; this.filled=false; }
             moveTo() { return this; }
@@ -217,16 +265,53 @@ object KotlinJsHeadProfilesSmokeTest {
             cubicTo() { return this; }
             uv() { return this; }
             vcolor() { return this; }
+            byTransforming() { rec("byTransforming"); return this; }
+            __PLUS__(v) { rec("FLine.__PLUS__"); return this; }
+            __MINUS__(v) { rec("FLine.__MINUS__"); return this; }
+            __MULTIPLY__(v) { rec("FLine.__MULTIPLY__"); return this; }
+            __DIVIDE__(v) { rec("FLine.__DIVIDE__"); return this; }
         }
+        class Material { constructor(p) { this.transparent=false; this.opacity=1; this.color=new Color(); this.map=null; } }
         const THREE = {
             REVISION:"test", Object3D, Scene:class extends Object3D {}, Camera:class extends Object3D {},
-            Vector2:Vector3, Vector3, Euler:class {}, BufferGeometry:class {}, BoxGeometry:class {},
-            SphereGeometry:class {}, Material:class {}, MeshBasicMaterial:class {},
+            Vector2:Vector3, Vector3, Vector4:Vector3, Euler:class {}, Quaternion:class {}, Matrix4:class {}, Color,
+            BufferGeometry:class {}, BoxGeometry:class {}, SphereGeometry:class {},
+            PlaneGeometry:class {}, CylinderGeometry:class {}, ConeGeometry:class {},
+            TorusGeometry:class { constructor() { rec("TorusGeometry"); } }, TorusKnotGeometry:class {},
+            CircleGeometry:class {}, RingGeometry:class {},
+            Material, MeshBasicMaterial:class extends Material {},
+            MeshStandardMaterial:class extends Material { constructor(p) { super(p); this.roughness=1; this.metalness=0; this.emissive=new Color(); rec("MeshStandardMaterial"); } },
+            MeshLambertMaterial:class extends Material {}, MeshPhongMaterial:class extends Material {},
+            MeshNormalMaterial:class extends Material {}, PointsMaterial:class extends Material {}, LineBasicMaterial:class extends Material {},
+            PointLight:class extends Object3D {}, DirectionalLight:class extends Object3D { constructor(c,i) { super(); this.color=new Color(); this.intensity=i; rec("DirectionalLight"); } },
+            AmbientLight:class extends Object3D {}, HemisphereLight:class extends Object3D {}, SpotLight:class extends Object3D {},
+            Group:class extends Object3D { constructor() { super(); rec("Group"); } },
+            Points:class extends Object3D { constructor(g,m) { super(); this.geometry=g; this.material=m; } },
+            Line:class extends Object3D { constructor(g,m) { super(); this.geometry=g; this.material=m; } },
+            Texture:class { constructor() { this.needsUpdate=false; this.flipY=true; } },
+            TextureLoader:class { load(url) { return new THREE.Texture(); } },
             Mesh:class extends Object3D { constructor(g,m) { super(); this.geometry=g; this.material=m; } }
         };
         const SCENE = new THREE.Scene();
         const CAMERA = new THREE.Camera();
         const stage = {};
+        function rotate() { return mat("rotate"); }
+        function translate() { return mat("translate"); }
+        function scale() { return mat("scale"); }
+        function vec(x=0,y=0,z,w) { return z===undefined ? new Vector3(x,y,0) : new Vector3(x,y,z); }
+        function loadTexture(url) { rec("loadTexture"); return new THREE.Texture(); }
+        function mapDirectory(a,b) { rec("mapDirectory"); }
+        function loadGLTF(url, name, callback) {
+            rec("loadGLTF");
+            const loaded = {
+                meshes: [new THREE.Object3D(), new THREE.Object3D()],
+                animations: [{}, {}],
+                scene: new THREE.Object3D(),
+                scenes: [], cameras: [], asset: {},
+                play() { rec("gltf.play"); }, stop() { rec("gltf.stop"); }, apply(t) { rec("gltf.apply"); },
+            };
+            if (callback) callback(loaded);
+        }
         let __remoteFrame = null;
         function __fieldOnStart(callback) { callback(); }
         function __fieldOnStop(_callback) {}
@@ -236,8 +321,24 @@ object KotlinJsHeadProfilesSmokeTest {
     """.trimIndent()
 
     private val remoteArProbe = """
-        if (SCENE.children.length !== 1) throw new Error("mesh was not attached");
+        // mesh + group + directional light attached to the scene
+        if (SCENE.children.length !== 3) throw new Error("expected 3 scene children, got " + SCENE.children.length);
         if (!stage.profileLine) throw new Error("FLine was not staged");
+        // item 1 — the FLine transform operators fired the raw runtime members
+        for (const expected of ["FLine.__PLUS__", "FLine.__MULTIPLY__"]) {
+            if (!__calls.includes(expected)) throw new Error("missing " + expected + " in " + JSON.stringify(__calls));
+        }
+        // item 3 — richer THREE constructed + Object3D methods called
+        for (const expected of ["TorusGeometry", "MeshStandardMaterial", "Group", "DirectionalLight", "lookAt", "rotateY", "loadTexture"]) {
+            if (!__calls.includes(expected)) throw new Error("missing " + expected + " in " + JSON.stringify(__calls));
+        }
+        const rig = SCENE.getObjectByName("rig");
+        if (!rig || rig.name !== "rig") throw new Error("named group not found");
+        if (rig.children.length !== 1 || !rig.children[0].visible) throw new Error("torus not grouped/visible");
+        // item 2 — the loader callback ran and drove the (mixer-backed) play/apply/mapDirectory
+        for (const expected of ["mapDirectory", "loadGLTF", "gltf.play", "gltf.apply"]) {
+            if (!__calls.includes(expected)) throw new Error("missing " + expected + " in " + JSON.stringify(__calls));
+        }
         if (typeof __remoteFrame !== "function") throw new Error("missing RemoteAR frame callback");
         __remoteFrame();
         if (Math.abs(SCENE.children[0].rotation.y - 0.25) > 1e-9) throw new Error("frame did not run");
