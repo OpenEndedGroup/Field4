@@ -16,6 +16,7 @@ import afield.stdlib.linalg.Matrix4f
 import afield.stdlib.linalg.Vector3f
 import imgui.ImGui
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -268,6 +269,7 @@ class ImGuiVrPanelDemo(
      * (see the KDoc on captureWindowToFile / Window.saveFramebufferToTempFile); un-flip downstream if
      * you want an upright still.
      */
+    @OptIn(DelicateCoroutinesApi::class)
     fun runCaptureGpu(outputPath: String) {
         GLFW.glfwShowWindow(window.windowHandle)
         var frame = 0

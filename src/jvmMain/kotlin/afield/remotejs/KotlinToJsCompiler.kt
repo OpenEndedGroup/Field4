@@ -239,7 +239,6 @@ object KotlinToJsCompiler {
         val collector = CollectingMessageCollector()
 
         val phase1 = K2JSCompilerArguments().apply {
-            irProduceKlibFile = true
             libraries = stdlibJsKlib.absolutePath
             outputDir = klibDir.absolutePath
             this.moduleName = moduleName

@@ -50,7 +50,7 @@ object KotlinToJsSpikeTest {
         require(ok.mode == KotlinToJsCompiler.Mode.IN_PROCESS) {
             "expected in-process compile, got ${ok.mode}; log:\n${ok.rawLog.takeLast(1200)}"
         }
-        val js = ok.js!!
+        val js = ok.js
         require(js.isNotBlank() && js.contains("field-kotlinjs")) { "produced JS missing the literal" }
         // plain module self-invokes main and is eval-able
         require(js.contains("mainWrapper()") || js.contains("main(")) { "plain module does not invoke main" }
@@ -74,7 +74,7 @@ object KotlinToJsSpikeTest {
         require(impl.success && impl.js != null) { "implicit-main compile failed:\n${impl.rawLog.takeLast(1200)}" }
         // a pre-existing `fun main` must be left untouched (no double-wrap)
         require(KotlinToJsCompiler.ensureImplicitMain(good) == good) { "wrapping should be a no-op when fun main is present" }
-        println("implicit-main wrapped ${implicit.length} chars → compiled ${impl.js!!.length} chars JS")
+        println("implicit-main wrapped ${implicit.length} chars → compiled ${impl.js.length} chars JS")
 
         // --- 2. broken snippet: structured diagnostic at the right line ---
         val bad = """
@@ -103,7 +103,7 @@ object KotlinToJsSpikeTest {
                 println("node executed the module -> $out")
 
                 // implicit-main output must run identically
-                tmp.writeText(impl.js!!)
+                tmp.writeText(impl.js)
                 val p2 = ProcessBuilder(node, tmp.absolutePath).redirectErrorStream(true).start()
                 val out2 = p2.inputStream.bufferedReader().readText().trim()
                 p2.waitFor()
