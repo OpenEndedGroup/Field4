@@ -447,6 +447,42 @@ private fun removeFunctionByName(code: String, functionName: String): String {
     return code
 }
 
+// -- Pattern-rewrite `ai("…")` clause resolution --
+
+/**
+ * Resolve a pattern-rewrite `ai("…")` clause (see [PatternRewrite]). If the box attic already holds
+ * a cached block for this request's stable key, do nothing — a cache hit, no model call. Otherwise
+ * generate the code once via [AiMacroBridge], append it to the attic keyed by
+ * [PatternRewrite.AiRequest.key], and deliberately leave `_attic` stale so [checkAtticAndExecute]
+ * compiles/executes the freshly generated code on this run.
+ *
+ * Live (cache-miss) generation reuses the same bridge as [macro_ai]; only the cache-HIT path is
+ * exercised by the smoke test — a real model is not available in CI.
+ */
+fun Box.resolvePatternRewriteAi(req: PatternRewrite.AiRequest) {
+    val attic = (getPropertyRaw("attic", "") as? String).orEmpty()
+    if (PatternRewrite.atticHasAiBlock(attic, req.key)) return   // cache hit — no model call
+
+    val generated = try {
+        val thread = AiMacroBridge.getOrCreateThread(this.id, this.code)
+        val ctx = ToolExecutionContext(listDefinitions = { ListDefinitionsResult(definitions = emptyList()) })
+        val prompt = buildString {
+            appendLine(req.prompt)
+            appendLine()
+            appendLine("This code will be spliced ahead of the call site: ${req.toText}")
+            append("Return ONLY the Kotlin declaration(s) the call site needs, no markdown fences.")
+        }
+        AiMacroBridge.bridge.send(state = thread, userPrompt = prompt, ctx = ctx, maxOutputTokens = 4096)
+            .text.trim().removePrefix("```kotlin").removePrefix("```").removeSuffix("```").trim()
+    } catch (t: Throwable) {
+        lprintln("warning,ai.macro", "rewrite ai(\"…\") generation failed (key=${req.key}): ${t.message}")
+        return
+    }
+
+    // Write `attic` but NOT `_attic`, so checkAtticAndExecute detects the change and runs it once.
+    setPropertyRaw("attic", PatternRewrite.appendAiBlock(attic, req.key, req.prompt, generated), doResync = true)
+}
+
 // -- Macro registration --
 
 @RunsAt(macroRegistration)
