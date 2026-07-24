@@ -5,8 +5,11 @@ import afield.logger.formatMillis
 import afield.logger.lblock
 import afield.logger.lprintln
 import afield.macros.ContainingFunction
+import afield.macros.Insert
 import afield.macros.MacroRegistry
+import afield.macros.PatternRewrite
 import afield.macros.gatherPreambleUpwards
+import afield.macros.resolvePatternRewriteAi
 import afield.stdlib.applyInsertToPreamble
 import afield.stdlib.normalizePreambleText
 import kotlinx.coroutines.CompletableDeferred
@@ -2490,7 +2493,25 @@ class KotlinInterface2(
     }
 
     override fun applyMacros(box: Box, s: String, skipMacros: Set<String>, previewOnly: Boolean): String {
-        var rewritten = s
+        // Pattern-rewrite layer: expand user-authored `rewrite { … }` rules (and blank the rule
+        // blocks out of the source) before the builtin identifier macros run below, so a rule's
+        // `to {}` output can still trigger the builtin macros. Pure PSI. See [PatternRewrite].
+        val expansion = PatternRewrite.expand(
+            s,
+            parse = { txt ->
+                PsiFileFactory.getInstance(psiProject)
+                    .createFileFromText(Language.findLanguageByID("kotlin")!!, txt) as KtFile
+            },
+            onDiagnostic = { msg -> lprintln("warning,macros", msg) },
+        )
+        if (!previewOnly) {
+            // `provide {}` clauses → stably-keyed, deduplicating preamble segments (see the
+            // /*prefix*/ "stack mark" idempotency mechanism); routed through the existing merge.
+            expansion.preambleBlocks.forEach { applyInsertToPreamble(box, Insert(preambleAfterImports = it)) }
+            // `ai("…")` clauses → cached AI generation into the box attic (once per stable key).
+            expansion.aiRequests.forEach { box.resolvePatternRewriteAi(it) }
+        }
+        var rewritten = expansion.text
         val needsRerun = false
         lblock("debug,kotlin", "rewriting AST analysis") {
             do {
