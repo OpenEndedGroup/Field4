@@ -3,6 +3,7 @@ package afield.macros
 import org.jetbrains.kotlin.com.intellij.psi.PsiComment
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.com.intellij.psi.PsiWhiteSpace
+import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.psi.KtArrayAccessExpression
 import org.jetbrains.kotlin.psi.KtBinaryExpression
 import org.jetbrains.kotlin.psi.KtBlockExpression
@@ -159,9 +160,10 @@ object PatternRewrite {
         val ambientRules = ambientRuleSources.flatMap { collect(parse(it), onDiagnostic).rules }
         val rules = collected.rules + ambientRules
 
-        if (rules.isEmpty()) return ExpandResult(source, emptyList(), emptyList(), collected.ruleSources)
-
+        // Always strip the local `rewrite {}` blocks from the emitted source — even a malformed or
+        // rejected block is erased DSL that must never reach the compiler.
         var text = blankOut(source, collected.deletions)
+        if (rules.isEmpty()) return ExpandResult(text, emptyList(), emptyList(), collected.ruleSources)
         val gensym = GensymScope()
         val preambleBlocks = mutableListOf<String>()
         val aiRequests = mutableListOf<AiRequest>()
@@ -218,18 +220,38 @@ object PatternRewrite {
     }
 
     private fun KtCallExpression.toPatternRule(onDiagnostic: (String) -> Unit): PatternRule? {
-        val lambda = lambdaArguments.firstOrNull()?.getLambdaExpression() ?: return null
+        // A malformed rule must never be silently dropped (that hides bugs) nor silently degenerate
+        // into a too-permissive pattern (that runs away): reject with a clear diagnostic instead.
+        fun reject(why: String): PatternRule? {
+            onDiagnostic("rewrite rule ignored — $why: `${text.replace(Regex("\\s+"), " ").take(120)}`")
+            return null
+        }
+
+        val lambda = lambdaArguments.firstOrNull()?.getLambdaExpression()
+            ?: return reject("expected a trailing lambda `rewrite { … }`")
         val metavars = lambda.valueParameters.mapNotNull { p: KtParameter ->
             val name = p.name ?: return@mapNotNull null
             name to metaKindOf(p.typeReference?.text)
         }.toMap()
 
-        val body = lambda.bodyExpression ?: return null
-        val fromBody = body.callBody("from") ?: return null
-        val toBody = body.callBody("to") ?: return null
+        val body = lambda.bodyExpression ?: return reject("empty rule body")
+        val fromBody = body.callBody("from") ?: return reject("missing `from { … }`")
+        val toBody = body.callBody("to") ?: return reject("missing `to { … }`")
 
-        val patternEl = fromBody.singleMeaningfulStatement() ?: return null
-        val replEl = toBody.singleMeaningfulStatement() ?: return null
+        // A `from`/`to` that did not parse cleanly — e.g. an unsupported expression operator like
+        // `|`, which leniently degenerates to a bare metavar and matches everything — is rejected
+        // rather than left to run away. (`||` is a real operator and parses fine.)
+        if (PsiTreeUtil.hasErrorElements(fromBody)) return reject("`from { … }` did not parse (unsupported syntax, e.g. `|`?)")
+        if (PsiTreeUtil.hasErrorElements(toBody)) return reject("`to { … }` did not parse")
+
+        val patternEl = fromBody.singleMeaningfulStatement() ?: return reject("`from { … }` must contain exactly one expression")
+        val replEl = toBody.singleMeaningfulStatement() ?: return reject("`to { … }` must contain exactly one expression")
+
+        // A pattern that is a lone metavariable matches *every* expression — including the
+        // replacement it produces — so it never converges. Almost always a mis-parsed pattern.
+        if ((patternEl.unwrapParens() as? KtNameReferenceExpression)?.getReferencedName() in metavars) {
+            return reject("pattern is a single metavariable `${patternEl.text}`, which matches every expression")
+        }
 
         val guard = (body.callBody("where")?.singleMeaningfulStatement() as? KtExpression)
             ?.let { parseGuard(it, metavars.keys, onDiagnostic) }

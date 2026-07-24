@@ -51,6 +51,8 @@ object PatternRewriteSmokeTest {
             testQuoteBarrier()
             testDeclarationOrderFirstMatchWins()
             testNestedRewriteDoesNotSelfApply()
+            testBareMetavarPatternRejected()
+            testMalformedOperatorPatternRejected()
             testGuardDistinct()
             testGuardKindPredicates()
             testGuardBooleanCombinators()
@@ -66,6 +68,7 @@ object PatternRewriteSmokeTest {
             testLocalRuleOverridesAmbient()
             testLocalRuleSourcesCaptured()
             testAmbientRuleInheritedByChildBox()
+            testOwnRuleAppliesToFragmentOfSameBox()
             testGensymHygiene()
             testProvideProducesKeyedPreamble()
             testProvideDedupAndDistinctKeys()
@@ -278,6 +281,30 @@ object PatternRewriteSmokeTest {
         require("coerce(::f, SomeType::class, coerce(" !in res.text) { "must not double-wrap: ${res.text}" }
     }
 
+    /** A lone-metavar pattern (`from { x }`) matches everything → runaway; it must be rejected. */
+    private fun testBareMetavarPatternRejected() {
+        val res = expand("rewrite { x: Expr -> from { x }; to { wrap(x) } }\nhello", maxIterations = 8)
+        require(res.diagnostic != null) { "a bare-metavar pattern should be reported" }
+        require("wrap(" !in res.text) { "a bare-metavar rule must be ignored, not applied: ${res.text}" }
+    }
+
+    /**
+     * A pattern using an operator Kotlin doesn't accept in expressions (`|`) parses leniently to a
+     * degenerate/error tree. It must be rejected (not run away). `||` is a real operator and works;
+     * this guards the `|` case the hard way — through the engine, whose lenient PSI parser is what
+     * actually mis-parses `|` (the ktfmt test parser would just throw).
+     */
+    private fun testMalformedOperatorPatternRejected() {
+        val ki = KotlinInterface2(filePrefix = "malformed-op")
+        val box = Box("malformed-op")
+        val src = "fun piped(a: Any, b: Any): Double = 10.0\n" +
+            "rewrite { x: Expr, y: Expr -> from { x | y }; to { piped(x, y) } }\n" +
+            "val z = 4 | 3\n"
+        val out = ki.applyMacros(box, src)
+        require("piped(piped" !in out && "piped((" !in out) { "malformed `|` pattern must not run away: ${out.take(160)}" }
+        require("piped(z" !in out && "piped(4" !in out) { "the malformed rule must be ignored, not applied: ${out.take(160)}" }
+    }
+
     // ---- variadic holes -------------------------------------------------------------------------
 
     /** A `Vararg` hole binds the whole argument run and expands it comma-separated in `to`. */
@@ -402,6 +429,22 @@ object PatternRewriteSmokeTest {
         val out = expand("rewrite { x: Expr -> from { f(x) }; to { g(x) } }\nf(a)")
         require(out.localRuleSources.size == 1) { "one local rule block expected: ${out.localRuleSources}" }
         require("from { f(x) }" in out.localRuleSources[0]) { "rule source must be verbatim: ${out.localRuleSources}" }
+    }
+
+    /**
+     * A box's OWN rule must apply to a *fragment* run from that box — not only to a whole-box run.
+     * The fragment text doesn't contain the `rewrite {}` block, so the rule has to be picked up from
+     * the box's stored `code`. (Regression: previously the ambient gather skipped the box itself, so
+     * `thisBox.fff(1)` run alone compiled without the coercion the rule inserts.)
+     */
+    private fun testOwnRuleAppliesToFragmentOfSameBox() {
+        val ki = KotlinInterface2(filePrefix = "frag-own-rule")
+        val box = Box("frag-own-rule")
+        val fullCode = "rewrite { x: Expr -> from { fff(x) }; where { !isCallTo(x, \"wrap\") }; to { fff(wrap(x)) } }\nfff(1)"
+        box.setPropertyRaw("code", fullCode, doResync = false)
+        // Run only a fragment that does NOT contain the rewrite block.
+        val fragOut = ki.applyMacros(box, "fff(2)")
+        require("fff(wrap(2))" in fragOut) { "a box's own rule must apply to a fragment run from it: $fragOut" }
     }
 
     /** End-to-end: a rule *written* in a parent box rewrites a child box's code — no parent run needed. */
