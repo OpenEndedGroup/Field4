@@ -92,6 +92,7 @@ object DemoTranscriptExecSmokeTest {
      */
     private val KOTLINJS = setOf(
         "tone_synth_sequence",
+        "remotear_scene_motion",
     )
 
     /** Ops that build the box graph without compiling/running any box Kotlin. */
