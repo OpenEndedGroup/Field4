@@ -51,6 +51,8 @@ object PatternRewriteSmokeTest {
             testQuoteBarrier()
             testDeclarationOrderFirstMatchWins()
             testNestedRewriteDoesNotSelfApply()
+            testBareMetavarPatternRejected()
+            testMalformedOperatorPatternRejected()
             testGuardDistinct()
             testGuardKindPredicates()
             testGuardBooleanCombinators()
@@ -277,6 +279,30 @@ object PatternRewriteSmokeTest {
         require("f(coerce(::f, SomeType::class, a))" in res.text) { "atomic arg wrapped once: ${res.text}" }
         require("f(coerce(::f, SomeType::class, (b + 1)))" in res.text) { "non-atomic arg paren-guarded: ${res.text}" }
         require("coerce(::f, SomeType::class, coerce(" !in res.text) { "must not double-wrap: ${res.text}" }
+    }
+
+    /** A lone-metavar pattern (`from { x }`) matches everything → runaway; it must be rejected. */
+    private fun testBareMetavarPatternRejected() {
+        val res = expand("rewrite { x: Expr -> from { x }; to { wrap(x) } }\nhello", maxIterations = 8)
+        require(res.diagnostic != null) { "a bare-metavar pattern should be reported" }
+        require("wrap(" !in res.text) { "a bare-metavar rule must be ignored, not applied: ${res.text}" }
+    }
+
+    /**
+     * A pattern using an operator Kotlin doesn't accept in expressions (`|`) parses leniently to a
+     * degenerate/error tree. It must be rejected (not run away). `||` is a real operator and works;
+     * this guards the `|` case the hard way — through the engine, whose lenient PSI parser is what
+     * actually mis-parses `|` (the ktfmt test parser would just throw).
+     */
+    private fun testMalformedOperatorPatternRejected() {
+        val ki = KotlinInterface2(filePrefix = "malformed-op")
+        val box = Box("malformed-op")
+        val src = "fun piped(a: Any, b: Any): Double = 10.0\n" +
+            "rewrite { x: Expr, y: Expr -> from { x | y }; to { piped(x, y) } }\n" +
+            "val z = 4 | 3\n"
+        val out = ki.applyMacros(box, src)
+        require("piped(piped" !in out && "piped((" !in out) { "malformed `|` pattern must not run away: ${out.take(160)}" }
+        require("piped(z" !in out && "piped(4" !in out) { "the malformed rule must be ignored, not applied: ${out.take(160)}" }
     }
 
     // ---- variadic holes -------------------------------------------------------------------------
