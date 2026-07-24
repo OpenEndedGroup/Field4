@@ -217,7 +217,7 @@ are zero. Uniform storage is triple-buffered and copied once per compositor fram
 and MSL source both receive `field://visionmetal/<uid>` source URLs for useful diagnostics.
 
 The current first slice intentionally has a small surface: one active indexed triangle mesh, one
-pipeline, alpha blending, depth testing, 16 named `float4` uniforms, and one JS `onFrame` callback.
+pipeline, alpha blending, depth testing, 16 named `float4` uniforms, and one JS lifecycle scope.
 Textures, compute functions, multiple draw items, interaction and FLine GPU tessellation belong on
 top of this resident runtime; they do not require another architectural bridge.
 
@@ -229,11 +229,14 @@ pretending that browser, THREE, or DOM globals exist. A Kotlin/JS program using 
 
 ```kotlin
 // {{ visionmetal uniforms=phase,amount,tint }}
-uniform("amount", 0.025)
-uniform("tint", 0.1, 0.8, 1.0, 0.35)
-onFrame { frame ->
-    uniform("phase", frame.time * 3.0)
-    log("predicted display time = " + frame.predictedDisplayTime)
+onStart {
+    uniform("amount", 0.025)
+    uniform("tint", 0.1, 0.8, 1.0, 0.35)
+    onFrame { frame ->
+        uniform("phase", frame.time * 3.0)
+        log("predicted display time = " + frame.predictedDisplayTime)
+    }
+    onStop { log("visionmetal stopped") }
 }
 ```
 
@@ -245,8 +248,10 @@ execution publishes the compiled plain module through the existing replayable
 optional `uniforms=` list fixes shader slot order; without it, literal uniform writes are inferred
 (the built-in shader retains `phase,amount,tint` first). `remotejs.kotlinjs-head-profiles` verifies
 marker parsing plus compilation and global-name linking for both Live Metal and RemoteAR host
-shims. Device execution remains part of native-head verification; the JVM smoke does not substitute
-for JavaScriptCore, Metal compilation, or compositor presentation on visionOS.
+shims. `onStart`, `onFrame`, `onStop`, and `keepAlive` have the same Launch-only contract as the
+browser heads; during Execute they are inert. Relaunch and Stop run cleanup once before replacing the
+JavaScriptCore context. Device execution remains part of native-head verification; the JVM smoke
+does not substitute for JavaScriptCore, Metal compilation, or compositor presentation on visionOS.
 
 ## Field host-side dependencies (server must serve these)
 

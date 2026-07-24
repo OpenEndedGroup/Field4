@@ -1,7 +1,9 @@
 package afield.examples
 
 import afield.graphics.VisionMetalKotlinJs
+import afield.graphics.VisionMetalProgramPayload
 import afield.remotejs.KotlinToJsCompiler
+import kotlinx.serialization.json.Json
 import java.io.File
 import java.nio.file.Files
 
@@ -24,11 +26,14 @@ object VisionMetalKotlinJsExternalsSmokeTest {
     fun main(args: Array<String>) {
         val userSource = """
             fun main() {
-                uniform("amount", 0.025)
-                uniform("tint", 0.1, 0.8, 1.0, 0.35)
-                onFrame { frame ->
-                    uniform("phase", frame.time * 3.0 + frame.deltaTime)
-                    log("frame " + frame.predictedDisplayTime)
+                onStart {
+                    uniform("amount", 0.025)
+                    uniform("tint", 0.1, 0.8, 1.0, 0.35)
+                    onFrame { frame ->
+                        uniform("phase", frame.time * 3.0 + frame.deltaTime)
+                        log("frame " + frame.predictedDisplayTime)
+                    }
+                    onStop { log("stopped") }
                 }
             }
         """.trimIndent()
@@ -42,6 +47,17 @@ object VisionMetalKotlinJsExternalsSmokeTest {
         }
         require(result.diagnostics.none { it.severity == "error" }) {
             "Unexpected diagnostics: ${result.diagnostics}"
+        }
+        val executePayload = Json.encodeToString(
+            VisionMetalProgramPayload(
+                uid = "smoke",
+                revision = 1,
+                shader = "",
+                launchable = false,
+            ),
+        )
+        require("\"launchable\":false" in executePayload) {
+            "Vision Metal wire payload lost Execute/Launch intent: $executePayload"
         }
 
         val js = result.js
@@ -73,13 +89,17 @@ object VisionMetalKotlinJsExternalsSmokeTest {
     private val hostShim = """
         const __visionMetalWrites = [];
         let __visionMetalFrame = null;
+        let __visionMetalStop = null;
         function uniform(name, x, y = 0, z = 0, w = 0) {
             __visionMetalWrites.push([String(name), Number(x), Number(y), Number(z), Number(w)]);
         }
-        function onFrame(callback) {
+        function __fieldOnStart(callback) { callback(); }
+        function __fieldOnStop(callback) { __visionMetalStop = callback; }
+        function __fieldOnFrame(callback) {
             if (typeof callback !== "function") throw new TypeError("onFrame expects a function");
             __visionMetalFrame = callback;
         }
+        function __fieldKeepAlive() {}
         function print(value) {
             console.log("vision-metal-log:" + value);
         }
@@ -87,11 +107,13 @@ object VisionMetalKotlinJsExternalsSmokeTest {
 
     private val hostProbe = """
         if (typeof __visionMetalFrame !== "function") throw new Error("Kotlin did not install onFrame");
-        __visionMetalFrame(2.0, 0.25, 2.5);
+        __visionMetalFrame(2.0, 0.25, 7, 2.5);
         const phase = __visionMetalWrites.find(entry => entry[0] === "phase");
         if (!phase || Math.abs(phase[1] - 6.25) > 1e-9) {
             throw new Error("unexpected phase write: " + JSON.stringify(__visionMetalWrites));
         }
+        if (typeof __visionMetalStop !== "function") throw new Error("Kotlin did not install onStop");
+        __visionMetalStop();
         console.log("vision-metal-host-ok:" + JSON.stringify(__visionMetalWrites));
     """.trimIndent()
 

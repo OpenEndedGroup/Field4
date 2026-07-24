@@ -242,6 +242,11 @@ private object VisionMetalProfile : KotlinJsHeadProfile(
     optionNames = setOf("uniforms"),
 ) {
     private val statusAttached = ConcurrentHashMap.newKeySet<String>()
+    private data class LifecycleResponse(
+        val revision: Int,
+        val callback: (KotlinJsHeadResponse) -> Boolean,
+    )
+    private val lifecycleResponses = ConcurrentHashMap<String, LifecycleResponse>()
     private val uniformWrite = Regex("""\buniform\s*\(\s*\"((?:\\.|[^\"\\])*)\"""")
     private val defaultUniforms = listOf("phase", "amount", "tint")
 
@@ -265,12 +270,36 @@ private object VisionMetalProfile : KotlinJsHeadProfile(
         val state = box.visionMetal(
             shader = shader,
             script = javascript,
+            launchable = launchable,
             uniforms = uniforms,
             name = "kotlinjs",
         )
+        if (launchable && onResponse != null) {
+            lifecycleResponses[state.uid] = LifecycleResponse(state.currentRevision, onResponse)
+        }
         if (statusAttached.add(state.uid)) {
             state.onStatus { status ->
                 if (!status.ok) box.output.errorProxy("${status.phase}: ${status.message}", "code", 0)
+                val receiver = lifecycleResponses[status.uid]
+                if (receiver != null && receiver.revision == status.revision) {
+                    val kind = when {
+                        status.phase == "lifecycle" && status.message == "RUN-START" -> "RUN-START"
+                        status.phase == "lifecycle" && status.message == "RUN-STOP" -> "RUN-STOP"
+                        status.phase == "javascript" && !status.ok -> "ERROR"
+                        else -> null
+                    }
+                    if (kind != null) {
+                        val keep = receiver.callback(
+                            KotlinJsHeadResponse(
+                                kind = kind,
+                                headId = status.uid,
+                                expectedHeadIds = setOf(status.uid),
+                                terminal = kind != "RUN-START",
+                            ),
+                        )
+                        if (!keep) lifecycleResponses.remove(status.uid, receiver)
+                    }
+                }
             }
         }
         return true // publication is durable and replays when a native head subscribes later
@@ -278,7 +307,15 @@ private object VisionMetalProfile : KotlinJsHeadProfile(
 
     override fun stop(box: Box, selection: KotlinJsHeadSelection, lifecycleNames: Collection<String>) {
         val shader = box.fragment.orEmpty().trim().ifEmpty { visionMetalExampleShader }
-        box.visionMetal(shader = shader, script = "", uniforms = emptyList(), name = "kotlinjs")
+        val uid = "${box.id}_kotlinjs"
+        lifecycleResponses.remove(uid)
+        box.visionMetal(
+            shader = shader,
+            script = "",
+            launchable = false,
+            uniforms = emptyList(),
+            name = "kotlinjs",
+        )
     }
 
     private fun inferUniforms(source: String): List<String> = uniformWrite.findAll(source)

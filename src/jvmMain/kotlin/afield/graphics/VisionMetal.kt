@@ -41,6 +41,7 @@ data class VisionMetalProgramPayload(
     val revision: Int,
     val shader: String,
     val script: String = "",
+    val launchable: Boolean = true,
     val uniforms: List<String> = emptyList(),
     val vertices: FloatArray = floatArrayOf(),
     val indices: IntArray = intArrayOf()
@@ -73,6 +74,7 @@ fun visionMetalConnectedHeadCount(): Int = visionMetalGlobalListeners.size
  */
 class VisionMetalProgramState(val uid: String) {
     private val revision = AtomicInteger(0)
+    val currentRevision: Int get() = revision.get()
     private val statusListeners = CopyOnWriteArrayList<(VisionMetalStatus) -> Unit>()
     @Volatile private var lastPayload: String? = null
     @Volatile var lastStatus: VisionMetalStatus? = null
@@ -83,7 +85,8 @@ class VisionMetalProgramState(val uid: String) {
         script: String = "",
         uniforms: List<String> = emptyList(),
         vertices: Collection<VisionMetalVertex> = emptyList(),
-        indices: IntArray = intArrayOf()
+        indices: IntArray = intArrayOf(),
+        launchable: Boolean = true
     ): VisionMetalProgramState {
         require(uniforms.size <= 16) { "Vision Metal currently supports at most 16 named float4 uniforms" }
         require(uniforms.distinct().size == uniforms.size) { "Vision Metal uniform names must be unique" }
@@ -104,6 +107,7 @@ class VisionMetalProgramState(val uid: String) {
             revision = revision.incrementAndGet(),
             shader = shader,
             script = script,
+            launchable = launchable,
             uniforms = uniforms.take(16),
             vertices = packedVertices,
             indices = indices
@@ -179,8 +183,8 @@ fun installVisionMetalHandler() {
  * Publish a live MSL + JavaScript program to the visionOS native renderer.
  *
  * `shader` defines `field_vertex` and `field_fragment` against the ABI documented in the visionOS
- * README. `script` may install `onFrame((time, dt, predictedDisplayTime) -> ...)` and write declared
- * float4 uniforms with `uniform(name, x, y, z, w)` or `uniforms.name = [x, y, z, w]`.
+ * README. In launch mode, `script` may install `onStart`, `onFrame`, and `onStop` callbacks and write
+ * declared float4 uniforms with `uniform(name, x, y, z, w)` or `uniforms.name = [x, y, z, w]`.
  */
 fun Box.visionMetal(
     shader: String,
@@ -188,11 +192,19 @@ fun Box.visionMetal(
     uniforms: List<String> = emptyList(),
     vertices: Collection<VisionMetalVertex> = emptyList(),
     indices: IntArray = intArrayOf(),
-    name: String = "live-metal"
+    name: String = "live-metal",
+    launchable: Boolean = true
 ): VisionMetalProgramState {
     val uid = "${this.id}_$name"
     val state = knownVisionMetalPrograms.computeIfAbsent(uid) { VisionMetalProgramState(uid) }
-    return state.update(shader, script, uniforms, vertices, indices)
+    return state.update(
+        shader = shader,
+        script = script,
+        uniforms = uniforms,
+        vertices = vertices,
+        indices = indices,
+        launchable = launchable,
+    )
 }
 
 /** A complete hot-reloadable shader for the built-in cube; intended as a live-coding starting point. */

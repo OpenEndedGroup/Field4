@@ -49,7 +49,12 @@ object KotlinJsRemoteLifecycleSmokeTest {
                 record("body")
                 onStart {
                     record("start")
-                    onFrame { frame -> record("frame:" + frame.frameNumber) }
+                    onFrame { frame ->
+                        record("frame:" + frame.frameNumber)
+                        if (frame.frameNumber == 0) {
+                            onFrame { nested -> record("nested:" + nested.frameNumber) }
+                        }
+                    }
                     onStop { record("stop") }
                 }
             }
@@ -107,7 +112,7 @@ object KotlinJsRemoteLifecycleSmokeTest {
             }
             __service();
             __service();
-            if (events.join(",") !== "body,body,start,frame:0,frame:1") {
+            if (events.join(",") !== "body,body,start,frame:0,frame:1,nested:1") {
                 throw new Error("launch/frame order wrong: " + events);
             }
             if (messages.join(",") !== "RUN-START") throw new Error("missing RUN-START: " + messages);

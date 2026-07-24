@@ -269,7 +269,7 @@ class KotlinJsExecution : BoxExecution {
                 )
                 tracker.deliveryFinished(
                     sent = sent,
-                    durableWithoutResponse = selection.profile === KotlinJsHeadProfiles.visionMetal,
+                    durableWithoutResponse = false,
                 )
             } catch (e: Exception) {
                 lprintln("error,kotlinjs", e.stackTraceToString())

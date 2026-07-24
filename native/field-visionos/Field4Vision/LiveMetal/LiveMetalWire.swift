@@ -15,9 +15,15 @@ struct LiveMetalProgramPayload: Decodable, Sendable {
     let revision: Int
     let shader: String
     let script: String
+    /// Absent payloads predate lifecycle-aware Execute/Launch and retain their old persistent behavior.
+    let launchable: Bool?
     let uniforms: [String]
     let vertices: [Float]
     let indices: [UInt32]
+}
+
+extension LiveMetalProgramPayload {
+    var isLaunchable: Bool { launchable ?? true }
 }
 
 struct LiveMetalSubscribe: Encodable {

@@ -358,12 +358,14 @@ final class LiveMetalRenderer {
                 indexCount = indices.count
             }
 
+            javaScript.stop()
             javaScript.report = { [reporter, uid = program.uid, revision = program.revision] phase, ok, message in
                 reporter(uid, revision, phase, ok, message)
             }
             javaScript.install(script: program.script,
                                sourceURL: URL(string: "field://visionmetal/\(program.uid).js")!,
-                               uniformNames: program.uniforms)
+                               uniformNames: program.uniforms,
+                               launchable: program.isLaunchable)
             compiler.request(.init(uid: program.uid, revision: program.revision,
                                    source: LiveMetalShaderABI.source(userSource: program.shader, uid: program.uid)))
             reporter(program.uid, program.revision, "program", true, "Program received; compiling shader")
@@ -384,6 +386,7 @@ final class LiveMetalRenderer {
         while true {
             switch layerRenderer.state {
             case .invalidated:
+                javaScript.stop()
                 reporter(activeUID, activeRevision, "renderer", true, "Immersive renderer stopped")
                 return
             case .paused:

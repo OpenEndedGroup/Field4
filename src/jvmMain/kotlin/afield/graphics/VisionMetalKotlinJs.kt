@@ -22,26 +22,17 @@ object VisionMetalKotlinJs {
      *
      * ```kotlin
      * fun main() {
-     *     uniform("amount", 0.025)
-     *     onFrame { frame -> uniform("phase", frame.time * 3.0) }
+     *     onStart {
+     *         uniform("amount", 0.025)
+     *         onFrame { frame -> uniform("phase", frame.time * 3.0) }
+     *     }
      * }
      * ```
      *
      * The wrapper gives the callback named fields and gives uniform writes checked arities while
      * retaining a zero-allocation scalar path. DCE removes any unused overloads from each snippet.
      */
-    val declarations: String = """
-        data class VisionMetalFrame(
-            val time: Double,
-            val deltaTime: Double,
-            val predictedDisplayTime: Double,
-        )
-
-        @kotlin.js.JsName("onFrame")
-        private external fun __visionMetalOnFrame(
-            callback: (time: Double, deltaTime: Double, predictedDisplayTime: Double) -> Unit,
-        )
-
+    private val metalDeclarations: String = """
         @kotlin.js.JsName("uniform")
         private external fun __visionMetalUniform(
             name: String,
@@ -53,12 +44,6 @@ object VisionMetalKotlinJs {
 
         @kotlin.js.JsName("print")
         private external fun __visionMetalPrint(value: Any?)
-
-        fun onFrame(callback: (VisionMetalFrame) -> Unit) {
-            __visionMetalOnFrame { time, deltaTime, predictedDisplayTime ->
-                callback(VisionMetalFrame(time, deltaTime, predictedDisplayTime))
-            }
-        }
 
         fun uniform(name: String, x: Double) =
             __visionMetalUniform(name, x, 0.0, 0.0, 0.0)
@@ -75,23 +60,22 @@ object VisionMetalKotlinJs {
         fun log(value: Any?) = __visionMetalPrint(value)
     """.trimIndent()
 
+    val declarations: String =
+        listOf(RemoteLifecycleKotlinJs.declarations, metalDeclarations).joinToString("\n\n")
+
     /**
      * JVM-analysis-safe mirror of the user-facing surface. The completion sidecar deliberately runs
      * without the Kotlin/JS compiler frontend, so `external`, `dynamic`, `definedExternally`, and
      * `@JsName` cannot be its source model. Keep this small mirror beside [declarations]; the smoke
      * test exercises the public names and member types through the real sidecar.
      */
-    val completionDeclarations: String = """
-        data class VisionMetalFrame(
-            val time: Double,
-            val deltaTime: Double,
-            val predictedDisplayTime: Double,
-        )
-
-        fun onFrame(callback: Function1<VisionMetalFrame, Unit>): Unit = TODO()
+    private val metalCompletionDeclarations: String = """
         fun uniform(name: String, x: Double, y: Double = 0.0, z: Double = 0.0, w: Double = 0.0): Unit = TODO()
         fun log(value: Any?): Unit = TODO()
     """.trimIndent()
+
+    val completionDeclarations: String =
+        listOf(RemoteLifecycleKotlinJs.completionDeclarations, metalCompletionDeclarations).joinToString("\n\n")
 
     /** Add the external surface without changing any user-source line number. */
     fun appendTo(userSource: String): String = buildString(userSource.length + declarations.length + 2) {

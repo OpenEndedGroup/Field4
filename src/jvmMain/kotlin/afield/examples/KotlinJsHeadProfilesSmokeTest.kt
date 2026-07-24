@@ -32,11 +32,13 @@ object KotlinJsHeadProfilesSmokeTest {
     fun main(args: Array<String>) {
         val visionSource = """
             // {{ visionmetal uniforms=phase,amount,tint }}
-            uniform("amount", 0.025)
-            uniform("tint", 0.1, 0.8, 1.0, 0.35)
-            onFrame { frame ->
-                uniform("phase", frame.time * 3.0 + frame.deltaTime)
-                log("frame " + frame.predictedDisplayTime)
+            onStart {
+                uniform("amount", 0.025)
+                uniform("tint", 0.1, 0.8, 1.0, 0.35)
+                onFrame { frame ->
+                    uniform("phase", frame.time * 3.0 + frame.deltaTime)
+                    log("frame " + frame.predictedDisplayTime)
+                }
             }
         """.trimIndent()
         val vision = KotlinJsHeadProfiles.resolve(visionSource)
@@ -177,13 +179,16 @@ object KotlinJsHeadProfilesSmokeTest {
         const __writes = [];
         let __frame = null;
         function uniform(name, x, y = 0, z = 0, w = 0) { __writes.push([name, x, y, z, w]); }
-        function onFrame(callback) { __frame = callback; }
+        function __fieldOnStart(callback) { callback(); }
+        function __fieldOnStop(_callback) {}
+        function __fieldOnFrame(callback) { __frame = callback; }
+        function __fieldKeepAlive() {}
         function print(value) { console.log(value); }
     """.trimIndent()
 
     private val visionProbe = """
         if (typeof __frame !== "function") throw new Error("missing vision frame callback");
-        __frame(2.0, 0.25, 2.5);
+        __frame(2.0, 0.25, 7, 2.5);
         const phase = __writes.find(entry => entry[0] === "phase");
         if (!phase || Math.abs(phase[1] - 6.25) > 1e-9) throw new Error(JSON.stringify(__writes));
         console.log("vision-metal-profile-ok");

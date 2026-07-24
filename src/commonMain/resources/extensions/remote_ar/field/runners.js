@@ -46,12 +46,16 @@ class FieldLifecycleTask {
         // Snapshot like Framer's current/next queue swap: callbacks registered by a callback begin
         // on the next host frame rather than being appended into the frame currently being drained.
         const callbacks = this.frameCallbacks.slice()
+        const previousLifecycle = __fieldLifecycleCurrent
+        __fieldLifecycleCurrent = this
         try {
             for (const callback of callbacks) callback(elapsed, delta, this.frameNumber, null)
             this.frameNumber += 1
         } catch (error) {
             this.reportErrorTo(error)
             this.stopNow(true)
+        } finally {
+            if (__fieldLifecycleCurrent === this) __fieldLifecycleCurrent = previousLifecycle
         }
     }
 

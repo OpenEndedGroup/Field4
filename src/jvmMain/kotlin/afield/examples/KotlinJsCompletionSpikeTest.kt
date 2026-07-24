@@ -112,7 +112,7 @@ object KotlinJsCompletionSpikeTest {
             VisionMetalKotlinJs.completionDeclarations,
         ) ?: emptyList()
         require(visionFrameCands.any { it == "predictedDisplayTime" }) {
-            "expected VisionMetalFrame members in callback completion, got: ${visionFrameCands.take(20)}"
+            "expected shared HeadFrame members in callback completion, got: ${visionFrameCands.take(20)}"
         }
 
         val remoteNamespace = "fun main() {\n  THREE.Ve\n}"
