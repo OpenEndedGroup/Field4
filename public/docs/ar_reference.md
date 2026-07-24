@@ -45,6 +45,29 @@ display("remote-ar", """
 displayOpen("remote-ar")
 ```
 
+## Draw into the head from Kotlin
+
+The head runs Kotlin too. A box whose main language is **Kotlin → head** (`kotlinjs`) compiles its Kotlin source to JavaScript and ships it to every connected head; the first line's `// {{ remoteAR }}` marker selects the A-Frame/Three.js scene profile, which binds `addPlane`, `addBox`, `vec`, `stage`, `FLine`, `SCENE`, and the `THREE.*` classes. So a second box can draw straight into the head embedded above — here it adds a lit plane:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/ar_reference/remote-ar-kotlin-plane.png" capture="box" name="ar-reference-kotlin-plane" macro-file="../../dev_docs/agents/transcripts/docs_capture/remote_ar_kotlin_plane.yaml" capture-box="agent_remote_ar_plane_head" wait="2" timeout="180" open-outputs="true" padding="18" embed=true alt="A lit blue plane drawn into the embedded Remote AR head by a Kotlin-to-JS box" w="1000" h="220"}
+// {{ remoteAR }}
+onStart {
+    clearAll()
+
+    // addPlane() uses a lit material, so light the scene or it renders black.
+    SCENE.add(THREE.AmbientLight(0xffffff, 0.9))
+    val key = THREE.DirectionalLight(0xffffff, 1.2)
+    key.position.set(2.0, 4.0, 2.0)
+    SCENE.add(key)
+
+    val plane = addPlane("celebration", 4.0)
+    plane.mesh.position.set(0.0, 1.6, -1.6)
+    plane.material.color.setRGB(0.25, 0.6, 1.0)
+}
+```
+
+`addPlane(name, size)` adds a `size * 25 cm` plane at the origin and returns `{ mesh, material }`; move it with `plane.mesh.position` and colour it through `plane.material.color`. `onStart`/`onFrame`/`onStop` run on the head's own render clock when the box is launched. See [Kotlin in the Head](kotlin_in_the_head.md) for the full head API.
+
 ## FLine graphics
 
 `FLine` is a small path representation backed by Three.js `BufferGeometry`. Assigning an FLine into `stage` creates or updates its stroke, fill, and/or point geometry.

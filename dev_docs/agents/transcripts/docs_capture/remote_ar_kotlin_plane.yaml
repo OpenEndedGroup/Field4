@@ -1,0 +1,69 @@
+name: remote_ar_kotlin_plane
+description: >
+  Celebration demo for docs/ar_reference.md. One ordinary Kotlin box embeds the RemoteJS/WebXR
+  head with Box.remoteAr(); once the head connects, a second Kotlin->JS box (mainLanguage
+  kotlinjs, first line `// {{ remoteAR }}`) compiles to JS in the head and adds a lit plane to
+  the A-Frame scene. The head-embedding box's output pane is screenshotted, so the capture shows
+  a plane drawn into the head entirely from Kotlin.
+operations:
+  # 1. Embed the head in a box output and open it. Box.remoteAr() is ordinary JVM Kotlin.
+  - create:
+      box: agent_remote_ar_plane_head
+      name: Remote AR
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 200.0 }
+      properties:
+        code: |
+          remoteAr(debug = true)
+  - execute:
+      box: agent_remote_ar_plane_head
+      property: code
+      type: fragment
+      code: |
+        remoteAr(debug = true)
+  # 2. Give the vendored head time to boot A-Frame/THREE and open its WebSocket to Field.
+  - wait:
+      millis: 8000
+  # 3. A Kotlin->JS root; its descendants compile to JS and ship to connected heads.
+  # Placed well to the right of the head's output pane so they stay out of the box screenshot.
+  - create:
+      box: agent_remote_ar_plane_root
+      name: KotlinJS root
+      frame: { x: 1180.0, y: 40.0, w: 300.0, h: 90.0 }
+      properties:
+        mainLanguage: kotlinjs
+        isKotlinJsRoot: true
+  # 4. The plane box: Kotlin compiled to JS, run in the head. `// {{ remoteAR }}` selects the head.
+  - create:
+      box: agent_remote_ar_plane
+      name: Kotlin plane
+      frame: { x: 1180.0, y: 160.0, w: 340.0, h: 240.0 }
+      properties:
+        code: |
+          // {{ remoteAR }}
+          // Kotlin, compiled to JavaScript and run in the connected RemoteAR head.
+          onStart {
+              clearAll()
+
+              // addPlane() uses a lit MeshLambertMaterial, so light the scene or it renders black.
+              SCENE.add(THREE.AmbientLight(0xffffff, 0.9))
+              val key = THREE.DirectionalLight(0xffffff, 1.2)
+              key.position.set(2.0, 4.0, 2.0)
+              SCENE.add(key)
+
+              val plane = addPlane("celebration", 4.0)
+              plane.mesh.position.set(0.0, 1.6, -1.6)
+              plane.material.color.setRGB(0.25, 0.6, 1.0)
+
+              println("plane added: " + plane.mesh.name)
+          }
+  - connect:
+      parent: agent_remote_ar_plane_root
+      child: agent_remote_ar_plane
+  - wait:
+      frames: 2
+  # 5. Launch fires onStart in the head; the plane appears in the embedded head's scene.
+  - launch:
+      box: agent_remote_ar_plane
+      property: code
+  - wait:
+      millis: 6000
