@@ -81,6 +81,38 @@ internal fun shortenType(type: String): String =
         .replace(Regex("""\b[a-z][A-Za-z0-9_]*(?:\.[a-z][A-Za-z0-9_]*)*\.([A-Z][A-Za-z0-9_]*)"""), "$1")
 
 /**
+ * JVM-only stdlib members that do NOT exist in the Kotlin/JS stdlib. A `mainLanguage="kotlinjs"` box
+ * is compiled Kotlin→JS and runs in a browser / vision head with no JVM, yet AA completion is scoped
+ * to the *JVM* kotlin-stdlib jar, so Kotlin's JVM built-ins customizer augments `kotlin.collections.*`
+ * / `kotlin.String` with JDK members (`stream`, `spliterator`, `toArray`, `chars`, …). Offering them
+ * on `.` either fails to compile to JS or throws at runtime. Grounded empirically (2026-07-24) against
+ * a stdlib-only completion on List/Collection/MutableList/String; see kotlinjs roadmap Stage 2b.
+ *
+ * These names return Kotlin types, so the java-signature rule in [isJvmOnlyForJsTarget] misses them;
+ * they're denied by name but ONLY on a `kotlin.*` receiver, so a user's own `fun stream()` on their
+ * own kotlinjs class is never hidden.
+ */
+internal val JVM_ONLY_STDLIB_MEMBERS: Set<String> = setOf(
+    "toArray",                 // java.util.Collection.toArray (→ kotlin.Array, escapes the java-type rule)
+    "getChars",                // java.lang.String.getChars (→ kotlin.Unit)
+    "parallel", "sequential",  // java.util.stream.BaseStream, should a Stream ever be a receiver
+)
+
+/**
+ * True when [c] is a JVM-platform-only member that must be filtered from kotlinjs-scoped completion.
+ * Principled where possible: any `java.`/`javax.` type in the signature is a JVM type with no JS
+ * equivalent (catches `stream`/`parallelStream`/`spliterator`/`chars`/`codePoints`). The curated
+ * [JVM_ONLY_STDLIB_MEMBERS] covers the residue that returns Kotlin types.
+ */
+internal fun isJvmOnlyForJsTarget(c: AaCandidate): Boolean {
+    if (c.kind != AaCandidate.Kind.MEMBER && c.kind != AaCandidate.Kind.EXTENSION) return false
+    val signature = (c.returnType ?: "") + " " + (c.params ?: "")
+    if (Regex("""\bjavax?[./]""").containsMatchIn(signature)) return true
+    val onStdlibReceiver = (c.container ?: "").let { it.startsWith("kotlin/") || it.startsWith("kotlin.") }
+    return onStdlibReceiver && c.name in JVM_ONLY_STDLIB_MEMBERS
+}
+
+/**
  * Prefix-enumeration index for binary library packages. Standalone AA can NOT enumerate a binary
  * package's members by prefix (`packageScope.callables(nameFilter)` and `getPossibleCallableNames()`
  * both return empty for binary packages), but `findTopLevelCallables(pkg, exactName)`,
@@ -294,6 +326,9 @@ class AaCompleter(
      *                          bare names and receiver dot-completion works.
      * @param extraImports      per-request imports (the box's own `import` lines), added to the
      *                          default REPL imports.
+     * @param jsTarget          true for a `mainLanguage="kotlinjs"` box (compiled Kotlin→JS, no JVM):
+     *                          JVM-only stdlib members ([isJvmOnlyForJsTarget]) are filtered out. Never
+     *                          set for regular Kotlin completion, so that path is byte-for-byte unchanged.
      */
     fun complete(
         snippet: String,
@@ -302,6 +337,7 @@ class AaCompleter(
         declarations: String = "",
         implicitReceivers: List<String> = emptyList(),
         extraImports: List<String> = emptyList(),
+        jsTarget: Boolean = false,
     ): AaCompletionResult {
         val before = snippet.substring(0, cursor)
         val after = snippet.substring(cursor)
@@ -340,7 +376,7 @@ class AaCompleter(
         return try {
             val file = KtPsiFactory.contextual(contextFile, markGenerated = false, eventSystemEnabled = false)
                 .createFile("AaCompletion.kt", sb.toString())
-            completeAt(file, cursorOffset, isDot, prefix)
+            completeAt(file, cursorOffset, isDot, prefix, jsTarget)
         } catch (t: Throwable) {
             AaCompletionResult(emptyList(), "error ${t.javaClass.simpleName}: ${t.message}")
         }
@@ -392,10 +428,12 @@ class AaCompleter(
     }
 
     @OptIn(KaExperimentalApi::class, KaIdeApi::class, KaK1Unsupported::class)
-    private fun completeAt(file: KtFile, offset: Int, isDot: Boolean, prefix: String): AaCompletionResult {
+    private fun completeAt(file: KtFile, offset: Int, isDot: Boolean, prefix: String, jsTarget: Boolean): AaCompletionResult {
         val leaf = file.findElementAt((offset - 1).coerceAtLeast(0))
             ?: return AaCompletionResult(emptyList(), "no element at cursor")
         val match: (Name) -> Boolean = { n -> prefix.isEmpty() || n.asString().startsWith(prefix) }
+        // In a kotlinjs box (compiled to JS, no JVM) drop JVM-only stdlib members; a no-op otherwise.
+        val jsFilter: (AaCandidate) -> Boolean = { c -> !jsTarget || !isJvmOnlyForJsTarget(c) }
 
         return analyze(file) {
             fun iconFor(sym: KaCallableSymbol): String = when (sym) {
@@ -468,7 +506,7 @@ class AaCompleter(
                 }.toList()
 
                 val out = (members + extensions + nestedClassifiers)
-                    .filterNot { it.isSynthetic }.distinctBy { it.dedupKey }.sortedBy { it.name }
+                    .filterNot { it.isSynthetic }.filter(jsFilter).distinctBy { it.dedupKey }.sortedBy { it.name }
                 AaCompletionResult(out, if (out.isEmpty()) "0 matched; type=$typeStr; members=${members.size}" else "")
             } else {
                 val pos = PsiTreeUtil.getParentOfType(leaf, KtElement::class.java) ?: (leaf as? KtElement)
@@ -558,7 +596,7 @@ class AaCompleter(
                 }
 
                 val out = (namedParams + fromScopes + sourceClassifiers + fromReceivers + topCallables + receiverExtensions + classifiers)
-                    .filterNot { it.isSynthetic }.distinctBy { it.dedupKey }.sortedBy { it.name }
+                    .filterNot { it.isSynthetic }.filter(jsFilter).distinctBy { it.dedupKey }.sortedBy { it.name }
                 AaCompletionResult(out, if (out.isEmpty()) "0 candidates at name position" else "")
             }
         }

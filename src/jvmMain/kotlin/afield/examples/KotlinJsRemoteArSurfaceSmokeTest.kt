@@ -256,6 +256,7 @@ object KotlinJsRemoteArSurfaceSmokeTest {
             val o = afield.AaCompletionClient.complete(
                 snippet = snippet, cursor = snippet.length, preamble = "",
                 declarations = decl, implicitReceivers = emptyList(), classpathRootsOverride = roots,
+                jsTarget = true,
             )
             if (o.detail.let { !it.startsWith("no-sidecar") && !it.startsWith("error") && !it.startsWith("http") }) unreachable = false
             (o.result as? afield.CompletionResult.Success)?.let { return it.metadata.map { m -> m.text } }

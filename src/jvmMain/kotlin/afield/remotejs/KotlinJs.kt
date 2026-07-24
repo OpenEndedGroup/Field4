@@ -166,6 +166,7 @@ class KotlinJsExecution : BoxExecution {
                         declarations = selection.profile.completionDeclarations,
                         implicitReceivers = emptyList(),
                         classpathRootsOverride = stdlibRoots,
+                        jsTarget = true,
                     )
                     lastDetail = outcome.detail
                     success = outcome.result as? afield.CompletionResult.Success

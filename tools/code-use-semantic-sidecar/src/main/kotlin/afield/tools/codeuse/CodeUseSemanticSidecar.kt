@@ -154,6 +154,9 @@ data class CompletionRequest(
     val implicitReceivers: List<String> = emptyList(),
     /** Field's binary classpath (jars + build/classes) — `System.getProperty("java.class.path")`. */
     val classpathRoots: List<String> = emptyList(),
+    /** True for a `mainLanguage="kotlinjs"` box: filter JVM-only stdlib members that have no JS
+     *  equivalent (`stream`/`spliterator`/`toArray`/…). Default false → regular Kotlin is unaffected. */
+    val jsTarget: Boolean = false,
     val limit: Int = 200,
 )
 
@@ -675,6 +678,7 @@ private class K2CompletionAnalyzer(private val config: SidecarConfig) {
                 declarations = req.declarations,
                 implicitReceivers = req.implicitReceivers,
                 extraImports = req.imports,
+                jsTarget = req.jsTarget,
             )
         }
         val candidates = result.candidates.take(req.limit.coerceIn(1, 2000)).map { it.toVariant() }
