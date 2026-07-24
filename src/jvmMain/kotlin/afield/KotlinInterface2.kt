@@ -2502,12 +2502,15 @@ class KotlinInterface2(
         // disabled in editor-preview expansions where running user code is unwanted.
         val evalUnquote: ((String) -> String?)? = if (previewOnly) null else { snippet ->
             try {
-                // No implicit receivers: the snippet binds its metavars as plain `String` vals and
-                // otherwise runs against the box's REPL state (stdlib + already-compiled top-level
-                // declarations). updateContext=false keeps it side-effect-free.
-                val result = compileSnippetAndWait(snippet) { diags ->
+                // Compile+eval the snippet exactly as ordinary box code is run — with the box as the
+                // implicit receiver (box engines are built with one `Box` receiver, so snippets
+                // expect one at eval; passing none fails with "wrong number of arguments"). The
+                // snippet binds its metavars as `String` vals and runs against the box's REPL state
+                // (stdlib + top-level decls + box-scoped members). updateContext=false keeps it
+                // side-effect-free.
+                val result = compileSnippetAndWait(snippet, implicits = listOf(box)) { diags ->
                     lprintln("warning,macros", "rewrite unquote {} did not compile: ${diags.joinToString { it.message }}")
-                }?.evalAndWait(updateContext = false)
+                }?.evalAndWait(updateContext = false, implicits = listOf(box))
                 when (result) {
                     is ResultValue.Value -> result.value?.toString()
                     is ResultValue.Error -> {
