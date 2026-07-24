@@ -45,6 +45,20 @@ object Stmt : MetaKind
 /** A type reference (`KtTypeReference`). */
 object TypeRef : MetaKind
 
+/**
+ * A variadic hole: binds a *run* of call arguments (zero or more). Only meaningful inside an
+ * argument list. In `from` it consumes the matching arguments; in `to` it expands to them,
+ * comma-separated. Example:
+ * ```
+ * rewrite { first: Expr, rest: Vararg ->
+ *     from { log(first, rest) }
+ *     to { logger.info(first, rest) }
+ * }
+ * log(tag, a, b, c)   →   logger.info(tag, a, b, c)
+ * ```
+ */
+object Vararg : MetaKind
+
 private fun erased(what: String): Nothing =
     throw MacroRegistry.MacroExpansionProblem(
         "`$what` is expanded at macro time and must never be called directly — " +
@@ -66,6 +80,23 @@ fun from(pattern: () -> Unit): Unit = erased("from")
 
 /** The replacement (right-hand side) of a [rewrite] rule. Its body is quasiquoted, never evaluated. */
 fun to(replacement: () -> Unit): Unit = erased("to")
+
+/**
+ * Procedural unquote: inside a `to {}` body, `unquote { … }` runs Kotlin **at expansion time** and
+ * splices the block's `toString()` result into the emitted source. Each metavariable is available
+ * inside the block as a `String` holding its captured source text, so captures can be transformed
+ * as strings. The block runs in the box's REPL context, so it can call box-scoped helpers.
+ * ```
+ * rewrite { x: Ident ->
+ *     from { rev(x) }
+ *     to { unquote { x.reversed() } }
+ * }
+ * rev(hello)   →   olleh
+ * ```
+ * Evaluation is fail-soft (a compile/runtime error leaves the call in place with a diagnostic) and
+ * is skipped in editor-preview expansions.
+ */
+fun <T> unquote(block: () -> T): T = erased("unquote")
 
 /**
  * An optional preamble contribution. When the rule fires, the declarations in this block are
