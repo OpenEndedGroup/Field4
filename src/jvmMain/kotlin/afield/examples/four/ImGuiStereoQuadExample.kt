@@ -37,7 +37,7 @@ class ImGuiStereoQuadExample(
         )
         imgui.useWindowMouseEvents = false
 
-        imgui.loadFontFromResource("Iosevka-Light.ttf", sizePixels = 12f*4)
+        imgui.loadFontFromResource("IosevkaField-Light.ttf", sizePixels = 12f*4)
         imgui.addUi("demo") { gui { ImGui.showDemoWindow() } }
 
         // Render ImGui each frame.

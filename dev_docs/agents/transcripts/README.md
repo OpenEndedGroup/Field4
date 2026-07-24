@@ -91,6 +91,8 @@ For renderer boxes, keep `start(renderer::run)` as the final expression of the l
   opening the immersive space. A visionOS device or simulator is required for the native image.
 - `spin_glass.yaml`: a five-box **2D Edwards-Anderson spin glass**, Vulkan-compute accelerated, on a blank canvas — a renderer box, a "metropolis update" compute box (checkerboard / red-black Monte Carlo over Ising spins with random `+/-J` or Gaussian bonds and cosine simulated annealing, updating in-place `buffer_reference` buffers it publishes as props), a "measure" compute box (probes `vec2(spin, energy)` for every site via `{% include "fieldProbe" %}`, so the stats card's x-mean is the magnetization and its y-mean the energy per spin), and a "lattice view" draw box (a fullscreen triangle whose fragment shader reads the shared spins buffer and colours each cell). Requires a GPU/Vulkan window. Demonstrates a red-black compute update split into two dispatches per frame with a `computeMemoryBarrier` task between them, per-frame simulation state advanced from a leading `computeTask` "tick", and a `renderer -> update -> measure -> view` publish/read chain. Produces no image artifact itself — capture its native window with a follow-on `native-screenshot <path>` backdoor command (`--with-playwright`).
 
+- `imgui_vr_panel.yaml`: **Dear ImGui as an in-VR panel**. A renderer box plus a child box that runs `ImGuiVrPanelDemo` (`afield.examples.four`): an ImGui panel rendered to a texture, mapped onto a world-space `ImGuiPanel` quad, drawn once per eye by `SideBySideStereoTarget`, packed side-by-side, and blitted to the window. The mouse drives the mock controller ray (a real controller in XR); the hit is converted to panel UV and injected into ImGui. On Windows/Linux the same packed image feeds a headset via `OpenXRHmdTarget.copySideBySideToEyes`; macOS previews on the desktop. Requires a GPU/Vulkan window — capture with a follow-on `native-screenshot <path>` (`--with-playwright`). Functional coverage of the pipeline is the `examples.four.imgui-vr-panel-smoke` FIELD_TEST.
+
 ## Verified in CI — the executing harness
 
 Every transcript in this directory is exercised end-to-end by the FIELD_TEST
@@ -120,7 +122,7 @@ The harness classifies each transcript into exactly one bucket:
   (unresolved refs, ambiguous overloads). GLSL shader properties (`vertex`/`fragment`/`compute`) are
   not Kotlin and are not compiled here — they are exercised by the graphics render smokes. Current
   COMPILE-ONLY demos: `graphics_renderer_launch`, `afield_four_traditional_triangle`,
-  `recstl_playground`, `threebox`.
+  `recstl_playground`, `threebox`, `imgui_vr_panel`.
 
 **Adding a demo:** drop the `*.yaml` here, then add its `name` (the file's stem) to exactly one of
 `EXECUTE` or `COMPILE_ONLY` in `DemoTranscriptExecSmokeTest.kt`. An unclassified transcript fails the

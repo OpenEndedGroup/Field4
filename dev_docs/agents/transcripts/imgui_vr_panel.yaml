@@ -1,0 +1,70 @@
+name: imgui_vr_panel
+description: >
+  Dear ImGui as an in-VR panel. Drops in a Window + Renderer and a child box that
+  renders an ImGui panel to a texture, maps it onto a world quad shown in both eyes
+  of a side-by-side stereo target, and casts the mouse-driven controller ray at the
+  panel for hover/click. On Windows/Linux the same packed side-by-side image feeds a
+  real headset via OpenXRHmdTarget.copySideBySideToEyes; on macOS it previews on the
+  desktop window. Requires a GPU/Vulkan window; capture it with a follow-on
+  native-screenshot <path> (--with-playwright).
+operations:
+  # 1. renderer box — owns the on-screen Window + Renderer and pumps the loop.
+  - create:
+      box: imgui_vr_renderer
+      name: window + renderer
+      frame: { x: -640.0, y: -360.0, w: 240.0, h: 90.0 }
+      properties:
+        code: |
+          import afield.four.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+
+          Options.enableHDR = false
+
+          once.renderer {
+              window = Window("ImGui VR panel")
+              Renderer(window)
+          }
+
+          println("imgui vr renderer ready")
+          start(renderer::run)
+  # 2. panel box — builds the ImGui -> RTT -> stereo-quad -> side-by-side pipeline and
+  #    drives the controller ray from the mouse. This is the box you hack on.
+  - create:
+      box: imgui_vr_panel
+      name: imgui vr panel
+      frame: { x: -300.0, y: -220.0, w: 300.0, h: 160.0 }
+      properties:
+        code: |
+          // ImGui as a VR panel.
+          //
+          // ImGuiVrPanelDemo wires the whole pipeline: an ImGuiRenderToTexture drawn into an RTT,
+          // textured onto a world-space ImGuiPanel quad, rendered once per eye by
+          // SideBySideStereoTarget, packed side-by-side, and blitted to the window. The panel is
+          // interactive: the mock controller (here driven by the mouse) casts a ray, the hit is
+          // converted to panel UV, and injected into ImGui.
+          //
+          // Move the mouse to aim the ray; left-click to press. To bind the panel to a hand instead
+          // of a fixed point, call panel.place(handPos, handRight, handUp) each frame (see ImGuiPanel).
+          import afield.four.Renderer
+          import afield.four.modules.fromContext
+          import afield.four.targets.SideBySideStereoTarget
+          import afield.examples.four.ImGuiVrPanelDemo
+
+          val renderer: Renderer = fromContext()
+          val sbs = SideBySideStereoTarget(renderer)
+          val demo = ImGuiVrPanelDemo(renderer.window, renderer, sbs)
+          demo.build()
+
+          // Mouse drives the mock controller ray on the desktop (a real controller drives it in XR).
+          sbs.enableMouseController(distanceMeters = 0.001f)
+
+          println("imgui vr panel ready — move the mouse to aim the ray, click to press")
+  # 3. wire the panel box under the renderer so it inherits Window/Renderer from context.
+  - connect: { parent: imgui_vr_renderer, child: imgui_vr_panel }
+  # 4. launch the renderer first (it owns the loop), then the panel box.
+  - launch: { box: imgui_vr_renderer, property: code, strand: renderer }
+  - await: { wait: pending }
+  - launch: { box: imgui_vr_panel, property: code }
+  - await: { wait: pending }
