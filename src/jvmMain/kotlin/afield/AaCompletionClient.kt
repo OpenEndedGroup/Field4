@@ -30,6 +30,8 @@ object AaCompletionClient {
         val imports: List<String> = emptyList(),
         val implicitReceivers: List<String> = emptyList(),
         val classpathRoots: List<String> = emptyList(),
+        /** True for a KotlinJS box → the sidecar filters JVM-only stdlib members (no JS equivalent). */
+        val jsTarget: Boolean = false,
         val limit: Int = 200,
     )
 
@@ -102,6 +104,9 @@ object AaCompletionClient {
         // Restrict the analysis classpath (e.g. stdlib-only for KotlinJS boxes). Null = Field's full
         // classpath (the normal rich-completion universe).
         classpathRootsOverride: List<String>? = null,
+        // True for a KotlinJS box (compiled to JS, no JVM): the sidecar drops JVM-only stdlib members
+        // (`stream`/`spliterator`/`toArray`/…). Default false → regular Kotlin completion is unchanged.
+        jsTarget: Boolean = false,
     ): Outcome {
         endpoint() ?: return Outcome(null, "no-sidecar-url")
         val roots = classpathRootsOverride?.takeIf { it.isNotEmpty() } ?: classpathRoots
@@ -116,6 +121,7 @@ object AaCompletionClient {
                     declarations = declarations,
                     implicitReceivers = implicitReceivers,
                     classpathRoots = roots,
+                    jsTarget = jsTarget,
                 )
             )
             val request = HttpRequest.newBuilder(uri)

@@ -92,6 +92,48 @@ object KotlinJsCompletionSpikeTest {
         println("stdlib extensions surface: List 'xs.m' → ${candsC.filter { it.startsWith("map") }.take(4)}; " +
             "String 's.up' → ${candsD.filter { it.startsWith("upper") }}")
 
+        // --- Stage 2b: JVM-only stdlib members are filtered in kotlinjs mode ONLY ---
+        // A kotlinjs box compiles Kotlin→JS and runs in a head with no JVM, so JDK-augmented stdlib
+        // members (stream/parallelStream/spliterator/toArray on collections; chars/codePoints/getChars
+        // on String) must NOT be offered — they don't exist in the Kotlin/JS stdlib. But in normal
+        // Kotlin completion (jsTarget=false) they must still be present. Both directions are asserted.
+        val listDenied = setOf("stream", "parallelStream", "spliterator", "toArray")
+        val stringDenied = setOf("chars", "codePoints", "getChars")
+
+        val listSnippet = "fun main() { val xs = listOf(1,2,3)\n xs.\n}"
+        val listCursor = listSnippet.indexOf("xs.\n") + 3
+        val listJs = completeWithRetry(listSnippet, listCursor, roots, jsTarget = true) ?: emptyList()
+        val listJvm = completeWithRetry(listSnippet, listCursor, roots, jsTarget = false) ?: emptyList()
+        // (a) kotlinjs mode: denied members gone, but legit stdlib members/extensions survive.
+        require(listJs.none { it.trimEnd('(') in listDenied }) {
+            "kotlinjs List completion still leaks JVM-only members: ${listJs.filter { it.trimEnd('(') in listDenied }}"
+        }
+        require(listJs.any { it == "size" } && listJs.any { it.startsWith("iterator") }) {
+            "kotlinjs List completion over-filtered legit members (size/iterator missing): ${listJs.take(20)}"
+        }
+        // (b) normal Kotlin mode: the same members are STILL present (filter is kotlinjs-scoped).
+        require(listJvm.any { it.trimEnd('(') == "stream" } && listJvm.any { it.trimEnd('(') == "spliterator" }) {
+            "normal-mode List completion should still offer JVM members stream/spliterator, got: ${listJvm.take(30)}"
+        }
+        println("List 'xs.'  kotlinjs → JVM-only gone ${listDenied.filter { d -> listJs.none { it.trimEnd('(') == d } }}; " +
+            "normal → still present ${listDenied.filter { d -> listJvm.any { it.trimEnd('(') == d } }}")
+
+        val strSnippet = "fun main() { val s = \"hi\"\n s.\n}"
+        val strCursor = strSnippet.indexOf("s.\n") + 2
+        val strJs = completeWithRetry(strSnippet, strCursor, roots, jsTarget = true) ?: emptyList()
+        val strJvm = completeWithRetry(strSnippet, strCursor, roots, jsTarget = false) ?: emptyList()
+        require(strJs.none { it.trimEnd('(') in stringDenied }) {
+            "kotlinjs String completion still leaks JVM-only members: ${strJs.filter { it.trimEnd('(') in stringDenied }}"
+        }
+        require(strJs.any { it == "length" }) {
+            "kotlinjs String completion over-filtered legit members (length missing): ${strJs.take(20)}"
+        }
+        require(strJvm.any { it.trimEnd('(') == "chars" }) {
+            "normal-mode String completion should still offer JVM member chars, got: ${strJvm.take(30)}"
+        }
+        println("String 's.'  kotlinjs → JVM-only gone ${stringDenied.filter { d -> strJs.none { it.trimEnd('(') == d } }}; " +
+            "normal → still present ${stringDenied.filter { d -> strJvm.any { it.trimEnd('(') == d } }}")
+
         // --- Head declarations: the selected profile contributes a JVM-analysis-safe file model. ---
         val visionNames = "fun main() {\n  onFr\n}"
         val visionNameCands = completeWithRetry(
@@ -166,6 +208,7 @@ object KotlinJsCompletionSpikeTest {
         cursor: Int,
         roots: List<String>,
         declarations: String = "",
+        jsTarget: Boolean = true,
     ): List<String>? {
         var unreachable = true
         repeat(8) {
@@ -173,6 +216,7 @@ object KotlinJsCompletionSpikeTest {
                 snippet = snippet, cursor = cursor, preamble = "", implicitReceivers = emptyList(),
                 declarations = declarations,
                 classpathRootsOverride = roots,
+                jsTarget = jsTarget,
             )
             if (!outcome.detail.startsWith("no-sidecar") && !outcome.detail.startsWith("error") &&
                 !outcome.detail.startsWith("http")

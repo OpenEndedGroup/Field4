@@ -67,8 +67,22 @@ surface with `// {{ remoteAR }}` or `// {{ visionmetal }}`. Working and smoke-gu
    materials (MeshStandard/Lambert/Phong) and geometries (Plane/Cylinder/Torus), Texture. Purely
    additive, one `field()`/`fn()` each.
 4. **Completion polish** —
-   - Stage 2b: filter JVM-only members (`parallelStream`/`spliterator`/`toArray`) that don't exist in
-     a JS head (kotlinjs-scoped, so regular Kotlin completion is unaffected).
+   - **Stage 2b: DONE.** JVM-only stdlib members that have no Kotlin/JS equivalent are filtered out of
+     kotlinjs-scoped AA completion. An explicit `jsTarget` flag threads client → sidecar request →
+     `AaCompleter` (default `false`, so regular Kotlin completion — and the `completion_diff.py` corpus
+     gate, whose spike path never sets it — are byte-for-byte unaffected). The filter (`isJvmOnlyForJsTarget`
+     in `AaCompletion.kt`) is a hybrid: principled where possible (any `java.`/`javax.` type in a
+     member's signature → drop, catching `stream`/`parallelStream`/`spliterator`/`chars`/`codePoints`)
+     plus a small well-commented curated set (`JVM_ONLY_STDLIB_MEMBERS`: `toArray`/`getChars`/
+     `parallel`/`sequential`) for the residue that returns Kotlin types, gated on a `kotlin.*` receiver
+     so a user's own `fun stream()` is never hidden. The AA standalone session does not expose a clean
+     "JVM-platform-only" symbol flag, so a purely principled rule isn't sufficient (e.g. `toArray`
+     returns `kotlin.Array`). Grounded empirically against a stdlib-only completion on
+     List/Collection/MutableList/String. Verified both directions in `remotejs.kotlinjs-completion`
+     (kotlinjs → `stream`/`parallelStream`/`spliterator`/`toArray` + `chars`/`codePoints`/`getChars`
+     ABSENT; normal Kotlin → still PRESENT) and the corpus gate stays `VERDICT: PASS`. Honest residue:
+     the Java-21 `SequencedCollection` members (`getFirst`/`getLast`/`addFirst`/… on List) still surface
+     — left in deliberately pending a data-driven JS-klib diff, since Kotlin 2.x may provide them in JS.
    - Exact overload/signature ranking. `splitPreamble` now preserves parameters and completion
      de-duplication keeps distinct parameter lists; signature-help presentation and ranking still
      need a dedicated pass.
