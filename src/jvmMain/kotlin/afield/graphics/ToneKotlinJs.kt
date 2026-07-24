@@ -32,6 +32,7 @@ object ToneKotlinJs {
             // Marker base so `connect`/`chain` params accept any node. Open + empty: subclasses may
             // declare their own `toDestination()`/`connect()` returning their own type with no override.
             cls("ToneAudioNode") { open() }
+            cls("ToneEvent") { open() }
 
             // A Param/Signal value (`.value`, ramps). Used for volume/frequency/gain/bpm/wet/etc.
             cls("Param") {
@@ -49,9 +50,9 @@ object ToneKotlinJs {
             instrument("FMSynth") { frequencyLike() }
             instrument("DuoSynth") { frequencyLike() }
             instrument("MembraneSynth") { frequencyLike() }
-            instrument("MetalSynth") {}
+            instrument("MetalSynth", triggers = { percussionTriggers() }) {}
             instrument("PluckSynth") {}
-            instrument("NoiseSynth") {}
+            instrument("NoiseSynth", triggers = { percussionTriggers() }) {}
 
             // ---- sources (audio node + start/stop) ----
             source("Oscillator") {
@@ -114,10 +115,13 @@ object ToneKotlinJs {
                 ctor { param("frequency", JsType.DYNAMIC, "null"); param("delayTime", "Double", "3.5"); param("depth", "Double", "0.7") }
                 varProp("depth", "Double", completionInit = "0.7")
                 valProp("wet", "Param")
+                fn("sync", "Chorus")
+                fn("unsync", "Chorus")
             }
 
             // ---- global master output (getDestination()) ----
             cls("Destination") {
+                privateConstructor()
                 extends("ToneAudioNode")
                 valProp("volume", "Param")
                 varProp("mute", "Boolean", completionInit = "false")
@@ -125,6 +129,7 @@ object ToneKotlinJs {
 
             // ---- Transport: the global timeline (getTransport()) ----
             cls("Transport") {
+                privateConstructor()
                 valProp("bpm", "Param")
                 varProp("position", JsType("dynamic", "Any?"), completionInit = "\"0:0:0\"")
                 varProp("seconds", "Double", completionInit = "0.0")
@@ -145,7 +150,7 @@ object ToneKotlinJs {
 
             // ---- scheduling primitives ----
             cls("Loop") {
-                extends("ToneAudioNode")
+                extends("ToneEvent")
                 ctor { param("callback", timeCallback); param("interval", JsType("dynamic", "Any?"), "null") }
                 varProp("mute", "Boolean", completionInit = "false")
                 varProp("iterations", "Double", completionInit = "0.0")
@@ -155,7 +160,7 @@ object ToneKotlinJs {
                 fn("dispose", "Loop")
             }
             cls("Sequence") {
-                extends("ToneAudioNode")
+                extends("ToneEvent")
                 ctor {
                     param("callback", sequenceCallback)
                     param("events", "Array<Any?>", "null")
@@ -169,7 +174,7 @@ object ToneKotlinJs {
                 fn("dispose", "Sequence")
             }
             cls("Part") {
-                extends("ToneAudioNode")
+                extends("ToneEvent")
                 ctor { param("callback", sequenceCallback); param("events", "Array<Any?>", "null") }
                 varProp("loop", "Boolean", completionInit = "false")
                 fn("start", "Part") { param("time", "Double", "0.0") }
@@ -229,8 +234,6 @@ private fun TypeBuilder.audioNode(self: String) {
     fn("toDestination", self)
     fn("chain", self) { vararg("nodes", "ToneAudioNode") }
     fn("dispose", self)
-    fn("sync", self)
-    fn("unsync", self)
 }
 
 /** Monophonic note triggers (single note per call). */
@@ -241,6 +244,20 @@ private fun TypeBuilder.monoTriggers() {
     fn("triggerAttack", "Unit") { param("note", "String") }
     fn("triggerAttack", "Unit") { param("note", "String"); param("time", "Double") }
     fn("triggerAttack", "Unit") { param("note", "String"); param("time", "Double"); param("velocity", "Double") }
+    fn("triggerRelease", "Unit")
+    fn("triggerRelease", "Unit") { param("time", "Double") }
+}
+
+/** Percussive instruments (MetalSynth/NoiseSynth) take duration/time/velocity, not a pitch. */
+private fun TypeBuilder.percussionTriggers() {
+    fn("triggerAttackRelease", "Unit") { param("duration", "String") }
+    fn("triggerAttackRelease", "Unit") { param("duration", "String"); param("time", "Double") }
+    fn("triggerAttackRelease", "Unit") {
+        param("duration", "String"); param("time", "Double"); param("velocity", "Double")
+    }
+    fn("triggerAttack", "Unit")
+    fn("triggerAttack", "Unit") { param("time", "Double") }
+    fn("triggerAttack", "Unit") { param("time", "Double"); param("velocity", "Double") }
     fn("triggerRelease", "Unit")
     fn("triggerRelease", "Unit") { param("time", "Double") }
 }
@@ -264,12 +281,21 @@ private fun TypeBuilder.frequencyLike() {
 /** An instrument: audio node + a default no-arg-or-options ctor + note triggers + `volume`.
  *  Called inside `obj("Tone") { … }`, so the enclosing receiver is the Tone [TypeBuilder] and
  *  [TypeBuilder.cls] nests the class inside the `Tone` object. */
-private fun TypeBuilder.instrument(name: String, extra: TypeBuilder.() -> Unit) {
+private fun TypeBuilder.instrument(
+    name: String,
+    triggers: TypeBuilder.() -> Unit = { monoTriggers() },
+    extra: TypeBuilder.() -> Unit,
+) {
     cls(name) {
         audioNode(name)
         ctor { param("options", JsType.DYNAMIC, "null") }
         valProp("volume", "Param")
-        if (name == "PolySynth") extra() else { monoTriggers(); extra() }
+        if (name == "PolySynth") extra() else {
+            triggers()
+            extra()
+        }
+        fn("sync", name)
+        fn("unsync", name)
     }
 }
 
@@ -279,6 +305,8 @@ private fun TypeBuilder.source(name: String, extra: TypeBuilder.() -> Unit) {
         audioNode(name)
         fn("start", name) { param("time", "Double", "0.0") }
         fn("stop", name) { param("time", "Double", "0.0") }
+        fn("sync", name)
+        fn("unsync", name)
         extra()
     }
 }

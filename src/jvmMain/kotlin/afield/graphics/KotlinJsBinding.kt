@@ -65,6 +65,7 @@ class JsTypeDecl(
     val name: String,
     val isObject: Boolean,
     val open: Boolean,
+    val constructible: Boolean,
     val superType: String?,
     val ctor: List<JsParam>,
     val props: List<JsProp>,
@@ -173,6 +174,7 @@ class TypeBuilder(
     private val completionOnly: Boolean = false,
 ) {
     private var open = false
+    private var constructible = true
     private var superType: String? = null
     private val ctor = mutableListOf<JsParam>()
     private val props = mutableListOf<JsProp>()
@@ -180,6 +182,8 @@ class TypeBuilder(
     private val nested = mutableListOf<JsTypeDecl>()
 
     fun open() { open = true }
+    /** Model a runtime-owned singleton/result type that user code may receive but cannot construct. */
+    fun privateConstructor() { constructible = false }
     fun extends(base: String) { superType = base }
     fun ctor(build: ParamsBuilder.() -> Unit) { ctor += ParamsBuilder().apply(build).params }
 
@@ -224,7 +228,7 @@ class TypeBuilder(
         nested += TypeBuilder(name).apply(build).build()
     }
 
-    fun build() = JsTypeDecl(name, isObject, open, superType, ctor, props, funs, nested, completionOnly)
+    fun build() = JsTypeDecl(name, isObject, open, constructible, superType, ctor, props, funs, nested, completionOnly)
 }
 
 class ParamsBuilder {
@@ -271,7 +275,9 @@ private class JsBindingRenderer(private val external: Boolean) {
             append(t.name)
         }
         sb.append(indent).append(kw)
-        if (!t.isObject && t.ctor.isNotEmpty()) {
+        if (!t.isObject && !t.constructible) {
+            sb.append(" private constructor()")
+        } else if (!t.isObject && t.ctor.isNotEmpty()) {
             sb.append("(").append(t.ctor.joinToString(", ") { renderParam(it) }).append(")")
         }
         t.superType?.let { sb.append(" : ").append(it).append(if (external) "" else "()") }

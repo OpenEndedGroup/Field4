@@ -62,6 +62,23 @@ object KotlinJsToneSurfaceSmokeTest {
         require(compiler.contains("value: dynamic")) { "Sequence callback value must be `dynamic` for the compiler" }
         require(completion.contains("value: Any?")) { "Sequence callback value must be `Any?` for completion" }
 
+        // Runtime-shape grounding: Tone's global Transport/Destination are singleton values, its
+        // scheduling primitives are ToneEvents (not connectable audio nodes), and percussive synths
+        // do not take pitched-note trigger signatures.
+        require(compiler.contains("class Transport private constructor()")) { "Transport must not be constructible" }
+        require(compiler.contains("class Destination private constructor()")) { "Destination must not be constructible" }
+        require(completion.contains("class Loop") && completion.contains(": ToneEvent()")) {
+            "Loop/Sequence/Part must use the ToneEvent shape"
+        }
+        val metalBlock = compiler.substringAfter("class MetalSynth").substringBefore("class PluckSynth")
+        require("duration: String" in metalBlock && "note: String" !in metalBlock) {
+            "MetalSynth must expose percussive, not pitched-note, triggers"
+        }
+        val gainBlock = compiler.substringAfter("class Gain").substringBefore("class Volume")
+        require("fun sync(" !in gainBlock && "fun unsync(" !in gainBlock) {
+            "ordinary effects must not inherit nonexistent sync/unsync methods"
+        }
+
         // Compiler-only glue must not leak into completion.
         require(compiler.contains("__toneLog")) { "compiler missing log glue" }
         require(!completion.contains("__toneLog")) { "completion must not carry compiler-only glue" }

@@ -60,16 +60,24 @@ object KotlinJsHeadProfilesSmokeTest {
 
         val toneSource = """
             // {{ tone }}
-            val synth = Tone.PolySynth()
-            val reverb = Tone.Reverb(2.5)
-            reverb.toDestination()
-            synth.connect(reverb)
-            val transport = Tone.getTransport()
-            transport.bpm.value = 120.0
-            transport.scheduleRepeat({ time -> synth.triggerAttackRelease("C4", "8n", time) }, "4n")
-            Tone.start()
-            transport.start()
-            log("tone-runtime " + transport.bpm.value)
+            onStart {
+                val synth = Tone.PolySynth()
+                val reverb = Tone.Reverb(2.5)
+                reverb.toDestination()
+                synth.connect(reverb)
+                val transport = Tone.getTransport()
+                transport.bpm.value = 120.0
+                val event = transport.scheduleRepeat({ time -> synth.triggerAttackRelease("C4", "8n", time) }, "4n")
+                Tone.start()
+                transport.start()
+                log("tone-runtime " + transport.bpm.value)
+                onStop {
+                    transport.clear(event)
+                    transport.stop()
+                    synth.dispose()
+                    reverb.dispose()
+                }
+            }
         """.trimIndent()
         val tone = KotlinJsHeadProfiles.resolve(toneSource)
         require(tone.profile === KotlinJsHeadProfiles.tone)
@@ -248,7 +256,7 @@ object KotlinJsHeadProfilesSmokeTest {
             disconnect() { return this; }
             toDestination() { rec("toDestination"); return this; }
             chain() { rec("chain"); return this; }
-            dispose() { return this; } sync() { return this; } unsync() { return this; }
+            dispose() { rec("dispose"); return this; } sync() { return this; } unsync() { return this; }
         }
         class Instrument extends Node {
             constructor() { super(); this.volume = new Param(0); this.frequency = new Param(0); this.detune = new Param(0); }
@@ -259,11 +267,16 @@ object KotlinJsHeadProfilesSmokeTest {
         class Transport {
             constructor() { this.bpm = new Param(120); this.position = "0:0:0"; this.seconds = 0; this.swing = 0; this.loop = false; this.state = "stopped"; }
             start() { rec("transport.start"); this.state = "started"; return this; }
-            stop() { return this; } pause() { return this; } cancel() { return this; }
+            stop() { rec("transport.stop"); return this; } pause() { return this; } cancel() { return this; }
             scheduleRepeat(cb) { rec("scheduleRepeat"); this._cb = cb; return 1; }
-            scheduleOnce() { return 2; } clear() { return this; }
+            scheduleOnce() { return 2; } clear() { rec("transport.clear"); return this; }
         }
         const __transport = new Transport();
+        let __toneStop = null;
+        function __fieldOnStart(callback) { callback(); }
+        function __fieldOnStop(callback) { __toneStop = callback; }
+        function __fieldOnFrame(_callback) {}
+        function __fieldKeepAlive() {}
         const Tone = {
             version: "15.1.22",
             PolySynth: class extends Instrument {}, Synth: class extends Instrument {}, MonoSynth: class extends Instrument {},
@@ -293,6 +306,14 @@ object KotlinJsHeadProfilesSmokeTest {
         if (typeof __transport._cb !== "function") throw new Error("scheduleRepeat callback not registered");
         __transport._cb(0.5);
         if (!__calls.includes("triggerAttackRelease")) throw new Error("scheduled callback did not trigger the synth");
+        if (typeof __toneStop !== "function") throw new Error("onStop cleanup not registered");
+        __toneStop();
+        for (const expected of ["transport.clear", "transport.stop"]) {
+            if (!__calls.includes(expected)) throw new Error("missing cleanup " + expected + " in " + JSON.stringify(__calls));
+        }
+        if (__calls.filter(it => it === "dispose").length !== 2) {
+            throw new Error("expected synth and reverb disposal: " + JSON.stringify(__calls));
+        }
         console.log("tone-profile-ok");
     """.trimIndent()
 
