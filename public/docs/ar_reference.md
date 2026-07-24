@@ -2,7 +2,7 @@
 
 Field's browser graphics head lives at:
 
-```text
+```diffstatic {data-lang=text}
 https://FIELD_HOST:9092/extensions/remote_ar/index.html
 ```
 
@@ -26,11 +26,30 @@ The older `isRemoteJSRoot` property is still recognized when opening historical 
 
 The checked-in `remote` and `advanced_remote` templates contain examples of FLine geometry, assets, animation, and interaction.
 
+## Preview the head inside Field
+
+You do not need a phone or headset to see the head. `remoteAr()` embeds it in a box's output pane and opens it, so the live A-Frame/Three.js scene renders right on the canvas beside your code. On a desktop browser it runs in flat mode; the same embed enters AR/VR on a device or the Endrun iOS app.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/ar_reference/remote-ar-head.png" capture="box" name="ar-reference-remote-ar-head" wait="8" timeout="120" open-outputs="true" padding="18" embed=true alt="The RemoteJS/WebXR head embedded in a Field box output pane, connected and self-tested" w="1000" h="220"}
+remoteAr(debug = true, selfTest = true)
+```
+
+`debug = true` shows the status panel (connection, A-Frame/Three.js versions, XR platform); `selfTest = true` runs the head's in-browser self-test on boot and reports pass/fail. The iframe carries the class `field-remote-ar-head` so page scripts and tests can target it. `remoteAr()` is a thin convenience over assigning the iframe into a box output channel yourself and opening it:
+
+```diffstatic {data-lang=kotlin}
+display("remote-ar", """
+<iframe src="/extensions/remote_ar/index.html?debug=1"
+        allow="xr-spatial-tracking; fullscreen"
+        style="display:block;width:960px;height:540px;border:0;background:#000"></iframe>
+""".trimIndent())
+displayOpen("remote-ar")
+```
+
 ## FLine graphics
 
 `FLine` is a small path representation backed by Three.js `BufferGeometry`. Assigning an FLine into `stage` creates or updates its stroke, fill, and/or point geometry.
 
-```javascript
+```diffstatic {data-lang=javascript}
 var triangle = new FLine()
 triangle.moveTo(0, 0, -1)
 triangle.lineTo(0.25, 0, -1)
@@ -44,7 +63,7 @@ stage.triangle = triangle
 
 Paths support numeric coordinates or Three.js vectors, `moveTo`, `lineTo`, `cubicTo`, per-vertex `uv` and `vcolor`, transforms, strokes, triangulated fills, and points. Reassign the same `stage` property after changing the path to update its buffers. Delete the property to remove the geometry:
 
-```javascript
+```diffstatic {data-lang=javascript}
 delete stage.triangle
 ```
 
@@ -56,7 +75,7 @@ glTF is the preferred animated asset format. `loadFBX` now fails with an explici
 
 `launch` schedules a function on the same A-Frame tick that renders the Three.js/WebXR scene:
 
-```javascript
+```diffstatic {data-lang=javascript}
 launch(function () {
     triangle = triangle + vec(0.001, 0, 0)
     stage.triangle = triangle
@@ -69,7 +88,7 @@ The optional third argument controls one-shot behavior. `false` keeps the functi
 
 Global callbacks receive pointer/touch events after a Three.js raycast:
 
-```javascript
+```diffstatic {data-lang=javascript}
 mouseDown.place = function (event) {
     print(event.hit)
 }
@@ -77,7 +96,7 @@ mouseDown.place = function (event) {
 
 An FLine can also own callbacks. They run only when the ray intersects that line's stroke, fill, or points:
 
-```javascript
+```diffstatic {data-lang=javascript}
 triangle.mouseDown.select = function (event) {
     print(event.intersection.point)
 }
@@ -87,7 +106,7 @@ The per-line callback maps are `mouseDown`, `mouseUp`, `mouseMove`, and `dblClic
 
 For XR-specific work:
 
-```javascript
+```diffstatic {data-lang=javascript}
 var removeHitListener = onXRHit(function (hit) {
     // hit.position is a THREE.Vector3 in local-floor space
 })
@@ -111,14 +130,14 @@ Every execution carries a stable `box_NAME|UUID` source name. Runtime failures a
 
 Append `?selftest=1&debug=1` to the head URL. The small status panel shows the connection, dependency versions, WebXR platform, and self-test result. Automation can read:
 
-```javascript
+```diffstatic {data-lang=javascript}
 window.__fieldRemoteHead.snapshot()
 await window.__fieldRemoteHead.selfTest()
 ```
 
 The self-test checks the vendored A-Frame/Three pairing, scene setup, sandbox storage, runtime completion, source-mapped errors, FLine stroke/cubic geometry, hit callback surfaces, glTF loader, and a complete task lifecycle driven by A-Frame's frame loop. The browser regression additionally creates a real RemoteJS language root in Field, runs a child box through the WebSocket, observes `42` in the head, and captures the status panel:
 
-```bash
+```diffstatic {data-lang=bash}
 uv run --project . --group backdoor python tools/run_ui_regressions.py \
   --id remote-ar-head --port 9490 --timeout 45
 ```
@@ -129,6 +148,6 @@ The test is a desktop check of the full transport and rendering head. Camera per
 
 The head loads local copies of A-Frame 1.8.0, its matching `super-three` 0.184.0, and Tone.js 15.1.22 from `extensions/remote_ar/vendor/`. Licenses, package metadata, archive checksums, and refresh instructions live beside them. To reproduce the vendor tree:
 
-```bash
+```diffstatic {data-lang=bash}
 python3 tools/vendor_remote_ar_runtime.py
 ```
