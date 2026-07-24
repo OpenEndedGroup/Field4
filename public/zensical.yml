@@ -31,6 +31,7 @@ nav:
       - Automating Field: automating_field.md
       - Agent Transcript Gallery: agent_transcripts.md
       - Field Systems:
+        - RemoteJS & WebXR: ar_reference.md
         - Apple Vision Pro (WiP): vision.md
         - Fabricate Renderer: fabricate_renderer.md
         - Ray Tracing Examples: ray_tracing_examples.md

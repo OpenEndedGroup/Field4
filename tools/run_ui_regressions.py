@@ -307,6 +307,36 @@ return {
 };
 """
 
+REMOTE_AR_EMBED_ASSERT_JS = """\
+const frame = document.querySelector("iframe.field-remote-ar-head");
+const remoteDocument = frame?.contentDocument;
+const status = remoteDocument?.getElementById("field-remote-status");
+const deadline = Date.now() + 20000;
+while (!status?.dataset?.selfTestReport && Date.now() < deadline) {
+  await new Promise((resolve) => setTimeout(resolve, 100));
+}
+const report = status?.dataset?.selfTestReport ? JSON.parse(status.dataset.selfTestReport) : null;
+const selfTest = remoteDocument?.documentElement?.dataset?.fieldRemoteSelfTest || "missing";
+const connection = status?.dataset?.state || null;
+const failedChecks = (report?.results || []).filter((item) => !item.ok).map((item) => item.name);
+return {
+  ok: !!frame &&
+    selfTest === "pass" &&
+    report?.ok === true &&
+    !!report?.snapshot?.aframe &&
+    !!report?.snapshot?.three,
+  reason: !frame ? "no iframe.field-remote-ar-head found in the box output pane" :
+    (failedChecks.length ? `failed head checks: ${failedChecks.join(", ")}` :
+      `selfTest=${selfTest}, aframe=${report?.snapshot?.aframe}, three=${report?.snapshot?.three}, connection=${connection}`),
+  selfTest,
+  connection,
+  aframe: report?.snapshot?.aframe || null,
+  three: report?.snapshot?.three || null,
+  websocketOpen: report?.snapshot?.websocketOpen ?? null,
+  checks: report?.results || []
+};
+"""
+
 MACRO_TRANSCRIPT_PANEL_BATCH_MACRO = """\
 name: ui-regression-panel-batch
 description: Browser regression fixture for macro launch batch completion.
@@ -2590,6 +2620,7 @@ def prepare_generated_files() -> dict[str, Path]:
         "remote_ar_navigate_js": write_generated_file("remote-ar-navigate.js", REMOTE_AR_NAVIGATE_JS),
         "remote_ar_assert_js": write_generated_file("remote-ar-assert.js", REMOTE_AR_ASSERT_JS),
         "remote_ar_single_error_js": write_generated_file("remote-ar-single-error.js", REMOTE_AR_SINGLE_ERROR_JS),
+        "remote_ar_embed_assert_js": write_generated_file("remote-ar-embed-assert.js", REMOTE_AR_EMBED_ASSERT_JS),
     }
 
 
@@ -2689,6 +2720,17 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 shell_join(["page-eval", "--body", "--file", str(files["remote_ar_single_error_js"]), "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--uid", "hello world", "--with-editor", "--no-pan", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="remote-ar-embed",
+            description="Box.remoteAr() embeds the RemoteJS/WebXR head in a box output pane; the head boots, connects, and passes its in-browser self-test entirely inside the embedded iframe on the canvas.",
+            commands=[
+                "new-box --name RemoteArEmbedRegression --w 1000 --h 220",
+                shell_join(["run", "@last", "--value", "remoteAr(debug = true, selfTest = true)", "--timeout", timeout_text]),
+                "sleep 3.0",
+                shell_join(["page-eval", "--body", "--file", str(files["remote_ar_embed_assert_js"]), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "18", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
         ),
         UiRegression(
             id="toast-restack",

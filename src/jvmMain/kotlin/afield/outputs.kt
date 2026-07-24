@@ -694,6 +694,46 @@ fun Box.column(channel: String = "debug", a : Any?) {
 """)
 }
 
+/**
+ * Embeds Field's RemoteJS / WebXR browser head in this box's output pane and opens it, so the
+ * live A-Frame / Three.js scene renders right on the canvas beside the box. This is the same page
+ * served at `/extensions/remote_ar/index.html`; it connects back to the Field server over
+ * WebSocket and executes Javascript RemoteJS boxes. See `docs/ar_reference.md`.
+ *
+ * The iframe carries the class `field-remote-ar-head`, so it can be targeted from tests or page
+ * scripts. On a desktop browser the head runs in flat mode (no immersive XR session); the same
+ * embed enters AR/VR on a headset or the Endrun iOS app.
+ *
+ * @param channel output-area channel the head is shown on (also its disclosure title)
+ * @param width iframe width in CSS pixels
+ * @param height iframe height in CSS pixels
+ * @param debug show the head's status panel (connection, A-Frame/THREE versions, XR platform)
+ * @param selfTest run the head's in-browser self-test on boot and surface pass/fail in the panel
+ */
+fun Box.remoteAr(
+    channel: String = "remote-ar",
+    width: Int = 960,
+    height: Int = 540,
+    debug: Boolean = true,
+    selfTest: Boolean = false,
+) {
+    val query = buildList {
+        if (debug) add("debug=1")
+        if (selfTest) add("selftest=1")
+    }.joinToString("&")
+    val suffix = if (query.isEmpty()) "" else "?$query"
+    display(channel, """
+<iframe
+  class="field-remote-ar-head"
+  src="/extensions/remote_ar/index.html$suffix"
+  allow="xr-spatial-tracking; fullscreen"
+  data-afield-autosize="off"
+  style="display:block;width:${width}px;height:${height}px;border:0;background:#000">
+</iframe>
+""".trimIndent())
+    displayOpen(channel)
+}
+
 fun Box.logs(
     channel: String = "internal logging",
     filter: LogStream.Filter = LogStream.Filter(),
