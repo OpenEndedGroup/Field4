@@ -9,6 +9,7 @@ import afield.macros.Insert
 import afield.macros.MacroRegistry
 import afield.macros.PatternRewrite
 import afield.macros.gatherPreambleUpwards
+import afield.macros.searchUpwards
 import afield.macros.resolvePatternRewriteAi
 import afield.stdlib.applyInsertToPreamble
 import afield.stdlib.normalizePreambleText
@@ -2520,6 +2521,18 @@ class KotlinInterface2(
                 null
             }
         }
+        // Ambient rules: `rewrite {}` rules declared in an ancestor box apply to this box's code too.
+        // We read each ancestor's source `code` directly (so a rule is ambient the moment it is
+        // *written* in a parent — the parent need not have run). searchUpwards visits this box first
+        // — skip it, since its live rules are already in `s` — then all ancestors, nearest first. The
+        // `"rewrite" in code` pre-filter avoids parsing ancestor code that declares no rules.
+        val ambientRuleSources = mutableListOf<String>()
+        var isSelf = true
+        searchUpwards(box, "code") { code ->
+            if (isSelf) isSelf = false
+            else if (code != null && "rewrite" in code) ambientRuleSources += code
+        }
+
         val expansion = PatternRewrite.expand(
             s,
             parse = { txt ->
@@ -2527,6 +2540,7 @@ class KotlinInterface2(
                     .createFileFromText(Language.findLanguageByID("kotlin")!!, txt) as KtFile
             },
             evalUnquote = evalUnquote,
+            ambientRuleSources = ambientRuleSources,
             onDiagnostic = { msg -> lprintln("warning,macros", msg) },
         )
         if (!previewOnly) {
@@ -2633,6 +2647,18 @@ class KotlinInterface2(
             } while (needsRerun)
 
             lprintln("debug,kotlin", "final string is:\n$rewritten")
+        }
+        // Surface the exact post-expansion source handed to the compiler (execute path only, and
+        // only when macro expansion actually changed the code), to aid debugging rewrite/unquote/
+        // builtin-macro output. Toggle with -Dafield.macros.logExpanded=false.
+        if (!previewOnly && KotlinEngineConfig.logExpandedMacros && rewritten != s) {
+            lprintln(
+                "info,macros",
+                "macro-expanded source for box '${box.name.ifBlank { box.id }}' (sent to the Kotlin compiler):\n" +
+                        "┌────────────────────────────────────────────────────────────\n" +
+                        rewritten.lines().joinToString("\n") { "│ $it" } +
+                        "\n└────────────────────────────────────────────────────────────"
+            )
         }
         return rewritten
     }

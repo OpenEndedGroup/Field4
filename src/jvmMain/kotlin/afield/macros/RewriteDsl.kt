@@ -83,18 +83,25 @@ fun to(replacement: () -> Unit): Unit = erased("to")
 
 /**
  * Procedural unquote: inside a `to {}` body, `unquote { … }` runs Kotlin **at expansion time** and
- * splices the block's `toString()` result into the emitted source. Each metavariable is available
- * inside the block as a `String` holding its captured source text, so captures can be transformed
- * as strings. The block runs in the box's REPL context, so it can call box-scoped helpers.
+ * splices the block's `toString()` result into the emitted source **as Kotlin source code**. Each
+ * metavariable is available inside the block as a `String` holding its captured source text, so
+ * captures can be transformed as strings. The block runs in the box's REPL context, so it can call
+ * box-scoped helpers.
+ *
+ * IMPORTANT: the result is spliced verbatim as *code*, so produce valid Kotlin. To emit a string
+ * *value*, produce a quoted literal — e.g. reversing an identifier into a string literal:
  * ```
  * rewrite { x: Ident ->
  *     from { rev(x) }
- *     to { unquote { x.reversed() } }
+ *     to { unquote { "\"" + x.reversed() + "\"" } }
  * }
- * rev(hello)   →   olleh
+ * rev(hello)   →   "olleh"        // a String literal, not a bare identifier
  * ```
- * Evaluation is fail-soft (a compile/runtime error leaves the call in place with a diagnostic) and
- * is skipped in editor-preview expansions.
+ * (Emitting `unquote { x.reversed() }` would splice the bare token `olleh`, an unresolved reference.)
+ *
+ * Evaluation is fail-soft: on the execute path a failing block becomes a compiling `error(...)`
+ * stand-in with a logged diagnostic; in editor-preview expansions the call becomes `TODO()` (a
+ * well-typed placeholder) since user code is not run there.
  */
 fun <T> unquote(block: () -> T): T = erased("unquote")
 
