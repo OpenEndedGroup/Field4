@@ -711,6 +711,15 @@ object KotlinEngineConfig {
      * Set to false to force compilation on the calling dispatcher (legacy behaviour).
      */
     var offloadCompilation: Boolean = System.getProperty("afield.kotlin.offloadCompilation", "true").toBoolean()
+
+    /**
+     * When true (the default), [KotlinScriptEngine.applyMacros] prints the post-macro-expansion
+     * source — the code actually handed to the Kotlin compiler — to the terminal whenever macro
+     * expansion changed the code (execute path only, never editor previews). Invaluable for
+     * debugging `rewrite {}`/`unquote {}`/builtin-macro output. Disable with
+     * `-Dafield.macros.logExpanded=false`.
+     */
+    var logExpandedMacros: Boolean = System.getProperty("afield.macros.logExpanded", "true").toBoolean()
 }
 
 

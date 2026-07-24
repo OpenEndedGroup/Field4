@@ -2,9 +2,11 @@ package afield
 
 import afield.macros.PatternRewrite
 import afield.macros.resolvePatternRewriteAi
+import afield.macros.standardExecutionPractice
 import com.facebook.ktfmt.format.Parser
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlin.script.experimental.api.KotlinType
 import org.jetbrains.kotlin.psi.KtFile
 
 /*
@@ -57,7 +59,9 @@ object PatternRewriteSmokeTest {
             testVariadicHoleWithFixedArgs()
             testVariadicEmptyRun()
             testUnquoteWiringWithFakeEvaluator()
+            testUnquotePreviewPlaceholder()
             testUnquoteEndToEnd()
+            testUnquoteViaFullExecutePath()
             testAmbientRuleApplies()
             testLocalRuleOverridesAmbient()
             testLocalRuleSourcesCaptured()
@@ -314,21 +318,63 @@ object PatternRewriteSmokeTest {
         require("x.reversed()" in snippet) { "snippet must contain the block body: $snippet" }
     }
 
-    /** End-to-end: through the real engine, `unquote {}` actually runs Kotlin at expansion time. */
+    /** Editor-preview (no evaluator): `unquote {}` becomes a well-typed `TODO()`, not a raw call. */
+    private fun testUnquotePreviewPlaceholder() {
+        val rule = "rewrite { x: Ident -> from { rev(x) }; to { unquote { x.reversed() } } }"
+        val res = expand("$rule\nrev(hello)")   // no evalUnquote => preview semantics
+        require("TODO()" in res.text) { "preview should splice a TODO() placeholder: ${res.text}" }
+        require("unquote" !in res.text) { "the erased unquote call must not survive into preview code: ${res.text}" }
+    }
+
+    /** End-to-end: `unquote {}` runs Kotlin at expansion time; its result is spliced as source. */
     private fun testUnquoteEndToEnd() = runBlocking {
         val ki = KotlinInterface2(filePrefix = "unquote-e2e")
         val box = Box("unquote-e2e")
         withTimeout(120_000) { ki.exec("1 + 1") }   // warm the REPL (a live box is always warmed before edits)
+        // The block produces a quoted string literal so the spliced code is valid Kotlin.
         val src = """
             rewrite { x: Ident ->
                 from { rev(x) }
-                to { unquote { x.reversed() } }
+                to { unquote { "\"" + x.reversed() + "\"" } }
             }
             rev(hello)
         """.trimIndent()
         val expanded = withTimeout(120_000) { ki.applyMacros(box, src) }
-        require("olleh" in expanded) { "unquote must eval x.reversed() at expansion time: $expanded" }
+        require("\"olleh\"" in expanded) { "unquote must eval to a quoted literal at expansion time: $expanded" }
         require("unquote" !in expanded && "rev(" !in expanded) { "the rule + unquote call must be gone: $expanded" }
+    }
+
+    /** Reproduces the live-box path: `unquote {}` must expand AND the result must compile + evaluate. */
+    private fun testUnquoteViaFullExecutePath() = runBlocking {
+        // Construct the engine as real boxes do — with a Box implicit receiver — so the box code
+        // executes with `implicits = listOf(box)` (matching standardExecutionPractice below).
+        val ki = KotlinInterface2(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = "unquote-exec")
+        val box = Box("unquote-exec")
+        withTimeout(120_000) { ki.exec("1 + 1", implicits = listOf(box)) }
+        val src = "import afield.macros.unquote\n" +
+            "rewrite { x: Ident -> from { rev(x) }; to { unquote { \"\\\"\" + x.reversed() + \"\\\"\" } } }\n" +
+            "rev(hello)"
+        var compileErr = ""
+        var evalErr = ""
+        var evalException: Throwable? = null
+        val results = withTimeout(120_000) {
+            standardExecutionPractice(
+                ki, src,
+                onCompileError = { ds -> compileErr = ds.joinToString { it.message } },
+                onEvalError = { ds -> evalErr = ds.joinToString { it.message } },
+                onEvalException = { t -> evalException = t },
+                implicits = listOf(box),
+                runSetupBlocks = false,
+            )
+        }
+        println("  [exec-path] compileErr='$compileErr' evalErr='$evalErr' exc=${evalException?.message} results=$results")
+        // The bug this guards: the un-expanded `unquote {}` reaching the compiler ("cannot infer T",
+        // or a bare identifier "unresolved reference"). A clean compile + eval proves it expanded.
+        require(compileErr.isBlank()) { "unquote via the execute path should compile, got: $compileErr" }
+        require(evalErr.isBlank() && evalException == null) {
+            "unquote via the execute path should evaluate cleanly, got: $evalErr / ${evalException?.message}"
+        }
+        require(results.isNotEmpty()) { "execute path should produce a result" }
     }
 
     // ---- ambient (inherited) rules --------------------------------------------------------------

@@ -2648,6 +2648,18 @@ class KotlinInterface2(
 
             lprintln("debug,kotlin", "final string is:\n$rewritten")
         }
+        // Surface the exact post-expansion source handed to the compiler (execute path only, and
+        // only when macro expansion actually changed the code), to aid debugging rewrite/unquote/
+        // builtin-macro output. Toggle with -Dafield.macros.logExpanded=false.
+        if (!previewOnly && KotlinEngineConfig.logExpandedMacros && rewritten != s) {
+            lprintln(
+                "info,macros",
+                "macro-expanded source for box '${box.name.ifBlank { box.id }}' (sent to the Kotlin compiler):\n" +
+                        "┌────────────────────────────────────────────────────────────\n" +
+                        rewritten.lines().joinToString("\n") { "│ $it" } +
+                        "\n└────────────────────────────────────────────────────────────"
+            )
+        }
         return rewritten
     }
 

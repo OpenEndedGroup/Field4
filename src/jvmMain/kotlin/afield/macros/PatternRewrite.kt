@@ -534,13 +534,20 @@ object PatternRewrite {
             .filter { (it.calleeExpression as? KtNameReferenceExpression)?.getReferencedName() == "unquote" }
         val unquoteRanges = unquoteCalls.map { it.textRange.startOffset until it.textRange.endOffset }
         fun insideUnquote(offset: Int) = unquoteRanges.any { offset in it }
-        if (evalUnquote != null) {
-            unquoteCalls.forEach { call ->
-                val body = call.lambdaArguments.firstOrNull()?.getLambdaExpression()?.bodyExpression?.text
-                    ?: return@forEach
-                val spliced = evalUnquote(buildUnquoteSnippet(binds.scalar, body)) ?: call.text
-                edits += Triple(call.textRange.startOffset - base, call.textRange.endOffset - base, spliced)
+        unquoteCalls.forEach { call ->
+            val body = call.lambdaArguments.firstOrNull()?.getLambdaExpression()?.bodyExpression?.text
+                ?: return@forEach
+            val spliced = when {
+                // Editor preview: we don't run user code, so leave a well-typed placeholder. `TODO()`
+                // has type Nothing, so it fits any expected type — the analyzer stays quiet instead
+                // of choking on the erased generic `unquote {}`.
+                evalUnquote == null -> "TODO()"
+                // Execute: run the block; on failure emit a clear compiling stand-in (Nothing type)
+                // rather than the raw `unquote {}` (which the compiler can't make sense of).
+                else -> evalUnquote(buildUnquoteSnippet(binds.scalar, body))
+                    ?: "error(\"rewrite unquote {} failed to evaluate — see log\")"
             }
+            edits += Triple(call.textRange.startOffset - base, call.textRange.endOffset - base, spliced)
         }
 
         // Declaration name identifiers. A metavar in a *declaration-name* position (e.g. the `n` of
