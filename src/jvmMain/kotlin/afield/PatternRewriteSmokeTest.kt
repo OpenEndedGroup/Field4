@@ -53,6 +53,11 @@ object PatternRewriteSmokeTest {
             testGuardKindPredicates()
             testGuardBooleanCombinators()
             testCoercionIdiomTerminates()
+            testVariadicHoleWholeArgList()
+            testVariadicHoleWithFixedArgs()
+            testVariadicEmptyRun()
+            testUnquoteWiringWithFakeEvaluator()
+            testUnquoteEndToEnd()
             testGensymHygiene()
             testProvideProducesKeyedPreamble()
             testProvideDedupAndDistinctKeys()
@@ -87,9 +92,13 @@ object PatternRewriteSmokeTest {
         val diagnostic: String?,
     )
 
-    private fun expand(src: String, maxIterations: Int = 64): Result {
+    private fun expand(
+        src: String,
+        maxIterations: Int = 64,
+        evalUnquote: ((String) -> String?)? = null,
+    ): Result {
         var diag: String? = null
-        val out = PatternRewrite.expand(src, ::parse, maxIterations) { diag = it }
+        val out = PatternRewrite.expand(src, ::parse, maxIterations, evalUnquote) { diag = it }
         return Result(out.text, out.preambleBlocks, out.aiRequests, diag)
     }
 
@@ -257,6 +266,63 @@ object PatternRewriteSmokeTest {
         require("f(coerce(::f, SomeType::class, a))" in res.text) { "atomic arg wrapped once: ${res.text}" }
         require("f(coerce(::f, SomeType::class, (b + 1)))" in res.text) { "non-atomic arg paren-guarded: ${res.text}" }
         require("coerce(::f, SomeType::class, coerce(" !in res.text) { "must not double-wrap: ${res.text}" }
+    }
+
+    // ---- variadic holes -------------------------------------------------------------------------
+
+    /** A `Vararg` hole binds the whole argument run and expands it comma-separated in `to`. */
+    private fun testVariadicHoleWholeArgList() {
+        val rule = "rewrite { args: Vararg -> from { log(args) }; to { sink(args) } }"
+        val out = expand("$rule\nlog(a, b + 1, c)").text
+        require("sink(a, b + 1, c)" in out) { "variadic run must be spliced verbatim, comma-separated: $out" }
+    }
+
+    /** A variadic hole composes with fixed holes on either side. */
+    private fun testVariadicHoleWithFixedArgs() {
+        val rule = "rewrite { first: Expr, rest: Vararg -> from { log(first, rest) }; to { logger(first, rest) } }"
+        val out = expand("$rule\nlog(tag, a, b, c)").text
+        require("logger(tag, a, b, c)" in out) { "fixed prefix + variadic run: $out" }
+    }
+
+    /** A variadic run may be empty. */
+    private fun testVariadicEmptyRun() {
+        val rule = "rewrite { first: Expr, rest: Vararg -> from { log(first, rest) }; to { logger(first, rest) } }"
+        val out = expand("$rule\nlog(tag)").text
+        // Empty run ⇒ trailing metavar expands to nothing.
+        require("logger(tag, )" in out || "logger(tag,)" in out || "logger(tag )" in out || "logger(tag)" in out) {
+            "empty variadic run should leave just the fixed arg: $out"
+        }
+    }
+
+    // ---- procedural unquote ---------------------------------------------------------------------
+
+    /** `unquote {}` builds an eval snippet (metavars as String vals) and splices the evaluator's result. */
+    private fun testUnquoteWiringWithFakeEvaluator() {
+        val rule = "rewrite { x: Ident -> from { rev(x) }; to { unquote { x.reversed() } } }"
+        var seenSnippet: String? = null
+        val res = expand("$rule\nrev(hello)", evalUnquote = { snippet -> seenSnippet = snippet; "SPLICED" })
+        require("SPLICED" in res.text) { "unquote region must be replaced by evaluator output: ${res.text}" }
+        require("unquote" !in res.text) { "the unquote call itself must be gone: ${res.text}" }
+        val snippet = seenSnippet ?: throw AssertionError("evaluator was never invoked")
+        require("val x: String = \"hello\"" in snippet) { "snippet must bind the metavar as its captured text: $snippet" }
+        require("x.reversed()" in snippet) { "snippet must contain the block body: $snippet" }
+    }
+
+    /** End-to-end: through the real engine, `unquote {}` actually runs Kotlin at expansion time. */
+    private fun testUnquoteEndToEnd() = runBlocking {
+        val ki = KotlinInterface2(filePrefix = "unquote-e2e")
+        val box = Box("unquote-e2e")
+        withTimeout(120_000) { ki.exec("1 + 1") }   // warm the REPL (a live box is always warmed before edits)
+        val src = """
+            rewrite { x: Ident ->
+                from { rev(x) }
+                to { unquote { x.reversed() } }
+            }
+            rev(hello)
+        """.trimIndent()
+        val expanded = withTimeout(120_000) { ki.applyMacros(box, src) }
+        require("olleh" in expanded) { "unquote must eval x.reversed() at expansion time: $expanded" }
+        require("unquote" !in expanded && "rev(" !in expanded) { "the rule + unquote call must be gone: $expanded" }
     }
 
     /** Names the `to {}` side introduces are gensym'd so they cannot capture a spliced metavar. */

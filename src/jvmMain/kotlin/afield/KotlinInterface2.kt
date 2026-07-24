@@ -2496,12 +2496,37 @@ class KotlinInterface2(
         // Pattern-rewrite layer: expand user-authored `rewrite { … }` rules (and blank the rule
         // blocks out of the source) before the builtin identifier macros run below, so a rule's
         // `to {}` output can still trigger the builtin macros. Pure PSI. See [PatternRewrite].
+        // Procedural `unquote {}`: compile+evaluate the snippet in this box's REPL context and
+        // return its String result. Blocking, fail-soft, and side-effect-free (updateContext=false);
+        // disabled in editor-preview expansions where running user code is unwanted.
+        val evalUnquote: ((String) -> String?)? = if (previewOnly) null else { snippet ->
+            try {
+                // No implicit receivers: the snippet binds its metavars as plain `String` vals and
+                // otherwise runs against the box's REPL state (stdlib + already-compiled top-level
+                // declarations). updateContext=false keeps it side-effect-free.
+                val result = compileSnippetAndWait(snippet) { diags ->
+                    lprintln("warning,macros", "rewrite unquote {} did not compile: ${diags.joinToString { it.message }}")
+                }?.evalAndWait(updateContext = false)
+                when (result) {
+                    is ResultValue.Value -> result.value?.toString()
+                    is ResultValue.Error -> {
+                        lprintln("warning,macros", "rewrite unquote {} threw at expansion time: ${result.error.message}")
+                        null
+                    }
+                    else -> null
+                }
+            } catch (t: Throwable) {
+                lprintln("warning,macros", "rewrite unquote {} eval failed: ${t.message}")
+                null
+            }
+        }
         val expansion = PatternRewrite.expand(
             s,
             parse = { txt ->
                 PsiFileFactory.getInstance(psiProject)
                     .createFileFromText(Language.findLanguageByID("kotlin")!!, txt) as KtFile
             },
+            evalUnquote = evalUnquote,
             onDiagnostic = { msg -> lprintln("warning,macros", msg) },
         )
         if (!previewOnly) {

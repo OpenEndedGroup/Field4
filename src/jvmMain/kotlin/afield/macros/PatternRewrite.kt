@@ -26,6 +26,8 @@ import org.jetbrains.kotlin.psi.KtStringTemplateExpression
 import org.jetbrains.kotlin.psi.KtSuperExpression
 import org.jetbrains.kotlin.psi.KtThisExpression
 import org.jetbrains.kotlin.psi.KtTypeReference
+import org.jetbrains.kotlin.psi.KtValueArgument
+import org.jetbrains.kotlin.psi.KtValueArgumentList
 import org.jetbrains.kotlin.psi.psiUtil.collectDescendantsOfType
 import org.jetbrains.kotlin.psi.psiUtil.forEachDescendantOfType
 
@@ -136,6 +138,7 @@ object PatternRewrite {
         source: String,
         parse: (String) -> KtFile,
         maxIterations: Int = 64,
+        evalUnquote: ((String) -> String?)? = null,
         onDiagnostic: (String) -> Unit = {},
     ): ExpandResult {
         val collected = collect(parse(source), onDiagnostic)
@@ -155,7 +158,7 @@ object PatternRewrite {
 
         var iteration = 0
         while (true) {
-            val matches = findMatches(parse(text), rules, gensym)
+            val matches = findMatches(parse(text), rules, gensym, evalUnquote)
             if (matches.isEmpty()) return result()
             if (iteration >= maxIterations) {
                 val sample = matches.first()
@@ -250,7 +253,14 @@ object PatternRewrite {
         "Ident" -> Ident
         "Stmt" -> Stmt
         "TypeRef" -> TypeRef
+        "Vararg" -> Vararg
         else -> Expr
+    }
+
+    /** Captured bindings: scalar metavars, plus variadic metavars that bind a run of arguments. */
+    private class Bindings {
+        val scalar = HashMap<String, PsiElement>()
+        val variadic = HashMap<String, List<KtValueArgument>>()
     }
 
     // ---- guard parsing + evaluation -------------------------------------------------------------
@@ -333,7 +343,12 @@ object PatternRewrite {
 
     // ---- matching (phase 2) ---------------------------------------------------------------------
 
-    private fun findMatches(file: KtFile, rules: List<PatternRule>, gensym: GensymScope): List<Match> {
+    private fun findMatches(
+        file: KtFile,
+        rules: List<PatternRule>,
+        gensym: GensymScope,
+        evalUnquote: ((String) -> String?)?,
+    ): List<Match> {
         val out = mutableListOf<Match>()
 
         fun visit(element: PsiElement) {
@@ -342,9 +357,9 @@ object PatternRewrite {
             // the surrounding context. Matching modulo parens still happens inside `structuralMatch`.
             if (element is KtElement && element !is KtParenthesizedExpression) {
                 for (rule in rules) {
-                    val binds = HashMap<String, PsiElement>()
-                    if (Matcher(rule.metavars).match(rule.pattern, element, binds) && evalGuard(rule.guard, binds)) {
-                        out += buildMatch(element, rule, binds, gensym)
+                    val binds = Bindings()
+                    if (Matcher(rule.metavars).match(rule.pattern, element, binds) && evalGuard(rule.guard, binds.scalar)) {
+                        out += buildMatch(element, rule, binds, gensym, evalUnquote)
                         return   // outermost-wins: do not descend into a matched subtree this round
                     }
                 }
@@ -363,17 +378,18 @@ object PatternRewrite {
     private fun buildMatch(
         element: KtElement,
         rule: PatternRule,
-        binds: Map<String, PsiElement>,
+        binds: Bindings,
         gensym: GensymScope,
+        evalUnquote: ((String) -> String?)?,
     ): Match {
-        val replacement = substitute(rule.repl, binds, rule.metavars, gensym, hygiene = true)
+        val replacement = substitute(rule.repl, binds, rule.metavars, gensym, hygiene = true, evalUnquote = evalUnquote)
 
         val preambleBlock = rule.provide?.let {
             keyedPreambleBlock(substitute(it, binds, rule.metavars, gensym, hygiene = false))
         }
 
         val aiRequest = rule.aiPrompt?.let { template ->
-            val prompt = substitutePrompt(template, binds)
+            val prompt = substitutePrompt(template, binds.scalar)
             AiRequest(stableKey(prompt), prompt, rule.repl.text)
         }
 
@@ -394,19 +410,28 @@ object PatternRewrite {
      */
     private class Matcher(val metavars: Map<String, MetaKind>) {
 
-        fun match(p: PsiElement, t: PsiElement, binds: MutableMap<String, PsiElement>): Boolean {
+        fun match(p: PsiElement, t: PsiElement, binds: Bindings): Boolean {
             val pp = p.unwrapParens()
             val tt = t.unwrapParens()
 
             val holeName = (pp as? KtNameReferenceExpression)?.getReferencedName()
             if (holeName != null && holeName in metavars) {
-                val prior = binds[holeName]
+                val prior = binds.scalar[holeName]
                 return if (prior == null) {
                     if (!kindAllows(metavars.getValue(holeName), tt)) false
-                    else { binds[holeName] = tt; true }
+                    else { binds.scalar[holeName] = tt; true }
                 } else {
                     structurallyEqual(prior, tt)
                 }
+            }
+
+            // Variadic holes live in argument lists: `f(args)` / `f(x, rest)`. When the pattern's
+            // arg list contains a Vararg hole, match by segment (fixed prefix + one variadic run +
+            // fixed suffix) instead of the fixed-arity element zip below.
+            if (pp is KtValueArgumentList && tt is KtValueArgumentList &&
+                pp.arguments.any { variadicHoleName(it) != null }
+            ) {
+                return matchArgList(pp.arguments, tt.arguments, binds)
             }
 
             if (pp.node?.elementType != tt.node?.elementType) return false
@@ -417,16 +442,44 @@ object PatternRewrite {
             return pc.size == tc.size && pc.zip(tc).all { (a, b) -> match(a, b, binds) }
         }
 
+        /** The Vararg-metavar name a pattern argument is a hole for, or null. */
+        private fun variadicHoleName(arg: KtValueArgument): String? {
+            val name = (arg.getArgumentExpression()?.unwrapParens() as? KtNameReferenceExpression)?.getReferencedName()
+            return if (name != null && metavars[name] == Vararg) name else null
+        }
+
+        /** Segment-match a pattern arg list with (at most one) variadic hole against a target arg list. */
+        private fun matchArgList(pArgs: List<KtValueArgument>, tArgs: List<KtValueArgument>, binds: Bindings): Boolean {
+            val vIdx = pArgs.indexOfFirst { variadicHoleName(it) != null }
+            if (pArgs.drop(vIdx + 1).any { variadicHoleName(it) != null }) return false   // v1: one variadic only
+            val prefix = pArgs.subList(0, vIdx)
+            val suffix = pArgs.subList(vIdx + 1, pArgs.size)
+            if (tArgs.size < prefix.size + suffix.size) return false
+
+            for (i in prefix.indices) if (!match(prefix[i], tArgs[i], binds)) return false
+            for (i in suffix.indices) if (!match(suffix[i], tArgs[tArgs.size - suffix.size + i], binds)) return false
+
+            val name = variadicHoleName(pArgs[vIdx])!!
+            val mid = tArgs.subList(prefix.size, tArgs.size - suffix.size).toList()
+            val prior = binds.variadic[name]
+            return if (prior != null) {
+                prior.size == mid.size && mid.indices.all { structurallyEqual(prior[it], mid[it]) }
+            } else {
+                binds.variadic[name] = mid; true
+            }
+        }
+
         private fun kindAllows(kind: MetaKind, node: PsiElement): Boolean = when (kind) {
             Expr -> node is KtExpression
             Ident -> node is KtNameReferenceExpression
             Stmt -> node is KtExpression || node is KtDeclaration
             TypeRef -> node is KtTypeReference
+            Vararg -> false   // a variadic hole only matches inside an argument list (see matchArgList)
         }
     }
 
     private fun structurallyEqual(a: PsiElement, b: PsiElement): Boolean =
-        Matcher(emptyMap()).match(a, b, HashMap())
+        Matcher(emptyMap()).match(a, b, Bindings())
 
     // ---- substitution + hygiene (phase 2) -------------------------------------------------------
 
@@ -445,13 +498,31 @@ object PatternRewrite {
      */
     private fun substitute(
         repl: PsiElement,
-        binds: Map<String, PsiElement>,
+        binds: Bindings,
         metavars: Map<String, MetaKind>,
         gensym: GensymScope,
         hygiene: Boolean,
+        evalUnquote: ((String) -> String?)? = null,
     ): String {
         val base = repl.textRange.startOffset
         val edits = mutableListOf<Triple<Int, Int, String>>()   // start, end, text (relative to `base`)
+
+        // Procedural unquote: `unquote { … }` regions run Kotlin at expansion time. Metavar captures
+        // are bound as `String` vals (their source text); the block's result is spliced. The regions
+        // are a substitution barrier — the ordinary metavar/gensym splices below skip inside them,
+        // because the unquote handles its own metavars via the eval snippet.
+        val unquoteCalls = repl.collectDescendantsOfType<KtCallExpression>()
+            .filter { (it.calleeExpression as? KtNameReferenceExpression)?.getReferencedName() == "unquote" }
+        val unquoteRanges = unquoteCalls.map { it.textRange.startOffset until it.textRange.endOffset }
+        fun insideUnquote(offset: Int) = unquoteRanges.any { offset in it }
+        if (evalUnquote != null) {
+            unquoteCalls.forEach { call ->
+                val body = call.lambdaArguments.firstOrNull()?.getLambdaExpression()?.bodyExpression?.text
+                    ?: return@forEach
+                val spliced = evalUnquote(buildUnquoteSnippet(binds.scalar, body)) ?: call.text
+                edits += Triple(call.textRange.startOffset - base, call.textRange.endOffset - base, spliced)
+            }
+        }
 
         // Declaration name identifiers. A metavar in a *declaration-name* position (e.g. the `n` of
         // `var Box.n by …` in a `provide {}`) is substituted with its capture. Otherwise, under
@@ -462,21 +533,24 @@ object PatternRewrite {
             // Skip anonymous nodes like the KtFunctionLiteral of a lambda (a KtNamedDeclaration with
             // no nameIdentifier) — processing it would burn a fresh-name counter value for nothing.
             val id = decl.nameIdentifier ?: return@forEachDescendantOfType
+            if (insideUnquote(id.textRange.startOffset)) return@forEachDescendantOfType
             val name = decl.name ?: return@forEachDescendantOfType
             val text = when {
-                binds.containsKey(name) -> renderCapture(binds.getValue(name))          // metavar-named decl
-                hygiene -> renames.getOrPut(name) { gensym.fresh(name) }                // hygienic rename
-                else -> return@forEachDescendantOfType                                   // box-level name, kept
+                binds.scalar.containsKey(name) -> renderCapture(binds.scalar.getValue(name))   // metavar-named decl
+                hygiene -> renames.getOrPut(name) { gensym.fresh(name) }                       // hygienic rename
+                else -> return@forEachDescendantOfType                                          // box-level name, kept
             }
             edits += Triple(id.textRange.startOffset - base, id.textRange.endOffset - base, text)
         }
 
         repl.forEachDescendantOfType<KtNameReferenceExpression> { ref ->
+            if (insideUnquote(ref.textRange.startOffset)) return@forEachDescendantOfType
             val name = ref.getReferencedName()
             val text = when {
-                binds.containsKey(name) -> renderCapture(binds.getValue(name))   // metavar hole
-                name in renames -> renames.getValue(name)                        // gensym'd local ref
-                else -> return@forEachDescendantOfType                           // free reference, untouched
+                binds.scalar.containsKey(name) -> renderCapture(binds.scalar.getValue(name))          // scalar hole
+                binds.variadic.containsKey(name) -> binds.variadic.getValue(name).joinToString(", ") { it.text }  // variadic run
+                name in renames -> renames.getValue(name)                                             // gensym'd local ref
+                else -> return@forEachDescendantOfType                                                // free reference, untouched
             }
             edits += Triple(ref.textRange.startOffset - base, ref.textRange.endOffset - base, text)
         }
@@ -527,6 +601,25 @@ object PatternRewrite {
 
     /** A stable, content-derived key (safe inside a `/*…*/` comment — hex only). */
     fun stableKey(content: String): String = "rw-" + Integer.toHexString(content.hashCode())
+
+    // ---- procedural unquote (eval at expansion time) --------------------------------------------
+
+    /**
+     * Build the Kotlin snippet an `unquote { … }` block evaluates to. Each scalar metavar is bound
+     * as a `String` val holding its captured *source text*, so the block can manipulate captures as
+     * strings (`unquote { x.reversed() }`, `unquote { simplify(x) }`, …); the block's result is
+     * `toString()`-ed and spliced.
+     */
+    fun buildUnquoteSnippet(scalarBinds: Map<String, PsiElement>, blockBody: String): String {
+        val decls = scalarBinds.entries.joinToString("\n") { (name, el) ->
+            "    val $name: String = ${kotlinStringLiteral(el.text)}"
+        }
+        return "run {\n$decls\n    $blockBody\n}.toString()"
+    }
+
+    private fun kotlinStringLiteral(s: String): String =
+        "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"").replace("$", "\\$")
+            .replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t") + "\""
 
     /**
      * Wrap a preamble contribution as a single deduplicating segment: a `/*start*/…/*end*/` block
