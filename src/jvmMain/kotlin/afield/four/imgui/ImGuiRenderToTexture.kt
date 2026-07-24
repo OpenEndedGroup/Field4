@@ -1019,7 +1019,7 @@ class ImGuiRenderToTexture(
                 }
             }
 
-            imgui.loadFontFromResource("Iosevka-Light.ttf", sizePixels = 12 * 2 * overSample.f)
+            imgui.loadFontFromResource("IosevkaField-Light.ttf", sizePixels = 12 * 2 * overSample.f)
             imgui.attachTo(target = target, name = name, blitName = "$name-blit")
             return imgui
         }

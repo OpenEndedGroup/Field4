@@ -94,7 +94,8 @@ class ImGuiVrPanelDemo(
         )
         // Pointer comes from the controller ray, not the OS cursor.
         imgui.useWindowMouseEvents = false
-        imgui.loadFontFromResource("Iosevka-Light.ttf", sizePixels = 12f * 8)
+        // Field's custom "Iosevka Field" build (subset from the editor's woff2), not stock Iosevka.
+        imgui.loadFontFromResource("IosevkaField-Light.ttf", sizePixels = 12f * 8)
 
         imgui.addUi("panel") {
             gui {
