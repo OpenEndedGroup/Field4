@@ -16,6 +16,9 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromJsonElement
 import java.io.File
 import java.io.FileNotFoundException
+import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.max
@@ -1666,7 +1669,8 @@ class SavingContext {
 fun File.safeSave(
     text: String,
     createBackup: Boolean = true,
-    maxBackups: Int? = null
+    maxBackups: Int? = null,
+    atomic: Boolean = false
 ): Boolean {
     require(maxBackups == null || maxBackups >= 0) { "maxBackups must be non-negative" }
     val file = this
@@ -1713,9 +1717,15 @@ fun File.safeSave(
                         val nextStartedAt = System.nanoTime()
                         val backupFile = file.nextSafeSaveBackup(backupDir)
                         nextBackupMs = SaveReloadLog.elapsedMillis(nextStartedAt)
-                        // Rename the current file to the backup file name in the backup directory
+                        // Move the current file to the backup name. In atomic mode we COPY instead,
+                        // so the original stays in place until the atomic rename replaces it — a
+                        // reader never sees the file briefly absent (no FileNotFoundException window).
                         val renameStartedAt = System.nanoTime()
-                        backupCreated = file.renameTo(backupFile)
+                        backupCreated = if (atomic) {
+                            runCatching { Files.copy(file.toPath(), backupFile.toPath()); true }.getOrDefault(false)
+                        } else {
+                            file.renameTo(backupFile)
+                        }
                         renameMs = SaveReloadLog.elapsedMillis(renameStartedAt)
                         if (backupCreated && maxBackups != null) {
                             val pruneStartedAt = System.nanoTime()
@@ -1731,7 +1741,26 @@ fun File.safeSave(
         }
         // Write the new text to the file
         val writeStartedAt = System.nanoTime()
-        file.writeText(text)
+        if (atomic) {
+            // Write to a temp file in the same directory, then atomically rename it into place, so a
+            // concurrent reader (or another process sharing the workspace) never observes a
+            // truncated/half-written file. Falls back to a plain replace if the filesystem lacks
+            // atomic moves (temp is in the same dir, so this is the same volume).
+            val dir = file.parentFile ?: file.absoluteFile.parentFile
+            val tmp = File.createTempFile(".${file.name}.", ".tmp", dir)
+            try {
+                tmp.writeText(text)
+                try {
+                    Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+                } catch (_: AtomicMoveNotSupportedException) {
+                    Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                }
+            } finally {
+                if (tmp.exists()) tmp.delete()
+            }
+        } else {
+            file.writeText(text)
+        }
         writeMs = SaveReloadLog.elapsedMillis(writeStartedAt)
         changed = true
         return true

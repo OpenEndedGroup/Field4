@@ -158,7 +158,7 @@ object OperationTranscript {
         val macroPath = macroFile(location, cleanName)
         val text = writeMacroYaml(cleanName, documentPath, slice, sourceSelection)
         macroPath.parentFile?.mkdirs()
-        val wrote = macroPath.safeSave(text, createBackup = true, maxBackups = 10)
+        val wrote = macroPath.safeSave(text, createBackup = true, maxBackups = 10, atomic = true)
         checkpoint(documentPath)
         return MacroResult(
             success = wrote,
@@ -221,7 +221,7 @@ object OperationTranscript {
             ?: return MacroResult(false, "No project macro scope is available for this document.", name = cleanName)
         val file = macroFile(location, cleanName)
         file.parentFile?.mkdirs()
-        val wrote = file.safeSave(contents.trimEnd() + "\n", createBackup = true, maxBackups = 10)
+        val wrote = file.safeSave(contents.trimEnd() + "\n", createBackup = true, maxBackups = 10, atomic = true)
         val count = runCatching { loadMacroOperations(file).size }.getOrDefault(0)
         return MacroResult(
             success = wrote,
@@ -291,7 +291,7 @@ object OperationTranscript {
         val targetFile = macroFile(target, cleanName)
         val contents = sourceFile.readText().trimEnd() + "\n"
         targetFile.parentFile?.mkdirs()
-        val wrote = targetFile.safeSave(contents, createBackup = true, maxBackups = 10)
+        val wrote = targetFile.safeSave(contents, createBackup = true, maxBackups = 10, atomic = true)
         val count = runCatching { loadMacroOperations(targetFile).size }.getOrDefault(0)
         return MacroResult(
             success = wrote || targetFile.exists(),
@@ -341,7 +341,7 @@ object OperationTranscript {
         val sourceSelection = selectionEntries(selection)
         val text = writeMacroYaml(cleanName, documentPath, coalesced, sourceSelection)
         file.parentFile?.mkdirs()
-        val wrote = file.safeSave(text, createBackup = true, maxBackups = 10)
+        val wrote = file.safeSave(text, createBackup = true, maxBackups = 10, atomic = true)
         return MacroResult(
             success = wrote,
             message = if (wrote) {
@@ -749,7 +749,7 @@ object OperationTranscript {
             val file = operationTranscriptFile(documentPath)
             file.parentFile?.mkdirs()
             val text = writeYamlList(snapshot)
-            val wrote = file.safeSave(text, createBackup = true, maxBackups = 10)
+            val wrote = file.safeSave(text, createBackup = true, maxBackups = 10, atomic = true)
             synchronized(state.lock) {
                 state.dirty = false
             }
