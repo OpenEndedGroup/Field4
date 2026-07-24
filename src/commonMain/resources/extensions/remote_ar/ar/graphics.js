@@ -226,6 +226,12 @@ var enterScene = (_scene, _camera, updateCallback, preupdateCallback) => {
                         is.description = () => "attached '" + n + "'"
                 }
         }));
+
+        // Kotlin indexed-access sugar `SCENE[name] = obj` / `SCENE[name]` (RemoteArKotlinJs's
+        // `operator fun THREE.Scene.get/set`) compiles to these calls; route them straight through the
+        // named-index proxy above so assigning a slot replaces whatever object was there.
+        SCENE.__attachSet = function (name, value) { SCENE.attach[name] = value }
+        SCENE.__attachGet = function (name) { return SCENE.attach[name] }
 }
 
 var mouseUp = new Proxy(new Map(), idempotencyHandler(function (n, is, was) { }));

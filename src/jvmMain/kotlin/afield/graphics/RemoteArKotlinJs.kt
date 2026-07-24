@@ -63,6 +63,12 @@ object RemoteArKotlinJs {
                 // Field replaces three.js's `attach(object)` method with a named-index proxy
                 // (graphics.js): `SCENE.attach[name] = obj`. dynamic for the compiler, indexer for completion.
                 valProp("attach", JsType("dynamic", "AttachProxy"))
+                // `SCENE[name] = obj` / `SCENE[name]` — the named-scene-slot operators declared below
+                // delegate to these compiler-only raw members (installed on the scene in graphics.js),
+                // which route straight through the `attach` proxy so assigning replaces whatever object
+                // currently occupies the slot. Kept out of completion like FLine's `__PLUS__`.
+                compilerFn("__attachSet", "Unit") { param("name", "String"); param("value", JsType.DYNAMIC) }
+                compilerFn("__attachGet", JsType.DYNAMIC) { param("name", "String") }
             }
             cls("Camera") { open(); extends("Object3D") }
 
@@ -557,6 +563,17 @@ object RemoteArKotlinJs {
         operator("FLine", "div", "FLine", "__DIVIDE__(m)") { param("m", "THREE.Matrix4") }
         operator("FLine", "div", "FLine", "__DIVIDE__(v)") { param("v", "THREE.Vector3") }
         operator("FLine", "div", "FLine", "__DIVIDE__(s)") { param("s", "Double") }
+
+        // ---- named scene slots — `SCENE[name] = obj` / `val obj = SCENE[name]` (graphics.js). Assigning
+        // REPLACES whatever object already occupies that slot; reading returns the object in it (or null).
+        // Value is typed `THREE.Object3D` and the receiver stays `THREE.Scene` (not `dynamic`), so SCENE
+        // keeps its full member autocomplete. Delegates to the compiler-only members on Scene above.
+        operator("THREE.Scene", "set", "Unit", "__attachSet(name, value)") {
+            param("name", "String"); param("value", "THREE.Object3D")
+        }
+        operator("THREE.Scene", "get", "THREE.Object3D?", "__attachGet(name)") {
+            param("name", "String")
+        }
 
         rawCompiler(
             """

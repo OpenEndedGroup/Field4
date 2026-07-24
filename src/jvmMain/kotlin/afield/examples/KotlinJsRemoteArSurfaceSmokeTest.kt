@@ -56,6 +56,19 @@ object KotlinJsRemoteArSurfaceSmokeTest {
         require(compiler.contains("val attach: dynamic")) { "Scene.attach must be `dynamic` for the compiler" }
         require(completion.contains("val attach: AttachProxy")) { "Scene.attach must be typed for completion" }
 
+        // `SCENE[name] = obj` — named scene slots. The public `operator fun THREE.Scene.get/set` must be
+        // in BOTH façades (so it type-checks AND completes); the raw `__attachSet`/`__attachGet` they
+        // delegate to are compiler-only. SCENE stays typed `THREE.Scene`, so its autocomplete is intact.
+        for (op in listOf("get", "set")) {
+            require(compiler.contains("operator fun THREE.Scene.$op(")) { "compiler missing THREE.Scene.$op operator" }
+            require(completion.contains("operator fun THREE.Scene.$op(")) { "completion missing THREE.Scene.$op operator" }
+        }
+        require(compiler.contains("external val SCENE: THREE.Scene")) { "SCENE must stay typed `THREE.Scene` (not dynamic) for the compiler" }
+        for (raw in listOf("__attachSet", "__attachGet")) {
+            require(compiler.contains("fun $raw(")) { "compiler Scene missing raw slot member `$raw`" }
+            require(!completion.contains(raw)) { "raw slot member `$raw` must be compiler-only (kept out of completion)" }
+        }
+
         // interaction + XR: pointer registries on FLine (dynamic/typed split) and the XR globals.
         require(compiler.contains("val mouseDown: dynamic")) { "FLine.mouseDown must be `dynamic` for the compiler" }
         require(completion.contains("val mouseDown: PointerCallbacks")) { "FLine.mouseDown must be typed for completion" }
@@ -177,6 +190,14 @@ object KotlinJsRemoteArSurfaceSmokeTest {
             std.map = tex
             val found2 = SCENE.getObjectByName("assembly")
 
+            // named scene slots — `SCENE[name] = obj` adds under a slot; re-assigning replaces it.
+            val rig = THREE.Group()
+            rig.add(torus)
+            SCENE["rig"] = rig
+            SCENE["rig"] = THREE.Group()
+            val slotted = SCENE["rig"]
+            slotted?.position?.set(0.0, 1.0, 0.0)
+
             // item 2 — asset & animation loaders + the mixer-backed play/apply on the payload.
             mapDirectory("/abs/assets", "/assets")
             loadGLTF("/assets/robot.glb", "robot") { g ->
@@ -197,7 +218,7 @@ object KotlinJsRemoteArSurfaceSmokeTest {
             log("surface ok " + col.getHex() + " " + v4.w + " " + flat.x + " " + quat.w + " " + mat +
                 " " + light.intensity + " " + mR + mS + mT + mA + " " + plane + pic + movie + " " + cam +
                 " " + curve + h + " " + shifted2 + " " + shrunk + " " + back + " " + halved + " " + warped +
-                " " + cyl + " " + found2 + " " + tex.flipY)
+                " " + cyl + " " + found2 + " " + tex.flipY + " " + slotted)
         """.trimIndent()
 
         val resolved = KotlinJsHeadProfiles.resolve(sample)
@@ -208,6 +229,11 @@ object KotlinJsRemoteArSurfaceSmokeTest {
             "expanded RemoteAR surface did not compile:\n${result.rawLog.takeLast(2000)}"
         }
         println("expanded surface compiled: ${prepared.length} chars Kotlin -> ${result.js.length} chars JS")
+
+        // `SCENE[name] = obj` / `SCENE[name]` must lower to the exact runtime hooks installed on the
+        // scene in graphics.js — external members emit verbatim, so a rename on either side is caught.
+        require(result.js.contains("__attachSet")) { "emitted JS must call runtime slot hook `__attachSet` (graphics.js)" }
+        require(result.js.contains("__attachGet")) { "emitted JS must call runtime slot hook `__attachGet` (graphics.js)" }
 
         // The user's ask: `stage.add|` completes even though `stage` is `dynamic` for the compiler.
         // Skip-tolerant — needs the AA sidecar (feeds `completionDeclarations` as file-scope context).
