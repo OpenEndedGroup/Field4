@@ -40,6 +40,20 @@ object RemoteLifecycleKotlinJs {
         @kotlin.js.JsName("__fieldKeepAlive")
         private external fun __headKeepAlive()
 
+        @kotlin.js.JsName("print")
+        private external fun __fieldEditorPrint(message: Any?, line: Int = definedExternally)
+
+        // Kotlin/JS's stdlib print defaults to the head's console. These package-local overloads
+        // deliberately win over that default import and use Field's execution return channel.
+        fun print(message: Any?) = __fieldEditorPrint(message)
+        fun println(message: Any?) = __fieldEditorPrint(message)
+        fun println() = __fieldEditorPrint("")
+
+        // Source preparation rewrites direct print/println calls to these overloads so the head can
+        // return a real one-based editor line instead of an invisible line-zero output.
+        fun __fieldPrintAt(line: Int, message: Any?) = __fieldEditorPrint(message, line)
+        fun __fieldPrintAt(line: Int) = __fieldEditorPrint("", line)
+
         fun onStart(callback: () -> Unit) = __headOnStart(callback)
         fun onStop(callback: () -> Unit) = __headOnStop(callback)
         fun keepAlive() = __headKeepAlive()

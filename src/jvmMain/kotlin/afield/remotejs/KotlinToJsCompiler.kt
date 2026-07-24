@@ -1,6 +1,7 @@
 package afield.remotejs
 
 import afield.logger.lprintln
+import com.facebook.ktfmt.format.Parser
 import org.jetbrains.kotlin.cli.common.ExitCode
 import org.jetbrains.kotlin.cli.common.arguments.K2JSCompilerArguments
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
@@ -8,6 +9,17 @@ import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.cli.js.K2JSCompiler
 import org.jetbrains.kotlin.config.Services
+import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil
+import org.jetbrains.kotlin.lexer.KtTokens
+import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
+import org.jetbrains.kotlin.psi.KtElement
+import org.jetbrains.kotlin.psi.KtModifierListOwner
+import org.jetbrains.kotlin.psi.KtNamedFunction
+import org.jetbrains.kotlin.psi.KtObjectDeclaration
+import org.jetbrains.kotlin.psi.KtProperty
+import org.jetbrains.kotlin.psi.KtScriptInitializer
+import org.jetbrains.kotlin.psi.KtTypeAlias
 import java.io.File
 import java.nio.file.Files
 
@@ -71,7 +83,42 @@ object KotlinToJsCompiler {
         val mode: Mode,
         /** raw compiler log, kept for spike-time debugging */
         val rawLog: String,
-    )
+    ) {
+        internal fun remapDiagnostics(source: PreparedSource): Result = copy(
+            diagnostics = diagnostics.map { diagnostic ->
+                diagnostic.copy(line = source.userLineFor(diagnostic.line))
+            },
+        )
+    }
+
+    /**
+     * Compiler input plus the line map back to the editor source. Generated wrapper/declaration
+     * lines map to null; user-authored lines retain their original one-based line number.
+     */
+    internal data class PreparedSource(
+        val text: String,
+        private val generatedToUserLine: List<Int?>,
+    ) {
+        fun userLineFor(generatedLine: Int): Int {
+            val index = generatedLine - 1
+            return if (index in generatedToUserLine.indices) generatedToUserLine[index] ?: 0 else generatedLine
+        }
+
+        fun appendUnmapped(suffix: String): PreparedSource {
+            if (suffix.isBlank()) return this
+            val separator = if (text.endsWith('\n')) "\n" else "\n\n"
+            val appended = separator + suffix
+            return PreparedSource(
+                text + appended,
+                generatedToUserLine + List(appended.count { it == '\n' }) { null },
+            )
+        }
+
+        companion object {
+            fun identity(source: String): PreparedSource =
+                PreparedSource(source, source.split('\n').indices.map { it + 1 })
+        }
+    }
 
     /** The fork-matched Kotlin/JS stdlib klib. Override with -Dafield.kotlinjs.stdlibJs=<path>. */
     private val stdlibJsKlib: File by lazy {
@@ -89,99 +136,241 @@ object KotlinToJsCompiler {
             .firstOrNull { it.exists() }
     }
 
-    // Top-level lines that must stay at file scope: `import`/`package`/`@file:` (position-required)
-    // and `external` (illegal as a local declaration). Everything else is legal inside `main` as a
-    // local — data classes, functions, `operator fun`, statements (verified against K2/JS).
-    private val HOIST_PREFIX = Regex("""^\s*(import\s|package\s|@file:|(?:public\s+|private\s+|internal\s+|expect\s+|actual\s+)*external\b)""")
     private val HAS_MAIN = Regex("""(?m)^\s*(?:(?:public|private|internal|suspend|expect|actual|external)\s+)*fun\s+main\s*\(""")
+    private val FILE_SCOPE_MODIFIERS = listOf(
+        KtTokens.EXTERNAL_KEYWORD,
+        KtTokens.EXPECT_KEYWORD,
+        KtTokens.ACTUAL_KEYWORD,
+        KtTokens.CONST_KEYWORD,
+        KtTokens.SEALED_KEYWORD,
+        KtTokens.ENUM_KEYWORD,
+        KtTokens.ANNOTATION_KEYWORD,
+        KtTokens.PUBLIC_KEYWORD,
+        KtTokens.PRIVATE_KEYWORD,
+        KtTokens.PROTECTED_KEYWORD,
+        KtTokens.INTERNAL_KEYWORD,
+    )
+
+    private fun mustStayAtFileScope(element: KtElement): Boolean =
+        element is KtObjectDeclaration ||
+            element is KtTypeAlias ||
+            (element as? KtModifierListOwner)?.let { owner ->
+                FILE_SCOPE_MODIFIERS.any(owner::hasModifier)
+            } == true
 
     /**
-     * Let box authors skip the `fun main() { … }` wrapper. If [source] has no top-level `fun main(`,
-     * hoist the file-scope-only lines (imports, package, `@file:` annotations, `external` declarations)
-     * to the top and wrap everything else in a synthesized `fun main()`. Author-written data classes,
-     * functions, `operator fun`s and statements all become locals inside `main`, which K2/JS accepts.
+     * Lower Field's script-like box syntax to a normal Kotlin/JS file. PSI gives us complete
+     * top-level declarations (including multiline properties, functions/classes, annotations and
+     * expression-bodied declarations), which stay at file scope. Script initializers become the
+     * synthesized main body.
      *
-     * If a `fun main(` is already present, the source is returned untouched. Brace/string/comment aware
-     * so `external interface X { … }` blocks and braces inside strings/comments don't confuse hoisting.
-     *
-     * Known limits (rare in box code): top-level named `object`, `const val`, and `annotation class`
-     * cannot be locals — write an explicit `fun main()` (which disables wrapping) if you need them.
+     * [activeUserLines] is used for fragment execution: all declarations from the current box remain
+     * compiler-visible, while only selected script initializers run. This is the Kotlin/JS analogue
+     * of a REPL fragment seeing names established by the box, without replaying unrelated print,
+     * drawing, or lifecycle statements.
      */
-    internal fun ensureImplicitMain(source: String): String {
-        if (HAS_MAIN.containsMatchIn(source)) return source
-        if (source.isBlank()) return source
-
-        val head = StringBuilder()
-        val body = StringBuilder()
-        var depth = 0
-        var inBlockComment = false
-        var inTripleString = false
-        var hoistingBlock = false
-
-        for (line in source.split("\n")) {
-            val atTopLevelStart = depth == 0 && !inBlockComment && !inTripleString
-            val startHoist = !hoistingBlock && atTopLevelStart && HOIST_PREFIX.containsMatchIn(line)
-            val before = depth
-            val scan = scanBraces(line, depth, inBlockComment, inTripleString)
-            depth = scan.depth; inBlockComment = scan.inBlockComment; inTripleString = scan.inTripleString
-
-            when {
-                hoistingBlock -> {
-                    head.append(line).append('\n')
-                    if (depth <= 0) hoistingBlock = false
-                }
-                startHoist -> {
-                    head.append(line).append('\n')
-                    if (depth > before) hoistingBlock = true // multi-line external { … } block
-                }
-                else -> body.append(line).append('\n')
-            }
+    internal fun prepareImplicitMain(
+        source: String,
+        activeUserLines: IntRange? = null,
+        stateKey: String? = null,
+    ): PreparedSource {
+        if (source.isBlank()) return PreparedSource.identity(source)
+        if (HAS_MAIN.containsMatchIn(source)) {
+            return PreparedSource.identity(runCatching { instrumentEditorPrints(source) }.getOrDefault(source))
         }
 
-        return buildString {
-            if (head.isNotEmpty()) append(head).append('\n')
-            append("fun main() {\n")
-            append(body.toString().trimEnd('\n'))
-            append("\n}\n")
+        return try {
+            val instrumentedSource = instrumentEditorPrints(source)
+            val file = Parser.parse(instrumentedSource)
+            val script = file.script ?: return PreparedSource.identity(source)
+            val lineStarts = buildList {
+                add(0)
+                instrumentedSource.forEachIndexed { index, c -> if (c == '\n') add(index + 1) }
+            }
+            fun lineAt(offset: Int): Int {
+                val found = lineStarts.binarySearch(offset)
+                return if (found >= 0) found + 1 else -found - 1
+            }
+            val lines = mutableListOf<String>()
+            val lineMap = mutableListOf<Int?>()
+
+            fun appendGenerated(line: String) {
+                lines += line
+                lineMap += null
+            }
+
+            fun appendElement(text: String, sourceStartLine: Int) {
+                text.split('\n').forEachIndexed { index, line ->
+                    lines += line
+                    lineMap += sourceStartLine + index
+                }
+            }
+
+            listOfNotNull(file.fileAnnotationList, file.packageDirective?.takeIf { it.text.isNotBlank() }, file.importList)
+                .filter { it.text.isNotBlank() }
+                .forEach {
+                    appendElement(it.text, lineAt(it.textRange.startOffset))
+                    appendGenerated("")
+                }
+
+            val statements = script.blockExpression.statements
+            val declarations = statements.filterNot { it is KtScriptInitializer }
+            val hoisted = if (activeUserLines == null) {
+                declarations.filter(::mustStayAtFileScope)
+            } else {
+                declarations
+            }
+            hoisted.forEach {
+                val text = if (activeUserLines != null && stateKey != null && it is KtProperty) {
+                    statefulProperty(it) ?: it.text
+                } else {
+                    it.text
+                }
+                appendElement(text, lineAt(it.textRange.startOffset))
+                appendGenerated("")
+            }
+
+            appendGenerated("fun main() {")
+            if (activeUserLines == null && stateKey != null) appendGenerated("__fieldKotlinStateClear()")
+            statements
+                .filter { statement ->
+                    if (activeUserLines == null) {
+                        statement !in hoisted
+                    } else {
+                        statement is KtScriptInitializer && run {
+                            val start = lineAt(statement.textRange.startOffset)
+                            val end = lineAt(
+                                (statement.textRange.endOffset - 1).coerceAtLeast(statement.textRange.startOffset),
+                            )
+                            start <= activeUserLines.last && end >= activeUserLines.first
+                        }
+                    }
+                }
+                .forEach {
+                    appendElement(it.text, lineAt(it.textRange.startOffset))
+                }
+            if (stateKey != null) {
+                declarations.filterIsInstance<KtProperty>().mapNotNull { it.name }.forEach { name ->
+                    appendGenerated("""__fieldKotlinStateSet("$name", $name)""")
+                }
+            }
+            appendGenerated("}")
+
+            var prepared = PreparedSource(lines.joinToString("\n", postfix = "\n"), lineMap)
+            if (stateKey != null) prepared = prepared.appendUnmapped(stateSupport(stateKey))
+            prepared
+        } catch (t: Throwable) {
+            // Let K2 report malformed source rather than replacing a useful compiler diagnostic
+            // with a ktfmt parser exception. The simple wrapper still carries the common +1 map.
+            val bodyLines = source.split('\n')
+            PreparedSource(
+                buildString {
+                    append("fun main() {\n")
+                    append(source)
+                    if (!source.endsWith('\n')) append('\n')
+                    append("}\n")
+                },
+                listOf(null) + bodyLines.indices.map { it + 1 } + listOf(null),
+            )
         }
     }
 
-    private class BraceScan(val depth: Int, val inBlockComment: Boolean, val inTripleString: Boolean)
+    private data class SourceReplacement(val start: Int, val end: Int, val text: String)
 
-    /** Net brace-depth after [line], ignoring braces inside strings, char literals and comments. */
-    private fun scanBraces(line: String, startDepth: Int, startBlockComment: Boolean, startTriple: Boolean): BraceScan {
-        var depth = startDepth
-        var inBlock = startBlockComment
-        var inTriple = startTriple
-        var inString = false      // "..."
-        var inChar = false        // '...'
-        var i = 0
-        while (i < line.length) {
-            val c = line[i]
-            val next = line.getOrNull(i + 1)
-            when {
-                inBlock -> if (c == '*' && next == '/') { inBlock = false; i++ }
-                inTriple -> if (c == '"' && next == '"' && line.getOrNull(i + 2) == '"') { inTriple = false; i += 2 }
-                inString -> when {
-                    c == '\\' -> i++
-                    c == '"' -> inString = false
-                }
-                inChar -> when {
-                    c == '\\' -> i++
-                    c == '\'' -> inChar = false
-                }
-                c == '/' && next == '/' -> return BraceScan(depth, false, false) // line comment: rest ignored
-                c == '/' && next == '*' -> { inBlock = true; i++ }
-                c == '"' && next == '"' && line.getOrNull(i + 2) == '"' -> { inTriple = true; i += 2 }
-                c == '"' -> inString = true
-                c == '\'' -> inChar = true
-                c == '{' -> depth++
-                c == '}' -> depth--
-            }
-            i++
+    /**
+     * Carry direct Kotlin print/println call sites through the generated JavaScript. Remote heads
+     * accept the optional second argument and echo it in the execution response, allowing Monaco
+     * to render the output beside a real source line.
+     */
+    private fun instrumentEditorPrints(source: String): String {
+        val file = Parser.parse(source)
+        val shadowedNames = PsiTreeUtil.collectElementsOfType(file, KtNamedFunction::class.java)
+            .mapNotNullTo(mutableSetOf()) { it.name }
+        val lineStarts = buildList {
+            add(0)
+            source.forEachIndexed { index, c -> if (c == '\n') add(index + 1) }
         }
-        return BraceScan(depth, inBlock, inTriple)
+        fun lineAt(offset: Int): Int {
+            val found = lineStarts.binarySearch(offset)
+            return if (found >= 0) found + 1 else -found - 1
+        }
+
+        val replacements = mutableListOf<SourceReplacement>()
+        PsiTreeUtil.collectElementsOfType(file, KtCallExpression::class.java).forEach { call ->
+            val callee = call.calleeExpression ?: return@forEach
+            if (callee.text != "print" && callee.text != "println") return@forEach
+            if (callee.text in shadowedNames) return@forEach
+            val parent = call.parent
+            if (parent is KtDotQualifiedExpression && parent.selectorExpression == call) return@forEach
+            val arguments = call.valueArgumentList ?: return@forEach
+            val leftParen = arguments.leftParenthesis ?: return@forEach
+            val line = lineAt(callee.textRange.startOffset)
+            replacements += SourceReplacement(
+                callee.textRange.startOffset,
+                callee.textRange.endOffset,
+                "__fieldPrintAt",
+            )
+            replacements += SourceReplacement(
+                leftParen.textRange.endOffset,
+                leftParen.textRange.endOffset,
+                if (arguments.arguments.isEmpty()) "$line" else "$line, ",
+            )
+        }
+        if (replacements.isEmpty()) return source
+
+        return StringBuilder(source).apply {
+            replacements.sortedWith(compareByDescending<SourceReplacement> { it.start }.thenByDescending { it.end })
+                .forEach { replace(it.start, it.end, it.text) }
+        }.toString()
     }
+
+    private fun statefulProperty(property: KtProperty): String? {
+        val name = property.name ?: return null
+        val initializer = property.initializer?.text ?: return null
+        if (property.delegate != null) return null
+        val keyword = if (property.isVar) "var" else "val"
+        val type = property.typeReference?.text?.let { ": $it" }.orEmpty()
+        return """$keyword $name$type = __fieldKotlinStateRestore("$name") { $initializer }"""
+    }
+
+    private fun stateSupport(stateKey: String): String {
+        require(stateKey.matches(Regex("[A-Za-z0-9_]+"))) { "Invalid Kotlin/JS state key '$stateKey'" }
+        return """
+            private fun __fieldKotlinStateRoot(): dynamic =
+                js("(globalThis.__fieldKotlinStates || (globalThis.__fieldKotlinStates = Object.create(null)))")
+
+            private fun __fieldKotlinState(): dynamic {
+                val root = __fieldKotlinStateRoot()
+                var state = root["$stateKey"]
+                if (state == null) {
+                    state = js("Object.create(null)")
+                    root["$stateKey"] = state
+                }
+                return state
+            }
+
+            private fun __fieldKotlinStateHas(name: String): Boolean {
+                val state = __fieldKotlinState()
+                return js("Object.prototype.hasOwnProperty.call(state, name)")
+            }
+
+            private fun __fieldKotlinStateGet(name: String): dynamic = __fieldKotlinState()[name]
+
+            private fun __fieldKotlinStateSet(name: String, value: Any?) {
+                __fieldKotlinState()[name] = value
+            }
+
+            private fun __fieldKotlinStateClear() {
+                __fieldKotlinStateRoot()["$stateKey"] = js("Object.create(null)")
+            }
+
+            @Suppress("UNCHECKED_CAST")
+            private inline fun <T> __fieldKotlinStateRestore(name: String, otherwise: () -> T): T =
+                if (__fieldKotlinStateHas(name)) __fieldKotlinStateGet(name) as T else otherwise()
+        """.trimIndent()
+    }
+
+    internal fun ensureImplicitMain(source: String): String = prepareImplicitMain(source).text
 
     /**
      * Compile [kotlinSource] to a single plain-module, DCE'd JS string.
@@ -207,8 +396,10 @@ object KotlinToJsCompiler {
         val work = Files.createTempDirectory("field-ktjs").toFile()
         return try {
             val srcDir = File(work, "src").apply { mkdirs() }
-            val prepared = if (wrapImplicitMain) ensureImplicitMain(kotlinSource) else kotlinSource
-            val src = File(srcDir, "$moduleName.kt").apply { writeText(prepared) }
+            val prepared =
+                if (wrapImplicitMain) prepareImplicitMain(kotlinSource)
+                else PreparedSource.identity(kotlinSource)
+            val src = File(srcDir, "$moduleName.kt").apply { writeText(prepared.text) }
             val klibDir = File(work, "klib").apply { mkdirs() }
             val jsDir = File(work, "js").apply { mkdirs() }
             val klib = File(klibDir, "$moduleName.klib")
@@ -217,7 +408,8 @@ object KotlinToJsCompiler {
 
             if (mode == Mode.IN_PROCESS) {
                 try {
-                    return compileInProcess(moduleName, src, klibDir, jsDir, klib, js, profile, cacheDir)
+                    val result = compileInProcess(moduleName, src, klibDir, jsDir, klib, js, profile, cacheDir)
+                    return result.remapDiagnostics(prepared)
                 } catch (t: Throwable) {
                     lprintln("warning,remotejs", "in-process Kotlin->JS failed (${t.message}); falling back to subprocess")
                     klibDir.deleteRecursively(); klibDir.mkdirs()
@@ -225,6 +417,7 @@ object KotlinToJsCompiler {
                 }
             }
             compileSubprocess(moduleName, src, klibDir, jsDir, klib, js, profile, cacheDir)
+                .remapDiagnostics(prepared)
         } finally {
             work.deleteRecursively()
         }

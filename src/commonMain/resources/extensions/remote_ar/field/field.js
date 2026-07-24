@@ -92,14 +92,19 @@ __beginService();
     }
 
     function installPrinting() {
-        const print = function (value) {
+        const print = function (value, line) {
             const returnTo = global.__sandbox__ && global.__sandbox__.__returnTo
                 ? global.__sandbox__.__returnTo
                 : _field.globalReturnTo;
-            _field.send(returnTo, {
-                message: safe(betterPretty(value, 2, "JSON", false), 120000),
+            const printable = typeof value === "string"
+                ? value
+                : betterPretty(value, 2, "JSON", false);
+            const payload = {
+                message: safe(printable, 120000),
                 kind: "SUCCESS"
-            });
+            };
+            if (Number.isFinite(line)) payload.line = Math.max(1, Math.trunc(line));
+            _field.send(returnTo, payload);
         };
         __superglobal.print = print;
         __superglobal.log = print;

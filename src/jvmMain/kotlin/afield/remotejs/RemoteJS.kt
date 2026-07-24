@@ -294,19 +294,28 @@ fun compileAndSendKotlin(
     kotlinSource: String,
     launchable: Boolean = false,
     selectedHead: KotlinJsHeadSelection? = null,
+    fragmentContext: KotlinJsFragmentContext? = null,
     lifecycleName: String = kotlinJsLifecycleName(b, "default"),
     onResponse: ((KotlinJsHeadResponse) -> Boolean)? = null,
 ): Boolean {
     lastBoxExec = b
-    val selection = selectedHead ?: KotlinJsHeadProfiles.resolveForBox(b, kotlinSource)
-    val preparedSource = selection.profile.prepareSource(selection.source)
+    val directSelection = selectedHead ?: KotlinJsHeadProfiles.resolveForBox(b, kotlinSource)
+    val selection = fragmentContext
+        ?.let { KotlinJsHeadProfiles.resolveForBox(b, it.boxSource) }
+        ?: directSelection
     val moduleSuffix = selection.profile.id.lowercase().replace(Regex("[^a-z0-9]+"), "_")
+    val moduleName = "box_${b.id.take(8)}_$moduleSuffix"
+    val preparedSource = selection.profile.prepareSourceMapped(
+        selection.source,
+        activeUserLines = fragmentContext?.activeUserLines,
+        stateKey = moduleName,
+    )
     val result = KotlinToJsCompiler.compile(
-        preparedSource,
-        moduleName = "box_${b.id.take(8)}_$moduleSuffix",
+        preparedSource.text,
+        moduleName = moduleName,
         // The selected profile wrapped user code before appending file-scope externals.
         wrapImplicitMain = false,
-    )
+    ).remapDiagnostics(preparedSource)
 
     result.diagnostics.filter { it.severity == "error" }.forEach {
         b.output.errorProxy(it.message, "code", it.line)
@@ -320,6 +329,12 @@ fun compileAndSendKotlin(
 
     return selection.profile.send(b, selection, js, launchable, lifecycleName, onResponse)
 }
+
+data class KotlinJsFragmentContext(
+    val boxSource: String,
+    /** One-based editor lines occupied by the selected fragment. */
+    val activeUserLines: IntRange,
+)
 
 fun launchAll(b: Box, code: String, lineOffset: Int = 0) {
     lastBoxExec = b

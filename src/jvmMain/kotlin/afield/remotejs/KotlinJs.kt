@@ -289,9 +289,23 @@ class KotlinJsExecution : BoxExecution {
     ) {
         val watermark = ++inside.fragmentGeneration
         send(Message("is-running").payload(IsRunning(execute.uid, true, watermark, "__fragment__")))
+        val boxSource = inside.getPropertyRaw(execute.property) as? String
+        val fragmentContext = boxSource?.takeIf(String::isNotBlank)?.let {
+            val firstLine = execute.line.coerceAtLeast(0) + 1
+            KotlinJsFragmentContext(
+                boxSource = it,
+                activeUserLines = firstLine..(firstLine + code.count { c -> c == '\n' }),
+            )
+        }
         kotlinJsCompilePool.submit {
             try {
-                compileAndSendKotlin(inside, code, launchable = false, selectedHead = selection)
+                compileAndSendKotlin(
+                    inside,
+                    code,
+                    launchable = false,
+                    selectedHead = selection,
+                    fragmentContext = fragmentContext,
+                )
             } catch (e: Exception) {
                 lprintln("error,kotlinjs", e.stackTraceToString())
                 notify("Kotlin → JS failed: ${e.message}", "kotlinjs_error")

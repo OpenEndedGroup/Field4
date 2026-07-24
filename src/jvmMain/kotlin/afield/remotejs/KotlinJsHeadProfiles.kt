@@ -31,12 +31,15 @@ sealed class KotlinJsHeadProfile(
     ): Boolean
     abstract fun stop(box: Box, selection: KotlinJsHeadSelection, lifecycleNames: Collection<String>)
 
-    fun prepareSource(userSource: String): String {
-        // Implicit-main wrapping must happen before declarations are appended. External declarations
-        // are file-scope-only, and appending afterwards also keeps explicit-main diagnostic lines stable.
-        val executable = KotlinToJsCompiler.ensureImplicitMain(userSource)
-        return if (declarations.isBlank()) executable else "$executable\n\n$declarations"
-    }
+    fun prepareSource(userSource: String): String = prepareSourceMapped(userSource).text
+
+    internal fun prepareSourceMapped(
+        userSource: String,
+        activeUserLines: IntRange? = null,
+        stateKey: String? = null,
+    ): KotlinToJsCompiler.PreparedSource =
+        KotlinToJsCompiler.prepareImplicitMain(userSource, activeUserLines, stateKey)
+            .appendUnmapped(declarations)
 }
 
 data class KotlinJsHeadResponse(

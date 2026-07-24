@@ -49,17 +49,28 @@ fun executing() {
 
             val exec = Json.decodeFromJsonElement<Execute>(message.payload!!)
             val box = box(exec.uid)
+            val originSession = thisSession.get()
+            val originSessionInfo = thisSessionInfo.get()
 
 
             inMain {
-                FlightRecorder.recordExecuteEntrypoint("execute-all", box, exec)
-                // experimental
-                if (box.ke is KotlinExecution)
-                    box.ki = makeKIHere(box, reason = "execute-all handler reset")
-                box.properties["_preamble"] = "" // remove record of previous preamble line execs
-                box.properties["_introduction"] = "" // ditto for introduction
-                box.properties.remove("_attic")
-                box.ke.executeAll(box, exec, reply)
+                val previousSession = thisSession.get()
+                val previousSessionInfo = thisSessionInfo.get()
+                try {
+                    thisSession.set(originSession)
+                    thisSessionInfo.set(originSessionInfo)
+                    FlightRecorder.recordExecuteEntrypoint("execute-all", box, exec)
+                    // experimental
+                    if (box.ke is KotlinExecution)
+                        box.ki = makeKIHere(box, reason = "execute-all handler reset")
+                    box.properties["_preamble"] = "" // remove record of previous preamble line execs
+                    box.properties["_introduction"] = "" // ditto for introduction
+                    box.properties.remove("_attic")
+                    box.ke.executeAll(box, exec, reply)
+                } finally {
+                    if (previousSession == null) thisSession.remove() else thisSession.set(previousSession)
+                    if (previousSessionInfo == null) thisSessionInfo.remove() else thisSessionInfo.set(previousSessionInfo)
+                }
             }
 
             Handled.yes

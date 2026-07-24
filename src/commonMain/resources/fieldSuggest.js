@@ -6,6 +6,7 @@ import {
 
 const DEFAULT_LANGUAGES = new Set([
   "kotlin",
+  "kotlinjs",
   "python",
   "clojure",
   "glsl",
