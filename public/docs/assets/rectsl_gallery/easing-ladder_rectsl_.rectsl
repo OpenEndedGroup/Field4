@@ -1,21 +1,21 @@
 #rectsl
-wall 12 8 meters
-duration 4
-fps 30
-fit contain
+->wall 12 8 meters
+->duration 4
+->fps 30
+->fit contain
 
 "linear" rect
-  -4.5 0 xy  1.1 square  0xff5a3c solid fill
-  '( 0 -3  2 3  4 -3 ) 4 loop-time y ;
+  -4.5 0 ->xy  1.1 ->square  0xff5a3c solid ->fill
+  '( 0 -3  2 3  4 -3 ) 4 loop-time ->y ;
 
 "ease-in" rect
-  -1.5 0 xy  1.1 square  0xffd23c solid fill
-  '( 0 -3  2 3  4 -3 ) ease-in 4 loop-time y ;
+  -1.5 0 ->xy  1.1 ->square  0xffd23c solid ->fill
+  '( 0 -3  2 3  4 -3 ) ease-in 4 loop-time ->y ;
 
 "ease-out" rect
-  1.5 0 xy  1.1 square  0x38e1b0 solid fill
-  '( 0 -3  2 3  4 -3 ) ease-out 4 loop-time y ;
+  1.5 0 ->xy  1.1 ->square  0x38e1b0 solid ->fill
+  '( 0 -3  2 3  4 -3 ) ease-out 4 loop-time ->y ;
 
 "ease-inout" rect
-  4.5 0 xy  1.1 square  0x3c8cff solid fill
-  '( 0 -3  2 3  4 -3 ) ease-in-out 4 loop-time y ;
+  4.5 0 ->xy  1.1 ->square  0x3c8cff solid ->fill
+  '( 0 -3  2 3  4 -3 ) ease-in-out 4 loop-time ->y ;

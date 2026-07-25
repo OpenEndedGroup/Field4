@@ -12,9 +12,9 @@ import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
-wall 16 8 meters
-duration 8
-fps 30
+->wall 16 8 meters
+->duration 8
+->fps 30
 
 material tint '(
   uv 4.0 * sin abs
@@ -22,18 +22,18 @@ material tint '(
 
 "orbit" group
   "cell" rect
-    0 0 xy
-    1.5 square
-    "petal" tag
-    '( 0 0  4 3.14159  8 6.28318 ) rot
-    0xffffff solid fill
-    tint material
+    0 0 ->xy
+    1.5 ->square
+    "petal" ->tag
+    '( 0 0  4 3.14159  8 6.28318 ) ->rot
+    0xffffff solid ->fill
+    tint ->material
   ;
   0 7 '(
-    "cell" select
+    "cell" ->select
       clone
-      i 2.2 * 6.6 - 0 xy
-      tint material
+      i 2.2 * 6.6 - 0 ->xy
+      tint ->material
   ) range
 end-group
 """

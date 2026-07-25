@@ -17,24 +17,28 @@
   const headerRe = /^(?:[ \t]*(?:\r?\n|$))*[ \t]*#rectsl\b[^\n]*(?:\r?\n|$)/i;
 
   const stackWords = new Set(["dup", "drop", "swap", "over"]);
-  const sceneWords = new Set(["wall", "duration", "fps", "meters", "pixels", "abstract", "fit", "contain", "cover", "stretch"]);
-  const objectWords = new Set(["rect", "group", "end", "end-group", "group-selected", "select", "rename", "tag", "id", "rect?", "group?", "copy", "clone", "clone-deep", "copy-deep", "front", "back"]);
-  const geometryWords = new Set(["xy", "nxy", "x", "y", "wh", "nwh", "w", "h", "square", "z", "layer", "rot", "rotation", "scale", "scale-xy", "alpha", "opacity*"]);
-  const paintWords = new Set(["solid", "linear", "fill", "rgb", "rgba", "material", "shader"]);
+  const sceneWords = new Set(["meters", "pixels", "abstract", "contain", "cover", "stretch"]);
+  const objectWords = new Set(["rect", "group", "end", "end-group", "id", "rect?", "group?", "copy", "clone", "clone-deep", "copy-deep"]);
+  const geometryWords = new Set([]);
+  const paintWords = new Set(["solid", "linear", "rgb", "rgba", "material"]);
   const trackWords = new Set(["track", "linear-track", "hold-track", "track-ref", "tcb", "linear", "hold", "tcb!", "x-track", "y-track", "w-track", "h-track", "rot-track", "rotation-track", "scale-x-track", "scale-y-track", "alpha-track", "z-track", "layer-track", "delay-time", "scale-time", "reverse-time", "loop-time", "pingpong-time", "time+", "time*", "value+", "value*", "clamp-values", "snap-time", "keys-before", "keys-after", "keys-between", "ease-in", "ease-out", "ease-in-out", "ease-smoothstep", "smooth"]);
-  const transformWords = new Set(["mirror-x", "mirror-y", "mirror-x-at", "mirror-y-at", "translate", "rotate", "offset", "stagger", "polar", "delay-all-time", "scale-all-time", "reverse-all-time", "loop-all-time", "pingpong-all-time", "stagger-time"]);
+  const transformWords = new Set([]);
   const higherWords = new Set(["all", "roots", "selected", "children", "descendants", "rects", "groups", "tagged", "tagged?", "each", "map", "filter", "where", "times", "repeat", "range", "i", "loop-count", "n", "array", "grid", "radial", "f", "f0", "fc", "ic", "col", "row", "cols", "rows", "colc", "rowc", "ease", "gaussian", "noise", "fbm", "sample", "reflect", "tile"]);
   const operatorWords = new Set(["+", "add", "-", "sub", "*", "mul", "/", "div", "mod", "pow", "min", "max", "neg", "negate", "abs", "floor", "ceil", "fract", "sqrt", "sin", "cos", "clamp", "sat", "saturate", "mix", "lerp", "smoothstep", "<", "lt", "<=", "lte", ">", "gt", ">=", "gte", "=", "eq", "!=", "<>", "neq", "and", "or", "not"]);
   const constants = new Set(["pi", "tau"]);
-  const wordDoc = (signature, detail, insertText = null) => ({ signature, detail, insertText });
+  const wordDoc = (signature, detail, insertText = null, effect = "ordinary") =>
+    ({ signature, detail, insertText, effect });
+  const mutatorDoc = (signature, detail, insertText = null) =>
+    wordDoc(signature, detail, insertText, "mutator");
   const wordDocs = new Map([
-    ["wall", wordDoc("width height --", "Set the physical wall size. Follow with a unit word such as meters.")],
+    ["->wall", mutatorDoc("width height --", "Set the physical wall size. Follow with a unit word such as meters.")],
     ["meters", wordDoc("--", "Mark the current wall unit as meters.")],
     ["pixels", wordDoc("--", "Mark the current wall unit as pixels.")],
     ["abstract", wordDoc("--", "Mark the current wall unit as abstract coordinates.")],
-    ["duration", wordDoc("seconds --", "Set animation duration in seconds.")],
-    ["fps", wordDoc("framesPerSecond --", "Set the sampling/render frame rate.")],
-    ["fit", wordDoc("policy --", "Set render fit policy: contain, cover, or stretch.")],
+    ["->duration", mutatorDoc("seconds --", "Set animation duration in seconds.")],
+    ["->fps", mutatorDoc("framesPerSecond --", "Set the sampling/render frame rate.")],
+    ["->background", mutatorDoc("color --", "Set the scene background color.")],
+    ["->fit", mutatorDoc("policy --", "Set render fit policy: contain, cover, or stretch.")],
     ["contain", wordDoc("-- policy", "Preserve aspect ratio and fit inside the render target.")],
     ["cover", wordDoc("-- policy", "Preserve aspect ratio and cover the render target.")],
     ["stretch", wordDoc("-- policy", "Stretch wall coordinates to the render target.")],
@@ -43,10 +47,10 @@
     ["group", wordDoc("[id] -- group", "Create a group scope, optionally using a string id from the stack.")],
     ["end", wordDoc("--", "Close the current group scope.")],
     ["end-group", wordDoc("--", "Close the current group scope.")],
-    ["group-selected", wordDoc("selection name -- group", "Create a new group containing the selected objects.")],
-    ["select", wordDoc("id -- object", "Select a rect or group by id.")],
-    ["rename", wordDoc("name --", "Rename the current selected object.")],
-    ["tag", wordDoc("name --", "Add a tag to the current rect/group or selected objects.")],
+    ["->group-selected", mutatorDoc("selection name -- group", "Create a new group and reparent the selected objects into it.")],
+    ["->select", mutatorDoc("id -- object", "Make a rect or group the active receiver.")],
+    ["->rename", mutatorDoc("name -- object", "Rename the active object.")],
+    ["->tag", mutatorDoc("name --", "Add a tag to the active object or selection.")],
     ["id", wordDoc("-- id", "Push the active rect/group id.")],
     ["rect?", wordDoc("-- bool", "Return 1 when the active object is a rectangle.")],
     ["group?", wordDoc("-- bool", "Return 1 when the active object is a group.")],
@@ -55,29 +59,37 @@
     ["copy-deep", wordDoc("-- object", "Copy a group and descendants, preserving internal structure.")],
     ["clone-deep", wordDoc("-- object", "Alias for copy-deep.")],
 
-    ["xy", wordDoc("x y --", "Set center position in wall/world coordinates.")],
-    ["nxy", wordDoc("nx ny --", "Set center position from normalized -1..1 wall coordinates.")],
-    ["x", wordDoc("number|track --", "Set or animate x position. A quote becomes a default TCB track.")],
-    ["y", wordDoc("number|track --", "Set or animate y position. A quote becomes a default TCB track.")],
-    ["wh", wordDoc("width height --", "Set rectangle size in wall/world units.")],
-    ["nwh", wordDoc("nw nh --", "Set rectangle size from normalized wall fractions.")],
-    ["w", wordDoc("width --", "Set rectangle width.")],
-    ["h", wordDoc("height --", "Set rectangle height.")],
-    ["square", wordDoc("size --", "Set width and height to the same value.")],
-    ["z", wordDoc("number|track --", "Set draw-depth metadata for the rect.")],
-    ["layer", wordDoc("number|string|track --", "Set draw layer. Higher layers render later and appear on top.")],
-    ["front", wordDoc("--", "Move the active object/selection to the front of its layer.")],
-    ["back", wordDoc("--", "Move the active object/selection to the back of its layer.")],
-    ["rot", wordDoc("radians|track --", "Set or animate rotation in radians.")],
-    ["rotation", wordDoc("radians|track --", "Alias for rot.")],
-    ["scale", wordDoc("scale|track --", "Set uniform scale.")],
-    ["scale-xy", wordDoc("xScale yScale --", "Set nonuniform scale.")],
-    ["alpha", wordDoc("alpha|track --", "Set or animate opacity alpha.")],
-    ["opacity*", wordDoc("factor --", "Multiply current opacity/alpha by factor.")],
+    ["->xy", mutatorDoc("x y --", "Set center position in wall/world coordinates.")],
+    ["->nxy", mutatorDoc("nx ny --", "Set center position from normalized -1..1 wall coordinates.")],
+    ["->x", mutatorDoc("number|track --", "Set or animate x position. A quote becomes a default TCB track.")],
+    ["->y", mutatorDoc("number|track --", "Set or animate y position. A quote becomes a default TCB track.")],
+    ["->wh", mutatorDoc("width height --", "Set rectangle size in wall/world units.")],
+    ["->nwh", mutatorDoc("nw nh --", "Set rectangle size from normalized wall fractions.")],
+    ["->w", mutatorDoc("width --", "Set rectangle width.")],
+    ["->h", mutatorDoc("height --", "Set rectangle height.")],
+    ["->square", mutatorDoc("size --", "Set width and height to the same value.")],
+    ["->z", mutatorDoc("number|track --", "Set draw-depth metadata for the rect.")],
+    ["->layer", mutatorDoc("number|string|track --", "Set draw layer. Higher layers render later and appear on top.")],
+    ["->front", mutatorDoc("--", "Move the active object/selection to the front of its layer.")],
+    ["->back", mutatorDoc("--", "Move the active object/selection to the back of its layer.")],
+    ["->rot", mutatorDoc("radians|track --", "Set or animate rotation in radians.")],
+    ["->rotation", mutatorDoc("radians|track --", "Alias for ->rot.")],
+    ["->rotate", mutatorDoc("radians|track --", "Add rotation to the active object or selection.")],
+    ["->face-travel", mutatorDoc("--", "Set rotation from the heading of the active object's x/y tracks.")],
+    ["->face-travel-at", mutatorDoc("offset --", "Set travel-facing rotation with a fixed angular offset.")],
+    ["->scale", mutatorDoc("scale|track --", "Set uniform scale.")],
+    ["->scale-xy", mutatorDoc("xScale yScale --", "Set nonuniform scale.")],
+    ["->alpha", mutatorDoc("alpha|track --", "Set or animate opacity alpha.")],
+    ["->opacity*", mutatorDoc("factor --", "Multiply current opacity/alpha by factor.")],
+    ["->appear", mutatorDoc("time --", "Hide the active object before time.")],
+    ["->vanish", mutatorDoc("time --", "Hide the active object from time onward.")],
+    ["->live", mutatorDoc("birth life --", "Shift animation to birth time and gate it to its life window.")],
 
     ["solid", wordDoc("color -- paint", "Create a solid fill paint from a color.")],
     ["linear", wordDoc("color0 color1 x0 y0 x1 y1 -- paint", "Create a two-color linear gradient paint, CPU-baked into vertex colors.")],
-    ["fill", wordDoc("paint --", "Assign fill paint to the current rect or selection.")],
+    ["->fill", mutatorDoc("paint --", "Assign fill paint to the active rect or selection.")],
+    ["->material", mutatorDoc("materialName --", "Assign a named StackSL material to the active rect or selection.")],
+    ["->shader", mutatorDoc("x y z w --", "Set per-rect shader data.")],
     ["rgb", wordDoc("r g b -- color", "Build an RGB color from 0..1 channels.")],
     ["rgba", wordDoc("r g b a -- color", "Build an RGBA color from 0..1 channels.")],
 
@@ -94,21 +106,20 @@
     ["reverse-time", wordDoc("track -- track", "Reverse a track in time.")],
     ["loop-time", wordDoc("track period -- track", "Loop a track over a time period.")],
     ["pingpong-time", wordDoc("track period -- track", "Ping-pong a track over a time period.")],
-    ["delay-all-time", wordDoc("seconds --", "Delay all tracks on the current object or selection.")],
-    ["scale-all-time", wordDoc("factor --", "Scale all key times on the current object or selection.")],
-    ["reverse-all-time", wordDoc("--", "Reverse all tracks on the current object or selection across the scene duration.")],
-    ["loop-all-time", wordDoc("period --", "Loop all tracks on the current object or selection.")],
-    ["pingpong-all-time", wordDoc("period --", "Ping-pong all tracks on the current object or selection.")],
-    ["stagger-time", wordDoc("stepSeconds --", "Delay each selected object by an increasing step.")],
+    ["->delay-all-time", mutatorDoc("seconds --", "Delay all tracks on the active object or selection.")],
+    ["->scale-all-time", mutatorDoc("factor --", "Scale all key times on the active object or selection.")],
+    ["->reverse-all-time", mutatorDoc("--", "Reverse all tracks on the active object or selection across the scene duration.")],
+    ["->loop-all-time", mutatorDoc("period --", "Loop all tracks on the active object or selection.")],
+    ["->pingpong-all-time", mutatorDoc("period --", "Ping-pong all tracks on the active object or selection.")],
+    ["->stagger-time", mutatorDoc("stepSeconds --", "Delay each selected object by an increasing step.")],
 
-    ["mirror-x", wordDoc("--", "Mirror current object/selection across x=0, including x tracks.")],
-    ["mirror-y", wordDoc("--", "Mirror current object/selection across y=0, including y tracks.")],
-    ["mirror-x-at", wordDoc("xAxis --", "Mirror current object/selection across the given x axis.")],
-    ["mirror-y-at", wordDoc("yAxis --", "Mirror current object/selection across the given y axis.")],
-    ["translate", wordDoc("dx dy --", "Translate current object/selection.")],
-    ["rotate", wordDoc("radians --", "Rotate current object/selection.")],
-    ["offset", wordDoc("dx dy --", "Offset position tracks or constants.")],
-    ["stagger", wordDoc("dx dy --", "Offset each selected object by an increasing vector.")],
+    ["->mirror-x", mutatorDoc("--", "Mirror the active object or selection across x=0, including x tracks.")],
+    ["->mirror-y", mutatorDoc("--", "Mirror the active object or selection across y=0, including y tracks.")],
+    ["->mirror-x-at", mutatorDoc("xAxis --", "Mirror the active object or selection across the given x axis.")],
+    ["->mirror-y-at", mutatorDoc("yAxis --", "Mirror the active object or selection across the given y axis.")],
+    ["->translate", mutatorDoc("dx dy --", "Translate the active object or selection.")],
+    ["->offset", mutatorDoc("dx dy --", "Offset position tracks or constants on the active object or selection.")],
+    ["->stagger", mutatorDoc("dx dy -- selection", "Offset each selected object by an increasing vector.")],
 
     ["all", wordDoc("-- selection", "Select all nodes.")],
     ["roots", wordDoc("-- selection", "Select top-level nodes.")],
@@ -159,7 +170,8 @@
     ["array", wordDoc("[template] count quote -- selection", "Reproduce a template object count times, running quote on each copy with array context. Element 0 is the template; the rest are fresh clones (deep for groups). Template is the active object, or a rect/group from the stack. Pushes the selection of all copies.")],
     ["radial", wordDoc("[template] count radius quote -- selection", "Like array, but each copy is placed on a circle of radius at angle ordinal/count*tau before quote runs.")],
     ["grid", wordDoc("cols rows quote -- selection", "Run quote cols*rows times to build fresh cells with grid context (col, row, cols, rows, colc, rowc). Close each cell with ;. Pushes the selection of created objects.")],
-    ["polar", wordDoc("angle radius --", "Place the active object on a circle: x = radius*cos angle, y = radius*sin angle.")],
+    ["->polar", mutatorDoc("angle radius --", "Place the active object on a circle: x = radius*cos angle, y = radius*sin angle.")],
+    ["->split", mutatorDoc("[template] count time quote -- selection", "Gate the template at time and create animated shards from its split point.")],
     ["f", wordDoc("-- number", "Normalized array fraction ordinal/(n-1) in [0,1]; 0 for a single element. Pairs with mix.")],
     ["f0", wordDoc("-- number", "Cyclic array fraction ordinal/n in [0,1); handy for rings (f0 tau *).")],
     ["fc", wordDoc("-- number", "Centered array fraction 2f-1 in [-1,1].")],
@@ -178,6 +190,12 @@
     ["sample", wordDoc("Fn x -- number", "Evaluate a distribution curve at x (use the array fraction f).")],
     ["reflect", wordDoc("Fn -- Fn", "Mirror a curve about 0.5: reflect(x) = fn(1-x).")],
     ["tile", wordDoc("Fn k -- Fn", "Repeat a curve k times across [0,1].")],
+
+    ["->margins", mutatorDoc("left right bottom top --", "Set the shared plotting-frame margins.")],
+    ["->frame", mutatorDoc("--", "Apply default plotting-frame margins when none are set.")],
+    ["->domain", mutatorDoc("x0 x1 y0 y1 --", "Set shared x and y plotting domains.")],
+    ["->xdomain", mutatorDoc("x0 x1 --", "Set the shared x plotting domain.")],
+    ["->ydomain", mutatorDoc("y0 y1 --", "Set the shared y plotting domain.")],
 
     ["dup", wordDoc("a -- a a", "Duplicate the top stack value.")],
     ["drop", wordDoc("a --", "Drop the top stack value.")],
@@ -210,20 +228,22 @@
 
   const effects = new Map([
     ["dup", [1, 2]], ["drop", [1, 0]], ["swap", [2, 2]], ["over", [2, 3]],
-    ["wall", [2, 0]], ["duration", [1, 0]], ["fps", [1, 0]], ["fit", [1, 0]],
-    ["rect", [0, 1]], ["group", [0, 1]], ["end", [0, 0]], ["end-group", [0, 0]], ["group-selected", [2, 1]], ["select", [1, 1]], ["rename", [1, 1]], ["tag", [1, 0]], ["id", [0, 1]], ["rect?", [0, 1]], ["group?", [0, 1]], ["tagged?", [1, 1]],
+    ["->wall", [2, 0]], ["->duration", [1, 0]], ["->fps", [1, 0]], ["->background", [1, 0]], ["->fit", [1, 0]],
+    ["rect", [0, 1]], ["group", [0, 1]], ["end", [0, 0]], ["end-group", [0, 0]], ["->group-selected", [2, 1]], ["->select", [1, 1]], ["->rename", [1, 1]], ["->tag", [1, 0]], ["id", [0, 1]], ["rect?", [0, 1]], ["group?", [0, 1]], ["tagged?", [1, 1]],
     ["copy", [0, 1]], ["clone", [0, 1]], ["copy-deep", [0, 1]], ["clone-deep", [0, 1]],
-    ["xy", [2, 0]], ["nxy", [2, 0]], ["x", [1, 0]], ["y", [1, 0]], ["wh", [2, 0]], ["nwh", [2, 0]], ["w", [1, 0]], ["h", [1, 0]],
-    ["square", [1, 0]], ["z", [1, 0]], ["layer", [1, 0]], ["front", [0, 0]], ["back", [0, 0]], ["rot", [1, 0]], ["rotation", [1, 0]], ["scale", [1, 0]], ["scale-xy", [2, 0]], ["alpha", [1, 0]], ["opacity*", [1, 0]],
-    ["solid", [1, 1]], ["linear", [1, 1]], ["fill", [1, 0]], ["rgb", [3, 1]], ["rgba", [4, 1]], ["material", [1, 0]], ["shader", [1, 0]],
+    ["->xy", [2, 0]], ["->nxy", [2, 0]], ["->x", [1, 0]], ["->y", [1, 0]], ["->wh", [2, 0]], ["->nwh", [2, 0]], ["->w", [1, 0]], ["->h", [1, 0]],
+    ["->square", [1, 0]], ["->z", [1, 0]], ["->layer", [1, 0]], ["->front", [0, 0]], ["->back", [0, 0]], ["->rot", [1, 0]], ["->rotation", [1, 0]], ["->rotate", [1, 0]], ["->face-travel", [0, 0]], ["->face-travel-at", [1, 0]], ["->scale", [1, 0]], ["->scale-xy", [2, 0]], ["->alpha", [1, 0]], ["->opacity*", [1, 0]], ["->appear", [1, 0]], ["->vanish", [1, 0]], ["->live", [2, 0]],
+    ["solid", [1, 1]], ["linear", [1, 1]], ["->fill", [1, 0]], ["rgb", [3, 1]], ["rgba", [4, 1]], ["material", [0, 0]], ["->material", [1, 0]], ["->shader", [4, 0]],
     ["track", [2, 0]], ["linear-track", [2, 0]], ["hold-track", [2, 0]], ["track-ref", [1, 1]], ["tcb", [1, 1]], ["hold", [1, 1]], ["tcb!", [4, 1]],
     ["x-track", [0, 1]], ["y-track", [0, 1]], ["w-track", [0, 1]], ["h-track", [0, 1]], ["rot-track", [0, 1]], ["rotation-track", [0, 1]], ["scale-x-track", [0, 1]], ["scale-y-track", [0, 1]], ["alpha-track", [0, 1]], ["z-track", [0, 1]], ["layer-track", [0, 1]],
     ["delay-time", [2, 1]], ["scale-time", [2, 1]], ["reverse-time", [1, 1]], ["loop-time", [2, 1]], ["pingpong-time", [2, 1]], ["time+", [2, 1]], ["time*", [2, 1]], ["value+", [2, 1]], ["value*", [2, 1]], ["clamp-values", [3, 1]], ["snap-time", [2, 1]], ["keys-before", [2, 1]], ["keys-after", [2, 1]], ["keys-between", [3, 1]],
     ["ease-in", [1, 1]], ["ease-out", [1, 1]], ["ease-in-out", [1, 1]], ["ease-smoothstep", [1, 1]], ["smooth", [1, 1]],
-    ["mirror-x-at", [1, 0]], ["mirror-y-at", [1, 0]], ["translate", [2, 0]], ["rotate", [1, 0]], ["offset", [2, 0]], ["stagger", [2, 1]], ["polar", [2, 0]],
+    ["->delay-all-time", [1, 0]], ["->scale-all-time", [1, 0]], ["->reverse-all-time", [0, 0]], ["->loop-all-time", [1, 0]], ["->pingpong-all-time", [1, 0]], ["->stagger-time", [1, 1]],
+    ["->mirror-x", [0, 0]], ["->mirror-y", [0, 0]], ["->mirror-x-at", [1, 0]], ["->mirror-y-at", [1, 0]], ["->translate", [2, 0]], ["->offset", [2, 0]], ["->stagger", [2, 1]], ["->polar", [2, 0]], ["->split", [3, 1]],
     ["all", [0, 1]], ["roots", [0, 1]], ["selected", [0, 1]], ["children", [1, 1]], ["descendants", [1, 1]], ["rects", [1, 1]], ["groups", [1, 1]], ["tagged", [2, 1]],
     ["each", [2, 1]], ["map", [2, 1]], ["filter", [2, 1]], ["where", [2, 1]], ["times", [2, 0]], ["repeat", [2, 0]], ["range", [3, 0]], ["i", [0, 1]], ["loop-count", [0, 1]], ["n", [0, 1]],
     ["array", [2, 1]], ["radial", [3, 1]], ["grid", [3, 1]], ["f", [0, 1]], ["f0", [0, 1]], ["fc", [0, 1]], ["ic", [0, 1]], ["col", [0, 1]], ["row", [0, 1]], ["cols", [0, 1]], ["rows", [0, 1]], ["colc", [0, 1]], ["rowc", [0, 1]],
+    ["->margins", [4, 0]], ["->frame", [0, 0]], ["->domain", [4, 0]], ["->xdomain", [2, 0]], ["->ydomain", [2, 0]],
     ["ease", [2, 1]], ["gaussian", [0, 1]], ["noise", [1, 1]], ["fbm", [1, 1]], ["sample", [2, 1]], ["reflect", [1, 1]], ["tile", [2, 1]],
     ["+", [2, 1]], ["-", [2, 1]], ["*", [2, 1]], ["/", [2, 1]], ["mod", [2, 1]], ["pow", [2, 1]], ["min", [2, 1]], ["max", [2, 1]],
     ["neg", [1, 1]], ["abs", [1, 1]], ["floor", [1, 1]], ["ceil", [1, 1]], ["fract", [1, 1]], ["sqrt", [1, 1]], ["sin", [1, 1]], ["cos", [1, 1]],
@@ -358,6 +378,7 @@
     if (token.kind === "control") return "afield-stacksl-token-control";
     if (expectingDefinitionName) return "afield-stacksl-token-definition";
     const word = String(token.text || "").toLowerCase();
+    if (wordDocs.get(word)?.effect === "mutator") return "afield-stacksl-token-creative";
     if (stackWords.has(word) || objectWords.has(word) || geometryWords.has(word) || higherWords.has(word)) return "afield-stacksl-token-keyword";
     if (paintWords.has(word) || transformWords.has(word)) return "afield-stacksl-token-creative";
     if (trackWords.has(word) || operatorWords.has(word)) return "afield-stacksl-token-operator";
@@ -467,6 +488,7 @@
         data: {
           source: extensionId,
           aiDocResolved: true,
+          rectslEffect: doc.effect,
         },
       }));
     return { suggestions };

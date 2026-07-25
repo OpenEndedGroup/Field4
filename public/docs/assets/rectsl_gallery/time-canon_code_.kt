@@ -12,26 +12,26 @@ import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
-wall 20 12 meters
-duration 6
-fps 30
+->wall 20 12 meters
+->duration 6
+->fps 30
 
-"plain" rect  -8 5 xy  1 square  0xff5a3c solid fill
-  '( 0 -8  3 0  6 8 ) x ;
-"delayed" rect  -8 3.4 xy  1 square  0xff8c3c solid fill
-  '( 0 -8  3 0  6 8 ) 1.5 delay-time x ;
-"stretched" rect  -8 1.8 xy  1 square  0xffd23c solid fill
-  '( 0 -8  3 0  6 8 ) 0.5 scale-time x ;
-"shifted" rect  -8 0.2 xy  1 square  0xa6e22e solid fill
-  '( 0 -8  3 0  6 8 ) 1 time+ x ;
-"faster" rect  -8 -1.4 xy  1 square  0x38e1b0 solid fill
-  '( 0 -8  3 0  6 8 ) 1.4 time* x ;
-"reversed" rect  -8 -3 xy  1 square  0x3c8cff solid fill
-  '( 0 -8  3 0  6 8 ) reverse-time x ;
-"pinged" rect  -8 -4.6 xy  1 square  0xb45cff solid fill
-  '( 0 -8  1.5 8  3 -8 ) 3 pingpong-time x ;
-"snapped" rect  -8 -6 xy  1 square  0xff5ab4 solid fill
-  '( 0 -8  1.2 -2  2.4 4  3.6 8 ) 1 snap-time x ;
+"plain" rect  -8 5 ->xy  1 ->square  0xff5a3c solid ->fill
+  '( 0 -8  3 0  6 8 ) ->x ;
+"delayed" rect  -8 3.4 ->xy  1 ->square  0xff8c3c solid ->fill
+  '( 0 -8  3 0  6 8 ) 1.5 delay-time ->x ;
+"stretched" rect  -8 1.8 ->xy  1 ->square  0xffd23c solid ->fill
+  '( 0 -8  3 0  6 8 ) 0.5 scale-time ->x ;
+"shifted" rect  -8 0.2 ->xy  1 ->square  0xa6e22e solid ->fill
+  '( 0 -8  3 0  6 8 ) 1 time+ ->x ;
+"faster" rect  -8 -1.4 ->xy  1 ->square  0x38e1b0 solid ->fill
+  '( 0 -8  3 0  6 8 ) 1.4 time* ->x ;
+"reversed" rect  -8 -3 ->xy  1 ->square  0x3c8cff solid ->fill
+  '( 0 -8  3 0  6 8 ) reverse-time ->x ;
+"pinged" rect  -8 -4.6 ->xy  1 ->square  0xb45cff solid ->fill
+  '( 0 -8  1.5 8  3 -8 ) 3 pingpong-time ->x ;
+"snapped" rect  -8 -6 ->xy  1 ->square  0xff5ab4 solid ->fill
+  '( 0 -8  1.2 -2  2.4 4  3.6 8 ) 1 snap-time ->x ;
 """
 
 val program = RectAnimationOracle.compile(rectsl).program!!

@@ -43,11 +43,11 @@ RectSL data-visualization demo.
 
 The #rectsl program draws a viridis colour-bar legend (array + colormap)
 and a bar chart bound to a data list (data / normalize / bars), animated in
-with a staggered eased alpha. Edit `rectsl` and re-run to change it live.
+with a staggered eased `->alpha`. Edit `rectsl` and re-run to change it live.
 See rectsl_cheatsheet.md ("Data visualization") / rectsl_examples.md.
 
 ```edn [field-box id="dataviz_figure" role="properties"]
-{"id" "dataviz_figure" "index" 1 "name" "rectsl dataviz" "parents" ["root" "dataviz_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "dataviz_renderer"} "name" "rectsl dataviz" "_tombstone" false "frame" #afield/rect [-300.0 -220.0 300.0 220.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dataviz_figure_code_.kt" "lines" 62 "characters" 1908 "sha256" "bd05dbd4f772cc2aff8b6eaf2157015bab7009fac3416191f7d7916614c8124e"}]}
+{"id" "dataviz_figure" "index" 1 "name" "rectsl dataviz" "parents" ["root" "dataviz_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "dataviz_renderer"} "name" "rectsl dataviz" "_tombstone" false "frame" #afield/rect [-300.0 -220.0 300.0 220.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dataviz_figure_code_.kt" "lines" 62 "characters" 1928 "sha256" "11f06834d358726f328e54e395772c59b0e1862f0d90d6eb48e04eacf6d8e2ea"}]}
 ```
 
 ```kotlin [field-property box="dataviz_figure" name="code" path="dataviz_figure_code_.kt"]
@@ -55,7 +55,7 @@ See rectsl_cheatsheet.md ("Data visualization") / rectsl_examples.md.
 //
 // The #rectsl program draws a viridis colour-bar legend (array + colormap)
 // and a bar chart bound to a data list (data / normalize / bars), animated in
-// with a staggered eased alpha. Edit `rectsl` and re-run to change it live.
+// with a staggered eased `->alpha`. Edit `rectsl` and re-run to change it live.
 // See rectsl_cheatsheet.md ("Data visualization") / rectsl_examples.md.
 import afield.rectsl.RectAnimationOracle
 import afield.rectsl.rectMaterialShaderCode
@@ -64,19 +64,19 @@ import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
-wall 20 10 meters
-duration 6
-fps 30
+->wall 20 10 meters
+->duration 6
+->fps 30
 
 # colour legend across the top: 40 swatches sweeping viridis
-"leg" rect  0.5 0.8 wh
-  40 '( fc 9.6 *  4.3 offset  "viridis" f colormap solid fill ) array
+"leg" rect  0.5 0.8 ->wh
+  40 '( fc 9.6 *  4.3 ->offset  "viridis" f colormap solid ->fill ) array
 ;
 
 # bar chart from data, viridis by value, staggered grow-in
 '( 4 7 2 9 5 8 3 6 1 6 5 9 4 7 3 8 ) data  normalize  "viridis" bars
-  '( '( 0=0 0.7=1 ) ease-out alpha ) each
-  0.05 stagger-time
+  '( '( 0=0 0.7=1 ) ease-out ->alpha ) each
+  0.05 ->stagger-time
 """
 
 val program = RectAnimationOracle.compile(rectsl).program!!

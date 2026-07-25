@@ -12,20 +12,20 @@ import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
-wall 1600 900 pixels
-fit cover
-duration 4
-fps 30
+->wall 1600 900 pixels
+->fit cover
+->duration 4
+->fps 30
 
 12 7 '(
   "c" rect
-    colc 110 *  rowc 110 *  xy
-    76 square
+    colc 110 *  rowc 110 *  ->xy
+    76 ->square
     colc dup *  rowc dup *  +  sqrt
-    dup  0 5 smoothstep  neg 1 +  0.05 max  0 1 clamp  0.9 *  0.1 +  alpha
-    5 min  neg 5 +  5 /  0.4 pow  40 *  40 +  w
+    dup  0 5 smoothstep  neg 1 +  0.05 max  0 1 clamp  0.9 *  0.1 +  ->alpha
+    5 min  neg 5 +  5 /  0.4 pow  40 *  40 +  ->w
     col cols 1 - /  row rows 1 - /  over  +  0.5 *  swap drop
-    4 *  ceil  4 /  pi *  rot
+    4 *  ceil  4 /  pi *  ->rot
   ) grid
 """
 

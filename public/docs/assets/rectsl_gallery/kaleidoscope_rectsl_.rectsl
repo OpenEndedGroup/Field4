@@ -1,17 +1,17 @@
 #rectsl
-wall 14 14 abstract
-background 0x101018
-duration 6
-fps 30
+->wall 14 14 abstract
+->background 0x101018
+->duration 6
+->fps 30
 
 "seed" rect
-  -3.5 -3.5 xy  2.4 square  0xff5a3c solid fill
-  '( 0 0  6 6.28318 ) rot
-  '( 0 -4.5  3 -2.5  6 -4.5 ) x ;
+  -3.5 -3.5 ->xy  2.4 ->square  0xff5a3c solid ->fill
+  '( 0 0  6 6.28318 ) ->rot
+  '( 0 -4.5  3 -2.5  6 -4.5 ) ->x ;
 
-"seed" select clone "mx" rename
-  3.5 mirror-x-at  0x38e1b0 solid fill  front ;
-"seed" select clone "my" rename
-  0 mirror-y-at  0xffd23c solid fill  back ;
-"seed" select clone "myy" rename
-  mirror-y  0x3c8cff solid fill ;
+"seed" ->select clone "mx" ->rename
+  3.5 ->mirror-x-at  0x38e1b0 solid ->fill  ->front ;
+"seed" ->select clone "my" ->rename
+  0 ->mirror-y-at  0xffd23c solid ->fill  ->back ;
+"seed" ->select clone "myy" ->rename
+  ->mirror-y  0x3c8cff solid ->fill ;

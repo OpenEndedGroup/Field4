@@ -12,21 +12,21 @@ import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
-wall 8 4 meters
-duration 4
-fps 24
+->wall 8 4 meters
+->duration 4
+->fps 24
 
 "left" rect
-  -2 0 xy
-  1.4 square
-  0xff8c1a solid fill
-  '( 0 -2  2 0  4 2 ) x
-  '( 0 0.15  2 1  4 0.15 ) alpha
+  -2 0 ->xy
+  1.4 ->square
+  0xff8c1a solid ->fill
+  '( 0 -2  2 0  4 2 ) ->x
+  '( 0 0.15  2 1  4 0.15 ) ->alpha
 ;
 
-dup "right" rename
-  mirror-x
-  0x1ac6ff solid fill
+dup "right" ->rename
+  ->mirror-x
+  0x1ac6ff solid ->fill
 ;
 """
 

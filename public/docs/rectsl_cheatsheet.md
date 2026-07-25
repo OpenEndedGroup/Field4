@@ -9,19 +9,19 @@ import afield.rectsl.*
 
 val source = """
 #rectsl
-wall 4 4 meters
-duration 4
-fps 20
+->wall 4 4 meters
+->duration 4
+->fps 20
 
 "left" rect
-  -1 0 xy
-  1 square
-  '( 0 -1  2 0  4 3 ) x
-  '( 0 0   2 1  4 0 ) alpha
+  -1 0 ->xy
+  1 ->square
+  '( 0 -1  2 0  4 3 ) ->x
+  '( 0 0   2 1  4 0 ) ->alpha
 ;
 
-dup "right" rename
-  mirror-x
+dup "right" ->rename
+  ->mirror-x
 ;
 """
 
@@ -32,6 +32,12 @@ val frame = program.sample(2.0)
 ## Model
 
 RectSL is a small stack language with scene side effects. Numbers, strings, colors, quotes, selections, rects, groups, paints, and scalar tracks can sit on the stack. Most geometry words apply to the active rect/group or to the current selection.
+
+Words beginning with `->` are mutators: they consume values and write through to
+the active rect, group, selection, or scene. Ordinary words transform stack values,
+query the scene, control evaluation, or construct new values/nodes. Thus
+`f0 tau *` computes an angle while `f0 tau * ->rot` commits that angle to the
+active object. The arrow is part of the word, not optional punctuation.
 
 | Syntax | Meaning |
 | --- | --- |
@@ -58,15 +64,15 @@ RectSL is a small stack language with scene side effects. Numbers, strings, colo
 
 | Word | Stack | Notes |
 | --- | --- | --- |
-| `wall meters` | `width height --` | Sets physical wall size in meters. |
-| `wall pixels` | `width height --` | Sets wall size in pixel units. |
-| `wall abstract` | `width height --` | Sets wall size in arbitrary units. |
-| `duration` | `seconds --` | Scene duration in seconds. |
-| `fps` | `framesPerSecond --` | Sampling/render frame rate. |
-| `background` | `color --` or `0xrrggbb background` | Sets scene background. |
-| `fit contain` | `--` | Preserve aspect ratio and fit inside target. |
-| `fit cover` | `--` | Preserve aspect ratio and cover target. |
-| `fit stretch` | `--` | Stretch wall coordinates to target. |
+| `->wall meters` | `width height --` | Sets physical wall size in meters. |
+| `->wall pixels` | `width height --` | Sets wall size in pixel units. |
+| `->wall abstract` | `width height --` | Sets wall size in arbitrary units. |
+| `->duration` | `seconds --` | Scene duration in seconds. |
+| `->fps` | `framesPerSecond --` | Sampling/render frame rate. |
+| `->background` | `color --` or `0xrrggbb ->background` | Sets scene background. |
+| `->fit contain` | `--` | Preserve aspect ratio and fit inside target. |
+| `->fit cover` | `--` | Preserve aspect ratio and cover target. |
+| `->fit stretch` | `--` | Stretch wall coordinates to target. |
 
 ## Objects and groups
 
@@ -75,42 +81,42 @@ RectSL is a small stack language with scene side effects. Numbers, strings, colo
 | `rect` | `[id] -- rect` | Creates a rect. If the top stack value is a string, it becomes the id. |
 | `group` | `[id] -- group` | Opens a group scope. New objects become group children until `end` / `end-group`. |
 | `end`, `end-group` | `--` | Closes the current group. |
-| `select` | `id -- object` | Selects a rect or group and pushes its reference. |
-| `rename` | `name -- object` | Renames the active object or a reference from the stack. |
-| `tag` | `name --` | Adds a tag to the active object or current selection. |
+| `->select` | `id -- object` | Selects a rect or group and pushes its reference. |
+| `->rename` | `name -- object` | Renames the active object or a reference from the stack. |
+| `->tag` | `name --` | Adds a tag to the active object or current selection. |
 | `id` | `-- id` | Pushes the active object id. |
 | `rect?` | `-- bool` | `1` when the active object is a rect. |
 | `group?` | `-- bool` | `1` when the active object is a group. |
 | `tagged?` | `tag -- bool` | Tests the active object for a tag. |
 | `copy`, `clone` | `-- object` | Shallow copy of the active object. |
 | `copy-deep`, `clone-deep` | `-- object` | Deep copy of a group and its descendants. |
-| `group-selected` | `selection [id] -- group` | Reparents selected objects into a new group. |
+| `->group-selected` | `selection [id] -- group` | Reparents selected objects into a new group. |
 
 ## Geometry and ordering
 
 | Word | Stack | Notes |
 | --- | --- | --- |
-| `xy` | `x y --` | Center position in wall coordinates. |
-| `nxy` | `nx ny --` | Normalized position in `[-1, 1]` wall space. |
-| `x`, `y` | `scalar --` | Constant or animated coordinate. A quote becomes a TCB track. |
-| `wh` | `width height --` | Rect size. |
-| `nwh` | `nw nh --` | Normalized size relative to wall dimensions. |
-| `w`, `h` | `scalar --` | Width or height. |
-| `square` | `size --` | Sets width and height together. |
-| `rot`, `rotation` | `scalar --` | Rotation in radians. |
-| `rotate` | `scalar --` | Adds rotation to the active object/selection. |
-| `face-travel` | `--` | Auto-orient: sets rotation to the heading of the object's own x/y tracks (local +x points along travel). |
-| `face-travel-at` | `offset --` | Like `face-travel`, but adds a fixed angle offset (correct for how the art is drawn). |
-| `scale` | `scalar --` | Uniform scale. |
-| `scale-xy` | `sx sy --` | Nonuniform scale. |
-| `alpha` | `scalar --` | Opacity. |
-| `opacity*` | `factor --` | Multiplies opacity. |
-| `appear` | `t --` | Hard-gate visibility on: invisible before `t`, unchanged from `t`. |
-| `vanish` | `t --` | Hard-gate visibility off: unchanged before `t`, invisible from `t`. |
-| `live` | `birth life --` | Emitter primitive: play the object's animation from `birth` (local time 0 = `birth`) and show it only during `[birth, birth+life]`. |
-| `z` | `scalar --` | Per-rect depth metadata. |
-| `layer` | `number|string|track --` | Draw layer. Higher layers render later. |
-| `front`, `back` | `--` | Move active object/selection within its layer. |
+| `->xy` | `x y --` | Center position in wall coordinates. |
+| `->nxy` | `nx ny --` | Normalized position in `[-1, 1]` wall space. |
+| `->x`, `->y` | `scalar --` | Constant or animated coordinate. A quote becomes a TCB track. |
+| `->wh` | `width height --` | Rect size. |
+| `->nwh` | `nw nh --` | Normalized size relative to wall dimensions. |
+| `->w`, `->h` | `scalar --` | Width or height. |
+| `->square` | `size --` | Sets width and height together. |
+| `->rot`, `->rotation` | `scalar --` | Rotation in radians. |
+| `->rotate` | `scalar --` | Adds rotation to the active object/selection. |
+| `->face-travel` | `--` | Auto-orient: sets rotation to the heading of the object's own x/y tracks (local +x points along travel). |
+| `->face-travel-at` | `offset --` | Like `->face-travel`, but adds a fixed angle offset (correct for how the art is drawn). |
+| `->scale` | `scalar --` | Uniform scale. |
+| `->scale-xy` | `sx sy --` | Nonuniform scale. |
+| `->alpha` | `scalar --` | Opacity. |
+| `->opacity*` | `factor --` | Multiplies opacity. |
+| `->appear` | `t --` | Hard-gate visibility on: invisible before `t`, unchanged from `t`. |
+| `->vanish` | `t --` | Hard-gate visibility off: unchanged before `t`, invisible from `t`. |
+| `->live` | `birth life --` | Emitter primitive: play the object's animation from `birth` (local time 0 = `birth`) and show it only during `[birth, birth+life]`. |
+| `->z` | `scalar --` | Per-rect depth metadata. |
+| `->layer` | `number|string|track --` | Draw layer. Higher layers render later. |
+| `->front`, `->back` | `--` | Move active object/selection within its layer. |
 
 ## Paint and material
 
@@ -120,10 +126,10 @@ RectSL is a small stack language with scene side effects. Numbers, strings, colo
 | `rgba` | `r g b a -- color` | Builds an RGBA color from 0..1 channels. |
 | `solid` | `color -- paint` | Solid fill paint. |
 | `linear` | `color0 color1 x0 y0 x1 y1 -- paint` | CPU-baked two-color fill across the rect. |
-| `fill` | `paint --` | Assigns fill paint. |
+| `->fill` | `paint --` | Assigns fill paint. |
 | `material name '( ... )` | `--` | Compiles the quote source as a named StackSL rect material. |
-| `name material` | `materialName --` | Assigns a previously defined or built-in material to the active rect/selection. |
-| `shader` | `x y z w --` | Sets per-rect shader data. |
+| `name ->material` | `materialName --` | Assigns a previously defined or built-in material to the active rect/selection. |
+| `->shader` | `x y z w --` | Sets per-rect shader data. |
 
 Material StackSL receives rect/material data from the generated shader harness. Prefer RectSL for geometry and StackSL for fragment math; do not duplicate shape layout inside StackSL unless the shape is genuinely shader-only.
 
@@ -192,17 +198,17 @@ time and value of a key to read the pairing aloud — `0=0.2` means "0.2 at time
 | `each` | `selection quote -- selection` | Apply a quote to each selected object. |
 | `map` | `selection quote -- selection` | Map a quote over selected objects. |
 | `filter`, `where` | `selection quote -- selection` | Keep objects whose quote returns true. |
-| `mirror-x`, `mirror-y` | `--` | Mirror around axis 0. |
-| `mirror-x-at`, `mirror-y-at` | `axis --` | Mirror around a custom axis. |
-| `translate` | `dx dy --` | Translate active object/selection. |
-| `offset` | `dx dy --` | Offset position constants/tracks. |
-| `stagger` | `dx dy --` | Increasing positional offset over selection order. |
-| `delay-all-time` | `seconds --` | Delay every track on active object/selection. |
-| `scale-all-time` | `factor --` | Scale every key time. |
-| `reverse-all-time` | `--` | Reverse every track across scene duration. |
-| `loop-all-time` | `period --` | Loop every track. |
-| `pingpong-all-time` | `period --` | Ping-pong every track. |
-| `stagger-time` | `stepSeconds --` | Increasing time delay over selection order. |
+| `->mirror-x`, `->mirror-y` | `--` | Mirror around axis 0. |
+| `->mirror-x-at`, `->mirror-y-at` | `axis --` | Mirror around a custom axis. |
+| `->translate` | `dx dy --` | Translate active object/selection. |
+| `->offset` | `dx dy --` | Offset position constants/tracks. |
+| `->stagger` | `dx dy --` | Increasing positional offset over selection order. |
+| `->delay-all-time` | `seconds --` | Delay every track on active object/selection. |
+| `->scale-all-time` | `factor --` | Scale every key time. |
+| `->reverse-all-time` | `--` | Reverse every track across scene duration. |
+| `->loop-all-time` | `period --` | Loop every track. |
+| `->pingpong-all-time` | `period --` | Ping-pong every track. |
+| `->stagger-time` | `stepSeconds --` | Increasing time delay over selection order. |
 
 ## Loops and blocks
 
@@ -218,7 +224,7 @@ time and value of a key to read the pairing aloud — `0=0.2` means "0.2 at time
 
 ## Array primitives
 
-Array primitives *reproduce a subexpression with modification* — the Fischinger idea of one shape multiplied into a rhythm of copies, each shifted in space, time, size, or colour. Inside any `repeat`/`range`/`array`/`grid`/`radial` body the per-copy context words below are available; combine them with `mix`, `offset`, `rotate`, `polar`, and `delay-all-time` to vary each copy.
+Array primitives *reproduce a subexpression with modification* — the Fischinger idea of one shape multiplied into a rhythm of copies, each shifted in space, time, size, or colour. Inside any `repeat`/`range`/`array`/`grid`/`radial` body the per-copy context words below are available; combine them with `mix`, `->offset`, `->rotate`, `->polar`, and `->delay-all-time` to vary each copy.
 
 | Word | Stack | Notes |
 | --- | --- | --- |
@@ -228,8 +234,8 @@ Array primitives *reproduce a subexpression with modification* — the Fischinge
 | `spiral` | `[template] count r0 r1 turns quote -- selection` | Places `count` copies on a spiral: radius ramps `r0`→`r1` while the angle sweeps `turns · tau`. |
 | `phyllotaxis`, `sunflower` | `[template] count scale quote -- selection` | Golden-angle sunflower: copy `i` at angle `i · 137.5°` and radius `scale · √i`. |
 | `grid` | `cols rows quote -- selection` | Runs `quote` `cols·rows` times to build fresh cells, with grid context available. Close each cell with `;` like `repeat`. Pushes the selection of created objects. |
-| `split` | `[template] count t quote -- selection` | At time `t` the template vanishes and `count` shards are born at its split-point position (sampled from its tracks). Each shard's flight is authored by `quote` around the origin in split-relative local time (array context available), then placed at the split point. Pushes the shard selection. |
-| `polar` | `angle radius --` | Place the active object on a circle: `x = radius·cos angle`, `y = radius·sin angle`. |
+| `->split` | `[template] count t quote -- selection` | At time `t` the template vanishes and `count` shards are born at its split-point position (sampled from its tracks). Each shard's flight is authored by `quote` around the origin in split-relative local time (array context available), then placed at the split point. Pushes the shard selection. |
+| `->polar` | `angle radius --` | Place the active object on a circle: `x = radius·cos angle`, `y = radius·sin angle`. |
 | `f` | `-- number` | Normalized fraction `ordinal/(n-1)` in `[0, 1]`; `0` for a single element. Pairs with `mix`. |
 | `f0` | `-- number` | Cyclic fraction `ordinal/n` in `[0, 1)`; handy for rings (`f0 tau *`). |
 | `fc` | `-- number` | Centered fraction `2f-1` in `[-1, 1]`. |
@@ -254,13 +260,13 @@ Array primitives *reproduce a subexpression with modification* — the Fischinge
 
 ## Data visualization
 
-Dense data is an explicit target for RectSL. A **colormap** turns a value in `[0, 1]` into a perceptually-uniform colour; a **`Data`** value is a plain numeric list you can normalize and bind to size/colour; the **chart words** fold both into ready-made bar charts, heatmaps, and scatter plots that emit ordinary rects — so everything you already know (`each`, `stagger-time`, `group`, tracks) still applies to the result.
+Dense data is an explicit target for RectSL. A **colormap** turns a value in `[0, 1]` into a perceptually-uniform colour; a **`Data`** value is a plain numeric list you can normalize and bind to size/colour; the **chart words** fold both into ready-made bar charts, heatmaps, and scatter plots that emit ordinary rects — so everything you already know (`each`, `->stagger-time`, `group`, tracks) still applies to the result.
 
 ### Colormaps
 
 | Word | Stack | Notes |
 | --- | --- | --- |
-| `colormap`, `cmap` | `name t -- color` | Look up a named ramp at `t` in `[0, 1]` (clamped). Pushes a `Color` usable anywhere colour is (`solid`, `linear`, `fill`, `rgb`). Names: `viridis`, `magma`, `inferno`, `plasma`, `turbo`, `coolwarm` (diverging), `grayscale`. |
+| `colormap`, `cmap` | `name t -- color` | Look up a named ramp at `t` in `[0, 1]` (clamped). Pushes a `Color` usable anywhere colour is (`solid`, `linear`, `->fill`, `rgb`). Names: `viridis`, `magma`, `inferno`, `plasma`, `turbo`, `coolwarm` (diverging), `grayscale`. |
 
 ### Data
 
@@ -281,7 +287,7 @@ Dense data is an explicit target for RectSL. A **colormap** turns a value in `[0
 | --- | --- | --- |
 | `bars` | `data name -- selection` | Bottom-anchored bar chart spanning the wall; bar height and colour both from the value normalized by the list's extent, coloured with colormap `name`. Pushes the selection of bars. |
 | `heat`, `heatmap` | `data cols rows name -- selection` | Row-major grid heatmap filling the wall (row 0 at top); each cell coloured with colormap `name` by its normalized value. Pushes the selection of cells. |
-| `scatter` | `xdata ydata name -- selection` | Plot `(x, y)` points as small squares, each axis normalized to the wall; colour follows normalized `y` through colormap `name`. Pushes the selection of points. |
+| `scatter` | `xdata ydata name -- selection` | Plot `(->x, ->y)` points as small squares, each axis normalized to the wall; colour follows normalized `->y` through colormap `name`. Pushes the selection of points. |
 
 ```diffstatic {data-lang=text}
 # a colour legend: 24 thin rects sweeping one colormap across the wall
@@ -307,26 +313,26 @@ Dense data is an explicit target for RectSL. A **colormap** turns a value in `[0
 
 ### Plotting layer
 
-The chart idioms above each normalize by their own extent and fill the wall. The **plotting layer** adds a *shared* coordinate frame so several series overlay in one domain, with axes, ticks, numeric labels, and legends. Set a `domain` (or let the first series adopt its own extent) and optional `frame`/`margins`; then `axes`, the domain-aware series (`line`/`plot`, `area`, `points`), and `colorbar`/`legend` all map through it. The classic `bars`/`heat`/`scatter` are unchanged — the plotting words are additive. RectSL has no text primitive, so tick/colorbar labels are numerals drawn as a 3×5 grid of rects (numbers only — no titles/series-name text).
+The chart idioms above each normalize by their own extent and fill the wall. The **plotting layer** adds a *shared* coordinate frame so several series overlay in one domain, with axes, ticks, numeric labels, and legends. Set a `->domain` (or let the first series adopt its own extent) and optional `->frame`/`->margins`; then `axes`, the domain-aware series (`line`/`plot`, `area`, `points`), and `colorbar`/`legend` all map through it. The classic `bars`/`heat`/`scatter` are unchanged — the plotting words are additive. RectSL has no text primitive, so tick/colorbar labels are numerals drawn as a 3×5 grid of rects (numbers only — no titles/series-name text).
 
 | Word | Stack | Notes |
 | --- | --- | --- |
-| `domain` | `x0 x1 y0 y1 --` | Set an explicit shared x and y data domain. Series and `axes` map data → the plot frame through it. |
-| `xdomain`, `ydomain` | `lo hi --` | Set just the x (or y) domain. |
-| `margins` | `l r b t --` | Reserve plot-frame margins as wall fractions (left/right/bottom/top) — room for axis labels and a colorbar. |
-| `frame` | `--` | Apply sensible default margins (used only when none are set, so an explicit `margins` wins). |
+| `->domain` | `x0 x1 y0 y1 --` | Set an explicit shared x and y data domain. Series and `axes` map data → the plot frame through it. |
+| `->xdomain`, `->ydomain` | `lo hi --` | Set just the x (or y) domain. |
+| `->margins` | `l r b t --` | Reserve plot-frame margins as wall fractions (left/right/bottom/top) — room for axis labels and a colorbar. |
+| `->frame` | `--` | Apply sensible default margins (used only when none are set, so an explicit `->margins` wins). |
 | `axes` | `-- selection` | Draw x/y axis rules, nice-number ticks, numeric tick labels (in the margins), and faint gridlines for the current domain. Draw it *before* the series so they paint on top. |
 | `line`, `plot` | `xdata ydata name -- selection` | Polyline through the shared domain as rotated thin rects, coloured along colormap `name` by point order. |
-| `area` | `xdata ydata name -- selection` | Column-filled area from the `y = 0` baseline to each sample, coloured by normalized `y`. |
-| `points` | `xdata ydata name -- selection` | Domain-aware scatter (shares the frame with other series); colour follows normalized `y`. |
+| `area` | `xdata ydata name -- selection` | Column-filled area from the `->y = 0` baseline to each sample, coloured by normalized `->y`. |
+| `points` | `xdata ydata name -- selection` | Domain-aware scatter (shares the frame with other series); colour follows normalized `->y`. |
 | `colorbar` | `name -- selection` | A continuous colour ramp for `name` in the right margin, with min/mid/max numerals from the y domain. |
 | `legend` | `count name -- selection` | A key of `count` discrete colour swatches sampling colormap `name`, stacked top-right. |
 
 ```diffstatic {data-lang=text}
 # one shared domain, axes underneath, three series overlaid, plus legends
 wall 16 10 abstract
-0 10 xdomain   0 1 ydomain     # or `0 10 0 1 domain` in one go
-0.12 0.14 0.12 0.06 margins    # or just `frame` for sensible defaults
+0 10 xdomain   0 1 ydomain     # or `0 10 0 1 ->domain` in one go
+0.12 0.14 0.12 0.06 margins    # or just `->frame` for sensible defaults
 axes
 0 10 40 linspace  dup '( 0.7 * sin 1 + 2 / ) data-map   "viridis" area
 0 10 40 linspace  dup '( 0.55 * cos 1 + 2 / ) data-map  "plasma"  line
@@ -341,12 +347,12 @@ Linear `mix` is rarely the shape you want across an array. RectSL borrows [`afie
 
 | Word | Stack | Notes |
 | --- | --- | --- |
-| `ease` | `x name -- x` / `track name -- track` | Shape a value through a named Penner easing. `name` is any of `linear`, `quad-in/out/in-out`, `cubic-…`, `quart-…`, `quint-…`, `sine-…`, `expo-…`, `circ-…`, `back-…`, `elastic-…`, `bounce-…`, `smoothstep`, `smootherstep`. A constant eases to a number; a keyed track eases its interpolation. |
+| `ease` | `->x name -- ->x` / `track name -- track` | Shape a value through a named Penner easing. `name` is any of `linear`, `quad-in/out/in-out`, `cubic-…`, `quart-…`, `quint-…`, `sine-…`, `expo-…`, `circ-…`, `back-…`, `elastic-…`, `bounce-…`, `smoothstep`, `smootherstep`. A constant eases to a number; a keyed track eases its interpolation. |
 | `gaussian` | `-- Fn` | A bell curve centred at `0.5` — bright in the middle of the array, dark at the edges. |
 | `noise` | `seed -- Fn` | Seeded value-noise curve — deterministic, reproducible scatter. |
 | `fbm` | `seed -- Fn` | Seeded fractal (fBm) noise curve — richer, multi-octave scatter. |
 | `sample` | `Fn x -- number` | Evaluate a curve at `x` (use the array fraction `f`). |
-| `reflect` | `Fn -- Fn` | Mirror a curve about `0.5`: `reflect(x) = fn(1-x)`. |
+| `reflect` | `Fn -- Fn` | Mirror a curve about `0.5`: `reflect(->x) = fn(1-x)`. |
 | `tile` | `Fn k -- Fn` | Repeat a curve `k` times across `[0, 1]`. |
 
 ```diffstatic {data-lang=text}

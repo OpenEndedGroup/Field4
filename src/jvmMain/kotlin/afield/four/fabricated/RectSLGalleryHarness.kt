@@ -196,18 +196,18 @@ object RectSLGalleryHarness {
     /** The scene rendered by [renderFitToTarget]; `target`/`seed`/`fit` are host-bound curves. */
     val FIT_SCENE_SOURCE: String = """
         #rectsl
-        wall 22 12 abstract
-        duration 1
-        fps 1
+        ->wall 22 12 abstract
+        ->duration 1
+        ->fps 1
 
-        "trow" rect  0 -4 xy  0.5 1 wh  0x2e5a86 solid fill
-          40 '( ic 0.55 * 0 offset  target f sample 4 * 0.12 +  h ) array ;
+        "trow" rect  0 -4 ->xy  0.5 1 ->wh  0x2e5a86 solid ->fill
+          40 '( ic 0.55 * 0 ->offset  target f sample 4 * 0.12 +  ->h ) array ;
 
-        "srow" rect  0 0 xy  0.5 1 wh  0x8a5a2b solid fill
-          40 '( ic 0.55 * 0 offset  seed f sample 4 * 0.12 +  h ) array ;
+        "srow" rect  0 0 ->xy  0.5 1 ->wh  0x8a5a2b solid ->fill
+          40 '( ic 0.55 * 0 ->offset  seed f sample 4 * 0.12 +  ->h ) array ;
 
-        "frow" rect  0 4 xy  0.5 1 wh  0xffd23c solid fill
-          40 '( ic 0.55 * 0 offset  fit f sample {{ 4.0 }} * 0.12 +  h ) array ;
+        "frow" rect  0 4 ->xy  0.5 1 ->wh  0xffd23c solid ->fill
+          40 '( ic 0.55 * 0 ->offset  fit f sample {{ 4.0 }} * 0.12 +  ->h ) array ;
     """.trimIndent()
 
     // ── render paths ────────────────────────────────────────────────────────────

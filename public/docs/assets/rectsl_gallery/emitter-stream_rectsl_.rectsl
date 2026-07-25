@@ -1,22 +1,22 @@
 #rectsl
-wall 16 9 abstract
-duration 6
-fps 30
+->wall 16 9 abstract
+->duration 6
+->fps 30
 
 "beacon" rect
-  0 3 xy
-  0.6 square
-  0xff2266 solid fill
-  1 appear
-  4 vanish
+  0 3 ->xy
+  0.6 ->square
+  0xff2266 solid ->fill
+  1 ->appear
+  4 ->vanish
 ;
 
 "bullet" rect
-  0.42 square
-  0xffcc33 solid fill
-  '( 0=-8  2.5=8 ) x
+  0.42 ->square
+  0xffcc33 solid ->fill
+  '( 0=-8  2.5=8 ) ->x
   24 '(
-    -3 f 6 * + y
-    i 0.18 *  2.5  live
+    -3 f 6 * + ->y
+    i 0.18 *  2.5  ->live
   ) array
 ;

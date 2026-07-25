@@ -12,22 +12,22 @@ import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
-wall 12 12 abstract
-duration 6
-fps 30
+->wall 12 12 abstract
+->duration 6
+->fps 30
 
 material bloom '(
   uv 5.0 * time 0.8 * + fbm palette
 )
 
 "petal" rect
-  0.5 2.6 wh
-  0xffffff solid fill
+  0.5 2.6 ->wh
+  0xffffff solid ->fill
   16 4.0 '(
-    f0 tau * rot
-    '( 0 0  6 6.28318 ) rotate
-    0.35 1 f mix alpha
-    bloom material
+    f0 tau * ->rot
+    '( 0 0  6 6.28318 ) ->rotate
+    0.35 1 f mix ->alpha
+    bloom ->material
   ) radial
 ;
 """

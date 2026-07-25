@@ -48,21 +48,21 @@ import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
-wall 8 4 meters
-duration 4
-fps 24
+->wall 8 4 meters
+->duration 4
+->fps 24
 
 "left" rect
-  -2 0 xy
-  1.4 square
-  0xff8c1a solid fill
-  '( 0 -2  2 0  4 2 ) x
-  '( 0 0.15  2 1  4 0.15 ) alpha
+  -2 0 ->xy
+  1.4 ->square
+  0xff8c1a solid ->fill
+  '( 0 -2  2 0  4 2 ) ->x
+  '( 0 0.15  2 1  4 0.15 ) ->alpha
 ;
 
-dup "right" rename
-  mirror-x
-  0x1ac6ff solid fill
+dup "right" ->rename
+  ->mirror-x
+  0x1ac6ff solid ->fill
 ;
 """
 
@@ -129,23 +129,23 @@ import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
-wall 18 8 meters
-duration 6
-fps 30
+->wall 18 8 meters
+->duration 6
+->fps 30
 
 "blade" rect
-  0 0 xy
-  1.2 square
-  0xffd23c solid fill
+  0 0 ->xy
+  1.2 ->square
+  0xffd23c solid ->fill
 ;
 
 0 16 '(
-  "blade" select
+  "blade" ->select
     clone
     i tau * 16 /
-    dup dup cos 7.0 * swap sin 3.0 * xy
-    rot
-    '( 0 0  6 6.28318 ) rotate
+    dup dup cos 7.0 * swap sin 3.0 * ->xy
+    ->rot
+    '( 0 0  6 6.28318 ) ->rotate
 ) range
 """
 
@@ -212,23 +212,23 @@ import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
-wall 18 8 meters
-duration 6
-fps 30
+->wall 18 8 meters
+->duration 6
+->fps 30
 
 "cell" rect
-  0 0 xy
-  1.4 square
-  '( 0 1  1 0  2 1 ) 2 loop-time alpha
-  0x44e0ff solid fill
+  0 0 ->xy
+  1.4 ->square
+  '( 0 1  1 0  2 1 ) 2 loop-time ->alpha
+  0x44e0ff solid ->fill
 ;
 
 36 '(
-  "cell" select clone
+  "cell" ->select clone
     i 9 mod 4 - 2.0 *
     i 9 / floor 1.5 - 2.0 *
-    xy
-    i 9 mod 0.22 * delay-all-time
+    ->xy
+    i 9 mod 0.22 * ->delay-all-time
 ) repeat
 """
 
@@ -311,26 +311,26 @@ import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
-wall 20 8 meters
-duration 6
-fps 30
+->wall 20 8 meters
+->duration 6
+->fps 30
 
 material spectrum '(
   uv 3.0 * time 0.5 * + fbm palette
 )
 
 "bar" rect
-  0 0 xy
-  0.9 1 wh
-  '( 0 0.6  0.75 6.5  1.5 0.6 ) 1.5 loop-time h
-  0xffffff solid fill
-  spectrum material
+  0 0 ->xy
+  0.9 1 ->wh
+  '( 0 0.6  0.75 6.5  1.5 0.6 ) 1.5 loop-time ->h
+  0xffffff solid ->fill
+  spectrum ->material
 ;
 
 16 '(
-  "bar" select clone
-    i 7.5 - 1.2 * 0 xy
-    i 0.14 * delay-all-time
+  "bar" ->select clone
+    i 7.5 - 1.2 * 0 ->xy
+    i 0.14 * ->delay-all-time
 ) repeat
 """
 
@@ -369,8 +369,7 @@ layout(location = 0) out vec4 uFragColor;
 void main()
 {
     uFragColor = vec4(1.0, 0.8, 0.4, 1.0);
-}
-```
+}```
 
 ```glsl [field-property box="spectrum-bars" name="vertex" path="spectrum-bars_vertex_.glsl"]
 #version 450
@@ -384,8 +383,7 @@ layout(push_constant) uniform matrices {
 void main()
 {
     gl_Position = pc.p * pc.m * vec4(pos, 1);
-}
-```
+}```
 
 ## 6. lissajous-swarm
 
@@ -421,26 +419,26 @@ import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
-wall 18 9 meters
-duration 8
-fps 30
+->wall 18 9 meters
+->duration 8
+->fps 30
 
 material glow '(
   uv 5.0 * time 0.6 * + fbm palette
 )
 
 "dot" rect
-  0 0 xy
-  0.8 square
-  '( 0 -7  1 0  2 7  3 0  4 -7 ) 4 loop-time x
-  '( 0 -3.5  0.5 0  1 3.5  1.5 0  2 -3.5 ) 2 loop-time y
-  0xffffff solid fill
-  glow material
+  0 0 ->xy
+  0.8 ->square
+  '( 0 -7  1 0  2 7  3 0  4 -7 ) 4 loop-time ->x
+  '( 0 -3.5  0.5 0  1 3.5  1.5 0  2 -3.5 ) 2 loop-time ->y
+  0xffffff solid ->fill
+  glow ->material
 ;
 
 16 '(
-  "dot" select clone
-    i 0.25 * delay-all-time
+  "dot" ->select clone
+    i 0.25 * ->delay-all-time
 ) repeat
 """
 
@@ -507,21 +505,21 @@ import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
-wall 18 8 meters
-duration 6
-fps 30
+->wall 18 8 meters
+->duration 6
+->fps 30
 
 "blade" rect
-  0 0 xy
-  0.35 4.5 wh
-  '( 0 -1.0  1 1.0  2 -1.0 ) 2 loop-time rot
-  0xff3caa solid fill
+  0 0 ->xy
+  0.35 4.5 ->wh
+  '( 0 -1.0  1 1.0  2 -1.0 ) 2 loop-time ->rot
+  0xff3caa solid ->fill
 ;
 
 24 '(
-  "blade" select clone
-    i 11.5 - 0.72 * 0 xy
-    i 0.11 * delay-all-time
+  "blade" ->select clone
+    i 11.5 - 0.72 * 0 ->xy
+    i 0.11 * ->delay-all-time
 ) repeat
 """
 
@@ -588,24 +586,24 @@ import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
-wall 18 9 meters
-duration 8
-fps 30
+->wall 18 9 meters
+->duration 8
+->fps 30
 
 "tile" rect
-  0 0 xy
-  1.0 square
-  '( 0 0.15  1 1.15  2 0.15 ) 2 loop-time scale
-  '( 0 0  2 6.28318 ) 2 loop-time rot
-  0x66ffcc solid fill
+  0 0 ->xy
+  1.0 ->square
+  '( 0 0.15  1 1.15  2 0.15 ) 2 loop-time ->scale
+  '( 0 0  2 6.28318 ) 2 loop-time ->rot
+  0x66ffcc solid ->fill
 ;
 
 60 '(
-  "tile" select clone
+  "tile" ->select clone
     i 10 mod 4.5 - 1.7 *
     i 10 / floor 2.5 - 1.7 *
-    xy
-    i 10 mod i 10 / floor + 0.14 * delay-all-time
+    ->xy
+    i 10 mod i 10 / floor + 0.14 * ->delay-all-time
 ) repeat
 """
 
@@ -672,22 +670,22 @@ import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
-wall 16 9 meters
-duration 6
-fps 30
+->wall 16 9 meters
+->duration 6
+->fps 30
 
 "left" rect
-  -4 0 xy
-  2.2 square
-  0xff5a3c solid fill
-  '( 0 -4  3 0  6 4 ) x
-  '( 0 -2  1.5 2  3 -2  4.5 2  6 -2 ) y
-  '( 0 0  6 6.28318 ) rot
+  -4 0 ->xy
+  2.2 ->square
+  0xff5a3c solid ->fill
+  '( 0 -4  3 0  6 4 ) ->x
+  '( 0 -2  1.5 2  3 -2  4.5 2  6 -2 ) ->y
+  '( 0 0  6 6.28318 ) ->rot
 ;
 
-dup "right" rename
-  mirror-x
-  0x3c8cff solid fill
+dup "right" ->rename
+  ->mirror-x
+  0x3c8cff solid ->fill
 ;
 """
 
@@ -754,27 +752,27 @@ import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
-wall 18 8 meters
-duration 6
-fps 30
+->wall 18 8 meters
+->duration 6
+->fps 30
 
-linear-track "rise" '( 0 -3   3 0   6 3 )
-hold-track "pulse" '( 0 0.2   2 1.0   4 0.45 )
+linear-track "rise" '( 0=-3   3=0   6=3 )
+hold-track "pulse" '( 0=0.2   2=1.0   4=0.45 )
 
 "bar-template" rect
-  0 0 xy
-  0.7 1.8 wh
-  "rise" track-ref y
-  "pulse" track-ref smooth alpha
-  0xeeeeee solid fill
+  0 0 ->xy
+  0.7 1.8 ->wh
+  "rise" track-ref ->y
+  "pulse" track-ref smooth ->alpha
+  0xeeeeee solid ->fill
 ;
 
 8 '(
-  "bar-template" select
+  "bar-template" ->select
     clone
-    i layer
-    i 0.1 * z
-    i 3.5 - 2.0 * x
+    i ->layer
+    i 0.1 * ->z
+    i 3.5 - 2.0 * ->x
 ) repeat
 """
 
@@ -841,16 +839,16 @@ import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
-wall 18 8 meters
-duration 6
-fps 30
+->wall 18 8 meters
+->duration 6
+->fps 30
 
 "panel" rect
-  0 0 xy
-  15 6 wh
-  0xff2d55 0x2d7bff  -7.5 -3  7.5 3  linear fill
-  '( 0 -0.3  3 0.3  6 -0.3 ) rot
-  '( 0 0.7  3 1.0  6 0.7 ) scale
+  0 0 ->xy
+  15 6 ->wh
+  0xff2d55 0x2d7bff  -7.5 -3  7.5 3  linear ->fill
+  '( 0 -0.3  3 0.3  6 -0.3 ) ->rot
+  '( 0 0.7  3 1.0  6 0.7 ) ->scale
 ;
 """
 
@@ -917,27 +915,27 @@ import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
-wall 18 8 meters
-duration 6
-fps 30
+->wall 18 8 meters
+->duration 6
+->fps 30
 
-linear-track "rise" '( 0 -2.6   3 0   6 2.6 )
-hold-track "pulse" '( 0 0.2   2 1.0   4 0.45 )
+linear-track "rise" '( 0=-2.6   3=0   6=2.6 )
+hold-track "pulse" '( 0=0.2   2=1.0   4=0.45 )
 
 "bar-template" rect
-  0 -1.6 xy
-  0.9 2.2 wh
-  "rise" track-ref y
-  "pulse" track-ref smooth alpha
-  0xeeeeee solid fill
+  0 -1.6 ->xy
+  0.9 2.2 ->wh
+  "rise" track-ref ->y
+  "pulse" track-ref smooth ->alpha
+  0xeeeeee solid ->fill
 ;
 
 8 '(
-  "bar-template" select
+  "bar-template" ->select
     clone
-    i layer
-    i 0.1 * z
-    i 3.5 - 2.0 * x
+    i ->layer
+    i 0.1 * ->z
+    i 3.5 - 2.0 * ->x
 ) repeat
 """
 
@@ -1004,9 +1002,9 @@ import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
-wall 16 8 meters
-duration 8
-fps 30
+->wall 16 8 meters
+->duration 8
+->fps 30
 
 material tint '(
   uv 4.0 * sin abs
@@ -1014,18 +1012,18 @@ material tint '(
 
 "orbit" group
   "cell" rect
-    0 0 xy
-    1.5 square
-    "petal" tag
-    '( 0 0  4 3.14159  8 6.28318 ) rot
-    0xffffff solid fill
-    tint material
+    0 0 ->xy
+    1.5 ->square
+    "petal" ->tag
+    '( 0 0  4 3.14159  8 6.28318 ) ->rot
+    0xffffff solid ->fill
+    tint ->material
   ;
   0 7 '(
-    "cell" select
+    "cell" ->select
       clone
-      i 2.2 * 6.6 - 0 xy
-      tint material
+      i 2.2 * 6.6 - 0 ->xy
+      tint ->material
   ) range
 end-group
 """
@@ -1093,9 +1091,9 @@ import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
-wall 18 8 meters
-duration 8
-fps 30
+->wall 18 8 meters
+->duration 8
+->fps 30
 
 material bands '(
   uv 6.0 * sin abs
@@ -1103,18 +1101,18 @@ material bands '(
 
 "row" group
   "petal" rect
-    0 0 xy
-    1.7 square
-    '( 0 0   4 3.14159   8 6.28318 ) rot
-    0xffffff solid fill
-    bands material
+    0 0 ->xy
+    1.7 ->square
+    '( 0 0   4 3.14159   8 6.28318 ) ->rot
+    0xffffff solid ->fill
+    bands ->material
   ;
 
   0 7 '(
-    "petal" select
+    "petal" ->select
       clone
-      i 3 - 2.4 * 0 xy
-      bands material
+      i 3 - 2.4 * 0 ->xy
+      bands ->material
   ) range
 end-group
 """

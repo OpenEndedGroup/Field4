@@ -65,9 +65,9 @@ object RectSLWorkout {
         val tokens = RectLangTokenizer(
             """
             # comments are ignored
-            : white 0xffffff solid fill ;
+            : white 0xffffff solid ->fill ;
             "voice-a" rect
-              '( 0 -12  8 0  18 12 ) x
+              '( 0 -12  8 0  18 12 ) ->x
             ;
             """.trimIndent()
         ).tokenize()
@@ -77,11 +77,24 @@ object RectSLWorkout {
         val quote = tokens.filterIsInstance<Token.Quote>().single()
         require(quote.tokens.filterIsInstance<Token.Number>().size == 6) { quote }
         require(tokens.filterIsInstance<Token.Word>().any { it.name == ":" })
+        require(tokens.filterIsInstance<Token.Word>().any { it.name == "->fill" })
+
+        val metadata = RectLangVm().wordMetadata().associateBy { it.spelling }
+        require(metadata.getValue("->xy").effect == RectWordEffect.Mutator)
+        require(metadata.getValue("+").effect == RectWordEffect.Ordinary)
+        require("xy" !in metadata) { "unprefixed mutators must not remain registered aliases" }
+
+        val unprefixedMutator = RectAnimationOracle.compile("\"r\" rect 0 0 xy ;")
+        require(!unprefixedMutator.ok)
+        require(
+            unprefixedMutator.diagnostics.single() ==
+                "Unknown word: xy (mutators use '->'; did you mean '->xy'?)"
+        ) { unprefixedMutator.diagnostics }
 
         val trailingQuote = RectAnimationOracle.compile(
             """
             "r" rect
-              1 square
+              1 ->square
             ;
             "
             """.trimIndent()
@@ -95,8 +108,8 @@ object RectSLWorkout {
         // word — never a bare NullPointerException from `.program!!`.
         val typo = RectAnimationOracle.compile(
             """
-            "bar" rect 0 0 xy 1 square ;
-            "bar" 4 '( i 0 xy ) arra
+            "bar" rect 0 0 ->xy 1 ->square ;
+            "bar" 4 '( i 0 ->xy ) arra
             """.trimIndent()
         )
         require(!typo.ok) { "Unknown word 'arra' should not compile" }
@@ -112,20 +125,20 @@ object RectSLWorkout {
     private fun minimalMirrorMesh() {
         val program = compile(
             """
-            wall 30 4 meters
-            duration 10
-            fps 60
+            ->wall 30 4 meters
+            ->duration 10
+            ->fps 60
 
             "r" rect
-              -5 0 xy
-              1 square
-              0xff3300 solid fill
-              '( 0 -5   5 0   10 5 ) x
+              -5 0 ->xy
+              1 ->square
+              0xff3300 solid ->fill
+              '( 0 -5   5 0   10 5 ) ->x
             ;
 
-            dup "r2" rename
-              mirror-x
-              0x3333ff solid fill
+            dup "r2" ->rename
+              ->mirror-x
+              0x3333ff solid ->fill
             ;
             """.trimIndent()
         )
@@ -155,38 +168,38 @@ object RectSLWorkout {
     private fun definitionsAndGroups() {
         val program = compile(
             """
-            wall 30 4 meters
-            duration 12
-            fps 24
+            ->wall 30 4 meters
+            ->duration 12
+            ->fps 24
 
             : white
-              0xffffff solid fill
+              0xffffff solid ->fill
             ;
 
             : soft
-              0.25 alpha
+              0.25 ->alpha
             ;
 
             : voice-bar
               rect
                 white
                 soft
-                2.0 0.2 wh
+                2.0 0.2 ->wh
             ;
 
             "group-low" group
               "low-a" voice-bar
-                -2 -1 xy
+                -2 -1 ->xy
               ;
               "low-b" voice-bar
-                2 -1 xy
+                2 -1 ->xy
               ;
             end
 
-            "group-low" select
-              10 0 translate
-              0.1 rot
-              2 scale
+            "group-low" ->select
+              10 0 ->translate
+              0.1 ->rot
+              2 ->scale
             ;
             """.trimIndent()
         )
@@ -208,33 +221,33 @@ object RectSLWorkout {
     private fun selectionsAndDeepTimingTransforms() {
         val program = compile(
             """
-            wall 12 4 meters
-            duration 4
-            fps 24
+            ->wall 12 4 meters
+            ->duration 4
+            ->fps 24
 
             "source" group
               "voice-a" rect
-                "voice" tag
-                0 0 xy
-                1 square
-                '( 0 0  4 4 ) linear x
+                "voice" ->tag
+                0 0 ->xy
+                1 ->square
+                '( 0 0  4 4 ) linear ->x
               ;
 
               "drone-a" rect
-                "drone" tag
-                2 0 xy
-                1 square
-                '( 0 2  4 6 ) linear x
+                "drone" ->tag
+                2 0 ->xy
+                1 ->square
+                '( 0 2  4 6 ) linear ->x
               ;
             end
 
-            "source" select
-              clone-deep "copy" rename
+            "source" ->select
+              clone-deep "copy" ->rename
             ;
 
-            "copy" select descendants
+            "copy" ->select descendants
               "voice" tagged
-              '( 1 delay-all-time  0.5 opacity* ) each
+              '( 1 ->delay-all-time  0.5 ->opacity* ) each
             ;
             """.trimIndent()
         )
@@ -257,36 +270,36 @@ object RectSLWorkout {
     private fun operatorsAndKeyLenses() {
         val program = compile(
             """
-            wall 12 4 meters
-            duration 6
-            fps 24
+            ->wall 12 4 meters
+            ->duration 6
+            ->fps 24
 
             "voice-a" rect
-              "voice" tag
-              0 0 xy
-              1 2 + square
-              '( 0 0  2 2  4 4 ) linear x
-              '( 0 1  2 0.3  4 1.4 ) linear alpha
+              "voice" ->tag
+              0 0 ->xy
+              1 2 + ->square
+              '( 0 0  2 2  4 4 ) linear ->x
+              '( 0 1  2 0.3  4 1.4 ) linear ->alpha
             ;
 
             "other" rect
-              4 0 xy
-              1 square
-              '( 0 0  2 2  4 4 ) linear x
+              4 0 ->xy
+              1 ->square
+              '( 0 0  2 2  4 4 ) linear ->x
             ;
 
-            "voice-a" select
-              x-track 1 time+ 2 value* x
-              alpha-track 0 1 clamp-values alpha
+            "voice-a" ->select
+              x-track 1 time+ 2 value* ->x
+              alpha-track 0 1 clamp-values ->alpha
             ;
 
-            "other" select
-              x-track 0 2 keys-between 10 value+ x
+            "other" ->select
+              x-track 0 2 keys-between 10 value+ ->x
             ;
 
             all rects
               '( "voice" tagged? id "other" = or ) filter
-              '( 0.5 opacity* ) each
+              '( 0.5 ->opacity* ) each
             ;
             """.trimIndent()
         )
@@ -305,21 +318,21 @@ object RectSLWorkout {
     private fun trackModesAndTimeWarps() {
         val program = compile(
             """
-            wall 10 4 meters
-            duration 8
-            fps 30
+            ->wall 10 4 meters
+            ->duration 8
+            ->fps 30
 
             "tracks" rect
-              '( 0 0  4 8 ) linear x
-              '( 0 1  4 3 ) hold y
-              '( 0 1  4 3 ) tcb  -0.4 0 0 tcb! scale
-              '( 0 0  2 1  4 0 ) alpha
+              '( 0 0  4 8 ) linear ->x
+              '( 0 1  4 3 ) hold ->y
+              '( 0 1  4 3 ) tcb  -0.4 0 0 tcb! ->scale
+              '( 0 0  2 1  4 0 ) ->alpha
             ;
 
             "delayed" rect
-              '( 0 0  2 2 ) tcb 1 delay-time x
-              0 y
-              1 square
+              '( 0 0  2 2 ) tcb 1 delay-time ->x
+              0 ->y
+              1 ->square
             ;
             """.trimIndent()
         )
@@ -343,17 +356,17 @@ object RectSLWorkout {
         // comparison operators (`=`, `<=`, `!=`, `tcb!`) untouched elsewhere.
         val program = compile(
             """
-            wall 10 4 meters
-            duration 4
-            fps 30
+            ->wall 10 4 meters
+            ->duration 4
+            ->fps 30
 
             hold-track pulse '( 0=0.2   2=1.0   4=0.45 )
 
             "r" rect
-              0 0 xy
-              1 square
-              '( 0=-5   2 0   4=5 ) linear x
-              pulse alpha
+              0 0 ->xy
+              1 ->square
+              '( 0=-5   2 0   4=5 ) linear ->x
+              pulse ->alpha
             ;
             """.trimIndent()
         )
@@ -384,51 +397,51 @@ object RectSLWorkout {
     private fun layersTracksEasingAndRepeat() {
         val program = compile(
             """
-            wall 8 4 meters
-            duration 2
-            fps 24
+            ->wall 8 4 meters
+            ->duration 2
+            ->fps 24
 
             linear-track enter '( 0 -2  2 2 )
             track lift '( 0 0  2 2 )
 
             "background" rect
-              0 0 xy
-              3 square
-              "background" layer
+              0 0 ->xy
+              3 ->square
+              "background" ->layer
             ;
 
             "foreground" rect
-              0 0 xy
-              2 square
-              "foreground" layer
+              0 0 ->xy
+              2 ->square
+              "foreground" ->layer
             ;
 
             4 '(
               rect
-                "bar" tag
-                i 1.5 * -2.25 + -1 xy
-                0.25 square
-                lift smooth z
+                "bar" ->tag
+                i 1.5 * -2.25 + -1 ->xy
+                0.25 ->square
+                lift smooth ->z
               ;
             ) repeat
 
-            all '( "bar" tagged? ) where "bars" group-selected
-              1 0 translate
+            all '( "bar" tagged? ) where "bars" ->group-selected
+              1 0 ->translate
             ;
 
             "mover" rect
-              enter ease-in-out x
-              1 y
-              0.5 square
-              front
+              enter ease-in-out ->x
+              1 ->y
+              0.5 ->square
+              ->front
             ;
 
             0 3 '(
               rect
-                "range" tag
-                i 0.5 * -0.5 + 1.5 xy
-                0.2 square
-                back
+                "range" ->tag
+                i 0.5 * -0.5 + 1.5 ->xy
+                0.2 ->square
+                ->back
               ;
             ) range
             """.trimIndent()
@@ -459,14 +472,14 @@ object RectSLWorkout {
         // array: element 0 is the template; ic centers the run; f drives alpha across the array.
         val linear = compile(
             """
-            wall 20 8 meters
-            duration 1
-            fps 1
+            ->wall 20 8 meters
+            ->duration 1
+            ->fps 1
 
             "cell" rect
-              0 0 xy
-              1 square
-              5 '( ic 2 * 0 offset  0 1 f mix alpha ) array
+              0 0 ->xy
+              1 ->square
+              5 '( ic 2 * 0 ->offset  0 1 f mix ->alpha ) array
             ;
             """.trimIndent()
         )
@@ -480,12 +493,12 @@ object RectSLWorkout {
         // radial: four copies placed on a circle of radius 3 at 0, 90, 180, 270 degrees.
         val ring = compile(
             """
-            wall 12 12 meters
-            duration 1
-            fps 1
+            ->wall 12 12 meters
+            ->duration 1
+            ->fps 1
 
             "spoke" rect
-              0.5 square
+              0.5 ->square
               4 3 '( ) radial
             ;
             """.trimIndent()
@@ -501,17 +514,17 @@ object RectSLWorkout {
         // grid: cols x rows fresh cells, centered with colc/rowc; returns a selection to tag as a batch.
         val grid = compile(
             """
-            wall 20 12 meters
-            duration 1
-            fps 1
+            ->wall 20 12 meters
+            ->duration 1
+            ->fps 1
 
             3 2 '(
               "g" rect
-                colc 2 *  rowc 2 *  xy
-                0.5 square
+                colc 2 *  rowc 2 *  ->xy
+                0.5 ->square
               ;
             ) grid
-            '( "cell" tag ) each
+            '( "cell" ->tag ) each
             """.trimIndent()
         )
         val gridRects = grid.sample(0.0).rects
@@ -523,15 +536,15 @@ object RectSLWorkout {
         // stagger: cumulative positional offset over a selection returned by array.
         val staggered = compile(
             """
-            wall 20 8 meters
-            duration 1
-            fps 1
+            ->wall 20 8 meters
+            ->duration 1
+            ->fps 1
 
             "s" rect
-              0 0 xy
-              0.5 square
+              0 0 ->xy
+              0.5 ->square
               3 '( ) array
-              1 0 stagger
+              1 0 ->stagger
             ;
             """.trimIndent()
         )
@@ -541,16 +554,16 @@ object RectSLWorkout {
         // array of a group deep-clones the whole subtree.
         val groups = compile(
             """
-            wall 24 8 meters
-            duration 1
-            fps 1
+            ->wall 24 8 meters
+            ->duration 1
+            ->fps 1
 
             "tile" group
-              "a" rect -0.5 0 xy 0.4 square ;
-              "b" rect 0.5 0 xy 0.4 square ;
+              "a" rect -0.5 0 ->xy 0.4 ->square ;
+              "b" rect 0.5 0 ->xy 0.4 ->square ;
             end
-            "tile" select
-            3 '( ic 5 * 0 offset ) array
+            "tile" ->select
+            3 '( ic 5 * 0 ->offset ) array
             """.trimIndent()
         )
         require(groups.nodes.filterIsInstance<GroupNode>().size == 3) {
@@ -573,11 +586,11 @@ object RectSLWorkout {
         // #2 ease — a per-copy eased alpha matches the Functions Penner curve exactly.
         val eased = compile(
             """
-            wall 20 8 meters
-            duration 1
-            fps 1
-            "c" rect 0 0 xy 1 square
-              5 '( ic 2 * 0 offset  f "quad-out" ease alpha ) array
+            ->wall 20 8 meters
+            ->duration 1
+            ->fps 1
+            "c" rect 0 0 ->xy 1 ->square
+              5 '( ic 2 * 0 ->offset  f "quad-out" ease ->alpha ) array
             ;
             """.trimIndent()
         )
@@ -592,11 +605,11 @@ object RectSLWorkout {
         // falls off symmetrically toward the edges of the array.
         val bell = compile(
             """
-            wall 20 8 meters
-            duration 1
-            fps 1
-            "c" rect 0 0 xy 1 square
-              5 '( ic 2 * 0 offset  gaussian f sample alpha ) array
+            ->wall 20 8 meters
+            ->duration 1
+            ->fps 1
+            "c" rect 0 0 ->xy 1 ->square
+              5 '( ic 2 * 0 ->offset  gaussian f sample ->alpha ) array
             ;
             """.trimIndent()
         )
@@ -608,11 +621,11 @@ object RectSLWorkout {
         // #4 seeded noise — deterministic for a seed, and different seeds diverge.
         fun scatter(seed: Int) = compile(
             """
-            wall 20 8 meters
-            duration 1
-            fps 1
-            "c" rect 0 0 xy 1 square
-              7 '( ic 1.5 * 0 offset  $seed noise f sample sat alpha ) array
+            ->wall 20 8 meters
+            ->duration 1
+            ->fps 1
+            "c" rect 0 0 ->xy 1 ->square
+              7 '( ic 1.5 * 0 ->offset  $seed noise f sample sat ->alpha ) array
             ;
             """.trimIndent()
         ).sample(0.0).rects.sortedBy { it.center.x }.map { it.alpha }
@@ -622,18 +635,18 @@ object RectSLWorkout {
         // #3 reflect — a curve transform: reflect(x) == source(1-x).
         val plain = compile(
             """
-            wall 4 4 meters
-            duration 1
-            fps 1
-            "c" rect 0 0 xy 1 square  3 noise 0.2 sample sat alpha ;
+            ->wall 4 4 meters
+            ->duration 1
+            ->fps 1
+            "c" rect 0 0 ->xy 1 ->square  3 noise 0.2 sample sat ->alpha ;
             """.trimIndent()
         ).sample(0.0).rects.first().alpha
         val reflected = compile(
             """
-            wall 4 4 meters
-            duration 1
-            fps 1
-            "c" rect 0 0 xy 1 square  3 noise reflect 0.8 sample sat alpha ;
+            ->wall 4 4 meters
+            ->duration 1
+            ->fps 1
+            "c" rect 0 0 ->xy 1 ->square  3 noise reflect 0.8 sample sat ->alpha ;
             """.trimIndent()
         ).sample(0.0).rects.first().alpha
         near(plain, reflected)
@@ -651,11 +664,11 @@ object RectSLWorkout {
         val curve = with(Functions) { gaussian(0.5, 0.16) }
         val injected = compileRectSL(
             """
-            wall 20 8 meters
-            duration 1
-            fps 1
-            "c" rect 0 0 xy 1 square
-              5 '( ic 2 * 0 offset  shape f sample alpha ) array
+            ->wall 20 8 meters
+            ->duration 1
+            ->fps 1
+            "c" rect 0 0 ->xy 1 ->square
+              5 '( ic 2 * 0 ->offset  shape f sample ->alpha ) array
             ;
             """.trimIndent(),
             mapOf("shape" to curve)
@@ -668,25 +681,25 @@ object RectSLWorkout {
     private fun gradientAndMaterialLowering() {
         val program = compile(
             """
-            wall 6 4 meters
-            duration 1
-            fps 1
+            ->wall 6 4 meters
+            ->duration 1
+            ->fps 1
 
             material pulse '( uv time + )
 
             "gradient" rect
-              0 0 xy
-              2 2 wh
-              0xff0000 0x0000ff -1 0 1 0 linear fill
-              soft-edge material
-              0.12 2 3 4 shader
+              0 0 ->xy
+              2 2 ->wh
+              0xff0000 0x0000ff -1 0 1 0 linear ->fill
+              soft-edge ->material
+              0.12 2 3 4 ->shader
             ;
 
             "stacked" rect
-              2 0 xy
-              1 square
-              0xffffff solid fill
-              pulse material
+              2 0 ->xy
+              1 ->square
+              0xffffff solid ->fill
+              pulse ->material
             ;
             """.trimIndent()
         )
@@ -708,19 +721,19 @@ object RectSLWorkout {
     private fun semanticAnalysis() {
         val program = compile(
             """
-            wall 4 4 meters
-            duration 4
-            fps 20
+            ->wall 4 4 meters
+            ->duration 4
+            ->fps 20
 
             "left" rect
-              -1 0 xy
-              1 square
-              '( 0 -1  2 0  4 3 ) x
-              '( 0 0   2 1  4 0 ) alpha
+              -1 0 ->xy
+              1 ->square
+              '( 0 -1  2 0  4 3 ) ->x
+              '( 0 0   2 1  4 0 ) ->alpha
             ;
 
-            dup "right" rename
-              mirror-x
+            dup "right" ->rename
+              ->mirror-x
             ;
             """.trimIndent()
         )
@@ -745,11 +758,11 @@ object RectSLWorkout {
             )
 
             "stripe" rect
-              0 0 xy
-              4 0.35 wh
-              0xffcc66 solid fill
-              slow-stripes material
-              9 0 0.15 0 shader
+              0 0 ->xy
+              4 0.35 ->wh
+              0xffcc66 solid ->fill
+              slow-stripes ->material
+              9 0 0.15 0 ->shader
             ;
             """.trimIndent()
         )

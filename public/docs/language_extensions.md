@@ -245,14 +245,15 @@ provideCompletionItems(editor, model, position, { monaco }) {
 
   return {
     suggestions: [{
-      label: "square",
-      insertText: "square",
+      label: "->square",
+      insertText: "->square",
       kind: monaco.languages.CompletionItemKind.Function,
       detail: "size --",
       documentation: {
-        value: "**square** `size --`\n\nSet width and height to the same value.",
+        value: "**->square** `size --`\n\nSet width and height to the same value.",
         isTrusted: true,
       },
+      data: { rectslEffect: "mutator" },
     }]
   }
 }

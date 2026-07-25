@@ -12,21 +12,21 @@ import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
-wall 18 8 meters
-duration 6
-fps 30
+->wall 18 8 meters
+->duration 6
+->fps 30
 
 "blade" rect
-  0 0 xy
-  0.35 4.5 wh
-  '( 0 -1.0  1 1.0  2 -1.0 ) 2 loop-time rot
-  0xff3caa solid fill
+  0 0 ->xy
+  0.35 4.5 ->wh
+  '( 0 -1.0  1 1.0  2 -1.0 ) 2 loop-time ->rot
+  0xff3caa solid ->fill
 ;
 
 24 '(
-  "blade" select clone
-    i 11.5 - 0.72 * 0 xy
-    i 0.11 * delay-all-time
+  "blade" ->select clone
+    i 11.5 - 0.72 * 0 ->xy
+    i 0.11 * ->delay-all-time
 ) repeat
 """
 
