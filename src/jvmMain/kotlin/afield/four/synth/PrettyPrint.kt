@@ -1,5 +1,6 @@
 package afield.four.synth
 
+import afield.graphquery.LiveGraphInspectable
 import java.nio.file.Path
 import java.util.IdentityHashMap
 import kotlin.reflect.KVisibility

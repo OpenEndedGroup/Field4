@@ -1,5 +1,9 @@
 package afield.four.synth
 
+import afield.graphquery.GraphWalkOptions
+import afield.graphquery.LiveGraphEdge
+import afield.graphquery.LiveGraphInspectable
+import afield.graphquery.graphPaths
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -97,16 +101,28 @@ class GraphQueryCharacterizationTest {
     }
 
     /**
-     * WART: an object reached by two different edges is only *expanded* once, so the
-     * second alias has no children. `b/freq` is simply missing from the result.
+     * FIXED (was a wart): an object reached by two different edges is expanded under
+     * *each* of them, because cycle detection is path-scoped rather than visit-once. The
+     * old behaviour dropped `b/freq` entirely, making it unqueryable.
      */
     @Test
-    fun aliasedNodesAreExpandedOnlyOnce() {
+    fun aliasedNodesExpandUnderEveryPath() {
         val shared = Osc(100f, 0.5f)
         val paths = Aliased(shared, shared).graphPaths("**").paths()
 
-        assertEquals(listOf("a", "a/freq", "a/gain", "b"), paths)
-        assertTrue(paths.none { it == "b/freq" }, "second alias is not expanded (known limitation)")
+        assertEquals(listOf("a", "a/freq", "a/gain", "b", "b/freq", "b/gain"), paths)
+    }
+
+    /** …and the second alias is directly addressable, which is the point of the fix. */
+    @Test
+    fun secondAliasIsQueryable() {
+        val shared = Osc(100f, 0.5f)
+        val ref = Aliased(shared, shared).graphPaths("b/freq").firstOrNull()
+
+        assertTrue(ref != null, "b/freq must resolve")
+        assertEquals(100f, ref.get())
+        ref.set(7f)
+        assertEquals(7f, shared.freq, 0f, "writes through the alias")
     }
 
     // ── glob semantics ──────────────────────────────────────────────────────
@@ -181,18 +197,20 @@ class GraphQueryCharacterizationTest {
     }
 
     /**
-     * WART (gap 4): `Array` elements are read-only even though mutable List/Map elements
-     * are writable. Arrays are perfectly mutable in Kotlin — this is an inconsistency,
-     * not a constraint.
+     * FIXED (was gap 4): `Array` elements are writable, consistently with mutable
+     * List/Map elements. Arrays are mutable in Kotlin, so read-only was an inconsistency
+     * rather than a constraint.
      */
     @Test
-    fun arrayElementsAreCurrentlyReadOnly() {
+    fun arrayElementsAreWritable() {
         val arr = arrayOf<Any?>(1f, 2f)
         val set = arr.graphPaths("**")
 
         assertEquals(listOf("0", "1"), set.paths())
-        assertTrue(set.none { it.writable }, "arrays currently expose no setters")
-        assertEquals(0, set.writable().size)
+        assertTrue(set.all { it.writable }, "array elements now expose setters")
+
+        set.first().set(7f)
+        assertEquals(7f, arr[0])
     }
 
     /** Primitive arrays are leaves: recorded, never indexed into. */
@@ -207,19 +225,19 @@ class GraphQueryCharacterizationTest {
     // ── options that do (and do not) work ───────────────────────────────────
 
     /**
-     * WART: `includeNulls` is dead. The live walk records every edge unconditionally, so
-     * null-valued edges are *always* present regardless of the flag. The flag was only
-     * honoured by an unreachable code path.
+     * FIXED (was a dead option): `includeNulls` now actually filters. It defaults to true,
+     * preserving the old always-include behaviour, but setting it false drops null-valued
+     * edges. Previously the flag was only read by an unreachable code path.
      */
     @Test
-    fun includeNullsIsIgnoredNullsAlwaysAppear() {
+    fun includeNullsControlsNullEdges() {
         class Maybe(var value: Float?, var other: Float)
 
-        val withoutFlag = Maybe(null, 1f).graphPaths("**", GraphWalkOptions(includeNulls = false)).paths()
-        val withFlag = Maybe(null, 1f).graphPaths("**", GraphWalkOptions(includeNulls = true)).paths()
+        val included = Maybe(null, 1f).graphPaths("**").paths()
+        val excluded = Maybe(null, 1f).graphPaths("**", GraphWalkOptions(includeNulls = false)).paths()
 
-        assertEquals(listOf("value", "other"), withoutFlag, "null edge present even when flag is false")
-        assertEquals(withoutFlag, withFlag, "the flag changes nothing")
+        assertEquals(listOf("value", "other"), included, "nulls included by default")
+        assertEquals(listOf("other"), excluded, "the flag now takes effect")
         assertNull(Maybe(null, 1f).graphPaths("value").firstOrNull()!!.get())
     }
 
@@ -278,8 +296,9 @@ class GraphQueryCharacterizationTest {
         val shared = Osc(100f, 0.5f)
         val set = Aliased(shared, shared).graphPaths("**")
 
-        // "a" and "b" are distinct slots on the root, so nothing collapses here.
-        assertEquals(set.size, set.dedup().size)
+        assertEquals(6, set.size)
+        // a/freq and b/freq are two addresses for one slot: same owner, same name.
+        assertEquals(listOf("a", "a/freq", "a/gain", "b"), set.dedup().paths())
         assertEquals(set.dedup().paths(), set.deduplicated().paths())
     }
 
@@ -478,21 +497,18 @@ class GraphQueryCharacterizationTest {
     }
 
     /**
-     * WART: the per-slot scalar state is cached globally by (owner identity, slot), and it
-     * snapshots `base` when first created. A later *external* write to the same field is
-     * therefore invisible to a fresh query — `bases()` returns the stale cached value.
+     * FIXED (was a wart): the per-slot scalar state is still cached by (owner, slot) — so
+     * repeated queries drive one state rather than fighting — but it now re-reads the live
+     * field, so an external write is visible to a fresh query instead of being masked by
+     * a stale snapshot.
      */
     @Test
-    fun scalarStateIsCachedGloballyAndGoesStale() {
+    fun scalarStateResyncsToExternalWrites() {
         val osc = Osc(220f, 0.8f)
         assertEquals(listOf(220f), osc.params("freq").bases())
 
         osc.freq = 999f
-        assertEquals(
-            listOf(220f),
-            osc.params("freq").bases(),
-            "cached ScalarPathState does not observe external writes (known wart)"
-        )
+        assertEquals(listOf(999f), osc.params("freq").bases(), "cached state re-reads the field")
     }
 
     // ── ToHTML rendering (used by the docs captures) ─────────────────────────

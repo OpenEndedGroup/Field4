@@ -1,5 +1,7 @@
 package afield.four.synth
 
+import afield.graphquery.LiveGraphEdge
+import afield.graphquery.LiveGraphInspectable
 import java.util.IdentityHashMap
 import java.util.WeakHashMap
 import kotlin.coroutines.Continuation

@@ -1,5 +1,7 @@
 package afield.four.synth
 
+import afield.graphquery.LiveGraphEdge
+import afield.graphquery.LiveGraphInspectable
 import afield.logger.lprintln
 import org.lwjgl.openal.AL
 import org.lwjgl.openal.AL10.*
