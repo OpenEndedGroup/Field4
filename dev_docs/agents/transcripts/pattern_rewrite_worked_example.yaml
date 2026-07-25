@@ -1,0 +1,152 @@
+name: pattern_rewrite_worked_example
+description: >
+  Worked example for the pattern-rewrite layer. Each box authors a rewrite rule
+  and then uses it: negation, the precedence paren-guard, the isCallTo
+  termination idiom, a variadic hole, procedural unquote, and an inherited
+  (ambient) rule that a child box picks up from its parent. Pure compute, no
+  Window — safe to run to completion headless.
+operations:
+  # 1. Negation: neg(x) -> -x. The simplest possible rule.
+  - create:
+      box: rw_negation
+      name: Negation
+      frame: { x: 60.0, y: 60.0, w: 220.0, h: 110.0 }
+      properties:
+        code: |
+          import afield.macros.*
+          rewrite { x: Expr -> from { neg(x) }; to { -x } }
+          println("neg(10) = " + neg(10))
+  - execute:
+      box: rw_negation
+      property: code
+      type: fragment
+      code: |
+        import afield.macros.*
+        rewrite { x: Expr -> from { neg(x) }; to { -x } }
+        println("neg(10) = " + neg(10))
+
+  # 2. Precedence: twice(x) -> x * 2, with a non-atomic capture paren-guarded.
+  - create:
+      box: rw_precedence
+      name: Precedence Guard
+      frame: { x: 60.0, y: 200.0, w: 220.0, h: 110.0 }
+      properties:
+        code: |
+          import afield.macros.*
+          rewrite { x: Expr -> from { twice(x) }; to { x * 2 } }
+          println("twice(3 + 4) = " + twice(3 + 4))
+  - execute:
+      box: rw_precedence
+      property: code
+      type: fragment
+      code: |
+        import afield.macros.*
+        rewrite { x: Expr -> from { twice(x) }; to { x * 2 } }
+        println("twice(3 + 4) = " + twice(3 + 4))
+
+  # 3. The isCallTo termination idiom: wrap once, then stop.
+  - create:
+      box: rw_terminate
+      name: isCallTo Termination
+      frame: { x: 60.0, y: 340.0, w: 220.0, h: 110.0 }
+      properties:
+        code: |
+          import afield.macros.*
+          fun wrap(v: Int) = v
+          fun f(v: Int) = v + 1
+          rewrite { x: Expr ->
+              from { f(x) }
+              where { !isCallTo(x, "wrap") }
+              to { f(wrap(x)) }
+          }
+          println("f(41) = " + f(41))
+  - execute:
+      box: rw_terminate
+      property: code
+      type: fragment
+      code: |
+        import afield.macros.*
+        fun wrap(v: Int) = v
+        fun f(v: Int) = v + 1
+        rewrite { x: Expr ->
+            from { f(x) }
+            where { !isCallTo(x, "wrap") }
+            to { f(wrap(x)) }
+        }
+        println("f(41) = " + f(41))
+
+  # 4. Variadic hole: log(first, rest) -> sink(first, rest).
+  - create:
+      box: rw_variadic
+      name: Variadic Hole
+      frame: { x: 60.0, y: 480.0, w: 220.0, h: 110.0 }
+      properties:
+        code: |
+          import afield.macros.*
+          fun sink(vararg xs: Int) = xs.sum()
+          rewrite { first: Expr, rest: Vararg ->
+              from { log(first, rest) }
+              to { sink(first, rest) }
+          }
+          println("log(1, 2, 3) = " + log(1, 2, 3))
+  - execute:
+      box: rw_variadic
+      property: code
+      type: fragment
+      code: |
+        import afield.macros.*
+        fun sink(vararg xs: Int) = xs.sum()
+        rewrite { first: Expr, rest: Vararg ->
+            from { log(first, rest) }
+            to { sink(first, rest) }
+        }
+        println("log(1, 2, 3) = " + log(1, 2, 3))
+
+  # 5. Procedural unquote: rev(x) -> a reversed string literal, computed at rewrite time.
+  - create:
+      box: rw_unquote
+      name: Procedural unquote
+      frame: { x: 60.0, y: 620.0, w: 220.0, h: 110.0 }
+      properties:
+        code: |
+          import afield.macros.*
+          rewrite { x: Ident -> from { rev(x) }; to { unquote { "\"" + x.reversed() + "\"" } } }
+          println("rev(hello) = " + rev(hello))
+  - execute:
+      box: rw_unquote
+      property: code
+      type: fragment
+      code: |
+        import afield.macros.*
+        rewrite { x: Ident -> from { rev(x) }; to { unquote { "\"" + x.reversed() + "\"" } } }
+        println("rev(hello) = " + rev(hello))
+
+  # 6. Ambient rule: a rule written in the PARENT box is inherited by the CHILD.
+  #    The parent is never executed; only the child runs and still sees the rule.
+  - create:
+      box: rw_ambient_parent
+      name: Ambient Parent (holds the rule)
+      frame: { x: 360.0, y: 60.0, w: 260.0, h: 110.0 }
+      properties:
+        code: |
+          import afield.macros.*
+          rewrite { x: Expr -> from { boom(x) }; to { -x } }
+  - create:
+      box: rw_ambient_child
+      name: Ambient Child (inherits it)
+      frame: { x: 360.0, y: 200.0, w: 260.0, h: 110.0 }
+      properties:
+        code: |
+          println("boom(5) = " + boom(5))
+  - connect:
+      parent: rw_ambient_parent
+      child: rw_ambient_child
+  - execute:
+      box: rw_ambient_child
+      property: code
+      type: fragment
+      code: |
+        println("boom(5) = " + boom(5))
+
+  - wait:
+      millis: 250
