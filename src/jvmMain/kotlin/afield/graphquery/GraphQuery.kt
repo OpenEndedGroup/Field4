@@ -588,19 +588,30 @@ internal object GraphWalker {
         prop: KProperty1<Any, *>,
         options: GraphWalkOptions
     ): LiveGraphEdge {
-        val getter = {
-            prop.isAccessible = options.includePrivate
-            prop.get(node)
-        }
+        // Accessibility is about *reaching* the member, not about which members we chose to
+        // expose — that decision was already made by the visibility filter in
+        // GraphReflectionCache. A public property of a non-public class (a private nested
+        // class, an internal class) still needs setAccessible(true) to invoke; without it
+        // prop.get throws IllegalAccessException, safeGet turns that into null, and the walk
+        // silently stops descending. So always try to open the accessor.
+        ensureAccessible(prop)
+        val getter = { prop.get(node) }
         val setter = if (prop is KMutableProperty1<*, *>) {
             @Suppress("UNCHECKED_CAST")
             val mutable = prop as KMutableProperty1<Any, Any?>
-            { value: Any? ->
-                mutable.isAccessible = options.includePrivate
-                mutable.set(node, value)
-            }
+            { value: Any? -> mutable.set(node, value) }
         } else null
         return LiveGraphEdge(prop.name, getter, setter)
+    }
+
+    /**
+     * Best-effort `setAccessible(true)`. A module boundary can refuse, in which case the
+     * getter simply fails later and the slot reads as null — the same outcome as before,
+     * but now only for members that genuinely cannot be reached.
+     */
+    private fun ensureAccessible(prop: KProperty1<Any, *>) {
+        if (prop.isAccessible) return
+        runCatching { prop.isAccessible = true }
     }
 
     private fun safeGet(getter: () -> Any?): Any? = try {
