@@ -11,12 +11,10 @@ your source before the compiler ever sees it. It is a small, structural
 term-rewriting system that runs as a preprocessor in front of the Kotlin engine.
 
 Every rule and every expansion on this page is real: the rules are the ones the
-[pattern-rewrite smoke test][smoke] actually exercises, and each "→" shows the
-source that expansion genuinely emits (the smoke asserts on exactly those
-strings). The end of the page points at a demo you can replay to watch boxes
-expand and run.
-
-[smoke]: https://github.com/ — see `src/jvmMain/kotlin/afield/PatternRewriteSmokeTest.kt`
+pattern-rewrite smoke test (`src/jvmMain/kotlin/afield/PatternRewriteSmokeTest.kt`)
+actually exercises, and each "→" shows the source that expansion genuinely emits
+(the smoke asserts on exactly those strings). The end of the page points at a demo
+you can replay to watch boxes expand and run.
 
 ## The mental model
 
@@ -434,7 +432,7 @@ inherited — each box drives its own. `provide { }` and `ai()` side-contributio
 still accrue whenever a rule actually fires under a strategy.
 
 > **Every "→" above is real.** These are the exact rules and expansions the
-> [pattern-rewrite smoke test][smoke] asserts on (`testStrategyOnceFiresSingleSite`,
+> pattern-rewrite smoke test asserts on (`testStrategyOnceFiresSingleSite`,
 > `testStrategyTopDownSingleOutermost`, `testStrategyChoiceFirstApplicable`, and
 > the rest of the `strategy sublanguage` group). The developer reference in
 > `dev_docs/pattern_rewrite_strategies.md` documents the `Strat` AST and the
