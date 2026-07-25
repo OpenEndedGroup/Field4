@@ -34,11 +34,13 @@ expect:
  * written to a real 16-bit PCM WAV via [WavFloatArrayWriter]. The render is deterministic, so the
  * committed docs `.wav` regenerates byte-stably at docs-build.
  *
- * The docs page uses this in two ways:
- *  - `DoughDspSoundDocs.renderWav("plate-reverb", "<abs path>.wav")` — the box the `audio=` runner
- *    generates; it writes the WAV the `<audio>` player points at.
- *  - `DoughDspSoundDocs.plot(this, "plate-reverb")` — a `showSignals` plotly plot of the SAME data,
- *    captured as a box screenshot (dark-mode, real font).
+ * The public building blocks are the top-level `dough*` helpers below ([doughRenderMono],
+ * [doughRenderStereoMono], [doughRenderGated], [doughPluckEnv], and the plot-shaping
+ * [doughAbsEnvelope] / [doughShortTimeRms] / [doughShortTimeBrightness] / [doughWaveWindow]). They
+ * are the SAME functions the docs page's runner blocks call, so the code a reader sees construct a
+ * primitive and plot it is exactly the code that runs — and it builds the identical graph the
+ * `audio=` WAV is rendered from. `afield.four.synth` is auto-imported into every box, so a docs
+ * fence can call them unqualified.
  *
  * As a FIELD_TEST (`synth.dough-dsp.sound`) it renders every scene to a temp dir and asserts real
  * correctness (a valid WAV header on disk, plus per-scene sample-level checks: the reverb tail
@@ -49,16 +51,14 @@ expect:
  */
 object DoughDspSoundDocs {
 
-    private const val SR = 48_000
-    private const val SRF = 48_000f
-    private const val BLOCK = 128
+    internal const val SR = 48_000
 
     // ── scene model ───────────────────────────────────────────────────────────────
 
     /** Named series for the plot, sharing an x (sample index by default, or [x]). */
     class PlotData(
-        val series: List<Pair<String, DoubleArray>>,
-        val x: DoubleArray? = null,
+        val series: List<Pair<String, List<Number>>>,
+        val x: List<Number>? = null,
         val xTitle: String? = null,
         val yTitle: String? = null,
     )
@@ -83,12 +83,11 @@ object DoughDspSoundDocs {
             title = "PlateReverb — a pluck and its decaying tail",
             blurb = "A 120 ms 330 Hz pluck fed into the Dattorro plate (decay 0.85, mix 0.5); the tail rings on long after the dry note stops.",
             render = {
-                val pluck = SineOsc(Param(330f)) * Decay(0.045f).gatedTo(0.12f)
+                val pluck = SineOsc(Param(330f)) * doughPluckEnv(tau = 0.045f, holdSec = 0.12f)
                 val verb = PlateReverb(source = pluck, decay = Param(0.85f), mix = Param(0.5f))
-                val (l, r) = renderStereo(verb, seconds = 3.0f)
-                FloatArray(l.size) { 0.5f * (l[it] + r[it]) }
+                doughRenderStereoMono(verb, seconds = 3f)
             },
-            plot = { audio -> PlotData(listOf("|amplitude| envelope" to absEnvelope(audio, 400)), xTitle = "time", yTitle = "|amp|") },
+            plot = { audio -> PlotData(listOf("|amplitude| envelope" to doughAbsEnvelope(audio, 400)), xTitle = "time", yTitle = "|amp|") },
             verify = { a ->
                 val early = meanAbs(a, a.size / 40, a.size / 8)
                 val late = meanAbs(a, a.size * 5 / 6, a.size)
@@ -106,16 +105,16 @@ object DoughDspSoundDocs {
             blurb = "A 220 Hz sawtooth through the LFO-swept cascaded notches (rate 0.5 Hz, depth 0.7); you hear the classic hollow whoosh.",
             render = {
                 val saw = ZawOsc(Param(220f)) * 0.4f
-                val ph = saw.through(Phaser(rate = Param(0.5f), depth = Param(0.7f), center = Param(700f), sweep = Param(1400f), mix = Param(1f)))
-                renderMono(ph, seconds = 3.0f)
+                val out = saw.through(Phaser(rate = Param(0.5f), depth = Param(0.7f), center = Param(700f), sweep = Param(1400f), mix = Param(1f)))
+                doughRenderMono(out, seconds = 3f)
             },
-            plot = { audio -> PlotData(listOf("short-time RMS" to shortTimeRms(audio, windowMs = 25.0, points = 300)), xTitle = "time", yTitle = "rms") },
+            plot = { audio -> PlotData(listOf("short-time RMS" to doughShortTimeRms(audio, windowMs = 25.0, points = 300)), xTitle = "time", yTitle = "rms") },
             verify = { a ->
                 // Raw (pre-normalization) samples; the writer normalizes to 0.9 peak.
                 check(peak(a) > 0.02f) { "phaser too quiet: ${peak(a)}" }
                 check(a.all { it.isFinite() }) { "phaser produced non-finite samples" }
                 // the sweep modulates the sound: the short-time RMS is not constant.
-                val rmsWindows = shortTimeRms(a, 25.0, 60)
+                val rmsWindows = doughShortTimeRms(a, 25.0, 60)
                 check(stddev(rmsWindows) > 1e-4) { "phaser shows no LFO modulation (flat RMS)" }
             },
         ),
@@ -127,10 +126,10 @@ object DoughDspSoundDocs {
             render = {
                 val saw = ZawOsc(Param(110f)) * 0.5f
                 val cutoff = Param(150f).also { it.supplier = { 150f + 5850f * (time / 3f).coerceIn(0f, 1f) } }
-                val lp = saw.through(ChamberlinLowpass(cutoff, Param(0.6f)))
-                renderMono(lp, seconds = 3.0f)
+                val out = saw.through(ChamberlinLowpass(cutoff, Param(0.6f)))
+                doughRenderMono(out, seconds = 3f)
             },
-            plot = { audio -> PlotData(listOf("brightness (HF energy)" to shortTimeBrightness(audio, windowMs = 40.0, points = 200)), xTitle = "time", yTitle = "hf ratio") },
+            plot = { audio -> PlotData(listOf("brightness (HF energy)" to doughShortTimeBrightness(audio, windowMs = 40.0, points = 200)), xTitle = "time", yTitle = "hf ratio") },
             verify = { a ->
                 // Resonance legitimately overshoots 1.0 pre-normalization; the writer normalizes.
                 check(peak(a) > 0.02f && a.all { it.isFinite() }) { "chamberlin too quiet / non-finite: ${peak(a)}" }
@@ -146,17 +145,17 @@ object DoughDspSoundDocs {
             blurb = "A 220 Hz sine multiplied by the click-free curved envelope, gated on/off three times; each note swells and fades with silence between.",
             render = {
                 val gate = Gate()
-                val env = CurvedADSR(gate, Param(0.02f), Param(0.08f), Param(0.6f), Param(0.15f))
-                val voice = SineOsc(Param(220f)) * env
+                val voice = SineOsc(Param(220f)) * CurvedADSR(gate, Param(0.02f), Param(0.08f), Param(0.6f), Param(0.15f))
                 // schedule: (open?, seconds) — three notes with gaps.
-                val schedule = listOf(true to 0.25f, false to 0.20f, true to 0.25f, false to 0.20f, true to 0.25f, false to 0.35f)
-                renderGated(voice, gate, schedule)
+                val rhythm = listOf(true to 0.25f, false to 0.20f, true to 0.25f, false to 0.20f, true to 0.25f, false to 0.35f)
+                doughRenderGated(voice, gate, rhythm)
             },
-            plot = { audio -> PlotData(listOf("|amplitude| envelope" to absEnvelope(audio, 400)), xTitle = "time", yTitle = "|amp|") },
+            plot = { audio -> PlotData(listOf("|amplitude| envelope" to doughAbsEnvelope(audio, 400)), xTitle = "time", yTitle = "|amp|") },
             verify = { a ->
-                val env = absEnvelope(a, 300)
+                val env = doughAbsEnvelope(a, 300)
                 // three humps: count zero-ish → loud transitions.
-                val thr = env.max() * 0.25
+                val pk = env.max()
+                val thr = pk * 0.25
                 var notes = 0
                 var above = false
                 for (v in env) {
@@ -165,8 +164,8 @@ object DoughDspSoundDocs {
                 }
                 check(notes == 3) { "curved-adsr expected 3 notes, envelope shows $notes" }
                 // silent gaps: the minimum in the middle is near zero.
-                val mid = env.copyOfRange(env.size / 6, env.size * 5 / 6)
-                check(mid.min() < env.max() * 0.1) { "curved-adsr has no silent gaps between notes" }
+                val mid = env.subList(env.size / 6, env.size * 5 / 6)
+                check(mid.min() < pk * 0.1) { "curved-adsr has no silent gaps between notes" }
             },
         ),
         // 5 ── SoftDistort: a sine driven from clean to crunchy by a rising drive.
@@ -176,14 +175,17 @@ object DoughDspSoundDocs {
             blurb = "A 220 Hz sine through dough's expm1 soft clipper with the drive sweeping 0.2 → 7; it starts clean and grows buzzy harmonics.",
             render = {
                 val drive = Param(0.2f).also { it.supplier = { 0.2f + 6.8f * (time / 3f).coerceIn(0f, 1f) } }
-                val voice = SineOsc(Param(220f)).through(SoftDistort(drive, Param(0.8f)))
-                renderMono(voice, seconds = 3.0f)
+                val out = SineOsc(Param(220f)).through(SoftDistort(drive, Param(0.8f)))
+                doughRenderMono(out, seconds = 3f)
             },
             plot = { audio ->
-                val period = (SRF / 220f).toInt()
-                val clean = windowAt(audio, (0.15f * SRF).toInt(), period * 2)
-                val driven = windowAt(audio, (2.8f * SRF).toInt(), period * 2)
-                PlotData(listOf("clean (t≈0.15 s)" to clean, "driven (t≈2.8 s)" to driven), xTitle = "sample", yTitle = "amp")
+                PlotData(
+                    listOf(
+                        "clean (t≈0.15 s)" to doughWaveWindow(audio, atSeconds = 0.15f, cycles = 2, freqHz = 220f),
+                        "driven (t≈2.8 s)" to doughWaveWindow(audio, atSeconds = 2.8f, cycles = 2, freqHz = 220f),
+                    ),
+                    xTitle = "sample", yTitle = "amp",
+                )
             },
             verify = { a ->
                 check(peak(a) > 0.02f) { "soft-distort too quiet: ${peak(a)}" }
@@ -199,15 +201,18 @@ object DoughDspSoundDocs {
             title = "ZawOsc / PulzeOsc — raw, aliasing tones",
             blurb = "One second of a 200 Hz naive sawtooth, then one second of a 200 Hz narrow pulse (duty 0.3); the raw ramps buzz with aliasing.",
             render = {
-                val saw = renderMono(ZawOsc(Param(200f)) * 0.7f, seconds = 1.0f)
-                val pulse = renderMono(PulzeOsc(Param(200f), Param(0.3f)) * 0.7f, seconds = 1.0f)
-                saw + pulse
+                val saw = ZawOsc(Param(200f)) * 0.7f
+                val pulse = PulzeOsc(Param(200f), Param(0.3f)) * 0.7f
+                doughRenderMono(saw, seconds = 1f) + doughRenderMono(pulse, seconds = 1f)
             },
             plot = { audio ->
-                val period = SR / 200 // 240 samples, integer
-                val zaw = windowAt(audio, period, period * 2)
-                val pulze = windowAt(audio, SR + period, period * 2)
-                PlotData(listOf("zaw (saw)" to zaw, "pulze (duty 0.3)" to pulze), xTitle = "sample", yTitle = "amp")
+                PlotData(
+                    listOf(
+                        "zaw (saw)" to doughWaveWindow(audio, atSeconds = 0.005f, cycles = 2, freqHz = 200f),
+                        "pulze (duty 0.3)" to doughWaveWindow(audio, atSeconds = 1.005f, cycles = 2, freqHz = 200f),
+                    ),
+                    xTitle = "sample", yTitle = "amp",
+                )
             },
             verify = { a ->
                 val zaw = a.copyOfRange(SR / 4, SR * 3 / 4)
@@ -236,10 +241,9 @@ object DoughDspSoundDocs {
     fun plotInto(box: Box, name: String) {
         val scene = byName[name] ?: error("unknown DoughDspSoundDocs scene '$name'; known: ${byName.keys.sorted()}")
         val data = scene.plot(scene.render())
-        val series = data.series.map { (label, ys) -> label to ys.asNumbers() }.toTypedArray()
         box.showSignals(
-            *series,
-            x = data.x?.asNumbers(),
+            *data.series.toTypedArray(),
+            x = data.x,
             channel = "main",
             title = scene.title,
             xTitle = data.xTitle,
@@ -247,129 +251,8 @@ object DoughDspSoundDocs {
         )
     }
 
-    // ── offline renderers (real primitive output, no engine) ───────────────────────
+    // ── verification-only helpers (used by scene `verify` + main) ──────────────────
 
-    private fun renderMonoSamples(signal: Signal, total: Int): FloatArray {
-        val ctx = SynthContext(SRF, BLOCK)
-        val out = FloatArray(total)
-        val buf = FloatArray(BLOCK)
-        var written = 0
-        while (written < total) {
-            signal.render(buf, BLOCK, ctx)
-            ctx.advanceCycle()
-            val n = minOf(BLOCK, total - written)
-            System.arraycopy(buf, 0, out, written, n)
-            written += n
-        }
-        return out
-    }
-
-    private fun renderMono(signal: Signal, seconds: Float): FloatArray =
-        renderMonoSamples(signal, (seconds * SRF).toInt())
-
-    private fun renderStereo(node: StereoRenderable, seconds: Float): Pair<FloatArray, FloatArray> {
-        val ctx = SynthContext(SRF, BLOCK)
-        val total = (seconds * SRF).toInt()
-        val outL = FloatArray(total); val outR = FloatArray(total)
-        val bufL = FloatArray(BLOCK); val bufR = FloatArray(BLOCK)
-        var written = 0
-        while (written < total) {
-            node.render(bufL, bufR, BLOCK, ctx)
-            ctx.advanceCycle()
-            val n = minOf(BLOCK, total - written)
-            System.arraycopy(bufL, 0, outL, written, n)
-            System.arraycopy(bufR, 0, outR, written, n)
-            written += n
-        }
-        return outL to outR
-    }
-
-    /** Render [voice] while driving [gate] through a `(open?, seconds)` schedule. */
-    private fun renderGated(voice: Signal, gate: Gate, schedule: List<Pair<Boolean, Float>>): FloatArray {
-        val ctx = SynthContext(SRF, BLOCK)
-        val buf = FloatArray(BLOCK)
-        val out = ArrayList<Float>()
-        for ((open, seconds) in schedule) {
-            if (open) gate.open() else gate.close()
-            val frames = (seconds * SRF).toInt()
-            var done = 0
-            while (done < frames) {
-                voice.render(buf, BLOCK, ctx)
-                ctx.advanceCycle()
-                val n = minOf(BLOCK, frames - done)
-                for (i in 0 until n) out.add(buf[i])
-                done += n
-            }
-        }
-        return FloatArray(out.size) { out[it] }
-    }
-
-    // ── test signals ────────────────────────────────────────────────────────────────
-
-    /** Exponential decay envelope, `exp(-t / tau)`, as a control signal. */
-    private class Decay(private val tau: Float) : Signal() {
-        override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
-            val t0 = ctx.time; val dt = ctx.inverseSampleRate
-            for (i in 0 until numFrames) output[i] = exp(-((t0 + i * dt) / tau))
-        }
-    }
-
-    /** Zero this control signal after [seconds] — turns a [Decay] into a finite pluck envelope. */
-    private class Gated(private val inner: Signal, private val seconds: Float) : Signal() {
-        override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
-            inner.render(output, numFrames, ctx)
-            val t0 = ctx.time; val dt = ctx.inverseSampleRate
-            for (i in 0 until numFrames) if (t0 + i * dt > seconds) output[i] = 0f
-        }
-    }
-
-    private fun Signal.gatedTo(seconds: Float): Signal = Gated(this, seconds)
-
-    // ── plot / verification helpers ──────────────────────────────────────────────────
-
-    /** Upcast to `List<Number>` for [showSignals] without an unchecked cast. */
-    private fun DoubleArray.asNumbers(): List<Number> = this.toList()
-
-    /** Bucketed abs-peak envelope of [samples] as a [buckets]-long array. */
-    private fun absEnvelope(samples: FloatArray, buckets: Int): DoubleArray {
-        val n = buckets.coerceIn(1, samples.size)
-        val ys = DoubleArray(n)
-        for (b in 0 until n) {
-            val start = (b.toLong() * samples.size / n).toInt()
-            val end = ((b + 1).toLong() * samples.size / n).toInt().coerceAtLeast(start + 1).coerceAtMost(samples.size)
-            var peak = 0f
-            for (i in start until end) peak = max(peak, abs(samples[i]))
-            ys[b] = peak.toDouble()
-        }
-        return ys
-    }
-
-    private fun shortTimeRms(samples: FloatArray, windowMs: Double, points: Int): DoubleArray {
-        val win = (windowMs / 1000.0 * SR).toInt().coerceAtLeast(1)
-        val out = DoubleArray(points)
-        for (p in 0 until points) {
-            val start = (p.toLong() * (samples.size - win) / max(1, points - 1)).toInt().coerceIn(0, samples.size - 1)
-            val end = (start + win).coerceAtMost(samples.size)
-            var s = 0.0
-            for (i in start until end) s += samples[i].toDouble() * samples[i]
-            out[p] = sqrt(s / max(1, end - start))
-        }
-        return out
-    }
-
-    /** Per-window ratio of first-difference (high-frequency) energy to total energy. */
-    private fun shortTimeBrightness(samples: FloatArray, windowMs: Double, points: Int): DoubleArray {
-        val win = (windowMs / 1000.0 * SR).toInt().coerceAtLeast(2)
-        val out = DoubleArray(points)
-        for (p in 0 until points) {
-            val start = (p.toLong() * (samples.size - win) / max(1, points - 1)).toInt().coerceIn(1, samples.size - 1)
-            val end = (start + win).coerceAtMost(samples.size)
-            out[p] = bandEnergyRatio(samples, start, end)
-        }
-        return out
-    }
-
-    /** First-difference energy over total energy in `[from, to)` — a cheap brightness proxy. */
     private fun bandEnergyRatio(samples: FloatArray, from: Int, to: Int): Double {
         val lo = from.coerceIn(1, samples.size); val hi = to.coerceIn(lo, samples.size)
         var diff = 0.0; var total = 0.0
@@ -379,12 +262,6 @@ object DoughDspSoundDocs {
             total += samples[i].toDouble() * samples[i]
         }
         return if (total < 1e-12) 0.0 else diff / total
-    }
-
-    private fun windowAt(samples: FloatArray, start: Int, length: Int): DoubleArray {
-        val s = start.coerceIn(0, max(0, samples.size - 1))
-        val n = length.coerceAtMost(samples.size - s)
-        return DoubleArray(n) { samples[s + it].toDouble() }
     }
 
     private fun normalizedAutocorr(samples: FloatArray, lag: Int): Double {
@@ -405,7 +282,7 @@ object DoughDspSoundDocs {
 
     private fun peak(a: FloatArray): Float { var p = 0f; for (v in a) p = max(p, abs(v)); return p }
 
-    private fun stddev(a: DoubleArray): Double {
+    private fun stddev(a: List<Double>): Double {
         if (a.isEmpty()) return 0.0
         val mean = a.average()
         var s = 0.0; for (v in a) s += (v - mean) * (v - mean)
@@ -454,10 +331,130 @@ object DoughDspSoundDocs {
     }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════════
+//  Public dough* building blocks — the SAME functions the docs page's runner blocks call.
+//  Defined top-level in afield.four.synth (auto-imported into every box) so a fence can use
+//  them unqualified. They offline-render a real DoughDsp graph and shape it for a plot; no
+//  engine, device, GPU or window.
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+private const val DOUGH_BLOCK = 128
+
+/** A finite pluck envelope: `exp(-t / tau)` (tau seconds) hard-gated to zero after [holdSec]. */
+fun doughPluckEnv(tau: Float, holdSec: Float): Signal = object : Signal() {
+    override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
+        val t0 = ctx.time; val dt = ctx.inverseSampleRate
+        for (i in 0 until numFrames) {
+            val t = t0 + i * dt
+            output[i] = if (t > holdSec) 0f else exp(-(t / tau))
+        }
+    }
+}
+
+/** Offline-render a mono [signal] for [seconds] into a `FloatArray` (no engine). */
+fun doughRenderMono(signal: Signal, seconds: Float, sampleRate: Int = DoughDspSoundDocs.SR): FloatArray {
+    val ctx = SynthContext(sampleRate.toFloat(), DOUGH_BLOCK)
+    val total = (seconds * sampleRate).toInt()
+    val out = FloatArray(total)
+    val buf = FloatArray(DOUGH_BLOCK)
+    var written = 0
+    while (written < total) {
+        signal.render(buf, DOUGH_BLOCK, ctx)
+        ctx.advanceCycle()
+        val n = minOf(DOUGH_BLOCK, total - written)
+        System.arraycopy(buf, 0, out, written, n)
+        written += n
+    }
+    return out
+}
+
+/** Offline-render a stereo [node] for [seconds] and fold L+R to a mono `FloatArray`. */
+fun doughRenderStereoMono(node: StereoRenderable, seconds: Float, sampleRate: Int = DoughDspSoundDocs.SR): FloatArray {
+    val ctx = SynthContext(sampleRate.toFloat(), DOUGH_BLOCK)
+    val total = (seconds * sampleRate).toInt()
+    val out = FloatArray(total)
+    val bufL = FloatArray(DOUGH_BLOCK); val bufR = FloatArray(DOUGH_BLOCK)
+    var written = 0
+    while (written < total) {
+        node.render(bufL, bufR, DOUGH_BLOCK, ctx)
+        ctx.advanceCycle()
+        val n = minOf(DOUGH_BLOCK, total - written)
+        for (i in 0 until n) out[written + i] = 0.5f * (bufL[i] + bufR[i])
+        written += n
+    }
+    return out
+}
+
+/** Offline-render [voice] while driving [gate] through a `(open?, seconds)` schedule. */
+fun doughRenderGated(voice: Signal, gate: Gate, schedule: List<Pair<Boolean, Float>>, sampleRate: Int = DoughDspSoundDocs.SR): FloatArray {
+    val ctx = SynthContext(sampleRate.toFloat(), DOUGH_BLOCK)
+    val buf = FloatArray(DOUGH_BLOCK)
+    val out = ArrayList<Float>()
+    for ((open, seconds) in schedule) {
+        if (open) gate.open() else gate.close()
+        val frames = (seconds * sampleRate).toInt()
+        var done = 0
+        while (done < frames) {
+            voice.render(buf, DOUGH_BLOCK, ctx)
+            ctx.advanceCycle()
+            val n = minOf(DOUGH_BLOCK, frames - done)
+            for (i in 0 until n) out.add(buf[i])
+            done += n
+        }
+    }
+    return FloatArray(out.size) { out[it] }
+}
+
+/** Bucketed abs-peak envelope of [samples] as a [buckets]-long list (for `showSignals`). */
+fun doughAbsEnvelope(samples: FloatArray, buckets: Int): List<Double> {
+    val n = buckets.coerceIn(1, max(1, samples.size))
+    return List(n) { b ->
+        val start = (b.toLong() * samples.size / n).toInt()
+        val end = ((b + 1).toLong() * samples.size / n).toInt().coerceAtLeast(start + 1).coerceAtMost(samples.size)
+        var pk = 0f
+        for (i in start until end) pk = max(pk, abs(samples[i]))
+        pk.toDouble()
+    }
+}
+
+/** Short-time RMS of [samples] over [points] windows of [windowMs] ms. */
+fun doughShortTimeRms(samples: FloatArray, windowMs: Double, points: Int, sampleRate: Int = DoughDspSoundDocs.SR): List<Double> {
+    val win = (windowMs / 1000.0 * sampleRate).toInt().coerceAtLeast(1)
+    return List(points) { p ->
+        val start = (p.toLong() * (samples.size - win) / max(1, points - 1)).toInt().coerceIn(0, max(0, samples.size - 1))
+        val end = (start + win).coerceAtMost(samples.size)
+        var s = 0.0
+        for (i in start until end) s += samples[i].toDouble() * samples[i]
+        sqrt(s / max(1, end - start))
+    }
+}
+
+/** Per-window ratio of first-difference (high-frequency) energy to total energy — a brightness proxy. */
+fun doughShortTimeBrightness(samples: FloatArray, windowMs: Double, points: Int, sampleRate: Int = DoughDspSoundDocs.SR): List<Double> {
+    val win = (windowMs / 1000.0 * sampleRate).toInt().coerceAtLeast(2)
+    return List(points) { p ->
+        val start = (p.toLong() * (samples.size - win) / max(1, points - 1)).toInt().coerceIn(1, max(1, samples.size - 1))
+        val end = (start + win).coerceAtMost(samples.size)
+        var diff = 0.0; var total = 0.0
+        for (i in start until end) {
+            val d = (samples[i] - samples[i - 1]).toDouble()
+            diff += d * d
+            total += samples[i].toDouble() * samples[i]
+        }
+        if (total < 1e-12) 0.0 else diff / total
+    }
+}
+
+/** [cycles] periods of [samples] at [freqHz], starting [atSeconds] in — for overlaying waveforms. */
+fun doughWaveWindow(samples: FloatArray, atSeconds: Float, cycles: Int, freqHz: Float, sampleRate: Int = DoughDspSoundDocs.SR): List<Double> {
+    val start = (atSeconds * sampleRate).toInt().coerceIn(0, max(0, samples.size - 1))
+    val length = (cycles * (sampleRate / freqHz).toInt()).coerceAtMost(samples.size - start)
+    return List(length) { samples[start + it].toDouble() }
+}
+
 /**
- * Plot a [DoughDspSoundDocs] scene into this box (used by the docs page). Defined as a top-level
- * `Box` extension in `afield.four.synth` — which every box auto-imports — so a docs fence can call
- * `plotDoughSound("plate-reverb")` and it resolves against the box's implicit receiver, exactly like
- * the bare `showSignals(...)` call does.
+ * Plot a [DoughDspSoundDocs] scene into this box. Kept for convenience; the docs page now inlines
+ * the real construction instead. Defined as a top-level `Box` extension in `afield.four.synth`
+ * (auto-imported) so it resolves against a box's implicit receiver like `showSignals(...)`.
  */
 fun Box.plotDoughSound(name: String) = DoughDspSoundDocs.plotInto(this, name)
