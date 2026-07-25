@@ -233,13 +233,14 @@ object DoughDspSoundDocs {
     }
 
     /** Plot scene [name]'s behaviour into [box]'s output as a dark-mode plotly line plot. */
-    fun plot(box: Box, name: String) {
+    fun plotInto(box: Box, name: String) {
         val scene = byName[name] ?: error("unknown DoughDspSoundDocs scene '$name'; known: ${byName.keys.sorted()}")
         val data = scene.plot(scene.render())
         val series = data.series.map { (label, ys) -> label to ys.asNumbers() }.toTypedArray()
         box.showSignals(
             *series,
             x = data.x?.asNumbers(),
+            channel = "main",
             title = scene.title,
             xTitle = data.xTitle,
             yTitle = data.yTitle,
@@ -452,3 +453,11 @@ object DoughDspSoundDocs {
         println("dough dsp sound docs rendered to ${outDir.absolutePath} (${SCENES.size} scenes)")
     }
 }
+
+/**
+ * Plot a [DoughDspSoundDocs] scene into this box (used by the docs page). Defined as a top-level
+ * `Box` extension in `afield.four.synth` — which every box auto-imports — so a docs fence can call
+ * `plotDoughSound("plate-reverb")` and it resolves against the box's implicit receiver, exactly like
+ * the bare `showSignals(...)` call does.
+ */
+fun Box.plotDoughSound(name: String) = DoughDspSoundDocs.plotInto(this, name)
