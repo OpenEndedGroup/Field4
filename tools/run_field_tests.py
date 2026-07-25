@@ -122,6 +122,146 @@ def recycle_field(port: int, ctx: Any, *, grace: float = 12.0) -> None:
     raise SystemExit(f"Could not free wedged Field on port {port} (SIGINT and SIGKILL both failed).")
 
 
+# Command-line markers identifying a JVM this repo launched: the Field server
+# (build.gradle.kts `runJvm` -> mainClass afield.Server) and the jvm-main test
+# launcher. Matching the main class rather than the java binary is what keeps the
+# reaper off Gradle/Kotlin daemons, IDEs and unrelated JVMs.
+FIELD_JVM_MARKERS = ("afield.Server", "afield.AgentJvmMainLauncher")
+
+
+def _describe_pid(pid: int) -> str:
+    try:
+        out = subprocess.run(
+            ["ps", "-o", "etime=,rss=", "-p", str(pid)],
+            capture_output=True, text=True, timeout=5,
+        ).stdout.split()
+    except (OSError, subprocess.TimeoutExpired):
+        return f"pid {pid}"
+    if len(out) < 2:
+        return f"pid {pid}"
+    try:
+        rss_mb = int(out[1]) // 1024
+    except ValueError:
+        return f"pid {pid} (age {out[0]})"
+    return f"pid {pid} (age {out[0]}, rss {rss_mb}M)"
+
+
+def _ancestor_pids() -> set[int]:
+    """Our own process chain, which must never be reaped."""
+    chain: set[int] = set()
+    pid = os.getpid()
+    for _ in range(32):
+        chain.add(pid)
+        try:
+            out = subprocess.run(
+                ["ps", "-o", "ppid=", "-p", str(pid)], capture_output=True, text=True, timeout=5,
+            ).stdout.strip()
+            parent = int(out)
+        except (OSError, subprocess.TimeoutExpired, ValueError):
+            break
+        if parent <= 1 or parent in chain:
+            break
+        pid = parent
+    return chain
+
+
+def _stale_field_jvm_pids(*, exclude: set[int]) -> list[int]:
+    try:
+        out = subprocess.run(
+            ["ps", "-eo", "pid=,command="], capture_output=True, text=True, timeout=15,
+        ).stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    protected = exclude | _ancestor_pids()
+    pids: list[int] = []
+    for line in out.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        head, _, command = line.partition(" ")
+        try:
+            pid = int(head)
+        except ValueError:
+            continue
+        if pid in protected:
+            continue
+        argv0, _, rest = command.partition(" ")
+        # argv[0] must BE a java binary. Without this the marker also matches any
+        # shell, grep or editor whose command line merely mentions the class name --
+        # which in testing reaped the very shell running the reaper.
+        if os.path.basename(argv0) != "java":
+            continue
+        if any(marker in rest for marker in FIELD_JVM_MARKERS):
+            pids.append(pid)
+    return pids
+
+
+def reap_stale_field_jvms(port: int, *, grace: float = 8.0) -> None:
+    """Kill Field JVMs orphaned by earlier runs, before booting ours.
+
+    ``recycle_field`` only ever retires the process *listening on our port*. JVMs
+    orphaned by a crashed or killed earlier run keep running without holding the
+    port, and a pile of them starves the machine: runs then fail with dropped
+    backdoor websockets and 10x inflated durations rather than assertion failures,
+    which reads as a flaky suite. So sweep them first.
+
+    Deliberately narrow -- only JVMs whose command line carries one of
+    [FIELD_JVM_MARKERS]. Gradle and Kotlin compile daemons are left alone: they
+    are frequently the larger memory consumers, but they are also reusable and
+    killing them makes every run pay a cold start. Use ``./gradlew --stop`` to
+    retire those, or set ``AFIELD_TEST_KILL_ALL_JAVA=1`` for the blunt hammer.
+
+    Best effort: never fails the run.
+    """
+    if os.name == "nt":
+        return
+
+    if os.environ.get("AFIELD_TEST_KILL_ALL_JAVA", "").strip().lower() in {"1", "true", "yes", "on"}:
+        print(
+            "AFIELD_TEST_KILL_ALL_JAVA set: killing every java process on this machine "
+            "(includes Gradle/Kotlin daemons and any IDE or Field app).",
+            file=sys.stderr, flush=True,
+        )
+        subprocess.run(["killall", "-9", "java"], capture_output=True, text=True, timeout=30, check=False)
+        return
+
+    # Leave the port holder to recycle_field, which SIGINTs it first so it can
+    # dispose its GPU/window resources instead of leaking them.
+    keep = set(_pids_listening_on(port))
+    pids = _stale_field_jvm_pids(exclude=keep)
+    if not pids:
+        return
+
+    print(
+        f"Reaping {len(pids)} orphaned Field JVM(s) from earlier runs: "
+        + ", ".join(_describe_pid(pid) for pid in pids),
+        file=sys.stderr, flush=True,
+    )
+    for pid in pids:
+        try:
+            os.kill(pid, signal.SIGINT)
+        except (ProcessLookupError, PermissionError):
+            pass
+
+    deadline = time.monotonic() + grace
+    while time.monotonic() < deadline:
+        if not _stale_field_jvm_pids(exclude=keep):
+            return
+        time.sleep(0.5)
+
+    survivors = _stale_field_jvm_pids(exclude=keep)
+    for pid in survivors:
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+    if survivors:
+        print(
+            f"  escalated to SIGKILL for {len(survivors)} JVM(s) that ignored SIGINT",
+            file=sys.stderr, flush=True,
+        )
+
+
 def ensure_persistent_field(port: int, *, boot_timeout: float = 180.0) -> subprocess.Popen[Any] | None:
     """Guarantee one warm, *responsive* Field for the whole run.
 
@@ -1052,6 +1192,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--catalog", default=str(DEFAULT_CATALOG_PATH))
     parser.add_argument("--results", default=str(DEFAULT_RESULTS_PATH))
     parser.add_argument("--refresh-catalog", action="store_true")
+    parser.add_argument(
+        "--no-reap",
+        action="store_true",
+        help=(
+            "Skip the preflight sweep of Field JVMs orphaned by earlier runs. "
+            "Set AFIELD_TEST_KILL_ALL_JAVA=1 instead to kill every java process, "
+            "Gradle/Kotlin daemons and IDEs included."
+        ),
+    )
     parser.add_argument("--root", action="append", dest="roots")
     parser.add_argument("--id", action="append", dest="ids")
     parser.add_argument("--tag", action="append", dest="tags")
@@ -1124,6 +1273,8 @@ def run(args: argparse.Namespace) -> int:
 
     field_proc: subprocess.Popen[Any] | None = None
     if tests and not args.no_prewarm:
+        if not args.no_reap:
+            reap_stale_field_jvms(args.port)
         field_proc = ensure_persistent_field(args.port)
         progress(f"Started persistent Field on port {args.port} for this run")
 
