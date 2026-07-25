@@ -488,3 +488,55 @@ val fullPatch = audio {
 
 println("terse api ok " + prev.size + " " + field(0.5))
 """.trimIndent()
+
+/*
+FIELD_TEST
+id: synth.cookbook.dough-ports
+runner: backdoor-box
+tags: [synth, cookbook, dough, dsp, audio]
+timeoutSec: 45
+expect:
+  outputContains:
+    - "dough ports ok"
+  eventKinds:
+    - output
+*/
+private val SYNTH_COOKBOOK_DOUGH_PORTS = """
+// ── Naive (deliberately aliasing) oscillators ─────────
+val grittyA = zaw
+val grittyB = pulze
+val gritty  = zaw(110)
+val duty    = pulze(220, duty = 0.25)
+
+// ── Dattorro plate reverb — mono in, stereo out ───────
+val plated     = (saw(110) / lpf(1200)).plateReverb(decay = 0.85, mix = 0.4)
+val platedAlias = sine(220).plate(decay = 0.6)
+val platedFull = PlateReverb(
+    source = zaw(55) * ar(),
+    decay = 0.8.p,
+    damping = 0.9.p,
+    mix = 0.35.p
+)
+val platedRaw  = PlateReverb(source = white * 0.05f, scaleToSampleRate = false)
+
+// ── Phaser and the superdough lowpass ─────────────────
+val swirled  = supersaw / phaser(rate = 0.4, depth = 0.7, center = 900)
+val snarling = zaw(110) / chamberlinLpf(700, resonance = 0.85)
+val crunched = saw(110) / softDistort(2.5) / chamberlinLpf(1400)
+
+// ── Curved ADSR ───────────────────────────────────────
+val shaped = sine(220) * curvedAdsr(a = 0.02, d = 0.06, s = 0.5, r = 0.2)
+val eased  = saw(110) * curvedAdsr(attackCurve = 4.0, decayCurve = 1.0)
+
+// ── The fast math, usable directly ────────────────────
+val approxPow = DoughMath.pow(2f, 10f)
+val approxSin = DoughMath.parSin(1.5f)
+
+// ── A full patch through the ported chain ─────────────
+val doughPatch = audio(gain = 0.08f) {
+    (zaw(110) / chamberlinLpf(900, 0.6) / softDistort(1.5) * curvedAdsr(r = 0.4))
+        .plateReverb(decay = 0.8, mix = 0.3)
+}
+
+println("dough ports ok " + approxPow.toInt() + " " + (approxSin > 0.9f))
+""".trimIndent()

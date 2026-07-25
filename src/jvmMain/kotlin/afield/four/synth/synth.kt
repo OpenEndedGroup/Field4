@@ -965,6 +965,85 @@ fun delay(time: Number = 0.3, feedback: Number = 0.5, mix: Number = 0.5): Delay 
 fun chorus(rate: Number = 1.5, depth: Number = 0.003, mix: Number = 0.5): Chorus =
     Chorus(rate = Param(rate.toFloat()), depth = Param(depth.toFloat()), mix = Param(mix.toFloat()))
 
+// ─── dough ports (see DoughDsp.kt) ──────────────────────────────
+
+/** Naive, deliberately aliasing sawtooth — dough's `zaw`. */
+val zaw: ZawOsc
+    get() = ZawOsc()
+
+/** Naive, deliberately aliasing pulse — dough's `pulze`. */
+val pulze: PulzeOsc
+    get() = PulzeOsc()
+
+fun zaw(freq: Number): ZawOsc = ZawOsc(Param(freq.toFloat()))
+
+fun pulze(freq: Number, duty: Number = 0.5): PulzeOsc =
+    PulzeOsc(Param(freq.toFloat()), Param(duty.toFloat()))
+
+/** LFO-swept cascaded notches: `supersaw / phaser(rate = 0.4)` */
+fun phaser(
+    rate: Number = 0.5,
+    depth: Number = 0.5,
+    center: Number = 1000,
+    sweep: Number = 600,
+    mix: Number = 1.0
+): Phaser =
+    Phaser(
+        rate = Param(rate.toFloat()),
+        depth = Param(depth.toFloat()),
+        center = Param(center.toFloat()),
+        sweep = Param(sweep.toFloat()),
+        mix = Param(mix.toFloat())
+    )
+
+/** The superdough 2-pole lowpass — snarlier resonance than [lpf]. */
+fun chamberlinLpf(cutoff: Number = 1000, resonance: Number = 0.0): ChamberlinLowpass =
+    ChamberlinLowpass(cutoff = Param(cutoff.toFloat()), resonance = Param(resonance.toFloat()))
+
+/** Soft clipper with exponential drive: `saw / softDistort(2)` */
+fun softDistort(amount: Number = 1.0, postGain: Number = 1.0): SoftDistort =
+    SoftDistort(amount = Param(amount.toFloat()), postGain = Param(postGain.toFloat()))
+
+/** ADSR with shaped curves and click-free retrigger, auto-opened gate. */
+fun curvedAdsr(
+    a: Number = 0.01, d: Number = 0.1, s: Number = 0.7, r: Number = 0.3,
+    attackCurve: Number = 2.0, decayCurve: Number = 2.0,
+    gate: Gate = openGate()
+): CurvedADSR =
+    CurvedADSR(
+        gate = gate,
+        attack = Param(a.toFloat()), decay = Param(d.toFloat()),
+        sustain = Param(s.toFloat()), release = Param(r.toFloat()),
+        attackCurve = attackCurve.toFloat(), decayCurve = decayCurve.toFloat()
+    )
+
+/**
+ * Dattorro plate reverb — mono in, decorrelated stereo out:
+ * `(saw(110) / lpf(1200)).plateReverb(decay = 0.85)`
+ */
+fun Signal.plateReverb(
+    decay: Number = 0.75,
+    damping: Number = 0.95,
+    mix: Number = 0.3,
+    preDelay: Number = 0.1,
+    diffusion: Number = 0.70
+): PlateReverb =
+    PlateReverb(
+        source = this,
+        preDelay = Param(preDelay.toFloat()),
+        decayDiffusion = Param(diffusion.toFloat()),
+        decay = Param(decay.toFloat()),
+        damping = Param(damping.toFloat()),
+        mix = Param(mix.toFloat())
+    )
+
+/** Alias for [plateReverb]. */
+fun Signal.plate(
+    decay: Number = 0.75,
+    damping: Number = 0.95,
+    mix: Number = 0.3
+): PlateReverb = plateReverb(decay = decay, damping = damping, mix = mix)
+
 // ─── Pattern helpers ────────────────────────────────────────────
 
 /** Layer two patterns: `pat("bd").stack(pat("hh"))` */
