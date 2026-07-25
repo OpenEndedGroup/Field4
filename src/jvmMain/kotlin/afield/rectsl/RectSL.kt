@@ -1247,8 +1247,21 @@ suspend fun prewarmRectSLEscapes(
     return out
 }
 
-fun interface Word {
-    fun apply(vm: RectLangVm)
+enum class RectWordEffect {
+    Ordinary,
+    Mutator
+}
+
+data class RectWordMetadata(
+    val spelling: String,
+    val effect: RectWordEffect
+)
+
+class Word(
+    val metadata: RectWordMetadata,
+    private val action: (RectLangVm) -> Unit
+) {
+    fun apply(vm: RectLangVm) = action(vm)
 }
 
 data class LoopFrame(
@@ -1292,6 +1305,9 @@ class RectLangVm(
     init {
         installCoreWords()
     }
+
+    fun wordMetadata(): List<RectWordMetadata> =
+        words.values.map { it.metadata }.distinctBy { it.spelling }.sortedBy { it.spelling }
 
     fun eval(tokens: List<Token>): SceneProgram {
         evalBlock(tokens)
@@ -1411,8 +1427,16 @@ class RectLangVm(
             return
         }
 
-        val word = words[name] ?: throw RectLangException("Unknown word: $name" + suggestionFor(name))
+        val word = words[name] ?: throw RectLangException(unknownWordMessage(name))
         word.apply(this)
+    }
+
+    private fun unknownWordMessage(name: String): String {
+        val arrowed = words["->$name"]
+        if (arrowed?.metadata?.effect == RectWordEffect.Mutator) {
+            return "Unknown word: $name (mutators use '->'; did you mean '->$name'?)"
+        }
+        return "Unknown word: $name" + suggestionFor(name)
     }
 
     /**
@@ -1844,7 +1868,7 @@ class RectLangVm(
         }
         word("not") { vm -> vm.push(VNum(if (!vm.popBoolean("not")) 1.0 else 0.0)) }
 
-        word("wall") { vm ->
+        mutator("wall") { vm ->
             val width = vm.consumeNumber("wall")
             val height = vm.consumeNumber("wall")
             val unit = when (vm.consumeWordName("wall unit")) {
@@ -1855,9 +1879,9 @@ class RectLangVm(
             }
             vm.builder().wall = WallSpec(width, height, unit)
         }
-        word("duration") { it.builder().duration = it.consumeNumber("duration") }
-        word("fps") { it.builder().fps = it.consumeNumber("fps") }
-        word("background") { vm ->
+        mutator("duration") { it.builder().duration = it.consumeNumber("duration") }
+        mutator("fps") { it.builder().fps = it.consumeNumber("fps") }
+        mutator("background") { vm ->
             val value = vm.nextTokenOrNull()
             val color = if (value is Token.ColorLit) {
                 vm.consumeToken()
@@ -1865,7 +1889,7 @@ class RectLangVm(
             } else vm.popColor()
             vm.builder().background = color
         }
-        word("fit") { vm ->
+        mutator("fit") { vm ->
             vm.builder().fit = when (vm.consumeWordName("fit")) {
                 "contain" -> FitPolicy.Contain
                 "cover" -> FitPolicy.Cover
@@ -1884,24 +1908,24 @@ class RectLangVm(
         }
         word("end") { it.builder().endGroup() }
         word("end-group") { it.builder().endGroup() }
-        word("group-selected") { vm ->
+        mutator("group-selected") { vm ->
             val id = (vm.peekOrNull() as? VStr)?.let { vm.popString() }
             val selection = vm.popSelectionOrActive("group-selected")
             vm.push(vm.builder().groupSelected(id, selection.refs))
         }
-        word("select") { vm ->
+        mutator("select") { vm ->
             val ref = vm.objectRefFromValue(vm.pop())
             vm.builder().select(ref)
             vm.push(ref.toValue())
         }
-        word("rename") { vm ->
+        mutator("rename") { vm ->
             val newId = vm.popString()
             val ref = vm.builder().activeRef() ?: vm.objectRefFromValue(vm.pop())
             val renamed = vm.builder().rename(ref, newId)
             vm.replaceStackRefs(ref.id, renamed)
             vm.push(renamed)
         }
-        word("tag") { vm -> vm.builder().tag(vm.popString()) }
+        mutator("tag") { vm -> vm.builder().tag(vm.popString()) }
         word("id") { vm -> vm.push(VStr(vm.builder().activeRef()?.id ?: throw RectLangException("id needs an active rect or group"))) }
         word("rect?") { vm -> vm.push(VNum(if (vm.builder().activeRef() is NodeRef.Rect) 1.0 else 0.0)) }
         word("group?") { vm -> vm.push(VNum(if (vm.builder().activeRef() is NodeRef.Group) 1.0 else 0.0)) }
@@ -1932,61 +1956,62 @@ class RectLangVm(
             vm.push(VSelection(base.filter { vm.builder().hasTag(it, tag) }))
         }
 
-        word("xy") { vm ->
+        mutator("xy") { vm ->
             val y = vm.popScalarTrackOrConstant("xy")
             val x = vm.popScalarTrackOrConstant("xy")
             vm.builder().setX(x)
             vm.builder().setY(y)
         }
-        word("nxy") { vm ->
+        mutator("nxy") { vm ->
             val ny = vm.popScalarTrackOrConstant("nxy")
             val nx = vm.popScalarTrackOrConstant("nxy")
             val wall = vm.builder().wall
             vm.builder().setX(MappedDoubleTrack(nx) { (it - 0.5) * wall.width })
             vm.builder().setY(MappedDoubleTrack(ny) { (it - 0.5) * wall.height })
         }
-        word("x") { vm -> vm.builder().setX(vm.popScalarTrackOrConstant("x")) }
-        word("y") { vm -> vm.builder().setY(vm.popScalarTrackOrConstant("y")) }
-        word("wh") { vm ->
+        mutator("x") { vm -> vm.builder().setX(vm.popScalarTrackOrConstant("->x")) }
+        mutator("y") { vm -> vm.builder().setY(vm.popScalarTrackOrConstant("->y")) }
+        mutator("wh") { vm ->
             val h = vm.popScalarTrackOrConstant("wh")
             val w = vm.popScalarTrackOrConstant("wh")
             vm.builder().setW(w)
             vm.builder().setH(h)
         }
-        word("nwh") { vm ->
+        mutator("nwh") { vm ->
             val nh = vm.popScalarTrackOrConstant("nwh")
             val nw = vm.popScalarTrackOrConstant("nwh")
             val wall = vm.builder().wall
             vm.builder().setW(MappedDoubleTrack(nw) { it * wall.width })
             vm.builder().setH(MappedDoubleTrack(nh) { it * wall.height })
         }
-        word("w") { vm -> vm.builder().setW(vm.popScalarTrackOrConstant("w")) }
-        word("h") { vm -> vm.builder().setH(vm.popScalarTrackOrConstant("h")) }
-        word("square") { vm ->
+        mutator("w") { vm -> vm.builder().setW(vm.popScalarTrackOrConstant("->w")) }
+        mutator("h") { vm -> vm.builder().setH(vm.popScalarTrackOrConstant("->h")) }
+        mutator("square") { vm ->
             val side = vm.popScalarTrackOrConstant("square")
             vm.builder().setW(side)
             vm.builder().setH(side)
         }
-        word("rot") { vm -> vm.builder().setRotation(vm.popScalarTrackOrConstant("rot")) }
-        word("rotate") { vm -> vm.builder().addRotation(vm.popScalarTrackOrConstant("rotate")) }
-        word("face-travel") { vm -> vm.builder().faceTravel(0.0) }
-        word("face-travel-at") { vm -> vm.builder().faceTravel(vm.popNum()) }
-        word("scale") { vm ->
+        mutator("rot") { vm -> vm.builder().setRotation(vm.popScalarTrackOrConstant("->rot")) }
+        mutator("rotation") { vm -> vm.builder().setRotation(vm.popScalarTrackOrConstant("->rotation")) }
+        mutator("rotate") { vm -> vm.builder().addRotation(vm.popScalarTrackOrConstant("->rotate")) }
+        mutator("face-travel") { vm -> vm.builder().faceTravel(0.0) }
+        mutator("face-travel-at") { vm -> vm.builder().faceTravel(vm.popNum()) }
+        mutator("scale") { vm ->
             val s = vm.popScalarTrackOrConstant("scale")
             vm.builder().setScaleX(s)
             vm.builder().setScaleY(s)
         }
-        word("scale-xy") { vm ->
+        mutator("scale-xy") { vm ->
             val sy = vm.popScalarTrackOrConstant("scale-xy")
             val sx = vm.popScalarTrackOrConstant("scale-xy")
             vm.builder().setScaleX(sx)
             vm.builder().setScaleY(sy)
         }
-        word("alpha") { vm -> vm.builder().setAlpha(vm.popScalarTrackOrConstant("alpha")) }
-        word("opacity*") { vm -> vm.builder().multiplyAlpha(vm.popScalarTrackOrConstant("opacity*")) }
-        word("appear") { vm -> vm.builder().gateVisibility(vm.popNum(), Double.POSITIVE_INFINITY) }
-        word("vanish") { vm -> vm.builder().gateVisibility(Double.NEGATIVE_INFINITY, vm.popNum()) }
-        word("live") { vm ->
+        mutator("alpha") { vm -> vm.builder().setAlpha(vm.popScalarTrackOrConstant("->alpha")) }
+        mutator("opacity*") { vm -> vm.builder().multiplyAlpha(vm.popScalarTrackOrConstant("->opacity*")) }
+        mutator("appear") { vm -> vm.builder().gateVisibility(vm.popNum(), Double.POSITIVE_INFINITY) }
+        mutator("vanish") { vm -> vm.builder().gateVisibility(Double.NEGATIVE_INFINITY, vm.popNum()) }
+        mutator("live") { vm ->
             val life = vm.popNum()
             val birth = vm.popNum()
             vm.builder().live(birth, life)
@@ -2003,8 +2028,8 @@ class RectLangVm(
         word("z-track") { vm -> vm.push(VTrack(vm.builder().scalarTrack("z"))) }
         word("layer-track") { vm -> vm.push(VTrack(vm.builder().scalarTrack("layer"))) }
 
-        word("z") { vm -> vm.builder().setZ(vm.popScalarTrackOrConstant("z")) }
-        word("layer") { vm ->
+        mutator("z") { vm -> vm.builder().setZ(vm.popScalarTrackOrConstant("->z")) }
+        mutator("layer") { vm ->
             when (val value = vm.pop()) {
                 is VStr -> vm.builder().setLayer(value.x)
                 is VNum -> vm.builder().setZ(constantTrack(value.x))
@@ -2013,8 +2038,8 @@ class RectLangVm(
                 else -> throw RectLangException("layer expected name, Number, or Track<Double>, found ${value.describe()}")
             }
         }
-        word("front") { it.builder().moveFront() }
-        word("back") { it.builder().moveBack() }
+        mutator("front") { it.builder().moveFront() }
+        mutator("back") { it.builder().moveBack() }
 
         word("track") { vm ->
             val next = vm.nextTokenOrNull()
@@ -2067,7 +2092,7 @@ class RectLangVm(
                 vm.push(VPaint(PaintSpec.LinearGradient(c0, c1, Vec2d(x0, y0), Vec2d(x1, y1))))
             }
         }
-        word("fill") { vm -> vm.builder().setFill(constantPaintTrack(vm.popPaint())) }
+        mutator("fill") { vm -> vm.builder().setFill(constantPaintTrack(vm.popPaint())) }
 
         word("tcb") { vm -> vm.push(VTrack(vm.quoteToScalarTrack(vm.popQuote(), TrackMode.Tcb))) }
         word("hold") { vm -> vm.push(VTrack(vm.quoteToScalarTrack(vm.popQuote(), TrackMode.Hold))) }
@@ -2162,23 +2187,23 @@ class RectLangVm(
         word("ease-in-out") { vm -> vm.push(VTrack(easedTrack("ease-in-out", vm.popScalarTrackOrConstant("ease-in-out"), ::easeInOut))) }
         word("ease-smoothstep") { vm -> vm.push(VTrack(easedTrack("ease-smoothstep", vm.popScalarTrackOrConstant("ease-smoothstep"), ::smoothstep))) }
         word("smooth") { vm -> vm.push(VTrack(easedTrack("smooth", vm.popScalarTrackOrConstant("smooth"), ::smoothstep))) }
-        word("delay-all-time") { vm ->
+        mutator("delay-all-time") { vm ->
             val delay = vm.popNum()
             vm.builder().mapActiveScalarTracks { TimeWarpTrack(it) { t -> t - delay } }
         }
-        word("scale-all-time") { vm ->
+        mutator("scale-all-time") { vm ->
             val factor = vm.popNum()
             vm.builder().mapActiveScalarTracks { TimeWarpTrack(it) { t -> t / factor } }
         }
-        word("reverse-all-time") { vm ->
+        mutator("reverse-all-time") { vm ->
             val end = vm.builder().duration
             vm.builder().mapActiveScalarTracks { TimeWarpTrack(it) { t -> end - t } }
         }
-        word("loop-all-time") { vm ->
+        mutator("loop-all-time") { vm ->
             val period = vm.popNum()
             vm.builder().mapActiveScalarTracks { TimeWarpTrack(it) { t -> positiveModulo(t, period) } }
         }
-        word("pingpong-all-time") { vm ->
+        mutator("pingpong-all-time") { vm ->
             val period = vm.popNum()
             vm.builder().mapActiveScalarTracks {
                 TimeWarpTrack(it) { t ->
@@ -2187,23 +2212,23 @@ class RectLangVm(
                 }
             }
         }
-        word("stagger-time") { vm ->
+        mutator("stagger-time") { vm ->
             val step = vm.popNum()
             val selection = vm.popSelectionOrActive("stagger-time")
             vm.builder().staggerTime(selection.refs, step)
             vm.push(selection)
         }
 
-        word("mirror-x") { it.builder().mirrorX(0.0) }
-        word("mirror-y") { it.builder().mirrorY(0.0) }
-        word("mirror-x-at") { vm -> vm.builder().mirrorX(vm.popNum()) }
-        word("mirror-y-at") { vm -> vm.builder().mirrorY(vm.popNum()) }
-        word("translate") { vm ->
+        mutator("mirror-x") { it.builder().mirrorX(0.0) }
+        mutator("mirror-y") { it.builder().mirrorY(0.0) }
+        mutator("mirror-x-at") { vm -> vm.builder().mirrorX(vm.popNum()) }
+        mutator("mirror-y-at") { vm -> vm.builder().mirrorY(vm.popNum()) }
+        mutator("translate") { vm ->
             val dy = vm.popScalarTrackOrConstant("translate")
             val dx = vm.popScalarTrackOrConstant("translate")
             vm.builder().translate(dx, dy)
         }
-        word("offset") { vm ->
+        mutator("offset") { vm ->
             val dy = vm.popScalarTrackOrConstant("offset")
             val dx = vm.popScalarTrackOrConstant("offset")
             vm.builder().translate(dx, dy)
@@ -2217,15 +2242,18 @@ class RectLangVm(
                 val quote = vm.consumeQuote("material")
                 vm.builder().defineStackSLMaterial(name, quote.source)
             } else {
-                val material = when (val v = vm.pop()) {
-                    is VMaterialRef -> v.name
-                    is VStr -> v.x
-                    else -> throw RectLangException("material expected material name, found ${v.describe()}")
-                }
-                vm.builder().setMaterial(material)
+                throw RectLangException("material assignment is a mutator; use '->material'")
             }
         }
-        word("shader") { vm ->
+        mutator("material") { vm ->
+            val material = when (val v = vm.pop()) {
+                is VMaterialRef -> v.name
+                is VStr -> v.x
+                else -> throw RectLangException("->material expected material name, found ${v.describe()}")
+            }
+            vm.builder().setMaterial(material)
+        }
+        mutator("shader") { vm ->
             val w = vm.popNum().toFloat()
             val z = vm.popNum().toFloat()
             val y = vm.popNum().toFloat()
@@ -2389,7 +2417,7 @@ class RectLangVm(
             }
             vm.push(VSelection(created))
         }
-        word("split") { vm ->
+        mutator("split") { vm ->
             val mods = vm.popQuote()
             val atTime = vm.popNum()
             val count = vm.popNum().toInt().coerceAtLeast(0)
@@ -2421,12 +2449,12 @@ class RectLangVm(
             }
             vm.push(VSelection(shards))
         }
-        word("polar") { vm ->
+        mutator("polar") { vm ->
             val radius = vm.popNum()
             val angle = vm.popNum()
             vm.builder().setPolar(angle, radius)
         }
-        word("stagger") { vm ->
+        mutator("stagger") { vm ->
             val dy = vm.popNum()
             val dx = vm.popNum()
             val selection = vm.popSelectionOrActive("stagger")
@@ -2610,19 +2638,19 @@ class RectLangVm(
         // first series (or an explicit `domain`) fixes the domain, later series + `axes`
         // + `colorbar` reuse it. There is no text primitive in RectSL, so numeric tick
         // labels are drawn with a 3x5 dot-matrix numeral font built from rects.
-        word("margins") { vm ->
+        mutator("margins") { vm ->
             val t = vm.popNum(); val b = vm.popNum(); val r = vm.popNum(); val l = vm.popNum()
             vm.setPlotMargins(l, r, b, t)
         }
-        word("frame") { vm -> vm.applyDefaultFrame() }
-        word("domain") { vm ->
+        mutator("frame") { vm -> vm.applyDefaultFrame() }
+        mutator("domain") { vm ->
             val y1 = vm.popNum(); val y0 = vm.popNum(); val x1 = vm.popNum(); val x0 = vm.popNum()
             vm.setXDomain(x0, x1); vm.setYDomain(y0, y1)
         }
-        word("xdomain") { vm ->
+        mutator("xdomain") { vm ->
             val x1 = vm.popNum(); val x0 = vm.popNum(); vm.setXDomain(x0, x1)
         }
-        word("ydomain") { vm ->
+        mutator("ydomain") { vm ->
             val y1 = vm.popNum(); val y0 = vm.popNum(); vm.setYDomain(y0, y1)
         }
         word("axes") { vm -> vm.drawAxes() }
@@ -3017,8 +3045,17 @@ class RectLangVm(
         push(VSelection(refs))
     }
 
-    private fun word(name: String, apply: (RectLangVm) -> Unit) {
-        words[name] = Word(apply)
+    private fun word(
+        spelling: String,
+        effect: RectWordEffect = RectWordEffect.Ordinary,
+        apply: (RectLangVm) -> Unit
+    ) {
+        words[spelling] = Word(RectWordMetadata(spelling, effect), apply)
+    }
+
+    private fun mutator(name: String, apply: (RectLangVm) -> Unit) {
+        require(!name.startsWith("->")) { "Mutator names are registered without their -> prefix: $name" }
+        word("->$name", RectWordEffect.Mutator, apply)
     }
 
     enum class TrackMode { Tcb, Linear, Hold }

@@ -96,11 +96,11 @@ the box's output area. Edit the `rectsl` string and re-run to change it live.
 
 **rectsl_dataviz** — A loadable demo of the RectSL data-visualization family: a viridis colour-bar
 legend built with `array` + `colormap`, and a bar chart whose heights and colours are both bound to a
-numeric list via `data` / `normalize` / `bars`, animated in with a staggered eased `alpha`.
+numeric list via `data` / `normalize` / `bars`, animated in with a staggered eased `->alpha`.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/rectsl_dataviz/metadata.edn)
 
-**rectsl_plot_axes** — A loadable demo of the RectSL plotting layer: a shared coordinate `domain` +
-`frame` with `axes` (rules, nice-number ticks, numeric labels drawn as rect numerals, gridlines) and
+**rectsl_plot_axes** — A loadable demo of the RectSL plotting layer: a shared coordinate `->domain` +
+`->frame` with `axes` (rules, nice-number ticks, numeric labels drawn as rect numerals, gridlines) and
 three series overlaid in the one domain — an `area`, a `line`, and `points` — plus a `colorbar` and a
 discrete swatch `legend`.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/rectsl_plot_axes/metadata.edn)

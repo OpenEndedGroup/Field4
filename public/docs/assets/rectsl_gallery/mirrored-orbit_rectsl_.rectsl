@@ -1,18 +1,18 @@
 #rectsl
-wall 16 9 meters
-duration 6
-fps 30
+->wall 16 9 meters
+->duration 6
+->fps 30
 
 "left" rect
-  -4 0 xy
-  2.2 square
-  0xff5a3c solid fill
-  '( 0 -4  3 0  6 4 ) x
-  '( 0 -2  1.5 2  3 -2  4.5 2  6 -2 ) y
-  '( 0 0  6 6.28318 ) rot
+  -4 0 ->xy
+  2.2 ->square
+  0xff5a3c solid ->fill
+  '( 0 -4  3 0  6 4 ) ->x
+  '( 0 -2  1.5 2  3 -2  4.5 2  6 -2 ) ->y
+  '( 0 0  6 6.28318 ) ->rot
 ;
 
-dup "right" rename
-  mirror-x
-  0x3c8cff solid fill
+dup "right" ->rename
+  ->mirror-x
+  0x3c8cff solid ->fill
 ;

@@ -29,10 +29,10 @@ object RectSLKotlinEscapeTest {
         // 1) An escape that returns a Number, used directly as a coordinate.
         val numeric = compileRectSL(
             """
-            wall 10 10 meters
-            duration 1
-            fps 1
-            "a" rect  {{ 1.0 + 2.0 }} 0 xy  1 square ;
+            ->wall 10 10 meters
+            ->duration 1
+            ->fps 1
+            "a" rect  {{ 1.0 + 2.0 }} 0 ->xy  1 ->square ;
             """.trimIndent(),
             engine = ki
         ).programOrNull ?: error("numeric escape failed to compile")
@@ -43,11 +43,11 @@ object RectSLKotlinEscapeTest {
         //    sits inside the loop quote — proving the per-source cache (compiled once).
         val bell = compileRectSL(
             """
-            wall 20 8 meters
-            duration 1
-            fps 1
-            "c" rect 0 0 xy 1 square
-              5 '( ic 2 * 0 offset  {{ gaussian(0.5, 0.16) }} f sample alpha ) array
+            ->wall 20 8 meters
+            ->duration 1
+            ->fps 1
+            "c" rect 0 0 ->xy 1 ->square
+              5 '( ic 2 * 0 ->offset  {{ gaussian(0.5, 0.16) }} f sample ->alpha ) array
             ;
             """.trimIndent(),
             engine = ki
@@ -61,11 +61,11 @@ object RectSLKotlinEscapeTest {
         //     i, so the escaped Kotlin varies across the array at ~free marginal cost.
         val perCopy = compileRectSL(
             """
-            wall 20 8 meters
-            duration 1
-            fps 1
-            "c" rect 0 0 xy 1 square
-              5 '( {{ i * 2.0 }} 0 offset ) array
+            ->wall 20 8 meters
+            ->duration 1
+            ->fps 1
+            "c" rect 0 0 ->xy 1 ->square
+              5 '( {{ i * 2.0 }} 0 ->offset ) array
             ;
             """.trimIndent(),
             engine = ki
@@ -78,10 +78,10 @@ object RectSLKotlinEscapeTest {
         // 3) An escape that returns a value from the Functions transform pipeline.
         val pipe = compileRectSL(
             """
-            wall 6 6 meters
-            duration 1
-            fps 1
-            "p" rect 0 0 xy 1 square  {{ (sin(2) through gain(0.5)).eval(0.25) }} alpha ;
+            ->wall 6 6 meters
+            ->duration 1
+            ->fps 1
+            "p" rect 0 0 ->xy 1 ->square  {{ (sin(2) through gain(0.5)).eval(0.25) }} ->alpha ;
             """.trimIndent(),
             engine = ki
         ).programOrNull
@@ -92,8 +92,8 @@ object RectSLKotlinEscapeTest {
         // 4) A missing engine is an honest, specific error — never a silent zero.
         val noEngine = compileRectSL(
             """
-            wall 4 4 meters
-            "z" rect {{ 1.0 }} 0 xy 1 square ;
+            ->wall 4 4 meters
+            "z" rect {{ 1.0 }} 0 ->xy 1 ->square ;
             """.trimIndent()
         )
         require(noEngine.programOrNull == null && noEngine.diagnostics.any { it.contains("Kotlin escape needs") }) {

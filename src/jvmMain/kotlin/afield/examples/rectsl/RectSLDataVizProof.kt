@@ -60,16 +60,16 @@ object RectSLDataVizProof {
     /** The plotting-layer demo (kept identical to the transcript rectsl_plot_axes.yaml). */
     val PLOT_SOURCE: String = """
         #rectsl
-        wall 16 10 abstract
-        duration 3
-        fps 30
+        ->wall 16 10 abstract
+        ->duration 3
+        ->fps 30
 
-        # shared coordinate frame: explicit domain + auto margins, then axes underneath
-        0 10  0 1  domain
-        frame
+        # shared coordinate ->frame: explicit ->domain + auto ->margins, then axes underneath
+        0 10  0 1  ->domain
+        ->frame
         axes
 
-        # three series overlaid in the ONE shared domain
+        # three series overlaid in the ONE shared ->domain
         0 10 40 linspace  dup '( 0.7 * sin 1 + 2 / ) data-map   "viridis" area
         0 10 40 linspace  dup '( 0.55 * cos 1 + 2 / ) data-map  "plasma"  line
         0 10 12 linspace  dup '( 0.9 * sin 1 + 2 / ) data-map   "turbo"   points
@@ -82,61 +82,61 @@ object RectSLDataVizProof {
     /** The loadable-demo program (kept identical to dev_docs/agents/transcripts/rectsl_dataviz.yaml). */
     val DEMO_SOURCE: String = """
         #rectsl
-        wall 20 10 meters
-        duration 6
-        fps 30
+        ->wall 20 10 meters
+        ->duration 6
+        ->fps 30
 
         # colour legend across the top: 40 swatches sweeping viridis
-        "leg" rect  0.5 0.8 wh
-          40 '( fc 9.6 *  4.3 offset  "viridis" f colormap solid fill ) array
+        "leg" rect  0.5 0.8 ->wh
+          40 '( fc 9.6 *  4.3 ->offset  "viridis" f colormap solid ->fill ) array
         ;
 
         # bar chart from data, viridis by value, staggered grow-in
         '( 4 7 2 9 5 8 3 6 1 6 5 9 4 7 3 8 ) data  normalize  "viridis" bars
-          '( '( 0=0 0.7=1 ) ease-out alpha ) each
-          0.05 stagger-time
+          '( '( 0=0 0.7=1 ) ease-out ->alpha ) each
+          0.05 ->stagger-time
     """.trimIndent()
 
     private fun source(name: String): String = when (name) {
         "colormap-legend" -> """
             #rectsl
-            wall 24 4 abstract
-            duration 4
-            fps 30
-            "swatch" rect  0.7 3 wh
-              24 '( fc 11 *  0 offset  "viridis" f colormap solid fill ) array
+            ->wall 24 4 abstract
+            ->duration 4
+            ->fps 30
+            "swatch" rect  0.7 3 ->wh
+              24 '( fc 11 *  0 ->offset  "viridis" f colormap solid ->fill ) array
             ;
         """.trimIndent()
         "data-bars" -> """
             #rectsl
-            wall 18 8 abstract
-            duration 5
-            fps 30
+            ->wall 18 8 abstract
+            ->duration 5
+            ->fps 30
             '( 3 7 2 9 5 8 4 6 1 6 ) data  normalize  "magma" bars
-              '( '( 0=0 0.6=1 ) ease-out alpha ) each
-              0.07 stagger-time
+              '( '( 0=0 0.6=1 ) ease-out ->alpha ) each
+              0.07 ->stagger-time
         """.trimIndent()
         "heatmap-field" -> """
             #rectsl
-            wall 12 8 abstract
-            duration 4
-            fps 30
+            ->wall 12 8 abstract
+            ->duration 4
+            ->fps 30
             0 1 48 linspace  '( 6 * sin 1 + ) data-map  8 6 "turbo" heat
-              '( '( 0=0 0.5=1 ) ease-in-out alpha ) each
-              0.03 stagger-time
+              '( '( 0=0 0.5=1 ) ease-in-out ->alpha ) each
+              0.03 ->stagger-time
         """.trimIndent()
         "scatter-plot" -> """
             #rectsl
-            wall 10 10 abstract
-            duration 4
-            fps 30
+            ->wall 10 10 abstract
+            ->duration 4
+            ->fps 30
             0 1 40 linspace  dup  '( 7 * sin ) data-map  "plasma" scatter
         """.trimIndent()
         "data-inspect" -> """
             #rectsl
-            wall 16 6 abstract
-            duration 2
-            fps 30
+            ->wall 16 6 abstract
+            ->duration 2
+            ->fps 30
             '( 12 5 27 3 19 8 ) data
               dup extent  drop drop
               dup dmin drop

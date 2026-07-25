@@ -12,30 +12,30 @@ import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
-wall 12 8 meters
-background 0x0a0a12
-fit stretch
-duration 4
-fps 30
+->wall 12 8 meters
+->background 0x0a0a12
+->fit stretch
+->duration 4
+->fps 30
 
 material chip '(
   uv 3.0 * time 0.6 * + fbm palette
 )
 
 "panel" rect
-  0.5 0.5 nxy
-  0.9 0.5 nwh
-  rgb 0.12 0.34 0.62 solid fill
-  '( 0 -0.2  2 0.2  4 -0.2 ) rot ;
+  0.5 0.5 ->nxy
+  0.9 0.5 ->nwh
+  rgb 0.12 0.34 0.62 solid ->fill
+  '( 0 -0.2  2 0.2  4 -0.2 ) ->rot ;
 
 6 '(
   "chip" rect
-    i loop-count 1 - /  fract  4.5 *  2.25 -  -2.2 xy
-    0.7 square
-    rgba 0.9 0.4 0.2 0.85 solid fill
-    i 0.15 *  0.2  0.5  0  shader
-    chip material
-    '( 0.9 opacity* ) apply
+    i loop-count 1 - /  fract  4.5 *  2.25 -  -2.2 ->xy
+    0.7 ->square
+    rgba 0.9 0.4 0.2 0.85 solid ->fill
+    i 0.15 *  0.2  0.5  0  ->shader
+    chip ->material
+    '( 0.9 ->opacity* ) apply
     '( ) defer drop
 ) times
 """

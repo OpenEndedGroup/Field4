@@ -12,9 +12,9 @@ import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
-wall 18 8 meters
-duration 8
-fps 30
+->wall 18 8 meters
+->duration 8
+->fps 30
 
 material bands '(
   uv 6.0 * sin abs
@@ -22,18 +22,18 @@ material bands '(
 
 "row" group
   "petal" rect
-    0 0 xy
-    1.7 square
-    '( 0 0   4 3.14159   8 6.28318 ) rot
-    0xffffff solid fill
-    bands material
+    0 0 ->xy
+    1.7 ->square
+    '( 0 0   4 3.14159   8 6.28318 ) ->rot
+    0xffffff solid ->fill
+    bands ->material
   ;
 
   0 7 '(
-    "petal" select
+    "petal" ->select
       clone
-      i 3 - 2.4 * 0 xy
-      bands material
+      i 3 - 2.4 * 0 ->xy
+      bands ->material
   ) range
 end-group
 """

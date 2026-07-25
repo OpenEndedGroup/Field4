@@ -1,20 +1,20 @@
 #rectsl
-wall 18 9 meters
-duration 8
-fps 30
+->wall 18 9 meters
+->duration 8
+->fps 30
 
 "tile" rect
-  0 0 xy
-  1.0 square
-  '( 0 0.15  1 1.15  2 0.15 ) 2 loop-time scale
-  '( 0 0  2 6.28318 ) 2 loop-time rot
-  0x66ffcc solid fill
+  0 0 ->xy
+  1.0 ->square
+  '( 0 0.15  1 1.15  2 0.15 ) 2 loop-time ->scale
+  '( 0 0  2 6.28318 ) 2 loop-time ->rot
+  0x66ffcc solid ->fill
 ;
 
 60 '(
-  "tile" select clone
+  "tile" ->select clone
     i 10 mod 4.5 - 1.7 *
     i 10 / floor 2.5 - 1.7 *
-    xy
-    i 10 mod i 10 / floor + 0.14 * delay-all-time
+    ->xy
+    i 10 mod i 10 / floor + 0.14 * ->delay-all-time
 ) repeat

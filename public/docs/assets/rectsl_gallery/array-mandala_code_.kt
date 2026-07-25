@@ -12,35 +12,35 @@ import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
-wall 18 7 abstract
-duration 8
-fps 30
+->wall 18 7 abstract
+->duration 8
+->fps 30
 
 "a" rect
-  0.8 0.22 wh
-  0xff8844 solid fill
+  0.8 0.22 ->wh
+  0xff8844 solid ->fill
   7 2.6 4.71238 1.6 '(
-    4.71238  f 1.6 *  +  rot
+    4.71238  f 1.6 *  +  ->rot
   ) arc
-  "arcG" group-selected  -5.6 0 xy  '( 0=0  8=1.6 ) rot
+  "arcG" ->group-selected  -5.6 0 ->xy  '( 0=0  8=1.6 ) ->rot
 ;
 
 "b" rect
-  0.3 square
-  0x44ccff solid fill
+  0.3 ->square
+  0x44ccff solid ->fill
   56 0.4 2.7 3 '(
-    0.25 1 f mix alpha
+    0.25 1 f mix ->alpha
   ) spiral
-  "spiralG" group-selected  0 0 xy  '( 0=0  8=6.28318 ) rot
+  "spiralG" ->group-selected  0 0 ->xy  '( 0=0  8=6.28318 ) ->rot
 ;
 
 "c" rect
-  0.22 square
-  0xffffff solid fill
+  0.22 ->square
+  0xffffff solid ->fill
   120 0.3 '(
-    "turbo" f cmap solid fill
+    "turbo" f cmap solid ->fill
   ) sunflower
-  "seedG" group-selected  5.6 0 xy  '( 0=0  8=-3.14159 ) rot
+  "seedG" ->group-selected  5.6 0 ->xy  '( 0=0  8=-3.14159 ) ->rot
 ;
 """
 

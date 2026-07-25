@@ -125,11 +125,11 @@ object RectSLEditorExtensionWorkout {
         import afield.rectsl.*
         val program = ${"\"\"\""}
         #rectsl
-        wall 4 4 meters
+        ->wall 4 4 meters
         "r" rect
-          -1 0 xy
-          1 square
-          '( 0 -1  1 1 ) x
+          -1 0 ->xy
+          1 ->square
+          '( 0 -1  1 1 ) ->x
         ;
         ${"\"\"\""}
         `.trim();
@@ -157,7 +157,7 @@ object RectSLEditorExtensionWorkout {
         if (!regions[0].source.includes("\"r\" rect")) throw new Error("region source missing rect");
 
         const collections = [];
-        const xyOffset = text.indexOf("xy") + 1;
+        const xyOffset = text.indexOf("->xy") + 3;
         const editor = {
           _actions: [],
           getModel: () => model,
@@ -185,13 +185,13 @@ object RectSLEditorExtensionWorkout {
         const highlight = editor._rectslHighlightDecorations && editor._rectslHighlightDecorations.latest;
         if (!highlight || highlight.length < 8) throw new Error("expected highlight decorations, got " + (highlight && highlight.length));
         const flow = editor._rectslFlowDecorations && editor._rectslFlowDecorations.latest;
-        if (!flow || flow.length < 2) throw new Error("expected flow decorations for xy, got " + (flow && flow.length));
+        if (!flow || flow.length < 2) throw new Error("expected flow decorations for ->xy, got " + (flow && flow.length));
 
         const payload = extension.buildContextPayload(editor, () => ({ uid: "box", property: "code" }), {});
         if (!payload || !payload.html.includes("RectSL") || !payload.html.includes("2-&gt;0")) {
           throw new Error("bad context payload " + JSON.stringify(payload));
         }
-        // Richer badge: the active word's documented signature is surfaced (xy -> "x y --").
+        // Richer badge: the active word's documented signature is surfaced (->xy -> "x y --").
         if (!payload.html.includes("x y --")) {
           throw new Error("context payload missing word signature " + JSON.stringify(payload));
         }
@@ -200,13 +200,17 @@ object RectSLEditorExtensionWorkout {
         if (analyzeLexical(regions[0].source).length !== 0) {
           throw new Error("valid rectsl flagged: " + JSON.stringify(analyzeLexical(regions[0].source)));
         }
-        if (analyzeLexical("'( 1 2 x").length === 0) {
+        if (analyzeLexical("'( 1 2 ->x").length === 0) {
           throw new Error("unterminated quote not flagged");
         }
-        const completionPosition = positionAt(text.indexOf("sq") + 2);
+        const completionPosition = positionAt(text.indexOf("->sq") + 4);
         const completions = extension.provideCompletionItems(editor, model, completionPosition, { monaco: window.globalMonaco });
-        if (!completions || !completions.suggestions || !completions.suggestions.some((item) => item.label === "square" && String(item.documentation.value).includes("Set width and height"))) {
-          throw new Error("missing documented square completion " + JSON.stringify(completions));
+        if (!completions || !completions.suggestions || !completions.suggestions.some((item) =>
+          item.label === "->square" &&
+          item.data && item.data.rectslEffect === "mutator" &&
+          String(item.documentation.value).includes("Set width and height")
+        )) {
+          throw new Error("missing documented ->square completion " + JSON.stringify(completions));
         }
         console.log("rectsl node probe passed");
     """.trimIndent()

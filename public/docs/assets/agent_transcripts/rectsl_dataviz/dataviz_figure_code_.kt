@@ -2,7 +2,7 @@
 //
 // The #rectsl program draws a viridis colour-bar legend (array + colormap)
 // and a bar chart bound to a data list (data / normalize / bars), animated in
-// with a staggered eased alpha. Edit `rectsl` and re-run to change it live.
+// with a staggered eased `->alpha`. Edit `rectsl` and re-run to change it live.
 // See rectsl_cheatsheet.md ("Data visualization") / rectsl_examples.md.
 import afield.rectsl.RectAnimationOracle
 import afield.rectsl.rectMaterialShaderCode
@@ -11,19 +11,19 @@ import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
-wall 20 10 meters
-duration 6
-fps 30
+->wall 20 10 meters
+->duration 6
+->fps 30
 
 # colour legend across the top: 40 swatches sweeping viridis
-"leg" rect  0.5 0.8 wh
-  40 '( fc 9.6 *  4.3 offset  "viridis" f colormap solid fill ) array
+"leg" rect  0.5 0.8 ->wh
+  40 '( fc 9.6 *  4.3 ->offset  "viridis" f colormap solid ->fill ) array
 ;
 
 # bar chart from data, viridis by value, staggered grow-in
 '( 4 7 2 9 5 8 3 6 1 6 5 9 4 7 3 8 ) data  normalize  "viridis" bars
-  '( '( 0=0 0.7=1 ) ease-out alpha ) each
-  0.05 stagger-time
+  '( '( 0=0 0.7=1 ) ease-out ->alpha ) each
+  0.05 ->stagger-time
 """
 
 val program = RectAnimationOracle.compile(rectsl).program!!

@@ -1,6 +1,6 @@
 // RectSL plotting-layer demo.
 //
-// The #rectsl program sets ONE shared domain (`domain` + `frame`), draws
+// The #rectsl program sets ONE shared domain (`->domain` + `->frame`), draws
 // `axes` (rules, nice-number ticks, numeric rect-numeral labels, gridlines),
 // then overlays three series in that domain (`area`, `line`, `points`) and
 // finishes with a `colorbar` and a discrete swatch `legend`. Edit `rectsl`
@@ -13,13 +13,13 @@ import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
-wall 16 10 abstract
-duration 3
-fps 30
+->wall 16 10 abstract
+->duration 3
+->fps 30
 
-# shared coordinate frame: explicit domain + auto margins, then axes underneath
-0 10  0 1  domain
-frame
+# shared coordinate frame: explicit ->domain + auto ->margins, then axes underneath
+0 10  0 1  ->domain
+->frame
 axes
 
 # three series overlaid in the ONE shared domain

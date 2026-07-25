@@ -6,6 +6,7 @@ import afield.rectsl.RectAnimationOracle
 import afield.rectsl.compileRectSL
 import afield.rectsl.lowerSampledScene
 import afield.rectsl.rectMaterialShaderCode
+import afield.stdlib.Functions
 import java.io.File
 
 /*
@@ -23,54 +24,54 @@ expect:
 object RectSLExamples {
     val minimalMirror: String = """
         #rectsl
-        wall 30 4 meters
-        duration 10
-        fps 60
+        ->wall 30 4 meters
+        ->duration 10
+        ->fps 60
 
         "left" rect
-          -5 0 xy
-          1 square
-          0xff3300 solid fill
-          '( 0=-5   5=0   10=5 ) x
+          -5 0 ->xy
+          1 ->square
+          0xff3300 solid ->fill
+          '( 0=-5   5=0   10=5 ) ->x
         ;
 
-        dup "right" rename
-          mirror-x
-          0x3366ff solid fill
+        dup "right" ->rename
+          ->mirror-x
+          0x3366ff solid ->fill
         ;
     """.trimIndent()
 
     val layeredTracks: String = """
         #rectsl
-        wall 16 9 meters
-        duration 6
-        fps 30
+        ->wall 16 9 meters
+        ->duration 6
+        ->fps 30
 
         linear-track "rise" '( 0=-3   3=0   6=3 )
         hold-track "pulse" '( 0=0.2   2=1.0   4=0.45 )
 
         "bar-template" rect
-          0 -2 xy
-          0.5 1.4 wh
-          "rise" track-ref y
-          "pulse" track-ref smooth alpha
-          0xeeeeee solid fill
+          0 -2 ->xy
+          0.5 1.4 ->wh
+          "rise" track-ref ->y
+          "pulse" track-ref smooth ->alpha
+          0xeeeeee solid ->fill
         ;
 
         8 '(
-          "bar-template" select
+          "bar-template" ->select
             clone
-            i layer
-            i 0.1 * z
-            i 3.5 - 0.8 * -2 xy
+            i ->layer
+            i 0.1 * ->z
+            i 3.5 - 0.8 * -2 ->xy
         ) repeat
     """.trimIndent()
 
     val groupsAndStackSLMaterial: String = """
         #rectsl
-        wall 10 10 meters
-        duration 8
-        fps 30
+        ->wall 10 10 meters
+        ->duration 8
+        ->fps 30
 
         material petals-tint '(
           uv 4.0 * sin abs
@@ -78,26 +79,26 @@ object RectSLExamples {
 
         "orbit" group
           "cell" rect
-            0 0 xy
-            0.75 square
-            "petal" tag
-            '( 0 0   4 3.14159   8 6.28318 ) rot
-            0xffffff solid fill
+            0 0 ->xy
+            0.75 ->square
+            "petal" ->tag
+            '( 0 0   4 3.14159   8 6.28318 ) ->rot
+            0xffffff solid ->fill
           ;
 
           0 6 '(
-            "cell" select
+            "cell" ->select
               clone
-              i 2 * 5 - 0 xy
+              i 2 * 5 - 0 ->xy
           ) range
         end-group
 
-        "orbit" select descendants
+        "orbit" ->select descendants
           "petal" tagged
-          "petals" group-selected
+          "petals" ->group-selected
           selected descendants rects '(
-            0.85 alpha
-            petals-tint material
+            0.85 ->alpha
+            petals-tint ->material
           ) each
         ;
     """.trimIndent()
@@ -121,6 +122,7 @@ object RectSLExamples {
         checkRecursiveSplit()
         checkArrayGenerators()
         checkGalleryWorkspace()
+        checkPublicDocsExamples()
         checkCheatsheetCoverage()
         println("rectsl examples passed")
     }
@@ -135,14 +137,14 @@ object RectSLExamples {
         fun rotationAtMid(word: String): Double {
             val src = """
                 #rectsl
-                wall 10 10 abstract
-                duration 4
-                fps 30
+                ->wall 10 10 abstract
+                ->duration 4
+                ->fps 30
                 "dart" rect
-                  1 0.3 wh
-                  0xffffff solid fill
-                  '( 0=-5  4=5 ) x
-                  '( 0=-5  4=5 ) y
+                  1 0.3 ->wh
+                  0xffffff solid ->fill
+                  '( 0=-5  4=5 ) ->x
+                  '( 0=-5  4=5 ) ->y
                   $word
                 ;
             """.trimIndent()
@@ -151,9 +153,9 @@ object RectSLExamples {
             return r.program.sample(2.0).rects.first().rotation
         }
         val quarter = Math.PI / 4.0
-        val plain = rotationAtMid("face-travel")
+        val plain = rotationAtMid("->face-travel")
         check(Math.abs(plain - quarter) < 1e-3) { "face-travel heading wrong: got $plain expected $quarter" }
-        val offset = rotationAtMid("1.5707963 face-travel-at")
+        val offset = rotationAtMid("1.5707963 ->face-travel-at")
         check(Math.abs(offset - (quarter + Math.PI / 2.0)) < 1e-3) {
             "face-travel-at heading wrong: got $offset expected ${quarter + Math.PI / 2.0}"
         }
@@ -168,21 +170,21 @@ object RectSLExamples {
     private fun checkLifeWindows() {
         val src = """
             #rectsl
-            wall 10 10 abstract
-            duration 6
-            fps 30
+            ->wall 10 10 abstract
+            ->duration 6
+            ->fps 30
             "beacon" rect
-              0 0 xy
-              1 square
-              0xffffff solid fill
-              1 appear
-              4 vanish
+              0 0 ->xy
+              1 ->square
+              0xffffff solid ->fill
+              1 ->appear
+              4 ->vanish
             ;
             "mover" rect
-              1 square
-              0xffffff solid fill
-              '( 0=-4  2=4 ) x
-              2 2 live
+              1 ->square
+              0xffffff solid ->fill
+              '( 0=-4  2=4 ) ->x
+              2 2 ->live
             ;
         """.trimIndent()
         val r = RectAnimationOracle.compile(src)
@@ -209,18 +211,18 @@ object RectSLExamples {
     private fun checkSplit() {
         val src = """
             #rectsl
-            wall 10 10 abstract
-            duration 6
-            fps 30
+            ->wall 10 10 abstract
+            ->duration 6
+            ->fps 30
             "shell" rect
-              0.5 square
-              0xffffff solid fill
-              '( 0=-4  2=0 ) y
+              0.5 ->square
+              0xffffff solid ->fill
+              '( 0=-4  2=0 ) ->y
               4 2 '(
                 '( 0=0  2=5 )  f 6.28318 * cos  value*
                 '( 0=0  2=5 )  f 6.28318 * sin  value*
-                translate
-              ) split
+                ->translate
+              ) ->split
             ;
         """.trimIndent()
         val r = RectAnimationOracle.compile(src)
@@ -250,18 +252,18 @@ object RectSLExamples {
     private fun checkRecursiveSplit() {
         val src = """
             #rectsl
-            wall 10 10 abstract
-            duration 8
-            fps 30
+            ->wall 10 10 abstract
+            ->duration 8
+            ->fps 30
             "seed" rect
-              0.4 square
-              0xffffff solid fill
+              0.4 ->square
+              0xffffff solid ->fill
               1 1 '(
-                '( 0=0  4=4 ) linear x
+                '( 0=0  4=4 ) linear ->x
                 1 1 '(
-                  '( 0=0  4=4 ) linear y
-                ) split
-              ) split
+                  '( 0=0  4=4 ) linear ->y
+                ) ->split
+              ) ->split
             ;
         """.trimIndent()
         val r = RectAnimationOracle.compile(src)
@@ -290,12 +292,12 @@ object RectSLExamples {
     private fun checkArrayGenerators() {
         fun header(body: String) = """
             #rectsl
-            wall 12 12 abstract
-            duration 4
-            fps 30
+            ->wall 12 12 abstract
+            ->duration 4
+            ->fps 30
             "t" rect
-              0.5 square
-              0xffffff solid fill
+              0.5 ->square
+              0xffffff solid ->fill
               $body
             ;
         """.trimIndent()
@@ -382,6 +384,38 @@ object RectSLExamples {
         println("rectsl gallery workspace compiled ${names.size} program(s); metadata.edn boxes=${boxIds.size}")
     }
 
+    /** Compile every complete RectSL listing shown on the public examples page. */
+    private fun checkPublicDocsExamples() {
+        val file = File(System.getProperty("user.dir"), "public/docs/rectsl_examples.md")
+        if (!file.exists()) return
+        val blocks = rectslCodeBlocks(file.readText())
+        check(blocks.isNotEmpty()) { "public RectSL examples page has no RectSL code blocks" }
+
+        val placeholderCurves = with(Functions) {
+            val curve = gaussian(mean = 0.5, sigma = 0.16, amplitude = 1.0)
+            mapOf("target" to curve, "seed" to curve, "fit" to curve)
+        }
+        var escapeEngine: KotlinScriptEngine? = null
+        try {
+            blocks.forEachIndexed { index, source ->
+                val result = if ("{{" in source) {
+                    val engine = escapeEngine
+                        ?: KotlinInterface2(filePrefix = "RECTSL_DOCS_ESCAPE_").also { escapeEngine = it }
+                    compileRectSL(source, curves = placeholderCurves, engine = engine)
+                } else {
+                    compileRectSL(source, curves = placeholderCurves)
+                }
+                check(result.ok && result.programOrNull != null) {
+                    "public RectSL example ${index + 1} failed to compile:\n" +
+                        result.diagnostics.joinToString("\n")
+                }
+            }
+        } finally {
+            escapeEngine?.dispose()
+        }
+        println("rectsl public docs compiled ${blocks.size} worked example(s)")
+    }
+
     // ── cheatsheet coverage guard ────────────────────────────────────────────────
 
     /**
@@ -424,10 +458,10 @@ object RectSLExamples {
     private fun cheatsheetOperators(text: String): List<String> {
         val skip = setOf("Model", "Kotlin entry points")
         val phrase = mapOf(
-            "wall meters" to listOf("wall", "meters"), "wall pixels" to listOf("wall", "pixels"),
-            "wall abstract" to listOf("wall", "abstract"), "fit contain" to listOf("fit", "contain"),
-            "fit cover" to listOf("fit", "cover"), "fit stretch" to listOf("fit", "stretch"),
-            "material name '( ... )" to listOf("material"), "name material" to listOf("material"),
+            "->wall meters" to listOf("->wall", "meters"), "->wall pixels" to listOf("->wall", "pixels"),
+            "->wall abstract" to listOf("->wall", "abstract"), "->fit contain" to listOf("->fit", "contain"),
+            "->fit cover" to listOf("->fit", "cover"), "->fit stretch" to listOf("->fit", "stretch"),
+            "material name '( ... )" to listOf("material"), "name ->material" to listOf("->material"),
         )
         val backtick = Regex("`([^`]+)`")
         val out = LinkedHashSet<String>()
@@ -460,7 +494,7 @@ object RectSLExamples {
 
     private val ALIAS_GROUPS: List<List<String>> = listOf(
         listOf("+", "add"), listOf("-", "sub"), listOf("*", "mul"), listOf("/", "div"),
-        listOf("rot", "rotation"), listOf("rot-track", "rotation-track"),
+        listOf("->rot", "->rotation"), listOf("rot-track", "rotation-track"),
         listOf("neg", "negate"), listOf("sat", "saturate"), listOf("mix", "lerp"),
         listOf("copy", "clone"), listOf("copy-deep", "clone-deep"), listOf("end", "end-group"),
         listOf("filter", "where"), listOf("loop-count", "n"),

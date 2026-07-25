@@ -1,18 +1,18 @@
 #rectsl
-wall 12 12 abstract
-duration 6
-fps 30
+->wall 12 12 abstract
+->duration 6
+->fps 30
 
 "shell" rect
-  0.5 square
-  0xffee88 solid fill
-  '( 0=-5  2.5=0 ) y
+  0.5 ->square
+  0xffee88 solid ->fill
+  '( 0=-5  2.5=0 ) ->y
   14 2.5 '(
-    0.7 0.22 wh
-    0xff5522 solid fill
+    0.7 0.22 ->wh
+    0xff5522 solid ->fill
     '( 0=0  3.5=6 )  f 6.28318 * cos  value*
     '( 0=0  3.5=6 )  f 6.28318 * sin  value*
-    translate
-    face-travel
-  ) split
+    ->translate
+    ->face-travel
+  ) ->split
 ;

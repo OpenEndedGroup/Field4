@@ -2,7 +2,7 @@ name: rectsl_plot_axes
 description: >
   Loadable demo of the RectSL plotting layer. Drops in a Window + Renderer and one
   #rectsl program that draws a full plotted figure: a shared coordinate domain
-  (`domain` + `frame`) with `axes` (x/y rules, nice-number ticks, numeric tick
+  (`->domain` + `->frame`) with `axes` (x/y rules, nice-number ticks, numeric tick
   labels drawn as rect numerals, faint gridlines) and THREE series overlaid in the
   one domain — an `area`, a `line`, and `points` — plus a `colorbar` and a discrete
   swatch `legend`. This is the "shared axes/domain/legend" swing on top of last
@@ -40,7 +40,7 @@ operations:
         code: |
           // RectSL plotting-layer demo.
           //
-          // The #rectsl program sets ONE shared domain (`domain` + `frame`), draws
+          // The #rectsl program sets ONE shared domain (`->domain` + `->frame`), draws
           // `axes` (rules, nice-number ticks, numeric rect-numeral labels, gridlines),
           // then overlays three series in that domain (`area`, `line`, `points`) and
           // finishes with a `colorbar` and a discrete swatch `legend`. Edit `rectsl`
@@ -53,13 +53,13 @@ operations:
 
           val rectsl = """
           #rectsl
-          wall 16 10 abstract
-          duration 3
-          fps 30
+          ->wall 16 10 abstract
+          ->duration 3
+          ->fps 30
 
-          # shared coordinate frame: explicit domain + auto margins, then axes underneath
-          0 10  0 1  domain
-          frame
+          # shared coordinate frame: explicit ->domain + auto ->margins, then axes underneath
+          0 10  0 1  ->domain
+          ->frame
           axes
 
           # three series overlaid in the ONE shared domain

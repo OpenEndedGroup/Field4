@@ -12,22 +12,22 @@ import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
-wall 12 12 abstract
-duration 6
-fps 30
+->wall 12 12 abstract
+->duration 6
+->fps 30
 
 material tint '(
   uv 3.0 * time 0.6 * + fbm palette
 )
 
 "dot" rect
-  0.9 square
-  0xffffff solid fill
+  0.9 ->square
+  0xffffff solid ->fill
   20 4.2 '(
-    f "back-out" ease 0.25 +  scale
-    5 noise f sample 0.6 *  rotate
-    '( 0 0  6 6.28318 ) rotate
-    tint material
+    f "back-out" ease 0.25 +  ->scale
+    5 noise f sample 0.6 *  ->rotate
+    '( 0 0  6 6.28318 ) ->rotate
+    tint ->material
   ) radial
 ;
 """

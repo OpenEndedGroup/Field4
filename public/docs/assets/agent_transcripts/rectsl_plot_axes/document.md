@@ -41,7 +41,7 @@ From `code` tags: `#rectsl`
 
 RectSL plotting-layer demo.
 
-The #rectsl program sets ONE shared domain (`domain` + `frame`), draws
+The #rectsl program sets ONE shared domain (`->domain` + `->frame`), draws
 `axes` (rules, nice-number ticks, numeric rect-numeral labels, gridlines),
 then overlays three series in that domain (`area`, `line`, `points`) and
 finishes with a `colorbar` and a discrete swatch `legend`. Edit `rectsl`
@@ -49,13 +49,13 @@ and re-run to change it live. See rectsl_cheatsheet.md ("Plotting layer")
 / rectsl_examples.md ("A plotted figure").
 
 ```edn [field-box id="plot_figure" role="properties"]
-{"id" "plot_figure" "index" 1 "name" "rectsl plot + axes" "parents" ["root" "plot_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "plot_renderer"} "name" "rectsl plot + axes" "_tombstone" false "frame" #afield/rect [-300.0 -220.0 300.0 260.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "plot_figure_code_.kt" "lines" 68 "characters" 2159 "sha256" "11d544140ac60b3c6f7cf4490340b62dfc6056155919632cd4357c9d137e998b"}]}
+{"id" "plot_figure" "index" 1 "name" "rectsl plot + axes" "parents" ["root" "plot_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "plot_renderer"} "name" "rectsl plot + axes" "_tombstone" false "frame" #afield/rect [-300.0 -220.0 300.0 260.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "plot_figure_code_.kt" "lines" 68 "characters" 2177 "sha256" "c3ef48bfdf8df61388382bd15ac32330a4eaafb9437694dee6a15f8d4b921ad9"}]}
 ```
 
 ```kotlin [field-property box="plot_figure" name="code" path="plot_figure_code_.kt"]
 // RectSL plotting-layer demo.
 //
-// The #rectsl program sets ONE shared domain (`domain` + `frame`), draws
+// The #rectsl program sets ONE shared domain (`->domain` + `->frame`), draws
 // `axes` (rules, nice-number ticks, numeric rect-numeral labels, gridlines),
 // then overlays three series in that domain (`area`, `line`, `points`) and
 // finishes with a `colorbar` and a discrete swatch `legend`. Edit `rectsl`
@@ -68,13 +68,13 @@ import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
-wall 16 10 abstract
-duration 3
-fps 30
+->wall 16 10 abstract
+->duration 3
+->fps 30
 
-# shared coordinate frame: explicit domain + auto margins, then axes underneath
-0 10  0 1  domain
-frame
+# shared coordinate frame: explicit ->domain + auto ->margins, then axes underneath
+0 10  0 1  ->domain
+->frame
 axes
 
 # three series overlaid in the ONE shared domain

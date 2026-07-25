@@ -15,26 +15,26 @@ import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
-wall 16 9 meters
-duration 6
-fps 30
+->wall 16 9 meters
+->duration 6
+->fps 30
 
 material spectrum '(
   uv 3.0 * time 0.5 * + fbm palette
 )
 
 "bar" rect
-  0 0 xy
-  0.9 1 wh
-  '( 0 0.6  0.75 6.5  1.5 0.6 ) 1.5 loop-time h
-  0xffffff solid fill
-  spectrum material
+  0 0 ->xy
+  0.9 1 ->wh
+  '( 0 0.6  0.75 6.5  1.5 0.6 ) 1.5 loop-time ->h
+  0xffffff solid ->fill
+  spectrum ->material
 ;
 
 16 '(
-  "bar" select clone
-    i 7.5 - 1.2 * 0 xy
-    i 0.14 * delay-all-time
+  "bar" ->select clone
+    i 7.5 - 1.2 * 0 ->xy
+    i 0.14 * ->delay-all-time
 ) repeat
 """
 

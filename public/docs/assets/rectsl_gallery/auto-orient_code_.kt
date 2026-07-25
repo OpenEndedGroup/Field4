@@ -12,26 +12,26 @@ import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
 val rectsl = """
 #rectsl
-wall 12 12 abstract
-duration 6
-fps 30
+->wall 12 12 abstract
+->duration 6
+->fps 30
 
 "dart" rect
-  1.1 0.26 wh
-  0xffcc33 solid fill
-  '( 0=-5  3=0  6=5 ) x
-  '( 0=-4  1.5=3  3=-3  4.5=3  6=-4 ) y
-  face-travel
+  1.1 0.26 ->wh
+  0xffcc33 solid ->fill
+  '( 0=-5  3=0  6=5 ) ->x
+  '( 0=-4  1.5=3  3=-3  4.5=3  6=-4 ) ->y
+  ->face-travel
 ;
 
 "pip" rect
-  0.7 0.24 wh
-  0x66ccff solid fill
+  0.7 0.24 ->wh
+  0x66ccff solid ->fill
   16 '(
-    '( 0=0.6  3=5.4  6=0.6 )  f 6.28318 * cos  value*  x
-    '( 0=0.6  3=5.4  6=0.6 )  f 6.28318 * sin  value*  y
-    1.5708 face-travel-at
-    0.3 1 f mix alpha
+    '( 0=0.6  3=5.4  6=0.6 )  f 6.28318 * cos  value*  ->x
+    '( 0=0.6  3=5.4  6=0.6 )  f 6.28318 * sin  value*  ->y
+    1.5708 ->face-travel-at
+    0.3 1 f mix ->alpha
   ) array
 ;
 """
