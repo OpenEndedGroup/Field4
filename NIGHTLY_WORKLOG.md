@@ -245,3 +245,82 @@ a verified sound harness with regression coverage, and a public page whose plots
 produced by real DoughDsp at build time. Everything regenerates; nothing is faked. To hear/see it:
 `FIELD_DOCS_RUNNER_PORT=<free> uv run --group docs python3 tools/build_zensical_docs.py --page
 dough_dsp_sound`, then open `public/field4/dough_dsp_sound/index.html`.
+
+---
+---
+
+# Nightly worklog (part 3) — `:::fold` code folding + real illustrative examples
+
+Follow-on in the same worktree. (Coordinator had landed 3 commits first: an inline-code CSS
+margin fix, a link fix, and a diffstatic conversion of the illustrative blocks — all preserved.)
+
+## Human feedback
+`plotDoughSound("plate-reverb")` hid the interesting part behind an opaque helper. Wanted (1)
+code folding in `diffstatic` so boilerplate collapses by default but is revealable, and (2) the
+*shown* code to be the real, executable DSP construction — not a wrapper.
+
+## Fold-marker grammar (new)
+Consistent with the existing `:::before/:::after/:::static` family:
+```
+:::fold [label]      begin a collapsible region (label, if given, shows on the pill)
+:::endfold           end it
+```
+Lines between them still EXECUTE; they render collapsed behind a `+ <label> (N lines)` pill that
+the reader clicks to reveal. Regions are flat (no nesting), any number per block.
+
+## Files touched
+- `public/docs_hooks.py` — `is_marker_line()` matches fold markers; `extract_static_code` (and the
+  two diff extractors) strip the marker lines but KEEP the enclosed code, so the box runs the full
+  construction+render+plot.
+- `public/docs/assets/code-diff-player/code-diff-player.js` — `parseFoldMarkers()` extracts
+  `:::fold` regions (`[start,end)` in cleaned line indices) and strips markers before any
+  diff/line-counting; `render()` generalized to emit a `.fold-region` pill per still-folded region
+  and skip its lines (coexists with the diff prefix/suffix fold); fold click handler + `reset()`
+  understand regions.
+- `public/docs/assets/code-diff-player/code-diff-player.css` — `.fold-region` / `.fold-count`.
+- `src/jvmMain/kotlin/afield/four/synth/DoughDspSoundDocs.kt` — new PUBLIC top-level helpers
+  (`doughRenderMono`, `doughRenderStereoMono`, `doughRenderGated`, `doughPluckEnv`,
+  `doughAbsEnvelope`, `doughShortTimeRms`, `doughShortTimeBrightness`, `doughWaveWindow`); SCENES
+  refactored to build their graph with these SAME helpers, so the page's visible plot code and the
+  `audio=` WAV come from one implementation.
+- `public/docs/dough_dsp_sound.md` — every runner block rewritten to show the real construction as
+  the focus with render+plot folded; redundant "In essence" blocks removed. 6 plot PNGs regenerated
+  (WAVs byte-identical → refactor preserved behavior).
+
+### Before → after (one block)
+Before: `:::static` + `plotDoughSound("plate-reverb")`.
+After: `:::static` + `val pluck = SineOsc(Param(330f)) * doughPluckEnv(tau=0.045f, holdSec=0.12f)` /
+`val verb = PlateReverb(source=pluck, decay=Param(0.85f), mix=Param(0.5f))` + `:::fold render 3 s
+offline and plot the |amplitude| envelope` … `doughRenderStereoMono` + `showSignals(...)` …
+`:::endfold`.
+
+## Verification
+- `run_field_tests.py --id synth.dough-dsp.sound --port 9489` → **PASS** (refactored Kotlin compiles;
+  sample-level checks + WAV headers still green).
+- Docs build `FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9489 … --page dough_dsp_sound`
+  → **BUILD_EXIT 0**, `regenerated=12 (screenshots=6 audio=6), 0 failures`. Server confirmed THIS
+  worktree's JVM. That the six runner blocks captured at all proves the visible+folded code
+  compiles+executes in a real box (fold markers correctly stripped from the executed code).
+- WAV read-back (verify_wavs.py): all 6 still real + correct, byte-identical to part 2 (reverb
+  decays 17×, chamberlin brightens 34×, adsr 3 notes, zaw autocorr 1.000).
+- Built HTML carries 6 `:::fold` + 6 `:::endfold` + 6 `:::static` markers (survive to the client).
+- **Fold works in the rendered page** (served the worktree's `public/field4` on :8848 — the preview
+  tool's own server was serving the PRIMARY tree, the known footgun — and drove it in the browser):
+  6 players, each 1 collapsed `.fold-region` pill by default; collapsed rendered code = only the 2–4
+  construction lines with `showSignals` HIDDEN; the pill is a styled pointer-cursor element
+  ("+ render … (6 lines)"); clicking it expands to all 8 lines incl. `showSignals`, pill gone, line
+  numbers preserved. Screenshotted both the collapsed (2 lines + pill) and expanded (render line
+  revealed) states.
+- Cleanup: stopped both static servers, killed the worktree JVM on 9489 (no survivors), removed the
+  temporary `.claude/launch.json`; left the foreign 9477 server alone.
+
+## Risk (part 3)
+Fold is client-side JS/CSS in the shared code-diff player; the change is additive (diff prefix/suffix
+fold path untouched) and other diffstatic pages don't use `:::fold`, so they're unaffected.
+
+## Recommendation (part 3)
+**MERGE.** `:::fold` is a real, reusable extension of the diffstatic player; the sound page now shows
+honest, executable DSP construction with boilerplate tucked away, and the shown code, the captured
+plot, and the playable WAV all come from one code path. Build + open to see the folding:
+`FIELD_DOCS_RUNNER_PORT=<free> uv run --group docs python3 tools/build_zensical_docs.py --page
+dough_dsp_sound`, then open `public/field4/dough_dsp_sound/index.html` and click a `+ …` pill.
