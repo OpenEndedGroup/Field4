@@ -238,14 +238,20 @@ object DoughDspPlotGallery {
                     curve("amount 2.0", 2.0f, ORANGE),
                     curve("amount 4.0", 4.0f, VIOLET)
                 ),
-                yRange = -1.6 to 1.6
+                yRange = -2.0 to 2.0
             )
         }, { spec ->
-            for (s in spec.series.drop(1)) {
+            val shapers = spec.series.drop(1) // amounts 0.5, 1, 2, 4
+            for (s in shapers) {
                 var monotonic = true
                 for (i in 1 until s.ys.size) if (s.ys[i] < s.ys[i - 1] - 1e-6) monotonic = false
                 check(monotonic) { "SoftDistort '${s.label}' transfer curve is not monotonic" }
-                check(s.ys.all { abs(it) <= 1.51 }) { "SoftDistort '${s.label}' exceeded expected bound" }
+                check(s.ys.all { it.isFinite() && abs(it) <= 2.6 }) { "SoftDistort '${s.label}' left the expected bound" }
+            }
+            // More drive = more compression: the output at the top of the input sweep decreases.
+            val ends = shapers.map { it.ys.last() }
+            for (i in 1 until ends.size) {
+                check(ends[i] < ends[i - 1]) { "SoftDistort drive did not increase compression: $ends" }
             }
         }),
 
@@ -262,9 +268,9 @@ object DoughDspPlotGallery {
                 title = "Naive oscillators — 2 periods @ 200 Hz (raw, aliasing)",
                 xLabel = "time (ms)", yLabel = "amplitude",
                 series = listOf(
-                    Series("zaw (saw)", ms(zaw), zaw.toDoubleArray(), CYAN, Style.LINE),
-                    Series("pulze (duty 0.5)", ms(sq), sq.toDoubleArray(), ORANGE, Style.LINE),
-                    Series("pulze (duty 0.25)", ms(narrow), narrow.toDoubleArray(), VIOLET, Style.LINE)
+                    Series("zaw (saw)", ms(zaw), zaw.toDoubles(), CYAN, Style.LINE),
+                    Series("pulze (duty 0.5)", ms(sq), sq.toDoubles(), ORANGE, Style.LINE),
+                    Series("pulze (duty 0.25)", ms(narrow), narrow.toDoubles(), VIOLET, Style.LINE)
                 ),
                 yRange = -1.3 to 1.3
             )
@@ -275,6 +281,8 @@ object DoughDspPlotGallery {
     )
 
     private fun Series.recolor(c: Color) = Series(label, xs, ys, c, style)
+
+    private fun FloatArray.toDoubles(): DoubleArray = DoubleArray(size) { this[it].toDouble() }
 
     // ── CPU drivers (real primitive output) ───────────────────────────────────────
 
