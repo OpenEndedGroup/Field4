@@ -41,7 +41,7 @@ by another rule. Patterns are quoted data, not live code.
 
 To use the DSL, import it:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 import afield.macros.*
 ```
 
@@ -51,7 +51,7 @@ A rule is a `rewrite { … }` whose lambda parameters declare the
 *metavariables*, and whose body holds one `from { }` (the pattern to match) and
 one `to { }` (the replacement):
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 rewrite { x: Expr -> from { neg(x) }; to { -x } }
 
 neg(10)          // →  -10
@@ -86,7 +86,7 @@ are part of the shape too — `f(x, y)` matches only two-argument calls, and
 When a captured subtree is spliced into a new syntactic context, the rewriter
 **paren-guards** it so text splicing can never silently change precedence:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 rewrite { x: Expr -> from { twice(x) }; to { x * 2 } }
 
 twice(a)         // →  a * 2          (atomic capture, not wrapped)
@@ -111,7 +111,7 @@ A rule can carry a structural guard; it fires only when the guard holds. The
 guard is built from a fixed vocabulary of predicates over the captures, combined
 with `&&`, `||`, `!`:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 rewrite { x: Expr, y: Expr ->
     from { swap(x, y) }
     where { distinct(x, y) }
@@ -142,7 +142,7 @@ something surprising.
 `f(x)` in a runtime adapter, but *guard against re-wrapping the wrapper you just
 introduced*, so the rewrite reaches a fixed point instead of looping forever:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 rewrite { x: Expr ->
     from { f(x) }
     where { !isCallTo(x, "coerce") }
@@ -167,7 +167,7 @@ block is metavar-substituted and merged into the box preamble under a stable,
 content-derived key, so repeated runs deduplicate and the segment only
 re-executes when its content actually changes:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 rewrite { n: Ident ->
     from { counter(n) }
     provide { var Box.n by Counting() }
@@ -194,7 +194,7 @@ time** and splices its `toString()` result into the emitted source **as Kotlin
 source code**. Each metavariable is available inside the block as a `String`
 holding the captured source text, so you can transform captures textually:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 rewrite { x: Ident ->
     from { rev(x) }
     to { unquote { "\"" + x.reversed() + "\"" } }
@@ -220,7 +220,7 @@ A `Vararg` metavariable binds a *run* of call arguments (zero or more). In a
 pattern it consumes the matching arguments; in the replacement it expands them
 comma-separated. It composes with fixed holes on either side:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 rewrite { first: Expr, rest: Vararg ->
     from { log(first, rest) }
     to { logger(first, rest) }
@@ -238,7 +238,7 @@ parent's own code *and* to every child's code — and the parent never has to ru
 for this to take effect, because the layer reads each box's stored source
 directly.
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 // in a PARENT box:
 rewrite { x: Expr -> from { boom(x) }; to { BANG(x) } }
 
@@ -260,7 +260,7 @@ coercion idiom above is the canonical "converges because a guard stops the
 recursion" case). A non-confluent set does not — the classic example is two
 rules that undo each other:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 rewrite { -> from { a }; to { b } }
 rewrite { -> from { b }; to { a } }
 ```
@@ -302,7 +302,7 @@ anonymous `rewrite { … }`. Everything else about the rule — `from`/`to`/`whe
 `provide`/`ai`, the erase-before-compile treatment — is identical. A named rule
 with *no* strategy still behaves exactly like the anonymous global fixpoint:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 rule("neg") { x: Expr -> from { neg(x) }; to { -x } }
 
 neg(a)           // →  -a      (no strategy: every site, as before)
@@ -323,7 +323,7 @@ and fail-fast sequencing meaningful.
 **Fire once, or at a chosen depth.** By default the fixpoint hits both `neg`
 sites; `once` stops after the first:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 rule("neg") { x: Expr -> from { neg(x) }; to { -x } }
 strategy { once("neg") }
 
@@ -334,7 +334,7 @@ neg(b)           // →  neg(b)     (left untouched — the observable differenc
 For nested forms, `topdown` and `bottomup` pick opposite ends. Given `f(f(a))`
 and a rule `f(x) → g(x)`:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }
 
 strategy { topdown("fg") }    //  f(f(a))  →  g(f(a))   (outer call only)
@@ -347,7 +347,7 @@ rewrite the inner `f`. To drive it to a fixed point, wrap it in `repeat`.
 **Select a subset of rules.** Naming one rule fires only that rule, even when
 others would match — unlike the default, which fires every rule:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 rule("p2a") { x: Expr -> from { p(x) }; to { A(x) } }
 rule("q2b") { x: Expr -> from { q(x) }; to { B(x) } }
 strategy { "p2a" }
@@ -362,7 +362,7 @@ applies).
 **Sequence with `then` / `seq`.** `a then b` runs `a`, then `b` on its result,
 and fails as soon as either step fails:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 rule("p2q") { x: Expr -> from { p(x) }; to { q(x) } }
 rule("q2r") { x: Expr -> from { q(x) }; to { r(x) } }
 
@@ -374,7 +374,7 @@ strategy { "q2r" then "p2q" }   //  p(1)  →  p(1)  (q2r fails first ⇒ whole 
 applies. Because it is ordered independently of declaration order, it can pick a
 rule the default first-match-wins would not:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 rule("toX") { x: Expr -> from { pick(x) }; to { X(x) } }
 rule("toY") { x: Expr -> from { pick(x) }; to { Y(x) } }
 strategy { choice("toY", "toX") }
@@ -389,7 +389,7 @@ none apply.
 `repeat(s, n)` at most `n` times. `attempt(s)` runs `s` but falls back to
 identity on failure, so a following step can still run:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }
 
 strategy { repeat(topdown("fg"), 1) }   //  f(f(f(a)))  →  g(f(f(a)))   (exactly one step)
@@ -422,7 +422,7 @@ A strategy that names an unknown rule, or that is malformed, is treated the same
 way a malformed rule is: it rewrites **nothing** and reports a diagnostic, rather
 than silently doing something surprising.
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }
 strategy { once("nope") }   //  f(a)  →  f(a)   + "unknown rule name" diagnostic
 strategy { 1 + 2 }          //  f(a)  →  f(a)   + malformed-strategy diagnostic
@@ -456,6 +456,6 @@ compile-and-run pipeline a live box uses:
 Replay every shipped demo transcript — including both of these — through the real
 engine with:
 
-```
+```diffstatic {data-lang=bash}
 python3 tools/run_field_tests.py --id examples.demo-transcript.exec
 ```
