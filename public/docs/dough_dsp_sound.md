@@ -38,7 +38,7 @@ plotDoughSound("plate-reverb")
 
 In essence:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val pluck = SineOsc(Param(330f)) * decayEnvelope(0.045f, gatedTo = 0.12f)
 val verb  = PlateReverb(source = pluck, decay = Param(0.85f), mix = Param(0.5f))
 ```
@@ -64,7 +64,7 @@ plotDoughSound("phaser")
 
 In essence:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val saw = ZawOsc(Param(220f)) * 0.4f
 val out = saw.through(Phaser(rate = Param(0.5f), depth = Param(0.7f), center = Param(700f), sweep = Param(1400f)))
 ```
@@ -91,7 +91,7 @@ plotDoughSound("chamberlin-lowpass")
 
 In essence:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val cutoff = Param(150f).also { it.supplier = { 150f + 5850f * (time / 3f).coerceIn(0f, 1f) } }
 val out    = ZawOsc(Param(110f)).through(ChamberlinLowpass(cutoff, Param(0.6f)))
 ```
@@ -117,7 +117,7 @@ plotDoughSound("curved-adsr")
 
 In essence:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val gate  = Gate()
 val voice = SineOsc(Param(220f)) * CurvedADSR(gate, Param(0.02f), Param(0.08f), Param(0.6f), Param(0.15f))
 // gate.open()/close() on a rhythm: three notes with gaps
@@ -145,7 +145,7 @@ plotDoughSound("soft-distort")
 
 In essence:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val drive = Param(0.2f).also { it.supplier = { 0.2f + 6.8f * (time / 3f).coerceIn(0f, 1f) } }
 val out   = SineOsc(Param(220f)).through(SoftDistort(drive, Param(0.8f)))
 ```
@@ -172,7 +172,7 @@ plotDoughSound("zaw-pulze")
 
 In essence:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val saw   = ZawOsc(Param(200f)) * 0.7f          // one second, then…
 val pulse = PulzeOsc(Param(200f), Param(0.3f)) * 0.7f
 ```
