@@ -279,18 +279,183 @@ Two more things worth knowing:
   metavariable, or whose body fails to parse, is rejected with a diagnostic and
   its block is still erased from the compiled source.
 
+## Controlling where and when rules fire: strategies
+
+Everything above uses the **default engine**: every rule fires at every match,
+everywhere, to a fixed point. That is confluent and convenient, and for most
+rule sets it is exactly what you want. But sometimes you need control — rewrite
+*one* site, not all of them; rewrite the *innermost* form rather than the
+outermost; run rule A only where rule B did not apply; apply a step a bounded
+number of times. That is what **strategies** add: a small
+[Stratego](https://strategoxt.org/)/ELAN-style term-rewriting language layered
+on top of the same matcher.
+
+Strategies are fully backward compatible. **With no `strategy { }` block, nothing
+changes** — the engine keeps its global-fixpoint behaviour. A strategy only takes
+over when you write one, and then only the rules it names fire, in the order and
+at the sites it dictates.
+
+### Name the rules a strategy drives
+
+A strategy refers to rules by name, so use `rule("name") { … }` instead of the
+anonymous `rewrite { … }`. Everything else about the rule — `from`/`to`/`where`/
+`provide`/`ai`, the erase-before-compile treatment — is identical. A named rule
+with *no* strategy still behaves exactly like the anonymous global fixpoint:
+
+```kotlin
+rule("neg") { x: Expr -> from { neg(x) }; to { -x } }
+
+neg(a)           // →  -a      (no strategy: every site, as before)
+neg(b)           // →  -b
+```
+
+Anonymous `rewrite { }` rules carry no name, so a `strategy { }` can never fire
+them — under a strategy they are simply inert.
+
+### The `strategy { }` block
+
+One `strategy { }` block per box holds a single strategy expression, built from
+the combinators below. Like a rule, it is erased before compilation, so it only
+has to parse. Each combinator either *succeeds* (yielding possibly-changed
+source) or *fails* (does not apply) — that success/failure is what makes `choice`
+and fail-fast sequencing meaningful.
+
+**Fire once, or at a chosen depth.** By default the fixpoint hits both `neg`
+sites; `once` stops after the first:
+
+```kotlin
+rule("neg") { x: Expr -> from { neg(x) }; to { -x } }
+strategy { once("neg") }
+
+neg(a)           // →  -a         (first site fires)
+neg(b)           // →  neg(b)     (left untouched — the observable difference)
+```
+
+For nested forms, `topdown` and `bottomup` pick opposite ends. Given `f(f(a))`
+and a rule `f(x) → g(x)`:
+
+```kotlin
+rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }
+
+strategy { topdown("fg") }    //  f(f(a))  →  g(f(a))   (outer call only)
+strategy { bottomup("fg") }   //  f(f(a))  →  f(g(a))   (inner call only)
+```
+
+Each is a *single* application, not a fixpoint — `topdown` does not go on to
+rewrite the inner `f`. To drive it to a fixed point, wrap it in `repeat`.
+
+**Select a subset of rules.** Naming one rule fires only that rule, even when
+others would match — unlike the default, which fires every rule:
+
+```kotlin
+rule("p2a") { x: Expr -> from { p(x) }; to { A(x) } }
+rule("q2b") { x: Expr -> from { q(x) }; to { B(x) } }
+strategy { "p2a" }
+
+p(1)             // →  A(1)
+q(2)             // →  q(2)      (q2b is not named, so it never fires)
+```
+
+A bare rule name is itself the simplest strategy (fire that rule wherever it
+applies).
+
+**Sequence with `then` / `seq`.** `a then b` runs `a`, then `b` on its result,
+and fails as soon as either step fails:
+
+```kotlin
+rule("p2q") { x: Expr -> from { p(x) }; to { q(x) } }
+rule("q2r") { x: Expr -> from { q(x) }; to { r(x) } }
+
+strategy { "p2q" then "q2r" }   //  p(1)  →  q(1)  →  r(1)
+strategy { "q2r" then "p2q" }   //  p(1)  →  p(1)  (q2r fails first ⇒ whole sequence aborts)
+```
+
+**Choose with `choice`.** `choice(a, b, …)` runs the first alternative that
+applies. Because it is ordered independently of declaration order, it can pick a
+rule the default first-match-wins would not:
+
+```kotlin
+rule("toX") { x: Expr -> from { pick(x) }; to { X(x) } }
+rule("toY") { x: Expr -> from { pick(x) }; to { Y(x) } }
+strategy { choice("toY", "toX") }
+
+pick(1)          // →  Y(1)      (prefers its first alternative, though toX is declared first)
+```
+
+A non-matching alternative falls through to the next; `choice` fails only if
+none apply.
+
+**Bound repetition and rescue failure.** `repeat(s)` iterates to a fixpoint;
+`repeat(s, n)` at most `n` times. `attempt(s)` runs `s` but falls back to
+identity on failure, so a following step can still run:
+
+```kotlin
+rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }
+
+strategy { repeat(topdown("fg"), 1) }   //  f(f(f(a)))  →  g(f(f(a)))   (exactly one step)
+strategy { repeat(topdown("fg")) }      //  f(f(a))     →  g(g(a))      (to a fixpoint)
+
+rule("zzz") { x: Expr -> from { zzz(x) }; to { Z(x) } }
+strategy { attempt("zzz") then "fg" }   //  f(a)  →  g(a)   (the missing zzz is rescued, fg still runs)
+```
+
+### The combinators at a glance
+
+| Strategy | Effect |
+|----------|--------|
+| `"name"` | Fire rule `name` wherever it applies. |
+| `once("name")` | Fire at the single first (outermost) site — at most once. |
+| `topdown("name")` | Fire at the single outermost (shallowest) match. |
+| `bottomup("name")` | Fire at the single innermost (deepest) match. |
+| `attempt(s)` | Run `s`; fall back to identity on failure. Never fails. |
+| `repeat(s)` / `repeat(s, n)` | Iterate `s` to a fixpoint / at most `n` times. Never fails. |
+| `a then b`, `seq(a, b, …)` | Sequence, threading the result; fail-fast. |
+| `choice(a, b, …)` | First alternative that succeeds; fail only if none do. |
+
+`once("r")` and `topdown("r")` coincide on the single-outermost case and are
+offered as two spellings of the same intent. (`try` would be the usual name for
+`attempt`, but it is a Kotlin hard keyword and cannot be a call name.)
+
+### Fail-closed
+
+A strategy that names an unknown rule, or that is malformed, is treated the same
+way a malformed rule is: it rewrites **nothing** and reports a diagnostic, rather
+than silently doing something surprising.
+
+```kotlin
+rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }
+strategy { once("nope") }   //  f(a)  →  f(a)   + "unknown rule name" diagnostic
+strategy { 1 + 2 }          //  f(a)  →  f(a)   + malformed-strategy diagnostic
+```
+
+A strategy is **box-local control**: ambient *rules* declared in an ancestor box
+are still inherited and can be named by a strategy, but a strategy itself is not
+inherited — each box drives its own. `provide { }` and `ai()` side-contributions
+still accrue whenever a rule actually fires under a strategy.
+
+> **Every "→" above is real.** These are the exact rules and expansions the
+> [pattern-rewrite smoke test][smoke] asserts on (`testStrategyOnceFiresSingleSite`,
+> `testStrategyTopDownSingleOutermost`, `testStrategyChoiceFirstApplicable`, and
+> the rest of the `strategy sublanguage` group). The developer reference in
+> `dev_docs/pattern_rewrite_strategies.md` documents the `Strat` AST and the
+> `StrategyRunner` that executes it.
+
 ## Try it
 
-A runnable demo lives at
-`dev_docs/agents/transcripts/pattern_rewrite_worked_example.yaml`. It builds a
-small box graph exercising negation, the precedence guard, the `isCallTo`
-termination idiom, a variadic hole, `unquote`, and an inherited (ambient) rule,
-then runs each box so you can watch the rewrites take effect. Replay it through
-the real engine with:
+Two runnable demos ship with the engine, both driven through the identical
+compile-and-run pipeline a live box uses:
+
+- `dev_docs/agents/transcripts/pattern_rewrite_worked_example.yaml` — a box graph
+  exercising negation, the precedence guard, the `isCallTo` termination idiom, a
+  variadic hole, `unquote`, and an inherited (ambient) rule.
+- `dev_docs/agents/transcripts/rewrite_strategies_demo.yaml` — named rules driven
+  by `once` / `topdown` / `bottomup` / `then` / `choice` / `repeat`, each box
+  self-checking that the strategy produced a *different* result than the default
+  fixpoint would.
+
+Replay every shipped demo transcript — including both of these — through the real
+engine with:
 
 ```
 python3 tools/run_field_tests.py --id examples.demo-transcript.exec
 ```
-
-which drives every shipped demo transcript — including this one — through the
-identical compile-and-run pipeline a live box uses.
