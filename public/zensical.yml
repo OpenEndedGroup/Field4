@@ -26,6 +26,7 @@ nav:
     - FLine Examples: fline_examples.md
     - Visualizers & Controls: visualizers.md
     - Querying Object Graphs: graph_query.md
+    - Rewriting Your Own Syntax: pattern_rewrite.md
     - Staging area:
       - Staging Overview: staging.md
       - Mobile Controllers: mobile_controllers.md
