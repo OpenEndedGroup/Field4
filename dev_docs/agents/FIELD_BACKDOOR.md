@@ -62,8 +62,13 @@ The launched Java command is omitted unless that inner command receives
 
 ## Session and execution contracts
 
-- Scratch is the default and is disposable. `--document <name>` resolves a
-  document name relative to the Field workspace; it is not an absolute path.
+- Scratch is the default and is scoped to one `field_backdoor.py` process.
+  Put dependent commands in the same invocation: reusing `--port` in a later
+  process starts a different scratch document, even when it reconnects to the
+  same Field server. Use `--document <name>` when state must span invocations;
+  the name is relative to the Field workspace, not an absolute path.
+- A box reference not present in the attached document is an error. In
+  particular, never reuse a uid printed by an earlier scratch invocation.
 - `@last` means the most recently created box in this backdoor session.
 - `run <uid>` and `launch <uid>` use the box's stored `code` when neither
   `--value` nor `--file` is supplied. The flags replace stored code only when

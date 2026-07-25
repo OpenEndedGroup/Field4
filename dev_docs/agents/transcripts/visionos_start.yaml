@@ -1,0 +1,82 @@
+name: visionos_start
+description: >
+  Minimal Kotlin/JS starting place for Field4Vision's native visionOS Live Metal head. Open
+  Live Metal in the visionOS app, then run or drop in this transcript. Kotlin updates named
+  uniforms on the compositor clock; the fragment property is the editable Metal shader.
+operations:
+  - create:
+      box: agent_visionos_start_root
+      name: KotlinJS → visionOS
+      frame: { x: 50.0, y: 50.0, w: 440.0, h: 310.0 }
+      properties:
+        mainLanguage: kotlinjs
+        isKotlinJsRoot: true
+  - create:
+      box: agent_visionos_start
+      name: visionOS Starter
+      frame: { x: 90.0, y: 100.0, w: 360.0, h: 220.0 }
+      properties:
+        code: |
+          // {{ visionmetal uniforms=phase,amount,tint }}
+          // Open Live Metal in Field4Vision. Launch again after editing to hot-reload.
+          onStart {
+              uniform("amount", 0.025)
+              uniform("tint", 0.1, 0.8, 1.0, 0.35)
+
+              onFrame { frame ->
+                  uniform("phase", frame.time * 3.0)
+              }
+
+              onStop {
+                  println("visionOS starter stopped")
+              }
+
+              println("visionOS starter running")
+          }
+        fragment: |
+          vertex FieldVarying field_vertex(
+              uint vertexID [[vertex_id]], ushort viewID [[amplification_id]],
+              const device FieldVertex *vertices [[buffer(0)]],
+              constant FieldFrame &frame [[buffer(1)]])
+          {
+              FieldVertex v = vertices[vertexID];
+              float phase = fieldUniform(frame, 0).x;
+              float amount = fieldUniform(frame, 1).x;
+              float3 centre = float3(0.45, 0.0, -1.2);
+              float3 p = v.position.xyz
+                  + v.normal.xyz * sin(phase + v.position.y * 18.0) * amount
+                  - centre;
+              float3 n = v.normal.xyz;
+
+              float angle = phase * 0.18 + 0.55;
+              float c = cos(angle), s = sin(angle);
+              p.xz = float2(c * p.x + s * p.z, -s * p.x + c * p.z);
+              n.xz = float2(c * n.x + s * n.z, -s * n.x + c * n.z);
+
+              float4 world = frame.modelMatrix * float4(p + centre, 1.0);
+              FieldVarying out;
+              out.position = frame.viewProjection[min(uint(viewID), 1u)] * world;
+              out.worldPosition = world.xyz;
+              out.normal = n;
+              out.color = v.color;
+              return out;
+          }
+
+          fragment half4 field_fragment(
+              FieldVarying in [[stage_in]],
+              constant FieldFrame &frame [[buffer(1)]])
+          {
+              float4 tint = fieldUniform(frame, 2);
+              float3 rgb = mix(in.color.rgb, tint.rgb, tint.a);
+              return half4(half3(rgb), half(in.color.a));
+          }
+  - connect:
+      parent: agent_visionos_start_root
+      child: agent_visionos_start
+  - wait:
+      frames: 2
+  - launch:
+      box: agent_visionos_start
+      property: code
+  - await:
+      wait: pending

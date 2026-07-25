@@ -1,6 +1,7 @@
 package afield
 
 import afield.logger.lprintln
+import afield.runtime.refreshMainLanguageRuntimes
 import afield.stdlib._currentlyExecutingFragment
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -1370,6 +1371,7 @@ object OperationTranscript {
             }
             "execute", "execute-fragment" -> {
                 if (direction == "undo") return false
+                refreshMainLanguageRuntimes(thisSessionInfo.get().boxes.values)
                 val target = mappedBox() ?: return false
                 val exec = executeFromPayload(target.id, payload, fallbackType = "fragment")
                 // Await completion (like the launch path) so the fragment's output is
@@ -1559,6 +1561,8 @@ object OperationTranscript {
         collect: (Message) -> Unit = {},
         diagnostics: MutableList<String>? = null
     ): Pair<Int, Int> {
+        refreshMainLanguageRuntimes(thisSessionInfo.get().boxes.values)
+
         // Resolve every op explicitly. A launch that can't find its box or has no code
         // to run is a loud, specific failure (logged + notified + surfaced in `errors`),
         // never a silent skip — this is the documented execution verb, so it must be

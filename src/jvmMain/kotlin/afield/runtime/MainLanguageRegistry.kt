@@ -27,6 +27,17 @@ fun registerMainLanguageRuntime(runtime: MainLanguageRuntime) {
     registeredMainLanguages[runtime.id] = runtime
 }
 
+/**
+ * Apply every registered language root synchronously.
+ *
+ * The UI's [TopologyWatcher] normally does this on the runloop after a graph edit. Semantic
+ * automation can connect a language root and execute its child in the same macro batch, so it calls
+ * this dispatch barrier before execute/launch rather than racing the asynchronous watcher.
+ */
+fun refreshMainLanguageRuntimes(boxes: Collection<Box>) {
+    registeredMainLanguages.values.forEach { it.applyTopology(boxes) }
+}
+
 fun Box.isMainLanguage(id: String): Boolean =
     mainLanguage.equals(id, ignoreCase = true)
 

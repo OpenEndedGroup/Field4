@@ -760,7 +760,7 @@ class FieldBackdoor:
         pan_into_view: bool,
         timeout: float,
     ) -> dict[str, Any]:
-        resolved_uid = self.resolve_uid(uid)
+        resolved_uid, _ = self.require_box_reference(uid)
         self.logger.log(
             "open_editor_start",
             uid=resolved_uid,
@@ -804,7 +804,7 @@ class FieldBackdoor:
         script_mode: str = "expression",
         wait_ms: float = 0.0,
     ) -> dict[str, Any]:
-        resolved_uid = self.resolve_uid(uid) if uid is not None else None
+        resolved_uid = self.require_box_reference(uid)[0] if uid is not None else None
         self.logger.log(
             "playwright_input_start",
             action=action,
@@ -861,7 +861,7 @@ class FieldBackdoor:
         preserve_selection: bool = False,
         include_notifications: bool = False,
     ) -> dict[str, Any]:
-        resolved_uid = self.resolve_uid(uid) if uid is not None else None
+        resolved_uid = self.require_box_reference(uid)[0] if uid is not None else None
         normalized_path = str(Path(path).expanduser().resolve())
         if show_editor and resolved_uid is None:
             raise BackdoorError("screenshot-window --with-editor requires --uid")
@@ -915,7 +915,7 @@ class FieldBackdoor:
         preserve_selection: bool = False,
         include_notifications: bool = False,
     ) -> dict[str, Any]:
-        resolved_uid = self.resolve_uid(uid)
+        resolved_uid, _ = self.require_box_reference(uid)
         normalized_path = str(Path(path).expanduser().resolve())
         self.logger.log(
             "screenshot_box_start",
@@ -979,6 +979,7 @@ class FieldBackdoor:
         frames: int,
         timeout: float,
     ) -> dict[str, Any]:
+        resolved_uid = self.require_box_reference(uid)[0] if uid is not None else None
         safe_frames = max(1, int(frames))
         deadline = time.monotonic() + timeout
         wait_path = LOG_ROOT / f"{self.session_id}-native-renderer-ready.png"
@@ -988,7 +989,7 @@ class FieldBackdoor:
         wait_path.parent.mkdir(parents=True, exist_ok=True)
         self.logger.log(
             "wait_native_renderer_start",
-            uid=uid,
+            uid=resolved_uid,
             frames=safe_frames,
             timeout=timeout,
             path=str(wait_path),
@@ -1007,7 +1008,7 @@ class FieldBackdoor:
                 if payload.get("ok") and wait_path.exists() and wait_path.stat().st_size > 0:
                     result = {
                         "ok": True,
-                        "uid": self.resolve_uid(uid) if uid else None,
+                        "uid": resolved_uid,
                         "frames": safe_frames,
                         "attempts": attempts,
                         "path": str(wait_path),
@@ -1028,7 +1029,7 @@ class FieldBackdoor:
 
         result = {
             "ok": False,
-            "uid": self.resolve_uid(uid) if uid else None,
+            "uid": resolved_uid,
             "frames": safe_frames,
             "attempts": attempts,
             "path": str(wait_path),
@@ -1053,7 +1054,7 @@ class FieldBackdoor:
         fps: int,
         timeout: float,
     ) -> dict[str, Any]:
-        resolved_uid = self.resolve_uid(uid) if uid is not None else None
+        resolved_uid = self.require_box_reference(uid)[0] if uid is not None else None
         normalized_path = str(Path(path).expanduser().resolve())
         if show_editor and resolved_uid is None:
             raise BackdoorError("record-window --with-editor requires --uid")
@@ -1106,7 +1107,7 @@ class FieldBackdoor:
         fps: int,
         timeout: float,
     ) -> dict[str, Any]:
-        resolved_uid = self.resolve_uid(uid)
+        resolved_uid, _ = self.require_box_reference(uid)
         normalized_path = str(Path(path).expanduser().resolve())
         self.logger.log(
             "record_box_start",
@@ -1240,7 +1241,11 @@ class FieldBackdoor:
         self._replace_snapshot(payload)
         self.clear_events()
         self.logger.log("open_document_complete", documentName=self.document_name, scratch=self.scratch)
-        return payload
+        result = dict(payload)
+        if self.scratch:
+            result["scratchLifetime"] = "invocation"
+            result["scratchPortReuse"] = False
+        return result
 
     async def refresh_snapshot(self, timeout: float) -> dict[str, Any]:
         self.logger.log("refresh_snapshot_start", timeout=timeout)
@@ -1438,19 +1443,29 @@ class FieldBackdoor:
         return resolved
 
     def get_box(self, uid: str) -> dict[str, Any]:
-        resolved = self.resolve_box_token(uid)
+        _, box = self.require_box_reference(uid)
+        return box
+
+    def require_box_reference(self, token: str) -> tuple[str, dict[str, Any]]:
+        resolved = self.resolve_box_token(token)
         box = self.boxes.get(resolved)
         if box is None:
-            raise BackdoorError(f"Unknown box uid: {resolved}")
-        return box
+            detail = f"Unknown box uid: {resolved}."
+            if self.scratch:
+                detail += (
+                    " Scratch documents last for one field_backdoor.py invocation; "
+                    "reusing --port does not reopen the previous scratch document. "
+                    "Combine dependent commands in one invocation or use --document <name>."
+                )
+            raise BackdoorError(detail)
+        return resolved, box
 
     def validate_box_reference(self, token: str) -> str:
         resolved = self.resolve_box_token(token)
         if resolved == "root":
             return resolved
-        if resolved not in self.boxes:
-            raise BackdoorError(f"Unknown box uid: {resolved}")
-        return resolved
+        validated, _ = self.require_box_reference(resolved)
+        return validated
 
     def _set_local_string(self, uid: str, property_name: str, value: str) -> None:
         box = self._ensure_box(uid)
@@ -1483,7 +1498,7 @@ class FieldBackdoor:
         return Path(source).read_text(encoding="utf-8")
 
     async def set_string(self, uid: str, property_name: str, value: str) -> dict[str, Any]:
-        resolved = self.resolve_box_token(uid)
+        resolved, _ = self.require_box_reference(uid)
         self.logger.log("set_string_start", uid=resolved, property=property_name, valueLength=len(value))
         self._set_local_string(resolved, property_name, value)
         await self.send_message(
@@ -1494,9 +1509,9 @@ class FieldBackdoor:
         return {"uid": resolved, "property": property_name, "value": value}
 
     async def set_frame(self, uid: str, frame: dict[str, float]) -> dict[str, Any]:
-        resolved = self.resolve_box_token(uid)
+        resolved, box = self.require_box_reference(uid)
         self.logger.log("set_frame_start", uid=resolved, frame=frame)
-        self._ensure_box(resolved)["frame"] = dict(frame)
+        box["frame"] = dict(frame)
         await self.send_message(
             "set-rect",
             {"uid": resolved, "property": "frame", "value": frame},
@@ -1680,9 +1695,10 @@ class FieldBackdoor:
         self, *, uid: str, property_name: str, value: str, timeout: float
     ) -> dict[str, Any]:
         """Set a single string property on a box (e.g. notes). Direct setter."""
+        resolved, _ = self.require_box_reference(uid)
         event = await self.call_for_single_reply(
             "agent-set-property",
-            {"uid": uid, "property": property_name, "value": value},
+            {"uid": resolved, "property": property_name, "value": value},
             timeout=timeout,
         )
         payload = event.get("payload")
@@ -1861,11 +1877,11 @@ class FieldBackdoor:
         return data, events, timed_out
 
     async def run_box(self, uid: str, *, property_name: str, value: str | None, timeout: float) -> tuple[dict[str, Any], list[dict[str, Any]], bool]:
-        resolved = self.resolve_box_token(uid)
+        resolved, box = self.require_box_reference(uid)
         self.logger.log("run_box_start", uid=resolved, property=property_name, timeout=timeout, hasInlineValue=value is not None)
         if value is not None:
             await self.set_string(resolved, property_name, value)
-        code = str(self._ensure_box(resolved).get(property_name) or "")
+        code = str(box.get(property_name) or "")
         reply_name = f"exec_{uuid.uuid4().hex}"
         start_seq = self.event_seq
         await self.send_message(
@@ -1911,11 +1927,11 @@ class FieldBackdoor:
         return data, events, timed_out
 
     async def launch_box(self, uid: str, *, property_name: str, value: str | None, timeout: float) -> tuple[dict[str, Any], list[dict[str, Any]], bool]:
-        resolved = self.resolve_box_token(uid)
+        resolved, box = self.require_box_reference(uid)
         self.logger.log("launch_box_start", uid=resolved, property=property_name, timeout=timeout, hasInlineValue=value is not None)
         if value is not None:
             await self.set_string(resolved, property_name, value)
-        code = str(self._ensure_box(resolved).get(property_name) or "")
+        code = str(box.get(property_name) or "")
         reply_name = f"launch_{uuid.uuid4().hex}"
         start_seq = self.event_seq
         await self.send_message(
@@ -1967,11 +1983,11 @@ class FieldBackdoor:
         return data, events, timed_out
 
     async def continue_box(self, uid: str, *, property_name: str, value: str | None, timeout: float) -> tuple[dict[str, Any], list[dict[str, Any]], bool]:
-        resolved = self.resolve_box_token(uid)
+        resolved, box = self.require_box_reference(uid)
         self.logger.log("continue_box_start", uid=resolved, property=property_name, timeout=timeout, hasInlineValue=value is not None)
         if value is not None:
             await self.set_string(resolved, property_name, value)
-        code = str(self._ensure_box(resolved).get(property_name) or "")
+        code = str(box.get(property_name) or "")
         reply_name = f"continue_{uuid.uuid4().hex}"
         start_seq = self.event_seq
         await self.send_message(
@@ -2023,13 +2039,13 @@ class FieldBackdoor:
         return data, events, timed_out
 
     async def stop_box(self, uid: str, timeout: float) -> tuple[dict[str, Any], list[dict[str, Any]], bool]:
-        resolved = self.resolve_box_token(uid)
+        resolved, box = self.require_box_reference(uid)
         self.logger.log("stop_box_start", uid=resolved, timeout=timeout)
         start_seq = self.event_seq
         await self.send_message("stop-box", {"uid": resolved})
 
         def predicate():
-            if not self._ensure_box(resolved).get("runningStrands"):
+            if not box.get("runningStrands"):
                 return self.events_since(start_seq)
             return None
 
@@ -2041,13 +2057,13 @@ class FieldBackdoor:
             events = self.events_since(start_seq)
         data = {
             "uid": resolved,
-            "running": bool(self._ensure_box(resolved).get("runningStrands")),
+            "running": bool(box.get("runningStrands")),
         }
         self.logger.log("stop_box_complete", uid=resolved, timedOut=timed_out, running=data["running"], eventCount=len(events))
         return data, events, timed_out
 
     def collect_output(self, uid: str, *, channel: str | None, kind: str) -> list[dict[str, Any]]:
-        resolved = self.resolve_box_token(uid)
+        resolved, _ = self.require_box_reference(uid)
         collected = self._matching_output_events(resolved, channel=channel, kind=kind, contains=None)
         self.logger.log("collect_output", uid=resolved, channel=channel, kind=kind, count=len(collected))
         return collected
@@ -2103,7 +2119,7 @@ class FieldBackdoor:
         timeout: float,
         fail_on_error: bool = True,
     ) -> tuple[list[dict[str, Any]], bool, dict[str, Any] | None]:
-        resolved = self.resolve_box_token(uid)
+        resolved, _ = self.require_box_reference(uid)
         self.logger.log(
             "wait_output_start",
             uid=resolved,
@@ -2534,6 +2550,8 @@ async def dispatch_command(
             "managedLog": str(client.managed_log_path) if client.managed_log_path else None,
             "documentName": client.document_name,
             "scratch": client.scratch,
+            "scratchLifetime": "invocation" if client.scratch else None,
+            "scratchPortReuse": False if client.scratch else None,
             "sessionKey": client.session_key,
             "boxCount": len(client.boxes),
             "runningBoxes": running,
@@ -2921,7 +2939,7 @@ async def dispatch_command(
         observed_stable_reads = 0
         last_size = -1
         start_seq = client.event_seq
-        fail_on_error_uid = client.resolve_box_token(args.fail_on_error_uid) if args.fail_on_error_uid else None
+        fail_on_error_uid = client.require_box_reference(args.fail_on_error_uid)[0] if args.fail_on_error_uid else None
 
         def error_event(events):
             if fail_on_error_uid is None:

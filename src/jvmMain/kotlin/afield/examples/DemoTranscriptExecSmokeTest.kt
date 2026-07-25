@@ -10,6 +10,8 @@ import afield.isTrue
 import afield.macros.checkAtticAndExecute
 import afield.macros.checkIntroductionAndExecute
 import afield.macros.checkPreambleAndExecute
+import afield.remotejs.KotlinJsExecution
+import afield.remotejs.kotlinJsTopologyNeedsUpdating
 import afield.thisSessionInfo
 import kotlinx.coroutines.runBlocking
 import org.yaml.snakeyaml.Yaml
@@ -92,8 +94,13 @@ object DemoTranscriptExecSmokeTest {
      */
     private val KOTLINJS = setOf(
         "tone_synth_sequence",
+        "remotear_start",
         "remotear_scene_motion",
+        "visionos_start",
     )
+
+    /** User-facing starters must carry a real KotlinJS root → child topology, not only compile offline. */
+    private val KOTLINJS_STARTERS = setOf("remotear_start", "visionos_start")
 
     /** Ops that build the box graph without compiling/running any box Kotlin. */
     private val GRAPH_VERBS = setOf(
@@ -163,6 +170,9 @@ object DemoTranscriptExecSmokeTest {
                 (p?.get("box") ?: p?.get("uid") ?: p?.get("id") ?: p?.get("target"))?.toString()
             } else null
         }
+        if (name in KOTLINJS_STARTERS) {
+            kotlinJsTopologyNeedsUpdating(thisSessionInfo.get().boxes.values)
+        }
 
         println("[kotlinjs] $name (${boxIds.size} box(es)) …")
         var demoOk = true
@@ -170,7 +180,9 @@ object DemoTranscriptExecSmokeTest {
         for (id in boxIds) {
             val target = runCatching { box(id, createIfMissing = false) }.getOrNull() ?: continue
             if (target.getPropertyRaw("_tombstone").isTrue()) continue
-            val code = target.code
+            // Language-root boxes intentionally have no code property; do not force the non-null
+            // delegated accessor merely to discover that this graph node is structural.
+            val code = target.getPropertyRaw("code")?.toString().orEmpty()
             if (code.isBlank()) continue
             // Only KotlinJS-head boxes: a `// {{ marker }}` first line, or mainLanguage == kotlinjs.
             val mainLang = target.getPropertyRaw("mainLanguage", "")?.toString()?.trim().orEmpty()
@@ -178,6 +190,12 @@ object DemoTranscriptExecSmokeTest {
             if (selection == null || (!selection.explicit && !mainLang.equals("kotlinjs", ignoreCase = true))) {
                 println("[kotlinjs]   $id: not a kotlinjs-head box — skipped")
                 continue
+            }
+            if (name in KOTLINJS_STARTERS && target.ke !is KotlinJsExecution) {
+                demoOk = false
+                val msg = "$name/$id: starter code box is not beneath a KotlinJS language root"
+                failures.add(msg)
+                println("[kotlinjs]   $id: FAIL $msg")
             }
             val prepared = selection.profile.prepareSource(selection.source)
             val result = afield.remotejs.KotlinToJsCompiler.compile(

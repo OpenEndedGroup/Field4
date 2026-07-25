@@ -1,5 +1,6 @@
 package afield.examples
 
+import afield.Box
 import afield.METAROOT_ID
 import afield.OperationTranscript
 import afield.SavingContext
@@ -64,16 +65,15 @@ object AgentTranscriptMaterializer {
      * corpus for agents composing scenes (and in DemoTranscriptExecSmokeTest); they are only excluded
      * from the welcome/gallery starting points.
      *
-     * `tone_synth_sequence` is a KotlinJS "code in the head" box (`mainLanguage = kotlinjs`, first line
-     * `// {{ tone }}`). This lightweight materialize harness does not install the main-language registry,
-     * so `mainLanguage` is not persisted into the snapshot — the standalone starting point would open as
-     * a plain JVM-Kotlin box and fail to compile the head-only `Tone.*` names. It stays in the corpus and
-     * is replay-verified by DemoTranscriptExecSmokeTest (compiled Kotlin→JS through the real compiler);
-     * it is excluded only from the welcome/gallery starting points.
+     * `tone_synth_sequence` stays agent-only because WebAudio requires a browser-head user gesture;
+     * opening it as a generic welcome starting point cannot make sound without that extra interaction.
+     * `remotear_scene_motion` demonstrates the richer asset API but deliberately refers to an external
+     * `/abs/assets/robot.glb`, so the smaller asset-free RemoteAR starter is the loadable starting point.
      */
     private val EXCLUDE = setOf(
         "afield_four_traditional_triangle",
         "graphics_renderer_launch",
+        "remotear_scene_motion",
         "tone_synth_sequence",
     )
 
@@ -203,29 +203,40 @@ object AgentTranscriptMaterializer {
         val boxes = info.boxes.values
             .filter { it.id != "root" && it.id != METAROOT_ID && !it.getPropertyRaw("_tombstone").isTrue() }
             .toSet()
-        val target = File(outRoot, name)
-        if (target.exists()) target.deleteRecursively()
-        target.mkdirs()
-        val latch = CountDownLatch(1)
-        SavingContext().save(target.absolutePath, boxes, message = "agent transcript: $name", onComplete = { latch.countDown() })
-        check(latch.await(30, TimeUnit.SECONDS)) {
-            "save timed out after 30s for $name -> ${target.absolutePath}"
+        // This standalone harness does not run the normal @RunsAt startup registry. Add the
+        // KotlinJS-root properties only while saving documents that actually use them; leaving the
+        // global persistence set enlarged would rewrite every unrelated generated starting point.
+        val languageProperties = listOf("mainLanguage", "isKotlinJsRoot")
+        val addedLanguageProperties = languageProperties.filter { property ->
+            boxes.any { it.getPropertyRaw(property) != null } && Box.ioPersistentProperties.add(property)
         }
+        val target = File(outRoot, name)
+        try {
+            if (target.exists()) target.deleteRecursively()
+            target.mkdirs()
+            val latch = CountDownLatch(1)
+            SavingContext().save(target.absolutePath, boxes, message = "agent transcript: $name", onComplete = { latch.countDown() })
+            check(latch.await(30, TimeUnit.SECONDS)) {
+                "save timed out after 30s for $name -> ${target.absolutePath}"
+            }
 
-        // `history_metrics.edn` is a per-launch runtime activity log carrying a fresh timestamp on
-        // every save. A materialized starting point is pristine (never launched), so drop it — this
-        // keeps the committed output byte-stable so regenerating on every docs build causes no churn.
-        File(target, "history_metrics.edn").delete()
+            // `history_metrics.edn` is a per-launch runtime activity log carrying a fresh timestamp on
+            // every save. A materialized starting point is pristine (never launched), so drop it — this
+            // keeps the committed output byte-stable so regenerating on every docs build causes no churn.
+            File(target, "history_metrics.edn").delete()
 
-        // Deterministic normalization of the written files. Box-ki lazy init runs *asynchronously*
-        // during the graph build and can inject an empty `preamble` ("") into a box's properties at
-        // a timing that varies with JVM warmth — so the saved EDN otherwise differs run-to-run purely
-        // by whether that empty key landed before the save snapshot. A blank preamble is regenerated
-        // on open anyway (see the `save` op contract), so stripping the exact empty-preamble token
-        // makes the committed output byte-stable. Only the empty form is touched; any real preamble
-        // content is left intact.
-        stripEmptyPreamble(File(target, SavingContext.METADATA_EDN))
-        stripEmptyPreamble(File(target, "document.md"))
+            // Deterministic normalization of the written files. Box-ki lazy init runs *asynchronously*
+            // during the graph build and can inject an empty `preamble` ("") into a box's properties at
+            // a timing that varies with JVM warmth — so the saved EDN otherwise differs run-to-run purely
+            // by whether that empty key landed before the save snapshot. A blank preamble is regenerated
+            // on open anyway (see the `save` op contract), so stripping the exact empty-preamble token
+            // makes the committed output byte-stable. Only the empty form is touched; any real preamble
+            // content is left intact.
+            stripEmptyPreamble(File(target, SavingContext.METADATA_EDN))
+            stripEmptyPreamble(File(target, "document.md"))
+        } finally {
+            Box.ioPersistentProperties.removeAll(addedLanguageProperties)
+        }
         return boxes.size
     }
 

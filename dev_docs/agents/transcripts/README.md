@@ -89,6 +89,16 @@ For renderer boxes, keep `start(renderer::run)` as the final expression of the l
   run the transcript, and watch Field output for `vision-metal shader: Shader installed`. The program
   is retained and replayed when the native client connects, so the transcript may run before or after
   opening the immersive space. A visionOS device or simulator is required for the native image.
+- `remotear_start.yaml`: the minimal Kotlin/JS RemoteAR starting place. It creates a KotlinJS
+  language root and an editable child with the `// {{ remoteAR }}` profile, launches an asset-free
+  animated cube after the runtime topology settles, demonstrates `onStart` / `onFrame` / `onStop`,
+  and cleans up on relaunch or Stop. Open
+  `/extensions/remote_ar/index.html?debug=1` on the browser or headset to see it.
+- `visionos_start.yaml`: the matching Kotlin/JS visionOS starting place. It creates a KotlinJS
+  language root and an editable child with the `// {{ visionmetal }}` profile, waits for the runtime
+  topology to settle, updates named uniforms on the native compositor clock, and includes a complete
+  editable Metal shader in the child's `fragment` property.
+  Open **Live Metal** in Field4Vision to see it on a visionOS device or simulator.
 - `spin_glass.yaml`: a five-box **2D Edwards-Anderson spin glass**, Vulkan-compute accelerated, on a blank canvas — a renderer box, a "metropolis update" compute box (checkerboard / red-black Monte Carlo over Ising spins with random `+/-J` or Gaussian bonds and cosine simulated annealing, updating in-place `buffer_reference` buffers it publishes as props), a "measure" compute box (probes `vec2(spin, energy)` for every site via `{% include "fieldProbe" %}`, so the stats card's x-mean is the magnetization and its y-mean the energy per spin), and a "lattice view" draw box (a fullscreen triangle whose fragment shader reads the shared spins buffer and colours each cell). Requires a GPU/Vulkan window. Demonstrates a red-black compute update split into two dispatches per frame with a `computeMemoryBarrier` task between them, per-frame simulation state advanced from a leading `computeTask` "tick", and a `renderer -> update -> measure -> view` publish/read chain. Produces no image artifact itself — capture its native window with a follow-on `native-screenshot <path>` backdoor command (`--with-playwright`).
 
 - `imgui_vr_panel.yaml`: **Dear ImGui as an in-VR panel**. A renderer box plus a child box that runs `ImGuiVrPanelDemo` (`afield.examples.four`): an ImGui panel rendered to a texture, mapped onto a world-space `ImGuiPanel` quad, drawn once per eye by `SideBySideStereoTarget`, packed side-by-side, and blitted to the window. The mouse drives the mock controller ray (a real controller in XR); the hit is converted to panel UV and injected into ImGui. On Windows/Linux the same packed image feeds a headset via `OpenXRHmdTarget.copySideBySideToEyes`; macOS previews on the desktop. Requires a GPU/Vulkan window — capture with a follow-on `native-screenshot <path>` (`--with-playwright`). Functional coverage of the pipeline is the `examples.four.imgui-vr-panel-smoke` FIELD_TEST.
