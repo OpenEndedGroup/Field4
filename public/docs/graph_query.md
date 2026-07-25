@@ -180,10 +180,10 @@ Modulation and suppliers work the same way across the whole set:
 
 ```kotlin
 // one shared LFO added on top of every cutoff
-(rig matches ("**" + "/cutoff")).modulate(sine * 40f, mode = ParamModulationMode.ADD)
+(rig matches "**/cutoff").modulate(sine * 40f, mode = ParamModulationMode.ADD)
 
 // or a per-entry expression, with the group's statistics in scope
-rig.params("**" + "/freq").supply { entry, index, group ->
+rig.params("**/freq").supply { entry, index, group ->
     group.mean + sin(time * (0.2f + index * 0.05f)) * 12f
 }
 ```
