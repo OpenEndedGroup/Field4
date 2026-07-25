@@ -124,6 +124,18 @@ FENCE_OPEN_RE = re.compile(
 )
 GENERIC_FENCE_OPEN_RE = re.compile(r"^(?P<indent>[ ]{0,3})(?P<fence>`{3,}|~{3,}).*(?:\r?\n)?$")
 MARKER_PREFIXES = (":::static", ":::before", ":::after", ":::")
+
+
+def is_marker_line(stripped: str) -> bool:
+    """True for any `:::` section/fold marker line. Fold markers (`:::fold [label]` /
+    `:::endfold`) mark boilerplate that the code-diff player collapses in the rendered
+    page; they are stripped from the EXECUTED code here but the enclosed lines are kept
+    (they still run). See public/docs/assets/code-diff-player for the client side."""
+    if stripped in MARKER_PREFIXES:
+        return True
+    if stripped == ":::endfold" or stripped == ":::fold" or stripped.startswith(":::fold "):
+        return True
+    return False
 TRUE_VALUES = {"1", "true", "yes", "on"}
 FALSE_VALUES = {"0", "false", "no", "off"}
 RUNNER_DIGEST_SOURCE_FILES = (
@@ -185,6 +197,8 @@ class RunnerOptions:
     region: str  # for capture="ui": what the drive recording/still is clipped to
     clip_selector: str | None  # for capture="ui": clip to a CSS selector (overlays not backed by a box)
     warm_completion: bool  # for capture="ui": pre-warm the K1 completion engine (autocomplete captures)
+    audio: str | None  # path to .wav output; offline-renders a registered synth scene to WAV
+    audio_spec: str | None  # name of the DoughDspSoundDocs scene to offline-render for audio=
     hidden: bool
     language_key: str
 
@@ -1270,6 +1284,156 @@ class RunnerState:
         self.videos_run += 1
         self.save()
 
+    def ensure_audio(self, *, options: RunnerOptions, page_path: Path, block_index: int) -> None:
+        """audio="…": OFFLINE-render a registered synth scene to a real 16-bit PCM WAV.
+
+        Parallel to `ensure_video`, but the "capture" is a deterministic, headless
+        DSP render rather than a browser recording. The runner generates the box code
+        (`DoughDspSoundDocs.renderWav("<scene>", "<abs wav>")`), runs it in the shared
+        Field JVM, and `wait-file`s the WAV into existence (with --fail-on-error-uid so
+        a box error surfaces fast). No realtime engine, no audio device, no browser —
+        the WAV is produced by the same offline block-render the plot gallery uses, so
+        the committed asset regenerates byte-stably at docs-build.
+        """
+        assert options.audio is not None and options.audio_spec is not None
+        audio_path = resolve_output_path(page_path, options.audio)
+        audio_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # The box code the runner generates: an offline render straight to the WAV path.
+        generated_code = (
+            "afield.four.synth.DoughDspSoundDocs.renderWav("
+            f"{json.dumps(options.audio_spec)}, {json.dumps(str(audio_path))})"
+        )
+
+        cache_allowed = self.runner_mode != "always"
+        cache_metadata = compute_cache_metadata(
+            code=generated_code,
+            options=options,
+            page_path=page_path,
+            block_index=block_index,
+            runner_source_digest=self.runner_source_digest,
+        )
+        digest = compute_digest(
+            code=generated_code,
+            options=options,
+            page_path=page_path,
+            block_index=block_index,
+            runner_mode=self.runner_mode,
+            runner_source_digest=self.runner_source_digest,
+        )
+        cache_key = str(audio_path)
+        cached_digest = self.cache.get(cache_key)
+        cached_metadata = self.cache_metadata.get(cache_key)
+        if cache_allowed and not options.force and audio_path.exists() and cached_digest == digest:
+            LOG.info("Field docs runner cache hit (audio): %s", audio_path)
+            self.cache_hits += 1
+            return
+        if reuse_existing_asset_for_incremental(
+            runner_mode=self.runner_mode,
+            output_path=audio_path,
+            options=options,
+            cached_metadata=cached_metadata,
+            current_metadata=cache_metadata,
+        ):
+            LOG.info("Field docs runner using existing audio asset after runner-only cache change: %s", audio_path)
+            self.assets_reused += 1
+            self.cache[cache_key] = digest
+            self.cache_metadata[cache_key] = cache_metadata
+            self.dirty = True
+            self.save()
+            return
+        if cache_allowed and not options.force and self.runner_mode == "incremental" and audio_path.exists() and cached_digest is None:
+            LOG.info("Field docs runner using existing checked-in audio asset without cache entry: %s", audio_path)
+            self.assets_reused += 1
+            self.cache[cache_key] = digest
+            self.cache_metadata[cache_key] = cache_metadata
+            self.dirty = True
+            self.save()
+            return
+        LOG.info(
+            "Field docs runner cache %s (audio): %s",
+            cache_status_label(cache_allowed=cache_allowed, force=options.force),
+            format_cache_reason(
+                output_path=audio_path,
+                output_exists=audio_path.exists(),
+                cached_digest=cached_digest,
+                computed_digest=digest,
+                cached_metadata=cached_metadata,
+                current_metadata=cache_metadata,
+                cache_allowed=cache_allowed,
+                force=options.force,
+                runner_mode=self.runner_mode,
+            ),
+        )
+
+        command = build_audio_backdoor_command(
+            repo_root=self.repo_root,
+            audio_path=audio_path,
+            options=options,
+            newer_than=time.time(),
+        )
+        LOG.info("Field docs runner rendering audio %s -> %s (scene %r)", page_path.name, audio_path, options.audio_spec)
+        completed: subprocess.CompletedProcess[str] | None = None
+        for attempt in range(1, RUNNER_RETRIES + 1):
+            try:
+                completed = self._run_capture_child(
+                    command,
+                    options=options,
+                    label=f"audio {audio_path.name}",
+                    is_video=False,
+                    input_text=generated_code,
+                )
+            except subprocess.TimeoutExpired as exc:
+                if attempt < RUNNER_RETRIES:
+                    LOG.warning(
+                        "Field docs runner audio attempt %s/%s timed out for %s -> %s; retrying",
+                        attempt, RUNNER_RETRIES, page_path.name, audio_path,
+                    )
+                    self._restart_shared_field_server(reason=f"timeout while rendering audio {audio_path}")
+                    continue
+                self._restart_shared_field_server(reason=f"final timeout while rendering audio {audio_path}")
+                raise RuntimeError(
+                    f"Field docs runner audio timed out for {page_path.name} -> {audio_path}.\n"
+                    f"Command: {shlex.join(command)}\nTimed out after {exc.timeout:.1f}s"
+                ) from exc
+            if completed.returncode == 0:
+                break
+            if attempt < RUNNER_RETRIES:
+                LOG.warning(
+                    "Field docs runner audio attempt %s/%s failed for %s -> %s; retrying\n%s",
+                    attempt, RUNNER_RETRIES, page_path.name, audio_path,
+                    format_completed_failure_details(completed, command=command, field_log_path=self.shared_log_path),
+                )
+                self._restart_shared_field_server(
+                    reason=f"failed audio render attempt {attempt}/{RUNNER_RETRIES} for {audio_path}"
+                )
+            else:
+                self._restart_shared_field_server(reason=f"final failed audio render attempt for {audio_path}")
+        assert completed is not None
+        if completed.returncode != 0:
+            details = format_completed_failure_details(completed, command=command, field_log_path=self.shared_log_path)
+            diagnosis = self.diagnose_capture_failure(page_path=page_path, output_path=audio_path)
+            raise RuntimeError(
+                f"Field docs runner audio failed for {page_path.name} -> {audio_path}.\n{details}\n\n{diagnosis}"
+            )
+        execution_error = extract_backdoor_execution_error(completed.stdout)
+        if execution_error is not None:
+            diagnosis = self.diagnose_capture_failure(page_path=page_path, output_path=audio_path)
+            raise RuntimeError(
+                f"Field docs runner execution error for {page_path.name} -> {audio_path}.\n"
+                f"Command: {shlex.join(command)}\n{execution_error}\n\n{diagnosis}"
+            )
+        # A real WAV must exist and carry a valid RIFF/WAVE header with a non-empty
+        # data chunk — a zero-length or headerless file is a failed capture.
+        if not audio_path.exists():
+            raise RuntimeError(f"Field docs runner audio produced no file for {page_path.name} -> {audio_path}.")
+        validate_wav_file(audio_path)
+        self.cache[cache_key] = digest
+        self.cache_metadata[cache_key] = cache_metadata
+        self.dirty = True
+        self.videos_run += 1
+        self.save()
+
     def ensure_ui_drive(self, *, code: str, options: RunnerOptions, page_path: Path, block_index: int) -> None:
         """capture="ui": drive the live editor with the fence's Kotlin script and
         capture a video and/or a still in one run. The `drive` transcript op does the
@@ -1742,6 +1906,7 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
             )
             screenshot_succeeded = False
             video_succeeded = False
+            audio_succeeded = False
             if options.capture == "ui":
                 # One drive run produces the video and/or the still together.
                 ui_screenshot_path = resolve_output_path(page_path, options.screenshot) if options.screenshot else None
@@ -1816,6 +1981,29 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                         state.handle_capture_error(page_path=page_path, output_path=video_path, error=exc)
                 if video_succeeded:
                     register_generated_file(files=files, docs_dir=state.docs_dir, site_dir=Path(state.config["site_dir"]).resolve(), use_directory_urls=bool(state.config["use_directory_urls"]), output_path=video_path)
+            if options.audio and options.capture != "ui":
+                audio_path = resolve_output_path(page_path, options.audio)
+                if state.runner_mode == "never":
+                    audio_succeeded = audio_path.exists()
+                    if audio_succeeded:
+                        state.assets_reused += 1
+                    else:
+                        state.missing_assets += 1
+                    LOG.info(
+                        "Field docs runner mode=never: %s audio asset %s",
+                        "using existing" if audio_succeeded else "skipping missing",
+                        audio_path,
+                    )
+                else:
+                    try:
+                        state.ensure_audio(options=options, page_path=page_path, block_index=block_index)
+                        audio_succeeded = True
+                    except RuntimeError as exc:
+                        if not state.continue_on_error:
+                            raise
+                        state.handle_capture_error(page_path=page_path, output_path=audio_path, error=exc)
+                if audio_succeeded:
+                    register_generated_file(files=files, docs_dir=state.docs_dir, site_dir=Path(state.config["site_dir"]).resolve(), use_directory_urls=bool(state.config["use_directory_urls"]), output_path=audio_path)
 
         hide_source = fence_name in RUNNER_FENCES and options.hidden
         if not hide_source:
@@ -1838,6 +2026,14 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                 out.append(f'<video controls autoplay loop muted playsinline style="max-width:100%">\n')
                 out.append(f'  <source src="{video_rel}" type="video/mp4">\n')
                 out.append(f'</video>\n')
+            if options.audio and audio_succeeded:
+                # Page-relative path, same convention as the screenshot/video embeds above;
+                # zensical rewrites raw-HTML src attributes for the page's URL depth.
+                audio_rel = markdown_path_for(page_path, options.audio)
+                out.append("\n")
+                out.append('<audio controls preload="metadata" style="width:100%">\n')
+                out.append(f'  <source src="{audio_rel}" type="audio/wav">\n')
+                out.append('</audio>\n')
 
         if not hide_source:
             previous_code_by_language[language_key] = extract_effective_code(
@@ -1857,8 +2053,15 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
     screenshot = first_attr(attrs, "screenshot", "path")
     source_image = first_attr(attrs, "source-image", "source_image", "native-image", "native_image")
     video = first_attr(attrs, "video")
-    if not screenshot and not video:
-        raise RuntimeError(f"{page_path}:{line_number} {runner_name} requires screenshot=\"...\" and/or video=\"...\"")
+    audio = first_attr(attrs, "audio")
+    audio_spec = first_attr(attrs, "audio-spec", "audio_spec", "audioSpec", "sound", "scene")
+    if not screenshot and not video and not audio:
+        raise RuntimeError(f"{page_path}:{line_number} {runner_name} requires screenshot=\"...\", video=\"...\" and/or audio=\"...\"")
+    if audio and not audio_spec:
+        raise RuntimeError(
+            f"{page_path}:{line_number} audio=\"...\" requires audio-spec=\"<scene>\" "
+            f"(a registered afield.four.synth.DoughDspSoundDocs scene)"
+        )
 
     capture = (first_attr(attrs, "capture", "mode") or "box").strip().lower()
     if capture not in {"box", "window", "window-editor", "editor", "native-window", "ui"}:
@@ -1955,6 +2158,8 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
         region=region,
         clip_selector=first_attr(attrs, "clip-selector", "clip_selector", "clipSelector"),
         warm_completion=parse_bool(first_attr(attrs, "warm-completion", "warm_completion", "warmCompletion"), default=False),
+        audio=audio,
+        audio_spec=audio_spec,
         hidden=parse_bool(first_attr(attrs, "hidden", "hide-source", "hide_source"), default=False),
         language_key=fence_language_key(open_line=open_line, fence_name=runner_name),
     )
@@ -2148,7 +2353,8 @@ def extract_effective_code(*, lines: list[str], fence_name: str, page_path: Path
 
 def extract_static_code(*, lines: list[str]) -> str:
     code_lines = [line.rstrip("\r\n") for line in lines]
-    filtered = [line for line in code_lines if line.strip() not in MARKER_PREFIXES]
+    # Drop section AND fold markers; keep the code inside a fold region (it must run).
+    filtered = [line for line in code_lines if not is_marker_line(line.strip())]
     return normalize_code_lines(filtered)
 
 
@@ -2172,7 +2378,7 @@ def extract_diff_after_code(*, lines: list[str], page_path: Path, line_number: i
             mode = "after"
             saw_after = True
             continue
-        if stripped in {":::static", ":::"}:
+        if stripped in {":::static", ":::"} or stripped == ":::endfold" or stripped == ":::fold" or stripped.startswith(":::fold "):
             continue
         if mode == "after":
             after_lines.append(line)
@@ -2217,7 +2423,7 @@ def split_diff_sections(lines: list[str]) -> tuple[list[str], list[str], bool, b
             has_after = True
             mode = "after"
             continue
-        if stripped in {":::static", ":::"}:
+        if stripped in {":::static", ":::"} or stripped == ":::endfold" or stripped == ":::fold" or stripped.startswith(":::fold "):
             continue
         if mode == "after":
             after_lines.append(line)
@@ -2338,6 +2544,10 @@ def options_digest_payload(options: RunnerOptions) -> dict[str, Any]:
             "waitOutputChannel": options.wait_output_channel,
             "waitOutputContains": options.wait_output_contains,
         })
+    # Present only for audio= fences, so every other fence hashes byte-identically.
+    if options.audio:
+        payload["audio"] = options.audio
+        payload["audioSpec"] = options.audio_spec
     return payload
 
 
@@ -3110,6 +3320,62 @@ class BackdoorInvocation:
     session_eligible: bool            # safe to run through the warm-session daemon?
     port: int
     document: str | None
+
+
+def validate_wav_file(path: Path) -> None:
+    """Assert [path] is a real, non-empty 16-bit PCM WAV (not a silent/headerless stub)."""
+    data = path.read_bytes()
+    if len(data) <= 44:
+        raise RuntimeError(f"WAV {path} too small ({len(data)} bytes) — not a real audio capture")
+    if data[0:4] != b"RIFF" or data[8:12] != b"WAVE" or data[12:16] != b"fmt ":
+        raise RuntimeError(f"WAV {path} missing RIFF/WAVE/fmt header — not a real audio capture")
+
+
+def build_audio_backdoor_command(
+    *,
+    repo_root: Path,
+    audio_path: Path,
+    options: RunnerOptions,
+    newer_than: float,
+) -> list[str]:
+    """Backdoor argv that creates a box, runs the generated offline-render code (piped on
+    stdin), and waits for the WAV to land. No Playwright/screenshot — a pure JVM render."""
+    port = int(os.environ.get(RUNNER_PORT_ENV, str(DEFAULT_RUNNER_PORT)))
+    command = [
+        sys.executable,
+        str((repo_root / "tools" / "field_backdoor.py").resolve()),
+        "--json",
+        "--port", str(port),
+        "--timeout", str(options.timeout),
+    ]
+    if options.document:
+        command.extend(["--document", options.document])
+    backdoor_commands = [
+        shlex.join([
+            "new-box",
+            "--name", options.box_name,
+            "--x", str(options.box_x),
+            "--y", str(options.box_y),
+            "--w", str(options.box_w),
+            "--h", str(options.box_h),
+            "--timeout", str(options.timeout),
+        ]),
+        shlex.join([
+            "run", "@last",
+            "--property", options.property_name,
+            "--file", "-",
+            "--timeout", str(options.timeout),
+        ]),
+        shlex.join([
+            "wait-file", str(audio_path),
+            "--timeout", str(options.timeout),
+            "--newer-than", str(newer_than),
+            "--fail-on-error-uid", "@last",
+        ]),
+    ]
+    for command_line in backdoor_commands:
+        command.extend(["--command", command_line])
+    return command
 
 
 def build_backdoor_command(
