@@ -10,6 +10,7 @@ import os
 import re
 import shlex
 import signal
+import socket
 import ssl
 import subprocess
 import sys
@@ -79,6 +80,14 @@ DEFAULT_TIMEOUT = 20.0
 # for the Field instances IT launches, so `field_debug_probe` works out of the box
 # against backdoor-managed servers. Manual `./gradlew runJvm` stays closed.
 DEFAULT_JDWP_PORT = "5005"
+# ...but a JDWP bind failure is FATAL to JVM startup ("transport error 202: bind
+# failed" -> the JVM refuses to boot, Gradle exits 1 in ~1s). Because 5005 is a
+# single machine-global port, any second Field JVM -- a sibling worktree, or the
+# predecessor this one is replacing that has not finished shutting down -- makes
+# the new one unbootable. That surfaces as "backdoor returned no JSON result"
+# ~1.8s failures scattered through a smoke run. A debug convenience must never
+# prevent Field from starting, so scan for a free port and fall back to off.
+JDWP_PORT_SCAN_RANGE = 64
 # Generous budget for the FIRST Playwright attach on a machine, where the browser
 # binaries may still need to download. After that, attaches are fast, so ordinary
 # ops honor the caller's --timeout and a hung attach fails fast instead of blocking
@@ -131,6 +140,44 @@ def health_check(port: int, ssl_context: ssl.SSLContext, timeout: float = 1.5) -
         return body.strip().lower() == "ok"
     except (OSError, urllib.error.URLError, urllib.error.HTTPError):
         return False
+
+
+def jdwp_port_is_bindable(port: int, host: str = "127.0.0.1") -> bool:
+    """True if the JDWP agent could bind ``host:port`` right now.
+
+    Deliberately does NOT set SO_REUSEADDR: the probe has to be at least as
+    strict as the JDWP agent's own bind, or we hand back a port that the JVM
+    then dies on.
+    """
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.bind((host, port))
+    except OSError:
+        return False
+    return True
+
+
+def resolve_jdwp_port(host: str = "127.0.0.1") -> str | None:
+    """Pick a free JDWP port, or None to leave remote debugging off.
+
+    An explicit AFIELD_JDWP_PORT is honored verbatim (including "off" and
+    friends): the caller may be waiting to attach a debugger on exactly that
+    port, so silently moving it would be worse than failing. Only the default
+    is allowed to drift.
+
+    Inherently racy -- a port free at check time can be taken before the JVM
+    binds it -- but the window is small and the scan makes a repeat collision
+    on the next port unlikely.
+    """
+    explicit = os.environ.get("AFIELD_JDWP_PORT")
+    if explicit is not None:
+        return explicit
+
+    preferred = int(DEFAULT_JDWP_PORT)
+    for candidate in range(preferred, preferred + JDWP_PORT_SCAN_RANGE):
+        if jdwp_port_is_bindable(candidate, host):
+            return str(candidate)
+    return None
 
 
 def gradle_command(*tasks_and_args: str) -> list[str]:
@@ -341,6 +388,16 @@ class FieldBackdoor:
             quoted_workspace = shlex.quote(self.workspace)
             cmd.append(f"--args=--workspace {quoted_workspace}")
 
+        # Enable remote debugging for backdoor-launched Field so agent probes work.
+        # Honors an explicit AFIELD_JDWP_PORT already in the env (incl. "off"), so
+        # the caller can still opt out; otherwise picks a port that is actually
+        # free, because a JDWP bind failure kills the JVM outright.
+        jdwp_port = resolve_jdwp_port()
+        if jdwp_port is None:
+            self.logger.log("jdwp_disabled", reason="no free port in scan range", preferred=DEFAULT_JDWP_PORT)
+        else:
+            self.logger.log("jdwp_port_selected", port=jdwp_port, preferred=DEFAULT_JDWP_PORT)
+
         popen_kwargs: dict[str, Any] = {
             "cwd": str(REPO_ROOT),
             "stdout": self.managed_log_file,
@@ -350,10 +407,7 @@ class FieldBackdoor:
             "env": {
                 **os.environ,
                 "PORT": str(self.port),
-                # Enable remote debugging for backdoor-launched Field so agent probes
-                # work. Honors an explicit AFIELD_JDWP_PORT already in the env (incl.
-                # "off"), so the caller can still opt out.
-                "AFIELD_JDWP_PORT": os.environ.get("AFIELD_JDWP_PORT", DEFAULT_JDWP_PORT),
+                "AFIELD_JDWP_PORT": jdwp_port if jdwp_port is not None else "off",
             },
         }
         if os.name == "nt":

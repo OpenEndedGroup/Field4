@@ -464,7 +464,13 @@ def json_stream_loads(text: str, *, test_id: str) -> list[dict[str, Any]]:
 def parse_backdoor_results(process: subprocess.CompletedProcess[str], *, test_id: str) -> list[dict[str, Any]]:
     stdout = process.stdout.strip()
     if not stdout:
-        raise RunnerError(f"{test_id}: backdoor returned no JSON result")
+        # Empty stdout is the case where stderr matters MOST -- the backdoor died
+        # before it could emit anything, so its traceback is the only evidence of
+        # why. Dropping it here hid a JVM-level JDWP port collision behind a bare
+        # "no JSON result" for two full smoke runs.
+        raise RunnerError(
+            f"{test_id}: backdoor returned no JSON result\nstderr:\n{process.stderr}"
+        )
     try:
         return json_stream_loads(process.stdout, test_id=test_id)
     except RunnerError as exc:
