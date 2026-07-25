@@ -72,14 +72,19 @@ data class LiveGraphEdge(
  * @param maxDepth how many edges deep to expand.
  * @param maxRefs hard bound on collected refs; the walk stops cleanly once reached, which
  *   keeps a densely-shared DAG from blowing up now that aliases are expanded.
- * @param descendInto overrides the default "should I open this value up?" policy.
+ * @param descendInto refines the "should I open this value up?" policy. It receives the
+ *   value *and* the default decision, so a caller can prune without silently losing the
+ *   built-in guards — `{ value, byDefault -> byDefault && value !is Osc }` — or deliberately
+ *   opt into something the default refuses — `{ value, byDefault -> byDefault || value is String }`.
+ *   Taking the default as an argument is what stops a one-line prune from accidentally
+ *   reflecting into `String` and reporting `name/length`.
  */
 data class GraphWalkOptions(
     val includePrivate: Boolean = false,
     val includeNulls: Boolean = true,
     val maxDepth: Int = 32,
     val maxRefs: Int = 200_000,
-    val descendInto: ((Any) -> Boolean)? = null
+    val descendInto: ((value: Any, byDefault: Boolean) -> Boolean)? = null
 )
 
 /** A live, addressable slot in an object graph. */
@@ -367,6 +372,13 @@ internal object GraphReflectionCache {
     }
 }
 
+/** The outcome of resolving a run of literal path segments. */
+internal class StaticResolution(
+    val ref: GraphPathRef,
+    val value: Any?,
+    val ancestors: List<Any>
+)
+
 internal object GraphWalker {
 
     /** Full traversal, then glob-filter. The general path. */
@@ -419,21 +431,28 @@ internal object GraphWalker {
 
     /**
      * Resolve a run of literal segments without touching the rest of the graph — O(depth)
-     * instead of O(graph). Returns the ref for the final segment plus the value it holds,
-     * or null when any segment is missing.
+     * instead of O(graph).
+     *
+     * [StaticResolution.ancestors] is the chain of nodes stepped through, which the caller
+     * must feed back into [scanSubtree]. Without it a subtree that loops back up through an
+     * ancestor would be expanded here but pruned by a full walk, and the two paths would
+     * disagree. The same chain doubles as cycle detection for the literal path itself.
      */
     fun resolveStatic(
         root: Any?,
         segments: List<String>,
         options: GraphWalkOptions
-    ): Pair<GraphPathRef, Any?>? {
+    ): StaticResolution? {
         if (root == null || segments.isEmpty()) return null
         var current: Any? = root
         var ref: GraphPathRef? = null
+        val chain = mutableListOf<Any>()
         segments.forEachIndexed { index, segment ->
             val node = current ?: return null
             if (!shouldDescend(node, options)) return null
             if (index > options.maxDepth) return null
+            if (chain.any { it === node }) return null
+            chain.add(node)
             val edge = edgeNamed(node, segment, options) ?: return null
             val value = safeGet(edge.getter)
             ref = GraphPathRef(
@@ -445,17 +464,21 @@ internal object GraphWalker {
             current = value
         }
         val resolved = ref ?: return null
-        return resolved to current
+        return StaticResolution(resolved, current, chain)
     }
 
-    /** Walk only the subtree rooted at [node], addressing results relative to [basePath]. */
+    /**
+     * Walk only the subtree rooted at [node], addressing results relative to [basePath].
+     * [seedAncestors] carries the chain already traversed to get here.
+     */
     fun scanSubtree(
         node: Any?,
         basePath: List<String>,
-        options: GraphWalkOptions
+        options: GraphWalkOptions,
+        seedAncestors: List<Any> = emptyList()
     ): List<GraphPathRef> {
         val refs = mutableListOf<GraphPathRef>()
-        walk(node, basePath, basePath.size, ArrayList(), refs, options)
+        walk(node, basePath, basePath.size, ArrayList(seedAncestors), refs, options)
         return refs
     }
 
@@ -587,8 +610,9 @@ internal object GraphWalker {
     }
 
     internal fun shouldDescend(value: Any, options: GraphWalkOptions): Boolean {
-        options.descendInto?.let { return it(value) }
-        return defaultShouldDescend(value)
+        val byDefault = defaultShouldDescend(value)
+        val refine = options.descendInto ?: return byDefault
+        return refine(value, byDefault)
     }
 
     private fun defaultShouldDescend(value: Any): Boolean = when (value) {
@@ -641,20 +665,21 @@ class GraphPattern internal constructor(val pattern: String, internal val segmen
 
         // Fully literal: resolve the chain directly, no traversal.
         if (isStatic) {
-            val resolved = GraphWalker.resolveStatic(root, segments, options) ?: return PathSet(root, emptyList())
-            val (ref, value) = resolved
-            if (value == null && !options.includeNulls) return PathSet(root, emptyList())
-            return PathSet(root, listOf(ref))
+            val resolved = GraphWalker.resolveStatic(root, segments, options)
+                ?: return PathSet(root, emptyList())
+            if (resolved.value == null && !options.includeNulls) return PathSet(root, emptyList())
+            return PathSet(root, listOf(resolved.ref))
         }
 
         // Literal prefix then wildcards: descend the prefix, walk only that subtree.
+        // Only the *final* prefix ref can ever satisfy the pattern (a shorter path cannot
+        // match a longer literal prefix), so the intermediate refs are not collected.
         if (staticPrefix.isNotEmpty()) {
             val resolved = GraphWalker.resolveStatic(root, staticPrefix, options)
                 ?: return PathSet(root, emptyList())
-            val (prefixRef, subtreeRoot) = resolved
             val refs = mutableListOf<GraphPathRef>()
-            refs += prefixRef
-            refs += GraphWalker.scanSubtree(subtreeRoot, staticPrefix, options)
+            if (resolved.value != null || options.includeNulls) refs += resolved.ref
+            refs += GraphWalker.scanSubtree(resolved.value, staticPrefix, options, resolved.ancestors)
             return PathSet(root, refs.filter { globMatches(it.pathSegments, segments) })
         }
 
@@ -693,7 +718,7 @@ fun Any?.graphPaths(
 fun Any?.graphPath(
     path: String,
     options: GraphWalkOptions = GraphWalkOptions()
-): GraphPathRef? = GraphWalker.resolveStatic(this, splitPath(path), options)?.first
+): GraphPathRef? = GraphWalker.resolveStatic(this, splitPath(path), options)?.ref
 
 /** Typed lenses over every matching slot holding a [T]. */
 inline fun <reified T : Any> Any?.graphLenses(
