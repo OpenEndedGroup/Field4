@@ -297,6 +297,7 @@ fun compileAndSendKotlin(
     fragmentContext: KotlinJsFragmentContext? = null,
     lifecycleName: String = kotlinJsLifecycleName(b, "default"),
     onResponse: ((KotlinJsHeadResponse) -> Boolean)? = null,
+    sendGate: ((() -> Boolean) -> Boolean)? = null,
 ): Boolean {
     lastBoxExec = b
     val directSelection = selectedHead ?: KotlinJsHeadProfiles.resolveForBox(b, kotlinSource)
@@ -327,7 +328,10 @@ fun compileAndSendKotlin(
         return false
     }
 
-    return selection.profile.send(b, selection, js, launchable, lifecycleName, onResponse)
+    val send = {
+        selection.profile.send(b, selection, js, launchable, lifecycleName, onResponse)
+    }
+    return sendGate?.invoke(send) ?: send()
 }
 
 data class KotlinJsFragmentContext(

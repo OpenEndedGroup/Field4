@@ -267,6 +267,7 @@ class KotlinJsExecution : BoxExecution {
                     selectedHead = selection,
                     lifecycleName = lifecycleName,
                     onResponse = tracker::onResponse,
+                    sendGate = tracker::sendIfActive,
                 )
                 tracker.deliveryFinished(
                     sent = sent,
@@ -363,6 +364,18 @@ internal class KotlinJsLaunchTracker(
         } else if (durableWithoutResponse) {
             activeHeads += "durable-head"
         }
+    }
+
+    /**
+     * Make the final active-generation check and publication one atomic operation with respect to
+     * [cancel]. If stop wins, the compiled module is discarded. If publication wins, stop blocks
+     * until publication returns and then sends the matching profile stop, so a launch cannot appear
+     * remotely after its stop has already passed.
+     */
+    @Synchronized
+    fun sendIfActive(send: () -> Boolean): Boolean {
+        if (finished || !isCurrent()) return false
+        return send()
     }
 
     @Synchronized

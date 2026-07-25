@@ -86,6 +86,15 @@ object KotlinJsLaunchStateSmokeTest {
         durable.cancel()
         require(stopped.count { it == "durable" } == 1) { "Stop must be idempotent" }
 
+        var staleSends = 0
+        require(!durable.sendIfActive {
+            staleSends += 1
+            true
+        })
+        require(staleSends == 0) {
+            "A stopped in-flight compile must not publish its JavaScript afterward"
+        }
+
         require(kotlinJsLifecycleName(box, "music") != kotlinJsLifecycleName(box, "visuals")) {
             "named strands must not overwrite the same remote task"
         }

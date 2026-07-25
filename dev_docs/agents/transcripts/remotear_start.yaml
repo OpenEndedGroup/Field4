@@ -1,0 +1,48 @@
+name: remotear_start
+description: >
+  Minimal Kotlin/JS starting place for Field's browser/WebXR RemoteAR head. Open
+  /extensions/remote_ar/index.html?debug=1 on the target, then run or drop in this transcript.
+  The first line selects the RemoteAR profile; Launch activates the lifecycle callbacks.
+operations:
+  - create:
+      box: agent_remotear_start_root
+      name: KotlinJS → RemoteAR
+      frame: { x: 50.0, y: 50.0, w: 420.0, h: 290.0 }
+      properties:
+        mainLanguage: kotlinjs
+        isKotlinJsRoot: true
+  - create:
+      box: agent_remotear_start
+      name: RemoteAR Starter
+      frame: { x: 90.0, y: 100.0, w: 340.0, h: 200.0 }
+      properties:
+        code: |
+          // {{ remoteAR }}
+          // Open /extensions/remote_ar/index.html?debug=1 on the browser or headset.
+          // Edit this box and Launch it again to replace the running scene.
+          onStart {
+              val cube = addBox("starter-cube", 0.3).mesh
+              cube.position.set(0.0, 1.2, -1.5)
+
+              onFrame { frame ->
+                  cube.rotation.x = frame.time * 0.35
+                  cube.rotation.y = frame.time
+              }
+
+              onStop {
+                  SCENE.remove(cube)
+                  println("RemoteAR starter stopped")
+              }
+
+              println("RemoteAR starter running")
+          }
+  - connect:
+      parent: agent_remotear_start_root
+      child: agent_remotear_start
+  - wait:
+      frames: 2
+  - launch:
+      box: agent_remotear_start
+      property: code
+  - await:
+      wait: pending
