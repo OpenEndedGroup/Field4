@@ -26,7 +26,14 @@ struct Field4VisionApp: App {
                 .environment(flineClient)
                 .environment(liveMetalClient)
         }
-        .windowResizability(.contentSize)
+        // NOT `.windowResizability(.contentSize)`. This is a shell window whose content is a
+        // NavigationSplitView hosting web views — it has no meaningful intrinsic size, and asking
+        // for one makes the scene re-resize itself as content settles. Each such resize runs the
+        // split view's adaptive layout transition inside a UIView animation block, which updates
+        // the ornament buttons' configuration and lands in `-[UIVisualEffectView setEffect:]`
+        // mid-animation — a hard exception on visionOS 26 ("cannot animate the effects property
+        // alongside backgroundEffects or contentEffects"). It aborted the app ~2s into any launch
+        // that restored a previous window geometry. Let the system size and resize it freely.
 
         // Undocked docks: opening one gives it its own window floating in space. This is the
         // L1 move — multiple documents/panels arranged spatially — using plain WindowGroups
@@ -100,10 +107,11 @@ private struct UndockedWebDockWindow: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        // Standalone floating window: the web view fills it, so its bottom-left is the window's
-        // rounded corner — always tuck content clear of it.
-        WebDock(url: url, onOpenURL: { openWindow(value: $0) }, cornerInset: shellWindowCornerInset)
-            .ignoresSafeArea()
+        // Standalone floating window: the web view reaches every window edge, so all four of the
+        // system's corner arcs cut into it — the top-left one was clipping the editor's first line
+        // number. Inset and re-round the content rather than letting it run under the glass curve.
+        WebDock(url: url, onOpenURL: { openWindow(value: $0) }, cornerInset: shellContentCornerRadius)
+            .shellWindowCornerSafe()
             .onAppear { shellLog.notice("floating window appeared -> \(url.absoluteString, privacy: .public)") }
     }
 }

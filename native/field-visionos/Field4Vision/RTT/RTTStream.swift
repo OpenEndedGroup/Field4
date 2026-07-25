@@ -36,7 +36,10 @@ final class RTTStream {
     var isStereo = false
     var frameSize = CGSize.zero
     var decodedFrameCount = 0
-    var measuredFPS = 0.0
+    /// Not observable on purpose. This is recomputed twice a second; if a SwiftUI view depended on
+    /// it, every window would re-render at 2Hz for a number that is only ever diagnostic. The
+    /// precise value goes to the `RTTSTAT` telemetry line; the UI gets the deadbanded `status`.
+    @ObservationIgnored var measuredFPS = 0.0
     /// The live RGBA texture the immersive view samples. Replaced only when the frame size changes
     /// (otherwise the same resource updates in place), so the view can bind it once.
     var displayTexture: TextureResource?
@@ -47,6 +50,135 @@ final class RTTStream {
 
     private var fpsWindowStart = CACurrentMediaTime()
     private var fpsWindowCount = 0
+
+    /// Held so telemetry can read reassembly counters; the receiver owns the ingest side.
+    /// All `@ObservationIgnored` — pure bookkeeping, nothing here should invalidate a SwiftUI view.
+    /// `FIELD4_RTT_STATS=0` removes the once-a-second telemetry entirely — the clean A/B for
+    /// "is the diagnostic itself causing the stall it is meant to measure".
+    @ObservationIgnored
+    static let statsEnabled = ProcessInfo.processInfo.environment["FIELD4_RTT_STATS"] != "0"
+    @ObservationIgnored
+    static let statsQueue = DispatchQueue(label: "com.field4.vision.rtt.stats", qos: .utility)
+
+    // MARK: - Presentation clock (jitter buffer)
+    //
+    // WIRE_FORMAT specifies present-on-arrival ("no jitter buffer … present the newest complete
+    // frame"). That was the wrong trade for a 90Hz display. The sender can only emit on a render
+    // tick — ~8.3ms at Field's ~120fps loop — so a 33.3ms target is 4 ticks, and whenever phase
+    // drifts a frame goes out after 3 (25ms) or 5 (41.7ms). Measured on loopback: ~190 of 2530
+    // frames off-nominal, one every 0.45s. Presented on arrival, each of those is held for the
+    // wrong number of display refreshes — a short hiccup twice a second, independent of network,
+    // decoder and reassembler (all of whose counters were clean throughout).
+    //
+    // So: hold a few frames and release each at its OWN `ptsMicros`, re-based onto the local clock.
+    // This absorbs sender quantisation and network jitter with one mechanism. Cost is latency, and
+    // for a world-locked video panel — not a head-tracked render path — that is not perceptual.
+    @ObservationIgnored
+    static let bufferFrames: Int = {
+        if let s = ProcessInfo.processInfo.environment["FIELD4_RTT_BUFFER"], let v = Int(s) {
+            return max(0, v)
+        }
+        return 3   // ~100ms at 30fps. 0 restores present-on-arrival.
+    }()
+
+    private struct Pending {
+        let pixelBuffer: CVPixelBuffer
+        let ptsMicros: UInt64
+        let stereo: Bool
+    }
+    @ObservationIgnored private var pending: [Pending] = []
+    /// Maps stream time onto local time: `wall(pts) = baseWall + (pts - basePts)/1e6`.
+    @ObservationIgnored private var nextRelease: CFTimeInterval?
+    @ObservationIgnored private var lastPresentedPts: UInt64?
+    /// Frames discarded by the buffer itself — cap overflow, or superseded while catching up.
+    /// Previously invisible, which hid the presenter falling behind.
+    @ObservationIgnored private var bufferDropped = 0
+
+    /// Decoded frames land here instead of being presented immediately.
+    private func enqueue(_ pixelBuffer: CVPixelBuffer, ptsMicros: UInt64, stereo: Bool) {
+        guard Self.bufferFrames > 0 else {
+            present(pixelBuffer, stereo: stereo)   // buffering disabled → old behaviour
+            return
+        }
+        // A sender restart resets pts to ~0; rebase rather than stall until the clocks agree again.
+        if let l = lastPresentedPts, ptsMicros &+ 1_000_000 < l { resetClock() }
+        pending.append(Pending(pixelBuffer: pixelBuffer, ptsMicros: ptsMicros, stereo: stereo))
+
+        // Hard cap: if we somehow accumulate (decoder burst, clock drift), drop the oldest rather
+        // than grow latency without bound.
+        let cap = max(Self.bufferFrames * 4, 8)
+        if pending.count > cap {
+            bufferDropped += pending.count - cap
+            pending.removeFirst(pending.count - cap)
+            resetClock()
+        }
+    }
+
+    private func resetClock() {
+        nextRelease = nil
+        lastPresentedPts = nil
+    }
+
+    /// Release the next buffered frame when its slot is due. Called once per RealityKit frame, so
+    /// the release clock is the display clock.
+    ///
+    /// This is a depth-servoed clock, NOT a fixed pts→wall mapping. The first attempt pinned
+    /// `baseWall` once and scheduled every frame off it; because the sender's real rate differs
+    /// from nominal by a fraction of a percent, that error accumulated without bound — the queue
+    /// drained, two frames came due in one tick, and the older was discarded (`bufDrop=+2` with
+    /// `queue=1`, presented fps stuck ~26 against 30 arriving). A jitter buffer has to track the
+    /// source's actual rate, so instead we release one frame per interval and nudge the interval
+    /// slightly to hold the queue at `bufferFrames`. Slow, bounded correction: it absorbs jitter
+    /// without ever throwing a frame away.
+    func presentDue(now: CFTimeInterval) {
+        guard Self.bufferFrames > 0, let head = pending.first else { return }
+
+        // Prime: wait until the buffer is banked, then start the cadence.
+        if nextRelease == nil {
+            guard pending.count >= Self.bufferFrames else { return }
+            nextRelease = now
+        }
+        guard let due = nextRelease, now >= due else { return }
+
+        // Interval from the stream's own timeline where possible (adapts to any fps), else nominal.
+        var interval = 1.0 / 30.0
+        if pending.count > 1 {
+            let d = Double(pending[1].ptsMicros &- head.ptsMicros) / 1_000_000.0
+            if d > 0.004, d < 0.2 { interval = d }
+        } else if let l = lastPresentedPts {
+            let d = Double(head.ptsMicros &- l) / 1_000_000.0
+            if d > 0.004, d < 0.2 { interval = d }
+        }
+
+        pending.removeFirst()
+        lastPresentedPts = head.ptsMicros
+        present(head.pixelBuffer, stereo: head.stereo)
+
+        // Servo: run marginally fast when we are over-buffered, marginally slow when under. 4% is
+        // far below the ~8ms jitter we are absorbing, so it never itself becomes visible.
+        // Deadbanded and WEAK. An earlier 4% trim was itself a rate error: releases only happen on
+        // a display refresh, so varying the interval by 4% (32-34.7ms against an 11.11ms grid) made
+        // frames land on 3 refreshes sometimes and 4 others — manufacturing exactly the judder this
+        // buffer exists to remove. Correct only when the queue is genuinely off target, and gently
+        // enough that the release cadence stays locked to the same refresh count.
+        var trim = 0.0
+        if pending.count > Self.bufferFrames + 1 { trim = interval * 0.005 }
+        else if pending.count < Self.bufferFrames - 1 { trim = -interval * 0.005 }
+        nextRelease = due + interval - trim
+
+        // Hard resync if we have fallen badly behind (app suspended, decoder stall) rather than
+        // sprinting through a backlog.
+        if now - (nextRelease ?? now) > 0.25 { nextRelease = now }
+    }
+
+    @ObservationIgnored private var reassembler: FrameReassembler?
+    @ObservationIgnored private var lastTelemetry = CACurrentMediaTime()
+    @ObservationIgnored private var lastCompleted = 0
+    @ObservationIgnored private var lastDropped = 0
+    @ObservationIgnored private var lastSkips = 0
+    @ObservationIgnored private var lastHeld = 0
+    @ObservationIgnored private var lastPipeDropped = 0
+    @ObservationIgnored private var lastBufferDropped = 0
 
     // Concealment diagnostics: count distinct grey "runs" (edges into concealment), not every frame.
     private var wasConcealed = false
@@ -73,12 +205,14 @@ final class RTTStream {
 
         // Decode pipeline: lives on the recv queue; hands finished frames back to the main actor.
         let pipeline = RTTDecodePipeline()
-        pipeline.onPixelBuffer = { [weak self] pixelBuffer, _, stereo in
-            Task { @MainActor in self?.present(pixelBuffer, stereo: stereo) }
+        pipeline.onPixelBuffer = { [weak self] pixelBuffer, ptsMicros, stereo in
+            Task { @MainActor in self?.enqueue(pixelBuffer, ptsMicros: ptsMicros, stereo: stereo) }
         }
         self.pipeline = pipeline
 
-        let receiver = RTTReceiver(port: port)
+        let reassembler = FrameReassembler()
+        self.reassembler = reassembler
+        let receiver = RTTReceiver(port: port, reassembler: reassembler)
         receiver.onError = { [weak self] msg in
             Task { @MainActor in
                 self?.status = "Error: \(msg)"
@@ -100,6 +234,9 @@ final class RTTStream {
         receiver?.stop()
         receiver = nil
         pipeline = nil
+        reassembler = nil
+        pending.removeAll()
+        resetClock()
         isRunning = false
         status = "Stopped"
     }
@@ -211,6 +348,39 @@ final class RTTStream {
         shellLog.notice("RTT centre pixel f\(frame): Y=\(Int(Y)) Cb=\(Int(Cb)) Cr=\(Int(Cr)) → RGB≈(\(Int(r)),\(Int(g)),\(Int(b)))")
     }
 
+    /// Once-a-second counters on **stdout**, not os_log, so `devicectl device process launch
+    /// --console` can read them from the Mac. macOS 26 removed `log stream --device-name`, so
+    /// os_log is only reachable through Xcode's console — stdout is the scriptable channel and the
+    /// only way to get real numbers off the device into a diff.
+    ///
+    /// Deltas per second, not totals: what matters is whether stalls are happening *now* and at
+    /// what rate, not how many have accumulated since launch.
+    private func emitTelemetry(now: CFTimeInterval) {
+        guard Self.statsEnabled, let r = reassembler else { return }
+        let dt = max(0.001, now - lastTelemetry)
+        let completed = r.completedFrames, dropped = r.droppedFrames
+        let skips = r.reorderSkips, held = r.heldFrames
+        let pipeDropped = pipeline?.droppedFrames ?? 0
+        let line = String(format:
+            "RTTSTAT fps=%.1f completed=+%d dropped=+%d reorderSkips=+%d held=+%d pipelineDropped=+%d bufDrop=+%d queue=%d depth=%d",
+            measuredFPS,
+            completed - lastCompleted, dropped - lastDropped,
+            skips - lastSkips, held - lastHeld, pipeDropped - lastPipeDropped,
+            bufferDropped - lastBufferDropped, pending.count,
+            FrameReassembler.defaultReorderDepth)
+        // Write OFF the main actor. `print` + `fflush` is a synchronous write to a pipe, and with
+        // Xcode's debugger attached that pipe is drained by the IDE — the write can block for
+        // milliseconds. Doing it on the main actor once every 0.5s put a stall on exactly the
+        // cadence of the reported hiccup. Formatting stays here (it reads main-actor state); only
+        // the write hops off.
+        Self.statsQueue.async { print(line); fflush(stdout) }
+        (lastCompleted, lastDropped, lastSkips, lastHeld, lastPipeDropped) =
+            (completed, dropped, skips, held, pipeDropped)
+        lastBufferDropped = bufferDropped
+        lastTelemetry = now
+        _ = dt
+    }
+
     private func tickFPS() {
         fpsWindowCount += 1
         let now = CACurrentMediaTime()
@@ -220,9 +390,25 @@ final class RTTStream {
             fpsWindowCount = 0
             fpsWindowStart = now
             if isRunning {
+                // Publish `status` only when it MEANINGFULLY changes.
+                //
+                // This label is rendered inside `.glassBackgroundEffect()` ornaments in two windows.
+                // Writing it every 0.5s made SwiftUI re-render glass twice a second while the
+                // immersive scene was presenting, and because the raw fps jitters 29↔31 the string
+                // differed every single time, so nothing ever coalesced. That produced a visible
+                // hitch locked exactly to this 0.5s window — the "hiccup every 500ms". It was never
+                // the sender, the network, the reassembler or the decoder: all their counters were
+                // clean throughout. Quantising to the nearest 5fps gives a string that is stable in
+                // steady state, still moves on a real drop (30 → 15), and leaves the exact figure to
+                // the RTTSTAT telemetry line where precision actually matters.
                 let mode = isStereo ? " (stereo SBS)" : ""
-                status = "Streaming \(Int(frameSize.width))×\(Int(frameSize.height)) @ \(Int(measuredFPS.rounded())) fps\(mode)"
-                shellLog.notice("RTT \(self.status, privacy: .public)")
+                let shownFPS = Int((measuredFPS / 5.0).rounded()) * 5
+                let next = "Streaming \(Int(frameSize.width))×\(Int(frameSize.height)) @ ~\(shownFPS) fps\(mode)"
+                if next != status {
+                    status = next
+                    shellLog.notice("RTT \(self.status, privacy: .public)")
+                }
+                emitTelemetry(now: now)
             }
         }
     }

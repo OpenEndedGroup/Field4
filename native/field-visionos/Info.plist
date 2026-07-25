@@ -2,16 +2,16 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Kept OUTSIDE Field4Vision/ so the Xcode-16 synchronized file group doesn't also copy it as
-	     a bundle resource (that causes "Multiple commands produce Info.plist"). Enables openWindow
-	     to open additional windows (floating editor, undocked docks, window.open). Xcode merges the
-	     generated keys on top of this base. -->
-	<key>NSWorldSensingUsageDescription</key>
-	<string>Field places live-coded Metal geometry in your surroundings.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<true/>
 	</dict>
+	<!-- Required once the shell addresses the Field server on the same subnet (https://10.0.0.x:9093)
+	     rather than over Tailscale. Reaching a Tailscale address goes out a utun interface and is not
+	     gated by this privacy check; a plain-LAN address is, and so is the RTT receiver's inbound UDP
+	     socket. Without the key the first connection fails silently. -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Field4Vision connects to the Field server running on your Mac to display documents, receive FLine geometry, and receive the rendered video stream.</string>
 </dict>
 </plist>

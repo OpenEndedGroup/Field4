@@ -56,10 +56,29 @@ final class FrameReassembler {
     // Diagnostics.
     private(set) var completedFrames = 0
     private(set) var droppedFrames = 0
+    /// Times we blocked at a gap and then had to declare it lost — each one is a visible stall of
+    /// up to `reorderDepth + 1` frames followed by a catch-up burst.
+    private(set) var reorderSkips = 0
+    /// Completed frames released late because an older seq had not arrived yet. The honest measure
+    /// of how much this buffer is costing in smoothness.
+    private(set) var heldFrames = 0
 
-    init(window: Int = 8, reorderDepth: Int = 3) {
+    /// `reorderDepth = 0` means strict present-newest, drop-stragglers — what WIRE_FORMAT actually
+    /// specifies ("no jitter buffer beyond what reassembly needs … present the newest complete
+    /// frame and drop stragglers"). Anything higher trades smoothness for tolerating out-of-order
+    /// *frame completion*: one lost fragment then stalls the picture until `reorderDepth + 1` later
+    /// frames have piled up. Overridable at runtime with `FIELD4_RTT_REORDER` so the two can be
+    /// A/B'd on device without a rebuild.
+    static var defaultReorderDepth: Int {
+        if let s = ProcessInfo.processInfo.environment["FIELD4_RTT_REORDER"], let v = Int(s) {
+            return max(0, v)
+        }
+        return 3
+    }
+
+    init(window: Int = 8, reorderDepth: Int = FrameReassembler.defaultReorderDepth) {
         self.window = max(1, window)
-        self.reorderDepth = max(1, reorderDepth)
+        self.reorderDepth = max(0, reorderDepth)
     }
 
     /// A keyframe at or below this seq, arriving after we've released much higher seqs, means the
@@ -135,8 +154,14 @@ final class FrameReassembler {
                 nextRelease = n &+ 1
             }
             // Blocked on a missing seq. Wait unless too many later frames have piled up.
+            // At reorderDepth == 0 this never waits: any completed frame past the gap is released
+            // immediately and the gap is written off, which is the spec's present-newest behaviour.
             guard ready.count > reorderDepth, let n = nextRelease,
-                  let oldest = ready.keys.min(by: seqOlder) else { break }
+                  let oldest = ready.keys.min(by: seqOlder) else {
+                heldFrames += ready.count
+                break
+            }
+            reorderSkips += 1
             droppedFrames += Int(oldest &- n)   // frames [n, oldest) declared lost
             nextRelease = oldest
         }

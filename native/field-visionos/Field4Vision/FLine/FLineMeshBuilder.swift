@@ -115,7 +115,8 @@ enum FLineMeshBuilder {
 
             func handle(_ p: SIMD3<Float>, _ radius: Float, _ color: SIMD4<Float>, _ h: FLineHandle, _ nodeIndex: Int) {
                 let e = sphereEntity(at: p, radius: radius, color: color, cache: &sphereCache)
-                makeInteractive(e, sphereRadius: radius * 1.7)   // collision larger than the visual → easier to grab
+                // Collision larger than the visual → easier to grab.
+                makeInteractive(e, sphereRadius: radius * 1.7)
                 built.nodes[e.id] = NodeRef(lineIndex: line.lineIndex, nodeIndex: nodeIndex, handle: h, modelPosition: p)
                 root.addChild(e)
             }
@@ -423,11 +424,28 @@ enum FLineMeshBuilder {
         applyHover(e, hoverColor)
     }
 
-    /// Exact sphere tap target for an edit handle.
+    /// Exact sphere tap target for an edit handle, plus the system hover highlight.
+    ///
+    /// `HoverEffectComponent` is how visionOS squares "show me what I'm about to grab" with not
+    /// telling apps where the user is looking: the effect is applied out of process by the system
+    /// compositor and the app never learns the gaze position — no callback, no transform, nothing
+    /// to sample. So this costs us no privacy entitlement and no gaze data, and it lights up on
+    /// exactly the collision shape the pinch would hit (which is deliberately 1.7x the visual
+    /// sphere here, so the highlight also teaches you how forgiving the grab target really is).
+    ///
+    /// Note the highlight tracks the *collision* shape, not the mesh — a handle will glow slightly
+    /// larger than it looks. That is the honest thing to show.
     @MainActor
     private static func makeInteractive(_ e: ModelEntity, sphereRadius: Float) {
         e.components.set(CollisionComponent(shapes: [.generateSphere(radius: sphereRadius)]))
         e.components.set(InputTargetComponent())
+        // Pure WHITE at full strength, not a lightened form of the handle's own colour. Tinting an
+        // amber handle pale amber (and a cyan one pale cyan) sat too close to its resting state to
+        // read at a glance — the point of the highlight is maximum contrast against *whatever* the
+        // handle already is. Which kind you are about to grab is still legible from the unhovered
+        // colour, so nothing is lost by making the hover state itself colour-neutral.
+        e.components.set(HoverEffectComponent(
+            .highlight(.init(color: .white, strength: 1.0))))
     }
 
     @MainActor
