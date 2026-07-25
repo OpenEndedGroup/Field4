@@ -231,6 +231,14 @@ code {
 .md-typeset :is(p, li, td, blockquote) > code:first-child {
     margin-left: -0.18em;
 }
+/* An inline code pill has a solid background but no side margin, so when it
+   directly follows text — e.g. an open paren, "at (`decay = 0.85`" — the pill
+   crowds the preceding glyph and looks like it eats it. Give code that follows
+   other content a hair of left breathing room (leaving the first-child pull above
+   untouched, and not affecting fenced `pre > code`). */
+.md-typeset :is(p, li, td, blockquote) > code:not(:first-child) {
+    margin-left: 0.15em;
+}
 
 /* StackSL reference page */
 .md-typeset .stacksl-reference {
