@@ -10,8 +10,9 @@ Every plot and every audio clip on this page is produced by actually running the
 the CPU — no hand-drawn curves, no pre-baked recordings. The waveforms are block-rendered
 offline (exactly like the audio engine renders them, minus the sound card) and written to a
 16-bit PCM WAV at docs-build time by
-[`DoughDspSoundDocs`](https://github.com/){: .external }; the plots are `showSignals` Plotly
-figures of the same run. Rebuild the page and the sound regenerates from the code.
+`DoughDspSoundDocs` (`src/jvmMain/kotlin/afield/four/synth/DoughDspSoundDocs.kt`); the plots
+are `showSignals` Plotly figures of the same run. Rebuild the page and the sound regenerates
+from the code.
 
 Each section shows a plot (what the signal *looks* like), a short player (what it *sounds*
 like), and, in essence, the graph that made it.
