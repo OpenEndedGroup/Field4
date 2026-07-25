@@ -49,6 +49,7 @@ object PatternRewriteSmokeTest {
             testPrecedenceHazard()
             testAtomicCapturesNotOverParenthesized()
             testQuoteBarrier()
+            testQualifiedRewriteIsNotARule()
             testDeclarationOrderFirstMatchWins()
             testNestedRewriteDoesNotSelfApply()
             testBareMetavarPatternRejected()
@@ -191,6 +192,51 @@ object PatternRewriteSmokeTest {
         require("BIG" in out) { "real max(1, 2) should be rewritten: $out" }
         require("rewrite {" !in out && "from {" !in out) { "rule block must be blanked: $out" }
         require("max(x, y)" !in out) { "the pattern body max(x, y) must not survive: $out" }
+    }
+
+    /**
+     * A *qualified* `.rewrite { … }` is an unrelated method, not a rule declaration, and must
+     * survive untouched.
+     *
+     * The collector used to match on the callee name alone, so any `receiver.rewrite { … }` in
+     * user code — `ParamSet.rewrite { normalize(...) }` is one the synth cookbook actively
+     * recommends — was blanked out before compilation. The following line was then parsed
+     * against the wrong receiver, so the reported error pointed nowhere near the cause.
+     */
+    private fun testQualifiedRewriteIsNotARule() {
+        val out = expand(
+            """
+            val gains = rig.params("x")
+            gains.rewrite { normalize(0f..1f) }
+            rig.other().rewrite { jitter(2f) }
+            """.trimIndent()
+        )
+
+        require("gains.rewrite { normalize(0f..1f) }" in out.text) {
+            "a qualified .rewrite must survive verbatim: ${out.text}"
+        }
+        require("rig.other().rewrite { jitter(2f) }" in out.text) {
+            "a qualified .rewrite on a call receiver must survive too: ${out.text}"
+        }
+        require(out.localRuleSources.isEmpty()) {
+            "a qualified .rewrite must not be collected as a rule: ${out.localRuleSources}"
+        }
+
+        // …while a genuine unqualified rule in the same source is still collected and blanked.
+        val mixed = expand(
+            """
+            rewrite { x: Expr -> from { neg(x) }; to { -x } }
+            gains.rewrite { normalize(0f..1f) }
+            neg(a)
+            """.trimIndent()
+        )
+        require("-a" in mixed.text) { "the real rule must still fire: ${mixed.text}" }
+        require("gains.rewrite { normalize(0f..1f) }" in mixed.text) {
+            "the qualified call must still survive alongside a real rule: ${mixed.text}"
+        }
+        require(mixed.localRuleSources.size == 1) {
+            "exactly one rule should be collected: ${mixed.localRuleSources}"
+        }
     }
 
     /** Declaration order wins when two rules share a pattern. */

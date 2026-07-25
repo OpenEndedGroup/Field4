@@ -206,6 +206,7 @@ object PatternRewrite {
 
         file.collectDescendantsOfType<KtCallExpression>()
             .filter { it.calleeName() == "rewrite" }
+            .filter { call -> !call.isQualifiedCall() }                 // not somebody's .rewrite {} method
             .filter { call -> !call.isNestedInRewrite() }               // quote barrier: outermost only
             .forEach { call ->
                 val rule = call.toPatternRule(onDiagnostic)
@@ -280,6 +281,21 @@ object PatternRewrite {
 
     private fun KtCallExpression.calleeName(): String? =
         (calleeExpression as? KtNameReferenceExpression)?.getReferencedName()
+
+    /**
+     * The rule DSL is always written unqualified — `rewrite { x: Expr -> … }`. A *qualified*
+     * call such as `paramSet.rewrite { normalize(0f..1f) }` is an unrelated method that merely
+     * shares the name, so it must be neither collected as a rule nor blanked out of the source.
+     *
+     * Without this the collector matched on the callee name alone and deleted the whole call,
+     * so any `receiver.rewrite { … }` in user code silently vanished before compilation — and
+     * the *following* line was then mis-parsed against the wrong receiver, producing an error
+     * that pointed nowhere near the real cause.
+     */
+    private fun KtCallExpression.isQualifiedCall(): Boolean {
+        val owner = parent
+        return owner is KtQualifiedExpression && owner.selectorExpression === this
+    }
 
     private fun KtCallExpression.isNestedInRewrite(): Boolean {
         var p = parent
