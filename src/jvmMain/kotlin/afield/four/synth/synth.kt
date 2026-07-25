@@ -570,7 +570,11 @@
  Graph queries and ParamSet surgery
  ---------------------------------------------------------------------------
 
- Find params by path:
+ Find params by path. Note the odd-looking concatenation: this cookbook is one
+ big block comment, and writing the recursive glob as a single literal would put
+ a star-slash in the middle of it, closing the comment right here and breaking
+ the file. In your own code (and in public/docs/graph_query.md) write the glob
+ directly as one string — do not copy the concatenation out of here.
 
      val gains = someSignal matches ("**" + "/gain")
      gains
