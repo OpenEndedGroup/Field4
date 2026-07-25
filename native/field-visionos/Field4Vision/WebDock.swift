@@ -5,9 +5,38 @@ import OSLog
 /// Shell diagnostics — filter with: log show --predicate 'subsystem == "com.field4.vision"'
 let shellLog = Logger(subsystem: "com.field4.vision", category: "shell")
 
-/// Approx visionOS window corner radius (points) the web layer must tuck its bottom-left content
-/// (toasts/HUD) around when the web view reaches the window edge itself.
+/// Approx visionOS window corner radius (points). The system owns this — there is no API to ask
+/// for a smaller one — so it is a fact to design around, not a value to set.
 let shellWindowCornerInset: CGFloat = 56
+
+/// How far web content is held off the window edge so that arc cannot bite into it. Full-bleed
+/// content loses its top-left to the curve, which ate the editor's first line number.
+///
+/// 24pt is the smallest inset that clears it with margin. Treating the corner as a circle of
+/// radius `shellWindowCornerInset` centred at (56, 56): at x = 24 the arc admits everything below
+/// y ≈ 11.5, so a first text line sitting at y ≈ 24 is comfortably inside the window.
+let shellContentInset: CGFloat = 24
+
+/// The radius a toast has to tuck around at the content's own corner. Kept as a small value rather
+/// than the system's 56pt because the content no longer sits in the system arc at all.
+///
+/// Note this is NOT achieved by clipping. Rounding the content with a `.clipShape` renders every
+/// web view black on device: visionOS composites `WKWebView` out of process, and a SwiftUI mask
+/// over it breaks that path — the page still loads (the sockets connect) but nothing is drawn.
+/// Inset-only it is; the content keeps square corners inside the window's glass margin.
+let shellContentCornerRadius: CGFloat = 22
+
+extension View {
+    /// Hold web content clear of the window's fixed corner arc. Replaces a bare
+    /// `.ignoresSafeArea()`: we still want to own the full window rather than accept SwiftUI's
+    /// default insets, we just want a deliberate margin instead of content disappearing under the
+    /// glass curve. No mask — see `shellContentCornerRadius`.
+    func shellWindowCornerSafe() -> some View {
+        self
+            .padding(shellContentInset)
+            .ignoresSafeArea()
+    }
+}
 
 /// A WKWebView hosting one Field4 front-end page.
 ///

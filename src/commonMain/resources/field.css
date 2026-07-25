@@ -4583,6 +4583,30 @@ body.mode-transparent .box::before {
     /* ::before sits 6px outside the box's 5px-radius corner, so it needs 5+6=11px to stay
        concentric — otherwise the black ring leaves tiny gaps at each corner. */
     border-radius: 11px !important;
+    transition: border-color 90ms ease-out, box-shadow 90ms ease-out;
+}
+
+/* Gaze hover on a box, the web-side equivalent of the native FLine handles' HoverEffectComponent.
+   On visionOS WebKit drives `:hover` from where you are looking, resolved out of process — the
+   page is never told the gaze position, so this costs no privacy and needs no entitlement. It is
+   the same bargain as the native side: the system will *show* you what you are about to hit, it
+   just will not *tell* the app.
+
+   Scoped to `mode-transparent` (which the shell's canvas projection always sets, alongside
+   `noeditor`) so desktop browsers, where :hover means a mouse and boxes are hovered constantly in
+   passing, are unaffected.
+
+   Styled on ::before — the existing black ring — rather than the box body, so it cannot disturb
+   layout or the box's own content: only the ring lightens and gains a soft halo. `.selected`
+   deliberately wins, so hovering never masks what is actually selected. */
+body.mode-transparent .box:hover::before {
+    border-color: #6a6a6a !important;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.22), 0 0 14px 2px rgba(255, 255, 255, 0.10);
+}
+
+body.mode-transparent .box.selected:hover::before {
+    border-color: #000 !important;
+    box-shadow: none;
 }
 
 /* Bottom-left toasts default to 10px from the corner — inside the visionOS window's rounded

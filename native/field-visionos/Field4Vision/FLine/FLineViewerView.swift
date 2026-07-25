@@ -99,18 +99,9 @@ struct FLineViewerView: View {
             .tint(editMode ? .orange : nil)
             .disabled(!editable)
 
-            Button { resetManipulation(); applyTransform() } label: {
-                Label("Reset", systemImage: "arrow.counterclockwise")
-            }
-
-            if editMode, let scene = client.selectedPayload?.scene {
-                Button(role: .destructive) {
-                    client.sendClear(sessionId: scene.sessionId)
-                } label: {
-                    Label("Clear", systemImage: "trash")
-                }
-            }
-
+            // Reset and Clear were here and did nothing observable on device, so they're gone
+            // rather than left as furniture. `resetManipulation()` still runs on view switch, and
+            // `FLineViewerClient.sendClear` is still wired if a caller ever wants it back.
             Text(statusText)
                 .font(.caption)
                 .foregroundStyle(.secondary)

@@ -83,7 +83,6 @@ class FieldRTTStreamer(
         private set
 
     private var seq: Long = 0
-    private var startNanos: Long = 0
     private var lastSentNanos: Long = 0
 
     private val allocLatch = CountDownLatch(1)
@@ -111,7 +110,6 @@ class FieldRTTStreamer(
 
         renderer.renderList += name to this
         seq = 0
-        startNanos = System.nanoTime()
         streaming = true
         lprintln("info,field-stream",
             "streaming ${width}x${height} @${fps}fps ($codec) -> $dest, ${surfaces.size} surface(s)")
@@ -223,8 +221,32 @@ class FieldRTTStreamer(
         // until the next IDR.
         val now = System.nanoTime()
         val intervalNanos = 1_000_000_000L / maxOf(1, fps)
-        if (lastSentNanos != 0L && now - lastSentNanos < intervalNanos) return
-        lastSentNanos = now
+        if (lastSentNanos == 0L) {
+            lastSentNanos = now
+        } else {
+            val due = lastSentNanos + intervalNanos
+            if (now < due) return
+            // Advance on the IDEAL grid, not to `now`. We can only emit on a renderer tick, so
+            // `now` is always a little past `due`; assigning `now` carries that rounding error
+            // forward and re-rounds it every frame. The result beats against the render rate —
+            // at 30fps target on a ~64fps renderer the gate alternates between 2 and 3 ticks
+            // (31ms / 47ms), averaging ~27fps with visible judder even though nothing is lost.
+            // Advancing by exactly one interval keeps the long-run rate on target and bounds the
+            // jitter to a single render tick. If we've fallen more than a whole interval behind
+            // (a real stall — GPU hitch, encoder backpressure), resync to `now` rather than
+            // bursting several frames to catch up.
+            // Advance along the grid in WHOLE intervals, never to `now`. Snapping to `now` on a late
+            // tick silently discards the remainder, which is why the long-run rate measured 29.56fps
+            // against a 30fps target. That 0.44fps deficit is fatal downstream: the headset displays
+            // at 90Hz, so a frame occupies a whole number of refreshes and 30.00fps is exactly 3.
+            // At 29.56fps each frame wants 33.83ms — 0.5ms more than 3 refreshes — so the error
+            // accumulates until one frame is held for 4 refreshes instead of 3, roughly every 22
+            // frames (~0.7s). No amount of receiver buffering can fix that; the rate has to be
+            // exact. Skipping whole intervals keeps both the phase and the long-run rate correct.
+            lastSentNanos = if (now - due > intervalNanos) {
+                due + ((now - due) / intervalNanos) * intervalNanos
+            } else due
+        }
 
         // Render the box's content into exactly the active ring surface, then encode it. Rendering
         // only this one (not all N) is what makes the ring real: while the encoder reads slot N, the
@@ -235,7 +257,17 @@ class FieldRTTStreamer(
         surfaces[slot].render(command, index)
 
         val s = seq
-        val pts = (now - startNanos) / 1000   // microseconds since start
+        // Presentation timestamp on the IDEAL grid, derived from the frame index — NOT from `now`.
+        //
+        // `now` is when a render tick happened to fire, and we can only emit on a tick (~8.3ms at
+        // Field's ~120fps loop), so a wall-clock pts bakes the quantisation error into the stream:
+        // a 30fps target lands 4 ticks apart most of the time but 3 (25ms) or 5 (41.7ms) whenever
+        // phase drifts — measured on loopback as ~190 of 2530 frames off-nominal, one every 0.45s.
+        // A receiver scheduling against those timestamps faithfully REPRODUCES the irregularity, so
+        // its jitter buffer can absorb delivery jitter but not this. Stamping `seq * interval` makes
+        // the timeline describe the cadence we intended; the receiver's buffer then has something
+        // regular to schedule against, and delivery jitter is what it soaks up.
+        val pts = s * 1_000_000L / maxOf(1, fps)
         val forceIdr = s == 0L
         renderer.afterCurrentGraphicsFrameComplete {
             encoder.frame(surface = slot, seq = s, ptsMicros = pts, forceIdr = forceIdr)

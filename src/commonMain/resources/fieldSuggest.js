@@ -1036,13 +1036,26 @@ class FieldSuggestController {
 
   install() {
     const { editor, monaco } = this;
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Space, () => {
-      this.open({ manual: true });
-    });
+    // Cmd+Space is the historical binding and stays for desktop muscle memory, but it is
+    // unreachable on visionOS: the system claims Cmd+Space for Spotlight and the page never sees
+    // the event. (Cmd+P / Cmd+Shift+P are not reserved, which is why the palette works there and
+    // this did not.) WinCtrl maps to literal Control on macOS/visionOS — a modifier class the
+    // system does not claim — so Ctrl+Space (Monaco's own default) and Ctrl+. both get through.
+    // Additive: desktop keeps every binding it had.
+    const triggerChords = [
+      monaco.KeyMod.CtrlCmd | monaco.KeyCode.Space,
+      monaco.KeyMod.WinCtrl | monaco.KeyCode.Space,
+      monaco.KeyMod.WinCtrl | monaco.KeyCode.Period,
+    ];
+    for (const chord of triggerChords) {
+      editor.addCommand(chord, () => {
+        this.open({ manual: true });
+      });
+    }
     editor.addAction({
       id: "afield.triggerFieldSuggest",
       label: "Field: Trigger Autocomplete",
-      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Space],
+      keybindings: triggerChords,
       run: () => this.open({ manual: true }),
     });
     editor.onDidChangeModelContent((event) => {

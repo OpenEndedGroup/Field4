@@ -47,7 +47,9 @@ This shell is the **receiver** end of that pipeline (see `RTT/` below).
   to a new window; `didFinish` relabels docks; `isOpaque = false` so transparent pages show the
   window glass; pushes `--shell-corner-inset` (CSS var) so web toasts tuck clear of the window's
   rounded corner. `shellLog` (subsystem `com.field4.vision`) for diagnostics.
-- **ServerConfig.swift** — `baseURL` (currently `https://mi2:9093`; normally 9092 — see Running).
+- **ServerConfig.swift** — `baseURL` (currently `https://10.0.0.4:9092`, the Mac's plain-LAN
+  address — see Running), overridable at runtime with `FIELD4_SERVER` so you can point at a
+  Tailscale name or another port without a rebuild.
   `documentURL(file:flags:selectionContext:)` builds `/index.html?…` URLs.
 - **RTT/** — the GPU/immersive half: the receiver for the `field-encode` UDP stream (see
   `native/field-encode/WIRE_FORMAT.md` in the field4 repo). One-way, lossy, no jitter buffer.
@@ -119,6 +121,10 @@ Four improvements on top of the PoC:
 - **Editor placement.** The floating editor's `WindowGroup(for: URL.self)` placement moved from
   `.utilityPanel` (tilted) to `.automatic` (upright, forward, in front of the active window). Relative
   `.leading/.trailing(mainWindow)` is still avoided — it resolves off-display and fails to open.
+  It is **opt-in**: it no longer opens itself on launch, because a second window that takes keyboard
+  focus costs more in focus-juggling than the immediate shared-selection pairing is worth. Open it
+  with the `</>` ornament button, or set `FIELD4_AUTO_EDITOR=1` to restore launch auto-open (for
+  headless/paired-client testing, where nothing can tap a button).
 - **Canvas-owned panel routing.** The context formerly used only for shared selection now also
   carries short-lived `shared-ui-intent` messages. Choosing **Show Document History** in the
   floating editor's command palette opens the history overlay in its paired canvas WKWebView,
@@ -284,16 +290,24 @@ All are additive and orthogonal (e.g. `?noeditor&transparent&shaderSelectionCont
 
 ## Running
 
-1. On the Mac, start the Field server: `PORT=9093 ./gradlew runJvm` in the field4 repo.
-   **Use 9093** — a CI loop bounces a backend on 9092, which yanks the shell's connection. The
-   HTTPS connector binds `0.0.0.0`, reachable as `mi2` over Tailscale from the sim/device.
+1. On the Mac, start the Field server: `./gradlew runJvm` in the field4 repo (default port 9092).
+   The HTTPS connector binds `0.0.0.0`, so it is reachable over the plain LAN — and over Tailscale
+   as `mi2` if that is running. If a CI loop is bouncing 9092, use `PORT=9093 ./gradlew runJvm`
+   and point the shell at it with `FIELD4_SERVER=https://10.0.0.4:9093` rather than editing source.
 2. Build/run this project against a **visionOS ≥ 26** simulator or device (older runtimes reject
    the app — the sim list has 1.0/1.2/2.2 devices that will fail to install).
-3. Cert: self-signed with `mi2` in its SAN; `WebDock` trusts `mi2`/`*.ts.net`/loopback.
+3. Cert: self-signed, issued for `localhost`. `isTrustedFieldDevHost` overrides trust for loopback,
+   `mi2`/`*.ts.net`, and RFC1918/link-local IP literals — which covers the LAN address, whose SAN
+   would never match anyway.
+4. Over plain LAN the app needs **Local Network** permission (`NSLocalNetworkUsageDescription`,
+   in the root `Info.plist`). Accept the prompt on first launch or nothing connects. Tailscale
+   addresses are exempt — they go out a `utun` interface — which is why this only bit once we
+   moved off Tailscale.
 
 ## Gotchas (hard-won)
 
-- **9092 is bounced by a CI loop** → dev on 9093.
+- **9092 can be bounced by a CI loop** → if that bites, run on 9093 and select it with
+  `FIELD4_SERVER=https://10.0.0.4:9093` instead of editing `ServerConfig`.
 - **`field.css` / `index.html` are served from `build/…` dirs, not `src/`** — a webpack /
   `processResources` run (or a manual `cp` into `build/js/packages/afield/kotlin/` +
   `build/processedResources/{js,jvm}/main/`) is needed for edits to reach a running server.
