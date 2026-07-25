@@ -125,6 +125,36 @@
     return arr;
   }
 
+  // Parse `:::fold [label]` / `:::endfold` region markers out of a static block. The marker
+  // lines are removed (they never render or execute); the enclosed lines stay in the code and
+  // are recorded as a collapsible region [start, end) in the CLEANED line indexing.
+  function parseFoldMarkers(code) {
+    const beginRe = /^\s*:::fold(?:\s+(.*\S))?\s*$/;
+    const endRe = /^\s*:::endfold\s*$/;
+    const lines = toLines(code);
+    const out = [];
+    const regions = [];
+    let open = null;
+    let id = 0;
+    for (const line of lines) {
+      const begin = line.match(beginRe);
+      if (begin) {
+        open = { start: out.length, label: (begin[1] || "").trim() };
+        continue;
+      }
+      if (endRe.test(line)) {
+        if (open) {
+          regions.push({ id: id++, start: open.start, end: out.length, label: open.label, expanded: false });
+          open = null;
+        }
+        continue;
+      }
+      out.push(line);
+    }
+    if (open) regions.push({ id: id++, start: open.start, end: out.length, label: open.label, expanded: false });
+    return { code: out.join("\n"), regions };
+  }
+
   function commonPrefixLen(aLines, bLines) {
     const len = Math.min(aLines.length, bLines.length);
     let i = 0;
@@ -376,6 +406,12 @@
       this.language = options.language || "kotlin";
       this.codeStart = options.before || "";
       this.codeEnd = options.after || options.before || "";
+      // Pull out :::fold/:::endfold regions before anything else counts lines or diffs.
+      const foldStart = parseFoldMarkers(this.codeStart);
+      const foldEnd = parseFoldMarkers(this.codeEnd);
+      this.codeStart = foldStart.code;
+      this.codeEnd = foldEnd.code;
+      this.foldRegions = foldStart.regions;
       this.staticMode = Boolean(options.static) || this.codeStart === this.codeEnd;
       this.showFinalFirst = options.showFinalFirst !== false; // default: render final state first
       this.steps = buildSteps(this.codeStart, this.codeEnd);
@@ -462,8 +498,7 @@
       const startIdx = this.foldTop ? this.prefixLen : 0;
       const endIdx = this.foldBottom ? lines.length - this.suffixLen : lines.length;
 
-      const visible = [];
-      for (let idx = startIdx; idx < endIdx; idx += 1) {
+      const renderLine = (idx) => {
         const line = lines[idx];
         const segments = inline.get(idx);
         let content;
@@ -487,7 +522,35 @@
         const marker = markers.get(idx) || "";
         const markerHtml = marker ? `<span class="marker ${marker}"></span>` : "";
         cls += marker ? " with-marker" : " no-marker";
-        visible.push(`<div class="${cls}"><span class="line-no">${idx + 1}</span>${markerHtml}<span class="code-text">${content}</span></div>`);
+        return `<div class="${cls}"><span class="line-no">${idx + 1}</span>${markerHtml}<span class="code-text">${content}</span></div>`;
+      };
+
+      // Explicit :::fold regions still collapsed, clipped to the visible [startIdx,endIdx) window.
+      const regions = (this.foldRegions || [])
+        .filter((r) => !r.expanded)
+        .map((r) => ({ id: r.id, start: Math.max(r.start, startIdx), end: Math.min(r.end, endIdx), label: r.label }))
+        .filter((r) => r.end > r.start)
+        .sort((a, b) => a.start - b.start);
+
+      const visible = [];
+      let idx = startIdx;
+      let ri = 0;
+      while (idx < endIdx) {
+        while (ri < regions.length && regions[ri].start < idx) ri += 1;
+        if (ri < regions.length && idx === regions[ri].start) {
+          const r = regions[ri];
+          const count = r.end - r.start;
+          const plural = count === 1 ? "" : "s";
+          const labelHtml = r.label
+            ? `${escapeHtml(r.label)} <span class="fold-count">(${count} line${plural})</span>`
+            : `\u2026 ${count} line${plural}`;
+          visible.push(`<div class="code-diff-fold fold-region" data-fold-region="${r.id}"><span class="fold-icon">+</span> ${labelHtml}</div>`);
+          idx = r.end;
+          ri += 1;
+          continue;
+        }
+        visible.push(renderLine(idx));
+        idx += 1;
       }
 
       const wrapped = visible.join("");
@@ -517,6 +580,11 @@
           const dir = el.dataset.fold;
           if (dir === "top") this.foldTop = false;
           if (dir === "bottom") this.foldBottom = false;
+          const regionId = el.dataset.foldRegion;
+          if (regionId !== undefined && this.foldRegions) {
+            const region = this.foldRegions.find((r) => String(r.id) === regionId);
+            if (region) region.expanded = true;
+          }
           this.render(this.stateLines);
         });
       });
@@ -565,6 +633,7 @@
       this.inlineHighlights.clear();
       this.foldTop = this.prefixLen > 2;
       this.foldBottom = this.suffixLen > 2;
+      if (this.foldRegions) this.foldRegions.forEach((r) => { r.expanded = false; });
       if (this.showFinalFirst && !this.staticMode && this.steps.length) {
         this.fastForwardToEnd();
       }

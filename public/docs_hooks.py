@@ -124,6 +124,18 @@ FENCE_OPEN_RE = re.compile(
 )
 GENERIC_FENCE_OPEN_RE = re.compile(r"^(?P<indent>[ ]{0,3})(?P<fence>`{3,}|~{3,}).*(?:\r?\n)?$")
 MARKER_PREFIXES = (":::static", ":::before", ":::after", ":::")
+
+
+def is_marker_line(stripped: str) -> bool:
+    """True for any `:::` section/fold marker line. Fold markers (`:::fold [label]` /
+    `:::endfold`) mark boilerplate that the code-diff player collapses in the rendered
+    page; they are stripped from the EXECUTED code here but the enclosed lines are kept
+    (they still run). See public/docs/assets/code-diff-player for the client side."""
+    if stripped in MARKER_PREFIXES:
+        return True
+    if stripped == ":::endfold" or stripped == ":::fold" or stripped.startswith(":::fold "):
+        return True
+    return False
 TRUE_VALUES = {"1", "true", "yes", "on"}
 FALSE_VALUES = {"0", "false", "no", "off"}
 RUNNER_DIGEST_SOURCE_FILES = (
@@ -2341,7 +2353,8 @@ def extract_effective_code(*, lines: list[str], fence_name: str, page_path: Path
 
 def extract_static_code(*, lines: list[str]) -> str:
     code_lines = [line.rstrip("\r\n") for line in lines]
-    filtered = [line for line in code_lines if line.strip() not in MARKER_PREFIXES]
+    # Drop section AND fold markers; keep the code inside a fold region (it must run).
+    filtered = [line for line in code_lines if not is_marker_line(line.strip())]
     return normalize_code_lines(filtered)
 
 
@@ -2365,7 +2378,7 @@ def extract_diff_after_code(*, lines: list[str], page_path: Path, line_number: i
             mode = "after"
             saw_after = True
             continue
-        if stripped in {":::static", ":::"}:
+        if stripped in {":::static", ":::"} or stripped == ":::endfold" or stripped == ":::fold" or stripped.startswith(":::fold "):
             continue
         if mode == "after":
             after_lines.append(line)
@@ -2410,7 +2423,7 @@ def split_diff_sections(lines: list[str]) -> tuple[list[str], list[str], bool, b
             has_after = True
             mode = "after"
             continue
-        if stripped in {":::static", ":::"}:
+        if stripped in {":::static", ":::"} or stripped == ":::endfold" or stripped == ":::fold" or stripped.startswith(":::fold "):
             continue
         if mode == "after":
             after_lines.append(line)
