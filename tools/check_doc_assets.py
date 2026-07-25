@@ -38,13 +38,13 @@ import subprocess
 import sys
 from pathlib import Path
 
-ASSET_EXTS = (".png", ".svg", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".mp4", ".webm")
+ASSET_EXTS = (".png", ".svg", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".mp4", ".webm", ".wav")
 
-# Attribute-style refs (runner-fence headers + raw HTML). Covers both runner capture
-# outputs (`screenshot=` PNGs, `video=` MP4s) and HTML `src=`/`poster=`. Note this does
-# NOT match `source-image=` (a local /tmp input to the runner, not a shipped asset):
-# none of these tokens appears as `…=` inside "source-image".
-ATTR_REF = re.compile(r'(?:screenshot|video|poster|src)\s*=\s*"([^"]+)"')
+# Attribute-style refs (runner-fence headers + raw HTML). Covers runner capture
+# outputs (`screenshot=` PNGs, `video=` MP4s, `audio=` WAVs) and HTML `src=`/`poster=`.
+# Note this does NOT match `source-image=` (a local /tmp input to the runner, not a
+# shipped asset): none of these tokens appears as `…=` inside "source-image".
+ATTR_REF = re.compile(r'(?:screenshot|video|audio|poster|src)\s*=\s*"([^"]+)"')
 MD_IMG = re.compile(r'!\[[^\]]*\]\(\s*([^)\s]+)')
 EXTERNAL = ("http://", "https://", "data:", "mailto:", "#")
 
