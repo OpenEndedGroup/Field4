@@ -19,6 +19,9 @@
     --nav-line-height: 1.22;
     --nav-item-gap: 0.075rem;
     --nav-sidebar-offset: 2.5rem;
+    /* Outer page grid (`.md-grid`) — the box the content column is centred in.
+       Referenced by the header so the branding can sit on the same left edge. */
+    --field-grid-width: 52rem;
 
     --md-text-font: "IBM Plex Sans Condensed", sans-serif;
     --md-code-font: "Iosevka Web", "Iosevka", "SFMono-Regular", "Menlo", monospace;
@@ -188,20 +191,17 @@ h3 {
 .md-logo            { display: none; }
 
 /* ── narrower content column ─────────────────────────────────── */
-.md-grid { max-width: 52rem; }
+.md-grid { max-width: var(--field-grid-width); }
 
-/* ── header: branding left-aligns / search right-aligns with content column ── */
+/* Brand line: "OpenEndedGroup |" in the lightest weight we load, so the eye
+   lands on "Field·4". The two halves are wrapped by assets/header-brand.js —
+   the theme renders `site_name` as one text node. */
+.md-header__topic .field-brand__org {
+    font-weight: 300;
+}
+
+/* ── header: search right-aligns with content column ─────────── */
 @media screen and (min-width: 76.234375em) {
-    .md-header .md-header__inner {
-        max-width: 52rem;
-        margin: 0 auto;
-        padding-left: 12.1rem;
-        padding-right: 12.1rem;
-        box-sizing: border-box;
-    }
-    .md-header .md-header__title {
-        margin-left: 0;
-    }
     .md-header .md-search {
         margin-right: 0;
     }
@@ -1104,18 +1104,35 @@ button.md-search__icon[aria-label="Clear"] {
         padding-right: 1rem;
         display: flex;
         align-items: center;
+        position: relative;
     }
 
-    .md-header .md-header__ellipsis {
-        flex: 1 1 0;
-        min-width: 0;
-        overflow: hidden;
-        /* Push title to the content column left edge.
-           The burger button is ~2.4rem wide; header padding-left is 0.6rem.
-           Content column starts at 50% - reading-width/2. */
-        margin-left: calc(50vw - var(--field-reading-width) / 2 - 3rem) !important;
+    /* Put the brand line on the content column's left edge, so it aligns with
+       the h1's rule, the body copy and the code blocks.
+
+       Nudging the title along the flex row means guessing the burger's width,
+       which is what left it a few px shy before. Instead lift the title out of
+       the row and lay it on the same grid the content is centred in: the header
+       is full-bleed here, so percentages resolve against the client width that
+       `.md-grid` centres in — and using % rather than `vw` means a classic
+       (space-taking) scrollbar can't skew it. Within that grid the content
+       column is `--field-reading-width` centred inside `--field-grid-width`,
+       hence the second term. */
+    .md-header .md-header__title {
+        position: absolute;
+        inset: 0;
+        margin: 0 !important;
+        padding-left: calc(
+            max(0px, (100% - var(--field-grid-width)) / 2)
+            + (var(--field-grid-width) - var(--field-reading-width)) / 2
+        );
+        padding-right: 1rem;
+        /* Out of flow it lies over the burger and the search field, so it must
+           not swallow their clicks. */
+        pointer-events: none;
     }
 
+    /* The title no longer consumes flex space, so search needs its own push. */
     .md-header .md-search {
         margin-left: auto;
     }

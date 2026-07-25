@@ -114,6 +114,7 @@ extra_javascript:
   # data-field-homepage flag that dot-grid.js reads to suppress itself.
   - assets/homepage-video.js
   - assets/dot-grid.js
+  - assets/header-brand.js
   - assets/lesswrong-rail.js
   - assets/image-lightbox.js
   - assets/code-diff-player/fence-upgrade.js
