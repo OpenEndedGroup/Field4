@@ -1,5 +1,7 @@
 package afield.four.synth
 
+import afield.graphquery.LiveGraphEdge
+import afield.graphquery.LiveGraphInspectable
 import kotlin.math.abs
 import kotlin.math.floor
 
