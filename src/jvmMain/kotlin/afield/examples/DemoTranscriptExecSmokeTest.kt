@@ -72,6 +72,7 @@ object DemoTranscriptExecSmokeTest {
         "two_box_context",
         "spectral_examples",
         "vision_metal_cube",
+        "pattern_rewrite_worked_example",
     )
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
