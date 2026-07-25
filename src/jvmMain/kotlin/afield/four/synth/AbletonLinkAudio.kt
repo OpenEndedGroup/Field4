@@ -1,5 +1,7 @@
 package afield.four.synth
 
+import afield.graphquery.LiveGraphEdge
+import afield.graphquery.LiveGraphInspectable
 import com.ableton.link.AbletonLink
 import com.ableton.link.LinkAudioChannel
 import com.ableton.link.LinkAudioSink
