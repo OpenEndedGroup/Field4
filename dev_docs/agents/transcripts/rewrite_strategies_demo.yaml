@@ -1,0 +1,230 @@
+name: rewrite_strategies_demo
+description: >
+  Demonstrates the pattern-rewrite STRATEGY sublanguage: named `rule("…") { … }` rules driven by a
+  `strategy { … }` control block. Each box authors a rule (or two) and a strategy combinator, and its
+  own code is rewritten before it compiles. Every box prints its result and `check()`s the expected
+  value, so replaying this transcript through the real engine proves each combinator fires and
+  changes the output relative to the default global fixpoint. Pure compute — no Window is opened.
+operations:
+  # ---- baseline: NO strategy block ⇒ the historical global fixpoint (fires everywhere) ----
+  - create:
+      box: rw_baseline
+      name: Baseline (global fixpoint)
+      frame: { x: 60.0, y: 60.0, w: 300.0, h: 140.0 }
+      properties:
+        code: |
+          fun p(v: Int) = v
+          fun A(v: Int) = v * 10
+          rule("p2a") { x: Expr -> from { p(x) }; to { A(x) } }
+          val r = p(1) + p(2)
+          println("baseline (global fixpoint): r = $r  -> both p() rewritten to A(1)+A(2)")
+          check(r == 30) { "baseline expected 30, got $r" }
+  # ---- once("r"): fire at a single (first/outermost) site only ----
+  - create:
+      box: rw_once
+      name: once (single site)
+      frame: { x: 400.0, y: 60.0, w: 300.0, h: 140.0 }
+      properties:
+        code: |
+          fun p(v: Int) = v
+          fun A(v: Int) = v * 10
+          rule("p2a") { x: Expr -> from { p(x) }; to { A(x) } }
+          strategy { once("p2a") }
+          val r = p(1) + p(2)
+          println("once: r = $r  -> only the first p() rewritten: A(1) + p(2)")
+          check(r == 12) { "once expected 12, got $r" }
+  # ---- leaf naming ONE of two rules ⇒ a subset of the default fires ----
+  - create:
+      box: rw_subset
+      name: subset (name one rule)
+      frame: { x: 740.0, y: 60.0, w: 300.0, h: 160.0 }
+      properties:
+        code: |
+          fun p(v: Int) = v
+          fun q(v: Int) = v
+          fun A(v: Int) = v * 10
+          fun B(v: Int) = v * 100
+          rule("p2a") { x: Expr -> from { p(x) }; to { A(x) } }
+          rule("q2b") { x: Expr -> from { q(x) }; to { B(x) } }
+          strategy { "p2a" }
+          val r = p(1) + q(2)
+          println("subset: r = $r  -> only p2a fires: A(1) + q(2); q2b left alone")
+          check(r == 12) { "subset expected 12, got $r" }
+  # ---- topdown("r"): rewrite the single OUTERMOST match of a nested form ----
+  - create:
+      box: rw_topdown
+      name: topdown (outer)
+      frame: { x: 60.0, y: 260.0, w: 300.0, h: 150.0 }
+      properties:
+        code: |
+          fun f(v: Int) = v * 2
+          fun g(v: Int) = v + 100
+          rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }
+          strategy { topdown("fg") }
+          val r = f(f(1))
+          println("topdown: r = $r  -> outer f rewritten: g(f(1)) = g(2) = 102")
+          check(r == 102) { "topdown expected 102, got $r" }
+  # ---- bottomup("r"): rewrite the single INNERMOST match — the mirror of topdown ----
+  - create:
+      box: rw_bottomup
+      name: bottomup (inner)
+      frame: { x: 400.0, y: 260.0, w: 300.0, h: 150.0 }
+      properties:
+        code: |
+          fun f(v: Int) = v * 2
+          fun g(v: Int) = v + 100
+          rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }
+          strategy { bottomup("fg") }
+          val r = f(f(1))
+          println("bottomup: r = $r  -> inner f rewritten: f(g(1)) = f(101) = 202")
+          check(r == 202) { "bottomup expected 202, got $r" }
+  # ---- a then b: sequential composition ----
+  - create:
+      box: rw_seq
+      name: then (sequence)
+      frame: { x: 740.0, y: 260.0, w: 300.0, h: 160.0 }
+      properties:
+        code: |
+          fun p(v: Int) = v
+          fun q(v: Int) = v
+          fun r0(v: Int) = v * 1000
+          rule("p2q") { x: Expr -> from { p(x) }; to { q(x) } }
+          rule("q2r") { x: Expr -> from { q(x) }; to { r0(x) } }
+          strategy { "p2q" then "q2r" }
+          val out = p(5)
+          println("then: out = $out  -> p -> q -> r0(5) = 5000")
+          check(out == 5000) { "then expected 5000, got $out" }
+  # ---- choice(a, b): first applicable alternative wins ----
+  - create:
+      box: rw_choice
+      name: choice (first applicable)
+      frame: { x: 60.0, y: 470.0, w: 300.0, h: 160.0 }
+      properties:
+        code: |
+          fun pick(v: Int) = v
+          fun X(v: Int) = v + 1
+          fun Y(v: Int) = v + 2
+          rule("toX") { x: Expr -> from { pick(x) }; to { X(x) } }
+          rule("toY") { x: Expr -> from { pick(x) }; to { Y(x) } }
+          strategy { choice("toY", "toX") }
+          val r = pick(10)
+          println("choice: r = $r  -> prefers toY though toX is declared first: Y(10) = 12")
+          check(r == 12) { "choice expected 12, got $r" }
+  # ---- repeat(topdown(r), n): bounded iteration ----
+  - create:
+      box: rw_repeat
+      name: repeat (bounded)
+      frame: { x: 400.0, y: 470.0, w: 320.0, h: 160.0 }
+      properties:
+        code: |
+          fun f(v: Int) = v * 2
+          fun g(v: Int) = v + 100
+          rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }
+          strategy { repeat(topdown("fg"), 2) }
+          val r = f(f(f(1)))
+          println("repeat(topdown, 2): r = $r  -> two outer steps, inner f(1) left: g(g(f(1))) = 202")
+          check(r == 202) { "repeat bounded expected 202, got $r" }
+  - execute:
+      box: rw_baseline
+      property: code
+      type: fragment
+      code: |
+        fun p(v: Int) = v
+        fun A(v: Int) = v * 10
+        rule("p2a") { x: Expr -> from { p(x) }; to { A(x) } }
+        val r = p(1) + p(2)
+        println("baseline (global fixpoint): r = $r  -> both p() rewritten to A(1)+A(2)")
+        check(r == 30) { "baseline expected 30, got $r" }
+  - execute:
+      box: rw_once
+      property: code
+      type: fragment
+      code: |
+        fun p(v: Int) = v
+        fun A(v: Int) = v * 10
+        rule("p2a") { x: Expr -> from { p(x) }; to { A(x) } }
+        strategy { once("p2a") }
+        val r = p(1) + p(2)
+        println("once: r = $r  -> only the first p() rewritten: A(1) + p(2)")
+        check(r == 12) { "once expected 12, got $r" }
+  - execute:
+      box: rw_subset
+      property: code
+      type: fragment
+      code: |
+        fun p(v: Int) = v
+        fun q(v: Int) = v
+        fun A(v: Int) = v * 10
+        fun B(v: Int) = v * 100
+        rule("p2a") { x: Expr -> from { p(x) }; to { A(x) } }
+        rule("q2b") { x: Expr -> from { q(x) }; to { B(x) } }
+        strategy { "p2a" }
+        val r = p(1) + q(2)
+        println("subset: r = $r  -> only p2a fires: A(1) + q(2); q2b left alone")
+        check(r == 12) { "subset expected 12, got $r" }
+  - execute:
+      box: rw_topdown
+      property: code
+      type: fragment
+      code: |
+        fun f(v: Int) = v * 2
+        fun g(v: Int) = v + 100
+        rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }
+        strategy { topdown("fg") }
+        val r = f(f(1))
+        println("topdown: r = $r  -> outer f rewritten: g(f(1)) = g(2) = 102")
+        check(r == 102) { "topdown expected 102, got $r" }
+  - execute:
+      box: rw_bottomup
+      property: code
+      type: fragment
+      code: |
+        fun f(v: Int) = v * 2
+        fun g(v: Int) = v + 100
+        rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }
+        strategy { bottomup("fg") }
+        val r = f(f(1))
+        println("bottomup: r = $r  -> inner f rewritten: f(g(1)) = f(101) = 202")
+        check(r == 202) { "bottomup expected 202, got $r" }
+  - execute:
+      box: rw_seq
+      property: code
+      type: fragment
+      code: |
+        fun p(v: Int) = v
+        fun q(v: Int) = v
+        fun r0(v: Int) = v * 1000
+        rule("p2q") { x: Expr -> from { p(x) }; to { q(x) } }
+        rule("q2r") { x: Expr -> from { q(x) }; to { r0(x) } }
+        strategy { "p2q" then "q2r" }
+        val out = p(5)
+        println("then: out = $out  -> p -> q -> r0(5) = 5000")
+        check(out == 5000) { "then expected 5000, got $out" }
+  - execute:
+      box: rw_choice
+      property: code
+      type: fragment
+      code: |
+        fun pick(v: Int) = v
+        fun X(v: Int) = v + 1
+        fun Y(v: Int) = v + 2
+        rule("toX") { x: Expr -> from { pick(x) }; to { X(x) } }
+        rule("toY") { x: Expr -> from { pick(x) }; to { Y(x) } }
+        strategy { choice("toY", "toX") }
+        val r = pick(10)
+        println("choice: r = $r  -> prefers toY though toX is declared first: Y(10) = 12")
+        check(r == 12) { "choice expected 12, got $r" }
+  - execute:
+      box: rw_repeat
+      property: code
+      type: fragment
+      code: |
+        fun f(v: Int) = v * 2
+        fun g(v: Int) = v + 100
+        rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }
+        strategy { repeat(topdown("fg"), 2) }
+        val r = f(f(f(1)))
+        println("repeat(topdown, 2): r = $r  -> two outer steps, inner f(1) left: g(g(f(1))) = 202")
+        check(r == 202) { "repeat bounded expected 202, got $r" }
+  - wait:
+      millis: 300
