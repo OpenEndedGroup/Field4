@@ -78,7 +78,22 @@ object PatternRewriteSmokeTest {
             testProvideEndToEndIdempotent()
             testAiCacheHitIsNoModelCall()
             testTerminationCap()
+            // ---- strategy sublanguage (named rules + strategy {} combinators) ----
+            testNamedRuleNoStrategyIsGlobalFixpoint()
+            testStrategyOnceFiresSingleSite()
+            testStrategyLeafSubsetDiffersFromDefault()
+            testStrategyTopDownSingleOutermost()
+            testStrategyBottomUpSingleInnermost()
+            testStrategySeqThenOrderingAndFailFast()
+            testStrategyChoiceFirstApplicable()
+            testStrategyRepeatBoundedVsUnbounded()
+            testStrategyAttemptIsIdentityOnFailure()
+            testStrategyAnonymousRulesDoNotFire()
+            testStrategyUnknownRuleFailsClosed()
+            testStrategyMalformedFailsClosed()
+            testStrategyProvideStillContributes()
             testEndToEndThroughEngine()
+            testStrategyEndToEndThroughEngine()
             println("✅ Pattern-rewrite smoke passed")
             true
         } catch (t: Throwable) {
@@ -644,5 +659,205 @@ object PatternRewriteSmokeTest {
 
         val result = withTimeout(120_000) { ki.exec(expanded) }
         require(result.toString().contains("7")) { "expanded source should compile and evaluate to 7, got: $result" }
+    }
+
+    // ---- strategy sublanguage --------------------------------------------------------------------
+
+    /**
+     * Backward-compat: a `rule("name") { … }` with NO `strategy {}` block behaves EXACTLY like the
+     * anonymous `rewrite {}` global fixpoint — every match everywhere is rewritten to convergence.
+     */
+    private fun testNamedRuleNoStrategyIsGlobalFixpoint() {
+        val rule = """rule("neg") { x: Expr -> from { neg(x) }; to { -x } }"""
+        val out = expand("$rule\nneg(a)\nneg(b)").text
+        require("-a" in out && "-b" in out) { "named rule with no strategy must fire at every site: $out" }
+        require("neg(" !in out) { "no match should survive the global fixpoint: $out" }
+    }
+
+    /**
+     * `once(r)` fires at a single (outermost, document-first) site — leaving the other match
+     * untouched, which is the observable difference from the default global fixpoint (both sites).
+     */
+    private fun testStrategyOnceFiresSingleSite() {
+        val src = """
+            rule("neg") { x: Expr -> from { neg(x) }; to { -x } }
+            strategy { once("neg") }
+            neg(a)
+            neg(b)
+        """.trimIndent()
+        val out = expand(src).text
+        require("-a" in out) { "once should fire the first site: $out" }
+        require("neg(b)" in out && "-b" !in out) { "once must leave the second site untouched: $out" }
+    }
+
+    /** A strategy that names only one of two rules fires ONLY that rule (default fires both). */
+    private fun testStrategyLeafSubsetDiffersFromDefault() {
+        val src = """
+            rule("p2a") { x: Expr -> from { p(x) }; to { A(x) } }
+            rule("q2b") { x: Expr -> from { q(x) }; to { B(x) } }
+            strategy { "p2a" }
+            p(1)
+            q(2)
+        """.trimIndent()
+        val out = expand(src).text
+        require("A(1)" in out) { "the named rule must fire: $out" }
+        require("q(2)" in out && "B(2)" !in out) { "the unnamed rule must NOT fire under a strategy: $out" }
+    }
+
+    /** `topdown(r)` rewrites the single OUTERMOST match of a nested form. */
+    private fun testStrategyTopDownSingleOutermost() {
+        val src = """
+            rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }
+            strategy { topdown("fg") }
+            f(f(a))
+        """.trimIndent()
+        val out = expand(src).text
+        require("g(f(a))" in out) { "topdown must rewrite the outer call only: $out" }
+        require("g(g(a))" !in out) { "topdown is a single application, not a fixpoint: $out" }
+    }
+
+    /** `bottomup(r)` rewrites the single INNERMOST match — the mirror of `topdown` on `f(f(a))`. */
+    private fun testStrategyBottomUpSingleInnermost() {
+        val src = """
+            rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }
+            strategy { bottomup("fg") }
+            f(f(a))
+        """.trimIndent()
+        val out = expand(src).text
+        require("f(g(a))" in out) { "bottomup must rewrite the inner call only: $out" }
+        require("g(f(a))" !in out && "g(g(a))" !in out) { "bottomup must not touch the outer call: $out" }
+    }
+
+    /** `a then b` sequences (result of a feeds b); a leading failure fails the whole sequence. */
+    private fun testStrategySeqThenOrderingAndFailFast() {
+        val rules = """
+            rule("p2q") { x: Expr -> from { p(x) }; to { q(x) } }
+            rule("q2r") { x: Expr -> from { q(x) }; to { r(x) } }
+        """.trimIndent()
+
+        val ordered = expand("$rules\nstrategy { \"p2q\" then \"q2r\" }\np(1)").text
+        require("r(1)" in ordered) { "p→q→r when sequenced in the right order: $ordered" }
+
+        // Reversed: q2r fails first (no q yet) ⇒ fail-fast ⇒ nothing is rewritten.
+        val reversed = expand("$rules\nstrategy { \"q2r\" then \"p2q\" }\np(1)").text
+        require("p(1)" in reversed && "r(1)" !in reversed && "q(1)" !in reversed) {
+            "a failing first step must abort the whole sequence: $reversed"
+        }
+    }
+
+    /**
+     * `choice(a, b)` runs the first applicable alternative. When the alternative order differs from
+     * declaration order, the result differs from the default (declaration-order first-match-wins).
+     */
+    private fun testStrategyChoiceFirstApplicable() {
+        val rules = """
+            rule("toX") { x: Expr -> from { pick(x) }; to { X(x) } }
+            rule("toY") { x: Expr -> from { pick(x) }; to { Y(x) } }
+        """.trimIndent()
+        // choice prefers toY though toX is declared first ⇒ Y, not the default X.
+        val pref = expand("$rules\nstrategy { choice(\"toY\", \"toX\") }\npick(1)").text
+        require("Y(1)" in pref && "X(1)" !in pref) { "choice must prefer its first alternative: $pref" }
+
+        // Fallback: a non-matching first alternative falls through to the second.
+        val fall = expand(
+            """
+            rule("zzz") { x: Expr -> from { zzz(x) }; to { Z(x) } }
+            rule("toX") { x: Expr -> from { pick(x) }; to { X(x) } }
+            strategy { choice("zzz", "toX") }
+            pick(1)
+            """.trimIndent()
+        ).text
+        require("X(1)" in fall) { "choice must fall through a non-matching alternative: $fall" }
+    }
+
+    /** `repeat(s, n)` stops after n applications; unbounded `repeat(s)` runs to a fixpoint. */
+    private fun testStrategyRepeatBoundedVsUnbounded() {
+        val rule = """rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }"""
+        val bounded = expand("$rule\nstrategy { repeat(topdown(\"fg\"), 1) }\nf(f(f(a)))").text
+        require("g(f(f(a)))" in bounded) { "repeat(…, 1) applies exactly one outermost step: $bounded" }
+
+        val unbounded = expand("$rule\nstrategy { repeat(topdown(\"fg\")) }\nf(f(a))").text
+        require("g(g(a))" in unbounded) { "unbounded repeat drives topdown to a fixpoint: $unbounded" }
+    }
+
+    /** `attempt(s)` rescues a failing step into identity, so a following step can still run. */
+    private fun testStrategyAttemptIsIdentityOnFailure() {
+        val src = """
+            rule("zzz") { x: Expr -> from { zzz(x) }; to { Z(x) } }
+            rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }
+            strategy { attempt("zzz") then "fg" }
+            f(a)
+        """.trimIndent()
+        val out = expand(src).text
+        require("g(a)" in out) { "attempt over a non-matching rule must not abort the sequence: $out" }
+    }
+
+    /** Anonymous `rewrite {}` rules carry no name, so a `strategy {}` can never fire them. */
+    private fun testStrategyAnonymousRulesDoNotFire() {
+        val src = """
+            rewrite { x: Expr -> from { anon(x) }; to { A(x) } }
+            rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }
+            strategy { "fg" }
+            anon(1)
+            f(2)
+        """.trimIndent()
+        val out = expand(src).text
+        require("g(2)" in out) { "the named rule must fire: $out" }
+        require("anon(1)" in out && "A(1)" !in out) { "an anonymous rule must not fire under a strategy: $out" }
+    }
+
+    /** Fail-closed: a strategy referencing an unknown rule name rewrites NOTHING, with a diagnostic. */
+    private fun testStrategyUnknownRuleFailsClosed() {
+        val res = expand("rule(\"fg\") { x: Expr -> from { f(x) }; to { g(x) } }\nstrategy { once(\"nope\") }\nf(a)")
+        require(res.diagnostic != null && "unknown rule name" in res.diagnostic!!) {
+            "an unknown rule name must be reported: ${res.diagnostic}"
+        }
+        require("f(a)" in res.text && "g(a)" !in res.text) { "fail-closed must not rewrite anything: ${res.text}" }
+    }
+
+    /** Fail-closed: a malformed strategy expression rewrites NOTHING, with a diagnostic. */
+    private fun testStrategyMalformedFailsClosed() {
+        val res = expand("rule(\"fg\") { x: Expr -> from { f(x) }; to { g(x) } }\nstrategy { 1 + 2 }\nf(a)")
+        require(res.diagnostic != null) { "a malformed strategy must be reported" }
+        require("f(a)" in res.text && "g(a)" !in res.text) { "fail-closed must not rewrite anything: ${res.text}" }
+    }
+
+    /** Side contributions (`provide {}`) still accrue when a rule fires under a strategy. */
+    private fun testStrategyProvideStillContributes() {
+        val src = """
+            rule("cnt") { n: Ident -> from { counter(n) }; provide { var Box.n by Counting() }; to { n } }
+            strategy { "cnt" }
+            counter(hits)
+        """.trimIndent()
+        val res = expand(src)
+        require(res.preambleBlocks.size == 1) { "provide must still contribute under a strategy: ${res.preambleBlocks}" }
+        require("var Box.hits by Counting()" in res.preambleBlocks.single()) {
+            "metavar must be substituted in the strategy-driven preamble: ${res.preambleBlocks}"
+        }
+        require("hits" in res.text) { "to output should splice the capture: ${res.text}" }
+    }
+
+    /** End-to-end through the real engine: a named rule + strategy is deleted, wired, compiles, runs. */
+    private fun testStrategyEndToEndThroughEngine() = runBlocking {
+        val ki = KotlinInterface2(filePrefix = "pattern-rewrite-strategy-e2e")
+        val src = """
+            rule("dbl") { x: Expr -> from { dbl(x) }; to { x * 2 } }
+            strategy { once("dbl") }
+            val r = dbl(3) + dbl(4)
+            r
+        """.trimIndent()
+
+        val expanded = ki.applyMacros(Box("pattern-rewrite-strategy-e2e"), src)
+        require("rule(" !in expanded && "strategy {" !in expanded) {
+            "engine applyMacros must delete the rule + strategy blocks: $expanded"
+        }
+        // once ⇒ only the first dbl(3) is rewritten; dbl(4) is left as a literal call to the (real,
+        // spliced-in) helper below so the whole thing still compiles + evaluates.
+        require("3 * 2" in expanded && "dbl(4)" in expanded) { "once must rewrite only the first call: $expanded" }
+
+        // Provide a real `dbl` for the un-rewritten call so the expanded source compiles + runs.
+        val full = "fun dbl(v: Int) = v + v\n$expanded"
+        val result = withTimeout(120_000) { ki.exec(full) }
+        require(result.toString().contains("14")) { "3*2 + dbl(4)=8 ⇒ 14, got: $result" }
     }
 }

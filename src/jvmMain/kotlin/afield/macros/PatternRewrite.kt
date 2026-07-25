@@ -87,6 +87,9 @@ object PatternRewrite {
         val aiPrompt: KtStringTemplateExpression?,
         /** Rendered pattern text, for diagnostics. */
         val patternText: String,
+        /** The rule's name if declared as `rule("name") { … }`, else null (anonymous `rewrite {}`).
+         *  A `strategy {}` block refers to rules by this name; anonymous rules cannot be referenced. */
+        val name: String? = null,
     )
 
     /** A structural guard over captured metavariables (see [where] / [distinct] / [isLiteral] …). */
@@ -135,7 +138,42 @@ object PatternRewrite {
         val deletions: List<IntRange>,
         /** Source text of each collected `rewrite {}` block (for ambient-rule persistence). */
         val ruleSources: List<String>,
+        /** Raw PSI of each top-level `strategy {}` block's single body expression, in declaration
+         *  order. Validated + parsed into a [Strat] only once the named-rule set is known (in
+         *  [expand]); multiple blocks compose left-to-right (implicit [Strat.Seq]). */
+        val strategyExprs: List<KtElement> = emptyList(),
     )
+
+    /**
+     * A controllable term-rewriting strategy: a small Stratego/ELAN-style control program parsed
+     * from a `strategy {}` block and interpreted over the whole-file source text (see
+     * [StrategyRunner]). Leaves name rules; combinators compose them. A strategy either *succeeds*
+     * (yielding a possibly-changed source) or *fails* (does not apply) — the latter is what makes
+     * [Choice] and fail-fast [Seq] meaningful. Everything is spliced/re-parsed on PSI, exactly like
+     * the default fixpoint path.
+     */
+    sealed interface Strat {
+        /** Fire rule [ruleName] at every outermost non-overlapping site, one pass. Fails if none. */
+        data class RuleRef(val ruleName: String) : Strat
+        /** Fire [ruleName] at the single first (outermost, document-order) site — at most once. */
+        data class Once(val ruleName: String) : Strat
+        /** Fire [ruleName] at the single outermost (shallowest) match site. */
+        data class TopDown(val ruleName: String) : Strat
+        /** Fire [ruleName] at the single innermost (deepest) match site — differs from [TopDown] on
+         *  nested matches (`f(f(a))`: top picks the outer call, bottom the inner). */
+        data class BottomUp(val ruleName: String) : Strat
+        /** Run [s] once; on failure fall back to identity. Never fails. (`try` is a Kotlin keyword,
+         *  so the surface spelling is `attempt`.) */
+        data class Attempt(val s: Strat) : Strat
+        /** Iterate [s] to a fixpoint (or at most [max] times if non-null). Never fails. */
+        data class Repeat(val s: Strat, val max: Int?) : Strat
+        /** Run each of [list] in order, each on the previous result; fail-fast (`a then b`). */
+        data class Seq(val list: List<Strat>) : Strat
+        /** Run the first alternative in [list] that succeeds; fail if none do. */
+        data class Choice(val list: List<Strat>) : Strat
+        /** A malformed / unresolved strategy — carries the diagnostic already emitted; fail-closed. */
+        data class Invalid(val why: String) : Strat
+    }
 
     /**
      * Expand every `rewrite {}` rule in [source]. [parse] turns text into a [KtFile] (the caller
@@ -175,6 +213,21 @@ object PatternRewrite {
             collected.ruleSources,
         )
 
+        // A local `strategy {}` block switches from the global fixpoint to controlled term rewriting.
+        // (Strategy is box-local control — ambient strategies are not inherited; ambient *rules*
+        // still are, so a strategy can name a rule declared in an ancestor.) With no strategy block
+        // the loop below is byte-for-byte the historical global fixpoint.
+        if (collected.strategyExprs.isNotEmpty()) {
+            val named = LinkedHashMap<String, PatternRule>()
+            rules.forEach { r -> r.name?.let { named.putIfAbsent(it, r) } }   // first declaration wins
+            val program = parseStrategy(collected.strategyExprs, named.keys, onDiagnostic)
+            val runner = StrategyRunner(named, parse, gensym, evalUnquote, preambleBlocks, aiRequests,
+                onDiagnostic, maxIterations)
+            // Fail-closed: an invalid strategy performs NO rewriting (never a surprising partial one).
+            runner.eval(program, text)?.let { text = it }
+            return result()
+        }
+
         var iteration = 0
         while (true) {
             val matches = findMatches(parse(text), rules, gensym, evalUnquote)
@@ -203,21 +256,69 @@ object PatternRewrite {
         val rules = mutableListOf<PatternRule>()
         val deletions = mutableListOf<IntRange>()
         val ruleSources = mutableListOf<String>()
+        val strategyExprs = mutableListOf<KtElement>()
 
         file.collectDescendantsOfType<KtCallExpression>()
-            .filter { it.calleeName() == "rewrite" }
+            .filter { it.calleeName() in RULE_OR_STRATEGY_CALLS }
             .filter { call -> !call.isQualifiedCall() }                 // not somebody's .rewrite {} method
-            .filter { call -> !call.isNestedInRewrite() }               // quote barrier: outermost only
+            .filter { call -> !call.isNestedInRuleOrStrategy() }        // quote barrier: outermost only
             .forEach { call ->
-                val rule = call.toPatternRule(onDiagnostic)
-                if (rule != null) rules += rule
-                ruleSources += call.text
-                // Blank the whole `rewrite {}` call regardless (a malformed one is still erased DSL
-                // that must not reach the compiler).
-                deletions += call.textRange.startOffset until call.textRange.endOffset
+                when (call.calleeName()) {
+                    // A `strategy {}` control block: keep its single body expression (validated +
+                    // parsed against the named-rule set later, in `expand`), and blank the block out.
+                    "strategy" -> {
+                        val body = call.lambdaArguments.firstOrNull()?.getLambdaExpression()?.bodyExpression
+                        val expr = body?.singleMeaningfulStatement()
+                        if (expr == null) {
+                            onDiagnostic("strategy {} ignored — expected exactly one strategy expression, " +
+                                    "e.g. `strategy { repeat(topdown(\"myRule\")) }`")
+                        } else {
+                            strategyExprs += expr
+                        }
+                        deletions += call.textRange.startOffset until call.textRange.endOffset
+                    }
+                    // A named rule `rule("name") { … }` or an anonymous `rewrite { … }`. Both collect
+                    // off the trailing lambda; a named rule also carries its (string-literal) name so
+                    // a strategy can refer to it.
+                    else -> {
+                        val name = if (call.calleeName() == "rule") {
+                            call.valueArguments.firstOrNull()?.getArgumentExpression()
+                                ?.let { stringLiteralValue(it) }
+                                ?: run {
+                                    onDiagnostic("rule(...) ignored — first argument must be a string-literal " +
+                                            "name, e.g. `rule(\"negate\") { … }`")
+                                    null
+                                }
+                        } else null
+                        val rule = call.toPatternRule(onDiagnostic)?.copy(name = name)
+                        // A `rule(...)` with no valid name is erased DSL but is not a usable rule.
+                        if (rule != null && !(call.calleeName() == "rule" && name == null)) rules += rule
+                        ruleSources += call.text
+                        // Blank the whole call regardless (a malformed one is still erased DSL that
+                        // must not reach the compiler).
+                        deletions += call.textRange.startOffset until call.textRange.endOffset
+                    }
+                }
             }
 
-        return Collected(rules, deletions, ruleSources)
+        return Collected(rules, deletions, ruleSources, strategyExprs)
+    }
+
+    /** Callee names the collector recognises as top-level erased DSL forms. */
+    private val RULE_OR_STRATEGY_CALLS = setOf("rewrite", "rule", "strategy")
+
+    /** The plain content of a literal string (`"foo"` ⇒ `foo`), or null if it has interpolation. */
+    private fun stringLiteralValue(expr: KtExpression): String? {
+        val tmpl = expr as? KtStringTemplateExpression ?: return null
+        val sb = StringBuilder()
+        for (e in tmpl.entries) {
+            when (e) {
+                is KtLiteralStringTemplateEntry -> sb.append(e.text)
+                is KtEscapeStringTemplateEntry -> sb.append(e.unescapedValue)
+                else -> return null   // interpolation ⇒ not a plain literal name
+            }
+        }
+        return sb.toString()
     }
 
     private fun KtCallExpression.toPatternRule(onDiagnostic: (String) -> Unit): PatternRule? {
@@ -297,10 +398,13 @@ object PatternRewrite {
         return owner is KtQualifiedExpression && owner.selectorExpression === this
     }
 
-    private fun KtCallExpression.isNestedInRewrite(): Boolean {
+    private fun KtCallExpression.isNestedInRuleOrStrategy(): Boolean {
         var p = parent
         while (p != null) {
-            if (p is KtCallExpression && p.calleeName() == "rewrite") return true
+            // A `rewrite`/`rule` ancestor is a quote barrier (the block body is quasiquoted data, not
+            // a live declaration). `strategy` is included for symmetry so a nested erased form inside
+            // one is never independently collected.
+            if (p is KtCallExpression && p.calleeName() in RULE_OR_STRATEGY_CALLS) return true
             p = p.parent
         }
         return false
@@ -537,6 +641,218 @@ object PatternRewrite {
 
     private fun structurallyEqual(a: PsiElement, b: PsiElement): Boolean =
         Matcher(emptyMap()).match(a, b, Bindings())
+
+    // ---- strategy sublanguage: parse (phase 1b) -------------------------------------------------
+
+    /**
+     * Parse the collected `strategy {}` body expression(s) into a [Strat] program, validating every
+     * rule reference against [ruleNames]. Multiple strategy blocks compose left-to-right as an
+     * implicit [Strat.Seq]. Any malformed node or unknown rule name is reported via [onDiagnostic]
+     * and collapses the WHOLE program to [Strat.Invalid] — a strategy is fail-closed as a unit, so a
+     * typo never silently rewrites with a partially-understood program.
+     */
+    private fun parseStrategy(
+        exprs: List<KtElement>,
+        ruleNames: Set<String>,
+        onDiagnostic: (String) -> Unit,
+    ): Strat {
+        val parsed = exprs.map { parseStrat(it as? KtExpression, ruleNames, onDiagnostic) }
+        val program = if (parsed.size == 1) parsed.single() else Strat.Seq(parsed)
+        val bad = firstInvalid(program)
+        return if (bad != null) Strat.Invalid(bad.why) else program
+    }
+
+    /** Depth-first search for the first [Strat.Invalid] in a program (fail-closed detection). */
+    private fun firstInvalid(s: Strat): Strat.Invalid? = when (s) {
+        is Strat.Invalid -> s
+        is Strat.Attempt -> firstInvalid(s.s)
+        is Strat.Repeat -> firstInvalid(s.s)
+        is Strat.Seq -> s.list.firstNotNullOfOrNull { firstInvalid(it) }
+        is Strat.Choice -> s.list.firstNotNullOfOrNull { firstInvalid(it) }
+        is Strat.RuleRef, is Strat.Once, is Strat.TopDown, is Strat.BottomUp -> null
+    }
+
+    private fun parseStrat(expr: KtExpression?, ruleNames: Set<String>, onDiagnostic: (String) -> Unit): Strat {
+        fun bad(why: String): Strat { onDiagnostic("strategy {} rejected — $why"); return Strat.Invalid(why) }
+
+        // A rule reference (string literal `"name"` or bare identifier `name`), validated.
+        fun ref(nameExpr: KtExpression?, ctor: (String) -> Strat): Strat {
+            val name = nameExpr?.let { resolveRuleName(it) }
+                ?: return bad("expected a rule name (string literal or identifier), got `${nameExpr?.text}`")
+            if (name !in ruleNames) return bad("unknown rule name `$name` — declared rules: $ruleNames")
+            return ctor(name)
+        }
+
+        val e = expr?.stripParens() ?: return bad("empty strategy expression")
+        return when (e) {
+            // `a then b` — an infix chain flattens into one sequence (fail-fast).
+            is KtBinaryExpression -> if (e.operationReference.text == "then") {
+                Strat.Seq(flattenThen(e, ruleNames, onDiagnostic))
+            } else bad("unknown strategy operator `${e.operationReference.text}` — only `then` is infix")
+
+            is KtCallExpression -> {
+                val args = e.valueArguments.mapNotNull { it.getArgumentExpression() }
+                when (e.calleeName()) {
+                    "once" -> ref(args.getOrNull(0)) { Strat.Once(it) }
+                    "topdown" -> ref(args.getOrNull(0)) { Strat.TopDown(it) }
+                    "bottomup" -> ref(args.getOrNull(0)) { Strat.BottomUp(it) }
+                    "attempt" -> Strat.Attempt(parseStrat(args.getOrNull(0), ruleNames, onDiagnostic))
+                    "repeat" -> {
+                        val inner = parseStrat(args.getOrNull(0), ruleNames, onDiagnostic)
+                        val max = args.getOrNull(1)?.let { n ->
+                            (n as? KtConstantExpression)?.text?.trim()?.toIntOrNull()
+                                ?: return bad("repeat(…, n): second argument must be an integer literal, got `${n.text}`")
+                        }
+                        Strat.Repeat(inner, max)
+                    }
+                    "seq" -> Strat.Seq(args.map { parseStrat(it, ruleNames, onDiagnostic) })
+                    "choice" -> Strat.Choice(args.map { parseStrat(it, ruleNames, onDiagnostic) })
+                    // A call whose callee is itself a rule name is a stray `name()` — accept it as a
+                    // bare reference only if the callee resolves to a known rule; otherwise reject.
+                    else -> ref(e.calleeExpression as? KtExpression) { Strat.RuleRef(it) }
+                }
+            }
+
+            // Bare leaves: `"negate"` or `negate` ⇒ fire the whole rule (all outermost sites, one pass).
+            is KtStringTemplateExpression, is KtNameReferenceExpression -> ref(e) { Strat.RuleRef(it) }
+
+            else -> bad("unrecognized strategy expression `${e.text}`")
+        }
+    }
+
+    /** Flatten a left-associative `a then b then c` chain into `[a, b, c]`. */
+    private fun flattenThen(e: KtBinaryExpression, ruleNames: Set<String>, onDiagnostic: (String) -> Unit): List<Strat> {
+        val out = mutableListOf<Strat>()
+        fun walk(x: KtExpression?) {
+            val s = x?.stripParens()
+            if (s is KtBinaryExpression && s.operationReference.text == "then") {
+                walk(s.left); walk(s.right)
+            } else out += parseStrat(x, ruleNames, onDiagnostic)
+        }
+        walk(e.left); walk(e.right)
+        return out
+    }
+
+    /** A rule name from a string literal (`"n"`) or a bare identifier (`n`), else null. */
+    private fun resolveRuleName(expr: KtExpression): String? =
+        stringLiteralValue(expr) ?: (expr.stripParens() as? KtNameReferenceExpression)?.getReferencedName()
+
+    // ---- strategy sublanguage: interpret (phase 2b) ---------------------------------------------
+
+    /**
+     * Interprets a [Strat] program over whole-file source text. Every step re-parses, matches on
+     * PSI, splices, and (for `bottomup`) picks the deepest site — reusing the exact matcher,
+     * substitution, hygiene, guard and side-contribution machinery of the default fixpoint path. A
+     * step returns the new text on success or `null` on failure (no applicable rewrite); that
+     * `null` is what powers fail-fast [Strat.Seq] and first-success [Strat.Choice].
+     */
+    private class StrategyRunner(
+        val named: Map<String, PatternRule>,
+        val parse: (String) -> KtFile,
+        val gensym: GensymScope,
+        val evalUnquote: ((String) -> String?)?,
+        val preambleBlocks: MutableList<String>,
+        val aiRequests: MutableList<AiRequest>,
+        val onDiagnostic: (String) -> Unit,
+        val maxIterations: Int,
+    ) {
+        fun eval(s: Strat, text: String): String? = when (s) {
+            is Strat.Invalid -> null   // already diagnosed at parse time; fail-closed
+            is Strat.RuleRef -> firePass(text, named.getValue(s.ruleName))
+            is Strat.Once -> fireSingle(text, named.getValue(s.ruleName), deepest = false)
+            is Strat.TopDown -> fireSingle(text, named.getValue(s.ruleName), deepest = false)
+            is Strat.BottomUp -> fireSingle(text, named.getValue(s.ruleName), deepest = true)
+            is Strat.Attempt -> eval(s.s, text) ?: text
+            is Strat.Seq -> {
+                var cur = text
+                for (step in s.list) { cur = eval(step, cur) ?: return null }
+                cur
+            }
+            is Strat.Choice -> s.list.firstNotNullOfOrNull { eval(it, text) }
+            is Strat.Repeat -> {
+                var cur = text
+                var n = 0
+                while (s.max == null || n < s.max) {
+                    if (n >= maxIterations) {
+                        onDiagnostic("strategy repeat did not converge after $maxIterations iterations " +
+                                "— stopping; rewrites applied so far are kept.")
+                        break
+                    }
+                    val next = eval(s.s, cur) ?: break        // step failed ⇒ fixpoint reached
+                    if (next == cur) break                    // no textual progress ⇒ fixpoint reached
+                    cur = next
+                    n++
+                }
+                cur   // repeat never fails (0 iterations ⇒ identity success)
+            }
+        }
+
+        /** Fire [rule] at every outermost non-overlapping site in one pass. Null if none matched. */
+        private fun firePass(text: String, rule: PatternRule): String? {
+            val matches = findMatches(parse(text), listOf(rule), gensym, evalUnquote)
+            return if (matches.isEmpty()) null else apply(text, matches)
+        }
+
+        /** Fire [rule] at a single site — the deepest match if [deepest], else the outermost. */
+        private fun fireSingle(text: String, rule: PatternRule, deepest: Boolean): String? {
+            val match = if (deepest) {
+                findDeepestMatch(parse(text), rule, gensym, evalUnquote)
+            } else {
+                findMatches(parse(text), listOf(rule), gensym, evalUnquote).firstOrNull()
+            } ?: return null
+            return apply(text, listOf(match))
+        }
+
+        private fun apply(text: String, matches: List<Match>): String {
+            matches.forEach { m ->
+                m.preambleBlock?.let { preambleBlocks += it }
+                m.aiRequest?.let { aiRequests += it }
+            }
+            return applyEdits(text, matches)
+        }
+    }
+
+    /**
+     * The single deepest (most nested) match of [rule] anywhere in [file], or null. Unlike
+     * [findMatches] this does NOT stop at the outermost hit — it descends fully and keeps the match
+     * with the greatest ancestor depth (ties: earliest in document order), so `bottomup` can rewrite
+     * an inner `f(a)` before the surrounding `f(f(a))`.
+     */
+    private fun findDeepestMatch(
+        file: KtFile,
+        rule: PatternRule,
+        gensym: GensymScope,
+        evalUnquote: ((String) -> String?)?,
+    ): Match? {
+        var best: KtElement? = null
+        var bestDepth = -1
+
+        fun depthOf(e: PsiElement): Int {
+            var d = 0
+            var p = e.parent
+            while (p != null) { d++; p = p.parent }
+            return d
+        }
+
+        fun visit(element: PsiElement) {
+            if (element is KtElement && element !is KtParenthesizedExpression) {
+                val binds = Bindings()
+                if (Matcher(rule.metavars).match(rule.pattern, element, binds) && evalGuard(rule.guard, binds.scalar)) {
+                    val d = depthOf(element)
+                    if (d > bestDepth) { bestDepth = d; best = element }
+                    // Do NOT return: keep descending so a nested match can win on depth.
+                }
+            }
+            var child = element.firstChild
+            while (child != null) { visit(child); child = child.nextSibling }
+        }
+
+        visit(file)
+        val el = best ?: return null
+        val binds = Bindings()
+        Matcher(rule.metavars).match(rule.pattern, el, binds)   // re-bind captures for the chosen node
+        return buildMatch(el, rule, binds, gensym, evalUnquote)
+    }
 
     // ---- substitution + hygiene (phase 2) -------------------------------------------------------
 

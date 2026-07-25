@@ -75,6 +75,70 @@ private fun erased(what: String): Nothing =
  */
 fun rewrite(rule: () -> Unit): Unit = erased("rewrite")
 
+/**
+ * Declare a *named* rewrite rule, so a [strategy] block can refer to it by [name]. Otherwise
+ * identical to [rewrite] — same `from`/`to`/`where`/`provide`/`ai` body, same erase-before-compile
+ * treatment. The name is read textually by the collector (a string literal), so — like the metavar
+ * types — it never needs to type-check.
+ * ```
+ * rule("negate") { x: Expr -> from { neg(x) }; to { -x } }
+ * strategy { repeat("negate") }
+ * ```
+ */
+fun rule(name: String, rule: () -> Unit): Unit = erased("rule")
+
+/**
+ * A controllable term-rewriting strategy over the box's named [rule]s (see [PatternRewrite.Strat]).
+ *
+ * With NO `strategy {}` block the engine keeps its historical behaviour: a **global fixpoint** that
+ * fires every rule at every match, everywhere, until nothing changes. A `strategy {}` block replaces
+ * that with an explicit control program — only rules it names fire, in the order and at the sites it
+ * dictates. The body is a single strategy expression built from the combinators below; it is erased
+ * and blanked before compilation, so it only needs to parse.
+ * ```
+ * rule("unwrap") { x: Expr -> from { f(x) }; to { g(x) } }
+ * strategy { bottomup("unwrap") }     // rewrite the innermost f(...) only
+ * ```
+ * Fail-closed: an unknown rule name or a malformed program rewrites NOTHING and logs a diagnostic.
+ */
+fun strategy(block: () -> Unit): Unit = erased("strategy")
+
+/** Opaque result of a strategy combinator. Erased — a strategy block never actually runs. */
+class Strategy internal constructor()
+
+private fun erasedStrategy(what: String): Strategy = erased(what)
+
+/** Fire rule [name] at the single first (outermost) match — at most once. */
+fun once(name: String): Strategy = erasedStrategy("once")
+
+/** Fire rule [name] at the single outermost (shallowest) match site. */
+fun topdown(name: String): Strategy = erasedStrategy("topdown")
+
+/**
+ * Fire rule [name] at the single innermost (deepest) match site — differs from [topdown] on nested
+ * matches (given `f(f(a))`, `topdown` rewrites the outer call, `bottomup` the inner one).
+ */
+fun bottomup(name: String): Strategy = erasedStrategy("bottomup")
+
+/** Run [s] once; if it does not apply, fall back to identity. Never fails. (Spelled `attempt`
+ *  because `try` is a Kotlin hard keyword and cannot be a call name.) */
+fun attempt(s: Any?): Strategy = erasedStrategy("attempt")
+
+/** Iterate [s] to a fixpoint (or at most [n] times). Never fails. */
+fun repeat(s: Any?, n: Int): Strategy = erasedStrategy("repeat")
+
+/** Iterate [s] to a fixpoint (unbounded within the engine's iteration cap). Never fails. */
+fun repeat(s: Any?): Strategy = erasedStrategy("repeat")
+
+/** Run each strategy in order, threading the result; fails as soon as one fails. See also [then]. */
+fun seq(vararg s: Any?): Strategy = erasedStrategy("seq")
+
+/** Run the first alternative that succeeds; fails only if none apply. */
+fun choice(vararg s: Any?): Strategy = erasedStrategy("choice")
+
+/** Infix sequencing: `a then b` runs `a`, then `b` on its result (fail-fast). */
+infix fun Any?.then(other: Any?): Strategy = erasedStrategy("then")
+
 /** The pattern (left-hand side) of a [rewrite] rule. Its body is quasiquoted, never evaluated. */
 fun from(pattern: () -> Unit): Unit = erased("from")
 
