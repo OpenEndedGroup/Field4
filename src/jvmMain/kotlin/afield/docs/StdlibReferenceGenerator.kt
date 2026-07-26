@@ -78,6 +78,18 @@ object StdlibReferenceGenerator {
     /** Repo-relative home of the committed reference pages. */
     private const val REFERENCE_REL = "public/docs/reference"
 
+    /**
+     * Repo-relative home of the KDoc worklist.
+     *
+     * `dev_docs/` and not `public/docs/`: this is a ranked list of what is *missing*, which is a
+     * standing engineering task rather than something a reader of the site wants. The published
+     * pages already carry the honest coverage numbers.
+     */
+    private const val WORKLIST_REL = "dev_docs/kdoc_worklist.md"
+
+    /** How many individual gaps the worklist names before it stops and says how many it dropped. */
+    private const val WORKLIST_ENTRIES = 120
+
     /** How many distinct entry points a docs page must call before it earns a "Used in" link. */
     private const val MIN_EVIDENCE_HITS = 2
 
@@ -170,6 +182,18 @@ object StdlibReferenceGenerator {
 
         pages.forEach { (name, text) -> File(outRoot, name).writeText(text) }
 
+        // The worklist is committed outside the reference dir, so it needs its own destination:
+        // beside the pages when they are going to a scratch directory (so a probe run is
+        // self-contained), and to its real home only when the committed pages are being rewritten.
+        val worklist = renderKdocWorklist(documents, evidence)
+        val writingCommitted = explicitOut != null &&
+            outRoot.canonicalFile == File(repo, REFERENCE_REL).canonicalFile
+        val worklistOut =
+            if (writingCommitted) File(repo, WORKLIST_REL) else File(outRoot, "kdoc_worklist.md")
+        worklistOut.parentFile?.mkdirs()
+        worklistOut.writeText(worklist)
+        println("StdlibReferenceGenerator: KDoc worklist -> ${worklistOut.absolutePath}")
+
         val symbolCount = documents.sumOf { it.symbolCount() }
         println(
             "StdlibReferenceGenerator: ${pages.size} page(s), ${documents.size} source file(s), " +
@@ -206,6 +230,12 @@ object StdlibReferenceGenerator {
                     ?.map { it.name }
                     ?.filter { it !in pages.keys }
                     ?.forEach { failures += "$it: committed but no longer generated — delete it" }
+                val committedWorklist = File(repo, WORKLIST_REL)
+                when {
+                    !committedWorklist.isFile -> failures += "$WORKLIST_REL: missing"
+                    committedWorklist.readText() != worklist ->
+                        failures += "$WORKLIST_REL: committed worklist is out of date"
+                }
                 if (failures.isNotEmpty()) failures += "Regenerate with: ./gradlew generateCodebaseReference"
             } else {
                 println("StdlibReferenceGenerator: no committed pages at ${committed.absolutePath} — skipping drift check")
@@ -1130,6 +1160,171 @@ object StdlibReferenceGenerator {
             ?.let { " · also $it" }
             .orEmpty()
         return "<span class=\"sig-overloads\">+${row.extraOverloads} $plural$also</span>"
+    }
+
+    // ── KDoc worklist ───────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Members Kotlin generates for a `data class`, or that every type has anyway.
+     *
+     * A worklist that tells someone to go and write KDoc for `component1` is a worklist nobody
+     * finishes. These are excluded from the gap counts entirely — they are not documentation debt.
+     */
+    private val BOILERPLATE_MEMBERS = setOf(
+        "toString", "equals", "hashCode", "copy", "compareTo",
+    )
+
+    private fun isBoilerplate(symbol: Symbol): Boolean =
+        symbol.owner != null &&
+            (symbol.simpleName in BOILERPLATE_MEMBERS || symbol.simpleName.matches(Regex("component\\d+")))
+
+    /**
+     * The undocumented declarations of one file that are worth someone's afternoon, highest first.
+     *
+     * "Entry point" is the same notion [SourceDocument.evidenceTokens] uses: a type, or a top-level
+     * function or value. A member is only reachable once you already have the thing it hangs off, so
+     * the type's own KDoc is what orients a reader and is counted first. Overload families are
+     * counted once — [coalesce] has already merged them, so documenting `pulseTrain` closes one gap,
+     * not six.
+     */
+    private fun undocumentedEntryPoints(doc: SourceDocument): List<Symbol> {
+        val types = doc.types.map { it.symbol }
+        val topLevel = coalesce(doc.topLevelFunctions).map { it.symbol } + doc.topLevelValues
+        return (types + topLevel).filter { it.summary.isBlank() && !isBoilerplate(it) }
+    }
+
+    private fun undocumentedMembers(doc: SourceDocument): List<Symbol> =
+        doc.types.flatMap { type -> coalesce(type.members).map { it.symbol } }
+            .filter { it.summary.isBlank() && !isBoilerplate(it) }
+
+    /**
+     * A ranked, actionable list of the KDoc that is missing — the other half of the coverage column.
+     *
+     * The reference pages report that 10% of this surface carries KDoc; that number is only useful if
+     * it comes with a next action. Ranking is by payoff, and every signal is one this generator
+     * already computes:
+     *
+     * 1. **Files a worked example already demonstrates** come first. [buildEvidenceIndex] knows which
+     *    docs pages call which file's API, so these are the entry points readers demonstrably reach
+     *    for — an undocumented symbol here costs the most.
+     * 2. **Types before functions before values, entry points before members.** A type's KDoc orients
+     *    everything inside it, so it is the single highest-leverage thing to write.
+     * 3. **Bigger gaps before smaller ones**, so an hour spent lands where the surface is widest.
+     *
+     * Regenerate with the pages: `./gradlew generateCodebaseReference`.
+     */
+    private fun renderKdocWorklist(
+        documents: List<SourceDocument>,
+        evidence: Map<String, List<Pair<String, Int>>>,
+    ): String = buildString {
+        fun demonstrated(doc: SourceDocument) = evidence[doc.relativePath].orEmpty().isNotEmpty()
+
+        val totalSymbols = documents.sumOf { it.symbolCount() }
+        val totalDocumented = documents.sumOf { it.documentedCount() }
+        val gaps = documents.associateWith { undocumentedEntryPoints(it) }
+        val memberGaps = documents.associateWith { undocumentedMembers(it) }
+        val totalEntryGaps = gaps.values.sumOf { it.size }
+        val totalMemberGaps = memberGaps.values.sumOf { it.size }
+
+        appendLine(
+            "<!-- DO NOT EDIT — generated by afield.docs.StdlibReferenceGenerator alongside " +
+                "public/docs/reference/. -->"
+        )
+        appendLine("<!-- Regenerate: ./gradlew generateCodebaseReference -->")
+        appendLine("# KDoc worklist")
+        appendLine()
+        appendLine(
+            "The other half of the coverage column on " +
+                "[the codebase reference](../public/docs/reference/index.md): $totalDocumented of " +
+                "$totalSymbols public symbols in `afield.stdlib` and `afield.visualization` carry a " +
+                "KDoc summary, and this is what is missing, most valuable first."
+        )
+        appendLine()
+        appendLine(
+            "**$totalEntryGaps undocumented entry points** (types, top-level functions and values) " +
+                "and $totalMemberGaps undocumented members. Overload families count once — " +
+                "documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates " +
+                "for a `data class` are not counted at all."
+        )
+        appendLine()
+        appendLine(
+            "Ranking is by payoff, from signals the generator already has: files that a worked " +
+                "example page demonstrably calls come first, then types before functions before " +
+                "values, then the widest gaps. Write the KDoc next to the declaration, then run " +
+                "`./gradlew generateCodebaseReference` — the reference pages and this list both " +
+                "follow from the source."
+        )
+        appendLine()
+
+        appendLine("## Where the debt is, by file")
+        appendLine()
+        appendLine("| File | Category | Used by examples | Undocumented entry points | Undocumented members | Coverage |")
+        appendLine("| --- | --- | --- | --- | --- | --- |")
+        documents
+            .sortedWith(
+                compareByDescending<SourceDocument> { demonstrated(it) }
+                    .thenByDescending { gaps.getValue(it).size }
+                    .thenByDescending { memberGaps.getValue(it).size }
+                    .thenBy { it.relativePath }
+            )
+            .filter { gaps.getValue(it).isNotEmpty() || memberGaps.getValue(it).isNotEmpty() }
+            .forEach { doc ->
+                val pages = evidence[doc.relativePath].orEmpty()
+                val used = if (pages.isEmpty()) "—" else pages.joinToString(", ") { it.first.removeSuffix(".md") }
+                val coverage =
+                    if (doc.symbolCount() == 0) 0 else doc.documentedCount() * 100 / doc.symbolCount()
+                appendLine(
+                    "| [${doc.fileName}](../${doc.relativePath}) | ${doc.category} | " +
+                        "${escapeCell(used)} | ${gaps.getValue(doc).size} | " +
+                        "${memberGaps.getValue(doc).size} | $coverage% |"
+                )
+            }
+        appendLine()
+
+        appendLine("## The highest-value individual gaps")
+        appendLine()
+        val ranked = documents.flatMap { doc -> gaps.getValue(doc).map { doc to it } }
+            .sortedWith(
+                compareByDescending<Pair<SourceDocument, Symbol>> { demonstrated(it.first) }
+                    .thenBy { kindRank(it.second) }
+                    .thenBy { it.first.relativePath }
+                    .thenBy { it.second.line }
+            )
+        if (ranked.isEmpty()) {
+            appendLine("Nothing — every entry point in this surface carries a KDoc summary.")
+        } else {
+            // The name and where it lives, not the signature: a 400-character `data class` header is
+            // unscannable in a worklist, and the reference page already carries it in full.
+            appendLine("| Declaration | Kind | Where |")
+            appendLine("| --- | --- | --- |")
+            ranked.take(WORKLIST_ENTRIES).forEach { (doc, symbol) ->
+                appendLine(
+                    "| `${escapeCode(symbol.qualifiedName)}` | ${symbol.kind} | " +
+                        "`${doc.relativePath}:${symbol.line}` |"
+                )
+            }
+            appendLine()
+            val dropped = ranked.size - minOf(ranked.size, WORKLIST_ENTRIES)
+            if (dropped > 0) {
+                appendLine(
+                    "…and **$dropped more** undocumented entry points not listed here. This section " +
+                        "is capped at $WORKLIST_ENTRIES so it stays a worklist rather than a dump; " +
+                        "the per-file table above is complete."
+                )
+            } else {
+                appendLine("That is all of them.")
+            }
+        }
+    }
+
+    /** Types first, then top-level functions, then values — the order KDoc pays off in. */
+    private fun kindRank(symbol: Symbol): Int = when (symbol.kind) {
+        "interface" -> 0
+        "class" -> 0
+        "object" -> 1
+        "typealias" -> 1
+        "fun" -> 2
+        else -> 3
     }
 
     // ── small helpers ───────────────────────────────────────────────────────────────────────────
