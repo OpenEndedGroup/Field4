@@ -44,6 +44,10 @@ expect:
  * sphere the roundness and area of its silhouette). It writes NO committed assets. Pass an output
  * dir as `args[0]` (or set `VISION_GEOMETRY_PREVIEW_DIR`) to regenerate the committed docs captures
  * under `dev_docs/assets/vision_geometry_preview/`.
+ *
+ * When regenerating, render to a **temp dir and copy the files in afterwards**. Writing them
+ * straight into the working tree while `run_field_tests.py`'s Field server is watching it takes the
+ * jvm-main child down mid-run (exit 130), for no reason the output ever explains.
  */
 object VisionGeometryPreviewGallery {
 
@@ -65,6 +69,13 @@ object VisionGeometryPreviewGallery {
          * a *new* degenerate triangle is a failure rather than a shrug.
          */
         val expectDegenerate: Int = 0,
+        /**
+         * Expected [CapturedMesh.windingAgreement]. 1.0 for everything that should draw; the
+         * deliberately-inverted entry is here to prove the detector fires, so it expects 0.0.
+         */
+        val expectWinding: Double = 1.0,
+        /** Per-entry style tweak, for the one entry that must be drawn with culling off to be seen. */
+        val restyle: (VisionGeometryPreview.Style) -> VisionGeometryPreview.Style = { it },
         /** Extra per-entry assertions against the captured mesh. */
         val check: (CapturedMesh) -> Unit = {},
     )
@@ -230,6 +241,33 @@ object VisionGeometryPreviewGallery {
             expectVertices = 73 * 9,
             expectTriangles = 72 * 8 * 2,
         ),
+        Preview(
+            name = "lantern",
+            title = "transcript: vision_geometry_desk_preview (box 1)",
+            source = transcriptEmbeddedProgram(transcripts, "vision_geometry_desk_preview", 0),
+            camera = VisionGeometryPreview.Camera(yawDegrees = 24.0, pitchDegrees = 18.0, distance = 2.6),
+            expectDegenerate = 2 * 28,
+            check = { mesh ->
+                // Sphere + tube + eight hand-stitched uprights, so all three levels of the builder
+                // are exercised by the demo the user actually loads.
+                require(mesh.vertexCount == 29 * 19 + 41 * 9 + 8 * 4) {
+                    "lantern has ${mesh.vertexCount} vertices — has the demo transcript drifted?"
+                }
+            },
+        ),
+        Preview(
+            name = "lantern-inverted",
+            title = "transcript: vision_geometry_desk_preview (box 2 — wound backwards)",
+            source = transcriptEmbeddedProgram(transcripts, "vision_geometry_desk_preview", 1),
+            camera = VisionGeometryPreview.Camera(yawDegrees = 24.0, pitchDegrees = 18.0, distance = 2.6),
+            // The point of this one: every normal is outward, every quad is wound the other way.
+            expectWinding = 0.0,
+            // Drawn with culling off, because with culling on there is nothing to photograph — which
+            // is precisely what the headset would show you.
+            restyle = { it.copy(cullBackFaces = false) },
+            expectVertices = 24 * 4,
+            expectTriangles = 24 * 2,
+        ),
     )
 
     // ---------------------------------------------------------------- transcript sources
@@ -249,6 +287,34 @@ object VisionGeometryPreviewGallery {
         }
         require(codes.size == 1) { "$name.yaml has ${codes.size} code boxes; expected exactly one" }
         return codes.single()
+    }
+
+    /**
+     * The [index]th triple-quoted Live Metal program embedded in a *JVM Kotlin* transcript's boxes.
+     *
+     * `vision_geometry_desk_preview` is the one demo whose box bodies are JVM Kotlin that carry the
+     * headset program as a string, so its meshes cannot be lifted the way the `// {{ visionmetal }}`
+     * transcripts' can. Pulling them out here rather than restating them keeps the gallery and the
+     * loadable demo from drifting: change one and this fails.
+     */
+    @Suppress("UNCHECKED_CAST")
+    private fun transcriptEmbeddedProgram(dir: File, name: String, index: Int): String {
+        val file = File(dir, "$name.yaml")
+        require(file.isFile) { "transcript $name.yaml not found in ${dir.absolutePath}" }
+        val root = Yaml().load<Map<String, Any?>>(file.readText())
+        val ops = root["operations"] as? List<Map<String, Any?>> ?: error("$name.yaml has no operations")
+        val blocks = ops.flatMap { op ->
+            val properties = (op["create"] as? Map<String, Any?>)?.get("properties") as? Map<String, Any?>
+                ?: return@flatMap emptyList()
+            val code = properties["code"]?.toString() ?: return@flatMap emptyList()
+            Regex("\"\"\"(.*?)\"\"\"", RegexOption.DOT_MATCHES_ALL).findAll(code)
+                .map { it.groupValues[1].trimIndent().trim('\n') }
+                .toList()
+        }
+        require(index in blocks.indices) {
+            "$name.yaml has ${blocks.size} embedded program(s); asked for #$index"
+        }
+        return blocks[index]
     }
 
     // ---------------------------------------------------------------- layout guard
@@ -395,9 +461,9 @@ object VisionGeometryPreviewGallery {
             // head that culls back faces. This needs no device to detect and no Metal convention to
             // interpret — the mesh simply contradicts itself.
             val winding = mesh.windingAgreement()
-            if (winding < 0.999) {
-                failures += "${preview.name}: only ${"%.1f".format(winding * 100)}% of triangles are " +
-                    "wound to match their own normals — this mesh renders inside-out"
+            if (abs(winding - preview.expectWinding) > 0.001) {
+                failures += "${preview.name}: ${"%.1f".format(winding * 100)}% of triangles are wound " +
+                    "to match their own normals, expected ${"%.1f".format(preview.expectWinding * 100)}%"
             }
             runCatching { preview.check(mesh) }.onFailure { failures += "${preview.name}: ${it.message}" }
             if (preview.frames.isNotEmpty()) {
@@ -416,11 +482,8 @@ object VisionGeometryPreviewGallery {
                 if (!moved) failures += "${preview.name}: the mesh is identical on every frame"
             }
 
-            val image = VisionGeometryPreview.render(
-                mesh,
-                preview.camera,
-                style.copy(title = preview.title),
-            )
+            val entryStyle = preview.restyle(style.copy(title = preview.title))
+            val image = VisionGeometryPreview.render(mesh, preview.camera, entryStyle)
             val file = File(outDir, "vision-geometry-${preview.name}.png")
             ImageIO.write(image, "png", file)
             rendered++

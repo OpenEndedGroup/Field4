@@ -445,9 +445,12 @@ object VisionGeometryPreview {
     }
 
     /**
-     * How the preview draws. [caption] defaults to the honesty note; passing an empty string drops
-     * the caption strip entirely (for a frame going into a video, where the note belongs in the page
-     * around it instead).
+     * How the preview draws.
+     *
+     * [caption] and [title] are text, so only the AWT path ([render], [renderContactSheet]) burns
+     * them into the pixels; [renderFigureHtml] puts them in the markup instead. Either way the frame
+     * carries the honesty note. Passing `caption = ""` drops it and reclaims the bottom band — for a
+     * frame going into a video, where the note belongs in the page around it.
      */
     data class Style(
         val width: Int = 720,
@@ -458,22 +461,44 @@ object VisionGeometryPreview {
         val background: Int = 0xFF101318.toInt(),
         val caption: String? = null,
         val title: String? = null,
+    ) {
+        /** Bottom pixels the caption strip and the stats lines will occupy, so the model clears them. */
+        internal val reservedBottom: Int get() = if (caption == "" && title == null) 0 else CAPTION_HEIGHT + 26
+    }
+
+    /**
+     * A finished raster: ARGB pixels, no `java.awt` anywhere near it.
+     *
+     * That matters more than it sounds. Touching AWT inside the Field server's JVM on macOS
+     * initialises the AppKit toolkit in a process that already owns its main thread for GLFW, and the
+     * process dies on the spot — no exception, just an exit. So the rasterizer produces plain ints,
+     * [renderPng] encodes them with [afield.util.PngEncoder], and the `BufferedImage` path is kept
+     * for the headless gallery only.
+     */
+    class Raster(
+        val pixels: IntArray,
+        val width: Int,
+        val height: Int,
+        /** Triangles that reached the z-buffer, and those the back-face cull removed. */
+        val drawn: Int,
+        val culled: Int,
     )
 
     // ---------------------------------------------------------------- rasterizer
 
     /**
-     * Rasterise [mesh] to an image: perspective projection, a z-buffer, and a **stand-in** shader.
+     * Rasterise [mesh]: perspective projection, a z-buffer, perspective-correct attributes, a
+     * near-plane clip, a depth-tested wireframe and a **stand-in** shader. No AWT — see [Raster].
      *
      * Back faces are culled by default because the head culls them too — a face wound the wrong way
      * is missing here exactly as it would be missing in the headset, which is the single most common
      * "why is my mesh full of holes" cause and worth reproducing rather than papering over.
      */
-    fun render(
+    fun renderPixels(
         mesh: CapturedMesh,
         camera: Camera = Camera(),
         style: Style = Style(),
-    ): java.awt.image.BufferedImage {
+    ): Raster {
         val scale = max(1, style.supersample)
         val w = style.width * scale
         val h = style.height * scale
@@ -521,8 +546,7 @@ object VisionGeometryPreview {
         // The caption strip and the stats lines sit over the bottom of the frame, so the model is
         // framed in the band above them rather than in the whole image — otherwise a mesh that fills
         // its frame (a cube does) gets its near corner clipped by the text.
-        val reserved = if (style.caption == "" && style.title == null) 0 else CAPTION_HEIGHT + 26
-        val contentH = (h - reserved * scale).coerceAtLeast(h / 3)
+        val contentH = (h - style.reservedBottom * scale).coerceAtLeast(h / 3)
         val aspect = w.toDouble() / contentH
 
         // Key light over the viewer's left shoulder, plus a cool fill from below-right, both in view
@@ -691,22 +715,85 @@ object VisionGeometryPreview {
             drawWireframe(mesh, pixels, depth, w, h, contentH, ::toView, focal, aspect, nearZ, style.cullBackFaces)
         }
 
-        val image = java.awt.image.BufferedImage(style.width, style.height, java.awt.image.BufferedImage.TYPE_INT_RGB)
-        downsample(pixels, w, h, image, scale)
-        annotate(image, mesh, style, camera, drawn, culled)
-        return image
+        return Raster(downsample(pixels, w, h, style.width, style.height, scale), style.width, style.height, drawn, culled)
     }
 
-    /** [render], encoded straight to PNG bytes — what `display(…)` in a box wants. */
+    /**
+     * [renderPixels], encoded straight to PNG bytes with [afield.util.PngEncoder].
+     *
+     * AWT-free, so this is the one that is safe to call from inside a Field box. The title, stats and
+     * caption are *not* burnt in — [renderFigureHtml] carries them in markup instead.
+     */
     fun renderPng(
         mesh: CapturedMesh,
         camera: Camera = Camera(),
         style: Style = Style(),
     ): ByteArray {
-        val image = render(mesh, camera, style)
-        val bytes = java.io.ByteArrayOutputStream()
-        javax.imageio.ImageIO.write(image, "png", bytes)
-        return bytes.toByteArray()
+        val raster = renderPixels(mesh, camera, style)
+        return afield.util.PngEncoder.encode(raster.pixels, raster.width, raster.height)
+    }
+
+    /**
+     * A complete `<figure>` — the mesh as an inline PNG, its measurements, and the honesty note as a
+     * caption — for `display(…)` in a box output.
+     *
+     * AWT-free by construction, which is why the note is markup rather than pixels here.
+     */
+    fun renderFigureHtml(
+        mesh: CapturedMesh,
+        camera: Camera = Camera(),
+        style: Style = Style(),
+        title: String? = style.title,
+    ): String {
+        val raster = renderPixels(mesh, camera, style)
+        val png = afield.util.PngEncoder.encode(raster.pixels, raster.width, raster.height)
+        val b64 = java.util.Base64.getEncoder().encodeToString(png)
+        val bounds = mesh.bounds()
+        val winding = mesh.windingAgreement()
+        val stats = "%d verts · %d tris · %d drawn · %d back-facing · extent %.3f × %.3f × %.3f m".format(
+            mesh.vertexCount, mesh.triangleCount, raster.drawn, raster.culled,
+            bounds[3] - bounds[0], bounds[4] - bounds[1], bounds[5] - bounds[2],
+        )
+        val windingNote = if (winding < 0.999) {
+            "<div style='color:#e08a50'>winding: only ${"%.0f".format(winding * 100)}% of triangles " +
+                "match their own normals — this mesh renders inside-out</div>"
+        } else {
+            ""
+        }
+        return buildString {
+            append("<figure style='margin:0'>")
+            title?.let { append("<div style='color:#e6ecf4;font-weight:600;padding-bottom:4px'>${escape(it)}</div>") }
+            append("<img src='data:image/png;base64,$b64' style='max-width:900px;height:auto;border-radius:6px;display:block'/>")
+            append("<figcaption style='color:#93a4ba;font-size:12px;padding-top:6px;line-height:1.5'>")
+            append("<div>${escape(stats)}</div>")
+            append(windingNote)
+            append("<div>${escape(style.caption ?: DEFAULT_CAPTION)}</div>")
+            append("</figcaption></figure>")
+        }
+    }
+
+    private fun escape(text: String): String =
+        text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+    /**
+     * [renderPixels] as an AWT `BufferedImage`, with the title, stats and caption drawn on.
+     *
+     * **Headless callers only.** Touching AWT from inside the Field server's JVM on macOS
+     * initialises AppKit in a process that already owns its main thread for GLFW and takes the whole
+     * process down without an exception. Boxes and box commands must use [renderPng] or
+     * [renderFigureHtml]; this exists for the docs gallery, which runs in its own JVM under
+     * `java.awt.headless=true`.
+     */
+    fun render(
+        mesh: CapturedMesh,
+        camera: Camera = Camera(),
+        style: Style = Style(),
+    ): java.awt.image.BufferedImage {
+        val raster = renderPixels(mesh, camera, style)
+        val image = java.awt.image.BufferedImage(raster.width, raster.height, java.awt.image.BufferedImage.TYPE_INT_RGB)
+        image.setRGB(0, 0, raster.width, raster.height, raster.pixels, 0, raster.width)
+        annotate(image, mesh, style, camera, raster.drawn, raster.culled)
+        return image
     }
 
     /** A contact sheet of the same mesh from [cameras], side by side with a shared caption. */
@@ -755,20 +842,12 @@ object VisionGeometryPreview {
 
     private fun channel(value: Double): Int = (255.0 * min(1.0, max(0.0, value))).toInt()
 
-    private fun downsample(
-        pixels: IntArray,
-        w: Int,
-        h: Int,
-        into: java.awt.image.BufferedImage,
-        scale: Int,
-    ) {
-        if (scale == 1) {
-            into.setRGB(0, 0, into.width, into.height, pixels, 0, w)
-            return
-        }
+    private fun downsample(pixels: IntArray, w: Int, h: Int, outW: Int, outH: Int, scale: Int): IntArray {
+        if (scale == 1) return pixels
+        val out = IntArray(outW * outH)
         val n = scale * scale
-        for (y in 0 until into.height) {
-            for (x in 0 until into.width) {
+        for (y in 0 until outH) {
+            for (x in 0 until outW) {
                 var r = 0; var g = 0; var b = 0
                 for (dy in 0 until scale) {
                     val row = (y * scale + dy) * w
@@ -777,9 +856,10 @@ object VisionGeometryPreview {
                         r += (p shr 16) and 0xFF; g += (p shr 8) and 0xFF; b += p and 0xFF
                     }
                 }
-                into.setRGB(x, y, ((r / n) shl 16) or ((g / n) shl 8) or (b / n))
+                out[y * outW + x] = (0xFF shl 24) or ((r / n) shl 16) or ((g / n) shl 8) or (b / n)
             }
         }
+        return out
     }
 
     private fun drawWireframe(
