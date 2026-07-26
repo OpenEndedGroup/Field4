@@ -4,11 +4,25 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-14 source file(s), 1001 public symbol(s). Everything below is the KDoc that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor.
+14 source file(s), 1001 public symbol(s), 78 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
 ## StandardDrawing.kt { #standarddrawing-kt }
+
+The small vocabulary of `FLine` construction and styling that sketches and examples reach for
+first.
+
+`fline` is the builder; the `rangeTo` operator makes a one-segment line out of two vectors
+(`a..b`, composable with `+=`), and the styling overloads of `moveTo` / `lineTo` / `cubicTo`
+position a node and style it in the same call. Appearance is carried by delegated properties on
+`FLine` and `FLine.Node` — `color`, `thickness`, `thicken`, `filled`, `stroked`, `pointed`,
+`pointSize` — which the renderers read back; `onClick` and `hoverColor` only do anything in the
+interactive outputs.
+
+The rest are shape helpers: `rect` and `Rect.toFLine`, `arrow` (a real filled arrowhead rather
+than a point sprite), `seg`, and `fitInto`, which scales and centres a list of lines into a
+`Rect` using their 2D bounds only.
 
 `src/jvmMain/kotlin/afield/stdlib/StandardDrawing.kt`
 
@@ -25,7 +39,7 @@ Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, co
 | `inline fun FLine.moveTo(v: Vec3, style: FLine.Node.() -> Unit): FLine` | Add a `moveTo` and immediately style the resulting node: `moveTo(v) { color = RED }`. |
 | `inline fun FLine.lineTo(v: Vec3, style: FLine.Node.() -> Unit): FLine` | Add a `lineTo` and immediately style the resulting node. |
 | `inline fun FLine.cubicTo(c1: Vec3, c2: Vec3, to: Vec3, style: FLine.Node.() -> Unit): FLine` | Add a cubic and immediately style the resulting node. |
-| `fun seg(a: Vec2, b: Vec2, pointed: Boolean = false, color: Vec4 = vec(1, 1, 1, 1))` | Callback invoked when this FLine is clicked in an interactive output. |
+| `fun seg(a: Vec2, b: Vec2, pointed: Boolean = false, color: Vec4 = vec(1, 1, 1, 1))` | Color to show when the pointer hovers over this FLine in an interactive SVG output. When null no hover color change is applied. |
 | `fun FLine.rect(x: Number, y: Number, w: Number, h: Number): FLine` | Append a closed rectangle path to this line. |
 | `fun FLine.rect(rect: Rect): FLine` | Append a closed rectangle path for `rect` to this line. |
 | `fun Rect.toFLine(color: Vec4 = vec(1.0, 1.0, 1.0, 1.0), filled: Boolean = false, stroked: Boolean = true, thickness: Double? = if (stroked) 1.0 else null): FLine` | Convert this rectangle into a styled `FLine`. |
@@ -45,6 +59,28 @@ Hit information passed to `FLine.onClick` from the interactive line renderers.
 | `val position: Vec3` |  |
 
 ## ArchitecturalGeometry.kt { #architecturalgeometry-kt }
+
+A named, typed DSL over the raw constraint vocabulary in `CeresGeometry.kt`, plus the interactive
+machinery for solving it while a user drags. `geometryModel` opens a [`GeometryModelScope`](graphics.md#architecturalgeometry-kt-geometrymodelscope) where
+you declare [`PointRef`](graphics.md#architecturalgeometry-kt-pointref)s, [`LineRef`](graphics.md#architecturalgeometry-kt-lineref)s, [`PlaneRef`](graphics.md#architecturalgeometry-kt-planeref)s and [`PanelRef`](graphics.md#architecturalgeometry-kt-panelref)s (points can be created from
+`Vector3fc` values or bound to live `Vector3f`s via `GeometryModelScope.bindPoint`) and then
+state relations inside `constraints { }` — [`ConstraintScope`](graphics.md#architecturalgeometry-kt-constraintscope) supplies `length`, `parallelTo`,
+`angleRadiansTo`, `planar`, `on`, `inside`, `lock`, `weak`, `mirror`, `dihedral` and the `ceq`
+infix equality.
+
+`GeometryModel.openSession` (or `session`) compiles the program once and returns a
+[`GeometrySolveSession`](graphics.md#architecturalgeometry-kt-geometrysolvesession) holding a mutable point cloud, per-point prior weights and a reusable
+solve report; `GeometrySolveSession.drag` / [`DragHandle`](graphics.md#architecturalgeometry-kt-draghandle) / `pin` / `release` are the interaction
+verbs, weighted by [`InteractionPolicy`](graphics.md#interactivesolving-kt-interactionpolicy).
+
+`liveGeometry` wraps a model *block* rather than a model: each `LiveGeometryProgram.step` re-runs
+the block, reuses the existing session when point names, point count and program hash are all
+unchanged, reads every bound point back in, solves, and writes the results out through the
+bindings. `LiveGeometryProgram.polishLocked` does a separate hard-locked settle pass.
+
+Point arithmetic ([`PointExpr`](graphics.md#architecturalgeometry-kt-pointexpr), `a + b`, `0.5 * c`) creates synthetic "trace" points that are
+recomputed from their expression before every solve. The default backend is `FfmCeresBackend`, so
+these entry points need the native Ceres library present.
 
 `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt`
 
@@ -67,7 +103,7 @@ Hit information passed to `FLine.onClick` from the interactive line renderers.
 
 | Declaration | Summary |
 | --- | --- |
-| `val PointRef.expr: PointExpr get()` |  |
+| `val PointRef.expr: PointExpr` |  |
 
 ### PointRef { #architecturalgeometry-kt-pointref }
 
@@ -75,7 +111,7 @@ Hit information passed to `FLine.onClick` from the interactive line renderers.
 
 | Declaration | Summary |
 | --- | --- |
-| `val index: Int get()` |  |
+| `val index: Int` |  |
 | `override fun equals(other: Any?): Boolean` |  |
 | `override fun hashCode(): Int` |  |
 | `override fun toString(): String` |  |
@@ -94,7 +130,7 @@ Hit information passed to `FLine.onClick` from the interactive line renderers.
 
 | Declaration | Summary |
 | --- | --- |
-| `val points: List<PointRef> get()` |  |
+| `val points: List<PointRef>` |  |
 
 ### PointExpr { #architecturalgeometry-kt-pointexpr }
 
@@ -163,8 +199,8 @@ Hit information passed to `FLine.onClick` from the interactive line renderers.
 | `fun point(name: String, x: Double, y: Double, z: Double): PointRef` |  |
 | `fun point(name: String, value: Vector3fc): PointRef` |  |
 | `fun point(value: Vector3fc, name: String? = null): PointRef` |  |
-| `val Vector3fc.c: PointRef get()` |  |
-| `val Vector3f.point: PointRef get()` |  |
+| `val Vector3fc.c: PointRef` |  |
+| `val Vector3f.point: PointRef` |  |
 | `fun point(name: String, reader: () -> Vec3, writer: (Vec3) -> Unit = {}, dragTolerance: Double = 1e-5, dragWeight: Double? = null): PointRef` |  |
 | `fun bindPoint(name: String? = null, reader: () -> Vec3, writer: (Vec3) -> Unit = {}, dragTolerance: Double = 1e-5, dragWeight: Double? = null, sourceIdentity: Int? = null): PointRef` |  |
 | `fun bindPoint(name: String? = null, value: Vector3f, dragTolerance: Double = 1e-5, dragWeight: Double? = null): PointRef` |  |
@@ -196,8 +232,8 @@ Hit information passed to `FLine.onClick` from the interactive line renderers.
 | Declaration | Summary |
 | --- | --- |
 | `fun add(constraint: GeometryConstraint)` |  |
-| `val Vector3fc.c: PointRef get()` |  |
-| `val Vector3f.point: PointRef get()` |  |
+| `val Vector3fc.c: PointRef` |  |
+| `val Vector3f.point: PointRef` |  |
 | `fun point(value: Vector3fc, name: String? = null): PointRef` |  |
 | `fun line(a: PointRef, b: PointRef, name: String? = null): LineRef` |  |
 | `fun line(a: Vector3fc, b: Vector3fc, name: String? = null): LineRef` |  |
@@ -333,6 +369,22 @@ Hit information passed to `FLine.onClick` from the interactive line renderers.
 | `override fun close()` |  |
 
 ## CeresGeometry.kt { #ceresgeometry-kt }
+
+The constraint vocabulary for Field's Ceres point solver, and the encoding that ships it to a
+backend. Geometry is a flat xyz [`PointCloud`](graphics.md#ceresgeometry-kt-pointcloud) addressed by [`PointId`](graphics.md#ceresgeometry-kt-pointid); a solve is described by a
+[`CeresProgram`](graphics.md#ceresgeometry-kt-ceresprogram) of [`GeometryConstraint`](graphics.md#ceresgeometry-kt-geometryconstraint)s — [`Planar`](graphics.md#ceresgeometry-kt-planar), [`Colinear`](graphics.md#ceresgeometry-kt-colinear), [`DistanceEquals`](graphics.md#ceresgeometry-kt-distanceequals),
+[`Perpendicular`](graphics.md#ceresgeometry-kt-perpendicular), [`LockPosition`](graphics.md#ceresgeometry-kt-lockposition), [`WeakPosition`](graphics.md#ceresgeometry-kt-weakposition), [`PointOnPlane`](graphics.md#ceresgeometry-kt-pointonplane), [`DihedralAngle`](graphics.md#ceresgeometry-kt-dihedralangle), [`PanelArea`](graphics.md#ceresgeometry-kt-panelarea) and
+the rest — most conveniently assembled with `buildCeresProgram` / [`CeresProgramBuilder`](graphics.md#ceresgeometry-kt-ceresprogrambuilder).
+
+Every constraint serialises itself into one flat `DoubleArray` of opcodes ([`CeresOpcode`](graphics.md#ceresgeometry-kt-ceresopcode)) via
+`encodeLegacyBytecode`, and declares the [`CeresFeature`](graphics.md#ceresgeometry-kt-ceresfeature) a backend must support to run it; the
+actual solving happens behind [`CeresSolverBackend`](graphics.md#ceresgeometry-kt-ceressolverbackend) / [`CompiledCeresSolver`](graphics.md#ceresgeometry-kt-compiledceressolver) (see
+`FfmCeresBackend.kt` for the native one). [`CachedCeresSolvers`](graphics.md#ceresgeometry-kt-cachedceressolvers) keys compiled solvers by point
+count plus program hash so an unchanged program is compiled once.
+
+Constructors validate aggressively: coordinates and weights must be finite, weights non-negative,
+point indices distinct where the opcode requires it, and the `-1`/`PointId.ALL_POINTS` sentinel
+may only be used alone and only where a constraint allows it.
 
 `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt`
 
@@ -856,6 +908,22 @@ Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, 
 
 ## InteractiveSolving.kt { #interactivesolving-kt }
 
+The mutable, reuse-oriented half of the Ceres solver API, for solving the same program over and
+over at interactive rates. [`MutablePointCloud`](graphics.md#interactivesolving-kt-mutablepointcloud), [`MutablePriorWeights`](graphics.md#interactivesolving-kt-mutablepriorweights) and [`MutableSolveReport`](graphics.md#interactivesolving-kt-mutablesolvereport)
+are in-place counterparts to the immutable `PointCloud` / `DynamicPriorWeights` / `SolveMetrics`
+in `CeresGeometry.kt`, so a drag loop can call `ReusableCompiledCeresSolver.solveInPlace` without
+allocating a new point cloud or result per frame.
+
+[`InteractionPolicy`](graphics.md#interactivesolving-kt-interactionpolicy) collects the weights and iteration counts that distinguish the three phases
+of a drag — a cheap `dragOptions` pass while the mouse is down, a longer `releaseOptions` settle
+on release, and `pinnedWeight` for points held fixed — and precomputes the matching
+`SolveOptions`.
+`MutableSolveReport.top` names the highest-cost opcode groups from the last solve.
+
+All point and weight arrays are flat xyz triples; coordinates must be finite and weights finite
+and non-negative, and a report's group capacity must be at least the metric capacity a solve
+asks for.
+
 `src/jvmMain/kotlin/afield/stdlib/ceres/InteractiveSolving.kt`
 
 ### InteractionPolicy { #interactivesolving-kt-interactionpolicy }
@@ -933,6 +1001,21 @@ Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, 
 
 ## colors.kt { #colors-kt }
 
+Colour constructors for the stdlib. Everything here returns a `Vec4` of sRGB-encoded components
+clamped to `[0,1]` with alpha last, so the results drop straight into FLine colours and uniforms.
+
+`rgb` / `rgba` accept either 0..1 or 0..255 components — the scale is inferred per call from
+whether any component exceeds 1 — and `rgb255` forces the 0..255 reading. `hsl` is ordinary HSL;
+`okhsl` and `okhsv` are the Oklab-based equivalents, which hold perceived lightness far steadier
+across hue. Hue may be given as a fraction of a turn or in degrees (magnitude above 1 is divided
+by 360) and is wrapped either way.
+
+For sets: `hueSetHsl`, `hueSetOkhsl` and `hueSetOkhsv` (aliased `hslSet`, `okhslSet`, `okhsvSet`)
+space equally-separated hues around the wheel at a fixed saturation and lightness.
+`paletteForBackground` starts from the same okhsl ring but then walks each entry's lightness up
+or down until it clears a minimum WCAG contrast ratio against the supplied background, returning
+the highest-contrast candidate it found when it cannot reach the target.
+
 `src/jvmMain/kotlin/afield/stdlib/colors.kt`
 
 **Used in:** [Colors to FLine examples](../colors_examples.md)
@@ -958,13 +1041,29 @@ Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, 
 
 ## contours.kt { #contours-kt }
 
+Marching-squares iso-contours for 2D scalar fields, plus the scalar field most callers want to
+contour.
+
+A field is just a [`ScalarField2D`](graphics.md#contours-kt-scalarfield2d), `(Double, Double) -> Double`. `pointEdgeScalarField2D` builds
+one from points and edges — or from a 2D `FLine` — as the union of weighted discs and capsules,
+signed so that `iso = 0.0` is the tube boundary; it re-reads the supplied point list on every
+sample, so mutating those `Vec2`s moves the field live. `generateIsoContours` samples a field on
+an `nx` by `ny` grid and returns stitched polylines, `generateIsoContoursWithStep` takes a target
+cell size instead, and the `FLine` overloads choose the sampling window from the line's 2D bounds
+grown by the tube radius.
+
+`smoothIsoContours` and `generateSmoothIsoContours` fit cubic splines through the polylines,
+treating a contour that ends on the sampling bounds as open and the rest as closed loops. Two
+known roughnesses: the four-crossing saddle cell is split arbitrarily, and the segment stitcher
+is O(m^2) in the number of segments, so very high grid resolutions get expensive.
+
 `src/jvmMain/kotlin/afield/stdlib/contours.kt`
 
 ### Top-level functions { #contours-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| `fun pointEdgeScalarField2D(points: List<Vec2>, edges: List<Pair<Int, Int>>, pointRadius: Double, edgeRadius: Double, pointWeights: List<Double>? = null, edgeWeights: List<Double>? = null): ScalarField2D` | Scalar field f(x, y) -> value. You can use a lambda or method reference, e.g. rbf::interpolate2D. |
+| `fun pointEdgeScalarField2D(points: List<Vec2>, edges: List<Pair<Int, Int>>, pointRadius: Double, edgeRadius: Double, pointWeights: List<Double>? = null, edgeWeights: List<Double>? = null): ScalarField2D` | Build a live scalar field from a graph of 2D points plus edges between them. |
 | `fun pointEdgeScalarField2D(points: List<Vec2>, edges: List<Pair<Int, Int>>, radius: Double, pointWeights: List<Double>? = null, edgeWeights: List<Double>? = null): ScalarField2D` |  |
 | `fun pointEdgeScalarField2D(line: FLine, pointRadius: Double, edgeRadius: Double, samplesPerCubic: Int = 24, pointWeights: List<Double>? = null, edgeWeights: List<Double>? = null): ScalarField2D` |  |
 | `fun pointEdgeScalarField2D(line: FLine, radius: Double, samplesPerCubic: Int = 24, pointWeights: List<Double>? = null, edgeWeights: List<Double>? = null): ScalarField2D` |  |
@@ -981,6 +1080,20 @@ Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, 
 `typealias ScalarField2D = (Double, Double) -> Double`
 
 ## fline_graph_connectivity.kt { #fline-graph-connectivity-kt }
+
+Bridge from drawn geometry to the graph algorithms: turns one or more `FLine`s into a welded
+point graph.
+
+`flineGraph`, or the `toFLineGraph` extensions on `FLine` and `Iterable<FLine>`, adaptively
+subdivides cubics down to `cubicFlatness`, samples every node, then welds samples closer than
+`epsilon` using a uniform grid plus union-find (`epsilon = 0` welds only bit-identical
+positions). A welded vertex is the mean of the samples that reached it, and
+`FLineGraph.vertexSources` records which line index and node instruction each of those samples
+came from. Edges join consecutive samples, `close()` joins back to the subpath start,
+self-edges are dropped and duplicates collapse to the shortest.
+
+The result carries a `PointGraph` of `GraphEdge`s — the same types as `graph_connectivity.kt` —
+so the search, spanning-tree and analysis functions there apply directly to a drawing.
 
 `src/jvmMain/kotlin/afield/stdlib/fline_graph_connectivity.kt`
 
@@ -1103,7 +1216,7 @@ Live rendered examples: `public/docs/graph_connectivity_examples.md`.
 
 `data class GraphEdge(val i: Int, val j: Int, val weight: Double)`
 
-Self-contained graph / computational-geometry library over 2D and 3D point sets (`Vec2`/`Vec3`). Every algorithm has a `vec2*` and (where meaningful) a `vec3*` entry point returning a [`PointGraph`](graphics.md#graph-connectivity-kt-pointgraph); see each function's own KDoc for its definition and complexity.
+Represents an edge between two points in a graph.
 
 | Declaration | Summary |
 | --- | --- |
@@ -1144,8 +1257,8 @@ Represents a path through a [`PointGraph`](graphics.md#graph-connectivity-kt-poi
 | `val nodes: List<Int>` |  |
 | `val edges: List<GraphEdge>` |  |
 | `val totalWeight: Double` |  |
-| `val start: Int get()` |  |
-| `val end: Int get()` |  |
+| `val start: Int` |  |
+| `val end: Int` |  |
 
 ### GraphEdgeVisitState { #graph-connectivity-kt-graphedgevisitstate }
 
@@ -1214,6 +1327,27 @@ Represents a convex hull of a point set.
 | `val hullIndices: List<Int>` |  |
 
 ## keyframer.kt { #keyframer-kt }
+
+Snapshot, interpolate and persist the live state of a running sketch. A [`KeyframeScope`](graphics.md#keyframer-kt-keyframescope) is a set
+of named targets — uniform `Structure` bindings, the uniform structures of a `ModulePointer` /
+`ComputeModulePointer` / `MeshModulePointer`, a stackAuto shader-source slot via
+`KeyframeScope.stackAuto`, or a `Camera` pose via `KeyframeScope.camera`. `capture()` reads them
+all into a `KeyframeScope.Key`; invoking that `Key` writes them all back.
+
+`KeyframeScope.interpolate` blends two keys per value type: numbers and vectors lerp, quaternions
+slerp, dual quaternions and `CameraPose` sclerp, and strings / [`StackSLString`](graphics.md#keyframer-kt-stackslstring) /
+`SourceBackedBlock` step to the right-hand value at `t >= 1`. `remap` can re-time an individual
+key's `t`.
+
+Persistence goes through the [`KValue`](graphics.md#keyframer-kt-kvalue) serial union, so only the types `KValue.fromAny` recognises
+survive a save — numbers, vec2/3/4, quaternion, dual quaternion, camera pose, string, StackSL
+source and source-backed block; anything else is silently dropped. Every `saveKey` also writes a
+numbered copy into a `<file>.versions` directory with a manifest, which
+`KeyframeScope.keyVersions` lists and `KeyframeScope.loadLatestKey` follows. `KeyframeScope.missingKey` supplies defaults for
+keys absent from an older file, optionally per schema version.
+
+Keys render themselves as HTML for box output ([`KeyDiff`](graphics.md#keyframer-kt-keydiff), `diffHtml`), and
+`copyUpdateCodeToClipboard` emits pasteable Kotlin — that one goes through the AWT clipboard.
 
 `src/jvmMain/kotlin/afield/stdlib/keyframer.kt`
 
@@ -1345,6 +1479,28 @@ Constants: `ADDED`, `REMOVED`, `CHANGED`.
 
 ## modelling.kt { #modelling-kt }
 
+A self-tuning controller for pushing the *distribution* of a scalar signal towards a target
+shape. You hand `AdaptiveDistributionController.pushSamples` a batch of samples each frame and it
+returns a [`ControlOutput`](graphics.md#modelling-kt-controloutput) whose `appliedParams` are the next parameter values to send to whatever
+produced them — a shader, a simulation, a tone curve.
+
+The error signal comes from a [`FeatureExtractor`](graphics.md#modelling-kt-featureextractor); [`UniformQuantileFeatureExtractor`](graphics.md#modelling-kt-uniformquantilefeatureextractor) is the
+built-in one and measures how far a set of sample quantiles sit from their targets. Internally
+each feature gets a recursive-least-squares row (with forgetting) that learns a local Jacobian,
+the step is a Tikhonov-regularised Gauss-Newton solve scaled by a confidence estimate, then
+softened near the parameter bounds, rate-limited by `maxStep`, clipped, and finally offset by a
+per-parameter sinusoidal dither so the estimator keeps seeing excitation.
+
+`ControllerConfig.observationDelayFrames` is the important knob: it models pipeline latency
+explicitly by pairing each observation with the command issued that many pushes earlier, so the
+loop does not have to be slowed down to learn correctly. Use [`AdaptiveDistributionControllerBank`](graphics.md#modelling-kt-adaptivedistributioncontrollerbank)
+for one controller per scene, and [`AdaptiveDistributionLoop`](graphics.md#modelling-kt-adaptivedistributionloop) to drive `observe`/`apply` from a
+`Runloop` hook.
+
+This is plain `DoubleArray` math with no GPU or `Box` dependency; every array in
+[`ControllerConfig`](graphics.md#modelling-kt-controllerconfig) must be `parameterNames.size` long. `main` runs a synthetic drifting-Gaussian
+plant against the controller and prints a trace.
+
 `src/jvmMain/kotlin/afield/stdlib/modelling.kt`
 
 ### Top-level functions { #modelling-kt-functions }
@@ -1399,7 +1555,7 @@ Constants: `ADDED`, `REMOVED`, `CHANGED`.
 | `val residualConfidenceScale: Double` |  |
 | `val minConfidence: Double` |  |
 | `val boundarySoftZone: Double` |  |
-| `val parameterCount: Int get()` |  |
+| `val parameterCount: Int` |  |
 
 ### ControllerDiagnostics { #modelling-kt-controllerdiagnostics }
 
@@ -1474,6 +1630,28 @@ Constants: `ADDED`, `REMOVED`, `CHANGED`.
 | `fun removeRunloopHook(key: String, runloop: Runloop = Runloop.runLoop): AdaptiveDistributionLoop` |  |
 
 ## quantilewarp.kt { #quantilewarp-kt }
+
+Reshapes a scalar signal's distribution by fitting a monotone 8-knot PCHIP curve from the
+measured quantiles of recent samples onto the quantiles of a chosen target distribution —
+`TargetDistributions.UnitNormal` by default, or any `QuantileFunction`.
+
+`AdaptiveQuantileWarp.update` takes a batch of samples, merges it with the last
+`historyFrames` batches, and returns a [`QuantileWarpState`](graphics.md#quantilewarp-kt-quantilewarpstate): the knot pairs, an
+`QuantileWarpState.evaluate` for CPU-side use, and the same 16 knots packed into four `vec4`s
+ready for push constants via `QuantileWarpState.applyToPushConstants`. Successive states are
+smoothed towards each other by `smoothingAlpha` and forced strictly increasing, so the curve
+stays invertible even when the input degenerates.
+
+`fieldQuantileWarpIncludeSource` is the matching GLSL — `fieldQuantileWarp8` and
+`fieldQuantileWarpMix` evaluate the identical PCHIP curve on the GPU — and is reachable from
+shader source as the built-in include named by `FIELD_QUANTILE_WARP_INCLUDE_NAME`.
+`Box.fieldProbeQuantileWarp` closes the loop: it installs a runloop hook that drains a
+`ShaderFieldProbe`, updates the warp, calls your `apply` callback and renders a knot table into a
+box display channel.
+
+Constraints worth knowing: exactly eight strictly increasing probabilities inside `(0, 1)`, and
+the `Box.fieldProbeQuantileWarp` entry point needs a live `Box` plus a probe configured for
+continuous snapshot reads.
 
 `src/jvmMain/kotlin/afield/stdlib/quantilewarp.kt`
 
@@ -1574,6 +1752,33 @@ Constants: `ADDED`, `REMOVED`, `CHANGED`.
 | `fun stop(runloop: Runloop = Runloop.runLoop, closeDisplay: Boolean = config.closeDisplayOnStop, clearDisplay: Boolean = config.clearDisplayOnStop): ShaderFieldQuantileWarpController` |  |
 
 ## shaders.kt { #shaders-kt }
+
+The bridge between a box's text and a live Vulkan pipeline: shader source lives in box
+properties, and this file turns it into modules and keeps them hot-reloading.
+
+The properties come first — `vertex`, `fragment`, `compute`, `task`/`mesh`, the ray-tracing
+stages, and a `_s` variant of each for Slang — alongside `once.vertex { }`-style seeders. The
+user-facing entry points are the macro placeholders `Box.moduleHere`, `Box.computeModuleHere`,
+`Box.meshModuleHere`, `Box.rayTracingModuleHere` and `Box.shadertoyHere`; each one throws
+`MacroNotExpandedException` if actually called, because `MacroRegistry` is expected to rewrite it
+into the real `_moduleHere`-family call.
+
+Before compilation every stage goes through `preprocess`, which resolves `#include`s against
+other boxes' shader properties (with cycle detection and `#line` fixups), against built-in
+includes such as the field probe, field stats and quantile warp, and against registered include
+roots — `registerShaderFilesystemIncludeRoot` for a directory and `registerLygiaIncludeRoot` /
+`shaderCachedUrlIncludeRootResolver` for URL-fetched, disk-cached libraries. It also expands
+`{% copyPC %}` (copying a previous stage's push-constant block) and stackAuto template slots
+compiled from StackSL via `stackAutoShaderSource`.
+
+`reloadShader`, `reloadComputeShader`, `reloadMeshShader` and `reloadRayTracingShader` are the
+reload path: compile, report errors back onto the box's source lines, introspect the result, and
+rewrite the box's Kotlin preamble with generated binding structures before swapping the module.
+`Box.attachShader` adopts an externally built module into that same path. `Box.fieldProbeHere`,
+`Box.fieldStatsHere` and `Box.fieldProbeAutoControl` attach the GPU readback instrumentation.
+
+Everything here needs a live `Box` — properties, error reporting, preamble edits and the
+generation-guarded async reload all key off it.
 
 `src/jvmMain/kotlin/afield/stdlib/shaders.kt`
 
@@ -1720,6 +1925,19 @@ Constants: `ADDED`, `REMOVED`, `CHANGED`.
 
 ## stacksl.kt { #stacksl-kt }
 
+Host-side entry points for StackSL: compiling the stack language to GLSL, and evaluating it on
+the GPU sample by sample. The language, its compiler and its diagnostics live in
+`afield.stacksl`; this file is the Kotlin surface a box calls.
+
+`stackSL` holds a box's StackSL source, falling back to a parent box's. `compileStackSL`,
+`stackSLToGlsl` and the standalone `slGlsl` are pure compilation and need no device. `slEval` and
+`slSweep` actually run the compiled function: they wrap it in a small compute shader and dispatch
+it through a `Renderer` that defaults to `fromContext()`, so they need a live graphics context.
+Neither binds any texture sampler, so a source that needs one is rejected.
+
+`slSweep` returns a [`StackSLSweep`](graphics.md#stacksl-kt-stackslsweep), which implements `ToHTML` and draws itself as an inline SVG
+plot of the four output channels with per-channel min/median/max; `StackSLSweep.h` is that HTML.
+
 `src/jvmMain/kotlin/afield/stdlib/stacksl.kt`
 
 **Used in:** [StackSL cheatsheet](../stacksl_cheatsheet.md)
@@ -1728,7 +1946,7 @@ Constants: `ADDED`, `REMOVED`, `CHANGED`.
 
 | Declaration | Summary |
 | --- | --- |
-| `fun Box.stackSLPrefix(): String` |  |
+| `fun Box.stackSLPrefix(): String` | Host-side entry points for StackSL: compiling the stack language to GLSL, and evaluating it on the GPU sample by sample. The language, its compiler and its diagnostics live in `afield.stacksl`; this file is the Kotlin surface a box calls. |
 | `fun Box.compileStackSL(source: String = stackSL ?: "", prefix: String = stackSLPrefix(), entrypoint: String = "main", sampleTextures: List<String> = listOf("source"), tolerant: Boolean = false, declareSamplers: Boolean = true, externalizeConstants: Boolean = false): StackSLCompileResult` |  |
 | `fun Box.stackSLToGlsl(source: String = stackSL ?: "", prefix: String = stackSLPrefix(), entrypoint: String = "main", sampleTextures: List<String> = listOf("source"), tolerant: Boolean = false, declareSamplers: Boolean = true, externalizeConstants: Boolean = false): String` |  |
 | `fun slEval(source: String, input: Vector4fc, renderer: Renderer = fromContext()): Vec4` |  |
@@ -1752,7 +1970,7 @@ Constants: `ADDED`, `REMOVED`, `CHANGED`.
 | `val end: Vec4` |  |
 | `val inputs: List<Vec4>` |  |
 | `val values: List<Vec4>` |  |
-| `val size: Int get()` |  |
+| `val size: Int` |  |
 | `operator fun get(index: Int): Vec4` |  |
 | `fun channel(channel: Int): List<Float>` |  |
 | `override fun toHTML(): String` |  |

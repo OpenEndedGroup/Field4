@@ -110,7 +110,14 @@ object KDocExtractor {
                             declLine++
                             continue
                         }
-                        
+                        // A second KDoc block before any declaration means this block documents
+                        // nothing in particular — a file-level overview, most often. Stop here, or
+                        // this block would be attached to the *next* declaration and, worse, the
+                        // outer loop would resume past that declaration's own KDoc and drop it.
+                        if (declLineText.startsWith("/**")) {
+                            break
+                        }
+
                         // Try to parse declaration
                         declaration = parseDeclaration(declLineText)
                         if (declaration != null) {

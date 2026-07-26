@@ -4,11 +4,32 @@
 
 Sound analysis and the network protocols that carry control data alongside it.
 
-2 source file(s), 153 public symbol(s). Everything below is the KDoc that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor.
+2 source file(s), 153 public symbol(s), 9 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
 ## essentiaAnalysis.kt { #essentiaanalysis-kt }
+
+Readers for two on-disk audio-analysis products, so a box can query them by time.
+
+Nothing here performs analysis or links against a native library — both entry points just parse
+files that some offline tool has already written.
+
+`loadFramesSig` reads an Essentia-shaped YAML `.sig` file into a [`FramesSigDocument`](audio.md#essentiaanalysis-kt-framessigdocument): the tree is
+flattened into dotted paths, and each leaf is sorted into a scalar, a per-frame
+[`FramesSigFloatProduct`](audio.md#essentiaanalysis-kt-framessigfloatproduct), or a per-frame [`FramesSigFloatVectorProduct`](audio.md#essentiaanalysis-kt-framessigfloatvectorproduct). `sampleAt` /
+`floatValueAt` / `floatVectorAt` map a time in seconds to a frame index by assuming frames are
+evenly spaced across the analysis window described in `metadata` (`analysis.start_time` and
+`analysis.length`, falling back to the audio length); `available` / `availableArrays` list what
+a given file actually contains. Large `.sig` files are handled by raising SnakeYAML's code-point
+limit to the file size plus padding.
+
+`loadSound2Vec` reads a directory of `metadata.csv` + `embeddings.npy` (+ optional
+`manifest.json`) into a [`Sound2VecDataset`](audio.md#essentiaanalysis-kt-sound2vecdataset) of [`Sound2VecClip`](audio.md#essentiaanalysis-kt-sound2vecclip)s, each carrying its embedding, its
+time span within a source audio file, and optional t-SNE 2D/3D coordinates; clips can be looked
+up by chunk id, or by audio path and time. The bundled `.npy` reader is deliberately narrow: it
+accepts only C-ordered (non-Fortran) `float32` 1D or 2D arrays, and by default requires the CSV
+row count, the embedding row count and the manifest's `num_chunks` / `embedding_dim` to agree.
 
 `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt`
 
@@ -67,7 +88,7 @@ Sound analysis and the network protocols that carry control data alongside it.
 | --- | --- |
 | `override val path: String` |  |
 | `val values: FloatArray` |  |
-| `override val frameCount: Int get()` |  |
+| `override val frameCount: Int` |  |
 | `override fun sampleAt(timeSeconds: Double, metadata: FramesSigMetadata): FramesSigTimedSample` |  |
 
 ### FramesSigFloatVectorProduct { #essentiaanalysis-kt-framessigfloatvectorproduct }
@@ -78,8 +99,8 @@ Sound analysis and the network protocols that carry control data alongside it.
 | --- | --- |
 | `override val path: String` |  |
 | `val values: List<FloatArray>` |  |
-| `override val frameCount: Int get()` |  |
-| `val vectorWidth: Int get()` |  |
+| `override val frameCount: Int` |  |
+| `val vectorWidth: Int` |  |
 | `override fun sampleAt(timeSeconds: Double, metadata: FramesSigMetadata): FramesSigTimedSample` |  |
 
 ### FramesSigTimedSample { #essentiaanalysis-kt-framessigtimedsample }
@@ -92,7 +113,7 @@ Sound analysis and the network protocols that carry control data alongside it.
 | `val index: Int` |  |
 | `val timeSeconds: Double` |  |
 | `val values: FloatArray` |  |
-| `val value: Float? get()` |  |
+| `val value: Float?` |  |
 
 ### FramesSigProductInfo { #essentiaanalysis-kt-framessigproductinfo }
 
@@ -177,7 +198,7 @@ Sound analysis and the network protocols that carry control data alongside it.
 | `val tsne3dY: Float?` |  |
 | `val tsne3dZ: Float?` |  |
 | `val embedding: FloatArray` |  |
-| `val middleSec: Double get()` |  |
+| `val middleSec: Double` |  |
 | `fun contains(timeSeconds: Double): Boolean` |  |
 | `fun tsne2dOrNull(): FloatArray?` |  |
 | `fun tsne3dOrNull(): FloatArray?` |  |
@@ -222,6 +243,21 @@ Sound analysis and the network protocols that carry control data alongside it.
 | `fun subclipsOverlapping(filePath: String, startSec: Double, endSec: Double): List<Sound2VecAudioSubclip>` |  |
 
 ## osc.kt { #osc-kt }
+
+OSC in and out, wrapped around JavaOSC (`com.illposed.osc`) and driven from Field's main runloop.
+
+The usual entry points are `osc` and `oscClient`, not the constructors: they hand back cached
+[`OscServer`](audio.md#osc-kt-oscserver) / [`OscClient`](audio.md#osc-kt-oscclient) instances (keyed by port, and by host+port) so that re-running a box
+during live editing reuses the existing socket instead of rebinding it. [`OscServer`](audio.md#osc-kt-oscserver) binds a UDP
+port (default 9000) in its constructor and starts listening immediately; handlers registered
+with `on` are keyed by OSC address pattern and return a `Generator`, which is started and then
+stepped once per service pass on the main thread — so a handler can span frames. [`OscClient`](audio.md#osc-kt-oscclient)
+opens its outbound socket lazily on first `send`.
+
+Two things to know when debugging: the connect/listen/close calls are wrapped in a swallowing
+`try`/`catch`, so a failed bind or connect throws nothing and reports nothing (check
+`isListening` / `isConnected`); failures inside handlers and sends are caught too, but at least
+print. [`OscServer`](audio.md#osc-kt-oscserver) also has `debug` on by default, printing every incoming message.
 
 `src/jvmMain/kotlin/afield/stdlib/osc.kt`
 

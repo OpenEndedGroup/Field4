@@ -1021,6 +1021,16 @@ tasks.register<JavaExec>("generateCodebaseReference") {
     args(file(out).absolutePath)
 }
 
+tasks.register<JavaExec>("checkCodebaseReference") {
+    group = "verification"
+    description = "Fails if public/docs/reference/ is not what the current KDoc produces. Same drift guard as the docs.codebase-reference.generate FIELD_TEST, without needing a Field server."
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
+    })
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.docs.StdlibReferenceGenerator")
+}
+
 tasks.register<JavaExec>("runSidecarPathParseSmokeTest") {
     group = "verification"
     description = "Verifies FileWatchManager.parseSidecarPath splits underscore-bearing box ids/properties without spawning phantom boxes."

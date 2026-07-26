@@ -4,11 +4,33 @@
 
 Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. Everything here is plain `Double`/`Float` Kotlin with no GPU and no window, so it runs in a box, a test or a headless docs capture equally well.
 
-14 source file(s), 1287 public symbol(s). Everything below is the KDoc that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor.
+14 source file(s), 1287 public symbol(s), 128 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
 ## Functions.kt { #functions-kt }
+
+The `Fn` toolkit: one-dimensional signals as values you can build, compose, sample and draw.
+
+Nearly everything lives inside the [`Functions`](math.md#functions-kt-functions) object, and most of it as extension functions,
+so callers normally work inside `with(Functions) { ... }`. A `Functions.Fn` is an evaluator
+plus the `Functions.Domain` it is meant to be sampled over (default `0.0..1.0`). Sources —
+`sin`, `saw`, `triangle`, `square`, the `pulseTrain` / `pulseBurst` family, the noise and
+`fbm` generators, and keyframe interpolants such as `catmullRomSpline` and `monotoneCubic` —
+combine through arithmetic operators, through chainable `Fn` extensions (`stretch`, `repeat`,
+`fold`, `quantize`, `echo`, `convolve`, `blur`, ...), and through reusable `FnTransform`
+pipelines applied with `/`. Arrangement in time is `timeline { }` and the `List<Fn>`
+combinators (`sequence`, `randomPermute`, `morph`, `stack`, `average`).
+
+Every combinator also records an `FnGraphNode` recipe alongside the closure (see
+`FunctionGraph.kt`), which is what makes graphs inspectable and rewritable rather than opaque
+lambdas. On the output side: `toDoubleArray` and the `sample*` helpers for numbers, `toFLine`
+for drawing, `plotHtml` for a self-contained plot, and `Fn.plot`, which displays into the
+active `Box` and throws when there is none (`Box.plot` takes the `Fn` explicitly instead).
+
+`RbfKernel`, [`RbfKernels`](math.md#functions-kt-rbfkernels) and [`RbfInterpolator`](math.md#functions-kt-rbfinterpolator) at the top of the file are the scattered-data
+fitter behind `Functions.rbf`; it solves a dense n×n system per construction, so it is sized
+for handfuls of control points, not thousands.
 
 `src/jvmMain/kotlin/afield/stdlib/Functions.kt`
 
@@ -56,16 +78,16 @@ Numerics: signal processing in both domains, estimation and fitting, interpolati
 | `enum class PulseProfile` |  |
 | `enum class StretchShape` |  |
 | `enum class RectifyMode` | Rectifier polarity for the `rectify` waveshaping transform: half-wave clamps the negative excursion to zero; full-wave reflects it (\|x\|). |
-| `enum class Easing` | Common normalized-time shapes for procedural motion and value tweening. |
-| `val HARD: PulseEdge get()` |  |
-| `val SMOOTH: PulseEdge get()` |  |
-| `val EXP: PulseEdge get()` |  |
-| `val RECT: PulseProfile get()` |  |
-| `val TRIANGLE: PulseProfile get()` |  |
-| `val HANN: PulseProfile get()` |  |
-| `val GAUSSIAN: PulseProfile get()` |  |
-| `val NEAREST: Interpolation get()` |  |
-| `val CUBIC: Interpolation get()` |  |
+| `enum class Easing` | Named motion curves for `tween`, `Fn.ease`, and other alpha-shaping helpers. The `_IN`/`_OUT`/`_IN_OUT` families follow the conventional Penner easings so procedural animation reads the same here as in other motion toolkits. |
+| `val HARD: PulseEdge` |  |
+| `val SMOOTH: PulseEdge` |  |
+| `val EXP: PulseEdge` |  |
+| `val RECT: PulseProfile` |  |
+| `val TRIANGLE: PulseProfile` |  |
+| `val HANN: PulseProfile` |  |
+| `val GAUSSIAN: PulseProfile` |  |
+| `val NEAREST: Interpolation` |  |
+| `val CUBIC: Interpolation` |  |
 | `data class Fn(val domain: Domain = Domain.DEFAULT, val name: String? = null, val graph: FnGraphNode? = null, private val evalFn: (Double) -> Double)` | A one-dimensional signal together with the interval on which it is meant to be sampled. |
 | `fun fn(domain: Domain = Domain.DEFAULT, name: String? = null, eval: (Double) -> Double): Fn` |  |
 | `fun fn(domain: ClosedRange<*>, name: String? = null, eval: (Double) -> Double): Fn` |  |
@@ -182,9 +204,9 @@ Numerics: signal processing in both domains, estimation and fitting, interpolati
 | `fun Fn.streamWithX(start: Double = domain.finiteSweep().min, step: Double = 1.0): Sequence<Pair<Double, Double>>` |  |
 | `enum class ChunkMapMode` |  |
 | `enum class ChunkBlend` |  |
-| `val ADD: ChunkBlend get()` |  |
-| `val REPLACE: ChunkBlend get()` |  |
-| `val MULTIPLY: ChunkBlend get()` |  |
+| `val ADD: ChunkBlend` |  |
+| `val REPLACE: ChunkBlend` |  |
+| `val MULTIPLY: ChunkBlend` |  |
 | `data class TimelineChunk(val source: Fn, val sourceDomain: Domain = source.domain, val domain: Domain, val mapMode: ChunkMapMode = ChunkMapMode.DIRECT, val blend: ChunkBlend = ChunkBlend.REPLACE, val edge: EdgeMode = EdgeMode.ZERO, val outside: Double = 0.0, val window: Fn? = null, val gain: Fn? = null, val name: String? = source.name)` |  |
 | `class TimelineGraph(chunks: List<TimelineChunk>, val outside: Double = 0.0, val defaultDomain: Domain = Domain.point(0.0))` |  |
 | `class TimelineBuilder(start: Double = 0.0, private val outside: Double = 0.0)` |  |
@@ -567,12 +589,26 @@ Numerics: signal processing in both domains, estimation and fitting, interpolati
 | `fun smootherStepInterp(points: List<Keyframe>): Fn` | Smootherstep (Ken Perlin's 6t⁵ − 15t⁴ + 10t³) interpolation. |
 | `fun gaussianSmooth(source: Fn, sigma: Double = 0.1, taps: Int = 31): Fn` | Gaussian-smoothed version of a source `Fn`. |
 | `fun differentiate(source: Fn, h: Double = 1e-4): Fn` | Numerically differentiate a source `Fn` (central differences). |
-| `fun fromKeyframeEditor(keyframes: List<Keyframe>, sampleCount: Int = 512, interpolation: Interpolation = Interpolation.LINEAR): Fn` | Resample a `Fn` at uniform intervals and return a new `Fn` backed by the sample table with the given `interpolation` mode. |
+| `fun fromKeyframeEditor(keyframes: List<Keyframe>, sampleCount: Int = 512, interpolation: Interpolation = Interpolation.LINEAR): Fn` | Produces a `Fn` that exactly matches the keyframe editor's native evaluation (hold / linear / rational-bezier), by constructing a temporary `KeyframeEvaluator` and sampling it. |
 | `fun resample(source: Fn, sampleCount: Int = 256, interpolation: Interpolation = Interpolation.CUBIC): Fn` |  |
 | `fun demo(sampleCount: Int = 512, seed: Long = 1L, domain: Domain = Domain.DEFAULT, printSummary: Boolean = true): DemoResult` |  |
 | `fun main(args: Array<String>)` |  |
 
 ## LeastSquares.kt { #leastsquares-kt }
+
+A Levenberg–Marquardt nonlinear least-squares solver, pure Kotlin and self-contained.
+
+`leastSquares` takes an initial parameter vector and a `residuals: (DoubleArray) -> DoubleArray`
+lambda and minimises half the squared residual norm. [`LeastSquaresOptions`](math.md#leastsquares-kt-leastsquaresoptions) controls the
+iteration cap, the damping schedule and three convergence tolerances; [`LeastSquaresResult`](math.md#leastsquares-kt-leastsquaresresult)
+reports the parameters, final residuals, cost, iteration count, an `rms`, and a `reason` string
+— one of "gradient", "step", "improvement", "no accepted step" or "max iterations".
+
+The Jacobian is central finite differences, so you never supply derivatives but each iteration
+costs `2 * parameters` extra residual evaluations. The damped normal equations are solved by
+Gaussian elimination with partial pivoting; a singular system or a non-finite candidate raises
+the damping and retries (up to 12 times per iteration) rather than failing. Non-finite initial
+residuals throw.
 
 `src/jvmMain/kotlin/afield/stdlib/LeastSquares.kt`
 
@@ -609,9 +645,22 @@ Numerics: signal processing in both domains, estimation and fitting, interpolati
 | `val iterations: Int` |  |
 | `val converged: Boolean` |  |
 | `val reason: String` |  |
-| `val rms: Double get()` |  |
+| `val rms: Double` |  |
 
 ## correlations.kt { #correlations-kt }
+
+Measures of statistical dependence between two equal-length `DoubleArray`s, batch and rolling.
+
+[`StatsDependence`](math.md#correlations-kt-statsdependence) carries the batch versions: `pearson`, `spearman` (Pearson on average-tie
+ranks), `kendallTauB`, `chatterjeeXi` (aliased as `xi`), `distanceCorrelation` and
+`micTicNaive`. Kendall's tau-b and distance correlation are both O(n²) in time, and distance
+correlation additionally materialises two n×n matrices, so neither suits long series.
+
+[`RollingDistanceCorrelation`](math.md#correlations-kt-rollingdistancecorrelation) holds a fixed window and updates its maintained row and grand sums
+in O(n) per `push`; [`RollingXiCorrelation`](math.md#correlations-kt-rollingxicorrelation) only keeps the window and recomputes xi from
+scratch. All of it is pure Kotlin with no external dependency. Note the block comment below,
+which is explicit that `micTicNaive` is an equipartition-grid approximation and not MICe/TICe —
+do not expect matching values.
 
 `src/jvmMain/kotlin/afield/stdlib/correlations.kt`
 
@@ -660,6 +709,22 @@ Numerics: signal processing in both domains, estimation and fitting, interpolati
 
 ## dirichlet.kt { #dirichlet-kt }
 
+2D multiplicatively weighted Voronoi (Apollonius) diagrams. Each site is a `Vec3` of
+`(x, y, weight)` and cells are decided by the score `|x - p|² / w²`.
+
+`CircularDirichlet.build` returns a `Diagram` holding one `CellBoundary` per site, its pieces
+sorted angularly around that site. Because the bisector of two differently weighted sites is a
+circle — and a line only when the weights match — boundaries arrive as `ArcPiece` and
+`LinePiece` rather than polygon edges; call `toPolyline` / `toPolylines` on a piece to
+tessellate it, and pass an `Aabb` clip, since unbounded lines cannot be flattened without one
+and clipping an arc may split it into several polylines.
+
+All weights must be > 0 (`build` requires it). The construction is triple-nested over the
+sites — every bisector is intersected against every other, and each candidate piece is kept
+only if a midpoint sample really is on the cell boundary — so it is aimed at modest site
+counts. Pure Kotlin on Field's `Vec2`/`Vec3`; the 3D counterpart is `CircularDirichlet3d` in
+`voronoi.kt`.
+
 `src/jvmMain/kotlin/afield/stdlib/dirichlet.kt`
 
 ### CircularDirichlet { #dirichlet-kt-circulardirichlet }
@@ -681,6 +746,21 @@ Numerics: signal processing in both domains, estimation and fitting, interpolati
 
 ## interpolants.kt { #interpolants-kt }
 
+`smoothTo` wraps a target-producing lambda so that reading it eases toward the target instead
+of jumping to it.
+
+The returned `() -> T` is privately also a `HasUniform`/`ProgressingUniform`, so it can sit
+where Field expects a uniform and be re-evaluated per frame. It implements
+[`NeedsStartingValue`](math.md#interpolants-kt-needsstartingvalue), and whoever binds it is responsible for calling `startAt` with the
+current value — until that happens the interpolant simply reports the target and marks itself
+complete.
+
+Interpolation is linear and only covers `Float`, `Double`, `Int`, `Long` and
+`Vector2f`/`Vector3f`/`Vector4f`; any other type completes immediately at the target. Progress
+is either wall-clock (`time` seconds, measured with `System.nanoTime`) or a fixed number of
+evaluations (`steps`, default 100), and it is one-shot: once it reaches the target it stays
+there.
+
 `src/jvmMain/kotlin/afield/stdlib/interpolants.kt`
 
 **Used in:** [Values over time: interpolants & keyframes](../interpolants_examples.md)
@@ -700,6 +780,22 @@ Numerics: signal processing in both domains, estimation and fitting, interpolati
 | `fun startAt(a: Any?)` |  |
 
 ## linalg.kt { #linalg-kt }
+
+The short vector aliases ([`Vec2`](math.md#linalg-kt-vec2), `Vec3`, [`Vec4`](math.md#linalg-kt-vec4), [`Quat`](math.md#linalg-kt-quat), [`DualQuat`](math.md#linalg-kt-dualquat)) plus the constructors and
+point-cloud helpers that sit on top of Field's generated `afield.stdlib.linalg` types.
+
+`vec(...)` is the usual way to make one — from numbers, by copying, or by concatenating a
+scalar with a smaller vector — and `quat` / `dualquat` do the same for rotations. Collections
+of vectors gain `center`, `median` / `medianVec` and `aabbBounds` in 2D, 3D and 4D; 3D also
+gets `obbBounds` (PCA by power iteration, an explicit approximation — the code says so),
+`convexHull` and `convexHullPeelingMedian`, which go through the QuickHull3D library and
+return the input unchanged if the hull cannot be built. [`Cuboid`](math.md#linalg-kt-cuboid) is a separate plain 3D
+box-with-size type used for layout-style union / inset / intersects work.
+
+These vector types are mutable and most operations mutate the receiver, so copy first
+(`Vec3(existing)`) when you need to keep the original. Swizzles and the `invoke`, `%=` and
+`len` operators are deliberately absent here: they are generated for every float vector into
+`Swizzles.kt` and `VectorOperators.kt` by `tools/linalg-generator`.
 
 `src/jvmMain/kotlin/afield/stdlib/linalg.kt`
 
@@ -788,7 +884,7 @@ Numerics: signal processing in both domains, estimation and fitting, interpolati
 
 `data class OrientedBoundingBox(val center: Vec3, val axes: Array<Vec3>, val extents: FloatArray)`
 
-Field's 4D vector alias, backed by Field's generated mutable `Vector4f`.
+Oriented Bounding Box (OBB) representation.
 
 | Declaration | Summary |
 | --- | --- |
@@ -806,8 +902,8 @@ Axis-Aligned Bounding Box for 2D vectors.
 | --- | --- |
 | `val min: Vec2` |  |
 | `val max: Vec2` |  |
-| `val size: Vec2 get()` |  |
-| `val center: Vec2 get()` |  |
+| `val size: Vec2` |  |
+| `val center: Vec2` |  |
 
 ### AxisAlignedBoundingBox3D { #linalg-kt-axisalignedboundingbox3d }
 
@@ -819,8 +915,8 @@ Axis-Aligned Bounding Box for 3D vectors.
 | --- | --- |
 | `val min: Vec3` |  |
 | `val max: Vec3` |  |
-| `val size: Vec3 get()` |  |
-| `val center: Vec3 get()` |  |
+| `val size: Vec3` |  |
+| `val center: Vec3` |  |
 
 ### AxisAlignedBoundingBox4D { #linalg-kt-axisalignedboundingbox4d }
 
@@ -832,8 +928,8 @@ Axis-Aligned Bounding Box for 4D vectors.
 | --- | --- |
 | `val min: Vec4` |  |
 | `val max: Vec4` |  |
-| `val size: Vec4 get()` |  |
-| `val center: Vec4 get()` |  |
+| `val size: Vec4` |  |
+| `val center: Vec4` |  |
 
 ### Cuboid { #linalg-kt-cuboid }
 
@@ -856,6 +952,13 @@ Axis-Aligned Bounding Box for 4D vectors.
 | `override fun hashCode(): Int` |  |
 
 ## math.kt { #math-kt }
+
+`Number`-taking overloads of the trigonometric functions, so `sin(1)` and `sin(1f)` work
+without writing `.toDouble()` at every call site.
+
+Covers the circular functions and their inverses (`sin`, `cos`, `tan`, `asin`, `acos`, `atan`,
+`atan2`) and the hyperbolic ones (`sinh`, `cosh`, `tanh`, `asinh`, `acosh`, `atanh`). Each is a
+one-line delegate to the matching `kotlin.math` function and always returns `Double`.
 
 `src/jvmMain/kotlin/afield/stdlib/math.kt`
 
@@ -881,6 +984,22 @@ Axis-Aligned Bounding Box for 4D vectors.
 
 ## pf.kt { #pf-kt }
 
+An unscented Kalman filter, and a particle filter whose particles each carry one.
+
+[`UnscentedKalmanFilter`](math.md#pf-kt-unscentedkalmanfilter) keeps a mean and covariance and takes the transition and observation
+models as lambdas; `UnscentedKalmanFilter.updateWithLikelihood` returns the log measurement
+likelihood, which is exactly what [`UKFParticleFilter`](math.md#pf-kt-ukfparticlefilter) accumulates into each particle's log
+weight. A [`UKFParticle`](math.md#pf-kt-ukfparticle) holds a UKF for the continuous state plus a hypothesis of your own
+type `H` for the discrete or non-Gaussian part. `UKFParticleFilter.resampleIfNeeded` does
+systematic resampling once the effective sample size drops below a fraction of the particle
+count, and can immediately roughen the resampled means ([`RougheningOptions`](math.md#pf-kt-rougheningoptions)) so exact clones
+separate again.
+
+State and measurement dimensions are restricted to 1..3 — the private determinant helper only
+covers those sizes and everything `require`s it. The linear algebra (`Matrix` is just
+`Array<DoubleArray>`; Cholesky with escalating jitter, Gauss–Jordan inverse) is private to this
+file, has no external dependency, and allocates fresh arrays on every step.
+
 `src/jvmMain/kotlin/afield/stdlib/pf.kt`
 
 **Used in:** [State estimation: tracking what you cannot measure](../state_estimation_examples.md)
@@ -892,6 +1011,8 @@ Axis-Aligned Bounding Box for 4D vectors.
 ### UKFOptions { #pf-kt-ukfoptions }
 
 `data class UKFOptions(val alpha: Double = 0.5, val beta: Double = 2.0, val kappa: Double = 0.0, val jitter: Double = 1e-9)`
+
+An unscented Kalman filter, and a particle filter whose particles each carry one.
 
 | Declaration | Summary |
 | --- | --- |
@@ -919,7 +1040,7 @@ Axis-Aligned Bounding Box for 4D vectors.
 | `val options: UKFOptions` |  |
 | `var x: DoubleArray` |  |
 | `var p: Matrix` |  |
-| `val dim: Int get()` |  |
+| `val dim: Int` |  |
 | `fun predict(processNoise: Matrix, transition: (DoubleArray) -> DoubleArray)` |  |
 | `fun update(measurement: DoubleArray, measurementNoise: Matrix, observe: (DoubleArray) -> DoubleArray)` |  |
 | `fun updateWithLikelihood(measurement: DoubleArray, measurementNoise: Matrix, observe: (DoubleArray) -> DoubleArray): Double` | Performs a UKF measurement update and returns log p(measurement \| predicted state). This likelihood is what the particle filter uses to update particle weights. |
@@ -944,7 +1065,7 @@ Axis-Aligned Bounding Box for 4D vectors.
 | Declaration | Summary |
 | --- | --- |
 | `var particles: MutableList<UKFParticle<H>>` |  |
-| `val size: Int get()` |  |
+| `val size: Int` |  |
 | `fun predict(processNoise: (UKFParticle<H>) -> Matrix, transition: (hypothesis: H, state: DoubleArray) -> DoubleArray, evolveHypothesis: ((H) -> H)? = null)` |  |
 | `fun update(measurement: DoubleArray, measurementNoise: (UKFParticle<H>) -> Matrix, observe: (hypothesis: H, state: DoubleArray) -> DoubleArray)` |  |
 | `fun weights(): DoubleArray` |  |
@@ -957,6 +1078,20 @@ Axis-Aligned Bounding Box for 4D vectors.
 | `fun estimateCovariance(): Matrix` | Mixture covariance: weighted average of each UKF covariance plus covariance of UKF means. |
 
 ## randoms.kt { #randoms-kt }
+
+Box-scoped randomness. `random`, `randomGaussian` and `setRandomSeed` draw from a
+`java.util.Random` held as a property on the current `Box`, so re-running a box replays the
+same sequence; with no `Box` in context they fall back to one process-wide generator seeded
+with `STDLIB_RANDOM_DEFAULT_SEED`.
+
+Alongside the seed each box carries a noise phase you advance yourself (`noisePhase`,
+`noiseForward`, `setNoisePhase`). That phase and seed drive `noise1D`, a small Perlin-style
+hashed 1D noise, and the `perlinNoise` extensions on `Vector2f`/`Vector3f`/`Vector4f`, which
+take one independent noise channel per component.
+
+All the vector extensions — `perlinNoise` and the uniform-jitter `noise(d)` — mutate the
+receiver in place and return it rather than allocating. `nextGaussian` is a Box-Muller
+extension that fills the gap left by `kotlin.random.Random`, which has no Gaussian of its own.
 
 `src/jvmMain/kotlin/afield/stdlib/randoms.kt`
 
@@ -988,6 +1123,19 @@ Axis-Aligned Bounding Box for 4D vectors.
 | `const val STDLIB_RANDOM_DEFAULT_SEED: Long` |  |
 
 ## smile_interpolation_regression.kt { #smile-interpolation-regression-kt }
+
+Two 1D fitters that wrap the Smile library: `smileCubicSpline` (cubic spline interpolation
+through the data) and `smileGaussianProcess` (Gaussian-process regression with a Gaussian
+kernel, configured by [`SmileGpOptions`](math.md#smile-interpolation-regression-kt-smilegpoptions)).
+
+Both take parallel `xs`/`ys` arrays, copy them, and require at least two finite samples with
+`xs` strictly increasing — a violation throws rather than producing a quietly bad fit. The
+returned [`SmileCubicSpline1D`](math.md#smile-interpolation-regression-kt-smilecubicspline1d) / [`SmileGaussianProcess1D`](math.md#smile-interpolation-regression-kt-smilegaussianprocess1d) are callable via `invoke` and also
+expose `predict` for a single `x` or for a whole array.
+
+One caveat worth knowing: if Smile throws while fitting the GP, `smileGaussianProcess` prints
+a warning to stderr and substitutes plain linear interpolation between the training points, so
+holding a [`SmileGaussianProcess1D`](math.md#smile-interpolation-regression-kt-smilegaussianprocess1d) is not proof that a GP was actually fitted.
 
 `src/jvmMain/kotlin/afield/stdlib/smile_interpolation_regression.kt`
 
@@ -1111,8 +1259,8 @@ A single complex spectrum plus the `sampleRate` it was measured at. `re`/`im` ar
 | `val re: DoubleArray` |  |
 | `val im: DoubleArray` |  |
 | `val sampleRate: Double` |  |
-| `val size: Int get()` |  |
-| `val binCount: Int get()` | Number of one-sided bins (DC .. Nyquist), i.e. N/2 + 1 for even N. |
+| `val size: Int` |  |
+| `val binCount: Int` | Number of one-sided bins (DC .. Nyquist), i.e. N/2 + 1 for even N. |
 | `fun binFrequency(k: Int): Double` | Frequency (Hz) of bin `k`. |
 | `fun frequencies(): DoubleArray` | Frequencies (Hz) of the one-sided bins 0..N/2. |
 | `fun magnitude(): DoubleArray` | Full-length magnitude \|X`k`\|. |
@@ -1141,8 +1289,8 @@ The result of a short-time Fourier transform: a stack of per-frame one-sided mag
 | `val fftSize: Int` |  |
 | `val hopSize: Int` |  |
 | `val window: WindowType` |  |
-| `val numFrames: Int get()` |  |
-| `val numBins: Int get()` |  |
+| `val numFrames: Int` |  |
+| `val numBins: Int` |  |
 | `fun binFrequency(k: Int): Double` |  |
 | `fun frameTime(i: Int): Double` | Center time (seconds) of frame `i`. |
 | `fun magnitude(i: Int): DoubleArray` | One-sided magnitude of frame `i`. |
@@ -1235,6 +1383,22 @@ Streaming windowed RMS: a rolling root-mean-square over the last `windowSize` sa
 | `fun reset()` |  |
 
 ## stats.kt { #stats-kt }
+
+Descriptive statistics, and the SVG/HTML renderings Field uses to put them in a box output.
+
+`buildSummaryStats` reduces a sequence of doubles to a [`SummaryStats`](math.md#stats-kt-summarystats) — count, quartiles, IQR,
+MAD, variance, skewness, excess kurtosis — dropping and counting non-finite values as it goes.
+`buildHistogram` picks a bin width as the smallest of the Freedman–Diaconis, Scott and Sturges
+estimates, clamped to at most 2000 bins. [`SummaryStatsBuffer`](math.md#stats-kt-summarystatsbuffer) wraps both behind a synchronized,
+capped sliding window you can `add` to sample by sample; there are parallel
+[`Vec2SummaryStats`](math.md#stats-kt-vec2summarystats) / [`Vec3SummaryStats`](math.md#stats-kt-vec3summarystats) / [`Vec4SummaryStats`](math.md#stats-kt-vec4summarystats) forms that carry per-component
+stats, vector length and the pairwise component correlations, each with their own buffer.
+
+The rendering half — `histogramToSvg`, `seriesPlotToSvg` and `summaryStatsBoxToHtml` — builds
+SVG and HTML by string interpolation, with no drawing library involved, and defaults to
+Field's cyan-on-black look through a long list of colour and padding parameters. Pass the
+previous [`SummaryStats`](math.md#stats-kt-summarystats) and changed numbers are tinted by the sign and relative size of the
+change. `seriesPlotToSvg` envelope-downsamples to `maxSeriesPoints` (500) before drawing.
 
 `src/jvmMain/kotlin/afield/stdlib/stats.kt`
 
@@ -1503,6 +1667,25 @@ Rolling numeric summary + histogram buffer.
 | `fun lengthHistogramSvg(widthPx: Int = 480, heightPx: Int = 240, title: String? = "Vec4 length", decimals: Int = 3): String` |  |
 
 ## timeseries.kt { #timeseries-kt }
+
+Streaming, time-domain filters over `Float` signals — the sample-at-a-time counterpart to the
+frequency-domain code in `spectral.kt`.
+
+Everything here implements the `FloatFilter` fun interface (one `Float` in, one `Float` out)
+and composes with `then`, so a chain reads as
+`DCBlocker() then EMAFilter(0.1f) then NoiseGate(0.05f)`. Three families share that interface:
+smoothers and classic filters ([`EMAFilter`](math.md#timeseries-kt-emafilter), [`AlphaBetaFilter`](math.md#timeseries-kt-alphabetafilter), [`OneEuroFilter`](math.md#timeseries-kt-oneeurofilter), [`BiquadFilter`](math.md#timeseries-kt-biquadfilter)
+with its `LowPassFilter` / `HighPassFilter` / `BandPassFilter` / `BandRejectFilter`
+constructors); rolling distribution fits — exponential, gamma, beta and Rayleigh — each
+paired with a `Normalizer` mapping the fitted CDF into a target range and an `EventDetector`
+firing on tail probability ([`ZScoreEventDetector`](math.md#timeseries-kt-zscoreeventdetector) instead thresholds on standard deviations
+from a rolling mean); and utility stages such as [`MedianFilter`](math.md#timeseries-kt-medianfilter), [`SchmittTrigger`](math.md#timeseries-kt-schmitttrigger), [`AGC`](math.md#timeseries-kt-agc),
+[`PIDController`](math.md#timeseries-kt-pidcontroller), [`LeakyIntegrator`](math.md#timeseries-kt-leakyintegrator) and [`DynamicRangeCompressor`](math.md#timeseries-kt-dynamicrangecompressor).
+
+Pure Kotlin with no external dependency: the log-gamma, regularized incomplete gamma and
+regularized incomplete beta functions the distribution fits need are implemented privately at
+the top of this file. Filters are stateful objects, so use one instance per signal, and the
+window-based ones allocate their ring buffer up front from `windowSize`.
 
 `src/jvmMain/kotlin/afield/stdlib/timeseries.kt`
 
@@ -1951,6 +2134,21 @@ Constants: `LOWPASS`, `HIGHPASS`, `BANDPASS`, `NOTCH`, `PEAK`, `LOWSHELF`, `HIGH
 
 ## units.kt { #units-kt }
 
+Physical units for Field's spreadsheet-style numbers. A [`Quantity`](math.md#units-kt-quantity) pairs a KotUniL
+`Expression` (normalized to SI) with the display unit the user actually wrote, so `3 | mm`
+still prints as "3 mm".
+
+`withUnit` is what that `| unit` syntax lowers to, and the operator overloads here let a
+[`Quantity`](math.md#units-kt-quantity) mix with plain `Number`s and bare `Expression`s in either order under ordinary
+dimensional-analysis rules. The rest of the file is presentation: `recognizeDerivedUnit`
+matches a dimensional signature against a table of named SI derived units (N, J, W, Pa, Hz, V,
+Ω, ...), `autoScaleExpression` chooses an SI prefix, and `formatUnitSuperscripts` rewrites
+`kg*m2/s2` as `kg·m²/s²`. `formatExpression` runs those in that order.
+
+The unit algebra itself is KotUniL's, not Field's. Two limits are visible in the code: only
+single-factor dimensions are auto-scaled (compound ones like m/s pass through unchanged), and
+the derived-unit table is a fixed list, so anything outside it falls back to raw SI symbols.
+
 `src/jvmMain/kotlin/afield/stdlib/units.kt`
 
 ### Top-level functions { #units-kt-functions }
@@ -1987,8 +2185,8 @@ A numeric value with tracked physical units.
 | `val displayUnit: Expression?` |  |
 | `val displayValue: Double` | The numeric value expressed in the display unit (or SI if none). |
 | `val displaySymbol: String` | The unit symbol string for display purposes. |
-| `val value: Double get()` | The raw SI-normalized numeric value. |
-| `val unitSymbols: String get()` | The SI unit symbol string. |
+| `val value: Double` | The raw SI-normalized numeric value. |
+| `val unitSymbols: String` | The SI unit symbol string. |
 | `operator fun plus(other: Quantity): Quantity` |  |
 | `operator fun minus(other: Quantity): Quantity` |  |
 | `operator fun times(other: Quantity): Quantity` |  |

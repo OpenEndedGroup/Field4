@@ -244,8 +244,13 @@ object StdlibReferenceGenerator {
         val topLevelFunctions: List<Symbol>,
         val topLevelValues: List<Symbol>,
     ) {
-        fun symbolCount(): Int =
-            types.size + types.sumOf { it.members.size } + topLevelFunctions.size + topLevelValues.size
+        fun allSymbols(): List<Symbol> =
+            types.map { it.symbol } + types.flatMap { it.members } + topLevelFunctions + topLevelValues
+
+        fun symbolCount(): Int = allSymbols().size
+
+        /** How many of this file's public symbols actually carry a KDoc summary. */
+        fun documentedCount(): Int = allSymbols().count { it.summary.isNotBlank() }
 
         /**
          * Search patterns that, if found in a docs page's *code*, mean the page really uses this
@@ -512,6 +517,9 @@ object StdlibReferenceGenerator {
             s = s.substring(m.range.last + 1).trimStart()
         }
         s = s.replace("( ", "(").replace(" )", ")").replace(" ,", ",").replace(",)", ")")
+        // `val x: Int get() = …` stops at the `=`, leaving a dangling accessor: it is not part of
+        // the declaration a caller writes.
+        s = s.removeSuffix("get()").trimEnd()
         s = s.trimEnd().trimEnd(':').trimEnd()
         // A trailing comma survives when a parameter list is cut short by the line budget.
         if (s.endsWith(",")) s = s.dropLast(1)
@@ -652,9 +660,11 @@ object StdlibReferenceGenerator {
         appendLine()
         CATEGORY_BLURBS[category]?.let { appendLine(it); appendLine() }
         appendLine(
-            "${documents.size} source file(s), ${documents.sumOf { it.symbolCount() }} public symbol(s). " +
-                "Everything below is the KDoc that lives beside the code — the same text the " +
-                "[completion documentation panel](../completion_doc_browser.md) shows in the editor."
+            "${documents.size} source file(s), ${documents.sumOf { it.symbolCount() }} public symbol(s), " +
+                "${documents.sumOf { it.documentedCount() }} of them carrying KDoc. Everything below is the " +
+                "documentation that lives beside the code — the same text the " +
+                "[completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank " +
+                "summary means the declaration has no KDoc yet, not that this page dropped it."
         )
         appendLine()
         appendLine("<div class=\"codebase-reference\" markdown>")
@@ -730,20 +740,31 @@ object StdlibReferenceGenerator {
                 "`afield.visualization`, with the KDoc that sits next to it in the source."
         )
         appendLine()
+        val total = documents.sumOf { it.symbolCount() }
+        val documented = documents.sumOf { it.documentedCount() }
         appendLine(
-            "**${documents.sumOf { it.symbolCount() }} public symbols across ${documents.size} source files.** " +
-                "Pages are grouped by the `@file:CompletionCategory` label the source itself carries, " +
-                "which is the same grouping the editor's autocomplete uses."
+            "**$total public symbols across ${documents.size} source files**, $documented of them " +
+                "(${documented * 100 / total}%) carrying a KDoc summary. Pages are grouped by the " +
+                "`@file:CompletionCategory` label the source itself carries, which is the same grouping " +
+                "the editor's autocomplete uses."
         )
         appendLine()
-        appendLine("| Category | Files | Symbols | Covers |")
-        appendLine("| --- | --- | --- | --- |")
+        appendLine(
+            "The \"documented\" column is the honest one: it is a coverage report on Field's own KDoc, " +
+                "not a claim about this page. Where a summary is blank the declaration has none yet."
+        )
+        appendLine()
+        appendLine("| Category | Files | Symbols | Documented | Covers |")
+        appendLine("| --- | --- | --- | --- | --- |")
         categories.forEach { category ->
             val inCategory = documents.filter { it.category == category }
-            val blurb = CATEGORY_BLURBS[category]?.substringBefore(". ")?.plus(".") ?: ""
+            val blurb = CATEGORY_BLURBS[category]?.let { firstSentence(it) } ?: ""
+            val symbols = inCategory.sumOf { it.symbolCount() }
+            val documentedHere = inCategory.sumOf { it.documentedCount() }
             appendLine(
-                "| [$category](${slug(category)}.md) | ${inCategory.size} | " +
-                    "${inCategory.sumOf { it.symbolCount() }} | ${escapeCell(blurb)} |"
+                "| [$category](${slug(category)}.md) | ${inCategory.size} | $symbols | " +
+                    "$documentedHere (${if (symbols == 0) 0 else documentedHere * 100 / symbols}%) | " +
+                    "${escapeCell(blurb)} |"
             )
         }
         appendLine()
@@ -751,14 +772,15 @@ object StdlibReferenceGenerator {
         appendLine()
         appendLine("<div class=\"codebase-reference\" markdown>")
         appendLine()
-        appendLine("| File | Category | Symbols | What it is | Used in |")
-        appendLine("| --- | --- | --- | --- | --- |")
+        appendLine("| File | Category | Symbols | Documented | What it is | Used in |")
+        appendLine("| --- | --- | --- | --- | --- | --- |")
         documents.sortedBy { it.fileName.lowercase() }.forEach { doc ->
             val link = "[${doc.fileName}](${slug(doc.category)}.md#${fileAnchor(doc)})"
             val gist = doc.overview?.let { firstSentence(it) }.orEmpty()
             val examples = evidenceLinks(doc, evidence).orEmpty()
             appendLine(
-                "| $link | ${doc.category} | ${doc.symbolCount()} | ${escapeCell(stripLinks(gist))} | $examples |"
+                "| $link | ${doc.category} | ${doc.symbolCount()} | ${doc.documentedCount()} | " +
+                    "${escapeCell(stripLinks(gist))} | $examples |"
             )
         }
         appendLine()

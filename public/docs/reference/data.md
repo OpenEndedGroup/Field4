@@ -4,11 +4,26 @@
 
 Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box.
 
-15 source file(s), 587 public symbol(s). Everything below is the KDoc that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor.
+15 source file(s), 587 public symbol(s), 63 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
 ## FileManager.kt { #filemanager-kt }
+
+Path resolution for the running Field session: turns a short spec into a real `File` or `Path`.
+The `files` / `fileManager` properties (and the `String.file`, `String.path`,
+`String.absolutePath` extensions) hand you the [`FieldFileManager`](data.md#filemanager-kt-fieldfilemanager) for the current box or
+session, which resolves, in order: absolute and `~/` paths; `%document/…` and `%project/…`;
+any name registered with `FileManager.add` or `FileManager["name"] = dir`; globs, by walking
+the search roots and taking the first sorted match; and otherwise a plain relative name looked
+up in the document's `files/` directory and then in the `files/` directory of every workspace
+project the document belongs to.
+
+Resolutions are cached per session and dropped when the named-directory table changes, and a
+child path that would escape its root is rejected. Every lookup is appended to the session
+root's `FILE_MANAGER_ACCESS_HISTORY_PROPERTY` property, trimmed to
+`FileManager.maxAccessHistoryEntries` — so these calls need an active session or Box context and
+will error without one.
 
 `src/jvmMain/kotlin/afield/stdlib/FileManager.kt`
 
@@ -60,6 +75,19 @@ File-related utilities for the active AField session.
 | `fun clearCache()` |  |
 
 ## JSONLineServer.kt { #jsonlineserver-kt }
+
+A TCP listener that turns newline-delimited JSON into a value a box can read each frame.
+[`JSONLineServer`](data.md#jsonlineserver-kt-jsonlineserver) binds a `ServerSocket`, accepts any number of clients on daemon threads, and
+keeps only the most recently received valid JSON line — `JSONLineServer.output` is a snapshot,
+not a queue, so lines that arrive between reads are dropped. Non-JSON lines are counted in
+`JSONLineServer.invalidLineCount` and logged, never thrown.
+
+`jsonl` and [`JSONLineServers`](data.md#jsonlineserver-kt-jsonlineservers) hand out one cached, already-started server per
+(port, bind host, backlog) so that re-running a box does not fight itself for the port;
+ephemeral port 0 servers are rejected by the cache and must be built with `autoStart = false`.
+Returning a [`JSONLineServer`](data.md#jsonlineserver-kt-jsonlineserver) from a box keeps it running for that box's run —
+`registerJSONLineServerReturnValue` installs the `ReturnValueRegistry` handler that does it, and
+an uncached server is stopped when the run ends.
 
 `src/jvmMain/kotlin/afield/stdlib/JSONLineServer.kt`
 
@@ -116,6 +144,19 @@ Small TCP server for newline-delimited JSON streams.
 
 ## JSONProcess.kt { #jsonprocess-kt }
 
+Runs an external command and reads newline-delimited JSON from its stdout. Build a
+[`JSONProcess`](data.md#jsonprocess-kt-jsonprocess) with a working directory, a command and an optional environment; the most recent
+parsable stdout line is exposed as `JSONProcess.output` (an `org.json.JSONObject`) — a snapshot
+of the latest line, not a queue. A leading `~` is expanded in the working directory and in the
+executable, but not in the remaining arguments.
+
+Returning a [`JSONProcess`](data.md#jsonprocess-kt-jsonprocess) from a box starts the subprocess and ties it to that run:
+`registerJSONProcessReturnValue` installs the `ReturnValueRegistry` handler, and the process is
+destroyed — then force-destroyed if it will not exit — when the box re-runs or the job
+completes. stdout and stderr are drained on daemon threads; non-JSON lines, stderr output and a
+failure to start are recorded in `JSONProcess.lastError` and logged rather than thrown, so check
+`JSONProcess.running`, `JSONProcess.exitCode` and `JSONProcess.hasOutput` to know what happened.
+
 `src/jvmMain/kotlin/afield/stdlib/JSONProcess.kt`
 
 ### Top-level functions { #jsonprocess-kt-functions }
@@ -144,6 +185,21 @@ Small TCP server for newline-delimited JSON streams.
 | `fun stop()` |  |
 
 ## SemanticSearchManager.kt { #semanticsearchmanager-kt }
+
+Box-facing wrapper around `afield.ai.SemanticRetrievalService`, Field's embedding-based search
+over source, docs and workspace boxes. Make a [`SemanticSearchManager`](data.md#semanticsearchmanager-kt-semanticsearchmanager) and call
+`SemanticSearchManager.find` for the full [`SemanticSearchResult`](data.md#semanticsearchmanager-kt-semanticsearchresult) (message, status, hits) or
+`SemanticSearchManager.findTopK` / `SemanticSearchManager.findWorkspaceTopK` when you just want
+a `List<`[`SemanticSearchHit`](data.md#semanticsearchmanager-kt-semanticsearchhit)`>`; each hit carries score, kind, corpus, path and line range, and
+prints as one readable line. Queries can be narrowed by corpus, path prefix, kind, document,
+box or property, and note that `find` passes `rebuildIfEmpty = true` by default.
+
+The remaining methods administer the service rather than query it:
+`SemanticSearchManager.status`, `SemanticSearchManager.settings`, `SemanticSearchManager.enable`,
+`SemanticSearchManager.saveSettings`, `SemanticSearchManager.downloadPreset`,
+`SemanticSearchManager.rebuild`, `SemanticSearchManager.deleteIndex` and
+`SemanticSearchManager.deleteModels`. Every call delegates straight through and blocks; the only
+state kept here is `SemanticSearchManager.lastResult`.
 
 `src/jvmMain/kotlin/afield/stdlib/SemanticSearchManager.kt`
 
@@ -205,6 +261,22 @@ Small TCP server for newline-delimited JSON streams.
 
 ## booleannetworks.kt { #booleannetworks-kt }
 
+Synchronous Boolean networks and the pictures you draw of them. A [`BooleanNetwork`](data.md#booleannetworks-kt-booleannetwork) is a list of
+[`BoolNode`](data.md#booleannetworks-kt-boolnode)s whose update lambdas all fire at once on the current state vector;
+`BooleanNetwork.trajectory` and `BooleanNetwork.trajectoryUntilCycle` run one initial state
+forward, and `BooleanNetwork.findAttractors` walks the whole `2^size` state-transition graph to
+return every [`Attractor`](data.md#booleannetworks-kt-attractor) with its basin — it is `O(2^size)` and returns an empty list above 20
+nodes.
+
+The drawing helpers return `FLine`s for a box: `BooleanNetwork.drawUnrolled` (spacetime grid),
+`BooleanNetwork.drawNetworkGraph` (wiring diagram on a circle),
+`BooleanNetwork.drawStateTransitionGraph` (only for `size <= 6`),
+`BooleanNetwork.drawAttractorBasins`, and the standalone `drawRhythmGrid` for any list of
+Boolean lane states. `BooleanNetwork.notateHtml` and
+`BooleanNetwork.notateAttractorsHtml` emit HTML tables instead, `BooleanNetwork.printAttractors`
+plain text. Ready-made networks: `toggleNetwork`, `threeNodeNetwork`,
+`segmentPolarityNetwork` and the random N-K `kauffmanNetwork`.
+
 `src/jvmMain/kotlin/afield/stdlib/booleannetworks.kt`
 
 **Used in:** [Boolean networks to FLine examples](../boolean_networks_examples.md), [Boolean network music examples](../boolean_network_music_examples.md)
@@ -251,7 +323,7 @@ A synchronous Boolean network with `size` binary-state nodes.
 
 | Declaration | Summary |
 | --- | --- |
-| `val size: Int get()` | Number of nodes. |
+| `val size: Int` | Number of nodes. |
 | `fun stateToInt(state: BooleanArray): Int` | Pack a state array to an integer (node `i` maps to bit `i`, LSB-first). |
 | `fun intToState(n: Int): BooleanArray` | Unpack an integer to a state array (bit `i` maps to node `i`). |
 | `fun step(state: BooleanArray): BooleanArray` | Compute the synchronous successor state: apply all update functions once. |
@@ -271,6 +343,23 @@ An attractor of the Boolean network: the minimal invariant set(s) reached after 
 | `val basin: Set<Int>` |  |
 
 ## clustering.kt { #clustering-kt }
+
+Clustering for lists of `Float`, `Vec2`, `Vec3` and `Vec4`, mostly wrapping the Smile library
+(`smile.clustering`). Hierarchical clustering — `floatAgglomerative`, `vec2Agglomerative`,
+`vec3Agglomerative`, `vec4Agglomerative` — returns an [`AgglomerativeClustering`](data.md#clustering-kt-agglomerativeclustering) holding the
+merge tree, which you cut into a [`ClusterLayer`](data.md#clustering-kt-clusterlayer) with `AgglomerativeClustering.partition`,
+`AgglomerativeClustering.partitionByHeight` or `AgglomerativeClustering.layers`. The
+`…KMedoids` functions run Smile's `KMedoids` `KMedoidsOptions.runs` times and keep the lowest
+distortion; the `…KMedians` functions are a local Lloyd-style L1 implementation in this file
+with its own restarts and D²-weighted seeding. Cuts of the merge tree come back with labels
+renumbered by first appearance; every result type can be turned into a [`ClusterLayer`](data.md#clustering-kt-clusterlayer).
+
+`visualizeVec3ClusterLayers3D`, `visualizeVec2ClusterLayers3D` and
+`visualizeFloatClusterLayers3D` — plus the `AgglomerativeClustering.visualizeVec3`-style
+extensions that build the layers for you — stack a list of [`ClusterLayer`](data.md#clustering-kt-clusterlayer)s along one axis and
+return `FLine`s in a map keyed `"cluster-points"`, `"cluster-points-halo"`,
+`"cluster-centers"`, `"cluster-centers-halo"`, `"cluster-links"` and `"cluster-guides"`.
+[`ClusterLayerVizOptions`](data.md#clustering-kt-clusterlayervizoptions) controls spacing, sizes and which of those layers are emitted.
 
 `src/jvmMain/kotlin/afield/stdlib/clustering.kt`
 
@@ -412,6 +501,24 @@ Constants: `EUCLIDEAN`, `MANHATTAN`.
 
 ## dynamic_graph_systems.kt { #dynamic-graph-systems-kt }
 
+Time-varying point-and-edge systems: point clouds that move every frame while the graph joining
+them is continually reinforced and decayed. State lives in [`DynamicPointState`](data.md#dynamic-graph-systems-kt-dynamicpointstate) (points, optional
+`Vec4` labels, a clock), edges in [`DynamicEdgeList`](data.md#dynamic-graph-systems-kt-dynamicedgelist) (weight / age / ttl per edge, thinned by
+`DynamicEdgeList.decayLinear` or `DynamicEdgeList.decayExponential`), and neighbour queries go
+through [`Vec3SpatialHash`](data.md#dynamic-graph-systems-kt-vec3spatialhash), which is rebuilt each step because the cloud moves.
+
+There are two extension points. A [`DynamicGraphSystem`](data.md#dynamic-graph-systems-kt-dynamicgraphsystem) only adds and reinforces edges —
+[`Vec3BreathingAnisotropicKnnSystem`](data.md#dynamic-graph-systems-kt-vec3breathinganisotropicknnsystem), [`Vec3FlowlineAdvectionGraphSystem`](data.md#dynamic-graph-systems-kt-vec3flowlineadvectiongraphsystem),
+[`Vec3LocalTangentTriangulationSystem`](data.md#dynamic-graph-systems-kt-vec3localtangenttriangulationsystem), [`Vec3PersistentProximityHysteresisSystem`](data.md#dynamic-graph-systems-kt-vec3persistentproximityhysteresissystem),
+[`Vec3SignalRoutingGraphSystem`](data.md#dynamic-graph-systems-kt-vec3signalroutinggraphsystem), [`Vec3AlphaEventHypergraphCollapseSystem`](data.md#dynamic-graph-systems-kt-vec3alphaeventhypergraphcollapsesystem). A
+[`DynamicPointProcess`](data.md#dynamic-graph-systems-kt-dynamicpointprocess) moves, adds and removes points against [`DynamicPointKinetics`](data.md#dynamic-graph-systems-kt-dynamicpointkinetics)
+(velocity / resource / alive) and several are composed in order by [`DynamicProcessPipeline`](data.md#dynamic-graph-systems-kt-dynamicprocesspipeline).
+
+Drive one frame with `stepDynamicGraph` or its decaying variants; `dynamicGraphSnapshot` and
+`DynamicEdgeList.toPointGraph` convert the live edge store into the static `PointGraph` the rest
+of the graph library expects, and `exampleDynamicMorphogenesisStep` wires a whole frame
+together. Pure Kotlin, single-threaded, no external dependency.
+
 `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt`
 
 ### Top-level functions { #dynamic-graph-systems-kt-functions }
@@ -435,7 +542,7 @@ Dynamic point state for time-varying graph systems.
 | `val points: MutableList<Vec3>` |  |
 | `val labels: List<Vec4>?` |  |
 | `var time: Float` |  |
-| `val pointCount: Int get()` |  |
+| `val pointCount: Int` |  |
 
 ### DynamicGraphEdge { #dynamic-graph-systems-kt-dynamicgraphedge }
 
@@ -728,6 +835,20 @@ Spatial hash for dynamic local-neighborhood queries. This is the best fit here b
 
 ## growing.kt { #growing-kt }
 
+A 3-regular graph that grows by local rewriting. Every node in a [`GrowingGraph`](data.md#growing-kt-growinggraph) has exactly
+three neighbours and one bit of state, and `GrowingGraph.grow` alternates two phases: compute
+each node's next state and a "dividing" flag by indexing an integer rule with
+`neighbour-count + 4 × state`, then apply a division to each flagged node that adds two nodes
+and rewires their edges.
+
+Seed the adjacency with `GrowingGraph.setNeighbors` (it must be a consistent 3-regular graph or
+the rewrite throws), set states with `GrowingGraph.setState` or `GrowingGraph.randomizeStates`,
+then call `grow()` per step and use the returned `GrowingGraph.GrowDelta` together with
+`GrowingGraph.newEdgeU` / `GrowingGraph.newEdgeV` to draw only what changed. Storage is flat
+`IntArray`/`ByteArray` with no per-node allocation and no allocation in the inner loops except
+when capacity doubles; pure Kotlin, single-threaded, with a built-in xorshift64* generator for
+the optional `flipProb` noise. `main` is a runnable 10-node demo.
+
 `src/jvmMain/kotlin/afield/stdlib/growing.kt`
 
 ### Top-level functions { #growing-kt-functions }
@@ -748,8 +869,8 @@ Self-contained Kotlin port of the "GrowingGraph" algorithm: - 3-regular graph: e
 | `var rule: Int` |  |
 | `var flipProb: Double` |  |
 | `data class GrowDelta(val newNodeStart: Int, val newNodeCount: Int, val newEdgeStart: Int, val newEdgeCount: Int)` |  |
-| `val newEdgeU: IntArray get()` |  |
-| `val newEdgeV: IntArray get()` |  |
+| `val newEdgeU: IntArray` |  |
+| `val newEdgeV: IntArray` |  |
 | `fun setNeighbors(node: Int, a: Int, b: Int, c: Int)` | Set neighbor list for a node (must be exactly 3 neighbors). |
 | `fun neighborAt(node: Int, slot: Int): Int` | Get the neighbor at slot 0..2 for a node. |
 | `fun stateOf(node: Int): Int` | Get state (0/1). |
@@ -758,6 +879,20 @@ Self-contained Kotlin port of the "GrowingGraph" algorithm: - 3-regular graph: e
 | `fun grow(): GrowDelta` | One step. Alternates between: - Phase 0: compute next states + dividing flags from current graph - Phase 1: apply division rewrites for nodes with dividing=1 |
 
 ## jsonparsing.kt { #jsonparsing-kt }
+
+Two related things: a small hand-written JSON reader, and a macro that generates a typed parser
+from a terse schema. `parseJson` turns text into a [`JValue`](data.md#jsonparsing-kt-jvalue) tree — [`JObject`](data.md#jsonparsing-kt-jobject), [`JArray`](data.md#jsonparsing-kt-jarray),
+[`JString`](data.md#jsonparsing-kt-jstring), [`JNumber`](data.md#jsonparsing-kt-jnumber) (which keeps the raw digits rather than converting), [`JBool`](data.md#jsonparsing-kt-jbool), [`JNull`](data.md#jsonparsing-kt-jnull) — and
+throws [`JsonParseException`](data.md#jsonparsing-kt-jsonparseexception) with a character offset on bad input. No external JSON library is
+involved.
+
+`JsonSchemaGen.generateSource` compiles a schema such as `{name: s, at: [f, f], tags: `s...`,
+...}` into Kotlin source for a data class with a `fromString` companion: `f`/`i`/`s` are the
+leaves, ``x...`` is a list, `[a, b]` is a `Pair` (2, 3 or 4 floats collapse to `Vec2`/`Vec3`/
+`Vec4`), and a trailing `...` permits extra JSON fields instead of rejecting them. In a box you
+reach this through the `jsonParser<Name>("schema")` macro registered by
+`registerJsonParsingMacros`, which inserts the generated source into the preamble. Inline nested
+objects are not supported.
 
 `src/jvmMain/kotlin/afield/stdlib/jsonparsing.kt`
 
@@ -816,6 +951,18 @@ Self-contained Kotlin port of the "GrowingGraph" algorithm: - 3-regular graph: e
 | `val helperBlock` |  |
 
 ## numpy.kt { #numpy-kt }
+
+Reader for NumPy's `.npy` and `.npz` on-disk formats. `npy` and `npz` are the short entry
+points over [`NumpyIO`](data.md#numpy-kt-numpyio); `.npz` is unzipped into a `LinkedHashMap` of entry name to [`NpyArray`](data.md#numpy-kt-npyarray) and
+must contain at least one `.npy` member. An [`NpyArray`](data.md#numpy-kt-npyarray) holds the raw payload bytes plus the
+shape, the Fortran-order flag and an [`NpyDType`](data.md#numpy-kt-npydtype), and converts on demand via
+`NpyArray.asDoubleArray`, `NpyArray.asFloatArray`, `NpyArray.asLongArray`,
+`NpyArray.asULongArray`, `NpyArray.asBooleanArray` and `NpyArray.asComplexDoublePairs` —
+Fortran-ordered data is remapped to C order unless you ask for `NpyLinearOrder.STORAGE`.
+
+Read-only and pure JVM: there is no writer and no ndarray arithmetic. Format versions 1–3 are
+accepted; bool, signed/unsigned int, half/float/double and complex64/128 decode, and any other
+dtype kind (`NpyKind.OTHER`) throws. Element and byte counts must fit in an `Int`.
 
 `src/jvmMain/kotlin/afield/stdlib/numpy.kt`
 
@@ -896,6 +1043,18 @@ Constants: `BOOL`, `SIGNED_INT`, `UNSIGNED_INT`, `FLOAT`, `COMPLEX`, `OTHER`.
 
 ## saved.kt { #saved-kt }
 
+Per-box persistence for Kotlin values, on top of kotlinx.serialization. `var n by saved { 0 }`
+declares a property that loads itself on first read and writes itself back on every assignment,
+as JSON at `<document directory>/<box id>/<property name>.json`, encoded with Field's
+`FieldJson` and written through the atomic `safeSave`. The no-argument `saved` overload skips
+the default lambda but only for `List`, `Set` and `Map` (see `defaultSavedValue`); anything else
+demands an explicit default.
+
+The delegate itself is [`SavedJsonValue`](data.md#saved-kt-savedjsonvalue); it takes the box from its receiver or from the ambient
+`Box.context`, so it needs an initialised box and session and errors out otherwise. `toJSONFile`
+and `fromJSONFile` do the same encode/decode against an explicit `File` with no delegate. Any
+failure to read, write or serialize is rethrown as a `SerializationException` naming the file.
+
 `src/jvmMain/kotlin/afield/stdlib/saved.kt`
 
 ### Top-level functions { #saved-kt-functions }
@@ -917,6 +1076,18 @@ Constants: `BOOL`, `SIGNED_INT`, `UNSIGNED_INT`, `FLOAT`, `COMPLEX`, `OTHER`.
 | `override fun setValue(thisRef: Any?, property: KProperty<*>, value: T)` |  |
 
 ## smile_neighbors.kt { #smile-neighbors-kt }
+
+Nearest-neighbour indexes over `Vec2` / `Vec3` point lists, wrapping Smile's `KDTree` and `LSH`.
+Build one with `vec2NN` or `vec3NN`: both copy the points, reject non-finite coordinates, and
+return a [`Vec2NNIndex`](data.md#smile-neighbors-kt-vec2nnindex) / [`Vec3NNIndex`](data.md#smile-neighbors-kt-vec3nnindex) exposing `nearest`, `kNearest` and `withinRadius`. Results
+come back as [`VecNeighbor2`](data.md#smile-neighbors-kt-vecneighbor2) / [`VecNeighbor3`](data.md#smile-neighbors-kt-vecneighbor3) carrying the index into the original list and the
+true Euclidean distance, radius results sorted nearest-first.
+
+`VecNNMode.APPROXIMATE` (the default) builds an LSH alongside the KD-tree and silently degrades
+to exact mode, with a message on stderr, if LSH construction fails. Either mode falls back to a
+brute-force scan whenever the backing index returns too few candidates, so answers stay correct
+but a query can cost `O(n log n)`. [`VecNNBuildOptions`](data.md#smile-neighbors-kt-vecnnbuildoptions) tunes the LSH parameters and can forbid
+duplicate points.
 
 `src/jvmMain/kotlin/afield/stdlib/smile_neighbors.kt`
 
@@ -990,6 +1161,20 @@ Constants: `APPROXIMATE`, `EXACT`.
 
 ## sorting_networks.kt { #sorting-networks-kt }
 
+Sorting networks as data: a [`SortingNetwork`](data.md#sorting-networks-kt-sortingnetwork) is a wire count plus an ordered list of
+[`SortingComparator`](data.md#sorting-networks-kt-sortingcomparator) compare-and-swaps. Build one with `SortingNetwork.bubble`,
+`SortingNetwork.oddEvenMerge` (Batcher's iterative odd-even merge) or `SortingNetwork.anneal`
+(simulated-annealing search for a shorter network), then check it with
+`SortingNetwork.isSorting`, which enumerates all `2^n` binary inputs by the 0-1 principle up to
+n = 20 and falls back to 4096 random probes above that.
+
+`SortingNetwork.layers` assigns comparators to their earliest parallel layer (ASAP scheduling)
+and drives `SortingNetwork.depth`, `SortingNetwork.notation` — a `"0:1 2:3 | 0:2 1:3"` string
+that round-trips through `SortingNetwork.fromNotation` — `SortingNetwork.asciiDiagram` and
+`SortingNetwork.toFLines` for `Box.lines(...)`. Pure Kotlin apart from `FLine`; the annealing
+search is CPU-bound (each validity check is `O(2^n × |comparators|)`) and reports through
+`afield.progressReporter`.
+
 `src/jvmMain/kotlin/afield/stdlib/sorting_networks.kt`
 
 **Used in:** [Sorting networks to FLine examples](../sorting_networks_examples.md)
@@ -1025,6 +1210,17 @@ A sorting network on `n` wires.
 | `override fun hashCode(): Int` |  |
 
 ## tuio.kt { #tuio-kt }
+
+A minimal TUIO receiver. [`TuioReceiver`](data.md#tuio-kt-tuioreceiver) opens a UDP OSC port (3333 by default) through JavaOSC
+and listens on `/tuio/2Dcur` and `/tuio/2Dobj` only — no blobs, no 2.5D or 3D profiles. It keeps
+the live cursor and object sets, deduces additions and removals by diffing successive ALIVE
+messages, and on each FSEQ message hands your `TuioListener` one `TuioReceiver.Frame` holding
+both the full state and the per-frame added / updated / removed lists.
+
+Call `TuioReceiver.start` to bind and `TuioReceiver.close` (or `stop()`) to release the port;
+both are idempotent. Callbacks arrive on JavaOSC's receive thread, not yours, and all internal
+state is guarded by one lock. Numeric OSC arguments are coerced leniently, and malformed `set`
+messages are skipped rather than reported. `main` is a demo that prints frame deltas.
 
 `src/jvmMain/kotlin/afield/stdlib/tuio.kt`
 
@@ -1104,8 +1300,8 @@ Symmetric set of relative cell offsets used for learning and propagation.
 
 | Declaration | Summary |
 | --- | --- |
-| `val directionCount: Int get()` |  |
-| `val offsets: List<WfcOffset> get()` |  |
+| `val directionCount: Int` |  |
+| `val offsets: List<WfcOffset>` |  |
 | `fun offset(direction: Int): WfcOffset` |  |
 | `fun opposite(direction: Int): Int` |  |
 | `fun directionOf(dx: Int, dy: Int): Int` |  |
@@ -1173,7 +1369,7 @@ A fixed-size tile atlas extracted from a PNG. Pixels are ARGB ints.
 | `val sampleIds: IntArray` |  |
 | `val sampleWidthInTiles: Int` |  |
 | `val sampleHeightInTiles: Int` |  |
-| `val tileCount: Int get()` |  |
+| `val tileCount: Int` |  |
 | `fun toRules(wrapX: Boolean = false, wrapY: Boolean = false, neighborhood: WfcNeighborhood = WfcNeighborhood.VonNeumann): WfcRules` |  |
 | `fun render(tileIds: IntArray, outWidthInTiles: Int, outHeightInTiles: Int): BufferedImage` |  |
 
@@ -1191,7 +1387,7 @@ Overlapping WFC patterns extracted from a PNG. Each solver cell is a pattern anc
 | `val sampleIds: IntArray` |  |
 | `val sampleWidthInPatterns: Int` |  |
 | `val sampleHeightInPatterns: Int` |  |
-| `val tileCount: Int get()` |  |
+| `val tileCount: Int` |  |
 | `fun toRules(neighborhood: WfcNeighborhood = WfcNeighborhood.VonNeumann): WfcRules` |  |
 | `fun render(patternIds: IntArray, outWidth: Int, outHeight: Int, originX: Int = 0, originY: Int = 0): BufferedImage` |  |
 
@@ -1209,7 +1405,7 @@ A fixed-size tile atlas extracted from a row-major 2D FloatArray.
 | `val sampleIds: IntArray` |  |
 | `val sampleWidthInTiles: Int` |  |
 | `val sampleHeightInTiles: Int` |  |
-| `val tileCount: Int get()` |  |
+| `val tileCount: Int` |  |
 | `fun toRules(wrapX: Boolean = false, wrapY: Boolean = false, neighborhood: WfcNeighborhood = WfcNeighborhood.VonNeumann): WfcRules` |  |
 | `fun render(tileIds: IntArray, outWidthInTiles: Int, outHeightInTiles: Int): FloatArray` |  |
 
@@ -1227,7 +1423,7 @@ Overlapping WFC patterns extracted from a row-major 2D FloatArray.
 | `val sampleIds: IntArray` |  |
 | `val sampleWidthInPatterns: Int` |  |
 | `val sampleHeightInPatterns: Int` |  |
-| `val tileCount: Int get()` |  |
+| `val tileCount: Int` |  |
 | `fun toRules(neighborhood: WfcNeighborhood = WfcNeighborhood.VonNeumann): WfcRules` |  |
 | `fun render(patternIds: IntArray, outWidth: Int, outHeight: Int, originX: Int = 0, originY: Int = 0): FloatArray` |  |
 

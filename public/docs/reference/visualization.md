@@ -4,7 +4,7 @@
 
 Turning a value into something you can look at, without leaving the box.
 
-4 source file(s), 225 public symbol(s). Everything below is the KDoc that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor.
+4 source file(s), 225 public symbol(s), 13 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -188,7 +188,7 @@ Constants: `PRINCIPAL`, `AUXILIARY`.
 
 | Declaration | Summary |
 | --- | --- |
-| `val arity: Int get()` |  |
+| `val arity: Int` |  |
 
 ### Port { #interactionnets-kt-port }
 
@@ -199,7 +199,7 @@ Constants: `PRINCIPAL`, `AUXILIARY`.
 | `val node: Node` |  |
 | `val index: Int` |  |
 | `val kind: PortKind` |  |
-| `val id: String get()` |  |
+| `val id: String` |  |
 | `override fun toString(): String` |  |
 
 ### Node { #interactionnets-kt-node }
@@ -212,7 +212,7 @@ Constants: `PRINCIPAL`, `AUXILIARY`.
 | `val type: AgentType` |  |
 | `val state: NodeState` |  |
 | `val ports: List<Port>` |  |
-| `val principal: Port get()` |  |
+| `val principal: Port` |  |
 | `fun aux(i: Int): Port` |  |
 | `override fun toString(): String` |  |
 
@@ -238,8 +238,8 @@ Constants: `PRINCIPAL`, `AUXILIARY`.
 
 | Declaration | Summary |
 | --- | --- |
-| `val nodes: Collection<Node> get()` |  |
-| `val edges: Collection<Edge> get()` |  |
+| `val nodes: Collection<Node>` |  |
+| `val edges: Collection<Edge>` |  |
 | `fun node(id: String): Node` |  |
 | `fun positionOf(node: Node): Vec2` |  |
 | `fun velocityOf(node: Node): Vec2` |  |
@@ -299,7 +299,7 @@ Constants: `PRINCIPAL`, `AUXILIARY`.
 | Declaration | Summary |
 | --- | --- |
 | `operator fun get(ref: NodeRef): Node` |  |
-| `val nodes: Collection<Node> get()` |  |
+| `val nodes: Collection<Node>` |  |
 
 ### NetBuilder { #interactionnets-kt-netbuilder }
 
@@ -358,7 +358,7 @@ Constants: `PRINCIPAL`, `AUXILIARY`.
 | `fun stateCopy(nodeOrdinal: Int): NodeState` |  |
 | `fun velocity(nodeOrdinal: Int): Vec2` |  |
 | `fun blendedState(weightToFirst: Double = 0.5): NodeState` |  |
-| `val pairEnergy: Double get()` |  |
+| `val pairEnergy: Double` |  |
 | `fun branchImpulse(branch: Int, branches: Int = 2, amount: Double = radius * 0.35): Vec2` |  |
 
 ### RewriteEvent { #interactionnets-kt-rewriteevent }
@@ -467,7 +467,7 @@ Constants: `FIRST_FOUND`, `LEFTMOST_BY_ID`, `RIGHTMOST_BY_ID`, `RANDOM`, `HIGHES
 
 | Declaration | Summary |
 | --- | --- |
-| `val rule: RewriteRule get()` |  |
+| `val rule: RewriteRule` |  |
 
 ### PairSelectors { #interactionnets-kt-pairselectors }
 
@@ -534,6 +534,23 @@ This bundle is intentionally pragmatic rather than dogmatic.
 
 ## LazyValueVisualizer.kt { #lazyvaluevisualizer-kt }
 
+The lazy half of value display: rather than inline a large structure, show one summary line plus
+links into the server-side browsers.
+
+`LazyValueVisualizer.visualize` — reached in a box as `h2` — passes anything small or
+unrecognised straight to `ValueVisualizer`. For maps, lists, arrays and `FloatBuffer` /
+`IntBuffer` it instead retains the value under a token and emits a summary, `outliner` and
+`columns` links, and an embedded `/h2-explorer` iframe. Those tokens live in an in-memory
+retention table (10 minutes, 256 entries), so the links only resolve against the running server
+and go stale after that.
+
+The private `Browsable` wrappers behind those routes page rather than copy: children are grouped
+into range-labelled directories of at most 96 entries, and a map with more than 20,000 entries is
+iterated on demand instead of snapshotted. `registerH2Value` adds a per-type adapter returning an
+[`H2ValueSnapshot`](visualization.md#lazyvaluevisualizer-kt-h2valuesnapshot) when a type should be summarised or unwrapped differently, and
+`lazyInlineExpanderHtml` is the inline "… +N more" link `ValueVisualizer` emits for elided
+content.
+
 `src/jvmMain/kotlin/afield/visualization/LazyValueVisualizer.kt`
 
 ### Top-level functions { #lazyvaluevisualizer-kt-functions }
@@ -575,6 +592,20 @@ This bundle is intentionally pragmatic rather than dogmatic.
 | `fun visualize(value: Any?, appendable: Boolean = false): String` |  |
 
 ## ValueVisualizer.kt { #valuevisualizer-kt }
+
+The default value display for Field output areas: a Kotlin value in, a compact HTML fragment out.
+
+`ValueVisualizer.visualize` is the entry point; `Any.h` and `Box.viz` are how it is usually
+reached — `.h` hands back the fragment, `viz` displays it into a channel of a live box. A type
+can take over its own rendering either by implementing [`ToHTML`](visualization.md#valuevisualizer-kt-tohtml) or by registering a printer with
+`registerValuePrinter`; both are trusted to return well-formed HTML, while ordinary strings,
+characters, keys and reflected values are escaped here.
+
+Output is deliberately bounded — [`ValueVisualizer`](visualization.md#valuevisualizer-kt-valuevisualizer)'s own KDoc below covers dispatch order, the
+built-in formatters and the size limits. Whatever those limits elide (the tail of a long string
+or list, extra fields of an object) becomes an expander link, resolved later by
+`renderLazyFragment` from the server's `/lazy-value-fragment` route, so the rest of the value is
+only ever rendered if someone asks for it.
 
 `src/jvmMain/kotlin/afield/visualization/ValueVisualizer.kt`
 
@@ -624,6 +655,19 @@ Render a Kotlin value as a compact, escaped HTML fragment for Field output areas
 | `fun visualize(value: Any?, appendable: Boolean = false): String` | Visualize any value and return compact HTML representation |
 
 ## plotly.kt { #plotly-kt }
+
+Plotly helpers — the short way to get a chart out of a box, wrapping `space.kscience.plotly`.
+
+`linePlot`, `scatter`, `scatterSized` and `violin` cover the common shapes (lists of numbers,
+`Vec2`, `Vec3`) and hand back a `Plot` already run through `darkMode`, the repo dark theme with
+data-first margins. `showSignals` goes one step further: pass `"label" to values` pairs and it
+traces them against a shared x with the `signalPalette`, optionally min-max normalized and with
+dashed reference marks, then displays the plot into a channel of a live `Box` — it is already on
+screen when it returns, so do not display it again.
+
+`toHtml` renders a `Plot` into an HTML fragment via [`PlotlyIntegration`](visualization.md#plotly-kt-plotlyintegration). That fragment calls
+`Plotly.react` in the browser, so the page has to have the Plotly library loaded already;
+without it the fragment logs to the console and draws nothing.
 
 `src/jvmMain/kotlin/afield/visualization/plotly.kt`
 

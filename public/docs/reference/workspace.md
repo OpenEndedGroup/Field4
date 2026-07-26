@@ -4,11 +4,24 @@
 
 The box's own surroundings: properties, persistence, and the handful of names every box already has in scope.
 
-2 source file(s), 76 public symbol(s). Everything below is the KDoc that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor.
+2 source file(s), 76 public symbol(s), 5 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
 ## props.kt { #props-kt }
+
+The `prop` / `rootProp` macro pair — the typed, inheritable box-property slot.
+
+`prop` and `rootProp` exist only as the declarations that make `prop<Int>(foo)` resolve; neither
+is meant to run, and calling one throws `MacroRegistry.MacroNotExpandedException`. The real work
+happens at expansion time in `macro_prop` and `macro_root_prop`, which are handed the type
+argument and the name, and return an `Insert` that rewrites the call site to the bare name (or
+`root.name`) and pushes two declarations into the box's preamble: a
+`var Box.<name> by Inheritance<T>()` and a `val Once.<name> by Onceing<T>()`. Both generated
+lines carry the trailing empty-comment marker that makes the preamble gather copy them down into
+child boxes, and an import for `T` is added via `kotlinImportStatementFor`. `macro_root_prop`
+differs only in targeting `this.root`, so the accessors land on the document root rather than
+on the calling box.
 
 `src/jvmMain/kotlin/afield/stdlib/props.kt`
 
@@ -22,6 +35,27 @@ The box's own surroundings: properties, persistence, and the handful of names ev
 | `fun Box.macro_root_prop(contents: List<String>): Insert?` |  |
 
 ## stdlib.kt { #stdlib-kt }
+
+The general-purpose helpers that every Field box already has in scope.
+
+Box code is compiled with `import afield.stdlib.*` in its preamble and with `Box` as an
+implicit receiver, so everything here — including the `Box.` extensions — can be called
+unqualified from inside a box.
+
+The substantial part is the property-delegate machinery that `prop` and `@exported` generate
+against: [`Delegation`](workspace.md#stdlib-kt-delegation) (stores on the receiver's own property bag), [`Inheritance`](workspace.md#stdlib-kt-inheritance) (walks up
+`parents` until some ancestor has the property, otherwise throws
+[`MissingInheritedPropertyException`](workspace.md#stdlib-kt-missinginheritedpropertyexception) with a message naming the property and the box), and
+[`InheritanceFromContext`](workspace.md#stdlib-kt-inheritancefromcontext) (same walk, but prefers each box's live Kotlin variables over raw
+properties).
+
+The rest is deliberately small conveniences: graph access (`named`, `+=` / `-=` for
+connect/disconnect, `__m` markers); execution control (`begin`, `end`, `start`, `animate`,
+`aside`, `cell`); frame-presentation logging (`frameLogStart`, `frameLogStop`,
+`frameLogMark`, `frameLogLine`); matrix and buffer building (`mat4`, `mat3`, `FloatBuffer.add`,
+`IntBuffer.add`, `ByteBuffer.putf16`); and terse numeric/collection/string shorthands
+(`Number.f` / `.i` / `.l` / `.d`, `fa`, `ia`, `Int.alphas`, `String.times`, `List.m` / `.s`,
+`String.r`, and `highlightSyntax` behind `String.h` / `String.ss`).
 
 `src/jvmMain/kotlin/afield/stdlib/stdlib.kt`
 

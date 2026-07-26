@@ -4,11 +4,23 @@
 
 The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. Build them, compose them, fit them, mutate them, and rewrite their graphs with user-authored patterns.
 
-10 source file(s), 339 public symbol(s). Everything below is the KDoc that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor.
+10 source file(s), 339 public symbol(s), 84 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
 ## FnMetric.kt { #fnmetric-kt }
+
+The objective shared by both halves of the function-search family: `FnMetric`, a `fun interface`
+scoring a candidate signal against a target on one even sample grid (lower is better), plus a
+companion of ready-made metrics — `rmse`, `mae`, `lp`, `maxError`, `huber`, `logCosh`,
+`correlation` — and the `fromResidual` / `window` builders behind them.
+
+`FnMetric.lossAgainst` turns a metric into the `(Fn) -> Double` closure the gradient fitters in
+FunctionFit.kt descend, sampling the target once and reusing it across the finite-difference
+inner loop; the same metrics are what `matchFitness` in FunctionEvolve.kt negates, so structural
+search and numeric fitting can run under one notion of "close". Any metric — including a
+hand-written lambda — must ignore indices where either side is non-finite and return
+`Double.POSITIVE_INFINITY` when no index is jointly finite, which callers read as maximally bad.
 
 `src/jvmMain/kotlin/afield/stdlib/FnMetric.kt`
 
@@ -19,6 +31,24 @@ The function algebra — Field's first-class, evolvable, graph-rewritable notion
 | `fun FnMetric.lossAgainst(target: Functions.Fn, domain: Functions.Domain = Functions.Domain.DEFAULT, samples: Int = 128): (Functions.Fn) -> Double` | Builds a loss closure (lower is better) that scores a candidate `Fn` against `target` under this metric, sampling both on an even grid of `samples` points across `domain` with the fitters' NaN-safe `outside = NaN` convention. The target is sampled once and reused, so the returned closure is cheap to call in the finite-difference inner loop. |
 
 ## FunctionEvolve.kt { #functionevolve-kt }
+
+Search over the *structure* of `Fn` graphs — the genetic counterpart to the gradient fitting of
+a fixed structure's numbers in FunctionFit.kt.
+
+[`FnMutations`](function.md#functionevolve-kt-fnmutations) holds the seeded mutation operators (jitter and nudge numeric leaves, transmute an
+op within its `OpRegistry` family, prune, duplicate or graft a subtree), each expressed over the
+graph copy and query primitives rather than a private traversal. `evolve` runs them as a bounded
+(µ+λ) hill-climb and returns an [`FnEvolveRun`](function.md#functionevolve-kt-fnevolverun) listing every accepted improvement. Fitness is the
+caller's: `matchFitness` scores closeness to a target under any `FnMetric`, less an optional
+complexity penalty from `graphMetrics`; `noveltyFitness` instead scores distance from an archive
+of [`FnBehaviour`](function.md#functionevolve-kt-fnbehaviour) descriptors — what a graph *does* when sampled, not how it is built — and
+`evolveVariety` chains slots of novelty search into a behaviourally spread set of results rather
+than one best match.
+
+Both runners are bounded by an iteration count so a search cannot disappear into an animation
+loop, and both are deterministic: traversal is stable and every draw comes from one seeded
+`Random`, with each `evolveVariety` slot deriving `rngSeed * 31 + slot`. Set `normalize` on
+`Functions.Fn.behaviour` (and hence on novelty search) to compare shape rather than amplitude.
 
 `src/jvmMain/kotlin/afield/stdlib/FunctionEvolve.kt`
 
@@ -76,7 +106,7 @@ Result and provenance of an `evolve` run, mirroring [`FnGraphRewriteRun`](functi
 | `val steps: List<FnEvolveStep>` |  |
 | `val iterations: Int` |  |
 | `val evaluations: Int` |  |
-| `val improved: Boolean get()` |  |
+| `val improved: Boolean` |  |
 
 ### FnBehaviour { #functionevolve-kt-fnbehaviour }
 
@@ -137,7 +167,7 @@ which is what makes a fitted gesture reproducible in live art — the same disci
 
 | Declaration | Summary |
 | --- | --- |
-| `fun Functions.Fn.extractParameters(): DoubleArray` | Gradient-based fitting of `Fn` graphs — the differentiable counterpart to the genetic `evolve` in FunctionEvolve.kt. |
+| `fun Functions.Fn.extractParameters(): DoubleArray` | Reads the numeric leaves of `this` into a θ-vector in stable post-order-DFS order. |
 | `fun Functions.Fn.parameterCount(): Int` | The number of tunable numeric leaves in `this` graph — the dimensionality of θ. |
 | `fun Functions.Fn.applyParameters(theta: DoubleArray): Functions.Fn` | Rebuilds `this` graph with its numeric leaves replaced, left-to-right, by `theta`. |
 | `fun rmseLossAgainst(target: Functions.Fn, domain: Functions.Domain = Functions.Domain.DEFAULT, samples: Int = 128): (Functions.Fn) -> Double` | An RMSE loss (lower is better) of a candidate against `target` over an even grid across `domain`. Kept as a named convenience; equivalent to `FnMetric.rmse.lossAgainst(...)`, which is the general seam the fitters now use for any `FnMetric`. |
@@ -193,7 +223,7 @@ Result and provenance of a `fitGradient` run, mirroring the shape of [`FnEvolveR
 | `val iterations: Int` |  |
 | `val evaluations: Int` |  |
 | `val config: FnFitConfig` |  |
-| `val improved: Boolean get()` | True when the fit ended strictly closer to the target than it started. |
+| `val improved: Boolean` | True when the fit ended strictly closer to the target than it started. |
 | `override fun equals(other: Any?): Boolean` |  |
 | `override fun hashCode(): Int` |  |
 
@@ -207,12 +237,28 @@ Result and provenance of a `fitHybrid` run: the structural search then the polis
 | --- | --- |
 | `val evolveRun: FnEvolveRun` |  |
 | `val fitRun: FnFitRun` |  |
-| `val best: Functions.Fn get()` | The final polished graph. |
-| `val seedError: Double get()` | RMSE at the very start (seed), after evolve, and after the gradient polish. |
-| `val evolvedError: Double get()` |  |
-| `val finalError: Double get()` |  |
+| `val best: Functions.Fn` | The final polished graph. |
+| `val seedError: Double` | RMSE at the very start (seed), after evolve, and after the gradient polish. |
+| `val evolvedError: Double` |  |
+| `val finalError: Double` |  |
 
 ## FunctionGraph.kt { #functiongraph-kt }
+
+The data model and the copy engine underneath Field's graph-rewritable notion of a function:
+[`FnGraphNode`](function.md#functiongraph-kt-fngraphnode) / [`FnGraphEdge`](function.md#functiongraph-kt-fngraphedge) (an op name, role-tagged children, scalar metadata and an
+optional rebuild recipe) plus `Functions.Fn.deepCopy` and `Functions.Fn.rewriteGraph`, a
+bottom-up copy that offers every occurrence to an `FnGraphEdit`. Every other file in this
+family runs on that single traversal, as do the edit primitives declared here —
+`Functions.Fn.mapGraphNumbers`, `Functions.Fn.replaceOps`, `Functions.Fn.pruneWhere`,
+`Functions.Fn.graftWhere`, `Functions.Fn.duplicateWhere`, `Functions.Fn.slideCopy`. The
+read-only renderings live here too: `Functions.Fn.graphSnapshot`, `Functions.Fn.graphText`,
+`Functions.Fn.graphSvg` and `Functions.Fn.graphFLineMap`.
+
+Two constraints show up everywhere downstream. A node whose `rebuild` is null cannot be
+reconstructed, so a copy keeps the original evaluator and drops the recipe. And
+`preserveSharing` decides whether a shared subgraph stays shared (memoized by identity) or is
+expanded into a tree — `Functions.Fn.deepCopy` defaults it to true, while the rewriting entry
+points default it to false so each occurrence can be edited independently.
 
 `src/jvmMain/kotlin/afield/stdlib/FunctionGraph.kt`
 
@@ -278,7 +324,7 @@ Structural metadata for `Functions.Fn`.
 | `val role: String?` |  |
 | `val index: Int` |  |
 | `val name: String?` |  |
-| `val op: String get()` |  |
+| `val op: String` |  |
 
 ### FnGraphCopyContext { #functiongraph-kt-fngraphcopycontext }
 
@@ -293,11 +339,11 @@ Structural metadata for `Functions.Fn`.
 | `val role: String?` |  |
 | `val parent: FnGraphNode?` |  |
 | `val ancestors: List<FnGraphPathElement>` |  |
-| `val op: String get()` |  |
-| `val name: String? get()` |  |
-| `val domain: Functions.Domain get()` |  |
-| `val parentOp: String? get()` |  |
-| `val occurrence: List<FnGraphPathElement> get()` |  |
+| `val op: String` |  |
+| `val name: String?` |  |
+| `val domain: Functions.Domain` |  |
+| `val parentOp: String?` |  |
+| `val occurrence: List<FnGraphPathElement>` |  |
 
 ### FnGraphSnapshotNode { #functiongraph-kt-fngraphsnapshotnode }
 
@@ -337,6 +383,23 @@ Structural metadata for `Functions.Fn`.
 | `val root: Int` |  |
 
 ## FunctionGraphBrowser.kt { #functiongraphbrowser-kt }
+
+The looking-at-it layer for the `Fn` graph family: sample a graph on one shared time-base, then
+render it as a self-contained interactive HTML browser.
+
+`Functions.Fn.graphTrace` samples every visible occurrence three ways — `local` (that subgraph
+alone), `muted` (the whole root with the occurrence replaced by a neutral constant: `0.0`, or
+`1.0` for a divisor) and `effect` (`final - muted`) — plus optional value sweeps for numeric
+nodes, and `Functions.Fn.graphBrowseHtml` / `Functions.Fn.browseGraph` wrap that in a canvas UI.
+`Functions.Fn.graphRewriteTrace` is the same idea for rewriting: it applies rules cumulatively
+— either `FnGraphRule`s or the meaningful lines of a string-DSL spec — recording before, after
+and delta per stage for `FnRewriteTrace.rewriteBrowseHtml` and `Functions.Fn.browseRewrite`.
+
+`effect` is a counterfactual, not an additive decomposition: it includes every transformation
+between the occurrence and the root. Tracing is bounded by `maxDepth`/`maxNodes` and sampling is
+NaN-safe (out-of-domain and throwing evaluations become `NaN` and are simply left undrawn). The
+`browse*` functions display into the current box and throw without an active `Box.context`; the
+`*Html` functions are pure strings and work anywhere.
 
 `src/jvmMain/kotlin/afield/stdlib/FunctionGraphBrowser.kt`
 
@@ -425,6 +488,24 @@ One rewrite step: the signal before and after applying a single rule, on the sha
 
 ## FunctionGraphRules.kt { #functiongraphrules-kt }
 
+The query and rule-runner layer over the graph copier in FunctionGraph.kt.
+
+Queries come first, and none of them copy or evaluate the function:
+`Functions.Fn.graphMatches` and `Functions.Fn.firstGraphMatch` visit a shared node once per
+incoming path, so role, ancestry, depth and path stay meaningful for editing;
+`Functions.Fn.graphMetrics` separates unique DAG nodes from occurrences and charges a
+caller-supplied cost; `Functions.Fn.graphSignature` reduces structure to a deterministic string
+with evaluator closures and rebuild lambdas deliberately excluded. On top of those, [`FnGraphRule`](function.md#functiongraphrules-kt-fngraphrule)
+pairs a named predicate with a replacement, and `Functions.Fn.rewriteWithRules` (one bottom-up
+pass) and `Functions.Fn.rewriteUntilStable` (repeated passes) apply them, returning an
+[`FnGraphRewriteRun`](function.md#functiongraphrules-kt-fngraphrewriterun) that records every edit that actually changed a node's signature.
+
+Fixed-point rewriting is bounded on purpose: `Functions.Fn.rewriteUntilStable` compares
+signatures each pass and reports `FnGraphRewriteStop.STABLE`, `FnGraphRewriteStop.CYCLE` or
+`FnGraphRewriteStop.MAX_PASSES` rather than letting a non-terminating rule set hide inside an
+animation loop. Rules default to `FnGraphRuleMode.FIRST_MATCH` at each node, so ordering is
+explicit; `FnGraphRuleMode.ALL_MATCHES` chains every matching rule on the same copy.
+
 `src/jvmMain/kotlin/afield/stdlib/FunctionGraphRules.kt`
 
 **Used in:** [Functions to FLine examples (Field graphics)](../functions_examples.md)
@@ -499,8 +580,8 @@ Result and provenance from `Functions.Fn.rewriteWithRules` or `Functions.Fn.rewr
 | `val events: List<FnGraphRewriteEvent>` |  |
 | `val passes: Int` |  |
 | `val stop: FnGraphRewriteStop` |  |
-| `val stable: Boolean get()` |  |
-| `val changed: Boolean get()` |  |
+| `val stable: Boolean` |  |
+| `val changed: Boolean` |  |
 
 ### FnGraphMatch { #functiongraphrules-kt-fngraphmatch }
 
@@ -531,6 +612,17 @@ Small structural measurements suitable for diagnostics and optimizer cost functi
 
 ## FunctionOps.kt { #functionops-kt }
 
+The op vocabulary for the whole `Fn` graph family, held in one object, [`OpRegistry`](function.md#functionops-kt-opregistry): which op
+names the stdlib actually emits into a graph node, which of them are aliases of each other, and
+which can be rebuilt from an arbitrary node's role-addressed children — those rebuildable ones
+each carrying a family label (oscillator, noise, transform, …).
+
+Everything that has to reason about ops consults it instead of keeping a private list — the
+rewrite DSL's `op=` validator and its hint text, the pattern matcher's alias-aware op
+comparison, `rebuildAsOp`, and the "another op in the same family" draw behind the
+`substituteOp` mutation. The Monaco `fnrewrite.js` extension mirrors it, and a JVM test asserts
+that mirror never drifts.
+
 `src/jvmMain/kotlin/afield/stdlib/FunctionOps.kt`
 
 ### OpRegistry { #functionops-kt-opregistry }
@@ -544,7 +636,7 @@ Single source of truth for the `Fn` graph op vocabulary and `op=` transmutation.
 | `data class OpSpec(val canonical: String, val family: String, val aliases: Set<String> = emptySet(), val build: (OpSource) -> Functions.Fn?)` | A transmutation target: how to rebuild `canonical` from an arbitrary matched node. |
 | `class OpSource internal constructor(val self: Functions.Fn)` | Read-only view of the node being transmuted: children by role, plus scalar metadata. |
 | `val knownOps: Set<String>` | Every op string the stdlib actually emits (from `node(...)`/`graphFn(...)`), so validation and selectors never treat a real op as unknown even when it is not a transmutation target. Kept in sync with `Functions.kt` by `FunctionsGraphRewriteTest`. |
-| `val transmutableOps: List<String> get()` | Canonical op names that `op=` can rebuild to, grouped by family, for docs and diagnostics. |
+| `val transmutableOps: List<String>` | Canonical op names that `op=` can rebuild to, grouped by family, for docs and diagnostics. |
 | `fun knows(name: String): Boolean` |  |
 | `fun isTransmutable(name: String): Boolean` |  |
 | `fun canonical(name: String): String?` |  |
@@ -554,6 +646,22 @@ Single source of truth for the `Fn` graph op vocabulary and `op=` transmutation.
 | `fun transmutableHint(): String` | One-line description of the transmutation vocabulary, for validator hints. |
 
 ## FunctionRewriteDsl.kt { #functionrewritedsl-kt }
+
+The `selector => action` string rewrite DSL, compiled and applied end to end.
+`compileFnRewrite` parses a spec into an [`FnRewriteProgram`](function.md#functionrewritedsl-kt-fnrewriteprogram) carrying line/column
+[`FnRewriteDiagnostic`](function.md#functionrewritedsl-kt-fnrewritediagnostic)s; `Functions.Fn.rewrite`, `Functions.Fn.previewRewrite` (which also
+reports match paths and which rules did nothing) and `Functions.Fn.rewriteChecked` (which
+refuses an invalid program) run it over the graph copier. Selector matching lives here — op,
+role, name, tag and depth tokens, `parent=`, `[key>=n]` predicates and slash-separated path
+selectors with `*` and `**` wildcards — and so does action application: `op=`, `name=`,
+`domain=`, `drop`, and the numeric `=`, `*=`, `/=`, `+=`, `-=` forms. `op=` targets are checked
+against `OpRegistry`; an unknown op is reported as a warning, not an error.
+
+The file deliberately does not depend on the live-code compiler. A Kotlin right-hand side is
+parsed out of its `@{...}` (or dollar-brace) wrapper and then handed to
+`FnRewriteOptions.kotlinNumberContext`; when no caller supplied one, the action is simply not
+applied. FunctionRewriteKotlin.kt is what plugs a box's Kotlin engine into that hook, and
+FunctionRewritePattern.kt is the separate structural pattern-to-template surface.
 
 `src/jvmMain/kotlin/afield/stdlib/FunctionRewriteDsl.kt`
 
@@ -580,22 +688,22 @@ Tiny string layer over the graph-copy API.
 | `val expression: String` |  |
 | `val current: Double` |  |
 | `val graph: FnGraphCopyContext` |  |
-| `val value: Double get()` |  |
-| `val it: Double get()` |  |
-| `val op: String get()` |  |
-| `val role: String? get()` |  |
-| `val parameter: String? get()` |  |
-| `val parentOp: String? get()` |  |
-| `val depth: Int get()` |  |
-| `val path: List<Int> get()` |  |
-| `val ancestors: List<FnGraphPathElement> get()` |  |
-| `val occurrence: List<FnGraphPathElement> get()` |  |
-| `val name: String? get()` |  |
-| `val domain: Functions.Domain get()` |  |
-| `val numbers: Map<String, Double> get()` |  |
-| `val strings: Map<String, String> get()` |  |
-| `val booleans: Map<String, Boolean> get()` |  |
-| `val longs: Map<String, Long> get()` |  |
+| `val value: Double` |  |
+| `val it: Double` |  |
+| `val op: String` |  |
+| `val role: String?` |  |
+| `val parameter: String?` |  |
+| `val parentOp: String?` |  |
+| `val depth: Int` |  |
+| `val path: List<Int>` |  |
+| `val ancestors: List<FnGraphPathElement>` |  |
+| `val occurrence: List<FnGraphPathElement>` |  |
+| `val name: String?` |  |
+| `val domain: Functions.Domain` |  |
+| `val numbers: Map<String, Double>` |  |
+| `val strings: Map<String, String>` |  |
+| `val booleans: Map<String, Boolean>` |  |
+| `val longs: Map<String, Long>` |  |
 | `fun number(key: String): Double?` |  |
 | `fun string(key: String): String?` |  |
 | `fun boolean(key: String): Boolean?` |  |
@@ -649,7 +757,7 @@ Constants: `ERROR`, `WARNING`.
 | `val source: String` |  |
 | `val rules: List<FnRewriteRuleSpec>` |  |
 | `val diagnostics: List<FnRewriteDiagnostic>` |  |
-| `val valid: Boolean get()` |  |
+| `val valid: Boolean` |  |
 | `fun diagnosticText(): String` |  |
 
 ### FnRewriteApplication { #functionrewritedsl-kt-fnrewriteapplication }
@@ -677,13 +785,30 @@ Constants: `ERROR`, `WARNING`.
 | `val function: Functions.Fn` |  |
 | `val program: FnRewriteProgram` |  |
 | `val applications: List<FnRewriteApplication>` |  |
-| `val matchedRules: Int get()` |  |
-| `val matchCount: Int get()` |  |
-| `val changeCount: Int get()` |  |
-| `val unmatchedRules: List<FnRewriteRuleSpec> get()` |  |
+| `val matchedRules: Int` |  |
+| `val matchCount: Int` |  |
+| `val changeCount: Int` |  |
+| `val unmatchedRules: List<FnRewriteRuleSpec>` |  |
 | `fun summary(): String` | Compact deterministic report suitable for logs, chat, and agent transcripts. |
 
 ## FunctionRewriteKotlin.kt { #functionrewritekotlin-kt }
+
+The bridge that gives the string rewrite DSL a real Kotlin right-hand side.
+
+FunctionRewriteDsl.kt parses `@{...}` expressions but never compiles them; this file supplies
+the `FnRewriteOptions.kotlinNumberContext` hook it leaves open, compiling each expression as a
+`FnRewriteNumberContext -> Any?` lambda inside a live box's coding context so a snippet can read
+`value`, `op`, `parentOp`, `depth` and the rest as plain properties.
+[`SourceBackedFnRewriteNumberExpression`](function.md#functionrewritekotlin-kt-sourcebackedfnrewritenumberexpression) stores only source plus a box id and hydrates on first
+use; [`SourceBackedFnRewriteNumberEvaluator`](function.md#functionrewritekotlin-kt-sourcebackedfnrewritenumberevaluator) caches one per distinct expression string. The entry
+points are `Functions.Fn.rewriteKotlin`, `Functions.Fn.previewRewriteKotlin`,
+`Functions.Fn.rewriteKotlinChecked` and the `Box.rewriteFn` / `Box.previewRewriteFn` receiver
+forms — each is the corresponding plain-DSL call with that evaluator wired in.
+
+Hydration requires the originating box to still be loaded and the compiled lambda to return a
+`Number?`; anything else throws, naming the box or the offending source. When
+there is no box in scope no evaluator is installed at all, so Kotlin right-hand sides are left
+unapplied and the compiler-free `rewrite(...)` path is unaffected.
 
 `src/jvmMain/kotlin/afield/stdlib/FunctionRewriteKotlin.kt`
 
@@ -724,6 +849,22 @@ Source-backed Kotlin evaluator for `@{...}` fragments inside the Fn rewrite DSL.
 | `override fun invoke(context: FnRewriteNumberContext): Double?` |  |
 
 ## FunctionRewritePattern.kt { #functionrewritepattern-kt }
+
+The third rewriting surface in the family, and the algebraic one. FunctionRewriteDsl.kt is
+`selector => action` and edits one matched node in place; `FnGraphRule` in FunctionGraphRules.kt
+is a hand-written predicate plus a hand-written replacement; here both sides of a rule are graph
+shapes with metavariables ([`FnPattern`](function.md#functionrewritepattern-kt-fnpattern)), so `add(?x, 0) => ?x` reads as an identity rather than
+an instruction. `fnRule` compiles a spec into an ordinary `FnGraphRule`, which is what lets
+pattern rules reuse the existing traced, bounded, cycle-detecting runners;
+`Functions.Fn.rewritePatterns` is the fixed-point convenience over a set of specs.
+
+Matching and the parser are both here. A `?name` binds a subtree and, if repeated, must bind a
+structurally equal one (compared by `graphSignature()`); a bare number matches a numeric node's
+`value` to within 1e-12; op names are compared through `OpRegistry`'s alias table; `op(a, b, …)`
+constrains only the leading children. The string template side is narrower than the pattern
+side: a bare op transmutes the matched node, only add/subtract/multiply/divide accept an
+explicit child list, and any other `op(...)` template throws — the `fnRule` overload taking a
+Kotlin builder over [`FnPatternMatch`](function.md#functionrewritepattern-kt-fnpatternmatch) is the general escape.
 
 `src/jvmMain/kotlin/afield/stdlib/FunctionRewritePattern.kt`
 
