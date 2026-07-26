@@ -120,43 +120,55 @@ object ImagingGallery {
     // Synthetic sources — deterministic, and with analytically known answers.
     // ==========================================================================================
 
+    // Every synthetic source below is 10x larger in each direction than the panel it will be drawn
+    // into (the compositor downsamples in `scaled`, below). That is deliberate: at 160x160 a filter
+    // benchmark is dominated by JIT warmup and cache residency, and the gallery would be attesting
+    // that the code works on toy inputs. At 1600x1600 — 2.6 Mpx, a real photograph — it is
+    // attesting that it works at the size someone would actually use, and the panels look the same
+    // because they were always a downsampled view of a larger truth.
+
     /** A bright rounded-corner-free square on a dark ground; corners at exactly (x0,y0)…(x1,y1). */
-    private fun squareImg(w: Int = 160, h: Int = 160, x0: Int = 40, y0: Int = 40, x1: Int = 119, y1: Int = 119) =
+    private fun squareImg(w: Int = 1600, h: Int = 1600, x0: Int = 400, y0: Int = 400, x1: Int = 1199, y1: Int = 1199) =
         Img.generate(w, h) { x, y -> if (x in x0..x1 && y in y0..y1) 0.92f else 0.08f }
 
     /**
      * A test card: a disc, a square, a triangle and a thin bar on a soft gradient, plus a little
      * texture. Deterministic and rich enough to exercise every detector.
      */
-    private fun testCard(w: Int = 240, h: Int = 200): Img = Img.generate(w, h) { x, y ->
+    private fun testCard(w: Int = 2400, h: Int = 2000): Img = Img.generate(w, h) { x, y ->
         var v = 0.10f + 0.10f * (y / h.toFloat())
         // disc
-        if (hypot(x - 56.0, y - 60.0) <= 30.0) v = 0.85f
+        if (hypot(x - 560.0, y - 600.0) <= 300.0) v = 0.85f
         // square
-        if (x in 110..165 && y in 30..85) v = 0.70f
+        if (x in 1100..1650 && y in 300..850) v = 0.70f
         // triangle
-        val tx = x - 180.0
-        val ty = y - 40.0
-        if (ty in 0.0..55.0 && abs(tx) <= ty * 0.55) v = 0.95f
+        val tx = x - 1800.0
+        val ty = y - 400.0
+        if (ty in 0.0..550.0 && abs(tx) <= ty * 0.55) v = 0.95f
         // thin bar
-        if (y in 150..156 && x in 24..215) v = 0.90f
+        if (y in 1500..1560 && x in 240..2150) v = 0.90f
         // small blobs
-        if (hypot(x - 130.0, y - 150.0) <= 10.0) v = 0.60f
-        if (hypot(x - 170.0, y - 165.0) <= 7.0) v = 0.60f
+        if (hypot(x - 1300.0, y - 1500.0) <= 100.0) v = 0.60f
+        if (hypot(x - 1700.0, y - 1650.0) <= 70.0) v = 0.60f
         v
     }
 
-    /** A smooth, well-textured field — the source Lucas–Kanade and the pyramids like. */
-    private fun textured(w: Int = 200, h: Int = 200): Img = Img.generate(w, h) { x, y ->
+    /**
+     * A smooth, well-textured field — the source Lucas–Kanade and the pyramids like. The spatial
+     * frequencies are per-pixel and deliberately did NOT scale with the image, so a 10x larger
+     * frame carries 10x more cycles rather than the same picture enlarged. An enlarged picture
+     * would make the pyramid levels trivially easy and the flow panel dishonest.
+     */
+    private fun textured(w: Int = 2000, h: Int = 2000): Img = Img.generate(w, h) { x, y ->
         (0.5 + 0.24 * sin(x * 0.21) * cos(y * 0.17) +
             0.16 * sin((x + y) * 0.11) + 0.08 * cos((x - 2.0 * y) * 0.07)).toFloat().coerceIn(0f, 1f)
     }
 
     /** A checkerboard "document" seen flat, for the perspective-rectification panel. */
-    private fun document(w: Int = 200, h: Int = 140): Img = Img.generate(w, h) { x, y ->
-        val cell = if (((x / 20) + (y / 20)) % 2 == 0) 0.86f else 0.14f
+    private fun document(w: Int = 2000, h: Int = 1400): Img = Img.generate(w, h) { x, y ->
+        val cell = if (((x / 200) + (y / 200)) % 2 == 0) 0.86f else 0.14f
         // a border so the rectification is obviously aligned
-        if (x < 3 || y < 3 || x >= w - 3 || y >= h - 3) 0.5f else cell
+        if (x < 30 || y < 30 || x >= w - 30 || y >= h - 30) 0.5f else cell
     }
 
     /** Salt-and-pepper corruption of [src], deterministic for [seed]. */
@@ -273,18 +285,18 @@ object ImagingGallery {
 
         Panel("05-hough", "Hough — recovering global lines from purely local edge evidence") {
             // Three lines at exactly known angles, plus a decoy disc.
-            val src = Img.zeros(200, 200, 1)
-            for (x in 10 until 190) src.set(x, 40, 0, 1f)             // horizontal, rho = 40
-            for (y in 10 until 190) src.set(150, y, 0, 1f)            // vertical,   rho = 150
-            for (t in 0 until 240) {                                   // a 45-degree diagonal
-                val x = 20 + t * 0.6
-                val y = 60 + t * 0.6
-                if (x < 199 && y < 199) src.set(x.toInt(), y.toInt(), 0, 1f)
+            val src = Img.zeros(2000, 2000, 1)
+            for (x in 100 until 1900) src.set(x, 400, 0, 1f)           // horizontal, rho = 400
+            for (y in 100 until 1900) src.set(1500, y, 0, 1f)          // vertical,   rho = 1500
+            for (t in 0 until 2400) {                                  // a 45-degree diagonal
+                val x = 200 + t * 0.6
+                val y = 600 + t * 0.6
+                if (x < 1999 && y < 1999) src.set(x.toInt(), y.toInt(), 0, 1f)
             }
-            for (i in 0 until 360) {                                   // decoy circle
-                val a = 2 * PI * i / 360
-                val x = (60 + 22 * cos(a)).toInt(); val y = (150 + 22 * sin(a)).toInt()
-                if (x in 0..199 && y in 0..199) src.set(x, y, 0, 1f)
+            for (i in 0 until 3600) {                                  // decoy circle
+                val a = 2 * PI * i / 3600
+                val x = (600 + 220 * cos(a)).toInt(); val y = (1500 + 220 * sin(a)).toInt()
+                if (x in 0..1999 && y in 0..1999) src.set(x, y, 0, 1f)
             }
             val lines = houghLines(src, thetaSteps = 360, threshold = 100, maxLines = 5)
             check(lines.size >= 3) { "expected >= 3 Hough lines, got ${lines.size}" }
@@ -427,9 +439,9 @@ object ImagingGallery {
         },
 
         Panel("10-colour", "Colour — luma, HSV, sRGB-vs-linear blur, and the Colormaps bridge") {
-            val rgb = Img.generateRGB(200, 140) { x, y ->
-                val u = x / 199f
-                val v = y / 139f
+            val rgb = Img.generateRGB(2000, 1400) { x, y ->
+                val u = x / 1999f
+                val v = y / 1399f
                 Triple(
                     (0.5f + 0.5f * sin((u * 6.0).toFloat())).coerceIn(0f, 1f),
                     (0.5f + 0.5f * sin((v * 5.0 + 1.0).toFloat())).coerceIn(0f, 1f),
@@ -444,7 +456,7 @@ object ImagingGallery {
             check(delta > 0.002) { "sRGB and linear-light blurs are suspiciously identical ($delta)" }
             val roundTrip = hsv.hsvToRgb().meanAbsDiff(rgb)
             check(roundTrip < 1e-5) { "HSV round-trip error $roundTrip" }
-            val ramp = Img.generate(200, 24) { x, _ -> x / 199f }
+            val ramp = Img.generate(2000, 240) { x, _ -> x / 1999f }
             Figure(
                 listOf(
                     Tile("source RGB", rgb),

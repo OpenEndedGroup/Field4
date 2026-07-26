@@ -12,3 +12,4 @@ rootProject.name = "afield"
 
 include(":tools:linalg-generator")
 include(":tools:linalg-bench")
+include(":tools:imaging-bench")

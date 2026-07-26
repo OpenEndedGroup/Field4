@@ -121,9 +121,28 @@ fun cornersToFLines(corners: List<Corner>, size: Double = 4.0, box: Boolean = fa
         }
     }
 
+/**
+ * Clip this [HoughLine] to a `w x h` image rectangle and return the visible segment as an [FLine],
+ * or `null` if the line misses the rectangle entirely.
+ *
+ * A Hough line is *infinite* — `(rho, theta)` names a whole line, not a segment — so it has no
+ * drawable form until you say which rectangle you are drawing it into. That is why this takes the
+ * image dimensions and why it is nullable; a peak in the accumulator can, at the edges of the
+ * parameter range, correspond to a line that grazes past the image.
+ *
+ * ```
+ * val lines = edges.houghLines()
+ * lines(lines.mapNotNull { it.toFLine(img.width, img.height) })
+ * ```
+ *
+ * @see linesToFLines for the whole-list form, which drops the misses for you
+ */
+fun HoughLine.toFLine(w: Int, h: Int, z: Number = 0): FLine? =
+    clipTo(w, h)?.let { (a, b) -> polylineFrom(listOf(a, b), z, false) }
+
 /** Clip each [HoughLine] to a `w x h` image rectangle and return the visible segments as [FLine]s. */
 fun linesToFLines(lines: List<HoughLine>, w: Int, h: Int, z: Number = 0): List<FLine> =
-    lines.mapNotNull { it.clipTo(w, h) }.map { (a, b) -> polylineFrom(listOf(a, b), z, false) }
+    lines.mapNotNull { it.toFLine(w, h, z) }
 
 /** Draw each [HoughCircle] as a closed polygon of [segments] sides. */
 fun circlesToFLines(circles: List<HoughCircle>, segments: Int = 48, z: Number = 0): List<FLine> =

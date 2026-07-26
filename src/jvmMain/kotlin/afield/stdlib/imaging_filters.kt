@@ -157,8 +157,106 @@ val LAPLACIAN_8: Kernel2D = Kernel2D.of(
 /**
  * Separable convolution: [kx] along x then [ky] along y (or [kx] both ways if [ky] is null).
  * `O(kx + ky)` per pixel per channel.
+ *
+ * Interior samples go through the SIMD span kernels in [ImgSimd]; only the `radius` columns at the
+ * left and right edges take the general [Img.get] path, and the vertical pass resolves its border
+ * once per row rather than once per sample. See [ImgSimd] for why the interleaved layout makes both
+ * passes contiguous, and [convolveSeparableReference] for the scalar definition this must match.
  */
 fun Img.convolveSeparable(kx: Kernel1D, ky: Kernel1D? = kx, border: Border = Border.CLAMP): Img {
+    val kyy = ky ?: kx
+    val tmp = FloatArray(data.size)
+    horizontalPass(data, tmp, kx, border)
+    val out = FloatArray(data.size)
+    verticalPass(tmp, out, kyy, border)
+    return Img(width, height, channels, out)
+}
+
+/**
+ * `src` -> `dst`, convolving along x. Interior columns are SIMD spans (one per tap); the `radius`
+ * columns at each end fall back to the bounds-checked accessor.
+ */
+private fun Img.horizontalPass(src: FloatArray, dst: FloatArray, k: Kernel1D, border: Border) {
+    val taps = k.taps
+    val n = taps.size
+    val r = k.radius
+    val rowLen = width * channels
+    // Interior x: every tap reads in range, i.e. x + t - r in 0 until width for all t.
+    val xLo = r
+    val xHi = width - n + r          // inclusive
+    val spanLen = (xHi - xLo + 1) * channels
+    val srcImg = Img(width, height, channels, src)
+
+    for (y in 0 until height) {
+        val row = y * rowLen
+        if (spanLen > 0) {
+            val spanOff = row + xLo * channels
+            // Tap 0 writes (so no zero-fill pass is needed); later taps accumulate. A zero weight
+            // still has to write on tap 0, hence the unconditional mulSet.
+            ImgSimd.mulSet(dst, spanOff, src, spanOff - r * channels, spanLen, taps[0])
+            for (t in 1 until n) {
+                val w = taps[t]
+                if (w == 0f) continue
+                ImgSimd.axpy(dst, spanOff, src, spanOff + (t - r) * channels, spanLen, w)
+            }
+        }
+        // Edges — a handful of columns, general accessor.
+        for (x in 0 until width) {
+            if (spanLen > 0 && x in xLo..xHi) continue
+            for (c in 0 until channels) {
+                var s = 0f
+                for (t in 0 until n) s += taps[t] * srcImg.get(x + t - r, y, c, border)
+                dst[row + x * channels + c] = s
+            }
+        }
+    }
+}
+
+/**
+ * `src` -> `dst`, convolving along y. The border decision is per row, so every output row is a
+ * single contiguous SIMD span per tap — there is no edge case to split out.
+ */
+private fun Img.verticalPass(src: FloatArray, dst: FloatArray, k: Kernel1D, border: Border) {
+    val taps = k.taps
+    val n = taps.size
+    val r = k.radius
+    val rowLen = width * channels
+
+    for (y in 0 until height) {
+        val dstOff = y * rowLen
+        var wrote = false
+        for (t in 0 until n) {
+            val w = taps[t]
+            val sy = y + t - r
+            val resolved = if (sy in 0 until height) sy else when (border) {
+                // Out of range contributes nothing, and dst is already zero-filled.
+                Border.ZERO -> continue
+                Border.CLAMP -> sy.coerceIn(0, height - 1)
+                Border.REFLECT -> reflectIndex(sy, height)
+                Border.WRAP -> Math.floorMod(sy, height)
+            }
+            val srcOff = resolved * rowLen
+            if (!wrote) {
+                ImgSimd.mulSet(dst, dstOff, src, srcOff, rowLen, w)
+                wrote = true
+            } else if (w != 0f) {
+                ImgSimd.axpy(dst, dstOff, src, srcOff, rowLen, w)
+            }
+        }
+        // `wrote` stays false only when every tap fell outside under Border.ZERO, where dst is
+        // already correct.
+    }
+}
+
+/**
+ * The scalar definition of [convolveSeparable], kept as the oracle the SIMD path is tested against
+ * and as the baseline arm of the benchmark. Not for production use.
+ */
+internal fun Img.convolveSeparableReference(
+    kx: Kernel1D,
+    ky: Kernel1D? = kx,
+    border: Border = Border.CLAMP
+): Img {
     val kyy = ky ?: kx
     val tmp = FloatArray(data.size)
     val rx = kx.radius
@@ -183,9 +281,72 @@ fun Img.convolveSeparable(kx: Kernel1D, ky: Kernel1D? = kx, border: Border = Bor
 /**
  * Dense 2-D convolution with [k]. True convolution (the kernel is flipped); pass an already-flipped
  * kernel or a symmetric one if you want correlation. `O(kw * kh)` per pixel per channel — this is
- * the general fallback and the reference the separable path is tested against.
+ * the general fallback, and the reference the separable path is tested against.
+ *
+ * The interior runs through [ImgSimd.stencil], which keeps the accumulator in a vector register
+ * across all taps: a `k`-tap kernel costs `k` reads and one write per output chunk. Zero-weight
+ * taps are dropped up front, which is why the 4-neighbour [LAPLACIAN_4] (five of whose nine taps
+ * are zero) costs a little over half of [LAPLACIAN_8]. Border pixels take the general accessor.
+ *
+ * @see convolve2DReference the scalar definition this must match
  */
 fun Img.convolve2D(k: Kernel2D, border: Border = Border.CLAMP): Img {
+    val kf = k.flipped()
+    val out = FloatArray(data.size)
+    val rx = kf.radiusX
+    val ry = kf.radiusY
+    val rowLen = width * channels
+
+    // Fold (ky, kx) into flat element offsets once, dropping zero taps.
+    var nz = 0
+    for (w in kf.weights) if (w != 0f) nz++
+    val weights = FloatArray(nz)
+    val offsets = IntArray(nz)
+    var t = 0
+    for (ky in 0 until kf.height) for (kx in 0 until kf.width) {
+        val w = kf.weights[ky * kf.width + kx]
+        if (w == 0f) continue
+        weights[t] = w
+        offsets[t] = (ky - ry) * rowLen + (kx - rx) * channels
+        t++
+    }
+
+    val xLo = rx
+    val xHi = width - kf.width + rx      // inclusive
+    val yLo = ry
+    val yHi = height - kf.height + ry    // inclusive
+    val spanLen = (xHi - xLo + 1) * channels
+
+    if (nz > 0 && spanLen > 0) {
+        for (y in yLo..yHi) {
+            val off = y * rowLen + xLo * channels
+            ImgSimd.stencil(out, off, data, off, spanLen, weights, offsets)
+        }
+    }
+
+    // Border ring — the rows above/below the interior, and the columns either side of it.
+    for (y in 0 until height) {
+        val interiorRow = spanLen > 0 && y in yLo..yHi
+        for (x in 0 until width) {
+            if (interiorRow && x in xLo..xHi) continue
+            for (c in 0 until channels) {
+                var s = 0f
+                for (ky in 0 until kf.height) for (kx in 0 until kf.width) {
+                    val w = kf.weights[ky * kf.width + kx]
+                    if (w != 0f) s += w * get(x + kx - rx, y + ky - ry, c, border)
+                }
+                out[index(x, y, c)] = s
+            }
+        }
+    }
+    return Img(width, height, channels, out)
+}
+
+/**
+ * The scalar definition of [convolve2D], kept as the oracle the SIMD path is tested against and as
+ * the baseline arm of the benchmark. Not for production use.
+ */
+internal fun Img.convolve2DReference(k: Kernel2D, border: Border = Border.CLAMP): Img {
     val kf = k.flipped()
     val out = FloatArray(data.size)
     val rx = kf.radiusX

@@ -124,7 +124,7 @@ class Img(
         return when (border) {
             Border.ZERO -> 0f
             Border.CLAMP -> data[index(x.coerceIn(0, width - 1), y.coerceIn(0, height - 1), cc)]
-            Border.REFLECT -> data[index(reflect(x, width), reflect(y, height), cc)]
+            Border.REFLECT -> data[index(reflectIndex(x, width), reflectIndex(y, height), cc)]
             Border.WRAP -> data[index(Math.floorMod(x, width), Math.floorMod(y, height), cc)]
         }
     }
@@ -299,8 +299,13 @@ enum class Border {
     WRAP
 }
 
-/** Mirror [i] back into `0 until n` (reflect-101 style, edge pixel not duplicated). */
-private fun reflect(i: Int, n: Int): Int {
+/**
+ * Mirror [i] back into `0 until n` (reflect-101 style, edge pixel not duplicated).
+ *
+ * Internal rather than private so the SIMD convolution passes can resolve a whole row's border
+ * once instead of once per sample — see [convolveSeparable].
+ */
+internal fun reflectIndex(i: Int, n: Int): Int {
     if (n == 1) return 0
     var v = i
     val period = 2 * n - 2

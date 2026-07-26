@@ -31,11 +31,14 @@ operations:
         code: |
           // An Img is width x height x channels floats, interleaved, origin top-left.
           // Build one straight from a function of (x, y) — the usual way to make a test image.
-          val card = Img.generateRGB(240, 180) { x, y ->
-              val u = x / 239f
-              val v = y / 179f
-              val disc = if (hypot(x - 60.0, y - 60.0) <= 34.0) 1f else 0f
-              val bar = if (y in 130..142 && x in 20..219) 1f else 0f
+          // An Img is width x height x channels floats, interleaved, origin top-left. This one is
+          // 2400x1800 — 4.3 megapixels, 52 MB of float RGB — because that is the size at which the
+          // question "is this fast enough to actually use?" has a meaningful answer.
+          val card = Img.generateRGB(2400, 1800) { x, y ->
+              val u = x / 2399f
+              val v = y / 1799f
+              val disc = if (hypot(x - 600.0, y - 600.0) <= 340.0) 1f else 0f
+              val bar = if (y in 1300..1420 && x in 200..2199) 1f else 0f
               Triple(
                   (0.15f + 0.7f * u * (1f - disc) + disc * 0.9f + bar).coerceIn(0f, 1f),
                   (0.15f + 0.6f * v + disc * 0.25f + bar).coerceIn(0f, 1f),
@@ -45,22 +48,27 @@ operations:
 
           val gray = card.luma()                 // BT.709 perceptual grayscale
           val hsv = card.rgbToHsv()              // h, s, v each in 0..1
-          val small = card.resize(60, 45)        // area-averaged (anti-aliased) downsample
-          val backUp = small.resize(240, 180)    // bilinear upsample: the detail is really gone
+          val small = card.resize(600, 450)      // area-averaged (anti-aliased) downsample
+          val backUp = small.resize(2400, 1800)  // bilinear upsample: the detail is really gone
           val t = gray.otsuThreshold()           // computed, not guessed
+          val mask = gray.threshold(t)
 
           showImgGrid(
               "source RGB (${card.width}x${card.height})" to card,
               "luma()" to gray,
               "hue channel" to hsv.channel(0),
               "saturation channel" to hsv.channel(1),
-              "resize(60,45) then back up" to backUp,
-              "thresholdOtsu() @ ${"%.3f".format(t)}" to gray.threshold(t),
+              "resize(600,450) then back up" to backUp,
+              "thresholdOtsu() @ ${"%.3f".format(t)}" to mask,
               columns = 3,
               cellSide = 260,
           )
           println("Img ${card.width}x${card.height} x${card.channels} ch, mean ${"%.3f".format(card.mean())}, " +
-              "otsu ${"%.3f".format(t)}, foreground ${gray.threshold(t).data.count { it > 0.5f }} px")
+              "otsu ${"%.3f".format(t)}, foreground ${mask.data.count { it > 0.5f }} px")
+
+          // The threshold is a mask; a mask has outlines; outlines are geometry. Everything the
+          // family produces that is geometry rather than raster ends up in a lines() call.
+          lines(mask.toContourFLines(minPerimeter = 120, simplifyTolerance = 12.0))
   - create:
       box: imaging_filters
       name: filters — gaussian / median / bilateral / unsharp
@@ -68,11 +76,11 @@ operations:
       properties:
         code: |
           // A clean synthetic source, and the same source with 4% salt-and-pepper corruption.
-          val clean = Img.generate(240, 180) { x, y ->
-              var v = 0.12f + 0.10f * (y / 180f)
-              if (hypot(x - 60.0, y - 70.0) <= 34.0) v = 0.85f
-              if (x in 120..185 && y in 30..95) v = 0.65f
-              if (y in 135..142 && x in 20..219) v = 0.95f
+          val clean = Img.generate(2400, 1800) { x, y ->
+              var v = 0.12f + 0.10f * (y / 1800f)
+              if (hypot(x - 600.0, y - 700.0) <= 340.0) v = 0.85f
+              if (x in 1200..1850 && y in 300..950) v = 0.65f
+              if (y in 1350..1420 && x in 200..2199) v = 0.95f
               v
           }
           val rng = kotlin.random.Random(11)
@@ -81,6 +89,11 @@ operations:
               noisy.data[rng.nextInt(noisy.pixelCount)] = if (rng.nextBoolean()) 0f else 1f
           }
 
+          // These radii are in PIXELS, and they deliberately did not scale with the image. The
+          // separable filters are O(k) per pixel, so gaussianBlur is ~linear in area; median and
+          // bilateral are O(r^2) per pixel, so scaling their radius with the image would multiply
+          // their cost by 10,000x rather than 100x. Salt-and-pepper is single-pixel noise at any
+          // image size, so a pixel-scale radius is also the correct choice here, not a concession.
           val gauss = noisy.gaussianBlur(2.0)
           val med = noisy.median(2)
           val bil = noisy.bilateral(sigmaSpace = 3.0, sigmaRange = 0.12)
@@ -108,12 +121,12 @@ operations:
       frame: { x: 80.0, y: 920.0, w: 900.0, h: 380.0 }
       properties:
         code: |
-          val src = Img.generate(240, 180) { x, y ->
-              var v = 0.12f + 0.08f * (y / 180f)
-              if (hypot(x - 62.0, y - 70.0) <= 34.0) v = 0.85f
-              if (x in 120..185 && y in 30..95) v = 0.68f
-              val tx = x - 210.0; val ty = y - 40.0
-              if (ty in 0.0..60.0 && kotlin.math.abs(tx) <= ty * 0.5) v = 0.95f
+          val src = Img.generate(2400, 1800) { x, y ->
+              var v = 0.12f + 0.08f * (y / 1800f)
+              if (hypot(x - 620.0, y - 700.0) <= 340.0) v = 0.85f
+              if (x in 1200..1850 && y in 300..950) v = 0.68f
+              val tx = x - 2100.0; val ty = y - 400.0
+              if (ty in 0.0..600.0 && kotlin.math.abs(tx) <= ty * 0.5) v = 0.95f
               v
           }
 
@@ -122,8 +135,9 @@ operations:
           val edges = src.canny(low = 0.05, high = 0.11, sigma = 1.2)
           val auto = src.cannyAuto()          // thresholds derived from this image's own gradients
 
-          // Edges are geometry, and geometry in Field is an FLine.
-          val flines = edges.toContourFLines(minPerimeter = 12, simplifyTolerance = 1.2)
+          // Edges are geometry, and geometry in Field is an FLine. minPerimeter and the simplify
+          // tolerance are pixel distances, so they scale with the image.
+          val flines = edges.toContourFLines(minPerimeter = 120, simplifyTolerance = 12.0)
 
           showImgGrid(
               "source" to src,
@@ -140,6 +154,10 @@ operations:
                   "canny ${edges.data.count { it > 0.5f }} px, cannyAuto ${auto.data.count { it > 0.5f }} px; " +
                   "${flines.size} FLines, ${flines.sumOf { it.nodes.size }} nodes total"
           )
+
+          // The raster above is what Canny computed; this is what it *means* — three closed
+          // outlines you can now transform, intersect or animate like any other Field geometry.
+          lines(flines)
   - create:
       box: imaging_features
       name: features — Harris / FAST corners and Hough lines
@@ -147,28 +165,30 @@ operations:
       properties:
         code: |
           // A square whose corners are at exactly known coordinates.
-          val square = Img.generate(200, 200) { x, y -> if (x in 50..149 && y in 50..149) 0.92f else 0.08f }
-          val harris = square.harrisCorners(threshold = 0.05, minDistance = 12, maxCount = 20)
-          val fast = square.fastCorners(threshold = 0.2, minDistance = 12, maxCount = 20)
+          val square = Img.generate(2000, 2000) { x, y -> if (x in 500..1499 && y in 500..1499) 0.92f else 0.08f }
+          val harris = square.harrisCorners(threshold = 0.05, minDistance = 120, maxCount = 20)
+          val fast = square.fastCorners(threshold = 0.2, minDistance = 120, maxCount = 20)
 
-          val truth = listOf(50.0 to 50.0, 149.0 to 50.0, 50.0 to 149.0, 149.0 to 149.0)
+          val truth = listOf(500.0 to 500.0, 1499.0 to 500.0, 500.0 to 1499.0, 1499.0 to 1499.0)
           val worst = truth.maxOf { (ex, ey) -> harris.minOf { hypot(it.x - ex, it.y - ey) } }
 
           // Three lines at exactly known (rho, theta), plus a decoy ring Hough must not fit.
-          val lineMask = Img.zeros(200, 200, 1)
-          for (x in 10 until 190) lineMask.set(x, 40, 0, 1f)          // rho = 40,  theta = pi/2
-          for (y in 10 until 190) lineMask.set(150, y, 0, 1f)         // rho = 150, theta = 0
-          for (t in 0 until 240) {
-              val x = 20 + t * 0.6; val y = 60 + t * 0.6
-              if (x < 199 && y < 199) lineMask.set(x.toInt(), y.toInt(), 0, 1f)
+          val lineMask = Img.zeros(2000, 2000, 1)
+          for (x in 100 until 1900) lineMask.set(x, 400, 0, 1f)        // rho = 400,  theta = pi/2
+          for (y in 100 until 1900) lineMask.set(1500, y, 0, 1f)       // rho = 1500, theta = 0
+          for (t in 0 until 2400) {
+              val x = 200 + t * 0.6; val y = 600 + t * 0.6
+              if (x < 1999 && y < 1999) lineMask.set(x.toInt(), y.toInt(), 0, 1f)
           }
-          for (i in 0 until 360) {
-              val a = 2.0 * PI * i / 360
-              val x = (60 + 22 * kotlin.math.cos(a)).toInt()
-              val y = (150 + 22 * kotlin.math.sin(a)).toInt()
-              if (x in 0..199 && y in 0..199) lineMask.set(x, y, 0, 1f)
+          for (i in 0 until 3600) {
+              val a = 2.0 * PI * i / 3600
+              val x = (600 + 220 * kotlin.math.cos(a)).toInt()
+              val y = (1500 + 220 * kotlin.math.sin(a)).toInt()
+              if (x in 0..1999 && y in 0..1999) lineMask.set(x, y, 0, 1f)
           }
-          val lines = houghLines(lineMask, thetaSteps = 360, threshold = 100, maxLines = 5)
+          // threshold is a vote count, so it scales with the number of edge pixels on a line.
+          // Named `houghs`, not `lines`, so it cannot shadow the lines() drawing call below.
+          val houghs = houghLines(lineMask, thetaSteps = 360, threshold = 1000, maxLines = 5)
 
           showImgGrid(
               "harrisResponse (signed, coolwarm)" to square.harrisResponse().colormapDiverging("coolwarm"),
@@ -180,9 +200,17 @@ operations:
           println("harris ${harris.size} corners, worst ${"%.2f".format(worst)} px from the true square corners")
           println("fast ${fast.size} corners at " + fast.sortedBy { it.y * 1000 + it.x }
               .joinToString(", ") { "(${it.x.toInt()},${it.y.toInt()})" })
-          println("hough " + lines.joinToString(", ") {
+          println("hough " + houghs.joinToString(", ") {
               "(rho=${"%.0f".format(it.rho)}, theta=${"%.2f".format(it.theta)}, votes=${it.votes})"
           })
+
+          // A HoughLine is an INFINITE line — (rho, theta) names a whole line, not a segment — so
+          // it has no drawable form until you say which rectangle you are drawing it into. That is
+          // what toFLine(w, h) is for, and why it is nullable: a peak can name a line that misses.
+          lines(
+              cornersToFLines(harris, size = 40.0) +
+                  houghs.mapNotNull { it.toFLine(lineMask.width, lineMask.height) }
+          )
   - create:
       box: imaging_morphology
       name: morphology, connected components, distance transform
@@ -190,8 +218,8 @@ operations:
       properties:
         code: |
           // Three disjoint discs of known radius, then noise on top of them.
-          val discs = listOf(Triple(55.0, 60.0, 28.0), Triple(150.0, 55.0, 20.0), Triple(110.0, 135.0, 14.0))
-          val clean = Img.generate(220, 180) { x, y ->
+          val discs = listOf(Triple(550.0, 600.0, 280.0), Triple(1500.0, 550.0, 200.0), Triple(1100.0, 1350.0, 140.0))
+          val clean = Img.generate(2200, 1800) { x, y ->
               if (discs.any { (cx, cy, r) -> hypot(x - cx, y - cy) <= r }) 0.85f else 0.15f
           }
           val rng = kotlin.random.Random(3)
@@ -221,6 +249,10 @@ operations:
                   "bbox=${it.boundingWidth}x${it.boundingHeight} fill=${"%.2f".format(it.fillRatio)}")
           }
           println("distance-transform peak ${"%.1f".format(dt.max())} (largest planted radius ${discs.maxOf { it.third }})")
+
+          // Connected components are blobs; blobs have outlines. Same story as Canny — the raster
+          // is the evidence, the FLines are the result you can actually build on.
+          lines(cleaned.toContourFLines(minPerimeter = 120, simplifyTolerance = 8.0))
   - create:
       box: imaging_motion
       name: motion — Lucas–Kanade flow and the homography RANSAC fits to it
@@ -228,18 +260,22 @@ operations:
       properties:
         code: |
           // Two frames related by a transform we choose, so the answer is known in advance.
-          val a = Img.generate(200, 200) { x, y ->
+          // The texture frequencies stay per-pixel, so a 10x bigger frame carries 100x more
+          // detail rather than the same picture enlarged — which is what makes the extra
+          // pyramid level below do real work.
+          val a = Img.generate(2000, 2000) { x, y ->
               (0.5 + 0.24 * kotlin.math.sin(x * 0.21) * kotlin.math.cos(y * 0.17) +
                   0.16 * kotlin.math.sin((x + y) * 0.11)).toFloat().coerceIn(0f, 1f)
           }
-          val planted = Affine2D.rotationAbout(0.05, 100.0, 100.0).compose(Affine2D.translation(5.0, -3.0))
+          val planted = Affine2D.rotationAbout(0.05, 1000.0, 1000.0).compose(Affine2D.translation(50.0, -30.0))
           val b = a.warpAffine(planted, border = Border.CLAMP)
 
-          // Seed only where the 2x2 tracking system is well conditioned.
-          val seeds = a.goodFeaturesToTrack(maxCount = 200, minDistance = 9)
-              .filter { it.x in 24.0..176.0 && it.y in 24.0..176.0 }
+          // Seed only where the 2x2 tracking system is well conditioned. The displacement is now
+          // 10x larger in pixels, so the pyramid needs another level to keep it inside the window.
+          val seeds = a.goodFeaturesToTrack(maxCount = 200, minDistance = 90)
+              .filter { it.x in 240.0..1760.0 && it.y in 240.0..1760.0 }
               .map { it.toVec2() }
-          val flow = opticalFlowLK(a, b, seeds, windowRadius = 8, levels = 3)
+          val flow = opticalFlowLK(a, b, seeds, windowRadius = 12, levels = 5)
           val fit = findHomographyRansac(
               flow.sourcePoints(), flow.targetPoints(),
               threshold = 1.5, iterations = 1200, seed = 3L
@@ -247,7 +283,7 @@ operations:
 
           // How far is the recovered model from the one we planted, in pixels, on a probe grid?
           var worst = 0.0
-          for (gx in 40..160 step 40) for (gy in 40..160 step 40) {
+          for (gx in 400..1600 step 400) for (gy in 400..1600 step 400) {
               val (fx, fy) = fit.homography.apply(gx.toDouble(), gy.toDouble())
               val (tx, ty) = planted.apply(gx.toDouble(), gy.toDouble())
               worst = maxOf(worst, hypot(fx - tx, fy - ty))
@@ -255,7 +291,7 @@ operations:
 
           showImgGrid(
               "frame A" to a,
-              "frame B (rot 0.05 rad + shift 5,-3)" to b,
+              "frame B (rot 0.05 rad + shift 50,-30)" to b,
               "|A - B| (inferno)" to frameDifference(a, b).normalized().colormap("inferno"),
               "B warped back by the fitted model" to b.warpPerspective(fit.homography.inverse(), border = Border.CLAMP),
               columns = 2,
@@ -267,6 +303,10 @@ operations:
           println("RANSAC ${fit.inlierCount} inliers of ${flow.tracked().size} after ${fit.iterations} iterations")
           println("recovered model agrees with the planted transform to ${"%.3f".format(worst)} px over the probe grid")
           println(fit.homography.toString())
+
+          // One arrow FLine per track. This is the whole family's shape in one line: raster in,
+          // geometry out, and the geometry goes to lines() like anything else you draw in Field.
+          lines(flow.toFLines(scale = 6.0, minMagnitude = 0.5))
   - execute: { box: imaging_basics, property: code }
   - execute: { box: imaging_filters, property: code }
   - execute: { box: imaging_edges, property: code }
