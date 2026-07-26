@@ -1349,7 +1349,13 @@
 	            const selectedProps = new Map();
 	            const exactLineDeltaCache = new Map();
             const ELECTRON_SCREENSHOT_IDLE_DELAY_MS = 1200;
-            const ELECTRON_SCREENSHOT_MIN_INTERVAL_MS = 10000;
+            // Keep in step with CANVAS_CAPTURE_MIN_INTERVAL_MS in Main.kt. The capture runs on
+            // Electron's browser/main thread, which blocks input routing to every renderer, so a
+            // short floor shows up as a periodic typing hiccup (~540ms per shot before
+            // electron/main.js downscaled + JPEG'd them, ~40ms after). This path is normally skipped
+            // in Electron -- the editor frame sets __canvasHistoryCaptureActive -- but stays live if
+            // the panel opens before that flag is set.
+            const ELECTRON_SCREENSHOT_MIN_INTERVAL_MS = 120000;
 
             function historyNow() {
                 return typeof performance !== "undefined" &&

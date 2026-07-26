@@ -4600,10 +4600,22 @@ private fun applyUserTheme(theme: UserTheme) {
 // (the case since the 2026-06 in-editor-history refactor). We now capture from the always-loaded
 // editor, driven by the "history-changed" message on the editor's own WebSocket, so it fires on
 // every save regardless of the panel. Electron-only: needs window.fieldElectron.captureHistoryScreenshot
-// to grab the window pixels (a plain browser can't). Throttled like history.html was (1.2s settle,
-// 10s min interval).
+// to grab the window pixels (a plain browser can't).
+//
+// The capture is costly in the *wrong process*: capturePage() -> encode -> base64 all run on
+// Electron's single browser/main thread, which is also the only thread that routes input to the
+// renderers. While it is busy every keystroke and cursor move in Monaco queues behind it -- and the
+// renderer itself stays idle, so CSS/compositor animations keep running and it doesn't read as a
+// freeze. It never reproduces in a plain browser: there is no fieldElectron there, so this whole
+// path is skipped. Full-res PNG cost 533-543ms per shot (a 2.3MB data URL), and since this moved
+// out of the on-demand History panel into the always-loaded editor it fires forever -- at the old
+// 10s floor, roughly once per typed line.
+//
+// screenshotPayload() in electron/main.js now downscales to logical pixels and encodes JPEG, which
+// brings a shot to ~40ms / ~23kB. The 2-minute floor is deliberate headroom on top of that, and is
+// plenty for a history filmstrip.
 private const val CANVAS_CAPTURE_IDLE_MS = 1200
-private const val CANVAS_CAPTURE_MIN_INTERVAL_MS = 10000
+private const val CANVAS_CAPTURE_MIN_INTERVAL_MS = 120_000
 private var canvasCaptureInFlight = false
 private var canvasCapturePending: Int? = null
 private var canvasCaptureTimer: Int? = null
@@ -4627,6 +4639,18 @@ private fun scheduleCanvasHistoryCapture(versionIndex: Int) {
     }, wait.toInt())
 }
 
+// A base64 data URL carries 4 characters per 3 bytes, after the "data:image/...;base64," prefix.
+private fun dataUrlByteEstimate(dataUrl: String): Int {
+    val payload = dataUrl.length - (dataUrl.indexOf(',') + 1)
+    return if (payload <= 0) 0 else payload / 4 * 3
+}
+
+private fun formatByteEstimate(bytes: Int): String = when {
+    bytes >= 1024 * 1024 -> "${((bytes * 10.0 / (1024 * 1024)).roundToInt()) / 10.0}MB"
+    bytes >= 1024 -> "${(bytes + 512) / 1024}kB"
+    else -> "${bytes}B"
+}
+
 private fun captureCanvasHistoryNow(versionIndex: Int) {
     val api = fieldElectronCaptureApi() ?: return
     if (canvasCaptureInFlight) {
@@ -4635,6 +4659,11 @@ private fun captureCanvasHistoryNow(versionIndex: Int) {
     }
     canvasCaptureInFlight = true
     canvasCaptureLastAt = Date().getTime()
+    val startedAt = canvasCaptureLastAt
+    // Announce the capture before awaiting it. It stalls Electron's browser/main thread (and so all
+    // input) for around half a second, and an unexplained periodic hiccup is a genuinely nasty thing
+    // to debug -- this turns it into a visible, attributable event. "*history" reuses one bubble.
+    notify("canvas history snapshot <<spinner>>", "*history")
     val finish = {
         canvasCaptureInFlight = false
         val v = canvasCapturePending
@@ -4643,23 +4672,36 @@ private fun captureCanvasHistoryNow(versionIndex: Int) {
     }
     api.captureHistoryScreenshot().then({ shot: dynamic ->
         val dataUrl = shot?.dataUrl as? String
+        val elapsed = (Date().getTime() - startedAt).roundToInt()
         if (!dataUrl.isNullOrEmpty()) {
+            val width = (shot.width as? Number)?.toInt() ?: 0
+            val height = (shot.height as? Number)?.toInt() ?: 0
             send(
                 Message("store-history-screenshot").payload(
                     HistoryScreenshotStoreRequest(
                         channel = "electron-window",
                         dataUrl = dataUrl,
                         versionIndex = versionIndex,
-                        width = (shot.width as? Number)?.toInt() ?: 0,
-                        height = (shot.height as? Number)?.toInt() ?: 0
+                        width = width,
+                        height = height
                     )
                 )
             )
+            notify(
+                "canvas history snapshot — ${width}×$height, " +
+                    "${formatByteEstimate(dataUrlByteEstimate(dataUrl))} in ${elapsed}ms",
+                "*history"
+            )
+        } else {
+            // Electron hands back an empty image when the window has no pixels to read (hidden,
+            // minimised, fully occluded). Nothing to store, and it costs nothing.
+            notify("canvas history snapshot skipped — window not visible", "*history")
         }
         finish()
         Unit
     }, { err: dynamic ->
         console.warn("canvas history capture failed", err)
+        notify("canvas history snapshot failed", "*history")
         finish()
         Unit
     })
