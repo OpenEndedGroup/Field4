@@ -53,13 +53,20 @@ object KDocExtractor {
                 // Collect KDoc lines
                 var j = i
                 while (j < lines.size) {
-                    val kdocLine = lines[j].trimStart()
-                    if (j == i && kdocLine == "/**") {
-                        // First line with only /**
-                        j++
-                        continue
+                    var kdocLine = lines[j].trimStart()
+                    if (j == i) {
+                        if (kdocLine == "/**") {
+                            // First line with only /**
+                            j++
+                            continue
+                        }
+                        // A one-liner (`/** text */`) or a block whose first line already carries
+                        // text: strip the opening marker here, or it survives into the extracted
+                        // comment and is rendered literally on completion cards and in the
+                        // generated codebase reference.
+                        kdocLine = kdocLine.removePrefix("/**").trimStart()
                     }
-                    
+
                     if (kdocLine.contains("*/")) {
                         // End of KDoc
                         val beforeEnd = kdocLine.substringBefore("*/").trimStart()
