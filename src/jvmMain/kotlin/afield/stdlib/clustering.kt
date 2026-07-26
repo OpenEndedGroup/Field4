@@ -16,6 +16,25 @@ import kotlin.math.min
 import kotlin.math.sqrt
 import kotlin.random.Random
 
+/**
+ * Clustering for lists of `Float`, `Vec2`, `Vec3` and `Vec4`, mostly wrapping the Smile library
+ * (`smile.clustering`). Hierarchical clustering — [floatAgglomerative], [vec2Agglomerative],
+ * [vec3Agglomerative], [vec4Agglomerative] — returns an [AgglomerativeClustering] holding the
+ * merge tree, which you cut into a [ClusterLayer] with [AgglomerativeClustering.partition],
+ * [AgglomerativeClustering.partitionByHeight] or [AgglomerativeClustering.layers]. The
+ * `…KMedoids` functions run Smile's `KMedoids` [KMedoidsOptions.runs] times and keep the lowest
+ * distortion; the `…KMedians` functions are a local Lloyd-style L1 implementation in this file
+ * with its own restarts and D²-weighted seeding. Cuts of the merge tree come back with labels
+ * renumbered by first appearance; every result type can be turned into a [ClusterLayer].
+ *
+ * [visualizeVec3ClusterLayers3D], [visualizeVec2ClusterLayers3D] and
+ * [visualizeFloatClusterLayers3D] — plus the [AgglomerativeClustering.visualizeVec3]-style
+ * extensions that build the layers for you — stack a list of [ClusterLayer]s along one axis and
+ * return `FLine`s in a map keyed `"cluster-points"`, `"cluster-points-halo"`,
+ * `"cluster-centers"`, `"cluster-centers-halo"`, `"cluster-links"` and `"cluster-guides"`.
+ * [ClusterLayerVizOptions] controls spacing, sizes and which of those layers are emitted.
+ */
+
 enum class AgglomerativeLinkage {
     SINGLE,
     COMPLETE,

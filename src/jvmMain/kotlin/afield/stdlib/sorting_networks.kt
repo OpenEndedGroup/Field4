@@ -8,6 +8,22 @@ import kotlin.math.*
 import kotlin.random.Random
 
 /**
+ * Sorting networks as data: a [SortingNetwork] is a wire count plus an ordered list of
+ * [SortingComparator] compare-and-swaps. Build one with `SortingNetwork.bubble`,
+ * `SortingNetwork.oddEvenMerge` (Batcher's iterative odd-even merge) or `SortingNetwork.anneal`
+ * (simulated-annealing search for a shorter network), then check it with
+ * [SortingNetwork.isSorting], which enumerates all `2^n` binary inputs by the 0-1 principle up to
+ * n = 20 and falls back to 4096 random probes above that.
+ *
+ * [SortingNetwork.layers] assigns comparators to their earliest parallel layer (ASAP scheduling)
+ * and drives [SortingNetwork.depth], [SortingNetwork.notation] — a `"0:1 2:3 | 0:2 1:3"` string
+ * that round-trips through `SortingNetwork.fromNotation` — [SortingNetwork.asciiDiagram] and
+ * [SortingNetwork.toFLines] for `Box.lines(...)`. Pure Kotlin apart from `FLine`; the annealing
+ * search is CPU-bound (each validity check is `O(2^n × |comparators|)`) and reports through
+ * `afield.progressReporter`.
+ */
+
+/**
  * A single compare-and-swap unit on wires [lo] and [hi].
  *
  * Applying the comparator ensures the smaller value exits on wire [lo] and the

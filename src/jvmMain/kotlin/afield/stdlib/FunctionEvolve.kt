@@ -5,6 +5,26 @@ package afield.stdlib
 import kotlin.random.Random
 
 /**
+ * Search over the *structure* of `Fn` graphs — the genetic counterpart to the gradient fitting of
+ * a fixed structure's numbers in FunctionFit.kt.
+ *
+ * [FnMutations] holds the seeded mutation operators (jitter and nudge numeric leaves, transmute an
+ * op within its `OpRegistry` family, prune, duplicate or graft a subtree), each expressed over the
+ * graph copy and query primitives rather than a private traversal. [evolve] runs them as a bounded
+ * (µ+λ) hill-climb and returns an [FnEvolveRun] listing every accepted improvement. Fitness is the
+ * caller's: [matchFitness] scores closeness to a target under any `FnMetric`, less an optional
+ * complexity penalty from `graphMetrics`; [noveltyFitness] instead scores distance from an archive
+ * of [FnBehaviour] descriptors — what a graph *does* when sampled, not how it is built — and
+ * [evolveVariety] chains slots of novelty search into a behaviourally spread set of results rather
+ * than one best match.
+ *
+ * Both runners are bounded by an iteration count so a search cannot disappear into an animation
+ * loop, and both are deterministic: traversal is stable and every draw comes from one seeded
+ * `Random`, with each [evolveVariety] slot deriving `rngSeed * 31 + slot`. Set `normalize` on
+ * [Functions.Fn.behaviour] (and hence on novelty search) to compare shape rather than amplitude.
+ */
+
+/**
  * Seeded mutation operators and a bounded, deterministic search harness.
  *
  * This is the "rehearsal" the graph layer was built toward: [graphMetrics] gives a

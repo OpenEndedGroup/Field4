@@ -10,6 +10,24 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
+ * Synchronous Boolean networks and the pictures you draw of them. A [BooleanNetwork] is a list of
+ * [BoolNode]s whose update lambdas all fire at once on the current state vector;
+ * [BooleanNetwork.trajectory] and [BooleanNetwork.trajectoryUntilCycle] run one initial state
+ * forward, and [BooleanNetwork.findAttractors] walks the whole `2^size` state-transition graph to
+ * return every [Attractor] with its basin — it is `O(2^size)` and returns an empty list above 20
+ * nodes.
+ *
+ * The drawing helpers return `FLine`s for a box: [BooleanNetwork.drawUnrolled] (spacetime grid),
+ * [BooleanNetwork.drawNetworkGraph] (wiring diagram on a circle),
+ * [BooleanNetwork.drawStateTransitionGraph] (only for `size <= 6`),
+ * [BooleanNetwork.drawAttractorBasins], and the standalone [drawRhythmGrid] for any list of
+ * Boolean lane states. [BooleanNetwork.notateHtml] and
+ * [BooleanNetwork.notateAttractorsHtml] emit HTML tables instead, [BooleanNetwork.printAttractors]
+ * plain text. Ready-made networks: [toggleNetwork], [threeNodeNetwork],
+ * [segmentPolarityNetwork] and the random N-K [kauffmanNetwork].
+ */
+
+/**
  * A single node in a Boolean network.
  *
  * @param name    Human-readable label, e.g. "A", "x1", or "CDK2".

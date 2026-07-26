@@ -10,6 +10,30 @@ import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.sqrt
 
+/**
+ * A named, typed DSL over the raw constraint vocabulary in `CeresGeometry.kt`, plus the interactive
+ * machinery for solving it while a user drags. [geometryModel] opens a [GeometryModelScope] where
+ * you declare [PointRef]s, [LineRef]s, [PlaneRef]s and [PanelRef]s (points can be created from
+ * `Vector3fc` values or bound to live `Vector3f`s via [GeometryModelScope.bindPoint]) and then
+ * state relations inside `constraints { }` — [ConstraintScope] supplies `length`, `parallelTo`,
+ * `angleRadiansTo`, `planar`, `on`, `inside`, `lock`, `weak`, `mirror`, `dihedral` and the `ceq`
+ * infix equality.
+ *
+ * [GeometryModel.openSession] (or [session]) compiles the program once and returns a
+ * [GeometrySolveSession] holding a mutable point cloud, per-point prior weights and a reusable
+ * solve report; [GeometrySolveSession.drag] / [DragHandle] / `pin` / `release` are the interaction
+ * verbs, weighted by [InteractionPolicy].
+ *
+ * [liveGeometry] wraps a model *block* rather than a model: each [LiveGeometryProgram.step] re-runs
+ * the block, reuses the existing session when point names, point count and program hash are all
+ * unchanged, reads every bound point back in, solves, and writes the results out through the
+ * bindings. [LiveGeometryProgram.polishLocked] does a separate hard-locked settle pass.
+ *
+ * Point arithmetic ([PointExpr], `a + b`, `0.5 * c`) creates synthetic "trace" points that are
+ * recomputed from their expression before every solve. The default backend is `FfmCeresBackend`, so
+ * these entry points need the native Ceres library present.
+ */
+
 class PointRef internal constructor(val id: PointId, val name: String?) {
     val index: Int get() = id.value
 

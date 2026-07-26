@@ -5,6 +5,24 @@ package afield.stdlib
 import kotlin.math.*
 import kotlin.random.Random
 
+/**
+ * An unscented Kalman filter, and a particle filter whose particles each carry one.
+ *
+ * [UnscentedKalmanFilter] keeps a mean and covariance and takes the transition and observation
+ * models as lambdas; [UnscentedKalmanFilter.updateWithLikelihood] returns the log measurement
+ * likelihood, which is exactly what [UKFParticleFilter] accumulates into each particle's log
+ * weight. A [UKFParticle] holds a UKF for the continuous state plus a hypothesis of your own
+ * type `H` for the discrete or non-Gaussian part. [UKFParticleFilter.resampleIfNeeded] does
+ * systematic resampling once the effective sample size drops below a fraction of the particle
+ * count, and can immediately roughen the resampled means ([RougheningOptions]) so exact clones
+ * separate again.
+ *
+ * State and measurement dimensions are restricted to 1..3 — the private determinant helper only
+ * covers those sizes and everything `require`s it. The linear algebra (`Matrix` is just
+ * `Array<DoubleArray>`; Cholesky with escalating jitter, Gauss–Jordan inverse) is private to this
+ * file, has no external dependency, and allocates fresh arrays on every step.
+ */
+
 typealias Matrix = Array<DoubleArray>
 
 data class UKFOptions(

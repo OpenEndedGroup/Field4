@@ -2,6 +2,15 @@
 
 package afield.stdlib
 
+/**
+ * `Number`-taking overloads of the trigonometric functions, so `sin(1)` and `sin(1f)` work
+ * without writing `.toDouble()` at every call site.
+ *
+ * Covers the circular functions and their inverses ([sin], [cos], [tan], [asin], [acos], [atan],
+ * [atan2]) and the hyperbolic ones ([sinh], [cosh], [tanh], [asinh], [acosh], [atanh]). Each is a
+ * one-line delegate to the matching `kotlin.math` function and always returns `Double`.
+ */
+
 fun sin(n: Number): Double = kotlin.math.sin(n.toDouble())
 fun cos(n: Number): Double = kotlin.math.cos(n.toDouble())
 fun tan(n: Number): Double = kotlin.math.tan(n.toDouble())

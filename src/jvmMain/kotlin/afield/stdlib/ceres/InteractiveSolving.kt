@@ -2,6 +2,24 @@
 
 package afield.stdlib.ceres
 
+/**
+ * The mutable, reuse-oriented half of the Ceres solver API, for solving the same program over and
+ * over at interactive rates. [MutablePointCloud], [MutablePriorWeights] and [MutableSolveReport]
+ * are in-place counterparts to the immutable `PointCloud` / `DynamicPriorWeights` / `SolveMetrics`
+ * in `CeresGeometry.kt`, so a drag loop can call [ReusableCompiledCeresSolver.solveInPlace] without
+ * allocating a new point cloud or result per frame.
+ *
+ * [InteractionPolicy] collects the weights and iteration counts that distinguish the three phases
+ * of a drag — a cheap `dragOptions` pass while the mouse is down, a longer `releaseOptions` settle
+ * on release, and `pinnedWeight` for points held fixed — and precomputes the matching
+ * `SolveOptions`.
+ * [MutableSolveReport.top] names the highest-cost opcode groups from the last solve.
+ *
+ * All point and weight arrays are flat xyz triples; coordinates must be finite and weights finite
+ * and non-negative, and a report's group capacity must be at least the metric capacity a solve
+ * asks for.
+ */
+
 data class InteractionPolicy(
     val preserveWeight: Double = 1e-2,
     val dragWeight: Double = 1e3,

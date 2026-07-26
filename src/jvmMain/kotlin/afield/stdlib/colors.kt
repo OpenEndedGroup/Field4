@@ -12,6 +12,23 @@ import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
 
+/**
+ * Colour constructors for the stdlib. Everything here returns a `Vec4` of sRGB-encoded components
+ * clamped to `[0,1]` with alpha last, so the results drop straight into FLine colours and uniforms.
+ *
+ * [rgb] / [rgba] accept either 0..1 or 0..255 components — the scale is inferred per call from
+ * whether any component exceeds 1 — and [rgb255] forces the 0..255 reading. [hsl] is ordinary HSL;
+ * [okhsl] and [okhsv] are the Oklab-based equivalents, which hold perceived lightness far steadier
+ * across hue. Hue may be given as a fraction of a turn or in degrees (magnitude above 1 is divided
+ * by 360) and is wrapped either way.
+ *
+ * For sets: [hueSetHsl], [hueSetOkhsl] and [hueSetOkhsv] (aliased [hslSet], [okhslSet], [okhsvSet])
+ * space equally-separated hues around the wheel at a fixed saturation and lightness.
+ * [paletteForBackground] starts from the same okhsl ring but then walks each entry's lightness up
+ * or down until it clears a minimum WCAG contrast ratio against the supplied background, returning
+ * the highest-contrast candidate it found when it cannot reach the target.
+ */
+
 private data class LinearRgb(val r: Float, val g: Float, val b: Float)
 private data class Oklab(val l: Float, val a: Float, val b: Float)
 private data class LC(val l: Float, val c: Float)

@@ -19,6 +19,21 @@ import java.io.File
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.concurrent.thread
 
+/**
+ * Runs an external command and reads newline-delimited JSON from its stdout. Build a
+ * [JSONProcess] with a working directory, a command and an optional environment; the most recent
+ * parsable stdout line is exposed as [JSONProcess.output] (an `org.json.JSONObject`) — a snapshot
+ * of the latest line, not a queue. A leading `~` is expanded in the working directory and in the
+ * executable, but not in the remaining arguments.
+ *
+ * Returning a [JSONProcess] from a box starts the subprocess and ties it to that run:
+ * [registerJSONProcessReturnValue] installs the `ReturnValueRegistry` handler, and the process is
+ * destroyed — then force-destroyed if it will not exit — when the box re-runs or the job
+ * completes. stdout and stderr are drained on daemon threads; non-JSON lines, stderr output and a
+ * failure to start are recorded in [JSONProcess.lastError] and logged rather than thrown, so check
+ * [JSONProcess.running], [JSONProcess.exitCode] and [JSONProcess.hasOutput] to know what happened.
+ */
+
 class JSONProcess(
     workingDirectory: String? = null,
     vararg command: String,

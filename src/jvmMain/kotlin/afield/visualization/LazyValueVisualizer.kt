@@ -10,6 +10,25 @@ import java.util.LinkedHashMap
 import java.util.UUID
 import kotlin.math.abs
 
+/**
+ * The lazy half of value display: rather than inline a large structure, show one summary line plus
+ * links into the server-side browsers.
+ *
+ * [LazyValueVisualizer.visualize] — reached in a box as [h2] — passes anything small or
+ * unrecognised straight to `ValueVisualizer`. For maps, lists, arrays and `FloatBuffer` /
+ * `IntBuffer` it instead retains the value under a token and emits a summary, `outliner` and
+ * `columns` links, and an embedded `/h2-explorer` iframe. Those tokens live in an in-memory
+ * retention table (10 minutes, 256 entries), so the links only resolve against the running server
+ * and go stale after that.
+ *
+ * The private `Browsable` wrappers behind those routes page rather than copy: children are grouped
+ * into range-labelled directories of at most 96 entries, and a map with more than 20,000 entries is
+ * iterated on demand instead of snapshotted. [registerH2Value] adds a per-type adapter returning an
+ * [H2ValueSnapshot] when a type should be summarised or unwrapped differently, and
+ * [lazyInlineExpanderHtml] is the inline "… +N more" link `ValueVisualizer` emits for elided
+ * content.
+ */
+
 private const val H2_MAX_CHILDREN_PER_DIR = 96
 private const val H2_LIST_LEAF_SIZE = 128
 private const val H2_MAP_LEAF_SIZE = 96

@@ -6,6 +6,23 @@ package afield.stdlib
 import eu.sirotin.kotunil.core.*
 
 /**
+ * Physical units for Field's spreadsheet-style numbers. A [Quantity] pairs a KotUniL
+ * `Expression` (normalized to SI) with the display unit the user actually wrote, so `3 | mm`
+ * still prints as "3 mm".
+ *
+ * [withUnit] is what that `| unit` syntax lowers to, and the operator overloads here let a
+ * [Quantity] mix with plain `Number`s and bare `Expression`s in either order under ordinary
+ * dimensional-analysis rules. The rest of the file is presentation: [recognizeDerivedUnit]
+ * matches a dimensional signature against a table of named SI derived units (N, J, W, Pa, Hz, V,
+ * Ω, ...), [autoScaleExpression] chooses an SI prefix, and [formatUnitSuperscripts] rewrites
+ * `kg*m2/s2` as `kg·m²/s²`. [formatExpression] runs those in that order.
+ *
+ * The unit algebra itself is KotUniL's, not Field's. Two limits are visible in the code: only
+ * single-factor dimensions are auto-scaled (compound ones like m/s pass through unchanged), and
+ * the derived-unit table is a fixed list, so anything outside it falls back to raw SI symbols.
+ */
+
+/**
  * A numeric value with tracked physical units.
  *
  * Wraps a KotUniL [Expression] (which normalizes to SI internally) and remembers

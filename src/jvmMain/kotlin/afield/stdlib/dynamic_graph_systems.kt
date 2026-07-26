@@ -9,6 +9,26 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
+ * Time-varying point-and-edge systems: point clouds that move every frame while the graph joining
+ * them is continually reinforced and decayed. State lives in [DynamicPointState] (points, optional
+ * `Vec4` labels, a clock), edges in [DynamicEdgeList] (weight / age / ttl per edge, thinned by
+ * [DynamicEdgeList.decayLinear] or [DynamicEdgeList.decayExponential]), and neighbour queries go
+ * through [Vec3SpatialHash], which is rebuilt each step because the cloud moves.
+ *
+ * There are two extension points. A [DynamicGraphSystem] only adds and reinforces edges —
+ * [Vec3BreathingAnisotropicKnnSystem], [Vec3FlowlineAdvectionGraphSystem],
+ * [Vec3LocalTangentTriangulationSystem], [Vec3PersistentProximityHysteresisSystem],
+ * [Vec3SignalRoutingGraphSystem], [Vec3AlphaEventHypergraphCollapseSystem]. A
+ * [DynamicPointProcess] moves, adds and removes points against [DynamicPointKinetics]
+ * (velocity / resource / alive) and several are composed in order by [DynamicProcessPipeline].
+ *
+ * Drive one frame with [stepDynamicGraph] or its decaying variants; [dynamicGraphSnapshot] and
+ * [DynamicEdgeList.toPointGraph] convert the live edge store into the static `PointGraph` the rest
+ * of the graph library expects, and [exampleDynamicMorphogenesisStep] wires a whole frame
+ * together. Pure Kotlin, single-threaded, no external dependency.
+ */
+
+/**
  * Dynamic point state for time-varying graph systems.
  *
  * Keeps your existing Vec3 point list plus optional labels and time.

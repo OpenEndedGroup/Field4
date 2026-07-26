@@ -7,6 +7,20 @@ import smile.neighbor.LSH
 import smile.neighbor.Neighbor
 import kotlin.math.sqrt
 
+/**
+ * Nearest-neighbour indexes over `Vec2` / `Vec3` point lists, wrapping Smile's `KDTree` and `LSH`.
+ * Build one with [vec2NN] or [vec3NN]: both copy the points, reject non-finite coordinates, and
+ * return a [Vec2NNIndex] / [Vec3NNIndex] exposing `nearest`, `kNearest` and `withinRadius`. Results
+ * come back as [VecNeighbor2] / [VecNeighbor3] carrying the index into the original list and the
+ * true Euclidean distance, radius results sorted nearest-first.
+ *
+ * [VecNNMode.APPROXIMATE] (the default) builds an LSH alongside the KD-tree and silently degrades
+ * to exact mode, with a message on stderr, if LSH construction fails. Either mode falls back to a
+ * brute-force scan whenever the backing index returns too few candidates, so answers stay correct
+ * but a query can cost `O(n log n)`. [VecNNBuildOptions] tunes the LSH parameters and can forbid
+ * duplicate points.
+ */
+
 enum class VecNNMode {
     APPROXIMATE,
     EXACT

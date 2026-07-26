@@ -25,6 +25,23 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
+ * OSC in and out, wrapped around JavaOSC (`com.illposed.osc`) and driven from Field's main runloop.
+ *
+ * The usual entry points are [osc] and [oscClient], not the constructors: they hand back cached
+ * [OscServer] / [OscClient] instances (keyed by port, and by host+port) so that re-running a box
+ * during live editing reuses the existing socket instead of rebinding it. [OscServer] binds a UDP
+ * port (default 9000) in its constructor and starts listening immediately; handlers registered
+ * with `on` are keyed by OSC address pattern and return a `Generator`, which is started and then
+ * stepped once per service pass on the main thread — so a handler can span frames. [OscClient]
+ * opens its outbound socket lazily on first `send`.
+ *
+ * Two things to know when debugging: the connect/listen/close calls are wrapped in a swallowing
+ * `try`/`catch`, so a failed bind or connect throws nothing and reports nothing (check
+ * `isListening` / `isConnected`); failures inside handlers and sends are caught too, but at least
+ * print. [OscServer] also has `debug` on by default, printing every incoming message.
+ */
+
+/**
  * Thin wrapper around JavaOSC's OSCPortIn that queues callbacks onto the main runloop.
  *
  * Register handlers via [on]; keys are OSC address patterns, values are Generators whose input is [Message].

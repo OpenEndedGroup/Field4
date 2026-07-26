@@ -4,6 +4,26 @@ package afield.stdlib
 
 import java.util.IdentityHashMap
 
+/**
+ * The query and rule-runner layer over the graph copier in FunctionGraph.kt.
+ *
+ * Queries come first, and none of them copy or evaluate the function:
+ * [Functions.Fn.graphMatches] and [Functions.Fn.firstGraphMatch] visit a shared node once per
+ * incoming path, so role, ancestry, depth and path stay meaningful for editing;
+ * [Functions.Fn.graphMetrics] separates unique DAG nodes from occurrences and charges a
+ * caller-supplied cost; [Functions.Fn.graphSignature] reduces structure to a deterministic string
+ * with evaluator closures and rebuild lambdas deliberately excluded. On top of those, [FnGraphRule]
+ * pairs a named predicate with a replacement, and [Functions.Fn.rewriteWithRules] (one bottom-up
+ * pass) and [Functions.Fn.rewriteUntilStable] (repeated passes) apply them, returning an
+ * [FnGraphRewriteRun] that records every edit that actually changed a node's signature.
+ *
+ * Fixed-point rewriting is bounded on purpose: [Functions.Fn.rewriteUntilStable] compares
+ * signatures each pass and reports [FnGraphRewriteStop.STABLE], [FnGraphRewriteStop.CYCLE] or
+ * [FnGraphRewriteStop.MAX_PASSES] rather than letting a non-terminating rule set hide inside an
+ * animation loop. Rules default to [FnGraphRuleMode.FIRST_MATCH] at each node, so ordering is
+ * explicit; [FnGraphRuleMode.ALL_MATCHES] chains every matching rule on the same copy.
+ */
+
 /** A named, programmatic rewrite rule over one occurrence in an [Functions.Fn] graph. */
 data class FnGraphRule(
     val name: String,

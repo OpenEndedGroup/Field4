@@ -3,6 +3,24 @@
 package afield.stdlib
 
 /**
+ * The `selector => action` string rewrite DSL, compiled and applied end to end.
+ * [compileFnRewrite] parses a spec into an [FnRewriteProgram] carrying line/column
+ * [FnRewriteDiagnostic]s; [Functions.Fn.rewrite], [Functions.Fn.previewRewrite] (which also
+ * reports match paths and which rules did nothing) and [Functions.Fn.rewriteChecked] (which
+ * refuses an invalid program) run it over the graph copier. Selector matching lives here — op,
+ * role, name, tag and depth tokens, `parent=`, `[key>=n]` predicates and slash-separated path
+ * selectors with `*` and `**` wildcards — and so does action application: `op=`, `name=`,
+ * `domain=`, `drop`, and the numeric `=`, `*=`, `/=`, `+=`, `-=` forms. `op=` targets are checked
+ * against `OpRegistry`; an unknown op is reported as a warning, not an error.
+ *
+ * The file deliberately does not depend on the live-code compiler. A Kotlin right-hand side is
+ * parsed out of its `@{...}` (or dollar-brace) wrapper and then handed to
+ * [FnRewriteOptions.kotlinNumberContext]; when no caller supplied one, the action is simply not
+ * applied. FunctionRewriteKotlin.kt is what plugs a box's Kotlin engine into that hook, and
+ * FunctionRewritePattern.kt is the separate structural pattern-to-template surface.
+ */
+
+/**
  * Tiny string layer over the graph-copy API.
  *
  * This is deliberately not a second implementation of graph rewriting. It

@@ -4,6 +4,24 @@ package afield.stdlib
 
 import kotlin.math.*
 
+/**
+ * 2D multiplicatively weighted Voronoi (Apollonius) diagrams. Each site is a `Vec3` of
+ * `(x, y, weight)` and cells are decided by the score `|x - p|² / w²`.
+ *
+ * [CircularDirichlet.build] returns a `Diagram` holding one `CellBoundary` per site, its pieces
+ * sorted angularly around that site. Because the bisector of two differently weighted sites is a
+ * circle — and a line only when the weights match — boundaries arrive as `ArcPiece` and
+ * `LinePiece` rather than polygon edges; call `toPolyline` / `toPolylines` on a piece to
+ * tessellate it, and pass an `Aabb` clip, since unbounded lines cannot be flattened without one
+ * and clipping an arc may split it into several polylines.
+ *
+ * All weights must be > 0 (`build` requires it). The construction is triple-nested over the
+ * sites — every bisector is intersected against every other, and each candidate piece is kept
+ * only if a midpoint sample really is on the cell boundary — so it is aimed at modest site
+ * counts. Pure Kotlin on Field's `Vec2`/`Vec3`; the 3D counterpart is `CircularDirichlet3d` in
+ * `voronoi.kt`.
+ */
+
 object CircularDirichlet {
     // Apollonius / multiplicatively weighted Voronoi:
     // score_i(x) = |x - p_i|^2 / w_i^2, with site = (x, y, w)

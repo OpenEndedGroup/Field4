@@ -21,6 +21,24 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
+ * The short vector aliases ([Vec2], [Vec3], [Vec4], [Quat], [DualQuat]) plus the constructors and
+ * point-cloud helpers that sit on top of Field's generated `afield.stdlib.linalg` types.
+ *
+ * `vec(...)` is the usual way to make one — from numbers, by copying, or by concatenating a
+ * scalar with a smaller vector — and `quat` / `dualquat` do the same for rotations. Collections
+ * of vectors gain `center`, `median` / `medianVec` and `aabbBounds` in 2D, 3D and 4D; 3D also
+ * gets `obbBounds` (PCA by power iteration, an explicit approximation — the code says so),
+ * `convexHull` and `convexHullPeelingMedian`, which go through the QuickHull3D library and
+ * return the input unchanged if the hull cannot be built. [Cuboid] is a separate plain 3D
+ * box-with-size type used for layout-style union / inset / intersects work.
+ *
+ * These vector types are mutable and most operations mutate the receiver, so copy first
+ * (`Vec3(existing)`) when you need to keep the original. Swizzles and the `invoke`, `%=` and
+ * `len` operators are deliberately absent here: they are generated for every float vector into
+ * `Swizzles.kt` and `VectorOperators.kt` by `tools/linalg-generator`.
+ */
+
+/**
  * Field's 4D vector alias, backed by Field's generated mutable [Vector4f].
  *
  * Use `vec(x, y, z, w)` to construct one. These methods generally mutate the receiver;

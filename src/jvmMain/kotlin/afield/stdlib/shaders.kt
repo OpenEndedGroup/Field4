@@ -44,6 +44,35 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import java.util.Locale
 
+/**
+ * The bridge between a box's text and a live Vulkan pipeline: shader source lives in box
+ * properties, and this file turns it into modules and keeps them hot-reloading.
+ *
+ * The properties come first — `vertex`, `fragment`, `compute`, `task`/`mesh`, the ray-tracing
+ * stages, and a `_s` variant of each for Slang — alongside `once.vertex { }`-style seeders. The
+ * user-facing entry points are the macro placeholders [Box.moduleHere], [Box.computeModuleHere],
+ * [Box.meshModuleHere], [Box.rayTracingModuleHere] and [Box.shadertoyHere]; each one throws
+ * `MacroNotExpandedException` if actually called, because `MacroRegistry` is expected to rewrite it
+ * into the real `_moduleHere`-family call.
+ *
+ * Before compilation every stage goes through [preprocess], which resolves `#include`s against
+ * other boxes' shader properties (with cycle detection and `#line` fixups), against built-in
+ * includes such as the field probe, field stats and quantile warp, and against registered include
+ * roots — [registerShaderFilesystemIncludeRoot] for a directory and [registerLygiaIncludeRoot] /
+ * [shaderCachedUrlIncludeRootResolver] for URL-fetched, disk-cached libraries. It also expands
+ * `{% copyPC %}` (copying a previous stage's push-constant block) and stackAuto template slots
+ * compiled from StackSL via [stackAutoShaderSource].
+ *
+ * [reloadShader], [reloadComputeShader], [reloadMeshShader] and [reloadRayTracingShader] are the
+ * reload path: compile, report errors back onto the box's source lines, introspect the result, and
+ * rewrite the box's Kotlin preamble with generated binding structures before swapping the module.
+ * [Box.attachShader] adopts an externally built module into that same path. [Box.fieldProbeHere],
+ * [Box.fieldStatsHere] and [Box.fieldProbeAutoControl] attach the GPU readback instrumentation.
+ *
+ * Everything here needs a live `Box` — properties, error reporting, preamble edits and the
+ * generation-guarded async reload all key off it.
+ */
+
 // ------------------------------
 // Box properties
 // ------------------------------

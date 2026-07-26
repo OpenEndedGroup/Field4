@@ -8,6 +8,22 @@ import afield.macros.Insert
 import afield.macros.MacroRegistry
 import afield.macros.MacroRegistry.callRewrite
 
+/**
+ * Two related things: a small hand-written JSON reader, and a macro that generates a typed parser
+ * from a terse schema. [parseJson] turns text into a [JValue] tree — [JObject], [JArray],
+ * [JString], [JNumber] (which keeps the raw digits rather than converting), [JBool], [JNull] — and
+ * throws [JsonParseException] with a character offset on bad input. No external JSON library is
+ * involved.
+ *
+ * [JsonSchemaGen.generateSource] compiles a schema such as `{name: s, at: [f, f], tags: [s...],
+ * ...}` into Kotlin source for a data class with a `fromString` companion: `f`/`i`/`s` are the
+ * leaves, `[x...]` is a list, `[a, b]` is a `Pair` (2, 3 or 4 floats collapse to `Vec2`/`Vec3`/
+ * `Vec4`), and a trailing `...` permits extra JSON fields instead of rejecting them. In a box you
+ * reach this through the `jsonParser<Name>("schema")` macro registered by
+ * [registerJsonParsingMacros], which inserts the generated source into the preamble. Inline nested
+ * objects are not supported.
+ */
+
 sealed interface JValue
 data class JObject(val fields: Map<String, JValue>) : JValue
 data class JArray(val items: List<JValue>) : JValue

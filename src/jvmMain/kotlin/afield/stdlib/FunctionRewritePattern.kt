@@ -5,6 +5,24 @@ package afield.stdlib
 import kotlin.math.abs
 
 /**
+ * The third rewriting surface in the family, and the algebraic one. FunctionRewriteDsl.kt is
+ * `selector => action` and edits one matched node in place; `FnGraphRule` in FunctionGraphRules.kt
+ * is a hand-written predicate plus a hand-written replacement; here both sides of a rule are graph
+ * shapes with metavariables ([FnPattern]), so `add(?x, 0) => ?x` reads as an identity rather than
+ * an instruction. [fnRule] compiles a spec into an ordinary `FnGraphRule`, which is what lets
+ * pattern rules reuse the existing traced, bounded, cycle-detecting runners;
+ * [Functions.Fn.rewritePatterns] is the fixed-point convenience over a set of specs.
+ *
+ * Matching and the parser are both here. A `?name` binds a subtree and, if repeated, must bind a
+ * structurally equal one (compared by `graphSignature()`); a bare number matches a numeric node's
+ * `value` to within 1e-12; op names are compared through `OpRegistry`'s alias table; `op(a, b, …)`
+ * constrains only the leading children. The string template side is narrower than the pattern
+ * side: a bare op transmutes the matched node, only add/subtract/multiply/divide accept an
+ * explicit child list, and any other `op(...)` template throws — the [fnRule] overload taking a
+ * Kotlin builder over [FnPatternMatch] is the general escape.
+ */
+
+/**
  * Structural pattern → template rewriting: the term-rewriting surface on top of
  * the graph copier.
  *

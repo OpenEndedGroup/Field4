@@ -9,6 +9,22 @@ import afield.stdlib.linalg.Vector4f
 import java.util.*
 import kotlin.random.Random as KotlinRandom
 
+/**
+ * Box-scoped randomness. [random], [randomGaussian] and [setRandomSeed] draw from a
+ * `java.util.Random` held as a property on the current `Box`, so re-running a box replays the
+ * same sequence; with no `Box` in context they fall back to one process-wide generator seeded
+ * with [STDLIB_RANDOM_DEFAULT_SEED].
+ *
+ * Alongside the seed each box carries a noise phase you advance yourself ([noisePhase],
+ * [noiseForward], [setNoisePhase]). That phase and seed drive [noise1D], a small Perlin-style
+ * hashed 1D noise, and the `perlinNoise` extensions on `Vector2f`/`Vector3f`/`Vector4f`, which
+ * take one independent noise channel per component.
+ *
+ * All the vector extensions — `perlinNoise` and the uniform-jitter `noise(d)` — mutate the
+ * receiver in place and return it rather than allocating. [nextGaussian] is a Box-Muller
+ * extension that fills the gap left by `kotlin.random.Random`, which has no Gaussian of its own.
+ */
+
 // Box-scoped RNG so stdlib random/noise are repeatable per execution.
 private const val STDLIB_RANDOM_PROPERTY = "__stdlib_random"
 private const val STDLIB_RANDOM_SEED_PROPERTY = "__stdlib_random_seed"
