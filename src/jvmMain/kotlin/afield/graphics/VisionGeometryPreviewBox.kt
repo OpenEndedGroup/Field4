@@ -62,6 +62,12 @@ fun Box.previewVisionGeometry(
             frames
         },
     )
+    // The uniform wiring is decidable from the same run, and its failures are just as invisible from
+    // here as a bad winding: an undeclared `u_NAME` fails Metal's compiler minutes later, on a device.
+    VisionMetalProgramCheck.summarise(
+        VisionMetalProgramCheck.problems(kotlin, msl, capture.uniforms.map { it.name }),
+    )?.let { notify("'${this.name}': $it", "vision-metal") }
+
     if (capture.meshes.isEmpty()) {
         notify("'${this.name}' never called geometry { … } — the head would draw nothing", "vision-metal")
         return capture

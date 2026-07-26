@@ -3,6 +3,7 @@ package afield.examples
 import afield.graphics.VISION_METAL_VERTEX_FLOATS
 import afield.graphics.VisionGeometryPreview
 import afield.graphics.VisionGeometryPreview.CapturedMesh
+import afield.graphics.VisionMetalProgramCheck
 import org.yaml.snakeyaml.Yaml
 import java.io.File
 import javax.imageio.ImageIO
@@ -317,6 +318,85 @@ object VisionGeometryPreviewGallery {
         return blocks[index]
     }
 
+    /** Every `code` + `msl` pair in a transcript, for the uniform-wiring check. */
+    @Suppress("UNCHECKED_CAST")
+    private fun transcriptPrograms(dir: File, name: String): List<Pair<String, String?>> {
+        val file = File(dir, "$name.yaml")
+        require(file.isFile) { "transcript $name.yaml not found in ${dir.absolutePath}" }
+        val root = Yaml().load<Map<String, Any?>>(file.readText())
+        val ops = root["operations"] as? List<Map<String, Any?>> ?: error("$name.yaml has no operations")
+        return ops.mapNotNull { op ->
+            val properties = (op["create"] as? Map<String, Any?>)?.get("properties") as? Map<String, Any?>
+                ?: return@mapNotNull null
+            val code = properties["code"]?.toString()?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            code to properties["msl"]?.toString()
+        }
+    }
+
+    /**
+     * A checker that never fires proves nothing, and every shipped program is (now) clean — so put a
+     * deliberately broken one through it and require each fault to come back.
+     */
+    private fun verifyUniformCheckFires(failures: MutableList<String>) {
+        val broken = """
+            // {{ visionmetal uniforms=spin,unused }}
+            onStart {
+                geometry { cube(0.1) }
+                uniform("spin", 1.0)
+                uniform("undeclared", 2.0)
+            }
+        """.trimIndent()
+        val msl = """
+            // u_commented is inside a comment and must NOT count as a reference
+            vertex FieldVarying field_vertex() { return (FieldVarying)u_spin; }
+        """.trimIndent()
+        val problems = VisionMetalProgramCheck.problems(broken, msl, listOf("spin", "undeclared"))
+        val expectations = listOf(
+            "field_fragment" to true,
+            "'undeclared' is not declared" to true,
+            "'unused' is declared but never read" to false,
+        )
+        for ((fragment, fatal) in expectations) {
+            val hit = problems.firstOrNull { fragment in it.message }
+            when {
+                hit == null -> failures += "uniform check missed '$fragment': got ${problems.map { it.message }}"
+                hit.fatal != fatal -> failures += "uniform check reported '$fragment' as fatal=${hit.fatal}"
+            }
+        }
+        if (problems.any { "u_commented" in it.message }) {
+            failures += "uniform check read `u_commented` out of a comment"
+        }
+        if (problems.none { "u_spin" in it.message } && problems.none { it.message.contains("field_fragment") }) {
+            failures += "uniform check found nothing at all in a deliberately broken program"
+        }
+        println("  uniform check self-test: ${problems.size} problem(s) on a deliberately broken program " +
+            "(${problems.count { it.fatal }} fatal)")
+    }
+
+    /**
+     * The shipped Live Metal transcripts, checked for uniform wiring — the failure mode a geometry
+     * preview cannot see, because it happens in Metal's compiler on the device.
+     */
+    private fun checkShippedUniformWiring(transcripts: File, failures: MutableList<String>) {
+        verifyUniformCheckFires(failures)
+        for (name in listOf(
+            "visionos_start", "vision_geometry_shapes", "vision_geometry_heightfield",
+            "vision_geometry_animated",
+        )) {
+            for ((code, msl) in transcriptPrograms(transcripts, name)) {
+                val declared = VisionMetalProgramCheck.declaredUniforms(code)
+                val problems = VisionMetalProgramCheck.problems(code, msl)
+                problems.filter { it.fatal }.forEach { failures += "$name: ${it.message}" }
+                val advisory = problems.count { !it.fatal }
+                println(
+                    "  uniform wiring ${name.padEnd(28)} declared=${declared.joinToString(",").ifEmpty { "-" }} " +
+                        "fatal=${problems.count { it.fatal }} advisory=$advisory",
+                )
+                problems.filter { !it.fatal }.forEach { println("      note: ${it.message}") }
+            }
+        }
+    }
+
     // ---------------------------------------------------------------- layout guard
 
     /**
@@ -421,6 +501,7 @@ object VisionGeometryPreviewGallery {
 
         val style = VisionGeometryPreview.Style()
         val failures = mutableListOf<String>()
+        checkShippedUniformWiring(transcripts, failures)
         var rendered = 0
 
         for (preview in previews(transcripts)) {

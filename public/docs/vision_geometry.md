@@ -320,6 +320,23 @@ That check is not hypothetical: it is what found `sphere()` and `tube()` wound t
 from `cube()` and `plane()`, and the height field above facing downwards. All three are fixed, and the
 gallery fails the build if they come back.
 
+### Uniforms that don't line up
+
+The other thing the preview checks needs no picture at all. A uniform is named in three places — the
+marker's `uniforms=` list, the shader's `u_NAME`, and the script's `uniform("name", …)` — and each
+mismatch fails differently and late:
+
+| Mismatch | What the head does |
+|---|---|
+| shader reads `u_NAME`, marker doesn't declare it | no `#define` is emitted; **Metal fails to compile your shader** |
+| script writes a name the marker doesn't declare | there is no slot; the write is dropped and the shader reads zero |
+| marker declares a name nothing uses | a wasted slot — reported, but harmless |
+| shader has no `field_vertex` / `field_fragment` | the head refuses to build a pipeline |
+
+`VisionMetalProgramCheck` decides all of those from the box's own text plus a real run of its script,
+and **Preview Vision Geometry** reports them alongside the mesh. It does not compile MSL — that still
+happens on the device — but the mistakes above never reach the compiler in the first place.
+
 ### A turntable, and the mesh as FLines
 
 `VisionGeometryPreview.renderContactSheet` draws the same mesh from several angles at once, which is
