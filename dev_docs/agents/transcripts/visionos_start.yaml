@@ -1,8 +1,10 @@
 name: visionos_start
 description: >
   Minimal Kotlin/JS starting place for Field4Vision's native visionOS Live Metal head. Open
-  Live Metal in the visionOS app, then run or drop in this transcript. Kotlin updates named
-  uniforms on the compositor clock; the fragment property is the editable Metal shader.
+  Live Metal in the visionOS app, then run or drop in this transcript. The box owns two of the
+  program's three parts: `geometry { }` builds the mesh in the headset, and Kotlin drives the named
+  uniforms on the compositor clock. The third is the `msl` property — the editable Metal shader,
+  which reloads on its own with alt-r.
 operations:
   - create:
       box: agent_visionos_start_root
@@ -19,7 +21,15 @@ operations:
         code: |
           // {{ visionmetal uniforms=phase,amount,tint }}
           // Open Live Metal in Field4Vision. Launch again after editing to hot-reload.
+          // The shader lives in this box's `msl` property — edit it and press alt-r to
+          // recompile on the headset without restarting any of this.
           onStart {
+              // Geometry is built here, in the headset, and handed to Metal in one call.
+              geometry {
+                  color(1.0, 0.35, 0.15)
+                  cube(0.18, cx = 0.45, cz = -1.2, tintFaces = true)
+              }
+
               uniform("amount", 0.025)
               uniform("tint", 0.1, 0.8, 1.0, 0.35)
 
@@ -33,15 +43,17 @@ operations:
 
               println("visionOS starter running")
           }
-        fragment: |
+        msl: |
+          // Uniforms are read by name: the head generates `#define u_phase frame.user[0]`
+          // and so on from the `uniforms=` list on the marker in the code property.
           vertex FieldVarying field_vertex(
               uint vertexID [[vertex_id]], ushort viewID [[amplification_id]],
               const device FieldVertex *vertices [[buffer(0)]],
               constant FieldFrame &frame [[buffer(1)]])
           {
               FieldVertex v = vertices[vertexID];
-              float phase = fieldUniform(frame, 0).x;
-              float amount = fieldUniform(frame, 1).x;
+              float phase = u_phase.x;
+              float amount = u_amount.x;
               float3 centre = float3(0.45, 0.0, -1.2);
               float3 p = v.position.xyz
                   + v.normal.xyz * sin(phase + v.position.y * 18.0) * amount
@@ -59,6 +71,7 @@ operations:
               out.worldPosition = world.xyz;
               out.normal = n;
               out.color = v.color;
+              out.uv = v.uv.xy;
               return out;
           }
 
@@ -66,8 +79,7 @@ operations:
               FieldVarying in [[stage_in]],
               constant FieldFrame &frame [[buffer(1)]])
           {
-              float4 tint = fieldUniform(frame, 2);
-              float3 rgb = mix(in.color.rgb, tint.rgb, tint.a);
+              float3 rgb = mix(in.color.rgb, u_tint.rgb, u_tint.a);
               return half4(half3(rgb), half(in.color.a));
           }
   - connect:

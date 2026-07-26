@@ -54,12 +54,34 @@ land in the global basin. On execute it plots the target and the fitted curve an
 before→after summary with a loss-trajectory sparkline.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/fn_differentiable_fit_demo/metadata.edn)
 
-## visionOS device scene
+## visionOS device scenes
 
-**vision_metal_cube** — Publishes an animated indexed cube to Field4Vision's autonomous Live Metal
-renderer. Open **Live Metal** in the visionOS app and execute the box; the program is retained and
-replayed if the native client connects later. Requires a visionOS device or simulator for the native
-image.
+These publish to Field4Vision's autonomous Live Metal renderer. Open **Live Metal** in the visionOS
+app, then run the box; the program is retained and replayed if the native client connects later. A
+visionOS device or simulator is required for the image, but each one builds and compiles in CI —
+including the Kotlin→JavaScript compile of the box body through the real head profile. See
+[Building geometry in the headset](vision_geometry.md) for the walkthrough these are drawn from.
+
+**visionos_start** — The smallest complete Live Metal program, and the place to start: a cube built in
+the headset by `geometry { }`, a Metal shader in the box's `msl` property, and one uniform animated on
+the compositor clock.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/visionos_start/metadata.edn)
+
+**vision_geometry_shapes** — A tour of the geometry builder's shape primitives: cube, sphere, plane
+and tube side by side in one mesh, with a shader that reads the uv the shapes write as a checker.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/vision_geometry_shapes/metadata.edn)
+
+**vision_geometry_heightfield** — The builder at its raw level: a ripple height field assembled vertex
+by vertex, with normals from finite differences of the same height function and per-vertex colour
+carrying relief into the shader. The shape most procedural meshes take.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/vision_geometry_heightfield/metadata.edn)
+
+**vision_geometry_animated** — Rebuilding the mesh every frame, which is what separates building
+geometry in the headset from shipping it over the wire: a swept tube whose spine and radius both move.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/vision_geometry_animated/metadata.edn)
+
+**vision_metal_cube** — The non-Kotlin/JS route, for comparison: JVM Kotlin publishes the shader, the
+script and an explicit request for the head's built-in cube in one `visionMetal(...)` call.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/vision_metal_cube/metadata.edn)
 
 ## Graphics scenes

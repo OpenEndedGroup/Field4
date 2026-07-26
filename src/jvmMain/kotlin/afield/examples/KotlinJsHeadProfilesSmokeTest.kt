@@ -3,6 +3,13 @@ package afield.examples
 import afield.Box
 import afield.SavingContext
 import afield.SessionInformation
+import afield.graphics.VisionMetalGeometryOrigin
+import afield.graphics.msl
+import afield.graphics.reloadVisionMetalShader
+import afield.graphics.visionMetal
+import afield.graphics.visionMetalShaderSource
+import afield.stdlib.actions
+import afield.stdlib.fragment
 import afield.remotejs.KotlinJsExecution
 import afield.remotejs.KotlinJsHeadProfiles
 import afield.remotejs.KotlinToJsCompiler
@@ -33,6 +40,10 @@ object KotlinJsHeadProfilesSmokeTest {
         val visionSource = """
             // {{ visionmetal uniforms=phase,amount,tint }}
             onStart {
+                geometry {
+                    color(0.2, 0.8, 1.0)
+                    cube(0.18, cz = -1.2)
+                }
                 uniform("amount", 0.025)
                 uniform("tint", 0.1, 0.8, 1.0, 0.35)
                 onFrame { frame ->
@@ -130,6 +141,8 @@ object KotlinJsHeadProfilesSmokeTest {
             "unmarked source must preserve legacy RemoteJS routing"
         }
 
+        verifyMslPropertyPrecedence()
+        verifyReloadActionsAreInstalled()
         verifyRuntimeSwitch()
 
         val visionJs = compile(vision.profile.prepareSource(vision.source), "profile_vision")
@@ -146,6 +159,104 @@ object KotlinJsHeadProfilesSmokeTest {
         }
 
         println("KotlinJsHeadProfilesSmokeTest ok")
+    }
+
+    /**
+     * MSL belongs in `msl`, not in the GLSL `fragment` property the proof-of-concept borrowed. The
+     * fallback stays so an existing PoC box keeps rendering, but `msl` has to win when both are set.
+     */
+    private fun verifyMslPropertyPrecedence() {
+        val box = Box("msl-property-precedence")
+        require(box.visionMetalShaderSource() == null) {
+            "a box with no Metal source anywhere must report none, not an empty string"
+        }
+
+        box.fragment = "// legacy proof-of-concept source"
+        require(box.visionMetalShaderSource() == "// legacy proof-of-concept source") {
+            "the deprecated `fragment` fallback must keep the existing PoC box running"
+        }
+
+        box.msl = "// the real thing"
+        require(box.visionMetalShaderSource() == "// the real thing") {
+            "`msl` must win over `fragment` once it is set"
+        }
+
+        box.msl = "   "
+        require(box.visionMetalShaderSource() == "// legacy proof-of-concept source") {
+            "a blank `msl` must not shadow a populated `fragment`"
+        }
+
+        require("msl" in Box.ioSeparateProperties && Box.ioSeparateProperties["msl"] == "metal") {
+            "the msl property must save beside the box as .metal, got ${Box.ioSeparateProperties["msl"]}"
+        }
+        // ioSeparateProperties only chooses *where* a property is written. Membership of
+        // ioPersistentProperties is what decides whether it is written at all — registering one and
+        // not the other silently drops the shader on save, which is exactly what happened first time.
+        require(Box.ioPersistentProperties.any { it.toRegex().matches("msl") }) {
+            "the msl property is not persistent, so a saved document would lose its Metal source"
+        }
+        // uiResyncProperties is already mapped to Regex at declaration; ioPersistentProperties is not.
+        require(Box.uiResyncProperties.any { it.matches("msl") }) {
+            "the msl property does not resync, so editor edits would not reach the box"
+        }
+        println("msl property precedence: msl > fragment > resident ✓ (persistent + resyncing)")
+    }
+
+    /**
+     * Publishing a program has to leave the box carrying its explicit reload commands, so that a
+     * shader edit is a deliberate act rather than an implicit side effect of rerunning the Kotlin.
+     */
+    private fun verifyReloadActionsAreInstalled() {
+        val box = Box("vision-reload-actions")
+        require(box.actions.keys.none { it.startsWith("visionMetal_") }) {
+            "a box with no vision program should not advertise vision reload commands"
+        }
+
+        box.msl = "// entry points go here"
+        val state = box.visionMetal(shader = box.msl!!, uniforms = listOf("phase"))
+
+        // `visionMetal_reload` is also the id BootstrapMonacoActions.kt maps the `msl` property to,
+        // which is what binds alt-r in the MSL editor pane to a headset recompile.
+        val expected = listOf(
+            "visionMetal_reload",
+            "visionMetal_reload_uniforms",
+            "visionMetal_reload_program",
+            "visionMetal_geometry_builtin",
+        )
+        expected.forEach { id ->
+            require(id in box.actions) { "missing vision reload command '$id'; have ${box.actions.keys}" }
+        }
+        require(box.actions["visionMetal_reload"]!!.desc == "Reload MSL|alt r") {
+            "the MSL reload command lost its label/chord: ${box.actions["visionMetal_reload"]!!.desc}"
+        }
+
+        require(state.declaredUniforms == listOf("phase")) {
+            "declared uniform slot order did not reach the program state: ${state.declaredUniforms}"
+        }
+        require(state.geometryOrigin == VisionMetalGeometryOrigin.SCRIPT) {
+            "with no wire vertices, geometry belongs to the box's Kotlin/JS builder, got ${state.geometryOrigin}"
+        }
+
+        // A shader-only reload must advance the program revision without disturbing the other parts.
+        val before = state.currentRevision
+        box.msl = "// edited"
+        require(box.reloadVisionMetalShader()) { "reloading MSL should succeed once a program is resident" }
+        require(state.currentRevision > before) { "a shader reload must advance the program revision" }
+        require(state.shaderSource == "// edited") { "the reload published stale MSL: ${state.shaderSource}" }
+        require(state.declaredUniforms == listOf("phase")) {
+            "a shader reload must not clear the declared uniforms, got ${state.declaredUniforms}"
+        }
+        require(state.geometryOrigin == VisionMetalGeometryOrigin.SCRIPT) {
+            "a shader reload must not change geometry ownership, got ${state.geometryOrigin}"
+        }
+
+        // Asking for the built-in cube is likewise a single explicit part change.
+        state.useBuiltinGeometry()
+        require(state.geometryOrigin == VisionMetalGeometryOrigin.BUILTIN) {
+            "the built-in-cube command should hand geometry back to the head"
+        }
+        require(state.shaderSource == "// edited") { "changing geometry must not disturb the shader" }
+        println("vision reload commands: msl / uniforms / program / built-in cube, part-wise ✓")
     }
 
     private fun verifyRuntimeSwitch() {
@@ -208,8 +319,10 @@ object KotlinJsHeadProfilesSmokeTest {
 
     private val visionHost = """
         const __writes = [];
+        const __meshes = [];
         let __frame = null;
         function uniform(name, x, y = 0, z = 0, w = 0) { __writes.push([name, x, y, z, w]); }
+        function __fieldSetGeometry(vertices, indices) { __meshes.push({ vertices, indices }); }
         function __fieldOnStart(callback) { callback(); }
         function __fieldOnStop(_callback) {}
         function __fieldOnFrame(callback) { __frame = callback; }
@@ -222,6 +335,12 @@ object KotlinJsHeadProfilesSmokeTest {
         __frame(2.0, 0.25, 7, 2.5);
         const phase = __writes.find(entry => entry[0] === "phase");
         if (!phase || Math.abs(phase[1] - 6.25) > 1e-9) throw new Error(JSON.stringify(__writes));
+        // Geometry is built in the head, not shipped over the wire: the marker'd source has to reach
+        // the same bridge call the native runtime exposes.
+        if (__meshes.length !== 1) throw new Error("expected one geometry upload, got " + __meshes.length);
+        if (!(__meshes[0].vertices instanceof Float32Array)) throw new Error("geometry did not arrive as a Float32Array");
+        if (__meshes[0].vertices.length !== 24 * 16) throw new Error("cube floats: " + __meshes[0].vertices.length);
+        if (__meshes[0].indices.length !== 36) throw new Error("cube indices: " + __meshes[0].indices.length);
         console.log("vision-metal-profile-ok");
     """.trimIndent()
 

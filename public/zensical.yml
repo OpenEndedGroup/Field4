@@ -35,6 +35,7 @@ nav:
       - Field Systems:
         - RemoteJS & WebXR: ar_reference.md
         - Apple Vision Pro (WiP): vision.md
+        - Geometry in the Headset: vision_geometry.md
         - Fabricate Renderer: fabricate_renderer.md
         - Ray Tracing Examples: ray_tracing_examples.md
         - afield.four Graphics: afield_four_graphics.md

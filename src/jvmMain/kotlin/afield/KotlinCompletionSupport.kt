@@ -1736,6 +1736,7 @@ internal object KotlinCompletionSupport {
         name.endsWith(".kt", true) || name.endsWith(".kts", true) -> "kotlin"
         name.endsWith(".java", true) -> "java"
         name.endsWith(".glsl", true) || name.endsWith(".frag", true) || name.endsWith(".vert", true) -> "glsl"
+        name.endsWith(".metal", true) || name.endsWith(".msl", true) -> "msl"
         name.endsWith(".js", true) || name.endsWith(".mjs", true) -> "javascript"
         else -> ""
     }

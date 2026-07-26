@@ -159,29 +159,69 @@ scene with its own Metal render thread. Press **Live Metal** in the bottom ornam
 `FIELD4_LIVE_METAL_AUTOSTART=1`).
 
 The renderer subscribes directly to Field's `/ws` bus on channel `__visionmetal__`; WKWebView is not
-in the graphics or animation path. In a normal Field Kotlin box:
+in the graphics or animation path.
 
-```kotlin
-visionMetal(
-    shader = visionMetalExampleShader,
-    script = visionMetalExampleScript,
-    uniforms = listOf("phase", "amount", "tint")
-).onStatus { println("${it.phase}: ${it.message}") }
-```
+A program has three explicit parts, each authored somewhere different and each independently
+reloadable:
 
-This displays the built-in indexed cube. `visionMetal(...)` can instead receive a
-`Collection<VisionMetalVertex>` plus an `IntArray` of triangle indices. Rerunning the box replaces
-the active program. MSL compilation happens off the render thread; a successful pipeline is swapped
-at a frame boundary, while a failed edit leaves the last successful shader visible and reports its
-compiler error to Field.
+| Part         | Where you write it                                   | Reloading it |
+|--------------|------------------------------------------------------|--------------|
+| **shader**   | the box's `msl` property                             | recompiles the pipeline; script, geometry and clock keep running |
+| **geometry** | `geometry { … }` in the box's Kotlin/JS              | swaps the vertex buffers at a frame boundary |
+| **uniforms** | the `uniforms=` option on the `// {{ visionmetal }}` marker | regenerates the shader's `u_NAME` defines, so it recompiles too |
 
-The native runtime prepends this stable ABI to user MSL:
+Nothing is implicit. There is no empty-geometry fallback to a cube and no borrowing of the GLSL
+`fragment` property for Metal source — both were proof-of-concept shortcuts.
+
+### Wire protocol — version 2
+
+Version 1 sent one monolithic payload, so *any* edit restarted the JavaScriptCore context, reallocated
+the vertex buffers and reset the frame clock. Version 2 sends only the parts that changed, each with
+its own revision; absent parts are `null` and the head leaves them resident. A shader reload is
+therefore a payload carrying `shader` and nothing else.
+
+The head's mailbox merges parts rather than replacing the payload — otherwise a geometry-only message
+would discard the resident shader. Within a part, a newer revision still supersedes an older one, so a
+burst of shader edits collapses to the newest rather than queueing obsolete compilations.
+
+**A version-1 head cannot read a version-2 payload.** Server and shell ship together from this
+repository; rebuild the app when `LiveMetalWire.version` changes.
+
+### Explicit reload commands
+
+Any box that has published a program carries these (installed by `visionMetal(...)`):
+
+- **Reload MSL** (`alt r`) — republishes the `msl` property as a shader-only part. `alt r` inside the
+  MSL editor pane routes here, because `BootstrapMonacoActions.kt` maps the `msl` property to this
+  action id the same way it maps `fragment` to `moduleHere_reload`.
+- **Reload Vision Uniforms** — republishes the declared slot order.
+- **Reload Vision Program** — republishes all four parts together, re-reading `msl`.
+- **Vision Geometry: Built-in Cube** — hands geometry back to the head's own cube. A known-good mesh
+  for answering "is it my shader or my geometry?".
+
+A failed Metal compile leaves the last good pipeline on screen and reports the error to Field. Because
+the head emits `#line 1` after its preamble, the diagnostic carries the author's own line number, and
+Field decorates the `msl` property at that line.
+
+### The shader — MSL in the `msl` property
+
+`msl` holds **both** entry points, because Metal compiles them from one translation unit. It has its
+own Monaco language (`src/commonMain/resources/msl.js`, AMD module `bithero/msl`): a Monarch grammar
+for MSL including `[[attribute]]` syntax and address-space qualifiers, plus completion for the Field
+ABI, the `u_NAME` uniforms this particular box declares, and snippets for both entry points. There are
+deliberately no lexical diagnostics — the real ones come from the device's Metal compiler.
+`.metal`/`.msl` files opened in the editor get the same language, and `msl` saves beside the box as
+`<name>.metal`.
+
+The native runtime prepends this stable ABI:
 
 ```metal
 struct FieldVertex {
     float4 position;
     float4 normal;
     float4 color;
+    // .xy = texture coordinate, .zw = the geometry builder's two free per-vertex channels
+    float4 uv;
 };
 
 struct FieldFrame {
@@ -197,67 +237,151 @@ struct FieldVarying {
     float3 worldPosition;
     float3 normal;
     float4 color;
+    float2 uv;
 };
 ```
 
-User source defines `field_vertex` and `field_fragment`. Helpers are available as
-`fieldTime(frame)`, `fieldDeltaTime(frame)`, `fieldPredictedDisplayTime(frame)`, and
-`fieldUniform(frame, index)`. The vertex entry point receives vertices at buffer 0 and `FieldFrame`
-at buffer 1; the fragment entry point receives the same frame at buffer 1. See
-`visionMetalExampleShader` for complete signatures.
+`FieldVertex` is four `float4`s, and the wire layout is identical, so geometry reaches the vertex
+buffer as a copy rather than a repack.
 
-The accompanying JavaScript runs in JavaScriptCore on the render executor, not in WKWebView. It may
-install one autonomous callback and update the declared uniform names:
+Then, generated from the declared uniform list:
 
-```javascript
-uniform("amount", 0.025)
-uniforms.tint = [0.1, 0.8, 1.0, 0.35]
-
-onFrame((time, dt, predictedDisplayTime) => {
-    uniform("phase", time * 3.0)
-})
+```metal
+#define u_phase  frame.user[0]
+#define u_amount frame.user[1]
+#define u_tint   frame.user[2]
 ```
 
-Each name maps to one `float4` slot in declaration order. Scalar writes use `.x`; missing components
-are zero. Uniform storage is triple-buffered and copied once per compositor frame. JavaScript source
-and MSL source both receive `field://visionmetal/<uid>` source URLs for useful diagnostics.
+So shader source names its uniforms instead of counting slots. Writing a uniform's *value* never
+recompiles; redeclaring the *names* does, since the defines change.
 
-The current first slice intentionally has a small surface: one active indexed triangle mesh, one
-pipeline, alpha blending, depth testing, 16 named `float4` uniforms, and one JS lifecycle scope.
-Textures, compute functions, multiple draw items, interaction and FLine GPU tessellation belong on
-top of this resident runtime; they do not require another architectural bridge.
+User source defines `field_vertex` and `field_fragment`. Helpers are `fieldTime(frame)`,
+`fieldDeltaTime(frame)`, `fieldPredictedDisplayTime(frame)`, `fieldFrameIndex(frame)`, and
+`fieldUniform(frame, index)` for slot-index access. The vertex entry point receives vertices at
+buffer 0 and `FieldFrame` at buffer 1; the fragment entry point receives the same frame at buffer 1.
+See `visionMetalExampleShader` for complete signatures.
 
-### Kotlin/JS external surface
+### The geometry — Kotlin/JS in the head
 
-`src/jvmMain/kotlin/afield/graphics/VisionMetalKotlinJs.kt` is the typed Kotlin/JS description of
-the JavaScriptCore globals above. It deliberately derives its API from this native host rather than
-pretending that browser, THREE, or DOM globals exist. A Kotlin/JS program using it has this shape:
+Geometry is built in JavaScriptCore, on the render executor, and handed to Metal in one call. Nothing
+per-vertex crosses the network or the JS bridge at frame rate:
 
 ```kotlin
 // {{ visionmetal uniforms=phase,amount,tint }}
 onStart {
-    uniform("amount", 0.025)
-    uniform("tint", 0.1, 0.8, 1.0, 0.35)
-    onFrame { frame ->
-        uniform("phase", frame.time * 3.0)
-        log("predicted display time = " + frame.predictedDisplayTime)
+    geometry {
+        color(1.0, 0.35, 0.15)
+        cube(0.18, cx = 0.45, cz = -1.2, tintFaces = true)
     }
-    onStop { log("visionmetal stopped") }
+    uniform("amount", 0.025)
+    onFrame { frame -> uniform("phase", frame.time * 3.0) }
 }
 ```
 
-The first-line marker selects the `visionmetal` head profile. The compiler adds the Kotlin/JS
-externals; completion receives the colocated JVM-analysis-safe mirror of that public surface, and
-execution publishes the compiled plain module through the existing replayable
-`visionmetal/program` channel. MSL comes from the box's `fragment` property, or from
-`visionMetalExampleShader` when the property is empty. The
-optional `uniforms=` list fixes shader slot order; without it, literal uniform writes are inferred
-(the built-in shader retains `phase,amount,tint` first). `remotejs.kotlinjs-head-profiles` verifies
-marker parsing plus compilation and global-name linking for both Live Metal and RemoteAR host
-shims. `onStart`, `onFrame`, `onStop`, and `keepAlive` have the same Launch-only contract as the
-browser heads; during Execute they are inert. Relaunch and Stop run cleanup once before replacing the
-JavaScriptCore context. Device execution remains part of native-head verification; the JVM smoke
-does not substitute for JavaScriptCore, Metal compilation, or compositor presentation on visionOS.
+`MeshBuilder` appends an indexed triangle mesh. `vertex(x, y, z)` returns its index and picks up the
+current `normal()`, `color()`, `uv()` and `extra()` state; `triangle()` and `quad()` supply indices,
+so a vertex can be shared between faces or duplicated per face for facet normals. Winding is
+counter-clockwise; the head culls back faces. On top of that: `cube`, `plane`, `sphere`, and `tube` —
+which sweeps a polygon along a polyline, the same treatment the native FLine viewer gives a stroke, so
+a line drawn in Kotlin has real thickness in the headset.
+
+Call `geometry { … }` again at any time, including from `onFrame`, to replace the mesh. The swap
+happens at a frame boundary, so a rebuild never tears. An empty builder is a legitimate way to draw
+nothing.
+
+Because there is no cube fallback any more, a box that owns its geometry and never builds any would
+draw nothing with no diagnostic anywhere. The head reports that omission once, naming both fixes
+(build a mesh, or run the built-in-cube command), rather than leaving you staring at an empty room.
+
+`vertices`/`indices` on the JVM-side `visionMetal(...)` still work for publishing a mesh built in
+JVM Kotlin, and `geometry = VisionMetalGeometryOrigin.BUILTIN` asks for the head's cube:
+
+```kotlin
+visionMetal(
+    shader = visionMetalExampleShader,
+    script = visionMetalExampleScript,
+    uniforms = listOf("phase", "amount", "tint"),
+    geometry = VisionMetalGeometryOrigin.BUILTIN,
+).onStatus { println("${it.phase}: ${it.message}") }
+```
+
+### The uniforms
+
+Each declared name maps to one `float4` slot in declaration order. Scalar writes use `.x`; missing
+components are zero. Uniform storage is triple-buffered and copied once per compositor frame.
+
+From Kotlin/JS: `uniform("phase", 1.0)` through `uniform("tint", r, g, b, a)`. From raw JavaScript
+(the JVM `script =` path): `uniform("amount", 0.025)`, `uniforms.tint = [0.1, 0.8, 1.0, 0.35]`, or
+`setGeometry(vertices, indices)` for a hand-packed mesh.
+
+Declare slot order on the marker. Without it the server infers names from literal `uniform("…")`
+writes and says so in a notification, because inference and shader source can disagree about order.
+Writing an undeclared name reports the declared list back to the box rather than failing silently.
+
+### Kotlin/JS external surface
+
+`src/jvmMain/kotlin/afield/graphics/VisionMetalKotlinJs.kt` is the typed Kotlin/JS description of the
+JavaScriptCore globals. It derives its API from this native host rather than pretending browser,
+THREE, or DOM globals exist. The marker's first line selects the profile; the compiler appends the
+externals; completion receives a colocated JVM-analysis-safe mirror. The `MeshBuilder` source itself
+is *shared* between the two rather than mirrored by hand — only the bridge declarations above it
+differ — so the compiled surface and the completion surface cannot drift.
+
+`onStart`, `onFrame`, `onStop`, and `keepAlive` have the same Launch-only contract as the browser
+heads; during Execute they are inert. Relaunch and Stop run cleanup once before replacing the
+JavaScriptCore context.
+
+### What is verified where
+
+- `visionmetal.kotlinjs-externals` — compiles the surface, then links it under Node against a host
+  shim that captures `__fieldSetGeometry`. Asserts the *real* packed output: 24 vertices / 36 indices
+  for a cube, its exact bounding box and six facet normals, `position.w == 1`, `normal.w == 0`, and
+  the arithmetic of `plane`/`sphere`/`tube` (every sphere vertex exactly `r` from the centre, every
+  tube vertex exactly `radius` from its axis). Also asserts a shader-only payload really does carry
+  `"script":null,"uniforms":null,"geometry":null`.
+- `visionmetal.msl-language` — drives the shipped `msl.js` under Node with a mocked Monaco API:
+  member completion resolving `frame.`/`v.` against the ABI from the surrounding declaration, prefix
+  filtering, `u_NAME` slot numbering from the marker, inference order without one, and safety with no
+  box selected.
+- `remotejs.kotlinjs-head-profiles` — marker parsing, `msl` > `fragment` > resident precedence, the
+  four reload commands and their part-wise independence, and geometry reaching the bridge.
+
+### Pre-smoking on the simulator
+
+`tools/vision_metal_simulator_smoke.sh [port]` drives the whole path against a **visionOS simulator**
+before you reach for the headset. Most of what this slice touches is orthogonal to what the simulator
+can't do, so it turns out to cover nearly all of it:
+
+```bash
+tools/vision_metal_simulator_smoke.sh
+```
+
+It builds and installs the app, starts a Field server, launches the head with
+`FIELD4_LIVE_METAL_AUTOSTART=1` pointed at that server, publishes the `vision_geometry_shapes`
+starting point, and then asserts on the head's own `visionmetal/status` messages — which the server
+prints as `[vision-metal/ok|error] <uid> r<n> <phase>: <message>`. The assertion channel is that log,
+not pixels, so it needs nobody watching. It checks:
+
+- wire v2 decodes, and the uniforms part declares its names in order;
+- **Apple's Metal compiler accepts the generated preamble**, including the `#define u_NAME` block —
+  the thing no amount of JVM testing can tell you;
+- Kotlin/JS geometry crosses the JavaScriptCore typed-array bridge into a real `MTLBuffer`, with the
+  mesh the builder's arithmetic predicts (1337 vertices / 2380 triangles for that scene);
+- a **shader-only reload** recompiles and nothing else reappears — script, lifecycle and geometry
+  really do stay resident;
+- a **broken shader** reports a diagnostic carrying the author's own line number, so Field can
+  decorate the `msl` property at the right line.
+
+This is not in the FIELD_TEST catalog: it needs Xcode, a visionOS 26+ simulator runtime, and a couple
+of minutes. Run it by hand before a device session.
+
+What the simulator still cannot tell you: per-eye stereo separation (it renders one mono view),
+spatial input, and real display timing. Those remain device-verify.
+
+### Still to build on this
+
+Textures, compute functions, multiple draw items, and interaction sit on top of this resident
+runtime; none of them needs another architectural bridge.
 
 ## Field host-side dependencies (server must serve these)
 
@@ -268,8 +392,16 @@ the Field server build must include:
 - `Server.kt` — `selectionContextSessions` registry + `controller-selection`/`shared-ui-intent` rebroadcast to
   context peers; join on `hello`, leave in the `/ws` finally; `injectInitialFramePreview` skips
   `editorOnly`; HTTPS connector binds `0.0.0.0`.
-- `graphics/VisionMetal.kt` — the replayable `__visionmetal__` program/status channel and the
-  box-facing `visionMetal(...)` API used by the native Compositor Services renderer.
+- `graphics/VisionMetal.kt` — the replayable, part-wise `__visionmetal__` program/status channel; the
+  `Box.msl` property; the box-facing `visionMetal(...)` API; and the explicit reload commands.
+- `graphics/VisionMetalKotlinJs.kt` — the Kotlin/JS surface, including the `geometry { … }` builder.
+- `graphics/MslEditorLanguage.kt` + `msl.js` — the Monaco `msl` language, registered as
+  `bithero/msl` in `bootstrapMonaco.js`.
+- Property/language registrations for `msl`: `Boxes.ioSeparateProperties` (`msl` → `.metal`),
+  `saving.kt`, `server/fileproxy.kt`, `KotlinCompletionSupport.kt`, `embeddedEditors.js`, and the
+  three parallel arrays in `BootstrapMonacoInit.kt` (which must stay aligned).
+- `BootstrapMonacoActions.kt` — `msl` → `visionMetal_reload`, which is what binds `alt r` in the MSL
+  pane to a headset recompile.
 - `Main.kt` — parse `editorOnly` / `noeditor` / `transparent` / `shaderSelectionContext`;
   `fieldDisplayMode` + body classes; inbound `controller-selection` handler → `applyRemoteSelection`
   (echo-guarded); canvas-side `shared-ui-intent` handling; `shaderSelectionContext` passed in `Hello`.

@@ -52,7 +52,7 @@ on the **first non-blank line** of the box:
 | *(no marker)*       | legacy RemoteJS               | the original raw-JS broadcast behavior                   |
 | `// {{ remoteAR }}` | browser THREE.js / WebXR      | `THREE.*`, `scene`, `camera`, `vec`, `stage`, `FLine`, … |
 | `// {{ tone }}`     | Tone.js computer-music engine | `Tone.*` — synths, effects, `Transport`, scheduling      |
-| `// {{ visionmetal }}` | Apple Vision Pro native Metal | `uniform(...)`, the frame clock, the MSL shader          |
+| `// {{ visionmetal }}` | Apple Vision Pro native Metal | `uniform(...)`, `geometry { … }`, the compositor frame clock |
 
 The marker line is kept (blanked) so your compile-error line numbers still line up with what you
 typed. An *unknown* marker is a hard error rather than silently falling back to the wrong head — a
@@ -242,14 +242,18 @@ disposes the audio nodes so a relaunch doesn't stack a second arpeggio on top.
 
 ## Worked example 4 — visionmetal (native Metal on Vision Pro)
 
-The `visionmetal` head is Field4Vision's tiny JavaScriptCore runtime driving a live Metal shader. Your
-Kotlin doesn't draw pixels directly; it feeds *uniforms* into an MSL fragment shader (authored in the
-box's shader slot) on the compositor's frame clock. Declare the uniform names in the marker:
+The `visionmetal` head is Field4Vision's tiny JavaScriptCore runtime driving a live Metal shader on
+the Vision Pro's own compositor thread. A program has three explicit parts, and your Kotlin owns two
+of them: it **builds the geometry** and **feeds the uniforms**, on the compositor's frame clock.
 
 ```diffstatic {data-lang=kotlin}
 :::static
 // {{ visionmetal uniforms=phase,amount,tint }}
 onStart {
+    geometry {
+        color(1.0, 0.35, 0.15)
+        cube(0.18, cx = 0.45, cz = -1.2, tintFaces = true)
+    }
     uniform("amount", 0.025)
     uniform("tint", 0.1, 0.8, 1.0, 0.35)   // a vec4 uniform
     onFrame { frame ->
@@ -259,10 +263,24 @@ onStart {
 }
 ```
 
-`uniform(name, x)` through `uniform(name, x, y, z, w)` are the only draw-facing calls; the shader,
-geometry, and the ordered uniform-name list travel separately in the program payload. `frame.
-predictedDisplayTime` is the Vision Pro compositor's predicted present time (it's `null` in a browser
-head, which is why it's a `Double?`).
+`geometry { … }` builds an indexed triangle mesh *in the headset* and hands the whole thing to Metal
+in one call — nothing per-vertex crosses the network or the JS bridge at frame rate. `vertex(x, y, z)`
+returns an index and picks up the current `normal()`, `color()`, `uv()` state; `triangle()`/`quad()`
+supply indices. On top of those: `cube`, `plane`, `sphere`, and `tube`, which sweeps a polygon along a
+polyline so a line drawn in Kotlin has real thickness in the headset. Call it again — even from
+`onFrame` — to replace the mesh; the swap happens at a frame boundary, so a rebuild never tears.
+[Building geometry in the headset](vision_geometry.md) is the full tour.
+
+`uniform(name, x)` through `uniform(name, x, y, z, w)` write the named slots the marker declares. The
+shader reads them *by name*, because the head generates `#define u_phase frame.user[0]` and so on
+ahead of your source. `frame.predictedDisplayTime` is the compositor's predicted present time (it's
+`null` in a browser head, which is why it's a `Double?`).
+
+The third part is the shader itself, which lives in the box's **`msl`** property — Metal Shading
+Language, with both entry points (`field_vertex` and `field_fragment`) in one property, because Metal
+compiles them from one translation unit. It has its own highlighting and completion, and its own
+**Reload MSL** command (`alt r`): editing the shader recompiles on the headset while your Kotlin, your
+geometry, and the frame clock all keep running.
 
 ## Under the hood: the compile pipeline
 
@@ -286,4 +304,5 @@ compiler accepts can't drift apart.
 - [Kotlin Syntax Overview](kotlin_overview.md) — the language these boxes are written in.
 - [How Box Code Runs](box_code_pipeline.md) — the box execution model this plugs into.
 - [Field on Apple Vision Pro](vision.md) — the native head the `visionmetal` profile targets.
+- [Building geometry in the headset](vision_geometry.md) — the `visionmetal` geometry builder in full.
 - [Automating Field](automating_field.md) — driving boxes over the transport.

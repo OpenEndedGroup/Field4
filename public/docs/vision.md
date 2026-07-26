@@ -65,6 +65,65 @@ corners to resize.
 
 ---
 
+## Live Metal — programmable native graphics
+
+The second native surface, and a different bargain from the FLine viewer: instead of Field sending
+geometry to be displayed, the headset runs a **program** of yours. A box opens a mixed-immersion
+Compositor Services scene with its own Metal render thread, and you live-code against it.
+
+A program has three explicit parts, in three places:
+
+| Part | Where you write it |
+|---|---|
+| **shader** | the box's `msl` property — Metal Shading Language, both entry points |
+| **geometry** | `geometry { … }` in the box's Kotlin, which runs *in the headset* |
+| **uniforms** | the `uniforms=` list on the box's `// {{ visionmetal }}` marker |
+
+```kotlin
+// {{ visionmetal uniforms=phase,amount,tint }}
+onStart {
+    geometry {
+        color(1.0, 0.35, 0.15)
+        cube(0.18, cx = 0.45, cz = -1.2, tintFaces = true)
+    }
+    uniform("amount", 0.025)
+    onFrame { frame -> uniform("phase", frame.time * 3.0) }
+}
+```
+
+The Kotlin compiles to JavaScript and runs in a small JavaScriptCore context *on the render thread* —
+not in a web view, and not in the animation path over the network. `geometry { … }` builds an indexed
+triangle mesh in the headset and hands the whole thing to Metal in one call, so nothing per-vertex
+crosses the wire at frame rate. Alongside a raw `vertex`/`triangle`/`quad` builder there are `cube`,
+`plane`, `sphere`, and `tube` — which sweeps a polygon along a polyline, the same real-thickness
+treatment the FLine viewer gives a stroke. **[Building geometry in the headset](vision_geometry.md)**
+covers the builder in full, with runnable starting points.
+
+Each part reloads on its own. Editing the shader and pressing **Reload MSL** recompiles the pipeline
+on the headset while your Kotlin, your geometry, and the frame clock all keep running — and a failed
+compile leaves the last working shader on screen and reports the Metal error back into Field at your
+own line number. The shader reads its uniforms by name (`u_phase`), because the head generates the
+`#define`s from the declared list.
+
+Field's Kotlin side sees MSL as a real language: `msl` is a box property with its own syntax
+highlighting and completion (the ABI structs, the `u_NAME` uniforms *that box* declares, and snippets
+for both entry points), and it saves beside the box as a `.metal` file.
+
+**What's verified where.** The earlier proof-of-concept — one shader, one built-in cube, uniforms on
+the compositor clock — runs on a physical Vision Pro, and the round trip from a Kotlin edit to a
+changed image is immediate rather than laggy.
+
+The three-part structure described above is newer, and most of it turns out to be checkable without a
+headset, because it is orthogonal to the things a simulator can't do. A script drives the real app in
+the **visionOS simulator** and asserts on the status messages the head sends back over the wire: that
+Apple's Metal compiler accepts the generated shader preamble, that Kotlin-built geometry arrives as
+the mesh the builder's arithmetic predicts, that a shader-only reload leaves the script and geometry
+running, and that a broken shader reports the author's own line number. All of that passes. What the
+simulator cannot judge — per-eye separation, spatial input, display timing — is device work, and this
+particular slice barely touches it.
+
+---
+
 ## RTT streaming — working (mono)
 
 For everything that isn't lines — the full Vulkan-rendered scene — Field streams the render target
@@ -81,17 +140,27 @@ window.
 
 ---
 
-## RTT + stereo — in progress
+## RTT + stereo — working
 
-Stereoscopic output is the headline we're building toward (Field already renders side-by-side stereo
-for other XR paths). The whole path is now wired: the **capture and encode path produces
-side-by-side stereo frames**, and the **per-eye present material is authored** — a Camera Index
-Switch ShaderGraph that samples the left half of the frame for the left eye and the right half for
-the right. That material builds and loads cleanly.
+Stereoscopic output was the headline we were building toward, and it works. The capture and encode
+path produces **side-by-side stereo frames**, and a Camera Index Switch ShaderGraph material samples
+the left half of the frame for the left eye and the right half for the right.
 
-What remains is a **device** check: the simulator renders a single mono view, so true per-eye
-separation — the thing that makes stereo *stereo* — can only be confirmed on a real Vision Pro. So
-stereo is wired end to end; verifying the per-eye result on hardware is the open piece.
+This needed a real Vision Pro to confirm, because the simulator renders a single mono view — true
+per-eye separation, the thing that makes stereo *stereo*, is invisible there. It is confirmed on
+hardware.
+
+Getting it smooth turned out to be a separate hunt from getting it correct, and worth recording: the
+visible hiccup was **Wi-Fi contention from screen-sharing the Mac into the headset**, not the
+pipeline. Every in-app counter stayed clean throughout, because contention delays datagrams rather
+than losing them — so the metrics all looked fine while the image did not. Check what else is on the
+link before you distrust the code. The hunt did surface real defects, all fixed: a frame pacer that
+discarded the remainder on a late tick (29.56fps against a 30fps target — fatal on a 90Hz display,
+where 30.00fps is exactly three refreshes and any deficit accumulates into a held frame), a
+presentation timestamp taken from the wall clock at emit time rather than derived from the sequence
+number, and the absence of a receiver-side buffer. The receiver now runs a depth-servoed presentation
+clock, which deliberately contradicts the present-on-arrival rule the wire format started with — that
+was the wrong trade for a 90Hz display.
 
 ---
 
@@ -104,9 +173,11 @@ stereo is wired end to end; verifying the per-eye result on hardware is the open
 | FLine editing — node + Bézier control-point drag | **Working** |
 | Web UI as spatial docks (editor / canvas / welcome) | **Working** |
 | Shared dock selection + editor-to-canvas History panel routing | **Working, browser-regression tested** |
+| Live Metal — live shader + uniforms on the compositor clock | **Working on device** |
+| Live Metal — headset-built geometry, per-part reload, `msl` as a property | **Built and smoke-tested**; native side compiles, device check pending |
 | RTT video streaming (mono), world-locked + windowed | **Working, verified end-to-end** |
-| RTT stereo (per-eye present) | **Wired** — SBS pipeline + Camera Index Switch material load; per-eye separation pending device check |
-| On-device polish — spatial-input feel, present smoothness | **Device verification ongoing** |
+| RTT stereo (per-eye present) | **Working, confirmed on device** |
+| On-device polish — spatial-input feel, present smoothness | **Working on device**; frame pacing and presentation clock fixed |
 
 ---
 

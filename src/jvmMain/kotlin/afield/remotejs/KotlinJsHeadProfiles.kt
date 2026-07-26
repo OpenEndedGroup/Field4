@@ -4,11 +4,15 @@ import afield.Box
 import afield.graphics.RemoteLifecycleKotlinJs
 import afield.graphics.RemoteArKotlinJs
 import afield.graphics.ToneKotlinJs
+import afield.graphics.VISION_METAL_MAX_UNIFORMS
+import afield.graphics.VisionMetalGeometryOrigin
 import afield.graphics.VisionMetalKotlinJs
 import afield.graphics.visionMetal
 import afield.graphics.visionMetalConnectedHeadCount
 import afield.graphics.visionMetalExampleShader
-import afield.stdlib.fragment
+import afield.graphics.visionMetalShaderSource
+import afield.graphics.visionMetalUID
+import afield.notify
 import org.json.JSONObject
 import java.util.concurrent.ConcurrentHashMap
 
@@ -244,6 +248,9 @@ private object VisionMetalProfile : KotlinJsHeadProfile(
     aliases = setOf("metal", "vision-metal"),
     optionNames = setOf("uniforms"),
 ) {
+    /** Distinguishes the Kotlin/JS program from a JVM-side `visionMetal(…)` one on the same box. */
+    private const val PROGRAM_NAME = "kotlinjs"
+
     private val statusAttached = ConcurrentHashMap.newKeySet<String>()
     private data class LifecycleResponse(
         val revision: Int,
@@ -263,26 +270,46 @@ private object VisionMetalProfile : KotlinJsHeadProfile(
         lifecycleName: String,
         onResponse: ((KotlinJsHeadResponse) -> Boolean)?,
     ): Boolean {
-        val authoredShader = box.fragment.orEmpty().trim()
+        val authoredShader = box.visionMetalShaderSource(PROGRAM_NAME)?.trim().orEmpty()
         val shader = authoredShader.ifEmpty { visionMetalExampleShader }
-        val inferred = inferUniforms(selection.source)
-        val uniforms = selection.optionList("uniforms")
-            ?: if (authoredShader.isEmpty()) (defaultUniforms + inferred).distinct() else inferred
-        require(uniforms.size <= 16) { "Vision Metal supports at most 16 uniform names, got ${uniforms.size}" }
+        // Slot order is what the head turns into `#define u_NAME`, so it has to be explicit. The
+        // marker option declares it; inference is a fallback that says so rather than staying silent.
+        val declared = selection.optionList("uniforms")
+        val uniforms = declared ?: inferUniforms(selection.source).let { inferred ->
+            if (authoredShader.isEmpty()) (defaultUniforms + inferred).distinct() else inferred
+        }
+        if (declared == null && uniforms.isNotEmpty()) {
+            notify(
+                "Inferred vision uniforms ${uniforms.joinToString(",")} in '${box.name}'; " +
+                    "declare them as // {{ visionmetal uniforms=${uniforms.joinToString(",")} }} to fix slot order",
+                "vision-metal",
+            )
+        }
+        require(uniforms.size <= VISION_METAL_MAX_UNIFORMS) {
+            "Vision Metal supports at most $VISION_METAL_MAX_UNIFORMS uniform names, got ${uniforms.size}"
+        }
 
         val state = box.visionMetal(
             shader = shader,
             script = javascript,
             launchable = launchable,
             uniforms = uniforms,
-            name = "kotlinjs",
+            name = PROGRAM_NAME,
+            // The box's Kotlin/JS `geometry { … }` builder owns the vertex buffers.
+            geometry = VisionMetalGeometryOrigin.SCRIPT,
         )
         if (launchable && onResponse != null) {
             lifecycleResponses[state.uid] = LifecycleResponse(state.currentRevision, onResponse)
         }
         if (statusAttached.add(state.uid)) {
             state.onStatus { status ->
-                if (!status.ok) box.output.errorProxy("${status.phase}: ${status.message}", "code", 0)
+                // Metal diagnostics carry the author's own line number, because the head emits
+                // `#line 1` after its preamble — so a shader error decorates the `msl` property at
+                // the offending line instead of landing at line zero of the Kotlin.
+                if (!status.ok) {
+                    val property = if (status.phase == "shader") "msl" else "code"
+                    box.output.errorProxy("${status.phase}: ${status.message}", property, status.line)
+                }
                 val receiver = lifecycleResponses[status.uid]
                 if (receiver != null && receiver.revision == status.revision) {
                     val kind = when {
@@ -309,15 +336,18 @@ private object VisionMetalProfile : KotlinJsHeadProfile(
     }
 
     override fun stop(box: Box, selection: KotlinJsHeadSelection, lifecycleNames: Collection<String>) {
-        val shader = box.fragment.orEmpty().trim().ifEmpty { visionMetalExampleShader }
-        val uid = "${box.id}_kotlinjs"
-        lifecycleResponses.remove(uid)
+        val shader = box.visionMetalShaderSource(PROGRAM_NAME)?.trim().orEmpty()
+            .ifEmpty { visionMetalExampleShader }
+        lifecycleResponses.remove(box.visionMetalUID(PROGRAM_NAME))
+        // Stop replaces the script with an inert one. Geometry stays SCRIPT-owned, so the last mesh
+        // the builder uploaded remains on screen rather than snapping back to the built-in cube.
         box.visionMetal(
             shader = shader,
             script = "",
             launchable = false,
             uniforms = emptyList(),
-            name = "kotlinjs",
+            name = PROGRAM_NAME,
+            geometry = VisionMetalGeometryOrigin.SCRIPT,
         )
     }
 

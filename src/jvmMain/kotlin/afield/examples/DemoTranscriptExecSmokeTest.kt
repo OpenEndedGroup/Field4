@@ -99,6 +99,9 @@ object DemoTranscriptExecSmokeTest {
         "remotear_start",
         "remotear_scene_motion",
         "visionos_start",
+        "vision_geometry_shapes",
+        "vision_geometry_heightfield",
+        "vision_geometry_animated",
     )
 
     /** User-facing starters must carry a real KotlinJS root → child topology, not only compile offline. */

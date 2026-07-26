@@ -245,6 +245,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "notes",
             "fragment",
             "stackSL",
+            // Metal Shading Language for a visionOS head — edits must reach the editor.
+            "msl",
             "vertex",
             "vertex_fragment",
             "mesh",
@@ -309,6 +311,9 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "notes",
             "fragment",
             "stackSL",
+            // Metal Shading Language for a visionOS head. Being in ioSeparateProperties only
+            // chooses the sidecar file; a property must be listed here to be written at all.
+            "msl",
             "vertex",
             "vertex_fragment",
             "task",
@@ -361,6 +366,9 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
         var ioSeparateProperties = mutableMapOf(
             "fragment" to "glsl",
             "stackSL" to "stacksl",
+            // Metal Shading Language for a visionOS head: both entry points in one translation unit,
+            // saved beside the box as `<name>.metal`.
+            "msl" to "metal",
             "vertex" to "glsl",
             "vertex_fragment" to "slang",
             "compute" to "glsl",

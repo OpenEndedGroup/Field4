@@ -50,7 +50,11 @@ private struct LiveMetalFrameUniforms {
 }
 
 /// The source ABI prepended to every Field shader. User source supplies `field_vertex` and
-/// `field_fragment`; changing uniforms never recompiles the pipeline.
+/// `field_fragment`.
+///
+/// Declared uniforms arrive as `#define u_NAME frame.user[i]`, so shader source names its uniforms
+/// instead of counting slots. Redeclaring them therefore *does* recompile the pipeline — but writing
+/// their values never does.
 enum LiveMetalShaderABI {
     static let preamble = """
     #include <metal_stdlib>
@@ -60,6 +64,8 @@ enum LiveMetalShaderABI {
         float4 position;
         float4 normal;
         float4 color;
+        // .xy = texture coordinate, .zw = the builder's two free per-vertex channels
+        float4 uv;
     };
 
     struct FieldFrame {
@@ -74,13 +80,23 @@ enum LiveMetalShaderABI {
         float3 worldPosition;
         float3 normal;
         float4 color;
+        float2 uv;
     };
 
     float fieldTime(constant FieldFrame &frame) { return frame.timing.x; }
     float fieldDeltaTime(constant FieldFrame &frame) { return frame.timing.y; }
     float fieldPredictedDisplayTime(constant FieldFrame &frame) { return frame.timing.z; }
+    float fieldFrameIndex(constant FieldFrame &frame) { return frame.timing.w; }
     float4 fieldUniform(constant FieldFrame &frame, uint index) { return frame.user[min(index, 15u)]; }
     """
+
+    /// `#define u_NAME frame.user[i]` for each declared uniform, in slot order.
+    static func uniformDefines(_ names: [String]) -> String {
+        guard !names.isEmpty else { return "" }
+        return names.prefix(LiveMetalWire.maxUniforms).enumerated()
+            .map { "#define u_\($0.element) frame.user[\($0.offset)]" }
+            .joined(separator: "\n")
+    }
 
     static let fallback = """
     vertex FieldVarying field_vertex(
@@ -109,6 +125,7 @@ enum LiveMetalShaderABI {
         out.worldPosition = world.xyz;
         out.normal = normalize((frame.modelMatrix * float4(n, 0.0)).xyz);
         out.color = v.color;
+        out.uv = v.uv.xy;
         return out;
     }
 
@@ -121,10 +138,31 @@ enum LiveMetalShaderABI {
     }
     """
 
-    static func source(userSource: String, uid: String) -> String {
+    /// `#line 1` resets the diagnostic origin so Metal reports errors at the author's own line
+    /// numbers in their `msl` property, not at an offset inside this preamble.
+    static func source(userSource: String, uid: String, uniformNames: [String]) -> String {
         let body = userSource.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? fallback : userSource
         let safeUID = uid.replacingOccurrences(of: "\"", with: "_")
-        return preamble + "\n#line 1 \"field://visionmetal/\(safeUID).metal\"\n" + body
+        let defines = uniformDefines(uniformNames)
+        return preamble
+            + (defines.isEmpty ? "" : "\n" + defines)
+            + "\n#line 1 \"field://visionmetal/\(safeUID).metal\"\n"
+            + body
+    }
+
+    /// The one-based user line in a Metal diagnostic, or 0. `#line` above makes the reported line
+    /// user-relative, so this only needs to find the first `:line:column:` triple.
+    static func diagnosticLine(in message: String) -> Int {
+        for raw in message.split(separator: "\n") {
+            let fields = raw.split(separator: ":", omittingEmptySubsequences: false)
+            // …path:line:column: error — scan for the first pair of adjacent integers.
+            for index in 0..<max(0, fields.count - 1) {
+                if let line = Int(fields[index]), Int(fields[index + 1]) != nil, line > 0 {
+                    return line
+                }
+            }
+        }
+        return 0
     }
 }
 
@@ -241,7 +279,9 @@ final class LiveMetalRenderTaskExecutor: TaskExecutor {
 /// Autonomous compositor renderer. Network traffic only replaces program/resources; JavaScript and
 /// uniform updates happen on this dedicated render executor.
 final class LiveMetalRenderer {
-    typealias Reporter = @Sendable (_ uid: String, _ revision: Int, _ phase: String, _ ok: Bool, _ message: String) -> Void
+    typealias Reporter = @Sendable (
+        _ uid: String, _ revision: Int, _ phase: String, _ ok: Bool, _ message: String, _ line: Int
+    ) -> Void
 
     private let layerRenderer: LayerRenderer
     private let device: MTLDevice
@@ -259,11 +299,18 @@ final class LiveMetalRenderer {
     private var indexBuffer: MTLBuffer
     private var indexCount: Int
     private var drawableTargets: [LayerRenderer.Drawable.Target: DrawableTarget] = [:]
-    private var appliedGeneration = 0
+    private var applied = LiveMetalAppliedParts()
     private var activeUID = "builtin"
     private var activeRevision = 0
     private var programStart = LayerRenderer.Clock().now
     private var previousTime: TimeInterval?
+
+    // The resident parts. A shader reload recompiles against the resident uniform names; a uniform
+    // redeclaration recompiles the resident shader source. Neither touches the script or the clock.
+    private var residentShaderSource = ""
+    private var residentUniformNames: [String] = []
+    private var residentGeometryOrigin: LiveMetalGeometryOrigin?
+    private var reportedEmptyGeometry = false
 
     init(layerRenderer: LayerRenderer, mailbox: LiveMetalMailbox, reporter: @escaping Reporter) throws {
         self.layerRenderer = layerRenderer
@@ -280,8 +327,10 @@ final class LiveMetalRenderer {
                                                   depthFormat: layerRenderer.configuration.depthFormat,
                                                   viewCount: layerRenderer.properties.viewCount)
         self.depthState = Self.makeDepthState(device: device)
-        self.pipeline = try Self.makePipeline(device: device, layerRenderer: layerRenderer,
-                                              source: LiveMetalShaderABI.source(userSource: "", uid: "builtin"))
+        self.pipeline = try Self.makePipeline(
+            device: device, layerRenderer: layerRenderer,
+            source: LiveMetalShaderABI.source(userSource: "", uid: "builtin", uniformNames: [])
+        )
         let vertices = LiveMetalGeometry.defaultVertices
         let indices = LiveMetalGeometry.defaultIndices
         self.vertexBuffer = device.makeBuffer(bytes: vertices,
@@ -292,7 +341,7 @@ final class LiveMetalRenderer {
                                              options: .storageModeShared)!
         self.indexCount = indices.count
         javaScript.report = { [reporter] phase, ok, message in
-            reporter("javascript", 0, phase, ok, message)
+            reporter("javascript", 0, phase, ok, message, 0)
         }
     }
 
@@ -305,7 +354,7 @@ final class LiveMetalRenderer {
                 try? await session.run([renderer.worldTracking])
                 renderer.renderLoop()
             } catch {
-                reporter("runtime", 0, "renderer", false, error.localizedDescription)
+                reporter("runtime", 0, "renderer", false, error.localizedDescription, 0)
             }
         }
     }
@@ -336,49 +385,146 @@ final class LiveMetalRenderer {
         return try device.makeRenderPipelineState(descriptor: descriptor)
     }
 
+    /// Apply only the parts that changed. Each `if` here is deliberately independent: this is what
+    /// makes "Reload MSL" cheap — the pipeline recompiles while the JavaScript context, the geometry
+    /// buffers and the frame clock all stay exactly as they were.
     private func applyNewestProgram() {
-        if let next = mailbox.take(after: appliedGeneration) {
-            appliedGeneration = next.generation
-            let program = next.program
-            activeUID = program.uid
-            activeRevision = program.revision
-            programStart = LayerRenderer.Clock().now
-            previousTime = nil
+        if let next = mailbox.take(after: applied) {
+            applied = next.applied
+            activeUID = next.uid
+            activeRevision = next.revision
 
-            let vertices = program.decodedVertices()
-            let indices = program.decodedIndices(vertexCount: vertices.count)
-            if let vb = device.makeBuffer(bytes: vertices,
-                                          length: MemoryLayout<LiveMetalVertex>.stride * vertices.count,
-                                          options: .storageModeShared),
-               let ib = device.makeBuffer(bytes: indices,
-                                          length: MemoryLayout<UInt32>.stride * indices.count,
-                                          options: .storageModeShared) {
-                vertexBuffer = vb
-                indexBuffer = ib
-                indexCount = indices.count
+            if let uniforms = next.uniforms {
+                residentUniformNames = uniforms.names
+                // The script keeps running; only the name-to-slot mapping changes.
+                javaScript.redeclareUniforms(uniforms.names)
+                reporter(next.uid, next.revision, "uniforms", true,
+                         uniforms.names.isEmpty
+                             ? "No uniforms declared"
+                             : "Declared \(uniforms.names.count): \(uniforms.names.joined(separator: ", "))",
+                         0)
             }
 
-            javaScript.stop()
-            javaScript.report = { [reporter, uid = program.uid, revision = program.revision] phase, ok, message in
-                reporter(uid, revision, phase, ok, message)
+            if let script = next.script {
+                javaScript.stop()
+                javaScript.report = { [reporter, uid = next.uid, revision = script.revision] phase, ok, message in
+                    reporter(uid, revision, phase, ok, message, 0)
+                }
+                // Only a script reinstall restarts the clock: `frame.time` is time since this
+                // program's own start, and a shader edit must not jump it.
+                programStart = LayerRenderer.Clock().now
+                previousTime = nil
+                javaScript.install(script: script.source,
+                                   sourceURL: URL(string: "field://visionmetal/\(next.uid).js")!,
+                                   uniformNames: residentUniformNames,
+                                   launchable: script.launchable)
             }
-            javaScript.install(script: program.script,
-                               sourceURL: URL(string: "field://visionmetal/\(program.uid).js")!,
-                               uniformNames: program.uniforms,
-                               launchable: program.isLaunchable)
-            compiler.request(.init(uid: program.uid, revision: program.revision,
-                                   source: LiveMetalShaderABI.source(userSource: program.shader, uid: program.uid)))
-            reporter(program.uid, program.revision, "program", true, "Program received; compiling shader")
+
+            if let geometry = next.geometry {
+                residentGeometryOrigin = geometry.origin
+                reportedEmptyGeometry = false
+                apply(geometry: geometry, uid: next.uid, revision: geometry.revision)
+            }
+            if next.script != nil { reportedEmptyGeometry = false }
+
+            if let shader = next.shader {
+                residentShaderSource = shader.source
+            }
+
+            // Uniform names become `#define u_NAME` in the preamble, so a redeclaration needs a
+            // recompile too — of whatever shader source is currently resident.
+            if next.shader != nil || next.uniforms != nil {
+                compiler.request(.init(
+                    uid: next.uid,
+                    revision: next.shader?.revision ?? next.revision,
+                    source: LiveMetalShaderABI.source(userSource: residentShaderSource,
+                                                      uid: next.uid,
+                                                      uniformNames: residentUniformNames)
+                ))
+                reporter(next.uid, next.revision, "shader", true, "Compiling MSL", 0)
+            }
+        }
+
+        // Geometry the box's Kotlin/JS `geometry { … }` builder uploaded during install or a frame
+        // callback. Swapped here, at a frame boundary, so a rebuild never tears.
+        if let built = javaScript.takePendingGeometry() {
+            replaceGeometry(vertices: built.vertices, indices: built.indices)
+            reportedEmptyGeometry = true // it built something; nothing left to warn about
+        }
+
+        // Geometry is explicit now: there is no fallback to the built-in cube. A box that owns its
+        // geometry and never builds any would otherwise leave the author staring at an empty room
+        // with no diagnostic anywhere, so name the omission once.
+        if indexCount == 0, residentGeometryOrigin == .script, !reportedEmptyGeometry {
+            reportedEmptyGeometry = true
+            reporter(activeUID, activeRevision, "geometry", false,
+                     "Nothing to draw: this box owns its geometry but never called geometry { … }. "
+                        + "Build a mesh there, or run the 'Vision Geometry: Built-in Cube' command.", 0)
         }
 
         if let result = compiler.takeResult() {
             if let newPipeline = result.pipeline {
                 pipeline = newPipeline
-                reporter(result.request.uid, result.request.revision, "shader", true, "Shader installed")
+                reporter(result.request.uid, result.request.revision, "shader", true, "MSL installed", 0)
             } else {
-                reporter(result.request.uid, result.request.revision, "shader", false,
-                         result.error ?? "Unknown Metal compiler error")
+                let message = result.error ?? "Unknown Metal compiler error"
+                // A failed edit leaves the last good pipeline on screen; the error carries the
+                // author's own line number, so Field can decorate their `msl` property.
+                reporter(result.request.uid, result.request.revision, "shader", false, message,
+                         LiveMetalShaderABI.diagnosticLine(in: message))
             }
+        }
+    }
+
+    /// Replace the resident vertex buffers, whichever part or bridge supplied them.
+    private func replaceGeometry(vertices: [LiveMetalVertex], indices: [UInt32]) {
+        guard !vertices.isEmpty, !indices.isEmpty else {
+            // An explicitly empty mesh draws nothing rather than keeping stale geometry on screen.
+            indexCount = 0
+            return
+        }
+        guard let vb = device.makeBuffer(bytes: vertices,
+                                        length: MemoryLayout<LiveMetalVertex>.stride * vertices.count,
+                                        options: .storageModeShared),
+              let ib = device.makeBuffer(bytes: indices,
+                                         length: MemoryLayout<UInt32>.stride * indices.count,
+                                         options: .storageModeShared) else {
+            reporter(activeUID, activeRevision, "geometry", false,
+                     "Unable to allocate \(vertices.count)-vertex geometry buffers", 0)
+            return
+        }
+        vb.label = "Field live vertices"
+        ib.label = "Field live indices"
+        vertexBuffer = vb
+        indexBuffer = ib
+        indexCount = indices.count
+    }
+
+    private func apply(geometry: LiveMetalGeometryPart, uid: String, revision: Int) {
+        switch geometry.origin {
+        case .builtin:
+            replaceGeometry(vertices: LiveMetalGeometry.defaultVertices, indices: LiveMetalGeometry.defaultIndices)
+            reporter(uid, revision, "geometry", true, "Built-in cube", 0)
+        case .script:
+            // The box's Kotlin/JS `geometry { … }` owns the buffers. Whatever it last built stays up
+            // until it builds again — which, for a freshly installed script, is immediate.
+            reporter(uid, revision, "geometry", true, "Owned by the box's geometry { } builder", 0)
+        case .wire:
+            guard let vertices = LiveMetalGeometryDecoding.vertices(from: geometry.vertices) else {
+                reporter(uid, revision, "geometry", false,
+                         "Wire geometry needs a whole number of \(LiveMetalWire.vertexFloats)-float vertices, got \(geometry.vertices.count) floats",
+                         0)
+                return
+            }
+            guard let indices = LiveMetalGeometryDecoding.indices(from: geometry.indices, vertexCount: vertices.count) else {
+                reporter(uid, revision, "geometry", false,
+                         "Wire geometry needs whole triangles indexing within \(vertices.count) vertices, got \(geometry.indices.count) indices",
+                         0)
+                return
+            }
+            replaceGeometry(vertices: vertices, indices: indices)
+            reporter(uid, revision, "geometry", true,
+                     "\(vertices.count) vertices / \(indices.count / 3) triangles from the wire", 0)
         }
     }
 
@@ -387,7 +533,7 @@ final class LiveMetalRenderer {
             switch layerRenderer.state {
             case .invalidated:
                 javaScript.stop()
-                reporter(activeUID, activeRevision, "renderer", true, "Immersive renderer stopped")
+                reporter(activeUID, activeRevision, "renderer", true, "Immersive renderer stopped", 0)
                 return
             case .paused:
                 layerRenderer.waitUntilRunning()
@@ -496,8 +642,12 @@ final class LiveMetalRenderer {
         encoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
         encoder.setVertexBuffer(target.uniformBuffer, offset: uniformOffset, index: 1)
         encoder.setFragmentBuffer(target.uniformBuffer, offset: uniformOffset, index: 1)
-        encoder.drawIndexedPrimitives(type: .triangle, indexCount: indexCount, indexType: .uint32,
-                                      indexBuffer: indexBuffer, indexBufferOffset: 0)
+        // An empty mesh still encodes and presents a cleared drawable — skipping the pass entirely
+        // would starve the compositor rather than draw nothing.
+        if indexCount > 0 {
+            encoder.drawIndexedPrimitives(type: .triangle, indexCount: indexCount, indexType: .uint32,
+                                          indexBuffer: indexBuffer, indexBufferOffset: 0)
+        }
         encoder.endEncoding()
         drawable.encodePresent(commandBuffer: commandBuffer)
     }

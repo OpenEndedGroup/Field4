@@ -192,12 +192,23 @@ the box's full `code` property. Unknown explicit markers fail locally; unmarked 
 legacy behavior of broadcasting self-declared Kotlin/JS to all RemoteJS clients.
 
 `remoteAR` injects the curated THREE/FLine declarations in `RemoteArKotlinJs`, and sends only to
-RemoteJS clients whose initialize payload advertises both A-Frame and THREE. `visionmetal` injects
-`VisionMetalKotlinJs`, compiles the box code to the native script, takes MSL from the box's
-`fragment` property (falling back to `visionMetalExampleShader`), and publishes on the replayable
-`__visionmetal__` channel. Uniform slots use explicit marker order when supplied; otherwise custom
-MSL uses first literal `uniform("name", ...)` occurrence, while the built-in shader starts with its
-stable `phase, amount, tint` order.
+RemoteJS clients whose initialize payload advertises both A-Frame and THREE.
+
+`visionmetal` injects `VisionMetalKotlinJs` (lifecycle + `uniform` + the `geometry { … }` mesh
+builder), compiles the box code to the native script, takes MSL from the box's **`msl`** property, and
+publishes on the replayable `__visionmetal__` channel. `box.fragment` is still read as a fallback so
+the original proof-of-concept box keeps rendering, with a notification saying so — it named a GLSL
+fragment stage and could not describe a vertex function, which is why `msl` exists.
+
+The channel is **wire version 2**: shader, script, uniforms and geometry are independently revisioned
+parts, and a message carries only what changed. That is what makes the reload commands in
+`VisionMetal.kt` meaningful — `updateShader` recompiles the pipeline while the JavaScriptCore context,
+the vertex buffers and the frame clock stay resident. Geometry defaults to
+`VisionMetalGeometryOrigin.SCRIPT`: the box's Kotlin/JS owns the buffers, uploading them through a
+`__fieldSetGeometry(Float32Array, Int32Array)` bridge. Uniform slots use explicit marker order when
+supplied; otherwise first-literal-`uniform("name", …)` inference applies *and notifies*, because the
+head turns slot order into `#define u_NAME frame.user[i]` and silent inference can disagree with what
+the shader source expects.
 
 ## Path to production (follow-ups, roughly in order)
 

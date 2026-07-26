@@ -62,6 +62,8 @@ private val languageByExtension = mapOf(
     "vert" to "glsl",
     "comp" to "glsl",
     "slang" to "slang",
+    "metal" to "msl",
+    "msl" to "msl",
     "txt" to "plaintext",
     "csv" to "plaintext",
     "tsv" to "plaintext",

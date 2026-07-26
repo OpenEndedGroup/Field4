@@ -826,6 +826,7 @@ class SavingContext {
         "glsl" -> "glsl"
         "slang" -> "slang"
         "stacksl" -> "stacksl"
+        "metal", "msl" -> "msl"
         "edn" -> "edn"
         else -> language.ifBlank { "text" }
     }

@@ -84,7 +84,14 @@ final class LiveMetalClient {
               payload.version == LiveMetalWire.version else { return }
         activeUID = payload.uid
         activeRevision = payload.revision
-        status = "Received \(payload.uid) r\(payload.revision)"
+        // Name the parts that actually arrived: an explicit shader reload should read as one, not as
+        // an indistinguishable "received program".
+        var parts: [String] = []
+        if payload.shader != nil { parts.append("msl") }
+        if payload.script != nil { parts.append("script") }
+        if payload.uniforms != nil { parts.append("uniforms") }
+        if payload.geometry != nil { parts.append("geometry") }
+        status = "Received \(payload.uid) r\(payload.revision) [\(parts.joined(separator: "+"))]"
         mailbox.put(payload)
     }
 
@@ -109,14 +116,15 @@ final class LiveMetalClient {
         }
     }
 
-    func report(uid: String, revision: Int, phase: String, ok: Bool, message: String) {
+    func report(uid: String, revision: Int, phase: String, ok: Bool, message: String, line: Int = 0) {
         status = ok ? message : "\(phase): \(message)"
+        let where_ = line > 0 ? ":\(line)" : ""
         if ok {
-            shellLog.notice("LiveMetal \(uid, privacy: .public) r\(revision) \(phase, privacy: .public): \(message, privacy: .public)")
+            shellLog.notice("LiveMetal \(uid, privacy: .public) r\(revision) \(phase, privacy: .public)\(where_, privacy: .public): \(message, privacy: .public)")
         } else {
-            shellLog.error("LiveMetal \(uid, privacy: .public) r\(revision) \(phase, privacy: .public): \(message, privacy: .public)")
+            shellLog.error("LiveMetal \(uid, privacy: .public) r\(revision) \(phase, privacy: .public)\(where_, privacy: .public): \(message, privacy: .public)")
         }
-        send(LiveMetalStatusMessage(uid: uid, revision: revision, phase: phase, ok: ok, message: message))
+        send(LiveMetalStatusMessage(uid: uid, revision: revision, phase: phase, ok: ok, message: message, line: line))
     }
 
     /// App windows share this client. Only one of their `.task` hooks may request the immersive

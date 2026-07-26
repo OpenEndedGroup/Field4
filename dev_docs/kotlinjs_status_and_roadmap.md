@@ -39,7 +39,10 @@ surface with `// {{ remoteAR }}` or `// {{ visionmetal }}`. Working and smoke-gu
     typed-for-completion callback payloads whose `play()`/`stop()`/`apply(t)` drive the auto
     AnimationMixer; and a much richer THREE (geometries/materials/lights, `Group`/`Points`/`Line`/
     `Texture`, and fuller `Object3D` props/methods).
-- **Vision Metal profile** — `// {{ visionmetal }}` compiles to the native head script + MSL shader.
+- **Vision Metal profile** — `// {{ visionmetal }}` compiles to the native head script. The box's
+  three parts are explicit and separately reloadable: MSL in the `msl` property (its own Monaco
+  language), geometry from the Kotlin/JS `geometry { … }` builder running in the headset, and uniform
+  slot order from the marker. Wire version 2 carries only the parts that changed.
 
 ### The two enabling tricks (worth remembering)
 
@@ -151,6 +154,8 @@ surface with `// {{ remoteAR }}` or `// {{ visionmetal }}`. Working and smoke-gu
 | Binding model + renderer | `src/jvmMain/kotlin/afield/graphics/KotlinJsBinding.kt` |
 | RemoteAR surface | `src/jvmMain/kotlin/afield/graphics/RemoteArKotlinJs.kt` |
 | Vision Metal surface | `src/jvmMain/kotlin/afield/graphics/VisionMetalKotlinJs.kt` |
+| Vision Metal channel + `msl` property + reload commands | `src/jvmMain/kotlin/afield/graphics/VisionMetal.kt` |
+| MSL Monaco language | `src/commonMain/resources/msl.js`, `src/jvmMain/kotlin/afield/graphics/MslEditorLanguage.kt` |
 | Completion client / sidecar | `src/jvmMain/kotlin/afield/AaCompletionClient.kt`, `tools/code-use-semantic-sidecar/…/AaCompletion.kt` |
 | Runtime the surface mirrors | `src/commonMain/resources/extensions/remote_ar/{ar,field}/*.js` |
 | Smokes | `src/jvmMain/kotlin/afield/examples/KotlinJs*SmokeTest.kt`, `KotlinToJsSpikeTest.kt` |

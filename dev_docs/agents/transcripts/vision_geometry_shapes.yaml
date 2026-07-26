@@ -1,0 +1,113 @@
+name: vision_geometry_shapes
+description: >
+  A tour of the Kotlin/JS geometry builder's shape primitives on the visionOS Live Metal head: cube,
+  sphere, plane and tube, side by side in one mesh. Shows how the current colour applies to whatever
+  is built next, how `tube` sweeps a polyline into real thickness, and how a shader reads the uv the
+  shapes write. Open Live Metal in Field4Vision, then Launch.
+operations:
+  - create:
+      box: agent_vision_geometry_shapes_root
+      name: KotlinJS → visionOS
+      frame: { x: 50.0, y: 50.0, w: 480.0, h: 340.0 }
+      properties:
+        mainLanguage: kotlinjs
+        isKotlinJsRoot: true
+  - create:
+      box: agent_vision_geometry_shapes
+      name: Geometry — shapes
+      frame: { x: 90.0, y: 100.0, w: 400.0, h: 250.0 }
+      properties:
+        code: |
+          // {{ visionmetal uniforms=spin,light }}
+          import kotlin.math.cos
+          import kotlin.math.sin
+
+          // Four shapes in one mesh, laid out left to right 1.2m in front of you.
+          onStart {
+              geometry {
+                  // The current colour applies to everything built after it. `tintFaces` overrides
+                  // it per face so the cube's six sides stay legible while it turns.
+                  color(1.0, 0.42, 0.18)
+                  cube(0.11, cx = -0.42, cz = -1.2, tintFaces = true)
+
+                  color(0.25, 0.75, 1.0)
+                  sphere(0.13, segments = 32, rings = 20, cx = -0.14, cz = -1.2)
+
+                  // plane() writes uv across the whole sheet, which the shader picks up as a checker.
+                  color(0.95, 0.85, 0.25)
+                  plane(0.26, 0.26, cols = 8, rows = 8, cx = 0.14, cz = -1.2)
+
+                  // tube() sweeps a polygon along a polyline — the same real-thickness treatment
+                  // the native FLine viewer gives a stroke.
+                  color(0.62, 0.42, 1.0)
+                  tube(
+                      (0..48).map { i ->
+                          val t = i / 48.0
+                          val a = t * 6.2831853
+                          p(0.42 + 0.055 * sin(a), -0.13 + t * 0.26, -1.2 + 0.055 * cos(a))
+                      },
+                      radius = 0.017,
+                      sides = 10,
+                  )
+
+                  log("built $vertexCount vertices, ${indexCount / 3} triangles")
+              }
+
+              uniform("light", 0.4, 0.85, 0.5)
+              onFrame { frame -> uniform("spin", frame.time * 0.4) }
+
+              onStop { println("geometry shapes stopped") }
+              println("geometry shapes running")
+          }
+        msl: |
+          // Spins the whole mesh about the group centre, then shades it. The plane picks up a
+          // checker from the uv its builder wrote; everything else has uv (0,0)..(1,1) per face.
+          vertex FieldVarying field_vertex(
+              uint vertexID [[vertex_id]], ushort viewID [[amplification_id]],
+              const device FieldVertex *vertices [[buffer(0)]],
+              constant FieldFrame &frame [[buffer(1)]])
+          {
+              FieldVertex v = vertices[vertexID];
+              float3 centre = float3(0.0, 0.0, -1.2);
+              float3 p = v.position.xyz - centre;
+              float3 n = v.normal.xyz;
+
+              float a = u_spin.x;
+              float c = cos(a), s = sin(a);
+              p.xz = float2(c * p.x + s * p.z, -s * p.x + c * p.z);
+              n.xz = float2(c * n.x + s * n.z, -s * n.x + c * n.z);
+
+              float4 world = frame.modelMatrix * float4(p + centre, 1.0);
+              FieldVarying out;
+              out.position = frame.viewProjection[min(uint(viewID), 1u)] * world;
+              out.worldPosition = world.xyz;
+              out.normal = normalize(n);
+              out.color = v.color;
+              out.uv = v.uv.xy;
+              return out;
+          }
+
+          fragment half4 field_fragment(
+              FieldVarying in [[stage_in]],
+              constant FieldFrame &frame [[buffer(1)]])
+          {
+              float3 light = normalize(u_light.xyz);
+              float diffuse = 0.25 + 0.75 * max(dot(normalize(in.normal), light), 0.0);
+
+              // An 8x8 checker straight off the interpolated uv.
+              float2 cell = floor(in.uv * 8.0);
+              float checker = fmod(cell.x + cell.y, 2.0);
+              float3 rgb = in.color.rgb * mix(0.72, 1.0, checker) * diffuse;
+
+              return half4(half3(rgb), half(in.color.a));
+          }
+  - connect:
+      parent: agent_vision_geometry_shapes_root
+      child: agent_vision_geometry_shapes
+  - wait:
+      frames: 2
+  - launch:
+      box: agent_vision_geometry_shapes
+      property: code
+  - await:
+      wait: pending

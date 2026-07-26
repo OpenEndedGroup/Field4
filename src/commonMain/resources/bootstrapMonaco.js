@@ -51,7 +51,7 @@ window.require(["vs/editor/editor.main"], function (e, is) {
         });
         window.require(["vs/basic-languages/markdown/markdown"], function (e, is) {
         });
-        window.require(["bithero/glsl", "bithero/slang", "bithero/forth", "bithero/fieldml", "bithero/languageExtensions", "bithero/stacksl", "bithero/rectsl", "bithero/fnrewrite", "bithero/nano", "bithero/kotlinjs"], function () {
+        window.require(["bithero/glsl", "bithero/slang", "bithero/msl", "bithero/forth", "bithero/fieldml", "bithero/languageExtensions", "bithero/stacksl", "bithero/rectsl", "bithero/fnrewrite", "bithero/nano", "bithero/kotlinjs"], function () {
                 initMonaco()
                 loadOptionalPersonalLanguageExtensions()
                 window.require(["vs/platform/quickinput/common/quickInput"], function (is) {
@@ -957,6 +957,8 @@ const normalizeCodeFenceLanguage = (language) => {
                 comp: "glsl",
                 compute: "glsl",
                 shader: "glsl",
+                metal: "msl",
+                msl: "msl",
                 bend: "bend",
                 js: "javascript",
                 ts: "typescript",

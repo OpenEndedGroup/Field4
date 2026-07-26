@@ -7,9 +7,9 @@ struct LiveMetalImmersiveContent: CompositorContent {
 
     var body: some CompositorContent {
         CompositorLayer(configuration: LiveMetalLayerConfiguration()) { @MainActor layerRenderer in
-            LiveMetalRenderer.start(layerRenderer, mailbox: client.mailbox) { uid, revision, phase, ok, message in
+            LiveMetalRenderer.start(layerRenderer, mailbox: client.mailbox) { uid, revision, phase, ok, message, line in
                 Task { @MainActor in
-                    client.report(uid: uid, revision: revision, phase: phase, ok: ok, message: message)
+                    client.report(uid: uid, revision: revision, phase: phase, ok: ok, message: message, line: line)
                 }
             }
         }

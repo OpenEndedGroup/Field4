@@ -1129,6 +1129,9 @@ fun monacoRunAiAssistError(editor: dynamic) {
 
 private fun shaderReloadActionForProperty(property: String): String? = when (property.lowercase()) {
     "vertex", "fragment", "vertex_fragment", "vertex_s", "fragment_s" -> "moduleHere_reload"
+    // Metal for a visionOS head. Recompiles on the headset without restarting the box's script,
+    // geometry or frame clock.
+    "msl" -> "visionMetal_reload"
     "compute", "compute_s" -> "computeModuleHere_reload"
     "mesh", "task", "mesh_s", "task_s" -> "meshModuleHere_reload"
     "raygen", "miss", "closesthit", "anyhit", "intersection", "callable",
