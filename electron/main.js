@@ -26,6 +26,11 @@ const WELCOME_BACKGROUND = "rgb(20, 20, 20)";
 const ZOOM_LEVEL_STEP = 0.5;
 const MIN_ZOOM_LEVEL = -8;
 const MAX_ZOOM_LEVEL = 8;
+// History screenshot budget -- see screenshotPayload(). Downscale to logical (non-retina) pixels,
+// capped, and encode JPEG: the work runs on the input-routing thread, so it must stay cheap.
+const HISTORY_SHOT_MAX_WIDTH = 1600;
+const HISTORY_SHOT_JPEG_QUALITY = 70;
+const HISTORY_SHOT_RESIZE_QUALITY = "good";
 const TAB_STRIP_ASSET_BASE_URL = pathToFileURL(
   path.join(__dirname, "..", "public") + path.sep,
 ).toString();
@@ -245,6 +250,14 @@ function setViewBackground(view, color = SHELL_BACKGROUND) {
 
 function colorForUrl(rawUrl) {
   return isWelcomeUrl(rawUrl) ? WELCOME_BACKGROUND : SHELL_BACKGROUND;
+}
+
+function displayScaleFactor(win) {
+  try {
+    return screen.getDisplayMatching(win.getBounds()).scaleFactor || 1;
+  } catch (_) {
+    return 1;
+  }
 }
 
 function installPageBackgroundGuard(tab) {
@@ -1236,21 +1249,60 @@ function createMainWindow() {
   });
   const onRevealTabs = onlyFromChrome(() => revealTabs());
   const onHideTabs = onlyFromChrome(() => hideTabs());
+  // capturePage() hands back *device* pixels, so on a 2x display a 1644x988 window arrives as a
+  // 3288x1976 image. Every step after it -- resize, encode, base64 -- is synchronous on the
+  // browser/main thread, which is also the only thread that routes input to the renderers: a
+  // millisecond spent here is a millisecond of keystroke latency in every open document (see the
+  // canvas-capture note in Main.kt, where this showed up as a periodic Monaco typing hiccup).
+  //
+  // History displays these as 132x78 thumbnails and a viewport-sized preview, so logical
+  // resolution and JPEG are ample. Full-res PNG cost ~540ms and a 2.3MB data URL per shot.
   const screenshotPayload = (image) => {
     if (!image || image.isEmpty()) return null;
     const size = image.getSize();
     if (!size.width || !size.height) return null;
-    const png = image.toPNG();
-    if (!png || png.length < 8) return null;
+
+    const logicalWidth = Math.round(size.width / displayScaleFactor(win));
+    const targetWidth = Math.max(1, Math.min(HISTORY_SHOT_MAX_WIDTH, logicalWidth));
+
+    const resizeStart = performance.now();
+    const scaled =
+      targetWidth < size.width
+        ? image.resize({ width: targetWidth, quality: HISTORY_SHOT_RESIZE_QUALITY })
+        : image;
+    const encodeStart = performance.now();
+    const jpeg = scaled.toJPEG(HISTORY_SHOT_JPEG_QUALITY);
+    if (!jpeg || jpeg.length < 8) return null;
+    const base64Start = performance.now();
+    const base64 = jpeg.toString("base64");
+    const encodedAt = performance.now();
+
+    const scaledSize = scaled.getSize();
     return {
-      dataUrl: `data:image/png;base64,${png.toString("base64")}`,
-      width: size.width,
-      height: size.height,
+      dataUrl: `data:image/jpeg;base64,${base64}`,
+      width: scaledSize.width,
+      height: scaledSize.height,
+      timings: {
+        sourceWidth: size.width,
+        outWidth: scaledSize.width,
+        bytes: jpeg.length,
+        resizeMs: +(encodeStart - resizeStart).toFixed(1),
+        encodeMs: +(base64Start - encodeStart).toFixed(1),
+        base64Ms: +(encodedAt - base64Start).toFixed(1),
+      },
     };
   };
   const captureScreenshotPayload = async (capture) => {
     try {
-      return screenshotPayload(await capture());
+      const startedAt = performance.now();
+      const image = await capture();
+      const capturedAt = performance.now();
+      const payload = screenshotPayload(image);
+      if (payload) {
+        payload.timings.captureMs = +(capturedAt - startedAt).toFixed(1);
+        payload.timings.mainThreadMs = +(performance.now() - startedAt).toFixed(1);
+      }
+      return payload;
     } catch (_) {
       return null;
     }
@@ -1258,11 +1310,12 @@ function createMainWindow() {
   const onHistoryCaptureWindow = async (event) => {
     const tab = activeTab();
     if (!tab || event.sender !== tab.view.webContents) return null;
-    return (
+    const payload =
       (await captureScreenshotPayload(() =>
         tab.view.webContents.capturePage(),
-      )) || (await captureScreenshotPayload(() => win.capturePage()))
-    );
+      )) || (await captureScreenshotPayload(() => win.capturePage()));
+    if (payload) diagnosticLog("history-screenshot", payload.timings);
+    return payload;
   };
 
   ipcMain.on("field4-tabs-ready", onTabsReady);
